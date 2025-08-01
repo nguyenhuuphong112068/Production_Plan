@@ -28,39 +28,9 @@ class SchedualController extends Controller
         //         ->leftJoin('product_category', 'import.testing_code', '=', 'product_category.testing_code')
         //         ->get();
 
-        // $devices = DB::table('instrument')->select('id', 'name as label')->where ('active',1)->orderBy('created_at','desc')->get();
-
-        $resources = [
-        [ 'id' => 'r0', 'title' => 'Máy đo 1' ],
-        [ 'id' => 'r1', 'title' => 'Máy đo 2' ],
-        [ 'id' => 'r2', 'title' => 'Máy đo 3' ],
-        [ 'id' => 'r3', 'title' => 'Máy đo 4' ],
-        [ 'id' => 'r4', 'title' => 'Máy đo 5' ],
-        ];
-
-        $events = [
-        [
-                'title' => 'Đã kiểm xong',
-                'start' => '2025-08-01T09:00:00',
-                'end' => '2025-08-01T11:00:00',
-                'resourceId' => 'r0'
-        ],
-        [
-                'title' => 'Đang khóa',
-                'start' => '2025-08-02T14:00:00',
-                'end' => '2025-08-02T16:00:00',
-                'resourceId' => 'r0',
-                'classNames' => ['fc-event-locked']
-        ],
-        [
-                'title' => 'Lô B123 đang đo',
-                'start' => '2025-08-03T08:00:00',
-                'end' => '2025-08-03T12:00:00',
-                'resourceId' => 'r1'
-        ],
-        ];
+        $devices = DB::table('instrument')->select('id', 'name as label')->where ('active',1)->orderBy('created_at','desc')->get();
         
-        return Inertia::render('FullCalender', [
+        return Inertia::render('GanttChart', [
       
             'title' => 'Lịch Kiểm Nghiệm',
             'user' => session('user'),
