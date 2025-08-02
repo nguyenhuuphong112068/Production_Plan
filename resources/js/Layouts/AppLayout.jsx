@@ -1,12 +1,12 @@
 import React from 'react';
-import LeftNav from '../Components/leftNAV';
+
 
 export default function AppLayout({ children, user, title }) {
   return (
     <div className="min-h-screen flex flex-col">
 
 
-      <header className="bg-white fixed  top-0 z-10 w-[100%] ">
+      <header className="bg-white fixed top-0 z-10 w-[100%] border">
         <div className="flex mx-auto items-center justify-between px-4 py-2">
           
           {/* Cột 1: Logo */}
@@ -20,30 +20,27 @@ export default function AppLayout({ children, user, title }) {
             </a>
           </div>
 
-      {/* Cột 2: Tiêu đề */}
+        {/* Cột 2: Tiêu đề */}
           <div className="w-1/3 text-center">
-            <h4 className="text-lg font-semibold text-yellow-600">{title}</h4>
+            <h4 className="text-xl font-semibold text-yellow-600">{title}</h4>
+            </div>
+            {/* Cột 3: User Info */}
+            <div className="w-1/3 mr-[50px] flex justify-end text-right">
+              {user && (
+                <div>
+                  <div>🧑‍💼 {user.fullName}</div>
+                  <div>🛡️ {user.userGroup}</div>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Cột 3: User Info */}
-          <div className="w-1/3 mr-[50px] flex justify-end text-right">
-            {user && (
-              <div>
-                <div>🧑‍💼 {user.fullName}</div>
-                <div>🛡️ {user.userGroup}</div>
-              </div>
-            )}
-          </div>
-
-        </div>
-      </header>
+        </header>
 
 
             {/* TOP NAV */}
       <div className="flex flex-1 flex-col">
-          <main className="pt-[3%] bg-white-100 min-h-screen">
+          <main className="pt-[2%] bg-white-100 min-h-screen">
             {children}
-           
           </main>
       </div> 
 

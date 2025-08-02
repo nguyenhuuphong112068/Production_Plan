@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pages\Schedual;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 
@@ -14,51 +15,22 @@ class SchedualController extends Controller
        
         session()->put(['title' => 'Lịch Kiểm Nghiệm']);
 
-        // $events = DB::table('schedules')
-        //         ->select('schedules.id',
-        //                 'schedules.ins_Id as rowId',
-        //                 DB::raw("CONCAT(product_category.name, ' - ', import.batch_no) as title"),
-        //                 'startDate',
-        //                 'endDate'
-        //         )
-        //         ->where('schedules.finished', 0)
-        //         ->where('schedules.active', 1)
-        //         ->leftJoin('import', 'schedules.imported_id', '=', 'import.id')
-        //         ->leftJoin('instrument', 'schedules.ins_Id', '=', 'instrument.id')
-        //         ->leftJoin('product_category', 'import.testing_code', '=', 'product_category.testing_code')
-        //         ->get();
+        $events = DB::table('schedule')
+                        ->select('id',
+                                'title',
+                                'start',
+                                'end',
+                                'room_id as resourceId')
+                        ->where('finished', 0)
+                        ->where('active', 1)
+                        ->get();
 
-        //$devices = DB::table('instrument')->select('id', 'name as label')->where ('active',1)->orderBy('created_at','desc')->get();
-
-        $resources = [
-                [ 'id' => 'r0', 'title' => 'Máy đo 1' ],
-                [ 'id' => 'r1', 'title' => 'Máy đo 2' ],
-                [ 'id' => 'r2', 'title' => 'Máy đo 3' ],
-                [ 'id' => 'r3', 'title' => 'Máy đo 4' ],
-                [ 'id' => 'r4', 'title' => 'Máy đo 5' ],
-                ];
-
-                $events = [
-                [
-                        'title' => 'Đã kiểm xong',
-                        'start' => '2025-08-01T09:00:00',
-                        'end' => '2025-08-01T11:00:00',
-                        'resourceId' => 'r0'
-                ],
-                [
-                        'title' => 'Đang khóa',
-                        'start' => '2025-08-02T14:00:00',
-                        'end' => '2025-08-02T16:00:00',
-                        'resourceId' => 'r0',
-                        'classNames' => ['fc-event-locked']
-                ],
-                [
-                        'title' => 'Lô B123 đang đo',
-                        'start' => '2025-08-03T08:00:00',
-                        'end' => '2025-08-03T12:00:00',
-                        'resourceId' => 'r1'
-                ],
-                ];
+        $resources = DB::table('room')
+                        ->select('id', DB::raw("CONCAT(name, '-', code) as title"))
+                        ->where('active', 1)
+                        ->orderBy('order_by', 'asc')
+                        ->get();
+  
         return Inertia::render('FullCalender', [
       
             'title' => 'Lịch Kiểm Nghiệm',
@@ -149,38 +121,20 @@ class SchedualController extends Controller
         }
 
         public function update(Request $request){
-             
-                $validator = Validator::make($request->all(), [
-                        'analyst'    => 'required',
-                        'startDate'  => 'required|date',
-                        'endDate'    => 'required|date|after_or_equal:startDate',
-                        'ins_Id' => 'required',
-                        
-                ], [
-                        'analyst.required' => 'Vui lòng chọn kiểm nghiệm viên',
-                        'startDate.required' => 'Vui lòng chọn ngày kiểm',
-                        'endDate.required' => 'Vui lòng chọn ngày kết thúc',
-                        'ins_Id.required' => 'Vui lòng chọn thiết bị kiểm',
-                       
-                ]);
-               
-                
-                if ($validator->fails()) {
-                        return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
-                } 
-                
-                DB::table('schedules')->where('id', $request->id)->update([
-                        
-                        'analyst' => $request->analyst,
-                        'startDate' => $request->startDate,
-                        'endDate'  => $request->endDate,
-                        'ins_Id'  => $request->ins_Id,
-                        'note'  => $request->note,
 
-                        'prepareBy' => session('user')['fullName'] ?? 'Admin',
-                        'updated_at' => now(),
-                ]);
-                return redirect()->back()->with('success', 'Đã thêm thành công!');   
+                
+                try {
+                        DB::table('schedule')
+                        ->where('id', $request->id)
+                        ->update([
+                                'start' => $request->start,
+                                'end' => $request->end,
+                                'room_id' => $request->resourceId,
+                                'updated_at' => now(),
+                        ]);  
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
+                }
         }
 
         public function deActive(string|int $id, Request $request){
