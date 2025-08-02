@@ -64,3 +64,8 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 >>>>>>> 88d8884 (innitial)
+## 📅 FullCalendar License
+
+This project uses [FullCalendar Premium](https://fullcalendar.io/scheduler) under the [GPLv3 license](https://www.gnu.org/licenses/gpl-3.0.html).
+
+If you intend to use this project in a closed-source or commercial project, you will need to obtain a commercial license from FullCalendar: https://fullcalendar.io/license
