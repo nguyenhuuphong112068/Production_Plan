@@ -9,6 +9,7 @@ import AppLayout from '../Layouts/AppLayout';
 import ModalSidebar from '../Components/ModalSidebar';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2'; 
+import './calendar.css';
 
 import 'moment/locale/vi';
 import '@fullcalendar/daygrid/index.js';
@@ -52,13 +53,21 @@ import 'primeicons/primeicons.css';
         }
       
         const duration = matched.PMC2;
+        const P_time = matched.P_time;
+        const  M_time = matched.M_time;
+        const  C1_time = matched.C1_time;
+        const  C2_time = matched.C2_time;
 
         setSelectedRow({
-          id: eventEl.getAttribute('data-id'),
-          title: eventEl.getAttribute('data-title'),
-          duration: duration,
-          intermediate_code: intermediate_code,
-          stage_code: stage_code,
+            id: eventEl.getAttribute('data-id'),
+            title: eventEl.getAttribute('data-title'),
+            duration: duration,
+            intermediate_code: intermediate_code,
+            stage_code: stage_code,
+            P_time: P_time,
+            M_time: M_time,
+            C1_time: C1_time,
+            C2_time: C2_time,
         });
 
         return {
@@ -66,6 +75,7 @@ import 'primeicons/primeicons.css';
           duration: duration,
           extendedProps: {
           externalId: eventEl.getAttribute('data-id'),
+
           },
         };
       }
@@ -79,12 +89,38 @@ import 'primeicons/primeicons.css';
   };
 
   const handleEventSelect = async (info) => {
-    // Event click logic
+      const calendarApi = calendarRef.current.getApi();
+  const allEvents = calendarApi.getEvents();
+
+  const clickedId = info.event.extendedProps.plan_master_id;
+
+  // Bỏ class cũ nếu có
+  document.querySelectorAll('.fc-event').forEach(el => {
+    el.classList.remove('highlight-event');
+  });
+
+  // Tìm và highlight các event có cùng plan_master_id
+  allEvents.forEach(event => {
+    if (event.extendedProps.plan_master_id === clickedId) {
+      const el = event._def.ui?.el; // Không chắc chắn hỗ trợ
+      const dom = document.querySelector(`[data-event-id="${event.id}"]`);
+
+      // Cách đáng tin cậy: dùng custom attribute
+      const allRenderedEls = document.querySelectorAll('.fc-event');
+      allRenderedEls.forEach(el => {
+        if (el.innerText.includes(event.title)) {
+          el.classList.add('highlight-event');
+        }
+      });
+    }
+  });
   };
 
-  const handleEventResize = async (info) => {
+  const handleEventDrop = async (info) => {
     const { id, start, end , title} = info.event;
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
+
+    console.log (info.event);
 
     router.put('/Schedual/update', {
       id,
@@ -99,35 +135,41 @@ import 'primeicons/primeicons.css';
     });
   };
 
-const handleEventDrop = async (info) => {
-  const { id, start, end, title } = info.event;
-  const resourceId = info.event.getResources?.()[0]?.id ?? null;
 
-  router.put('/Schedual/update', {
-    id,
-    start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
-    end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
-    resourceId,
-    title, // truyền vào để xác định loại event
-    sync: true, // yêu cầu cập nhật đồng bộ
-  }, {
-    preserveScroll: true,
-    onSuccess: () => console.log('Dropped & Synced'),
-    onError: (errors) => console.error('Drop update failed', errors),
-  });
-};
+  const handleEventResize = async (info) => {
+    const { id, start, end , title} = info.event;
+    const resourceId = info.event.getResources?.()[0]?.id ?? null;
+
+    router.put('/Schedual/update', {
+      id,
+      start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
+      end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
+      resourceId,
+      title
+      
+    }, {
+      preserveScroll: true,
+      onSuccess: () => console.log('Updated'),
+      onError: (errors) => console.error('Update failed', errors),
+    });
+  };
+
+
 
   const handleEventReceive = async (info) => {
 
     const { id, start, end } = info.event;
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
-    
+    const [hours, minutes] = selectedRow.C2_time.split(':').map(Number);
+    const C_end = dayjs(end).add(hours, 'hour').add(minutes, 'minute').format('YYYY-MM-DD HH:mm:ss');
+
     router.put('/Schedual/store', {
       id: selectedRow.id,
       start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
       end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
       resourceId,
-      title: selectedRow.title
+      title: selectedRow.title,
+      C_end: C_end
 
     }, {
       preserveScroll: true,
@@ -142,6 +184,8 @@ const handleEventDrop = async (info) => {
     setShowSidebar(true);
   };
 
+
+
   return (
     <div className={`transition-all duration-300 ${showSidebar ? 'w-[70%]' : 'w-full'} float-right pt-3 pl-2 pr-2`}>
 
@@ -150,7 +194,7 @@ const handleEventDrop = async (info) => {
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineWeek"
-        slotDuration="00:30:00"
+        slotDuration="00:15:00"
         slotMinTime="00:00:00"
         slotMaxTime="23:59:00"
         resources={resources}
@@ -213,22 +257,32 @@ const handleEventDrop = async (info) => {
           <div className="relative group">
             <b>{arg.event.title}</b><br />
             <small>{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</small>
-            <button
-              onClick={(e) => {
+
+            <button onClick={(e) => {
                 e.stopPropagation();
                 if (confirm('Bạn có chắc muốn xóa lịch này?')) {
                   arg.event.remove();
                   router.put(`/Schedual/deActive/${arg.event.id}`, {
-                    onSuccess: () => console.log('Đã xóa lịch thành công'),
-                    onError: () => console.error('Xóa lịch thất bại')
+                      onSuccess: () => {
+                          Swal.fire({
+                            icon: 'success',
+                            title: 'Đã xóa lịch thành công',
+                            showConfirmButton: false,
+                            timer: 1500
+                          });
+                        },
+                        onError: () => {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Xóa lịch thất bại',
+                            text: 'Vui lòng thử lại sau.',
+                          });
+                        }
                   });
                 }
               }}
               className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
-              title="Xóa lịch"
-            >
-              ×
-            </button>
+              title="Xóa lịch">×</button>
           </div>
         )}
       />
