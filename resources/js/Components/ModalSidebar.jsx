@@ -41,10 +41,11 @@ const ModalSidebar = ({ visible, onClose, events = [] }) => {
 
         <Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
 
-        <Column field="title" header="Sản Phẩm - Số lô" />
-        <Column field="duration" header="Mực Ưu tiên" />
-        <Column field="expertedDate" header="Ngày DK KCS" />
-        <Column field="resourceIdGroup" header="Thiết Bị" />
+        <Column field="intermediate_code" header="Mã Sản Phẩm" />
+        <Column field="name" header="Sản Phẩm" />
+        <Column field="batch" header="Mực Ưu tiên" />
+        <Column field="expected_date" header="Ngày DK KCS" />
+        <Column field="market" header="Thị Trường" />
 
         {/* Cột kéo thả */}
         <Column
@@ -54,11 +55,10 @@ const ModalSidebar = ({ visible, onClose, events = [] }) => {
               className="fc-event cursor-move px-2 py-1 bg-blue-100 border border-blue-400 rounded text-sm text-center"
               draggable="true"
               data-id={rowData.id}
-              data-title={rowData.title}
-              data-duration={rowData.duration}
-              data-plan_stage_code={rowData.plan_stage_code}
-              data-expertedDate={rowData.expertedDate}
-              data-resourceIdGroup={rowData.resourceIdGroup}
+              data-title={rowData.name + "-" + rowData.batch + "-" + rowData.market}
+              data-intermediate_code={rowData.intermediate_code}
+              data-stage={rowData.stage_code}
+              data-expected-date={rowData.expected_date}
               onDragStart={(e) => handleDragStart(e, rowData)}
             >
               ⬍

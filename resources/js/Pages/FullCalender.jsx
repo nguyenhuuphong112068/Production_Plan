@@ -8,6 +8,7 @@ import { usePage, router } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 import ModalSidebar from '../Components/ModalSidebar';
 import dayjs from 'dayjs';
+import Swal from 'sweetalert2'; 
 
 import 'moment/locale/vi';
 import '@fullcalendar/daygrid/index.js';
@@ -17,33 +18,61 @@ import 'primereact/resources/themes/lara-light-indigo/theme.css';
 import 'primereact/resources/primereact.min.css';                
 import 'primeicons/primeicons.css'; 
 
-const ScheduleTest = () => {
+  const ScheduleTest = () => {
   const calendarRef = useRef(null);
   moment.locale('vi');
 
-  const { events, resources, title } = usePage().props;
+  //0. Get data
+  const { events, resources, title, plan, quota } = usePage().props;
   const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedRow, setSelectedRow] = useState({});
 
-  const testEvents = [
-    { id: 1, title: 'Paracetamol EG 100 mg - 010125', duration: '10:00' , resourceIdGroup: 'E02, E03' , plan_stage_code: 1 , expertedDate: '2025-08-30' },
-    { id: 1, title: 'Paracetamol EG 100 mg - 010125', duration: '15:00' , resourceIdGroup: 'E02, E03' , plan_stage_code: 4 , expertedDate: '2025-08-30' },
-    { id: 1, title: 'Paracetamol EG 100 mg - 010125', duration: '11:00' , resourceIdGroup: 'E02, E03' , plan_stage_code: 5 , expertedDate: '2025-08-30' },
-  ];
-
+  //01. Get data from row of Model Table
   useEffect(() => {
     new Draggable(document.getElementById('external-events'), {
       itemSelector: '.fc-event',
       eventData: function (eventEl) {
-        return {
+        // Lấy giá trị từ data-attributes
+        const intermediate_code = eventEl.getAttribute('data-intermediate_code');
+        const stage_code = parseInt(eventEl.getAttribute('data-stage'));     
+
+        // Tìm bản ghi phù hợp trong quota
+        const matched = quota.find(item =>
+          item.intermediate_code === intermediate_code &&
+          parseInt(item.stage_code) === stage_code
+        );
+
+        if (!matched) {
+          Swal.fire({
+            icon: 'warning',
+            title: `Sản phẩm  ${eventEl.getAttribute('data-title')} chưa được định mức.`,
+            text: `Vui Lòng Định Mức trước khi sắp lịch!`,
+          });
+          return false; 
+        }
+      
+        const duration = matched.PMC2;
+
+        setSelectedRow({
+          id: eventEl.getAttribute('data-id'),
           title: eventEl.getAttribute('data-title'),
-          duration: eventEl.getAttribute('data-duration'),
+          duration: duration,
+          intermediate_code: intermediate_code,
+          stage_code: stage_code,
+        });
+
+        return {
+          title:  eventEl.getAttribute('data-title') ,
+          duration: duration,
           extendedProps: {
           externalId: eventEl.getAttribute('data-id'),
-          }
+          },
         };
       }
     });
-  }, []);
+  }, [quota]);
+
+
 
   const handleViewChange = (view) => {
     calendarRef.current?.getApi()?.changeView(view);
@@ -54,7 +83,7 @@ const ScheduleTest = () => {
   };
 
   const handleEventResize = async (info) => {
-    const { id, start, end } = info.event;
+    const { id, start, end , title} = info.event;
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
 
     router.put('/Schedual/update', {
@@ -62,6 +91,7 @@ const ScheduleTest = () => {
       start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
       end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
       resourceId,
+      title
     }, {
       preserveScroll: true,
       onSuccess: () => console.log('Updated'),
@@ -69,33 +99,42 @@ const ScheduleTest = () => {
     });
   };
 
-  const handleEventDrop = async (info) => {
-    const { id, start, end } = info.event;
-    const resourceId = info.event.getResources?.()[0]?.id ?? null;
+const handleEventDrop = async (info) => {
+  const { id, start, end, title } = info.event;
+  const resourceId = info.event.getResources?.()[0]?.id ?? null;
 
-    router.put('/Schedual/update', {
-      id,
-      start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
-      end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
-      resourceId,
-    }, {
-      preserveScroll: true,
-      onSuccess: () => console.log('Updated'),
-      onError: (errors) => console.error('Update failed', errors),
-    });
-  };
+  router.put('/Schedual/update', {
+    id,
+    start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
+    end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
+    resourceId,
+    title, // truyền vào để xác định loại event
+    sync: true, // yêu cầu cập nhật đồng bộ
+  }, {
+    preserveScroll: true,
+    onSuccess: () => console.log('Dropped & Synced'),
+    onError: (errors) => console.error('Drop update failed', errors),
+  });
+};
 
   const handleEventReceive = async (info) => {
-    const { title, start, end } = info.event;
+
+    const { id, start, end } = info.event;
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
-
-    console.log("Sự kiện được thả từ bên ngoài:", {
-      title,
-      start,
-      end,
+    
+    router.put('/Schedual/store', {
+      id: selectedRow.id,
+      start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
+      end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
       resourceId,
-    });
+      title: selectedRow.title
 
+    }, {
+      preserveScroll: true,
+      onSuccess: () => console.log('create'),
+      onError: (errors) => console.error('create failed', errors),
+    });
+    setSelectedRow ({});
     // Optional: gửi API để tạo lịch mới từ dữ liệu bên ngoài
   };
 
@@ -124,10 +163,15 @@ const ScheduleTest = () => {
         droppable={true}
         selectable={true}
         eventResizableFromStart={true}
+        resourceGroupField="stage"
+
+
         eventClick={handleEventSelect}
         eventResize={handleEventResize}
         eventDrop={handleEventDrop}
         eventReceive={handleEventReceive}
+
+
         views={{
           resourceTimelineDay: { titleFormat: { year: 'numeric', month: 'short', day: 'numeric' } },
           resourceTimelineWeek: { titleFormat: { year: 'numeric', month: 'short', day: 'numeric' } }
@@ -174,7 +218,7 @@ const ScheduleTest = () => {
                 e.stopPropagation();
                 if (confirm('Bạn có chắc muốn xóa lịch này?')) {
                   arg.event.remove();
-                  router.delete(`/Schedual/${arg.event.id}`, {
+                  router.put(`/Schedual/deActive/${arg.event.id}`, {
                     onSuccess: () => console.log('Đã xóa lịch thành công'),
                     onError: () => console.error('Xóa lịch thất bại')
                   });
@@ -188,11 +232,12 @@ const ScheduleTest = () => {
           </div>
         )}
       />
-
+      
       <ModalSidebar
         visible={showSidebar}
         onClose={() => setShowSidebar(false)}
-        events={testEvents}
+        events={plan}
+        
       />
       
     </div>

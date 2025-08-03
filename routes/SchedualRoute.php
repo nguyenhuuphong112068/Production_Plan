@@ -13,12 +13,12 @@ Route::prefix('/Schedual')
 
         Route::get('view','view');
         Route::get('','index')->name('list');
-        Route::post('store','store')->name('store');
         
-        Route::post('deActive/{id}','deActive')->name('deActive'); 
-        Route::post('finished','finished')->name('finished'); 
+    
+        Route::put('finished','finished')->name('finished'); 
 
-
+        Route::put('deActive/{id}','deActive')->name('deActive'); 
+        Route::put('store','store')->name('store');
         Route::put('update', 'update')->name('update');
 });
    
