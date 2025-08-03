@@ -24,7 +24,9 @@ class SchedualController extends Controller
                         'start_clearning',
                         'end_clearning',
                         'title_clearning',
-                        'resourceId'
+                        'resourceId',
+                        'plan_master_id',
+                        'stage_code'
                 )
                 ->where('finished', 0)
                 ->where('active', 1)
@@ -36,30 +38,32 @@ class SchedualController extends Controller
                 if ($plan->start && $plan->end) {
                         $events->push([
                         'id' => "{$plan->id}-main",
-                        'groupId' => $plan->id,
+                        //'groupId' => $plan->id,
                         'title' => $plan->title,
                         'start' => $plan->start,
                         'end' => $plan->end,
                         'resourceId' => $plan->resourceId,
-                        'color' => '#7bed52ff' // màu xanh sản xuất
+                        'color' => '#7bed52ff', // màu xanh sản xuất
+                        'plan_master_id'=> $plan->plan_master_id,
+                        'stage_code'=> $plan->stage_code
+                          
                         ]);
                 }
                 // Event vệ sinh
                 if ($plan->start_clearning && $plan->end_clearning) {
                         $events->push([
                         'id' => "{$plan->id}-cleaning",
-                        'groupId' => $plan->id,
+                        //'groupId' => $plan->id,
                         'title' => $plan->title_clearning ?? 'Vệ sinh',
                         'start' => $plan->start_clearning,
                         'end' => $plan->end_clearning,
                         'resourceId' => $plan->resourceId,
-                        'color' => '#a1a2a2ff' // màu xám vệ sinh
+                        'color' => '#a1a2a2ff', // màu xám vệ sinh
+                        'plan_master_id'=> $plan->plan_master_id,
+                        'stage_code'=> $plan->stage_code
                         ]);
                 }
                 }
-
-
-              
 
                 $resources = DB::table('room')
                                 ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage')
@@ -191,15 +195,18 @@ class SchedualController extends Controller
                 // if ($validator->fails()) {
                 //         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 // }
-                
+          
                 try {
                         DB::table('stage_plan')
                         ->where('id', $request->id)
                         ->update([
                                 'start' => $request->start,
                                 'end' => $request->end,
+                                'start_clearning' => $request->end,
+                                'end_clearning' => $request->C_end,
                                 'resourceId' => $request->resourceId,
                                 'title' => $request->title,
+                                'title_clearning' => $request->title . " Vệ Sinh 2",
                                 'schedualed' => 1,
                                 'schedualed_by' =>  session('user')['fullName'],
                                 'schedualed_at' => now(),
@@ -214,37 +221,37 @@ class SchedualController extends Controller
 
         // Cap nhạt lại Calender khi có thay đổi vị trí lịch hoặc thay đổi thời gian
         public function update(Request $request){
-            
                 try {
-                        if (strpos($request->title, "Vệ Sinh") !== false ){
-                                $check = DB::table('stage_plan')
+                        // Nếu chỉ update 1 event (resize)
+                        if (strpos($request->title, "Vệ Sinh") !== false ) {
+                                DB::table('stage_plan')
                                 ->where('id', $request->id)
                                 ->update([
-                                        'start_clearning' => $request->start,
+                                     'start_clearning' => $request->start,
                                         'end_clearning' => $request->end,
                                         'resourceId' => $request->resourceId,
-                                        'schedualed_by' =>  session('user')['fullName'],
+                                        'schedualed_by' => session('user')['fullName'],
                                         'schedualed_at' => now(),
-                                ]); 
-
-                        }else{
-                                $check = DB::table('stage_plan')
+                                ]);
+                        } else {
+                                DB::table('stage_plan')
                                 ->where('id', $request->id)
                                 ->update([
                                         'start' => $request->start,
                                         'end' => $request->end,
                                         'resourceId' => $request->resourceId,
-                                        'schedualed_by' =>  session('user')['fullName'],
+                                        'schedualed_by' => session('user')['fullName'],
                                         'schedualed_at' => now(),
-                                ]); 
+                        ]);
                         }
+                        
 
-
-                         
                 } catch (\Exception $e) {
-                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
                 }
         }
+
 
         public function deActive( int|string $id){
                 try {
