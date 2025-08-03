@@ -14,7 +14,7 @@ class SchedualController extends Controller
         // Xem Calender
         public function view(){
         
-
+      
                 $plans = DB::table('stage_plan')
                 ->select(
                         'id',
@@ -45,8 +45,8 @@ class SchedualController extends Controller
                         'resourceId' => $plan->resourceId,
                         'color' => '#7bed52ff', // màu xanh sản xuất
                         'plan_master_id'=> $plan->plan_master_id,
-                        'stage_code'=> $plan->stage_code
-                          
+                        'stage_code'=> $plan->stage_code,
+                        'is_clearning' => false
                         ]);
                 }
                 // Event vệ sinh
@@ -60,7 +60,8 @@ class SchedualController extends Controller
                         'resourceId' => $plan->resourceId,
                         'color' => '#a1a2a2ff', // màu xám vệ sinh
                         'plan_master_id'=> $plan->plan_master_id,
-                        'stage_code'=> $plan->stage_code
+                        'stage_code'=> $plan->stage_code,
+                        'is_clearning' => true
                         ]);
                 }
                 }

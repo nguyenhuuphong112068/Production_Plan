@@ -28,6 +28,7 @@ import 'primeicons/primeicons.css';
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedRow, setSelectedRow] = useState({});
 
+
   //01. Get data from row of Model Table
   useEffect(() => {
     new Draggable(document.getElementById('external-events'), {
@@ -80,42 +81,46 @@ import 'primeicons/primeicons.css';
         };
       }
     });
-  }, [quota]);
-
-
+  }, [events]);
 
   const handleViewChange = (view) => {
     calendarRef.current?.getApi()?.changeView(view);
-  };
+
+  }
 
   const handleEventSelect = async (info) => {
-      const calendarApi = calendarRef.current.getApi();
-  const allEvents = calendarApi.getEvents();
+    const calendarApi = calendarRef.current.getApi();
+    const allEvents = calendarApi.getEvents();
+    const clickedId = info.event.extendedProps.plan_master_id;
 
-  const clickedId = info.event.extendedProps.plan_master_id;
+    // Bỏ class cũ nếu có
+    document.querySelectorAll('.fc-event').forEach(el => {
+      el.classList.remove('highlight-event');
+    });
 
-  // Bỏ class cũ nếu có
-  document.querySelectorAll('.fc-event').forEach(el => {
-    el.classList.remove('highlight-event');
-  });
+    // Tìm và highlight các event có cùng plan_master_id
+    allEvents.forEach(event => {
+      if (event.extendedProps.plan_master_id === clickedId) {
+        const el = event._def.ui?.el; // Không chắc chắn hỗ trợ
+        const dom = document.querySelector(`[data-event-id="${event.id}"]`);
 
-  // Tìm và highlight các event có cùng plan_master_id
-  allEvents.forEach(event => {
-    if (event.extendedProps.plan_master_id === clickedId) {
-      const el = event._def.ui?.el; // Không chắc chắn hỗ trợ
-      const dom = document.querySelector(`[data-event-id="${event.id}"]`);
-
-      // Cách đáng tin cậy: dùng custom attribute
-      const allRenderedEls = document.querySelectorAll('.fc-event');
-      allRenderedEls.forEach(el => {
-        if (el.innerText.includes(event.title)) {
-          el.classList.add('highlight-event');
-        }
-      });
-    }
-  });
+        // Cách đáng tin cậy: dùng custom attribute
+        const allRenderedEls = document.querySelectorAll('.fc-event');
+        allRenderedEls.forEach(el => {
+          if (el.innerText.includes(event.title)) {
+            el.classList.add('highlight-event');
+          }
+        });
+      }
+    });
   };
 
+  const handleEventUnHightLine = async (info) => {
+      document.querySelectorAll('.fc-event').forEach(el => {
+      el.classList.remove('highlight-event');
+    });
+  }
+  
   const handleEventDrop = async (info) => {
     const { id, start, end , title} = info.event;
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
@@ -194,9 +199,8 @@ import 'primeicons/primeicons.css';
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineWeek"
-        slotDuration="00:15:00"
-        slotMinTime="00:00:00"
-        slotMaxTime="23:59:00"
+        firstDay={1} 
+
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
         events={events}
@@ -214,12 +218,42 @@ import 'primeicons/primeicons.css';
         eventResize={handleEventResize}
         eventDrop={handleEventDrop}
         eventReceive={handleEventReceive}
+        dateClick ={handleEventUnHightLine}
+
 
 
         views={{
-          resourceTimelineDay: { titleFormat: { year: 'numeric', month: 'short', day: 'numeric' } },
-          resourceTimelineWeek: { titleFormat: { year: 'numeric', month: 'short', day: 'numeric' } }
+
+          resourceTimelineDay: {
+            slotDuration: '00:15:00',
+            slotMinTime: '00:00:00',
+            slotMaxTime: '23:59:00',
+            buttonText: 'Ngày',
+            titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+          },
+          resourceTimelineWeek: {
+            slotDuration: '03:00:00',
+            slotMinTime: '06:00:00',
+            slotMaxTime: '24:00:00',
+            buttonText: 'Tuần',
+            titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+          },
+          resourceTimelineMonth: {
+            slotDuration: { days: 1 },
+            slotMinTime: '00:00:00',
+            slotMaxTime: '23:59:00',
+            buttonText: 'Tháng',
+            titleFormat: { year: 'numeric', month: 'short' },
+          },
+          resourceTimelineYear: {
+            slotDuration: { weeks: 1 },
+            slotMinTime: '00:00:00',
+            slotMaxTime: '23:59:00',
+            buttonText: 'Năm',
+            titleFormat: { year: 'numeric' }
+          }
         }}
+        
         headerToolbar={{
           left: 'customList prev,next myToday',
           center: 'title',
@@ -252,6 +286,13 @@ import 'primeicons/primeicons.css';
             click: () => calendarRef.current.getApi().today()
           }
         }}
+
+        eventDidMount={(info) => {
+        const view = calendarRef.current?.getApi()?.view?.type;
+        if ((view === 'resourceTimelineMonth' || view === 'resourceTimelineYear') && info.event.extendedProps.is_clearning) {
+          info.el.style.display = 'none';
+        }
+      }}
 
         eventContent={(arg) => (
           <div className="relative group">
