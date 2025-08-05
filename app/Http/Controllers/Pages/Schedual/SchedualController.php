@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class SchedualController extends Controller
 {       
@@ -31,12 +32,14 @@ class SchedualController extends Controller
                 ->where('finished', 0)
                 ->where('active', 1)
                 ->get();
+
                 $events = collect();
 
                 foreach ($plans as $plan) {
                 // Event chính (sản xuất)
                 if ($plan->start && $plan->end) {
                         $events->push([
+                        'plan_id' => $plan->id,
                         'id' => "{$plan->id}-main",
                         //'groupId' => $plan->id,
                         'title' => $plan->title,
@@ -46,12 +49,14 @@ class SchedualController extends Controller
                         'color' => '#7bed52ff', // màu xanh sản xuất
                         'plan_master_id'=> $plan->plan_master_id,
                         'stage_code'=> $plan->stage_code,
-                        'is_clearning' => false
+                        'is_clearning' => false,
+                       
                         ]);
                 }
                 // Event vệ sinh
                 if ($plan->start_clearning && $plan->end_clearning) {
                         $events->push([
+                        'plan_id' => $plan->id,
                         'id' => "{$plan->id}-cleaning",
                         //'groupId' => $plan->id,
                         'title' => $plan->title_clearning ?? 'Vệ sinh',
@@ -61,13 +66,15 @@ class SchedualController extends Controller
                         'color' => '#a1a2a2ff', // màu xám vệ sinh
                         'plan_master_id'=> $plan->plan_master_id,
                         'stage_code'=> $plan->stage_code,
-                        'is_clearning' => true
+                        'is_clearning' => true,
+                        
                         ]);
                 }
                 }
+            
 
                 $resources = DB::table('room')
-                                ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage')
+                                ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
                                 ->where('active', 1)
                                 ->orderBy('order_by', 'asc')
                                 ->get();
@@ -114,11 +121,7 @@ class SchedualController extends Controller
                         $c2 = $toSeconds($item->C2_time);
 
                         // Gán thêm các cột tổng hợp
-                        $item->PMC1 = $toTime($p + $m + $c1);
-                        $item->MC1  = $toTime($m + $c1);
-                        $item->MC2  = $toTime($m + $c2);
-                        $item->PMC2 = $toTime($p + $m + $c2);
-
+                        $item->PM = $toTime($p + $m);
                         return $item;
                 });
 
@@ -126,7 +129,7 @@ class SchedualController extends Controller
 
                 
                 return Inertia::render('FullCalender', [
-                        'title' => 'Lịch Sản XUất',
+                        'title' => 'Lịch Sản Xuất',
                         'user' => session('user'),
                         'events' => $events,
                         'resources' => $resources,
@@ -219,50 +222,114 @@ class SchedualController extends Controller
                 }
 
         }
+        
+
+
+        public function multiStore(Request $request){
+        try {
+                $start = Carbon::parse($request->start); // ✅ chuyển về Carbon
+                $quota = $request->quota;
+                
+                // Chuyển định dạng giờ phút thành số phút
+                $p_time_minutes = toMinutes($quota['p_time']);
+                $m_time_minutes = toMinutes($quota['m_time']);
+                $C1_time_minutes = toMinutes($quota['C1_time']);
+                $C2_time_minutes = toMinutes($quota['C2_time']);
+                $total = count($request->draggedRows);
+                
+                foreach ($request->draggedRows as $index => $row) {
+
+
+                if ($index === 0) {
+                        // 🎯 Giai đoạn đầu tiên
+                        $start_man = $start->copy();
+                        $end_man = $start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
+                        $start_clear = $end_man->copy();
+                        $end_clear = $start_clear->copy()->addMinutes($C1_time_minutes);
+                // } elseif ($index === $total - 1) {
+                //         // 🎯 Giai đoạn cuối cùng
+                //         $start_man = $end_clear->copy();
+                //         $end_man = $start_man->copy()->addMinutes($m_time_minutes);
+                //         $start_clear = $end_man->copy();
+                //         $end_clear = $start_clear->copy()->addMinutes($C2_time_minutes);
+                // } else {
+                //         // 🎯 Giai đoạn ở giữa
+                //         $start_man = $end_clear->copy();
+                //         $end_man = $start_man->copy()->addMinutes($m_time_minutes);
+                //         $start_clear = $end_man->copy();
+                //         $end_clear = $start_clear->copy()->addMinutes($C1_time_minutes);
+                }
+              
+
+                DB::table('stage_plan')
+                        ->where('id', $row['id'])
+                        ->update([
+                        'start' => $start_man->format('Y-m-d H:i:s'),
+                        'end' => $end_man->format('Y-m-d H:i:s'),
+                        'start_clearning' => $start_clear->format('Y-m-d H:i:s'),
+                        'end_clearning' => $end_clear->format('Y-m-d H:i:s'),
+                        'resourceId' => $request->resourceId,
+                        'title' => $row['name'] . " - " . $row['batch'] . " - " . $row['market'],
+                        'title_clearning' => $row['name'] . " - " . $row['batch'] . " - Vệ Sinh 2",
+                        'schedualed' => 1,
+                        'schedualed_by' => session('user')['fullName'],
+                        'schedualed_at' => now(),
+                        ]);
+                }
+
+        } catch (\Exception $e) {
+                Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+        }
+        }
+
 
         // Cap nhạt lại Calender khi có thay đổi vị trí lịch hoặc thay đổi thời gian
         public function update(Request $request){
                 try {
-                        // Nếu chỉ update 1 event (resize)
-                        if (strpos($request->title, "Vệ Sinh") !== false ) {
-                                DB::table('stage_plan')
-                                ->where('id', $request->id)
-                                ->update([
-                                     'start_clearning' => $request->start,
-                                        'end_clearning' => $request->end,
-                                        'resourceId' => $request->resourceId,
-                                        'schedualed_by' => session('user')['fullName'],
-                                        'schedualed_at' => now(),
-                                ]);
-                        } else {
-                                DB::table('stage_plan')
-                                ->where('id', $request->id)
-                                ->update([
-                                        'start' => $request->start,
-                                        'end' => $request->end,
-                                        'resourceId' => $request->resourceId,
-                                        'schedualed_by' => session('user')['fullName'],
-                                        'schedualed_at' => now(),
+                if (strpos($request->title, "Vệ Sinh") !== false ) {
+                DB::table('stage_plan')
+                        ->where('id', $request->id)
+                        ->update([
+                        'start_clearning' => $request->start,
+                        'end_clearning' => $request->end,
+                        'resourceId' => $request->resourceId,
+                        'schedualed_by' => session('user')['fullName'],
+                        'schedualed_at' => now(),
                         ]);
-                        }
-                        
-
-                } catch (\Exception $e) {
-                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
-                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                } else {
+                DB::table('stage_plan')
+                        ->where('id', $request->id)
+                        ->update([
+                        'start' => $request->start,
+                        'end' => $request->end,
+                        'resourceId' => $request->resourceId,
+                        'schedualed_by' => session('user')['fullName'],
+                        'schedualed_at' => now(),
+                        ]);
                 }
+
+                
+
+        } catch (\Exception $e) {
+                Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                return response()->json(['error' => 'Lỗi hệ thống'], 500);
+        }
         }
 
 
         public function deActive( int|string $id){
+
                 try {
                         DB::table('stage_plan')
                         ->where('id', $id)
                         ->update([
                                 'start' => null,
                                 'end' => null,
+                                'start_clearning' => null,
+                                'end_clearning' => null,
                                 'resourceId' => null,
                                 'title' => null,
+                                'title_clearning' => null,
                                 'schedualed' => 0,
                                 'schedualed_by' =>  session('user')['fullName'],
                                 'schedualed_at' => now(),
@@ -345,7 +412,28 @@ class SchedualController extends Controller
         }
 
 
+        public function addEventContent(int|string $id, Request $request){
 
+                $oldData = DB::table('stage_plan')->where('id', $id)->first();
+               
+                try {
+                        DB::table('stage_plan')
+                        ->where('id', $request->id)
+                        ->update([
+                                'title' => $oldData->title . " - " .$request->note,
+                        ]);
+
+
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
+                }
+        }
 
 
 }
+
+        function toMinutes($time) {
+        // Chuyển "01:30" thành phút
+        [$hours, $minutes] = explode(':', $time);
+        return ((int)$hours) * 60 + (int)$minutes;
+        }

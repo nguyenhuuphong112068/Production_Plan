@@ -1,4 +1,8 @@
+
+
 import React from 'react';
+import LeftNAV from './leftNAV';
+
 
 
 export default function AppLayout({ children, user, title }) {
@@ -36,9 +40,10 @@ export default function AppLayout({ children, user, title }) {
           </div>
         </header>
 
-
+      
             {/* TOP NAV */}
       <div className="flex flex-1 flex-col">
+          {/* <LeftNAV /> */}
           <main className="pt-[2%] bg-white-100 min-h-screen">
             {children}
           </main>

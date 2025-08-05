@@ -3,3 +3,47 @@
   background-color: #0bcad0 !important;
   color: #042df9 !important;
 }
+
+.fc .fc-toolbar.fc-header-toolbar {
+    background-color: #ffffff; /* Màu nền */
+    color: '#CDC717';              /* Màu chữ */
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+/* Nếu cần đổi màu chữ cho các nút */
+.fc .fc-toolbar.fc-header-toolbar button {
+    color: white;
+    background-color: #0056b3;
+    border: none;
+}
+
+.fc .fc-toolbar.fc-header-toolbar button:hover {
+    background-color: #00408f;
+}
+
+/* Header ngang */
+.fc .fc-col-header-cell {
+  background-color: #fffefe;
+  color: #1a1a1a;
+  font-weight: bold;
+  font-size: 13px;
+  border-bottom: 1px solid #ccc;
+}
+
+/* Resource label bên trái */
+.fc .fc-datagrid-cell-main {
+  font-weight: 500;
+  font-size: 18px;
+  color: #000000;
+}
+
+.fc .fc-datagrid-cell {
+  background-color: #fafafa;
+  border-right: 1px solid #e0e0e0;
+}
+
+/* Tăng chiều rộng cột resource */
+.fc .fc-datagrid-cell-main {
+  padding-left: 10px;
+}

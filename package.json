@@ -26,6 +26,7 @@
         "@fullcalendar/resource-timeline": "^6.1.18",
         "@fullcalendar/timegrid": "^6.1.18",
         "@inertiajs/react": "^2.0.14",
+        "bootstrap": "^5.3.7",
         "classnames": "^2.5.1",
         "dayjs": "^1.11.13",
         "jquery": "^3.7.1",
@@ -33,7 +34,9 @@
         "primeicons": "^7.0.0",
         "primereact": "^10.9.6",
         "prop-types": "^15.8.1",
+        "react-bootstrap": "^2.10.10",
         "react-dom": "^19.1.0",
+        "react-icons": "^5.5.0",
         "react-transition-group": "^4.4.5",
         "sweetalert2": "^11.6.13"
     }

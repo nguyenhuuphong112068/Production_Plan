@@ -1,6 +1,5 @@
 // resources/js/app.jsx
 
-
 import '../css/app.css'; // Tailwind
 
 import 'primereact/resources/themes/lara-light-indigo/theme.css';
