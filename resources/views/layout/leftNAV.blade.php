@@ -17,6 +17,7 @@
 
       <!-- Sidebar Menu -->
       <nav class="mt-2" >
+
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
           <!-- Droplist Menu Dữ Liệu Gốc  -->
           <li class="nav-item has-treeview">
@@ -71,7 +72,6 @@
             <!-- Droplist Menu Danh Muc  -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
-              
               <i class="nav-icon fas fa-newspaper"></i>
               <p>
                 Danh Mục 
@@ -84,23 +84,83 @@
               <li class="nav-item">
                 <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Sản Phẩm KN</p>
+                  <p>Bán Thành Phẩm</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Thành Phẩm</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+
+          <!-- Định Mức  -->
+          <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
+              <i class="nav-icon fas fa-newspaper"></i>
+              <p>
+                Định Mức 
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            
+            <ul class="nav nav-treeview">
+              
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Cân</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Pha Chế</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Trộn Hoàn Tất</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Định Hình</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Bao Phim</p>
                 </a>
               </li>
 
 
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Đóng Gói</p>
+                </a>
+              </li>
             </ul>
           </li>
 
-
-          
             <!-- Droplist Menu Nhận Mẫu -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
               
               <i class="nav-icon fas fa-file-import"></i>
               <p>
-                Nhận Mẫu
+                Kế Hoạch
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -110,7 +170,14 @@
               <li class="nav-item">
                 <a href="{{ route ('pages.Import.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Danh Sách Mẫu Chờ Kiểm </p>
+                  <p>Kế Hoạch San Xuất</p>
+                </a>
+              </li>
+
+                            <li class="nav-item">
+                <a href="{{ route ('pages.Import.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Kế Hoạch Bảo Trì</p>
                 </a>
               </li>
 
@@ -132,26 +199,26 @@
             <ul class="nav nav-treeview">
 
               <li class="nav-item">
-                <a href="{{ route ('pages.Schedual.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Lập Lịch KN </p>
-                </a>
-              </li>
-              
-              <li class="nav-item">
                 <a href="/Schedual/view" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Xem Lịch KN </p>
+                  <p> Lập Lịch </p>
                 </a>
               </li>
 
+              <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Danh Sách Lịch</p>
+                </a>
+              </li>
+            
             </ul>
           </li>
 
           <!-- History-->
           <li class="nav-item">
             <a href="{{ route ('pages.History.list') }}" class="nav-link">
-              <i class="fas fa-history"></i>
+              <i class="nav-icon fas fa-history"></i>
               <p>
                 Lịch Sử Kiểm Nghiệm
               </p>

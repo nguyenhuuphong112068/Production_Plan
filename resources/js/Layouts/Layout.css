@@ -1,0 +1,25 @@
+/* styles.css */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 240px;
+  background: white;
+  transition: transform 0.3s ease-in-out;
+  transform: translateX(-100%);
+  z-index: 50;
+}
+
+.sidebar.visible {
+  transform: translateX(0);
+}
+
+.sidebar-hover-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  z-index: 40;
+}
