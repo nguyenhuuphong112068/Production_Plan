@@ -82,7 +82,7 @@
             <ul class="nav nav-treeview">
               
               <li class="nav-item">
-                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                <a href="{{ route ('pages.category.intermediate.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Bán Thành Phẩm</p>
                 </a>
@@ -151,6 +151,16 @@
                   <p>Đóng Gói</p>
                 </a>
               </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Bảo Trì</p>
+                </a>
+              </li>
+
+
+
             </ul>
           </li>
 
@@ -220,7 +230,7 @@
             <a href="{{ route ('pages.History.list') }}" class="nav-link">
               <i class="nav-icon fas fa-history"></i>
               <p>
-                Lịch Sử Kiểm Nghiệm
+                Lịch Sử Sản Xuất
               </p>
             </a>
           </li>

@@ -7,25 +7,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
-class ProductCategoryController extends Controller
+class IntermediateCategoryController extends Controller
 {
         
         public function index(){
-                // $testings = DB::table('testing')->where('active', true)->get();
+
+                // $testings = DB::table('intermediate_category')->where('active', true)->get();
+
                 // $units = DB::table('unit')->where('active', true)->get();
                 // $instrument_type = DB::table('instrument')->select('instrument_type')->where('active', true)->groupBy('instrument_type')->get();
                 // $productNames = DB::table('product_name')->where('active', true)->get();
 
-                $datas = DB::table('finished_product_category')->where ('acvite',1)->orderBy('created_at','desc')->get();
+                $datas = DB::table('intermediate_category')->where ('active',1)->orderBy('name','desc')->get();
                 
-                session()->put(['title'=> 'DANH MỤC SẢN PHẨM KIỂM NGHIỆM']);
+                session()->put(['title'=> 'DANH MỤC BÁN THÀNH PHẨM']);
        
-                return view('pages.category.product.list',[
-                        'datas' => $datas,
-                        // 'testings' => $testings,
-                        // 'units' => $units,
-                        // 'instrument_type' => $instrument_type,
-                        // 'productNames' => $productNames
+                return view('pages.category.intermediate.list',[
+                        'datas' => $datas
+                    
                 ]);
         }
     

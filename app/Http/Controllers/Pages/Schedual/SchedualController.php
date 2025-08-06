@@ -14,8 +14,7 @@ class SchedualController extends Controller
 {       
         // Xem Calender
         public function view(){
-        
-      
+
                 $plans = DB::table('stage_plan')
                 ->select(
                         'id',
@@ -88,8 +87,15 @@ class SchedualController extends Controller
                                         'plan_master.batch',
                                         'plan_master.expected_date',
                                         'plan_master.is_val',
-                                        'plan_master.note'
-                                        
+                                        'plan_master.note',
+                                        'plan_master.level',
+                                        'plan_master.after_weigth_date',
+                                        'plan_master.before_weigth_date',
+                                        'plan_master.after_parkaging_date',
+                                        'plan_master.before_parkaging_date',
+                                        'plan_master.material_source',
+                                        'plan_master.only_parkaging',
+                                        'plan_master.percent_parkaging'
                                         )
                                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
                                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
@@ -138,7 +144,7 @@ class SchedualController extends Controller
                 ]);
         }
 
-         // 
+        // 
         public function index(){
                         $analysts = DB::table('analyst')->where ('active',1)->orderBy('created_at','desc')->get();
                         $instruments = DB::table('instrument')->where ('active',1)->orderBy('created_at','desc')->get();
@@ -222,11 +228,11 @@ class SchedualController extends Controller
                 }
 
         }
-        
 
 
         public function multiStore(Request $request){
-        try {
+              
+                try {
                 $start = Carbon::parse($request->start); // ✅ chuyển về Carbon
                 $quota = $request->quota;
                 
@@ -237,6 +243,7 @@ class SchedualController extends Controller
                 $C2_time_minutes = toMinutes($quota['C2_time']);
                 $total = count($request->draggedRows);
                 
+
                 foreach ($request->draggedRows as $index => $row) {
 
 
@@ -246,20 +253,23 @@ class SchedualController extends Controller
                         $end_man = $start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
                         $start_clear = $end_man->copy();
                         $end_clear = $start_clear->copy()->addMinutes($C1_time_minutes);
-                // } elseif ($index === $total - 1) {
-                //         // 🎯 Giai đoạn cuối cùng
-                //         $start_man = $end_clear->copy();
-                //         $end_man = $start_man->copy()->addMinutes($m_time_minutes);
-                //         $start_clear = $end_man->copy();
-                //         $end_clear = $start_clear->copy()->addMinutes($C2_time_minutes);
-                // } else {
-                //         // 🎯 Giai đoạn ở giữa
-                //         $start_man = $end_clear->copy();
-                //         $end_man = $start_man->copy()->addMinutes($m_time_minutes);
-                //         $start_clear = $end_man->copy();
-                //         $end_clear = $start_clear->copy()->addMinutes($C1_time_minutes);
+                        $clearning_type = "Vệ Sinh Cấp I";
+                       
+                } elseif ($index === $total - 1) {
+                        // 🎯 Giai đoạn cuối cùng
+                        $start_man = $end_clear->copy();
+                        $end_man = $start_man->copy()->addMinutes($m_time_minutes);
+                        $start_clear = $end_man->copy();
+                        $end_clear = $start_clear->copy()->addMinutes($C2_time_minutes);
+                        $clearning_type = "Vệ Sinh Cấp II";
+                } else {
+                        // 🎯 Giai đoạn ở giữa
+                        $start_man = $end_clear->copy();
+                        $end_man = $start_man->copy()->addMinutes($m_time_minutes);
+                        $start_clear = $end_man->copy();
+                        $end_clear = $start_clear->copy()->addMinutes($C1_time_minutes);
+                        $clearning_type = "Vệ Sinh Cấp I";
                 }
-              
 
                 DB::table('stage_plan')
                         ->where('id', $row['id'])
@@ -270,20 +280,19 @@ class SchedualController extends Controller
                         'end_clearning' => $end_clear->format('Y-m-d H:i:s'),
                         'resourceId' => $request->resourceId,
                         'title' => $row['name'] . " - " . $row['batch'] . " - " . $row['market'],
-                        'title_clearning' => $row['name'] . " - " . $row['batch'] . " - Vệ Sinh 2",
+                        'title_clearning' => $clearning_type,
                         'schedualed' => 1,
                         'schedualed_by' => session('user')['fullName'],
                         'schedualed_at' => now(),
                         ]);
                 }
 
-        } catch (\Exception $e) {
+                } catch (\Exception $e) {
                 Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
-        }
+                }
         }
 
 
-        // Cap nhạt lại Calender khi có thay đổi vị trí lịch hoặc thay đổi thời gian
         public function update(Request $request){
                 try {
                 if (strpos($request->title, "Vệ Sinh") !== false ) {
@@ -310,12 +319,11 @@ class SchedualController extends Controller
 
                 
 
-        } catch (\Exception $e) {
-                Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
-                return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                }
         }
-        }
-
 
         public function deActive( int|string $id){
 
@@ -411,7 +419,6 @@ class SchedualController extends Controller
             
         }
 
-
         public function addEventContent(int|string $id, Request $request){
 
                 $oldData = DB::table('stage_plan')->where('id', $id)->first();
@@ -429,11 +436,12 @@ class SchedualController extends Controller
                 }
         }
 
+  
 
 }
-
-        function toMinutes($time) {
-        // Chuyển "01:30" thành phút
-        [$hours, $minutes] = explode(':', $time);
-        return ((int)$hours) * 60 + (int)$minutes;
+      function toMinutes($time) {
+                // Chuyển "01:30" thành phút
+                [$hours, $minutes] = explode(':', $time);
+                return ((int)$hours) * 60 + (int)$minutes;
         }
+        
