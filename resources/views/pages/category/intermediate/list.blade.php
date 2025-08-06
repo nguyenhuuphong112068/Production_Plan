@@ -11,9 +11,9 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.category.product.dataTable')
+  @include('pages.category.intermediate.dataTable')
 @endsection
 @section('model')
-  {{-- @include('pages.category.product.create')
-  @include('pages.category.product.update')  --}}
+  {{-- @include('pages.category.intermediate.create')
+  @include('pages.category.intermediate.update')  --}}
 @endsection

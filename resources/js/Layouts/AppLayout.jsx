@@ -49,6 +49,9 @@ export default function AppLayout({ children, user, title }) {
           </main>
       </div> 
 
+
+      
+
     </div>
   );
 }

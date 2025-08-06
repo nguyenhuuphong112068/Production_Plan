@@ -18,6 +18,7 @@ import '@fullcalendar/resource-timeline/index.js';
 import 'primereact/resources/themes/lara-light-indigo/theme.css';
 import 'primereact/resources/primereact.min.css';                
 import 'primeicons/primeicons.css'; 
+import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   const ScheduleTest = () => {
   const calendarRef = useRef(null);
@@ -30,8 +31,12 @@ import 'primeicons/primeicons.css';
   const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
   const [cleaningHidden, setCleaningHidden] = useState(false);
   const [pendingChanges, setPendingChanges] = useState([]);
-  const [slot, setSlot] = useState('00:15:00');
-
+  const [saving, setSaving] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedEvents, setSelectedEvents] = useState([]);
+  const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [percentShow, setPercentShow] = useState("30%");
 
   useEffect(() => {
   new Draggable(document.getElementById('external-events'), {
@@ -112,9 +117,15 @@ import 'primeicons/primeicons.css';
       }
     }
   });
-}, [quota]);
+  }, [quota]);
+
+  useEffect(() => {
+    if (selectedEvents.length === 0) {
+      setSidebarOpen(false); // Đóng nếu không còn gì
+    }
 
 
+  }, [selectedEvents]);
 
   const handleShowList = () => setShowSidebar(!showSidebar);
 
@@ -130,6 +141,7 @@ import 'primeicons/primeicons.css';
     const allEvents = calendarApi.getEvents();
     const clickedId = info.event.extendedProps.plan_master_id;
 
+    console.log (clickedId)
     // Bỏ class cũ nếu có
     document.querySelectorAll('.fc-event').forEach(el => {
       el.classList.remove('highlight-event');
@@ -138,11 +150,13 @@ import 'primeicons/primeicons.css';
     // Tìm và highlight các event có cùng plan_master_id
     allEvents.forEach(event => {
       if (event.extendedProps.plan_master_id === clickedId) {
+
         const el = event._def.ui?.el; // Không chắc chắn hỗ trợ
         const dom = document.querySelector(`[data-event-id="${event.id}"]`);
 
         // Cách đáng tin cậy: dùng custom attribute
         const allRenderedEls = document.querySelectorAll('.fc-event');
+
         allRenderedEls.forEach(el => {
           if (el.innerText.includes(event.title)) {
             el.classList.add('highlight-event');
@@ -150,6 +164,7 @@ import 'primeicons/primeicons.css';
         });
       }
     });
+
   };
 
   const handleEventUnHightLine = async (info) => {
@@ -212,7 +227,7 @@ import 'primeicons/primeicons.css';
         info.event.remove();
         setSelectedRow({});
       }
-    };
+  };
 
   const toggleCleaningEvents = () => {
     const calendarApi = calendarRef.current?.getApi();
@@ -232,9 +247,41 @@ import 'primeicons/primeicons.css';
   setCleaningHidden(!cleaningHidden);
   };
 
+  const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+      const draggedEvent = info.event;
+      const delta = info.delta;
+      const calendarApi = info.view.calendar;
+
+      // Nếu chưa được chọn thì tự động chọn
+      if (!selectedEvents.includes(draggedEvent.id)) {
+        toggleEventSelect(draggedEvent.id);
+      }
+
+      // Nếu là event đã được chọn, kéo theo nhóm
+      if (selectedEvents.includes(draggedEvent.id)) {
+        info.revert(); // Hoàn tác vì sẽ xử lý bằng tay
+
+        selectedEvents.forEach(eventId => {
+          const event = calendarApi.getEventById(eventId);
+          if (event) {
+            const newStart = new Date(event.start.getTime() + delta.milliseconds);
+            const newEnd = new Date(event.end.getTime() + delta.milliseconds);
+
+            event.setDates(newStart, newEnd);
+
+            // Gửi vào handleEventChange
+            handleEventChange({ event });
+          }
+        });
+      } else {
+        // Nếu không thuộc danh sách chọn, xử lý đơn
+        handleEventChange(info);
+      }
+  };
+
   const handleEventChange = (changeInfo) => {
     const changedEvent = changeInfo.event;
-            
+    console.log (changeInfo.event)  
     // Thêm hoặc cập nhật event vào pendingChanges
     setPendingChanges(prev => {
         const exists = prev.find(e => e.id === changedEvent.id);
@@ -255,10 +302,8 @@ import 'primeicons/primeicons.css';
           return [...prev, updated];
         }
       });
-
      
   };
-
 
   const handleSaveChanges = async () => {
 
@@ -288,6 +333,7 @@ import 'primeicons/primeicons.css';
         onError: (errors) => console.error(`Lỗi khi lưu event ${change.id}`, errors),
       });
     }
+
     setSaving(false);
     setPendingChanges([]);
 
@@ -301,18 +347,152 @@ import 'primeicons/primeicons.css';
 
   };
 
+  const toggleEventSelect = (eventId) => {
+      setSelectedEvents((prevSelected) =>
+        prevSelected.includes(eventId)
+          ? prevSelected.filter((id) => id !== eventId)
+          : [...prevSelected, eventId]
+      );
+      console.log (selectedEvents)
+  };
 
-  const handleSlotChange = (changeInfo) =>{
-        setSlot (changeInfo);
-        calendarRef.current?.getApi()?.changeView(view);
+  const handleEventClick = (clickInfo) => {
+  const eventId = clickInfo.event.id;
+
+  if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
+    // Toggle nếu đang giữ Shift/Ctrl
+    toggleEventSelect(eventId);
+  } else {
+    // Nếu không giữ gì thì chọn riêng lẻ
+    setSelectedEvents([eventId]);
   }
+  };
 
+  const handleRemove = (id) => {
+    setSelectedEvents(prev => prev.filter(eid => eid !== id));
+  };
+
+
+  const handleClear = () => {
+    setSelectedEvents([]);
+  };
+
+  const SelectedEventsSidebar = ({
+        events,
+        onRemove,
+        onClear,
+        onClose,
+        pendingChanges,
+        handleSaveChanges
+      }) => {
+        if (!events.length) return null;
+
+        return (
+          <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-lg p-4 z-50 overflow-auto">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-lg font-semibold">Sản phẩm đã chọn</h2>
+              
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <button
+                onClick={handleSaveChanges}
+                disabled={pendingChanges.length === 0}
+                className={`w-full p-2 rounded ${
+                  pendingChanges.length === 0
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-600 text-white"
+                }`}
+              >
+                Lưu thay đổi ({pendingChanges.length})
+              </button>
+
+              <button
+                onClick={onClear}
+                className="w-full p-2 rounded bg-red-500 hover:bg-red-600 text-white"
+              >
+                Bỏ chọn tất cả
+              </button>
+            </div>
+
+            <ul>
+              {events.map(ev => (
+                <li key={ev.id} className="mb-2 border-b pb-1">
+                  <div className="flex justify-between items-center">
+                    <span>{ev.title}</span>
+                    <button
+                      onClick={() => onRemove(ev.id)}
+                      className="text-sm text-red-500 hover:text-red-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <small>
+                    {moment(ev.start).format("HH:mm")} - {moment(ev.end).format("HH:mm")}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+    };
+
+  const handleSearch = () => {
+
+        const calendarApi = calendarRef.current?.getApi();
+        if (!calendarApi) return;
+
+        const targetEvent = calendarApi.getEvents().find(ev =>
+          ev.title.toLowerCase().includes(searchText.toLowerCase())
+        );
+
+        if (targetEvent) {
+          const el = document.querySelector(`[data-event-id="${targetEvent._def.publicId}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("highlight-event");
+            setTimeout(() => {
+              el.classList.remove("highlight-event");
+            }, 3000);
+          }
+        } else {
+          Swal.fire({
+              icon: 'info',
+              title: 'Không tìm thấy',
+              text: 'Không có sự kiện nào khớp với từ khóa tìm kiếm.',
+              confirmButtonText: 'OK'
+            });
+        }
+  };
 
   return (
-    <div className={`transition-all duration-300 ${showSidebar ? 'w-[70%]' : 'w-full'} float-left pt-3 pl-2 pr-2`}>
-        <button onClick={handleSaveChanges} disabled={pendingChanges.length === 0} className='btn btn-success p-2'>
-           Lưu thay đổi ({pendingChanges.length})
-         </button>
+    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
+      
+      <Row className='ps-2 pe-2'>
+
+        <Col md={10} sm={6}>
+          <Button onClick={toggleCleaningEvents}>
+              Ẩn VS
+          </Button>
+        
+        </Col>
+        <Col md={2} sm={6}>
+            <InputGroup className="mb-3">
+            <Form.Control
+              aria-label="Recipient's username"
+              aria-describedby="basic-addon2"
+              type="text"
+              placeholder="Tìm sản phẩm..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            <Button variant="outline-secondary" id="button-addon2" onClick={handleSearch}>
+              <i className="fas fa-search"></i>
+            </Button>
+          </InputGroup>
+        </Col>
+      </Row>
+
 
 
       <FullCalendar
@@ -327,34 +507,36 @@ import 'primeicons/primeicons.css';
         events={events}
         locale="vi"
         height="auto"
-        resourceAreaWidth="7%"
+        resourceAreaWidth="8%"
         editable={true}
         droppable={true}
         selectable={true}
         eventResizableFromStart={true}
         resourceGroupField="stage"
-        slotDuration= {slot}
+        slotDuration= "00:15:00"
+        eventDurationEditable={true}
+        resourceEditable={true}
+        eventStartEditable={true} // <- phải có để kéo thay đổi start
+         
 
-        
-
-        eventClick={handleEventSelect}
-        eventResize={handleEventChange} //{handleEventResize}
-        eventDrop= {handleEventChange} //{handleEventDrop}
+        eventClick={handleEventClick}
+        eventResize={handleEventChange} 
+        eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
         dateClick ={handleEventUnHightLine}
         
         views={{
 
           resourceTimelineDay: {
-            slotDuration: '00:30:00',
-            slotMinTime: '06:00:00',
+            slotDuration: '00:15:00',
+            slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Ngày',
             titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
           },
           resourceTimelineWeek: {
             slotDuration: '00:15:00',
-            slotMinTime: '06:00:00',
+            slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Tuần',
             titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
@@ -376,9 +558,9 @@ import 'primeicons/primeicons.css';
         }}
         
         headerToolbar={{
-          left: 'prev,next myToday' ,
+          left: 'prev,next myToday',
           center: 'title',
-          right: 'customDay,customWeek,customMonth,customYear customList slotDuration15m,slotDuration1H,slotDuration4H'
+          right: 'customDay,customWeek,customMonth,customYear customList'
         }}
 
         customButtons={{
@@ -402,21 +584,6 @@ import 'primeicons/primeicons.css';
             text: 'Năm',
             click: () => handleViewChange('resourceTimelineYear')
           },
-
-          slotDuration15m: {
-            text: '15M',
-            click: () => handleSlotChange('00:15:00')
-          },
-          slotDuration1H: {
-            text: '1H',
-            click: () => handleSlotChange('01:00:00')
-          },
-          slotDuration4H: {
-            text: '4H',
-            click: () => handleSlotChange('04:00:00')
-          },
-
-
           myToday: {
             text: 'Hôm nay',
             click: () => calendarRef.current.getApi().today()
@@ -430,13 +597,26 @@ import 'primeicons/primeicons.css';
           if (isPending) {
             info.el.style.border = '2px dashed orange';
           }
+
+          info.el.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            handleEventSelect(info); 
+
+          });
+
+          
         }}
 
-        eventContent={(arg) => (
-          <div className="relative group" data-event-id={arg.event.id}>
+        eventContent={(arg) => {
+        const isSelected = selectedEvents.includes(arg.event.id);
+          
+
+        return (
+        <div className="relative group custom-event-content" data-event-id={arg.event.id} >
             <b>{arg.event.title}</b><br />
             <small>{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</small>
-
+           
+            {/* Nút xóa */}
            <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -477,7 +657,6 @@ import 'primeicons/primeicons.css';
               ×
             </button>
 
-
              {/* Nút Sửa/Nội dung */}
             <button
               onClick={(e) => {
@@ -505,21 +684,68 @@ import 'primeicons/primeicons.css';
               📝
             </button>
 
-
+            {/* ✅ Nút Select thêm vào đây */}
+            <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleEventSelect(arg.event.id);
+                }}
+                className={`absolute top-0 left-0 text-xs px-1 rounded shadow
+                  ${isSelected ? 'block' : 'hidden group-hover:block'}
+                  ${isSelected ? 'bg-blue-500 text-white' : 'bg-white text-blue-500 border border-blue-500'}
+                `}
+                title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
+              >
+                {isSelected ? '✓' : '+'}
+            </button>
           </div>
-        )}
+
+        )}}
+
+        
       />
       
       <ModalSidebar
         visible={showSidebar}
         onClose={() => setShowSidebar(false)}
         events={plan}
-        
+        percentShow = {percentShow}
+        setPercentShow={setPercentShow}
       />
+      {/* Vùng hover */}
+      <div
+        className="fixed top-0 right-0 h-full w-10 z-40"
+        onMouseEnter={() => {
 
-      <button onClick={toggleCleaningEvents}>
-        Ẩn các lịch vệ sinh
-      </button>
+          if (selectedEvents.length > 0) setSidebarOpen(true);
+        }}
+        onMouseLeave={() => {
+         
+          setTimeout(() => {
+            if (!isHoveringSidebar) setSidebarOpen(false);
+          }, 200); 
+        }}
+      />
+  
+      
+        {sidebarOpen && selectedEvents.length > 0 && (
+          <div
+            onMouseEnter={() => setIsHoveringSidebar(true)}
+            onMouseLeave={() => {
+              setIsHoveringSidebar(false);
+              setSidebarOpen(false);
+            }}
+          >
+            <SelectedEventsSidebar
+              events={selectedEvents.map(id => calendarRef.current?.getApi().getEventById(id)).filter(Boolean)}
+              onRemove={handleRemove}
+              onClear={handleClear}
+              onClose={() => setSidebarOpen(false)}
+              pendingChanges={pendingChanges}
+              handleSaveChanges={handleSaveChanges}
+            />
+          </div>
+        )}
 
     </div>
   );

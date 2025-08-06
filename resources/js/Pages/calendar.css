@@ -47,3 +47,19 @@
 .fc .fc-datagrid-cell-main {
   padding-left: 10px;
 }
+.custom-event-content {
+  font-size: 20px;         /* Kích thước chữ */
+  line-height: 1;        /* Khoảng cách dòng */
+  padding: 4px 6px;        /* Padding bên trong */
+}
+
+
+.custom-event-content small {
+  font-size: 12px;
+  color: rgb(251, 4, 4);
+}
+
+.highlight-event {
+  outline: 1px solid red !important;
+ 
+}

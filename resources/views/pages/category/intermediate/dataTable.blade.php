@@ -26,13 +26,14 @@
                     <tr>
                     <th>STT</th>
                     <th>Mã BTP</th>
-                    <th>Mã TP</th>
                     <th>Tên Sản Phẩm</th>
                     <th>Cở Lô</th>
-                    <th>Thị Trường</th>
-                    <th>Qui Cách</th>
-                    <th>ĐGSC</th>
-                    <th>ĐGTC</th>
+                    <th>Dạng Bào Chế</th>
+                    <th>Cân</th>
+                    <th>PC</th>
+                    <th>THT</th>
+                    <th>ĐH</th>
+                    <th>BP</th>
                     <th>Phân Xưởng</th>
                     <th>Người Tạo/ Ngày Tạo</th>
                     <th>Cập Nhật</th>
@@ -44,26 +45,39 @@
                   @foreach ($datas as $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
-                      <td>{{ $data->intermediate_code}}</td>
-                      <td>{{ $data->finished_product_code }}</td>
-                      <td> {{$data->name}}</td>
+                      <td> {{$data->intermediate_code}}</td>
+                      <td>{{ $data->name}}</td>
                       <td>
+                          <div> {{ $data->batch_size  . " " .  $data->unit_batch_size . "#"}} </div>
                           <div> {{ $data->batch_qty  . " " .  $data->unit_batch_qty}} </div>
                       </td>
-                      <td> {{$data->market}}</td>
-                      <td> {{$data->specification}}</td>
+                      <td> {{$data->dosage}}</td>
 
                       <td class="text-center align-middle">
-                          @if ($data->primary_parkaging)
+                          @if ($data->weight_1)
                             <i class="fas fa-check-circle text-primary fs-4"></i>
                           @endif
                       </td>
                       <td class="text-center align-middle">
-                          @if ($data->secondary_parkaging)
+                          @if ($data->prepering)
                             <i class="fas fa-check-circle text-primary fs-4"></i>
                           @endif
                       </td>
-
+                      <td class="text-center align-middle">
+                          @if ($data->blending)
+                            <i class="fas fa-check-circle text-primary fs-4"></i>
+                          @endif
+                      </td>
+                      <td class="text-center align-middle">
+                          @if ($data->forming)
+                            <i class="fas fa-check-circle text-primary fs-4"></i>
+                          @endif
+                      </td>
+                      <td class="text-center align-middle">
+                          @if ($data->coating)
+                            <i class="fas fa-check-circle text-primary fs-4"></i>
+                          @endif
+                      </td>
                       <td>{{ $data->deparment_code}}</td>
                       <td>
                           <div> {{ $data->prepared_by}} </div>
