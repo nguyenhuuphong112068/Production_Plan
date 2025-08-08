@@ -1,0 +1,19 @@
+
+@extends ('layout.master')
+
+@section('topNAV')
+    @include('layout.topNAV')
+@endsection
+
+@section('leftNAV')
+    @include('layout.leftNAV')
+@endsection
+ 
+@section('mainContent')
+  @include('pages.statistics.room.dataTable')
+@endsection
+
+@section('model')
+  {{-- @include('pages.User.create')
+  @include('pages.User.update')  --}}
+@endsection

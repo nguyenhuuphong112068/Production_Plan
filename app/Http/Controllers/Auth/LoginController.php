@@ -13,7 +13,7 @@ class LoginController extends Controller{
 
     public function showLogin(){
 
-        session()->put(['title'=> 'KÊ HOẠCH KIỂM NGHIỆM']);
+        session()->put(['title'=> 'KÊ HOẠCH SẢN XUẤT']);
         return view('login');}
 
 

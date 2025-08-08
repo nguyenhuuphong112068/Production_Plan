@@ -38,6 +38,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
   const [searchText, setSearchText] = useState("");
   const [percentShow, setPercentShow] = useState("30%");
 
+
   useEffect(() => {
   new Draggable(document.getElementById('external-events'), {
     itemSelector: '.fc-event',
@@ -512,7 +513,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         droppable={true}
         selectable={true}
         eventResizableFromStart={true}
-        resourceGroupField="stage"
+        resourceGroupField= "stage"
         slotDuration= "00:15:00"
         eventDurationEditable={true}
         resourceEditable={true}
@@ -589,7 +590,6 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
             click: () => calendarRef.current.getApi().today()
           }
         }}
-
 
 
         eventDidMount={(info) => {

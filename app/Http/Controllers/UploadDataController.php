@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use mysqli;
+
+
+
+
+
+class UploadDataController extends Controller
+{
+        public function index(){
+                   return view('upload.form_load');
+        }
+
+        public function import(Request $request)
+        {
+            $request->validate([
+                'excel_file' => 'required|mimes:xlsx,xls'
+            ]);
+
+            $path = $request->file('excel_file')->getRealPath();
+
+            // Load file Excel
+            $spreadsheet = IOFactory::load($path);
+            $rows = $spreadsheet->getActiveSheet()->toArray();
+
+            unset($rows[0]); // Bỏ dòng tiêu đề nếu có
+
+            foreach ($rows as $row) {
+                // $check = DB::table('room')->insert([
+                //     'order_by'         => $row[0],
+                //     'code'             => $row[1],
+                //     'name'             => $row[2],
+                //     'stage'            => $row[3],
+                //     'production_group' => $row[4],
+                //     'prepareBy' => "Nguyễn Hữu Phong",
+                // ]);
+
+                // $check = DB::table('intermediate_category')->insert([
+                //     'intermediate_code'=> $row[0],
+                //     'name'=> $row[1],
+                //     'batch_size'=> $row[2],
+                //     'unit_batch_size'=> $row[3],
+                //     'batch_qty'=> $row[4],
+                //     'unit_batch_qty'=> $row[5],
+                //     'dosage'=> $row[6],
+                //     'weight_1'=> $row[7],
+                //     'prepering'=> $row[8],
+                //     'blending'=> $row[9],
+                //     'forming'=> $row[10],
+                //     'coating'=> $row[11],
+                //     'quarantine_weight'=> $row[12],
+                //     'quarantine_preparing'=> $row[13],
+                //     'quarantine_blending'=> $row[14],
+                //     'quarantine_forming'=> $row[15],
+                //     'quarantine_coating'=> $row[16],
+                //     'deparment_code'=> $row[17],            
+                //     'prepared_by' => "Nguyễn Hữu Phong",
+                // ]);
+
+                // $check = DB::table('finished_product_category')->insert([
+                //         'intermediate_code'=> $row[0],
+                //         'finished_product_code'=> $row[1],
+                //         'name'=> $row[2],
+                //         'market'=> $row[3],
+                //         'specification'=> $row[4],
+                //         'batch_qty'=> $row[5],
+                //         'unit_batch_qty'=> $row[6],
+                //         'primary_parkaging'=> $row[7],
+                //         'secondary_parkaging'=> $row[8],
+                //         'deparment_code'=> $row[9],  
+                //         'prepared_by' => "Nguyễn Hữu Phong",
+                // ]);
+
+
+                // $check = DB::table('plan_master')->insert([
+                //         'plan_list_id'=> $row[0],
+                //         'product_caterogy_id'=> $row[1],
+                //         'level'=> $row[2],
+                //         'batch'=> $row[3],
+                //         'expected_date'=> $row[4],
+                //         'is_val'=> $row[5],
+                //         'after_weigth_date'=> $row[6],
+                //         'before_weigth_date'=> $row[7],
+                //         'after_parkaging_date'=> $row[8],
+                //         'before_parkaging_date'=> $row[9],
+                //         'material_source'=> $row[10],
+                //         'only_parkaging'=> $row[11],
+                //         'percent_parkaging'=> $row[12],
+                //         'deparment_code'=> $row[13],
+                //         'note'=> $row[14],
+                //         'prepared_by' => "Nguyễn Hữu Phong",
+                // ]);
+
+                $check = DB::table('quota')->insert([
+                        'id'=> $row[10],
+                        'intermediate_code'=> $row[0],
+                        'finished_product_code'=> $row[1],
+                        'instrument_id'=> $row[2],
+                        'p_time' => $row[3],
+                        'm_time' => $row[4],
+                        'C1_time' => $row[5],
+                        'C2_time' => $row[6],
+                        'stage_code' => $row[7],
+                        'maxofbatch_campaign' => $row[8],
+                        'deparment_code' => $row[9],
+                        'created_at' => now (),             
+                        'prepared_by' => "Nguyễn Hữu Phong",
+                ]);
+
+            }
+
+            if ($check) {dd ("OK");};
+           
+
+            //return back()->with('success', 'Import thành công!');
+        }
+                
+            
+}

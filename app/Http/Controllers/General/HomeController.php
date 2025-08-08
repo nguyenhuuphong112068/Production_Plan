@@ -7,6 +7,6 @@ use Illuminate\Http\Request;
 class HomeController extends Controller{
     public function showHomeForm()
     {
-    session()->put(['title'=> 'KẾ HOẠCH KIỂM NGHIỆM']);
+    session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT']);
     return view('pages.general.home');}
 }

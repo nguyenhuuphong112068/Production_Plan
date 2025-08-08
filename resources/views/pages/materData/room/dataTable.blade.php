@@ -15,7 +15,7 @@
               <!-- /.card-Body -->
               <div class="card-body">
 
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal" style="width: 155px" >
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#Modal" style="width: 155px" >
                       <i class="fas fa-plus"></i> Thêm
                 </button>
 
@@ -24,15 +24,15 @@
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                 
                     <tr>
-                    <th style = "width: 15px">STT</th>
-                  
-                    <th>Tên Sản Phẩm</th>
-                    <th>Tên Viết Tắt</th>
-                    <th>Loại Sản Phẩm</th>
+                    <th>STT</th>
+                    <th>Mã Phòng</th>
+                    <th>Tên Phòng</th>
+                    <th>Công Đoạn</th>
+                    <th>Tổ Quản Lý</th>
                     <th>Người Tạo</th>
                     <th>Ngày Tạo</th>
-                    <th style = "width: 15px">Edit</th>
-                    <th style = "width: 15px"> DeActive</th>
+                    <th>Edit</th>
+                    <th>DeActive</th>
                   </tr>
                   </thead>
                   <tbody>
@@ -40,22 +40,23 @@
                   @foreach ($datas as $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
-                      {{-- <td>{{ $data->code}}</td> --}}
+                      <td>{{ $data->code}}</td>
                       <td>{{ $data->name}}</td>
-                      <td>{{ $data->shortName}}</td>
-                      <td>{{ $data->productType}}</td>
+                      <td>{{ $data->stage}}</td>
+                      <td>{{ $data->production_group}}</td>
+                  
                       <td>{{ $data->prepareBy}}</td>
                       <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</td>
                       
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit"
                               data-id="{{ $data->id }}"
-                              {{-- data-code="{{ $data->code }}" --}}
+                              data-code="{{ $data->code }}"
                               data-name="{{ $data->name }}"
-                              data-shortname="{{ $data->shortName }}"
-                              data-producttype="{{ $data->productType }}"
+          
+                             
                               data-toggle="modal"
-                              data-target="#productNameUpdateModal">
+                              data-target="#UpdateModal">
                               <i class="fas fa-edit"></i>
                           </button>
                       </td>
@@ -63,10 +64,10 @@
 
                       <td class="text-center align-middle">  
 
-                        <form class="form-deActive" action="{{ route('pages.materData.productName.deActive', ['id' => $data->id]) }}" method="post">
+                        <form class="form-deActive" action="{{ route('pages.materData.Instrument.deActive', ['id' => $data->id]) }}" method="post">
                             @csrf
                             <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
-                                <i class="fas fa-lock"></i>
+                                <i class="fas fa-trash"></i>
                             </button>
                         </form>
 
@@ -114,33 +115,32 @@
 
       $('.btn-edit').click(function () {
           const button = $(this);
-          const modal = $('#productNameUpdateModal');
-
-          console.log ( button.data('code') )
+          const modal = $('#UpdateModal');
 
           // Gán dữ liệu vào input
-          // modal.find('input[name="code"]').val(button.data('code'));
+          modal.find('input[name="code"]').val(button.data('code'));
           modal.find('input[name="name"]').val(button.data('name'));
           modal.find('input[name="shortName"]').val(button.data('shortname'));
-          modal.find('input[name="productType"]').val(button.data('producttype'));
           modal.find('input[name="id"]').val(button.data('id'));
+          modal.find('input[name="instrument_type"]').val(button.data('instrument_type'));
+          modal.find('select[name="belongGroup_id"]').val(button.data('groupName'));
           const id = button.data('id');
 
         });
 
         $('.btn-create').click(function () {
-          const modal = $('#productNameModal');
+          const modal = $('#Modal');
         });
 
         $('.form-deActive').on('submit', function (e) {
           e.preventDefault(); // chặn submit mặc định
-           const form = this;
+          const form = this;
           const productName = $(form).find('button[type="submit"]').data('name');
          
 
           Swal.fire({
             title: 'Bạn chắc chắn muốn vô hiệu hóa?',
-            text: `Sản phẩm: ${productName}`,
+            text: `Chỉ Tiêu: ${productName}`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#28a745',
