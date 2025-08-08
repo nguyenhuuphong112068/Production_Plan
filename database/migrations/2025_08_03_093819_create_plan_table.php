@@ -26,6 +26,7 @@ return new class extends Migration
             $table->tinyInteger('stage_code');
             $table->tinyInteger('maxofbatch_campaign');
             $table->string('note');
+            $table->string('deparment_code',5);
 
             $table->boolean('active')->default(true);
             $table->string ('prepared_by',100);
@@ -35,12 +36,14 @@ return new class extends Migration
 
         Schema::create('plan_list', function (Blueprint $table) {
             $table->id();
-
             $table->string('plan_code', 20);
             $table->string('title', 20);
+            $table->unsignedInteger('month');
+            $table->string('deparment_code', 5);
             $table->string ('prepared_by',100);
-            $table->string ('send_by',100);
-            $table->date ('send_date');
+            $table->boolean ('send');
+            $table->string ('send_by',100)->nullable();
+            $table->date ('send_date')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
         });

@@ -28,6 +28,13 @@ return new class extends Migration
             $table->boolean('forming');
             $table->boolean('coating');
 
+            $table->float('quarantine_total')->nullable();
+            $table->float('quarantine_weight')->nullable();
+            $table->float('quarantine_preparing')->nullable();
+            $table->float('quarantine_blending')->nullable();
+            $table->float('quarantine_forming')->nullable();
+            $table->float('quarantine_coating')->nullable();
+
             $table->string('deparment_code',5);
 
             $table->boolean('active')->default(true);

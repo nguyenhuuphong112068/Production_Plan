@@ -59,8 +59,11 @@
           {{-- PRODUCT TYPE --}}
           <div class="form-group">
             <label for="productType">Loại Sản Phẩm</label>
-            <input type="text" class="form-control" name="productType" 
-              value="{{ old('productType') }}">
+            <select class="form-control"  name="productType">
+                <option  {{ old('productType') == "Thành Phẩm" ? 'selected' : '' }} value="Thành Phẩm">Thành Phẩm</option>
+                <option  {{ old('productType') == "Nguyên liệu xữ lý" ? 'selected' : '' }} value="Nguyên liệu xữ lý">Nguyên liệu xữ lý</option>
+                <option  {{ old('productType') == "Bulk" ? 'selected' : '' }} value="Bulk">Bulk</option>
+            </select>           
           </div>
           @error('productType', 'createErrors')
               <div class="alert alert-danger">{{ $message }}</div>
