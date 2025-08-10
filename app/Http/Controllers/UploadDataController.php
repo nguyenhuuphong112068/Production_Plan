@@ -7,10 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use mysqli;
 
-
-
-
-
 class UploadDataController extends Controller
 {
         public function index(){
@@ -32,76 +28,100 @@ class UploadDataController extends Controller
             unset($rows[0]); // Bỏ dòng tiêu đề nếu có
 
             foreach ($rows as $row) {
-                // $check = DB::table('room')->insert([
-                //     'order_by'         => $row[0],
-                //     'code'             => $row[1],
-                //     'name'             => $row[2],
-                //     'stage'            => $row[3],
-                //     'production_group' => $row[4],
-                //     'prepareBy' => "Nguyễn Hữu Phong",
-                // ]);
+                if ($request->table === 'user_management' ) {
+                    $check = DB::table('user_management')->insert([
+                        'id'=> $row[0],
+                        'userName'=> $row[1],
+                        'userGroup'=> $row[2],
+                        'passWord'=> $row[3],
+                        'fullName' => $row[4],
+                        'deparment' => $row[5],
+                        'groupName' => $row[6],
+                        'mail' => $row[7],
+                        'isLocked' => $row[8],
+                        'isActive' => $row[9],
+                        'changePWdate' => $row[10],
+                        'hisPW_1' => $row[11],
+                        'hisPW_2' => $row[12],
+                        'hisPW_3' => $row[13],
+                        'prepareBy' => "Nguyễn Hữu Phong",
+                        'created_at' => now (),                   
+                ]);
+                }elseif ($request->table === 'room') {     
+                    $check = DB::table('room')->insert([
+                        'order_by'         => $row[0],
+                        'code'             => $row[1],
+                        'name'             => $row[2],
+                        'stage'            => $row[3],
+                        'production_group' => $row[4],
+                        'prepareBy' => "Nguyễn Hữu Phong",
+                    ]);
+                }elseif ($request->table === 'intermediate_category') {     
+                    $check = DB::table('intermediate_category')->insert([
+                        'intermediate_code'=> $row[0],
+                        'name'=> $row[1],
+                        'batch_size'=> $row[2],
+                        'unit_batch_size'=> $row[3],
+                        'batch_qty'=> $row[4],
+                        'unit_batch_qty'=> $row[5],
+                        'dosage'=> $row[6],
+                        'weight_1'=> $row[7],
+                        'weight_2'=> false,
+                        'prepering'=> $row[8],
+                        'blending'=> $row[9],
+                        'forming'=> $row[10],
+                        'coating'=> $row[11],
+                        'quarantine_weight'=> $row[12],
+                        'quarantine_preparing'=> $row[13],
+                        'quarantine_blending'=> $row[14],
+                        'quarantine_forming'=> $row[15],
+                        'quarantine_coating'=> $row[16],
+                        'deparment_code'=> $row[17],            
+                        'prepared_by' => "Nguyễn Hữu Phong",
+                    ]);
+                }elseif ($request->table === 'finished_product_category') {
+                        $check = DB::table('finished_product_category')->insert([
+                        'id'=> $row[11],
+                        'process_code'=> $row[0],
+                        'intermediate_code'=> $row[1],
+                        'finished_product_code'=> $row[2],
+                        'name'=> $row[3],
+                        'market'=> $row[4],
+                        'specification'=> $row[5],
+                        'batch_qty'=> $row[6],
+                        'unit_batch_qty'=> $row[7],
+                        'primary_parkaging'=> $row[8],
+                        'secondary_parkaging'=> $row[9],
+                        'deparment_code'=> $row[10],  
+                        'prepared_by' => "Nguyễn Hữu Phong",
+                ]);
+                }elseif ($request->table === 'plan_master'){
+                    
+                    $check = DB::table('plan_master')->insert([
+                            'plan_list_id'=> $row[0],
+                            'product_caterogy_id'=> $row[1],
+                            'level'=> $row[2],
+                            'batch'=> $row[3],
+                            'expected_date'=> $row[4],
+                            'is_val'=> $row[5],
+                            'after_weigth_date'=> $row[6],
+                            'before_weigth_date'=> $row[7],
+                            'after_parkaging_date'=> $row[8],
+                            'before_parkaging_date'=> $row[9],
+                            'material_source'=> $row[10],
+                            'only_parkaging'=> $row[11],
+                            'percent_parkaging'=> $row[12],
+                            'deparment_code'=> $row[13],
+                            'note'=> $row[14],
+                            'prepared_by' => "Nguyễn Hữu Phong",
+                    ]);
 
-                // $check = DB::table('intermediate_category')->insert([
-                //     'intermediate_code'=> $row[0],
-                //     'name'=> $row[1],
-                //     'batch_size'=> $row[2],
-                //     'unit_batch_size'=> $row[3],
-                //     'batch_qty'=> $row[4],
-                //     'unit_batch_qty'=> $row[5],
-                //     'dosage'=> $row[6],
-                //     'weight_1'=> $row[7],
-                //     'prepering'=> $row[8],
-                //     'blending'=> $row[9],
-                //     'forming'=> $row[10],
-                //     'coating'=> $row[11],
-                //     'quarantine_weight'=> $row[12],
-                //     'quarantine_preparing'=> $row[13],
-                //     'quarantine_blending'=> $row[14],
-                //     'quarantine_forming'=> $row[15],
-                //     'quarantine_coating'=> $row[16],
-                //     'deparment_code'=> $row[17],            
-                //     'prepared_by' => "Nguyễn Hữu Phong",
-                // ]);
-
-                // $check = DB::table('finished_product_category')->insert([
-                //         'intermediate_code'=> $row[0],
-                //         'finished_product_code'=> $row[1],
-                //         'name'=> $row[2],
-                //         'market'=> $row[3],
-                //         'specification'=> $row[4],
-                //         'batch_qty'=> $row[5],
-                //         'unit_batch_qty'=> $row[6],
-                //         'primary_parkaging'=> $row[7],
-                //         'secondary_parkaging'=> $row[8],
-                //         'deparment_code'=> $row[9],  
-                //         'prepared_by' => "Nguyễn Hữu Phong",
-                // ]);
-
-
-                // $check = DB::table('plan_master')->insert([
-                //         'plan_list_id'=> $row[0],
-                //         'product_caterogy_id'=> $row[1],
-                //         'level'=> $row[2],
-                //         'batch'=> $row[3],
-                //         'expected_date'=> $row[4],
-                //         'is_val'=> $row[5],
-                //         'after_weigth_date'=> $row[6],
-                //         'before_weigth_date'=> $row[7],
-                //         'after_parkaging_date'=> $row[8],
-                //         'before_parkaging_date'=> $row[9],
-                //         'material_source'=> $row[10],
-                //         'only_parkaging'=> $row[11],
-                //         'percent_parkaging'=> $row[12],
-                //         'deparment_code'=> $row[13],
-                //         'note'=> $row[14],
-                //         'prepared_by' => "Nguyễn Hữu Phong",
-                // ]);
-
-                $check = DB::table('quota')->insert([
+                }elseif ($request->table === 'quota') {
+                    $check = DB::table('quota')->insert([
                         'id'=> $row[10],
                         'intermediate_code'=> $row[0],
                         'finished_product_code'=> $row[1],
-                        'instrument_id'=> $row[2],
+                        'room_id'=> $row[2],
                         'p_time' => $row[3],
                         'm_time' => $row[4],
                         'C1_time' => $row[5],
@@ -109,9 +129,20 @@ class UploadDataController extends Controller
                         'stage_code' => $row[7],
                         'maxofbatch_campaign' => $row[8],
                         'deparment_code' => $row[9],
+                        'note' => "NA",
                         'created_at' => now (),             
                         'prepared_by' => "Nguyễn Hữu Phong",
                 ]);
+                }elseif ($request->table === 'product_name') {
+                    $check = DB::table('product_name')->insert([
+                        'name'=> $row[0],
+                        'shortName'=> $row[1],
+                        'deparment_code'=> $row[2],
+                        'active' => true,
+                        'productType'=> "Thành Phẩm",             
+                        'prepareBy' => "Nguyễn Hữu Phong",
+                ]);
+                }
 
             }
 

@@ -23,9 +23,7 @@ return new class extends Migration
             $table->boolean ('active')->default(true);
             $table->timestamps(); // created_at & updated_at
             
-            $table->foreign('analyst')->references('fullName')->on('analyst'); 
-            $table->foreign('ins_id')->references('id')->on('instrument');
-             $table->foreign('imported_id')->references('id')->on('import');
+          
         });
     }
 

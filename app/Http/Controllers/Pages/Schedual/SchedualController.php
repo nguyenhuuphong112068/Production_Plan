@@ -325,11 +325,17 @@ class SchedualController extends Controller
                 }
         }
 
-        public function deActive( int|string $id){
-
+        public function deActive( Request $request){
+               $ids = collect($request->input('ids'))
+                        ->map(function ($value) {
+                                return explode('-', $value)[0]; // lấy phần trước dấu '-'
+                        })
+                        ->unique() // loại bỏ trùng lặp
+                        ->values(); // reset key
+                        
                 try {
-                        DB::table('stage_plan')
-                        ->where('id', $id)
+                DB::table('stage_plan')
+                        ->whereIn('id',  $ids)
                         ->update([
                                 'start' => null,
                                 'end' => null,

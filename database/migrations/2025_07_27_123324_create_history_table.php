@@ -25,9 +25,7 @@ return new class extends Migration
             $table->string('prepareBy',100);
             $table->timestamps();
 
-            $table->foreign('schedual_id')->references('id')->on('schedules'); 
-            $table->foreign('ins_id')->references('id')->on('instrument'); 
-            $table->foreign('analyst')->references('fullName')->on('analyst'); 
+
            
         });
     }

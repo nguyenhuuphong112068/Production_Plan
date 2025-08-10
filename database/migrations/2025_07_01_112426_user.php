@@ -46,8 +46,8 @@ return new class extends Migration
             $table->string('prepareBy');
             $table->timestamps();
 
-            $table->foreign('userGroup')->references('name')->on('userGroup'); 
-            $table->foreign('deparment')->references('name')->on('deparments'); 
+            //$table->foreign('userGroup')->references('name')->on('userGroup'); 
+            //$table->foreign('deparment')->references('name')->on('deparments'); 
 
         });
     }

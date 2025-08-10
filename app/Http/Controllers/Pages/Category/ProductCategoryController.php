@@ -16,7 +16,7 @@ class ProductCategoryController extends Controller
                 // $instrument_type = DB::table('instrument')->select('instrument_type')->where('active', true)->groupBy('instrument_type')->get();
                 // $productNames = DB::table('product_name')->where('active', true)->get();
 
-                $datas = DB::table('finished_product_category')->where ('acvite',1)->orderBy('created_at','desc')->get();
+                $datas = DB::table('finished_product_category')->where ('active',1)->orderBy('created_at','desc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC SẢN PHẨM KIỂM NGHIỆM']);
        

@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('name', 100);
             $table->string('shortName', 50);
             $table->unsignedBigInteger('belongGroup_id'); // phải khai báo trước
-            $table->foreign('belongGroup_id')->references('id')->on('groups')->onDelete('cascade');
+            $table->string('instrument_type',20);
             $table->boolean('active')->default(true);
             $table->string('prepareBy');
             $table->timestamps();

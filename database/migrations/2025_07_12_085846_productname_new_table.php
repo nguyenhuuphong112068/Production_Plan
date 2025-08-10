@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string ('shortName' , 255);
             $table->string ('productType', 100);
+            $table->string ('deparment_code', 5);
             $table->string('prepareBy');
             $table->boolean ('active');
             $table->timestamps();

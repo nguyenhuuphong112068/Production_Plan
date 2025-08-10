@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('intermediate_code',20);
             $table->string('finished_product_code',20);
             $table->unsignedInteger('room_id');
-
+      
             $table->string('p_time');
             $table->string('m_time');
             $table->string('C1_time');
@@ -65,9 +65,9 @@ return new class extends Migration
             $table->boolean ('only_parkaging');
             $table->float ('percent_parkaging');
             $table->text ('note');
-            	
+            $table->string('deparment_code',5);
 
-            
+        
             $table->boolean('active')->default(true);
             $table->string ('prepared_by',100);
             $table->timestamps();
