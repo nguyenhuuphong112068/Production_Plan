@@ -22,7 +22,7 @@ return new class extends Migration
                 $table->ipAddress('ip_address')->nullable();
                 $table->timestamps();
 
-                $table->foreign('userName')->references('userName')->on('user_Management');
+                //$table->foreign('userName')->references('userName')->on('user_Management');
 
         });
     }

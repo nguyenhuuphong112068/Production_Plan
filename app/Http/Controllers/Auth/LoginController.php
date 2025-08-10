@@ -19,9 +19,7 @@ class LoginController extends Controller{
 
     public function login(Request $request){
 
-        
-
-        // $hash = password_hash("123456", PASSWORD_DEFAULT);
+        // $hash = password_hash("Abc@123", PASSWORD_DEFAULT);
         // dd($hash);
 
         $getUser = DB::table ('user_Management')->where ('userName', '=' ,$request->username)->first();
@@ -49,7 +47,8 @@ class LoginController extends Controller{
         'userName' => $getUser->userName,
         'fullName' => $getUser->fullName,
         'userGroup' => $getUser->userGroup,
-        'department' => $getUser->deparment
+        'department' => $getUser->deparment,
+        'production' => "PXV1"
         ]);
 
         AuditTrialController::log('Login',"NA" , 0, 'NA', 'Đăng Nhập Thành Công');

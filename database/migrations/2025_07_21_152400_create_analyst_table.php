@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('analyst', function (Blueprint $table) {
+        Schema::create('employee', function (Blueprint $table) {
             $table->id();
             $table->string('code')->unique();
             $table->string('fullName',100)->unique(); 
             $table->string('groupName',100); 
-            $table->foreign('groupName')->references('name')->on('groups');
             $table->string('prepareBy', 100)->nullable();
             $table->boolean ('active')->default(true);
             $table->timestamps();
@@ -28,7 +27,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('analyst', function (Blueprint $table) {
+        Schema::table('employee', function (Blueprint $table) {
             Schema::dropIfExists('analyst');
         });
     }

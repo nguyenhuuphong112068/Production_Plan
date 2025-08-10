@@ -49,7 +49,7 @@ return new class extends Migration
             $table->string('intermediate_code',20);
             $table->string('name',255);
 
-            $table->string('market', 5);
+            $table->string('market', 20);
             $table->string('specification',50);
 
             $table->float('batch_qty');

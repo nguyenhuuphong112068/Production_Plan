@@ -25,7 +25,11 @@
           <a href="#" class="d-block"> 🧑‍💼 {{ session('user')['fullName'] }} </a>
           <a href="#" class="d-block"> 🛡️ {{ session('user')['userGroup'] }} </a>
         </div>
+
+
     </div>
     @endif
+
+    
 
   </nav>

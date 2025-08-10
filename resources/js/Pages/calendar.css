@@ -61,5 +61,18 @@
 
 .highlight-event {
   outline: 1px solid red !important;
- 
+
 }
+/* #app, .main-container {
+   
+    overflow: hidden;
+}  */
+
+/* #app, .main-container {
+    height: 100vh;
+    overflow: hidden;
+} 
+.fc {
+    max-width: 100%;
+    overflow-x: auto;
+}*/

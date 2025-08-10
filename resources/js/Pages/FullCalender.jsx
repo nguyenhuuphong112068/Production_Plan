@@ -36,23 +36,25 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [percentShow, setPercentShow] = useState("30%");
+  const [percentShow, setPercentShow] = useState("15%");
 
 
   useEffect(() => {
   new Draggable(document.getElementById('external-events'), {
     itemSelector: '.fc-event',
-    eventData: function (eventEl) {
+      eventData: function (eventEl) {
       const isMulti = eventEl.hasAttribute('data-rows');
+     
 
       if (isMulti) {
 
         const draggedData = JSON.parse(eventEl.getAttribute('data-rows') || '[]');
-        console.log (draggedData)
-
+       
+       
         if (!draggedData.length) return null;
 
         const { intermediate_code, stage_code } = draggedData[0];
+
         const matched = quota.find(item =>
           item.intermediate_code === intermediate_code &&
           parseInt(item.stage_code) === stage_code
@@ -69,6 +71,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
 
         setSelectedRow({
+          stage_code: stage_code,
           quota: matched,
         });
       
@@ -85,7 +88,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         // ✅ Trường hợp kéo từng item
         const intermediate_code = eventEl.getAttribute('data-intermediate_code');
         const stage_code = parseInt(eventEl.getAttribute('data-stage'));
-
+        
         const matched = quota.find(item =>
           item.intermediate_code === intermediate_code &&
           parseInt(item.stage_code) === stage_code
@@ -103,6 +106,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         const duration = matched.PM;
     
         setSelectedRow({
+          stage_code: stage_code,
           id: eventEl.getAttribute('data-id'),
           title: eventEl.getAttribute('data-title'),
           quota: matched
@@ -122,7 +126,8 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   useEffect(() => {
     if (selectedEvents.length === 0) {
-      setSidebarOpen(false); // Đóng nếu không còn gì
+      setSidebarOpen(false); // Đóng nếu không còn gì/./
+
     }
 
 
@@ -137,12 +142,12 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   }
 
-  const handleEventSelect = async (info) => {
+  const handleEventHightLine = async (info) => {
     const calendarApi = calendarRef.current.getApi();
     const allEvents = calendarApi.getEvents();
     const clickedId = info.event.extendedProps.plan_master_id;
 
-    console.log (clickedId)
+
     // Bỏ class cũ nếu có
     document.querySelectorAll('.fc-event').forEach(el => {
       el.classList.remove('highlight-event');
@@ -178,6 +183,22 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       const draggedRows = info.event.extendedProps?.rows || [];
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
       const start = info.event.start;
+      const matchedRow = quota.find(item =>item.instrument_id == resourceId);
+
+      
+      if (matchedRow.stage_code != selectedRow.stage_code){
+        info.event.remove();  
+        Swal.fire({
+            icon: 'warning',
+            title:'Sắp Lịch Sai Công Đoạn',
+            //text: 'Bạn Đang Sắp Lịch ' + selectedRow.title + ,
+            timer: 1000,
+            showConfirmButton: false,
+          });
+        return;
+      }
+
+
 
       // ✅ Trường hợp 1: Kéo nhiều dòng (array draggedRows > 0)
       if (draggedRows.length > 0) {
@@ -186,7 +207,6 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
           // Tính thời lượng mặc định (ví dụ: 1 giờ mỗi dòng)
           const startTime = dayjs(start).add(1 * 60, 'minute'); // dàn đều theo giờ
          
-
           router.put('/Schedual/multiStore', {
             numberofRow: draggedRows.length,
             draggedRows: draggedRows,
@@ -282,7 +302,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   const handleEventChange = (changeInfo) => {
     const changedEvent = changeInfo.event;
-    console.log (changeInfo.event)  
+ 
     // Thêm hoặc cập nhật event vào pendingChanges
     setPendingChanges(prev => {
         const exists = prev.find(e => e.id === changedEvent.id);
@@ -349,30 +369,32 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
   };
 
   const toggleEventSelect = (eventId) => {
+     
       setSelectedEvents((prevSelected) =>
         prevSelected.includes(eventId)
           ? prevSelected.filter((id) => id !== eventId)
           : [...prevSelected, eventId]
       );
-      console.log (selectedEvents)
+     
   };
 
   const handleEventClick = (clickInfo) => {
-  const eventId = clickInfo.event.id;
+    const eventId = clickInfo.event.id;
+    
+    if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
+      // Toggle nếu đang giữ Shift/Ctrl
+      setSelectedEvents([eventId]);
+    } else {
+      // Nếu không giữ gì thì chọn riêng lẻ
+      toggleEventSelect(eventId);
+    }
 
-  if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
-    // Toggle nếu đang giữ Shift/Ctrl
-    toggleEventSelect(eventId);
-  } else {
-    // Nếu không giữ gì thì chọn riêng lẻ
-    setSelectedEvents([eventId]);
-  }
+    console.log (selectedEvents);
   };
 
   const handleRemove = (id) => {
     setSelectedEvents(prev => prev.filter(eid => eid !== id));
   };
-
 
   const handleClear = () => {
     setSelectedEvents([]);
@@ -436,7 +458,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
             </ul>
           </div>
         );
-    };
+  };
 
   const handleSearch = () => {
 
@@ -472,10 +494,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       <Row className='ps-2 pe-2'>
 
         <Col md={10} sm={6}>
-          <Button onClick={toggleCleaningEvents}>
-              Ẩn VS
-          </Button>
-        
+
         </Col>
         <Col md={2} sm={6}>
             <InputGroup className="mb-3">
@@ -559,7 +578,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         }}
         
         headerToolbar={{
-          left: 'prev,next myToday',
+          left: 'prev,myToday,next hiddenClearning',
           center: 'title',
           right: 'customDay,customWeek,customMonth,customYear customList'
         }}
@@ -588,7 +607,12 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
           myToday: {
             text: 'Hôm nay',
             click: () => calendarRef.current.getApi().today()
+          },
+          hiddenClearning: {
+            text: 'Ẩn Vệ Sịnh',
+            click: toggleCleaningEvents
           }
+
         }}
 
 
@@ -600,7 +624,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
           info.el.addEventListener('dblclick', (e) => {
             e.stopPropagation();
-            handleEventSelect(info); 
+            handleEventHightLine(info); 
 
           });
 
@@ -619,6 +643,17 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
             {/* Nút xóa */}
            <button
               onClick={(e) => {
+
+                if (!selectedEvents || selectedEvents.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Chọn Lịch Cần Xóa',
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    return; // Dừng hàm ở đây
+                }
+
                 e.stopPropagation();
                 Swal.fire({
                   title: 'Bạn có chắc muốn xóa lịch này?',
@@ -631,7 +666,9 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
                 }).then((result) => {
                   if (result.isConfirmed) {
                     arg.event.remove();
-                    router.put(`/Schedual/deActive/${arg.event.id}`, {
+                    router.put(`/Schedual/deActive`,
+                      { ids: selectedEvents.map(ev => ev) }
+                      , {
                       onSuccess: () => {
                         Swal.fire({
                           icon: 'success',
@@ -649,6 +686,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
                       }
                     });
                   }
+                  setSelectedEvents([]);
                 });
               }}
               className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
