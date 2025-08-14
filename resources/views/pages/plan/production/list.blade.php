@@ -14,6 +14,7 @@
   @include('pages.plan.production.dataTable')
 @endsection
 @section('model')
-  {{-- @include('pages.category.intermediate.create')
-  @include('pages.category.intermediate.update')  --}}
+  @include('pages.plan.production.create')
+  @include('pages.plan.production.finished_category')
+  {{-- @include('pages.category.intermediate.update')  --}}
 @endsection

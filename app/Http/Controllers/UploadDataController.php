@@ -49,11 +49,13 @@ class UploadDataController extends Controller
                 ]);
                 }elseif ($request->table === 'room') {     
                     $check = DB::table('room')->insert([
-                        'order_by'         => $row[0],
-                        'code'             => $row[1],
-                        'name'             => $row[2],
-                        'stage'            => $row[3],
+                        'id'         => $row[0],
+                        'order_by'         => $row[1],
+                        'code'             => $row[2],
+                        'name'             => $row[3],
                         'production_group' => $row[4],
+                        'stage'            => $row[5],
+                        'stage_code'       => $row[6],
                         'prepareBy' => "Nguyễn Hữu Phong",
                     ]);
                 }elseif ($request->table === 'intermediate_category') {     
@@ -119,6 +121,7 @@ class UploadDataController extends Controller
                 }elseif ($request->table === 'quota') {
                     $check = DB::table('quota')->insert([
                         'id'=> $row[10],
+                        'process_code'=> $row[11],
                         'intermediate_code'=> $row[0],
                         'finished_product_code'=> $row[1],
                         'room_id'=> $row[2],

@@ -15,6 +15,7 @@ return new class extends Migration
         Schema::create('quota', function (Blueprint $table) {
 
             $table->id();
+            $table->string('process_code',50)->unique();
             $table->string('intermediate_code',20);
             $table->string('finished_product_code',20);
             $table->unsignedInteger('room_id');
@@ -89,13 +90,18 @@ return new class extends Migration
             $table->boolean('active')->default(true);
             $table->tinyInteger('stage_code');
 
-            $table->string('title',512);
-            $table->dateTime('start');
-            $table->dateTime('end');
-            $table->unsignedInteger('resourceId');
-    
-            //$table->foreign('plan_code')->references('plan_code')->on('plan_list'); 
+            $table->string('title',512)->nullable();
+            $table->dateTime('start')->nullable();
+            $table->dateTime('end')->nullable();
+            $table->unsignedInteger('resourceId')->nullable();
+            
+            $table->string('title_clearning',512)->nullable();
+            $table->dateTime('start_clearning')->nullable();
+            $table->dateTime('end_clearning')->nullable();
 
+            $table->string('schedualed_by',512)->nullable();
+            $table->dateTime('schedualed_at')->nullable();
+            $table->string('note')->nullable();               
         });
 
     }

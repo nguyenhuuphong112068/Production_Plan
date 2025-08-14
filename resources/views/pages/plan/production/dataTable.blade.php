@@ -16,7 +16,7 @@
               <div class="card-body">
                  <div class="row">
                     <div class="col-md-2">
-                      <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal" style="width: 155px" >
+                      <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#selectProductModal" style="width: 155px" >
                             <i class="fas fa-plus"></i> Thêm
                       </button>
                     </div>

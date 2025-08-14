@@ -15,7 +15,7 @@ export default function AppLayout({ children, user, title }) {
           
           {/* Cột 1: Logo */}
           <div className="w-1/3 ml-[50px] flex justify-start items-center">
-            <a href="/Schedual" className="flex items-center">
+            <a href="/home" className="flex items-center">
               <img
                 src="/img/iconstella.svg"
                 alt="Logo"

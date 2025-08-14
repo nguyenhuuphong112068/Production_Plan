@@ -36,14 +36,17 @@ class ProductionPlanController extends Controller
                 ->where ('plan_master.active',1)->where ('plan_list_id',$request->plan_list_id)
                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
                 ->orderBy('created_at','desc')->get();
-        
+
+                $finished_product_category = DB::table('finished_product_category')->where ('active',1)->orderBy('name','asc')->get();
+
                 session()->put(['title'=> "Kế Hoạch Sản Xuất Tháng $request->month - $request->production"]);
         
                 return view('pages.plan.production.list',[
                         'datas' => $datas, 
                         'plan_list_id' => $request->plan_list_id,
                         'month' => $request->month, 
-                        'production' => $request->production
+                        'production' => $request->production,
+                        'finished_product_category' => $finished_product_category
                 
                 ]);
         }
@@ -104,6 +107,9 @@ class ProductionPlanController extends Controller
                  session()->put(['title'=> 'Kế Hoạch Sản Xuất Tháng']);
                  return view('pages.plan.production.plan_list',['datas' => $datas ]);
         }
+
+
+
 
 
 
