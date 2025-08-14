@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('code')->unique();
             $table->string('name', 50);
             $table->string('stage', 50);
+            $table->unsignedSmallInteger('stage_code');
             $table->string('production_group', 50);
             $table->boolean('active')->default(true);
             $table->string('prepareBy');

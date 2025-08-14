@@ -7,7 +7,7 @@
 .fc .fc-toolbar.fc-header-toolbar {
     background-color: #ffffff; /* Màu nền */
     color: '#CDC717';              /* Màu chữ */
-    padding: 0.5rem;
+    padding: 0.1rem;
     border-radius: 4px;
 }
 
@@ -50,11 +50,11 @@
 .custom-event-content {
   font-size: 20px;         /* Kích thước chữ */
   line-height: 1;        /* Khoảng cách dòng */
-  padding: 4px 6px;        /* Padding bên trong */
+  padding: 2px 2px;        /* Padding bên trong */
 }
 
 
-.custom-event-content small {
+.custom-event-content span {
   font-size: 12px;
   color: rgb(251, 4, 4);
 }
@@ -63,16 +63,5 @@
   outline: 1px solid red !important;
 
 }
-/* #app, .main-container {
-   
-    overflow: hidden;
-}  */
 
-/* #app, .main-container {
-    height: 100vh;
-    overflow: hidden;
-} 
-.fc {
-    max-width: 100%;
-    overflow-x: auto;
-}*/
+

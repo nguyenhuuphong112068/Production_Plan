@@ -70,7 +70,7 @@ class SchedualController extends Controller
                         ]);
                 }
                 }
-            
+              
 
                 $resources = DB::table('room')
                                 ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
@@ -102,7 +102,7 @@ class SchedualController extends Controller
                                 ->where('stage_plan.schedualed', 0)->where('stage_plan.finished', 0)->where('stage_plan.active', 1)
                                 ->orderBy('plan_master.level', 'asc')->orderBy('plan_master.expected_date', 'asc')->orderBy('plan_master.batch', 'asc')
                                 ->get();
-
+         
                 $quota = DB::table('quota')
                 ->where('active', 1)
                 ->get()
@@ -131,9 +131,24 @@ class SchedualController extends Controller
                         return $item;
                 });
 
-        
-
                 
+
+                // Gắn devices vào từng plan
+                $plan->transform(function ($item) use ($quota) {
+                if ($item->stage_code < 7) {
+                        // Lấy theo intermediate_code
+                        $item->devices = $quota[$item->intermediate_code] ?? collect();
+                } else {
+                        // Lấy theo finished_product_code
+                        $item->devices = $quota[$item->finished_product_code] ?? collect();
+                }
+                return $item;
+                });
+
+                // $plan->each(function($p) {
+                //         dump($p->devices);
+                // });
+
                 return Inertia::render('FullCalender', [
                         'title' => 'Lịch Sản Xuất',
                         'user' => session('user'),
@@ -253,7 +268,7 @@ class SchedualController extends Controller
                         $end_man = $start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
                         $start_clear = $end_man->copy();
                         $end_clear = $start_clear->copy()->addMinutes($C1_time_minutes);
-                        $clearning_type = "Vệ Sinh Cấp I";
+                        $clearning_type = "VS-II";
                        
                 } elseif ($index === $total - 1) {
                         // 🎯 Giai đoạn cuối cùng
@@ -261,14 +276,14 @@ class SchedualController extends Controller
                         $end_man = $start_man->copy()->addMinutes($m_time_minutes);
                         $start_clear = $end_man->copy();
                         $end_clear = $start_clear->copy()->addMinutes($C2_time_minutes);
-                        $clearning_type = "Vệ Sinh Cấp II";
+                        $clearning_type = "VS-II";
                 } else {
                         // 🎯 Giai đoạn ở giữa
                         $start_man = $end_clear->copy();
                         $end_man = $start_man->copy()->addMinutes($m_time_minutes);
                         $start_clear = $end_man->copy();
                         $end_clear = $start_clear->copy()->addMinutes($C1_time_minutes);
-                        $clearning_type = "Vệ Sinh Cấp I";
+                        $clearning_type = "VS-I";
                 }
 
                 DB::table('stage_plan')

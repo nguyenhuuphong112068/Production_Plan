@@ -168,6 +168,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
           scrollable
           scrollHeight="calc(100vh - 180px)" // để vừa khung trừ header & paginator
         >
+          
           <Column
             header="-"
             body={(rowData) => (
@@ -178,9 +179,9 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                 data-id={rowData.id}
                 data-title={rowData.name + "-" + rowData.batch + "-" + rowData.market}
                 data-intermediate_code={rowData.intermediate_code}
-                data-stage={rowData.stage_code}
+                data-stage_code={rowData.stage_code}
                 data-expected-date={rowData.expected_date}
-
+                
               >
                 <i className="fas fa-arrows-alt"></i>
               </div>

@@ -1,3 +1,4 @@
+  {{-- css cho nút về đầu trang --}}
   <style>
     #backToTopBtn {
       display: none; /* Ẩn ban đầu */
@@ -22,7 +23,6 @@
 
   
   </style>
-  
   
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
 
@@ -132,6 +132,12 @@
                 <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Thành Phẩm</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Bảo Trì</p>
                 </a>
               </li>
             </ul>

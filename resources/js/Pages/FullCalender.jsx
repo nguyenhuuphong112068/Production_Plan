@@ -45,6 +45,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       eventData: function (eventEl) {
       const isMulti = eventEl.hasAttribute('data-rows');
      
+      
 
       if (isMulti) {
 
@@ -87,8 +88,10 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       } else {
         // ✅ Trường hợp kéo từng item
         const intermediate_code = eventEl.getAttribute('data-intermediate_code');
-        const stage_code = parseInt(eventEl.getAttribute('data-stage'));
-        
+        const stage_code = parseInt(eventEl.getAttribute('data-stage_code'));
+
+        console.log (stage_code);
+
         const matched = quota.find(item =>
           item.intermediate_code === intermediate_code &&
           parseInt(item.stage_code) === stage_code
@@ -183,15 +186,15 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       const draggedRows = info.event.extendedProps?.rows || [];
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
       const start = info.event.start;
-      const matchedRow = quota.find(item =>item.instrument_id == resourceId);
+      const matchedRow = quota.find(item =>item.room_id == resourceId);
 
       
+
       if (matchedRow.stage_code != selectedRow.stage_code){
         info.event.remove();  
         Swal.fire({
             icon: 'warning',
             title:'Sắp Lịch Sai Công Đoạn',
-            //text: 'Bạn Đang Sắp Lịch ' + selectedRow.title + ,
             timer: 1000,
             showConfirmButton: false,
           });
@@ -202,8 +205,6 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
       // ✅ Trường hợp 1: Kéo nhiều dòng (array draggedRows > 0)
       if (draggedRows.length > 0) {
-
-  
           // Tính thời lượng mặc định (ví dụ: 1 giờ mỗi dòng)
           const startTime = dayjs(start).add(1 * 60, 'minute'); // dàn đều theo giờ
          
@@ -231,7 +232,6 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         const end = info.event.end;
         const [hours, minutes] = selectedRow.quota.C2_time?.split(':').map(Number) || [0, 0];
         const C_end = dayjs(end).add(hours, 'hour').add(minutes, 'minute').format('YYYY-MM-DD HH:mm:ss');
-
         router.put('/Schedual/store', {
           id: selectedRow.id,
           title: selectedRow.title,
@@ -469,6 +469,8 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
           ev.title.toLowerCase().includes(searchText.toLowerCase())
         );
 
+
+
         if (targetEvent) {
           const el = document.querySelector(`[data-event-id="${targetEvent._def.publicId}"]`);
           if (el) {
@@ -633,13 +635,12 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
         eventContent={(arg) => {
         const isSelected = selectedEvents.includes(arg.event.id);
-          
-
         return (
         <div className="relative group custom-event-content" data-event-id={arg.event.id} >
-            <b>{arg.event.title}</b><br />
-            <small>{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</small>
            
+              <b>{arg.event.title}</b><br/>
+              <span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>
+          
             {/* Nút xóa */}
            <button
               onClick={(e) => {

@@ -14,10 +14,10 @@ class InstrumentController extends Controller
 
                 $groups = DB::table('groups')->where('active', true)->get();
 
-                $datas = DB::table('Instrument')
-                ->select('Instrument.*', 'groups.name as groupName')
-                ->where ('Instrument.Active',1)
-                ->leftJoin('groups', 'Instrument.belongGroup_id', '=', 'groups.id')
+                $datas = DB::table('room')
+                ->select('room.*', 'groups.name as groupName')
+                ->where ('room.Active',1)
+                ->leftJoin('groups', 'room.belongGroup_id', '=', 'groups.id')
                 ->orderBy('created_at','desc')->get();
                 session()->put(['title'=> 'Thiết Bị Kiểm Nghiệm']);
            
@@ -77,7 +77,7 @@ class InstrumentController extends Controller
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 } 
                 
-               DB::table('Instrument')->where('id', $request->id)->update([
+               DB::table('room')->where('id', $request->id)->update([
                         'code' => $request->code,
                         'name' => $request->name,
                         'shortName' => $request->shortName,

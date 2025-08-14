@@ -9,18 +9,30 @@
 
               <div class="card-header mt-4">
                 {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-
               </div>
-             
-
               <!-- /.card-Body -->
               <div class="card-body">
+                    @php
+                         
+                        $createTarget = ( $stage_code <= 6)
+                         
+                            ? '#create_intermediate' 
+                            : '#create_finished_product';
+                            
+                    @endphp
+
                  <div class="row">
                     <div class="col-md-2">
-                      <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal" style="width: 155px" >
+                      <button class="btn btn-success btn-create mb-2" 
+                            data-toggle="modal" 
+                            data-target="{{ $createTarget }}" 
+                            data-stage_code="{{ $stage_code }}" 
+                            style="width: 155px" >
                             <i class="fas fa-plus"></i> Thêm
                       </button>
                     </div>
+
+
                     <div class="col-md-8"></div> 
                     <div class="col-md-2 d-flex justify-content-end">
                       <form id = "filterForm"  action="{{ route('pages.quota.production.list') }}" method="get">
@@ -164,51 +176,55 @@
 
   $(document).ready(function () {
 
-      $('.btn-edit').click(function () {
+      $('.btn-create').click(function () {
           const button = $(this);
-          const modal = $('#updateModal');
+          const modal = $(button.data('target'));
+          modal.find('input[name="stage_code"]').val(button.data('stage_code'));
+      });
 
-          console.log ( button.data('code') )
 
-          // Gán dữ liệu vào input
-          modal.find('input[name="id"]').val(button.data('id'));
-          modal.find('input[name="code"]').val(button.data('code'));
-          modal.find('input[name="name"]').val(button.data('name'));
-          modal.find('input[name="testing"]').val(button.data('testing'));
-          modal.find('input[name="sample_Amout"]').val(button.data('sample_amout'));
-          modal.find('input[name="unit"]').val(button.data('unit'));
-          modal.find('input[name="excution_time"]').val(button.data('excution-time'));
-          modal.find('input[name="instrument_type"]').val(button.data('instrument_type'));
+      // $('.btn-edit').click(function () {
+      //     const button = $(this);
+      //     const modal = $('#updateModal');
 
-          const id = button.data('id');
+      //     console.log ( button.data('code') )
 
-        });
+      //     // Gán dữ liệu vào input
+      //     modal.find('input[name="id"]').val(button.data('id'));
+      //     modal.find('input[name="code"]').val(button.data('code'));
+      //     modal.find('input[name="name"]').val(button.data('name'));
+      //     modal.find('input[name="testing"]').val(button.data('testing'));
+      //     modal.find('input[name="sample_Amout"]').val(button.data('sample_amout'));
+      //     modal.find('input[name="unit"]').val(button.data('unit'));
+      //     modal.find('input[name="excution_time"]').val(button.data('excution-time'));
+      //     modal.find('input[name="instrument_type"]').val(button.data('instrument_type'));
 
-        $('.btn-create').click(function () {
-          const modal = $('#productNameModal');
-        });
+      //     const id = button.data('id');
 
-        $('.form-deActive').on('submit', function (e) {
-          e.preventDefault(); // chặn submit mặc định
-           const form = this;
-          const productName = $(form).find('button[type="submit"]').data('name');
-         
+      //   });
 
-          Swal.fire({
-            title: 'Bạn chắc chắn muốn vô hiệu hóa?',
-            text: `Sản phẩm: ${productName}`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Đồng ý',
-            cancelButtonText: 'Hủy'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              form.submit(); // chỉ submit sau khi xác nhận
-            }
-          });
-        });
+     
+
+      //   $('.form-deActive').on('submit', function (e) {
+      //     e.preventDefault(); // chặn submit mặc định
+      //      const form = this;
+      //     const productName = $(form).find('button[type="submit"]').data('name');
+        
+      //     Swal.fire({
+      //       title: 'Bạn chắc chắn muốn vô hiệu hóa?',
+      //       text: `Sản phẩm: ${productName}`,
+      //       icon: 'warning',
+      //       showCancelButton: true,
+      //       confirmButtonColor: '#28a745',
+      //       cancelButtonColor: '#d33',
+      //       confirmButtonText: 'Đồng ý',
+      //       cancelButtonText: 'Hủy'
+      //     }).then((result) => {
+      //       if (result.isConfirmed) {
+      //         form.submit(); // chỉ submit sau khi xác nhận
+      //       }
+      //     });
+      //   });
 
   });
 </script>

@@ -14,6 +14,7 @@
   @include('pages.quota.production.dataTable')
 @endsection
 @section('model')
-  {{-- @include('pages.category.intermediate.create')
-  @include('pages.category.intermediate.update')  --}}
+  
+  @include('pages.quota.production.create_intermediate')
+  @include('pages.quota.production.create_finished_product')
 @endsection
