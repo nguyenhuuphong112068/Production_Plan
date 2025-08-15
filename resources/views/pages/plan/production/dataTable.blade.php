@@ -78,14 +78,14 @@
                           $colors = [
                               1 => 'background-color: #f44336; color: white;',   // đỏ
                               2 => 'background-color: #ff9800; color: white;',   // cam
-                              3 => 'background-color: #ffeb3b; color: black;',   // vàng
+                              3 => 'background-color: blue; color: white;',   // vàng
                               4 => 'background-color: #4caf50; color: white;',   // xanh lá
                           ];
                       @endphp
 
                       <td style="text-align: center; vertical-align: middle;">
-                          <span style="padding: 6px 6px; border-radius: 50%; {{ $colors[$data->level] ?? '' }}">
-                              {{ $data->level }}
+                          <span style="display: inline-block; padding: 6px 16py; width: 80px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
+                            <b>  {{ $data->level }} </b>
                           </span>
                       </td>
 
@@ -98,7 +98,7 @@
                           @endif
                       </td>
 
-                      <td>{{ $data->material_source}}</td>
+                      <td>{{ $data->source_material_name}}</td>
 
                       <td>
                           <div>{{ \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') }} </div>

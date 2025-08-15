@@ -61,7 +61,7 @@
                       
     
                       <td class="text-center align-middle">  
-                        <form action="{{ route('pages.plan.production.open') }}" method="post">
+                        <form action="{{ route('pages.plan.production.open') }}" method="get">
                             @csrf
                             <input type="hidden" name="plan_list_id" value="{{$data->id}}">
                             <input type="hidden" name="month" value="{{$data->month}}"> 

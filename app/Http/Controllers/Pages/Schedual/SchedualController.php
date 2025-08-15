@@ -93,14 +93,16 @@ class SchedualController extends Controller
                                         'plan_master.before_weigth_date',
                                         'plan_master.after_parkaging_date',
                                         'plan_master.before_parkaging_date',
-                                        'plan_master.material_source',
+                                        'plan_master.material_source_id',
                                         'plan_master.only_parkaging',
-                                        'plan_master.percent_parkaging'
+                                        'plan_master.percent_parkaging',
+                                        'source_material.name as source_material_name'
                                         )
                                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
                                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+                                ->join('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
                                 ->where('stage_plan.schedualed', 0)->where('stage_plan.finished', 0)->where('stage_plan.active', 1)
-                                ->orderBy('plan_master.level', 'asc')->orderBy('plan_master.expected_date', 'asc')->orderBy('plan_master.batch', 'asc')
+                                ->orderBy('stage_plan.order_by', 'asc')
                                 ->get();
          
                 $quota = DB::table('quota')
@@ -455,6 +457,31 @@ class SchedualController extends Controller
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
                 }
+        }
+
+        public function updateOrder(Request $request) {
+        $data = $request->input('updateOrderData'); // lấy đúng mảng
+
+        $cases = [];
+        $codes = [];
+
+        foreach ($data as $item) {
+                $code = $item['code'];       // vì $item bây giờ là array thực sự
+                $orderBy = $item['order_by'];
+
+                $cases[$code] = $orderBy;    // dùng cho CASE WHEN
+                $codes[] = $code;            // dùng cho WHERE IN
+        }
+        
+
+        $updateQuery = "UPDATE stage_plan SET order_by = CASE code ";
+        foreach ($cases as $code => $orderBy) {
+                $updateQuery .= "WHEN '{$code}' THEN {$orderBy} ";
+        }
+        $updateQuery .= "END WHERE code IN ('" . implode("','", $codes) . "')";
+      
+        DB::statement($updateQuery);
+
         }
 
   

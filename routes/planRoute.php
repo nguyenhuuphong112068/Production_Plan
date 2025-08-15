@@ -18,7 +18,7 @@ Route::prefix('/plan')
     ->controller(ProductionPlanController::class)
     ->group(function(){
             Route::get('','index')->name('list');
-            Route::post('open','open')->name('open');
+            Route::get('open','open')->name('open');
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
             Route::post('deActive/{id}','deActive')->name('deActive');
