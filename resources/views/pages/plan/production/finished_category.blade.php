@@ -121,10 +121,8 @@ $(document).ready(function () {
     });
 
     // Click nút +
-    $('.btn-plus').click(function () {
+      $('#finished_category').on('click', '.btn-plus', function () {
         const button = $(this);
-
-        // Giả sử modal nhập dữ liệu có id="createModal"
         const modal = $('#createModal');
 
         modal.find('input[name="product_caterogy_id"]').val(button.data('id'));
@@ -136,8 +134,10 @@ $(document).ready(function () {
         modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
         modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
         modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
+        modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
+        
+        modal.find("#add_source_material").data("intermediate_code", button.data('intermediate_code'));
 
-        // Hiện modal nhập dữ liệu
         modal.modal('show');
     });
 

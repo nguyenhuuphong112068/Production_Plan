@@ -62,7 +62,7 @@ return new class extends Migration
             $table->date ('before_weigth_date')->nullable();
             $table->date ('after_parkaging_date')->nullable();
             $table->date ('before_parkaging_date')->nullable();
-            $table->text ('material_source')->nullable();
+            $table->unsignedInteger ('material_source_id')->nullable();
             $table->boolean ('only_parkaging');
             $table->float ('percent_parkaging');
             $table->text ('note');

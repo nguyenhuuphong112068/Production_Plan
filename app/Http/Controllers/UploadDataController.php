@@ -145,6 +145,15 @@ class UploadDataController extends Controller
                         'productType'=> "Thành Phẩm",             
                         'prepareBy' => "Nguyễn Hữu Phong",
                 ]);
+                }elseif ($request->table === 'source_material') {
+                    $check = DB::table('source_material')->insert([
+                        'id'=> $row[0],
+                        'intermediate_code'=> $row[1],
+                        'code'=> $row[2],
+                        'name'=> $row[3],
+                        'active' => true,          
+                        'prepared_by' => "Nguyễn Hữu Phong",
+                ]);
                 }
 
             }

@@ -20,6 +20,9 @@ Route::prefix('/Schedual')
         Route::put('multiStore','multiStore')->name('multiStore');
         Route::put('update', 'update')->name('update');
         Route::put('addEventContent/{id}', 'addEventContent')->name('addEventContent');
+
+        Route::put('updateOrder', 'updateOrder')->name('updateOrder');
+
 });
    
 
