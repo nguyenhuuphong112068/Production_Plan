@@ -14,14 +14,19 @@ Route::prefix('/Schedual')
         Route::get('view','view');
         Route::get('','index')->name('list');
         Route::put('finished','finished')->name('finished'); 
-        //Route::put('deActive/{id}','deActive')->name('deActive'); 
         Route::put('deActive','deActive')->name('deActive');
+        Route::put('deActiveAll','deActiveAll')->name('deActiveAll');
         Route::put('store','store')->name('store');
         Route::put('multiStore','multiStore')->name('multiStore');
         Route::put('update', 'update')->name('update');
         Route::put('addEventContent/{id}', 'addEventContent')->name('addEventContent');
 
+        // Sắp Thứ Tự Trong Bảng KH CD
         Route::put('updateOrder', 'updateOrder')->name('updateOrder');
+
+        // Sắp Lịch Tư Động //
+        Route::put('scheduleAll', 'scheduleAll')->name('scheduleAll');
+        //Route::get('/schedule/stage/{stageCode}','scheduleStage')->name('scheduleStage');
 
 });
    

@@ -49,7 +49,7 @@
                               data-intermediate_code="{{ $item->intermediate_code}}"
                               data-finished_product_code="{{ $item->finished_product_code }}"
                               {{ old('name') == $item->name ? 'selected' : '' }}>
-                              {{ $item->name }}
+                              {{ $item->name  ." - ". $item->intermediate_code ." - ". $item->finished_product_code  }}
                           </option>
                         @endforeach
                       </select>

@@ -185,6 +185,7 @@ class ProductionPlanController extends Controller
                 $dataToInsert = [];
 
                foreach ($plans as $plan) {
+                        $prevCode = null;
                         foreach ($stages as $stage) {
                                 if ($plan->$stage) {
                                 $dataToInsert[] = [
@@ -193,11 +194,14 @@ class ProductionPlanController extends Controller
                                         'product_caterogy_id'=> $plan->product_caterogy_id,
                                         'stage_code'=> $stage_code[$stage],
                                         'order_by'=>  $plan->id,
-                                        'code'=>  $plan->id ."_". $stage_code[$stage]
+                                        'code'=>  $plan->id ."_". $stage_code[$stage],
+                                        'predecessor_code' => $prevCode
                                 ];
+                                 $prevCode = $plan->id ."_". $stage_code[$stage];
                                 }
                         }
                 }
+
                 DB::table('stage_plan')->insert($dataToInsert);
 
 

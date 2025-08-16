@@ -305,9 +305,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                 />
           )}
 
-          
-          
-
+        
           {visibleColumns.map(col => (
             <Column
               key={col.field}
