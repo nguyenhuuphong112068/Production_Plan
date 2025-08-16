@@ -83,6 +83,9 @@ return new class extends Migration
             $table->unsignedInteger('plan_list_id');
             $table->unsignedInteger('plan_master_id');
             $table->unsignedInteger('product_caterogy_id');
+            $table->string('predecessor_code',20)->nullable();
+            $table->string('code',512)->nullable();
+            $table->int('order_by',512)->nullable();
 
 
             $table->boolean('schedualed')->default(false);
@@ -101,7 +104,9 @@ return new class extends Migration
 
             $table->string('schedualed_by',512)->nullable();
             $table->dateTime('schedualed_at')->nullable();
-            $table->string('note')->nullable();               
+            $table->string('note')->nullable();   
+            
+            	
         });
 
     }

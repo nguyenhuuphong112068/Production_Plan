@@ -50,8 +50,6 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       if (isMulti) {
 
         const draggedData = JSON.parse(eventEl.getAttribute('data-rows') || '[]');
-       
-       
         if (!draggedData.length) return null;
 
         const { intermediate_code, stage_code } = draggedData[0];
@@ -90,8 +88,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         const intermediate_code = eventEl.getAttribute('data-intermediate_code');
         const stage_code = parseInt(eventEl.getAttribute('data-stage_code'));
 
-        console.log (stage_code);
-
+ 
         const matched = quota.find(item =>
           item.intermediate_code === intermediate_code &&
           parseInt(item.stage_code) === stage_code
@@ -186,11 +183,12 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       const draggedRows = info.event.extendedProps?.rows || [];
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
       const start = info.event.start;
+
       const matchedRow = quota.find(item =>item.room_id == resourceId);
 
       
 
-      if (matchedRow.stage_code != selectedRow.stage_code){
+      if (!matchedRow || matchedRow.stage_code == null || matchedRow.stage_code !== selectedRow.stage_code) {
         info.event.remove();  
         Swal.fire({
             icon: 'warning',
@@ -388,8 +386,6 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       // Nếu không giữ gì thì chọn riêng lẻ
       toggleEventSelect(eventId);
     }
-
-    console.log (selectedEvents);
   };
 
   const handleRemove = (id) => {
@@ -490,6 +486,49 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         }
   };
 
+
+  const handleAutoSchedualer = () => {
+
+     router.put('/Schedual/scheduleAll', {
+      }, {
+        preserveScroll: true,
+        onSuccess: () => console.log(
+          Swal.fire({
+            icon: 'success',
+            title:'Hoàn Thành Sắp Lịch',
+            timer: 1000,
+            showConfirmButton: false,
+          })
+        ),
+        onError: (errors) => console.error(
+          Swal.fire({
+            icon: 'danger',
+            title:'Lỗi',
+            timer: 1000,
+            showConfirmButton: false,
+          })
+        ),
+      });
+  }
+
+  const handleDeleteAllScheduale = () => {
+      router.put(`/Schedual/deActiveAll`,{
+           onSuccess: () => {
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Đã xóa lịch thành công',
+                  showConfirmButton: false,
+                  timer: 1500});},
+            onError: () => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Xóa lịch thất bại',
+                  text: 'Vui lòng thử lại sau.',
+                  timer: 1500
+                });
+          }});
+  }
+
   return (
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
       
@@ -580,7 +619,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         }}
         
         headerToolbar={{
-          left: 'prev,myToday,next hiddenClearning',
+          left: 'prev,myToday,next hiddenClearning autoSchedualer deleteAllScheduale',
           center: 'title',
           right: 'customDay,customWeek,customMonth,customYear customList'
         }}
@@ -613,7 +652,16 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
           hiddenClearning: {
             text: 'Ẩn Vệ Sịnh',
             click: toggleCleaningEvents
+          },
+          autoSchedualer: {
+            text: 'Sắp lịch Tự Động',
+            click: handleAutoSchedualer
+          },
+          deleteAllScheduale: {
+            text: 'Xóa Toàn Bộ',
+            click: handleDeleteAllScheduale
           }
+
 
         }}
 

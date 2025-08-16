@@ -66,7 +66,7 @@ class ProductionQuotaController extends Controller
                 $selectedRooms = $request->input('room_id');
               
                 $validator = Validator::make($request->all(), [
-                'finished_product_code' => 'required|string',
+                'intermediate_code' => 'required|string',
                 'room_id'   => 'required|array',
                 'room_id.*' => 'integer|exists:room,id',
                 'p_time' => 'required|string',
@@ -77,7 +77,7 @@ class ProductionQuotaController extends Controller
 
                 ], [
 
-                'finished_product_code.required' => 'Vui lòng chọn sản phẩm.',
+                'intermediate_code.required' => 'Vui lòng chọn sản phẩm.',
                 'room_id.required' => 'Vui lòng chọn phòng sản xuất',
                 'p_time.required' => 'Vui lòng nhập thời gian chuẩn bị',
                 'm_time.required' => 'Vui lòng nhập thời gian sản xuất',
