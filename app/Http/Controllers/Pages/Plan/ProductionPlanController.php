@@ -98,7 +98,8 @@ class ProductionPlanController extends Controller
                 if ($validator->fails() ) {
                         return redirect()->back()->withErrors($validator, 'create_Errors')->withInput();
                 }
-                if ($request->is_val = "on"){$is_val = 1; $charater_val = "V";}else {$is_val = 0;$charater_val = "";}
+               
+                if ($request->is_val == "on"){$is_val = 1; $charater_val = "V";}else {$is_val = 0;$charater_val = "";}
 
                 // Tạo số lô
                 $batches = [];
