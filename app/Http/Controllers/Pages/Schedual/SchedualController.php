@@ -70,7 +70,7 @@ class SchedualController extends Controller
                         ]);
                 }
                 }
-              
+                
 
                 $resources = DB::table('room')
                                 ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
@@ -101,7 +101,7 @@ class SchedualController extends Controller
                                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
                                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                                 ->join('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
-                                ->where('stage_plan.schedualed', 0)->where('stage_plan.finished', 0)->where('stage_plan.active', 1)
+                                ->whereNull('stage_plan.start')->where('stage_plan.finished', 0)->where('stage_plan.active', 1)
                                 ->orderBy('stage_plan.order_by', 'asc')
                                 ->get();
          
@@ -311,8 +311,9 @@ class SchedualController extends Controller
         }
 
         public function update(Request $request){
+            
                 try {
-                if (strpos($request->title, "Vệ Sinh") !== false ) {
+                if (strpos($request->title, "VS-I") !== false ) {
                 DB::table('stage_plan')
                         ->where('id', $request->id)
                         ->update([
@@ -342,34 +343,55 @@ class SchedualController extends Controller
                 }
         }
 
-        public function deActive( Request $request){
-               $ids = collect($request->input('ids'))
-                        ->map(function ($value) {
-                                return explode('-', $value)[0]; // lấy phần trước dấu '-'
-                        })
-                        ->unique() // loại bỏ trùng lặp
-                        ->values(); // reset key
-                        
+        public function deActive(Request $request){
+                $items = collect($request->input('ids'));
+
                 try {
-                DB::table('stage_plan')
-                        ->whereIn('id',  $ids)
+                foreach ($items as $item) {
+                $rowId = explode('-', $item['id'])[0];   // lấy id trước dấu -
+                $stageCode = $item['stage_code'];
+
+                // Lấy plan_master_id từ 1 row
+                $plan = DB::table('stage_plan')->where('id', $rowId)->first();
+
+                if ($plan) {
+                        // Update tất cả stage_plan theo rule
+                        DB::table('stage_plan')
+                        ->where('plan_master_id', $plan->plan_master_id)
+                        ->where('stage_code', '>=', $stageCode)
                         ->update([
-                                'start' => null,
-                                'end' => null,
-                                'start_clearning' => null,
-                                'end_clearning' => null,
-                                'resourceId' => null,
-                                'title' => null,
-                                'title_clearning' => null,
-                                'schedualed' => 0,
-                                'schedualed_by' =>  session('user')['fullName'],
-                                'schedualed_at' => now(),
+                                'start'            => null,
+                                'end'              => null,
+                                'start_clearning'  => null,
+                                'end_clearning'    => null,
+                                'resourceId'       => null,
+                                'title'            => null,
+                                'title_clearning'  => null,
+                                'schedualed'       => 0,
+                                'schedualed_by'    => session('user')['fullName'],
+                                'schedualed_at'    => now(),
                         ]);
 
-                } catch (\Exception $e) {
-                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
+                        // Xóa room_status theo các row này
+                        $affectedIds = DB::table('stage_plan')
+                        ->where('plan_master_id', $plan->plan_master_id)
+                        ->where('stage_code', '>=', $stageCode)
+                        ->pluck('id')
+                        ->toArray();
+
+                        DB::table('room_status')
+                        ->whereIn('stage_plan_id', $affectedIds)
+                        ->delete();
                 }
+                }
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        //return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+                }
+
+        
         }
+
         public function deActiveAll(){
                 try {
 
@@ -381,21 +403,26 @@ class SchedualController extends Controller
 
                 if ($ids->isEmpty()) {
                         return null;
-                }
-                DB::table('stage_plan')
-                        ->whereIn('id',  $ids)
-                        ->update([
-                                'start' => null,
-                                'end' => null,
-                                'start_clearning' => null,
-                                'end_clearning' => null,
-                                'resourceId' => null,
-                                'title' => null,
-                                'title_clearning' => null,
-                                'schedualed' => 0,
-                                'schedualed_by' =>  session('user')['fullName'],
-                                'schedualed_at' => now(),
+                }       
+            
+                        DB::table('stage_plan')
+                                ->whereIn('id',  $ids)
+                                ->update([
+                                        'start' => null,
+                                        'end' => null,
+                                        'start_clearning' => null,
+                                        'end_clearning' => null,
+                                        'resourceId' => null,
+                                        'title' => null,
+                                        'title_clearning' => null,
+                                        'schedualed' => 0,
+                                        'schedualed_by' =>  session('user')['fullName'],
+                                        'schedualed_at' => now(),
                         ]);
+
+                        DB::table('room_status')
+                                ->whereIn('stage_plan_id',  $ids)
+                                ->delete();                        
 
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
@@ -556,7 +583,6 @@ class SchedualController extends Controller
                                         return $current;
                                 }
                         }
-
                         // Nếu current vẫn nằm trong khoảng bận thì nhảy tới cuối khoảng đó
                         if ($current->lt($busy['end'])) {
                                 $current = $busy['end']->copy();
@@ -636,12 +662,14 @@ class SchedualController extends Controller
                 ->get();
                 
                 foreach ($tasks as $task) {
+                        $title = $task->name ."- ". $task->batch ."- ". $task->market;
 
                         $earliestStart = $task->after_weigth_date ? Carbon::parse($task->after_weigth_date): now();
-                        $title = $task->name ."- ". $task->batch ."- ". $task->market;
-                        // predecessor check
+
+                        //dd ($task->predecessor_code);
+
                         if ($task->predecessor_code) {
-                                $pred = DB::table('stage_plan')->where('id', $task->predecessor_code)->first();
+                                $pred = DB::table('stage_plan')->where('code', $task->predecessor_code)->first();
 
                                 if ($pred && $pred->end) {
                                         $predEnd = Carbon::parse($pred->end);
@@ -695,7 +723,9 @@ class SchedualController extends Controller
                                         $bestEnd = $candidateEnd;
                                 }
                         }
-                        $endCleaning = $candidateEnd->copy()->addMinutes((int) $room->C2_time_hours);
+                        
+                        $endCleaning = $candidateEnd->copy()->addHours((int) $room->C2_time_hours);
+                       
                         $this->saveSchedule(
                                 $title,
                                 $task->id,

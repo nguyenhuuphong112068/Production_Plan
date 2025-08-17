@@ -38,6 +38,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
   const [searchText, setSearchText] = useState("");
   const [percentShow, setPercentShow] = useState("15%");
 
+  const highlightedPMIdsRef = useRef(new Set());
 
   useEffect(() => {
   new Draggable(document.getElementById('external-events'), {
@@ -142,35 +143,24 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   }
 
-  const handleEventHightLine = async (info) => {
-    const calendarApi = calendarRef.current.getApi();
-    const allEvents = calendarApi.getEvents();
-    const clickedId = info.event.extendedProps.plan_master_id;
-
-
-    // Bỏ class cũ nếu có
-    document.querySelectorAll('.fc-event').forEach(el => {
-      el.classList.remove('highlight-event');
-    });
-
-    // Tìm và highlight các event có cùng plan_master_id
-    allEvents.forEach(event => {
-      if (event.extendedProps.plan_master_id === clickedId) {
-
-        const el = event._def.ui?.el; // Không chắc chắn hỗ trợ
-        const dom = document.querySelector(`[data-event-id="${event.id}"]`);
-
-        // Cách đáng tin cậy: dùng custom attribute
-        const allRenderedEls = document.querySelectorAll('.fc-event');
-
-        allRenderedEls.forEach(el => {
-          if (el.innerText.includes(event.title)) {
-            el.classList.add('highlight-event');
-          }
+  const applyHighlights = () => {
+      const api = calendarRef.current.getApi();
+      api.batchRendering(() => {
+        api.getEvents().forEach(ev => {
+          const pm = ev.extendedProps.plan_master_id;
+          const on = highlightedPMIdsRef.current.has(pm);
+          ev.setExtendedProp('isHighlighted', on);
         });
-      }
-    });
+      });
+  };
 
+  const handleEventHightLine = (event, isCtrlPressed = false) => {
+      const pm = event.extendedProps.plan_master_id;
+
+      if (!isCtrlPressed) highlightedPMIdsRef.current.clear();
+      highlightedPMIdsRef.current.add(pm);
+
+      applyHighlights();
   };
 
   const handleEventUnHightLine = async (info) => {
@@ -325,6 +315,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
   };
 
   const handleSaveChanges = async () => {
+   
 
     if (pendingChanges.length === 0) {
         Swal.fire({
@@ -366,26 +357,47 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   };
 
-  const toggleEventSelect = (eventId) => {
+  // const toggleEventSelect = (eventId) => {
      
-      setSelectedEvents((prevSelected) =>
-        prevSelected.includes(eventId)
-          ? prevSelected.filter((id) => id !== eventId)
-          : [...prevSelected, eventId]
-      );
+  //     setSelectedEvents((prevSelected) =>
+  //       prevSelected.includes(eventId)
+  //         ? prevSelected.filter((id) => id !== eventId)
+  //         : [...prevSelected, eventId]
+  //     );
      
+  // };
+
+  // const handleEventClick = (clickInfo) => {
+  //   const eventId = clickInfo.event.id;
+    
+  //   if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
+  //     // Toggle nếu đang giữ Shift/Ctrl
+  //     setSelectedEvents([eventId]);
+  //   } else {
+  //     // Nếu không giữ gì thì chọn riêng lẻ
+  //     toggleEventSelect(eventId);
+  //   }
+  // };
+
+  const toggleEventSelect = (event) => {
+    setSelectedEvents((prevSelected) => {
+      const exists = prevSelected.some(ev => ev.id === event.id);
+      return exists
+        ? prevSelected.filter(ev => ev.id !== event.id)
+        : [...prevSelected, { id: event.id, stage_code: event.extendedProps.stage_code }];
+    });
   };
 
   const handleEventClick = (clickInfo) => {
-    const eventId = clickInfo.event.id;
-    
+    const event = clickInfo.event;
+   
     if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
-      // Toggle nếu đang giữ Shift/Ctrl
-      setSelectedEvents([eventId]);
+      setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]);
     } else {
-      // Nếu không giữ gì thì chọn riêng lẻ
-      toggleEventSelect(eventId);
+      toggleEventSelect(event);
+      
     }
+    
   };
 
   const handleRemove = (id) => {
@@ -488,6 +500,15 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
 
   const handleAutoSchedualer = () => {
+
+    Swal.fire({
+      title: 'Đang chạy Auto Scheduler...',
+      text: 'Vui lòng chờ trong giây lát',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
 
      router.put('/Schedual/scheduleAll', {
       }, {
@@ -665,6 +686,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
         }}
 
+        eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
 
         eventDidMount={(info) => {
           const isPending = pendingChanges.some(e => e.id === info.event.id);
@@ -674,15 +696,12 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
           info.el.addEventListener('dblclick', (e) => {
             e.stopPropagation();
-            handleEventHightLine(info); 
-
+            handleEventHightLine(info.event, e.ctrlKey || e.metaKey);
           });
-
-          
         }}
 
         eventContent={(arg) => {
-        const isSelected = selectedEvents.includes(arg.event.id);
+        const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
         return (
         <div className="relative group custom-event-content" data-event-id={arg.event.id} >
            
@@ -716,7 +735,10 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
                   if (result.isConfirmed) {
                     arg.event.remove();
                     router.put(`/Schedual/deActive`,
-                      { ids: selectedEvents.map(ev => ev) }
+                      { 
+                        ids: selectedEvents.map(ev => ev),
+                        //stage_code: selectedEvents.map(ev => ev.stage_code)
+                       }
                       , {
                       onSuccess: () => {
                         Swal.fire({
@@ -775,7 +797,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
             <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleEventSelect(arg.event.id);
+                  toggleEventSelect(arg.event);
                 }}
                 className={`absolute top-0 left-0 text-xs px-1 rounded shadow
                   ${isSelected ? 'block' : 'hidden group-hover:block'}
@@ -787,9 +809,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
             </button>
           </div>
 
-        )}}
-
-        
+        )}}    
       />
       
       <ModalSidebar
@@ -801,7 +821,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       />
       {/* Vùng hover */}
       <div
-        className="fixed top-0 right-0 h-full w-10 z-40"
+          className="fixed top-0 right-0 h-full w-10 z-40"
         onMouseEnter={() => {
 
           if (selectedEvents.length > 0) setSidebarOpen(true);
@@ -813,8 +833,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
           }, 200); 
         }}
       />
-  
-      
+
         {sidebarOpen && selectedEvents.length > 0 && (
           <div
             onMouseEnter={() => setIsHoveringSidebar(true)}
