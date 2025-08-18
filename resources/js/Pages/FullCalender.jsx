@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import ReactDOM from 'react-dom/client';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
@@ -10,6 +11,8 @@ import ModalSidebar from '../Components/ModalSidebar';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2'; 
 import './calendar.css';
+import CalendarSearchBox from '../Components/CalendarSearchBox';
+import EventFontSizeInput from '../Components/EventFontSizeInput';
 
 import 'moment/locale/vi';
 import '@fullcalendar/daygrid/index.js';
@@ -18,121 +21,248 @@ import '@fullcalendar/resource-timeline/index.js';
 import 'primereact/resources/themes/lara-light-indigo/theme.css';
 import 'primereact/resources/primereact.min.css';                
 import 'primeicons/primeicons.css'; 
-import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
+
+
 
   const ScheduleTest = () => {
-  const calendarRef = useRef(null);
-  moment.locale('vi');
+    const calendarRef = useRef(null);
+    moment.locale('vi');
 
-  //0. Get data
-  const { events, resources, title, plan, quota } = usePage().props;
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [selectedRow, setSelectedRow] = useState({});
-  const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
-  const [cleaningHidden, setCleaningHidden] = useState(false);
-  const [pendingChanges, setPendingChanges] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedEvents, setSelectedEvents] = useState([]);
-  const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [percentShow, setPercentShow] = useState("15%");
+    const { events, resources, title, plan, quota } = usePage().props;
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [selectedRow, setSelectedRow] = useState({});
+    const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
+    const [cleaningHidden, setCleaningHidden] = useState(false);
+    const [pendingChanges, setPendingChanges] = useState([]);
+    const [saving, setSaving] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [selectedEvents, setSelectedEvents] = useState([]);
+    const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
+    const [percentShow, setPercentShow] = useState("15%");
+    const highlightedPMIdsRef = useRef(new Set());
+    const searchResultsRef = useRef([]);
+    const currentIndexRef = useRef(-1);
+    const lastQueryRef = useRef("");
+    const slotViews = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60','resourceTimelineWeek4h']; //, 'resourceTimelineWeek8h', 'resourceTimelineWeek12h', 'resourceTimelineWeek24h'
+    const [slotIndex, setSlotIndex] = useState(0);
+    const [eventFontSize, setEventFontSize] = useState(14); // default 14px
 
-  const highlightedPMIdsRef = useRef(new Set());
-
-  useEffect(() => {
-  new Draggable(document.getElementById('external-events'), {
-    itemSelector: '.fc-event',
-      eventData: function (eventEl) {
-      const isMulti = eventEl.hasAttribute('data-rows');
-     
+    useEffect(() => {
+    new Draggable(document.getElementById('external-events'), {
+      itemSelector: '.fc-event',
+        eventData: function (eventEl) {
+        const isMulti = eventEl.hasAttribute('data-rows');
       
-
-      if (isMulti) {
-
-        const draggedData = JSON.parse(eventEl.getAttribute('data-rows') || '[]');
-        if (!draggedData.length) return null;
-
-        const { intermediate_code, stage_code } = draggedData[0];
-
-        const matched = quota.find(item =>
-          item.intermediate_code === intermediate_code &&
-          parseInt(item.stage_code) === stage_code
-        );
-
-        if (!matched) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Sản Phẩm Chưa Được Định Mức',
-            text: 'Vui lòng định mức trước khi sắp lịch!',
-          });
-          return null;
-        }
-
-
-        setSelectedRow({
-          stage_code: stage_code,
-          quota: matched,
-        });
-      
-        // ✅ Trường hợp nhiều mục được chọn
         
-        return {
-          title: 'Nhiều mục được chọn',
-          extendedProps: {
-            rows: draggedData
+
+        if (isMulti) {
+
+          const draggedData = JSON.parse(eventEl.getAttribute('data-rows') || '[]');
+          if (!draggedData.length) return null;
+
+          const { intermediate_code, stage_code } = draggedData[0];
+
+          const matched = quota.find(item =>
+            item.intermediate_code === intermediate_code &&
+            parseInt(item.stage_code) === stage_code
+          );
+
+          if (!matched) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Sản Phẩm Chưa Được Định Mức',
+              text: 'Vui lòng định mức trước khi sắp lịch!',
+            });
+            return null;
+          }
+
+
+          setSelectedRow({
+            stage_code: stage_code,
+            quota: matched,
+          });
+        
+          // ✅ Trường hợp nhiều mục được chọn
+          
+          return {
+            title: 'Nhiều mục được chọn',
+            extendedProps: {
+              rows: draggedData
+            }
+          };
+
+        } else {
+          // ✅ Trường hợp kéo từng item
+          const intermediate_code = eventEl.getAttribute('data-intermediate_code');
+          const stage_code = parseInt(eventEl.getAttribute('data-stage_code'));
+
+  
+          const matched = quota.find(item =>
+            item.intermediate_code === intermediate_code &&
+            parseInt(item.stage_code) === stage_code
+          );
+
+          if (!matched) {
+            Swal.fire({
+              icon: 'warning',
+              title: `Sản phẩm ${eventEl.getAttribute('data-title')} chưa được định mức.`,
+              text: `Vui lòng định mức trước khi sắp lịch!`,
+            });
+            return null;
+          }
+
+          const duration = matched.PM;
+      
+          setSelectedRow({
+            stage_code: stage_code,
+            id: eventEl.getAttribute('data-id'),
+            title: eventEl.getAttribute('data-title'),
+            quota: matched
+          });
+
+          return {
+            title: eventEl.getAttribute('data-title'),
+            duration,
+            extendedProps: {
+            externalId: eventEl.getAttribute('data-id'),
+            },
+          };
+        }
+      }
+    });
+    }, [quota]);
+
+    useEffect(() => {
+      if (selectedEvents.length === 0) {
+        setSidebarOpen(false); // Đóng nếu không còn gì/./
+
+      }
+    }, [selectedEvents]);
+
+    // UseEffect cho render nut search
+    useEffect(() => {
+        // sau khi calendar render xong, inject vào toolbar
+        const calendarApi = calendarRef.current?.getApi();
+        if (!calendarApi) return;
+
+        const toolbarEl = document.querySelector(".fc-searchBox-button");
+          
+        const container = document.createElement("div");
+        toolbarEl.appendChild(container);
+
+        const root = ReactDOM.createRoot(container);
+        root.render(
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* <EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} /> */}
+          <CalendarSearchBox onSearch={handleSearch} />
+        </div>
+          
+        );
+        return () => {
+          root.unmount();
+          if (toolbarEl.contains(container)) {
+            toolbarEl.removeChild(container);
           }
         };
+        
+    }, []);
 
-      } else {
-        // ✅ Trường hợp kéo từng item
-        const intermediate_code = eventEl.getAttribute('data-intermediate_code');
-        const stage_code = parseInt(eventEl.getAttribute('data-stage_code'));
+    useEffect(() => {
+      const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
+      if (!toolbarEl) return;
 
- 
-        const matched = quota.find(item =>
-          item.intermediate_code === intermediate_code &&
-          parseInt(item.stage_code) === stage_code
-        );
+      const container = document.createElement("div");
+      toolbarEl.appendChild(container);
 
-        if (!matched) {
-          Swal.fire({
-            icon: 'warning',
-            title: `Sản phẩm ${eventEl.getAttribute('data-title')} chưa được định mức.`,
-            text: `Vui lòng định mức trước khi sắp lịch!`,
-          });
-          return null;
-        }
+      const root = ReactDOM.createRoot(container);
+      root.render(<EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} />);
 
-        const duration = matched.PM;
-    
-        setSelectedRow({
-          stage_code: stage_code,
-          id: eventEl.getAttribute('data-id'),
-          title: eventEl.getAttribute('data-title'),
-          quota: matched
-        });
+      return () => {
+        root.unmount();
+        toolbarEl.removeChild(container);
+      };
+    }, [eventFontSize]); // chỉ chạy 1 lần
 
-        return {
-          title: eventEl.getAttribute('data-title'),
-          duration,
-          extendedProps: {
-          externalId: eventEl.getAttribute('data-id'),
-          },
-        };
+  const handleSearch = (query, direction = "next") => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+
+    const events = calendarApi.getEvents();
+    const matches = events.filter(ev =>
+      ev.title.toLowerCase().includes(query.toLowerCase())
+    );
+
+    // Nếu không tìm thấy
+    if (matches.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "Không tìm thấy",
+        text: "Không có sự kiện nào khớp.",
+        confirmButtonText: "OK",
+      });
+      clearHighlights();
+      searchResultsRef.current = [];
+      currentIndexRef.current = -1;
+      lastQueryRef.current = "";
+      return;
+    }
+
+    // Nếu query mới, reset
+    if (query !== lastQueryRef.current) {
+      searchResultsRef.current = matches;
+      currentIndexRef.current = 0;
+      lastQueryRef.current = query;
+    } else {
+      // Next hoặc Previous
+      if (direction === "next") {
+        currentIndexRef.current = (currentIndexRef.current + 1) % matches.length;
+      } else if (direction === "prev") {
+        currentIndexRef.current =
+          (currentIndexRef.current - 1 + matches.length) % matches.length;
       }
     }
-  });
-  }, [quota]);
 
-  useEffect(() => {
-    if (selectedEvents.length === 0) {
-      setSidebarOpen(false); // Đóng nếu không còn gì/./
+    highlightAllEvents();
+  };
 
-    }
+  // --- Highlight tất cả sự kiện ---
+  const highlightAllEvents = () => {
+    const matches = searchResultsRef.current;
+    if (!matches || matches.length === 0) return;
 
+    // Xoá highlight cũ
+    clearHighlights();
 
-  }, [selectedEvents]);
+    matches.forEach((ev, index) => {
+      const el = document.querySelector(`[data-event-id="${ev.id}"]`);
+      if (el) {
+        if (index === currentIndexRef.current) {
+          el.classList.add("highlight-current-event"); // màu đậm
+          scrollToEvent(el);
+        } else {
+          el.classList.add("highlight-event"); // màu nhạt
+        }
+      }
+    });
+  };
+
+  // --- Xoá highlight ---
+  const clearHighlights = () => {
+    document.querySelectorAll(".highlight-event, .highlight-current-event").forEach(el => {
+      el.classList.remove("highlight-event", "highlight-current-event");
+    });
+  };
+
+  // --- Scroll sự kiện hiện tại vào view ---
+  const scrollToEvent = (el) => {
+    if (!el) return;
+    el.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  };
+
 
   const handleShowList = () => setShowSidebar(!showSidebar);
 
@@ -141,7 +271,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
     setViewConfig({is_clearning:false })
     calendarRef.current?.getApi()?.changeView(view);
 
-  }
+  };
 
   const applyHighlights = () => {
       const api = calendarRef.current.getApi();
@@ -167,7 +297,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       document.querySelectorAll('.fc-event').forEach(el => {
       el.classList.remove('highlight-event');
     });
-  }
+  };
  
   const handleEventReceive = async (info) => {
       const draggedRows = info.event.extendedProps?.rows || [];
@@ -260,10 +390,11 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
       const draggedEvent = info.event;
       const delta = info.delta;
       const calendarApi = info.view.calendar;
-
+     
       // Nếu chưa được chọn thì tự động chọn
       if (!selectedEvents.includes(draggedEvent.id)) {
-        toggleEventSelect(draggedEvent.id);
+        //toggleEventSelect(draggedEvent.id);
+        toggleEventSelect(draggedEvent);
       }
 
       // Nếu là event đã được chọn, kéo theo nhóm
@@ -357,29 +488,8 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   };
 
-  // const toggleEventSelect = (eventId) => {
-     
-  //     setSelectedEvents((prevSelected) =>
-  //       prevSelected.includes(eventId)
-  //         ? prevSelected.filter((id) => id !== eventId)
-  //         : [...prevSelected, eventId]
-  //     );
-     
-  // };
-
-  // const handleEventClick = (clickInfo) => {
-  //   const eventId = clickInfo.event.id;
-    
-  //   if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
-  //     // Toggle nếu đang giữ Shift/Ctrl
-  //     setSelectedEvents([eventId]);
-  //   } else {
-  //     // Nếu không giữ gì thì chọn riêng lẻ
-  //     toggleEventSelect(eventId);
-  //   }
-  // };
-
   const toggleEventSelect = (event) => {
+    
     setSelectedEvents((prevSelected) => {
       const exists = prevSelected.some(ev => ev.id === event.id);
       return exists
@@ -390,12 +500,10 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 
   const handleEventClick = (clickInfo) => {
     const event = clickInfo.event;
-   
     if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
       setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]);
     } else {
       toggleEventSelect(event);
-      
     }
     
   };
@@ -468,122 +576,106 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         );
   };
 
-  const handleSearch = () => {
+  const handleAutoSchedualer = () => {
+    Swal.fire({
+      title: 'Bạn có chắc muốn chạy Auto Scheduler?',
+      //text: "Hành động này sẽ tự động sắp xếp tất cả lịch.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Chạy',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Hiển thị loading
+        Swal.fire({
+          title: 'Đang chạy Auto Scheduler...',
+          text: 'Vui lòng chờ trong giây lát',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
 
-        const calendarApi = calendarRef.current?.getApi();
-        if (!calendarApi) return;
-
-        const targetEvent = calendarApi.getEvents().find(ev =>
-          ev.title.toLowerCase().includes(searchText.toLowerCase())
-        );
-
-
-
-        if (targetEvent) {
-          const el = document.querySelector(`[data-event-id="${targetEvent._def.publicId}"]`);
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-            el.classList.add("highlight-event");
-            setTimeout(() => {
-              el.classList.remove("highlight-event");
-            }, 3000);
-          }
-        } else {
-          Swal.fire({
-              icon: 'info',
-              title: 'Không tìm thấy',
-              text: 'Không có sự kiện nào khớp với từ khóa tìm kiếm.',
-              confirmButtonText: 'OK'
+        // Gọi API
+        router.put('/Schedual/scheduleAll', {}, {
+          preserveScroll: true,
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title:'Hoàn Thành Sắp Lịch',
+              timer: 1000,
+              showConfirmButton: false,
             });
-        }
+          },
+          onError: (errors) => {
+            Swal.fire({
+              icon: 'error',
+              title:'Lỗi',
+              timer: 1000,
+              showConfirmButton: false,
+            });
+          },
+        });
+      }
+    });
   };
 
-
-  const handleAutoSchedualer = () => {
-
-    Swal.fire({
-      title: 'Đang chạy Auto Scheduler...',
-      text: 'Vui lòng chờ trong giây lát',
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
-
-     router.put('/Schedual/scheduleAll', {
-      }, {
-        preserveScroll: true,
-        onSuccess: () => console.log(
-          Swal.fire({
-            icon: 'success',
-            title:'Hoàn Thành Sắp Lịch',
-            timer: 1000,
-            showConfirmButton: false,
-          })
-        ),
-        onError: (errors) => console.error(
-          Swal.fire({
-            icon: 'danger',
-            title:'Lỗi',
-            timer: 1000,
-            showConfirmButton: false,
-          })
-        ),
-      });
-  }
-
   const handleDeleteAllScheduale = () => {
-      router.put(`/Schedual/deActiveAll`,{
-           onSuccess: () => {
-                Swal.fire({
-                  icon: 'success',
-                  title: 'Đã xóa lịch thành công',
-                  showConfirmButton: false,
-                  timer: 1500});},
-            onError: () => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Xóa lịch thất bại',
-                  text: 'Vui lòng thử lại sau.',
-                  timer: 1500
-                });
-          }});
-  }
+    Swal.fire({
+      title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
+      text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Xóa',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        router.put(`/Schedual/deActiveAll`, {
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Đã xóa lịch thành công',
+              showConfirmButton: false,
+              timer: 1500
+            });
+          },
+          onError: () => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Xóa lịch thất bại',
+              text: 'Vui lòng thử lại sau.',
+              timer: 1500
+            });
+          }
+        });
+      }
+    });
+  };
+
+  const toggleSlotDuration = () => {
+    setSlotIndex((prevIndex) => {
+      const nextIndex = (prevIndex + 1) % slotViews.length;
+      const calendarApi = calendarRef.current?.getApi();
+      calendarApi.changeView(slotViews[nextIndex]);
+      return nextIndex;
+    });
+  };
 
   return (
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
-      
-      <Row className='ps-2 pe-2'>
-
-        <Col md={10} sm={6}>
-
-        </Col>
-        <Col md={2} sm={6}>
-            <InputGroup className="mb-3">
-            <Form.Control
-              aria-label="Recipient's username"
-              aria-describedby="basic-addon2"
-              type="text"
-              placeholder="Tìm sản phẩm..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-            <Button variant="outline-secondary" id="button-addon2" onClick={handleSearch}>
-              <i className="fas fa-search"></i>
-            </Button>
-          </InputGroup>
-        </Col>
-      </Row>
-
-
-
+    
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineWeek"
-        firstDay={1} 
-
+        firstDay={1}
+        
+        eventResourceEditable ={true}
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
         events={events}
@@ -599,8 +691,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         eventDurationEditable={true}
         resourceEditable={true}
         eventStartEditable={true} // <- phải có để kéo thay đổi start
-         
-
+      
         eventClick={handleEventClick}
         eventResize={handleEventChange} 
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
@@ -617,7 +708,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
             titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
           },
           resourceTimelineWeek: {
-            slotDuration: '00:15:00',
+            slotDuration: '00:30:00',
             slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Tuần',
@@ -636,13 +727,17 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
             slotMaxTime: '24:00:00',
             buttonText: 'Năm',
             titleFormat: { year: 'numeric' }
-          }
+          },
+          resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
+          resourceTimelineWeek30: { type: 'resourceTimelineWeek', slotDuration: '00:30:00' },
+          resourceTimelineWeek60: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
+          resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
         }}
         
         headerToolbar={{
           left: 'prev,myToday,next hiddenClearning autoSchedualer deleteAllScheduale',
           center: 'title',
-          right: 'customDay,customWeek,customMonth,customYear customList'
+          right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customYear customList'
         }}
 
         customButtons={{
@@ -681,33 +776,51 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
           deleteAllScheduale: {
             text: 'Xóa Toàn Bộ',
             click: handleDeleteAllScheduale
-          }
-
-
+          },
+          searchBox: {text: ''},
+          fontSizeBox: {text: ''},
+          slotDuration: {
+            text: 'Slot',
+            click: toggleSlotDuration
+          },
+          
         }}
 
         eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
 
         eventDidMount={(info) => {
+
+          
+          // gắn data-event-id để tìm kiếm
+          info.el.setAttribute("data-event-id", info.event.id);
+
+          // cho select evetn => pendingChanges
           const isPending = pendingChanges.some(e => e.id === info.event.id);
           if (isPending) {
             info.el.style.border = '2px dashed orange';
           }
 
+
+          // lắng nghe double click
           info.el.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             handleEventHightLine(info.event, e.ctrlKey || e.metaKey);
           });
+
+
+
         }}
 
         eventContent={(arg) => {
         const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
         return (
         <div className="relative group custom-event-content" data-event-id={arg.event.id} >
-           
+            
+            <div style={{ fontSize: `${eventFontSize}px` }}>
               <b>{arg.event.title}</b><br/>
               <span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>
-          
+            </div>
+
             {/* Nút xóa */}
            <button
               onClick={(e) => {
@@ -819,6 +932,7 @@ import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
         percentShow = {percentShow}
         setPercentShow={setPercentShow}
       />
+
       {/* Vùng hover */}
       <div
           className="fixed top-0 right-0 h-full w-10 z-40"
@@ -864,3 +978,5 @@ ScheduleTest.layout = (page) => (
     {page}
   </AppLayout>
 );
+
+

@@ -664,20 +664,26 @@ class SchedualController extends Controller
                 foreach ($tasks as $task) {
                         $title = $task->name ."- ". $task->batch ."- ". $task->market;
 
-                        $earliestStart = $task->after_weigth_date ? Carbon::parse($task->after_weigth_date): now();
 
-                        //dd ($task->predecessor_code);
+                        $now = Carbon::now();
+                        // Lấy phút hiện tại
+                        $minute = $now->minute;
+                        // Tính số phút làm tròn lên
+                        $roundedMinute = ceil($minute / 15) * 15;
+                        // Nếu bằng 60, tăng giờ lên 1 và đặt phút = 0
+                        if ($roundedMinute == 60) {$now->addHour();$roundedMinute = 0;}
+
+                        $now->minute($roundedMinute)->second(0)->microsecond(0);
+                        // Ví dụ kết hợp với logic của bạn
+                        $earliestStart = $task->after_weigth_date? Carbon::parse($task->after_weigth_date)->gte(now()) ? Carbon::parse($task->after_weigth_date) : $now: $now;
 
                         if ($task->predecessor_code) {
                                 $pred = DB::table('stage_plan')->where('code', $task->predecessor_code)->first();
-
                                 if ($pred && $pred->end) {
                                         $predEnd = Carbon::parse($pred->end);
                                         if ($predEnd->gt($earliestStart)) {
                                                 $earliestStart = $predEnd;
-                                        }
-                                }
-                        }
+                        }}}
 
                         // phòng phù hợp (quota)
                         if ($stageCode <= 6){

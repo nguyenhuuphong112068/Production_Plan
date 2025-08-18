@@ -210,7 +210,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 
   };
 
-  
 
 
   return (

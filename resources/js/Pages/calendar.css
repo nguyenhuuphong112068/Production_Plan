@@ -59,14 +59,58 @@
   color: rgb(251, 4, 4);
 }
 
+
+/* Tất cả match - nhạt */
 .highlight-event {
-  outline: 1px solid red !important;
+  background-color: rgba(255, 235, 59, 0.4); /* vàng nhạt */
+  transition: background-color 0.3s;
+}
 
+/* highlight match event */
+.highlight-current-event {
+  background-color: rgba(255, 193, 7, 0.9) !important;
+  transition: background-color 0.3s;
 }
 
 
-.fc .highlight-event {
-  border: 2px solid red !important;
-  box-shadow: 0 0 8px rgba(255, 0, 0, .6) !important;
+/* Cố định header toolbar trên trục Y */
+.fc-header-toolbar {
+  position: sticky;
+  top: 0;           /* cách top container 0px */
+  z-index: 10;      /* đảm bảo nổi trên timeline */
+  background: #fff; /* màu nền để không trong suốt */
 }
+.fc-scroller-harness .fc-header-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+}
+
+
+
+
+.fc-header-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30; /* cao nhất */
+  background: #fff;
+}
+
+.fc .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky {
+  position: sticky !important;
+  top: 50px; /* bằng height của headerToolbar */
+  z-index: 25;
+  background: #fff;
+}
+
+.fc .fc-scrollgrid-section-body .fc-datagrid-axis {
+  position: sticky;
+  top: 50px; /* đảm bảo không bị che */
+  left: 0;
+  z-index: 20;
+  background: #fff;
+}
+
+
 
