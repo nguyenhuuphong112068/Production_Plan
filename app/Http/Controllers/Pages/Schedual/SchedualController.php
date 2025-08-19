@@ -644,6 +644,7 @@ class SchedualController extends Controller
                 ->select('stage_plan.id',
                         'stage_plan.code', 
                         'stage_plan.predecessor_code', 
+                        'stage_plan.campaign_code', 
                         'plan_master.batch',
                         'plan_master.after_weigth_date',
                         'plan_master.before_weigth_date',
@@ -660,11 +661,65 @@ class SchedualController extends Controller
                 ->whereNull('start')
                 ->orderBy('order_by','asc')
                 ->get();
-                
+                $processedCampaigns = []; // campaign đã xử lý
+
                 foreach ($tasks as $task) {
+                        $dependency = resolveCampaignDependency($task->campaign_code);
+
+                        if (!$dependency) {
+                                $this->sheduleNotCampaing ($task, $stageCode);
+                        }else {
+                                if (in_array($task->campaign_code, $processedCampaigns)) {
+                                        continue;
+                                }
+
+
+                                // // Gom nhóm campaign
+                                // $campaignTasks = $tasks->where('campaign_code', $task->campaign_code);
+                                // //dd ($campaignTasks);
+                                // $this->scheduleCampaign($task->campaign_code, $campaignTasks, $stageCode);
+                                // // Đánh dấu campaign đã xử lý
+                                // $processedCampaigns[] = $task->campaign_code;
+
+
+                                  $lotEnd = DB::table('stage_plan')
+                                ->where('stage_code', $dependency['fromStage'])
+                                ->where('campaign_code', $dependency['baseCampaign'])
+                                ->orderBy('order_by')
+                                ->skip($dependency['nthLot'] - 1)
+                                ->take(1)
+                                ->value('end'); // cột end bạn lưu thời gian kết thúc
+
+                                $currentStart = $lotEnd ? Carbon\Carbon::parse($lotEnd) : now();
+
+                                // xử lý scheduleCampaign với $currentStart làm mốc
+                                $this->scheduleCampaign($dependency['baseCampaign'], collect([$task]), $task->stage_code, $currentStart);
+                        }
+                }
+                //return response()->json(['message'=>"Stage {$stageCode} scheduled"]);
+        }
+
+        /**
+         * Scheduler nhiều stage
+         */
+        // 1 hàm khỏi động
+        public function scheduleAll() {
+               
+                $stageCodes = DB::table('stage_plan')
+                ->distinct()
+                ->orderBy('stage_code')
+                ->pluck('stage_code');
+                
+                foreach ($stageCodes as $stageCode) {
+                        $this->scheduleStage($stageCode);
+                }
+              
+                //return response()->json(['message'=>"All stages scheduled"]);
+        }
+
+        protected function sheduleNotCampaing ($task, $stageCode){
                         $title = $task->name ."- ". $task->batch ."- ". $task->market;
-
-
+                        
                         $now = Carbon::now();
                         // Lấy phút hiện tại
                         $minute = $now->minute;
@@ -676,7 +731,7 @@ class SchedualController extends Controller
                         $now->minute($roundedMinute)->second(0)->microsecond(0);
                         // Ví dụ kết hợp với logic của bạn
                         $earliestStart = $task->after_weigth_date? Carbon::parse($task->after_weigth_date)->gte(now()) ? Carbon::parse($task->after_weigth_date) : $now: $now;
-
+                        
                         if ($task->predecessor_code) {
                                 $pred = DB::table('stage_plan')->where('code', $task->predecessor_code)->first();
                                 if ($pred && $pred->end) {
@@ -711,6 +766,8 @@ class SchedualController extends Controller
                         $bestStart = null;
                         $bestEnd = null;
                         
+
+                        /// Không chiến dịch
                         foreach ($rooms as $room) {
                                 $candidateStart = $this->findEarliestSlot(
                                         $room->room_id,
@@ -718,20 +775,15 @@ class SchedualController extends Controller
                                         $room->execution_time,
                                         $room->C2_time_hours // them trương hợp chiến dịch
                                 );
-
                                 $executionMinutes = (int) round($room->execution_time * 60);
                                 $candidateEnd = $candidateStart->copy()->addMinutes($executionMinutes);
-
-
                                 if ($bestStart === null || $candidateStart->lt($bestStart)) {
                                         $bestRoom = $room->room_id;
                                         $bestStart = $candidateStart;
                                         $bestEnd = $candidateEnd;
                                 }
                         }
-                        
                         $endCleaning = $candidateEnd->copy()->addHours((int) $room->C2_time_hours);
-                       
                         $this->saveSchedule(
                                 $title,
                                 $task->id,
@@ -742,28 +794,102 @@ class SchedualController extends Controller
                                 null,
                             
                         );
-                }
-
-                //return response()->json(['message'=>"Stage {$stageCode} scheduled"]);
         }
 
-        /**
-         * Scheduler nhiều stage
-         */
-        // 1 hàm khỏi động
-        public function scheduleAll() {
-               
-                $stageCodes = DB::table('stage_plan')
-                ->distinct()
-                ->orderBy('stage_code')
-                ->pluck('stage_code');
+        protected function scheduleCampaign($campaignCode, $campaignTasks, $stageCode){
+                $firstTask = $campaignTasks->first();
+
+                $now = Carbon::now();
+                // Lấy phút hiện tại
+                $minute = $now->minute;
+                // Tính số phút làm tròn lên
+                $roundedMinute = ceil($minute / 15) * 15;
+                // Nếu bằng 60, tăng giờ lên 1 và đặt phút = 0
+                if ($roundedMinute == 60) {$now->addHour();$roundedMinute = 0;}
+                $now->minute($roundedMinute)->second(0)->microsecond(0);
+                // Ví dụ kết hợp với logic của bạn
+                $earliestStart = $firstTask->after_weigth_date? Carbon::parse($firstTask->after_weigth_date)->gte(now()) ? Carbon::parse($firstTask->after_weigth_date) : $now: $now;
                 
-                foreach ($stageCodes as $stageCode) {
-                        $this->scheduleStage($stageCode);
+
+                if ($firstTask->predecessor_code) {
+                        $pred = DB::table('stage_plan')->where('code', $firstTask->predecessor_code)->first();
+                        if ($pred && $pred->end) {
+                                $predEnd = Carbon::parse($pred->end);
+                                if ($predEnd->gt($earliestStart)) {
+                                        $earliestStart = $predEnd;
+                }}}
+
+                // phòng phù hợp (quota)
+                if ($stageCode <= 6){
+                        $product_category_code = $firstTask->intermediate_code;
+                        $product_category_type = "intermediate_code";
                 }
-              
-                //return response()->json(['message'=>"All stages scheduled"]);
+                else { 
+                        $product_category_code = $firstTask->finished_product_code;
+                        $product_category_type = "finished_product_code";
+                }
+                         
+                // phòng phù hợp (quota)
+                $rooms = DB::table('quota')
+                        ->select ('room_id', 'p_time', 'm_time', 'C1_time', 'C2_time', 
+                                DB::raw('(TIME_TO_SEC(p_time)/3600) as p_time_hours'),
+                                DB::raw('(TIME_TO_SEC(m_time)/3600) as m_time_hours'),
+                                DB::raw('(TIME_TO_SEC(C1_time)/3600) as C1_time_hours'),
+                                DB::raw('(TIME_TO_SEC(C2_time)/3600) as C2_time_hours'),
+                                DB::raw('(TIME_TO_SEC(p_time)/3600 + TIME_TO_SEC(m_time)/3600) as execution_time'))
+                ->where($product_category_type,$product_category_code)->where ('stage_code', $stageCode)->get();
+                  
+                $bestRoom = null;
+                $bestStart = null;
+                $bestEnd   = null;
+
+                foreach ($rooms as $room) {
+                        $totalHours = $room->p_time_hours + ($campaignTasks->count() * $room->m_time_hours)
+                                + ($campaignTasks->count()-1) * ($room->C1_time_hours)
+                                + $room->C2_time_hours;
+                        
+                                
+                        $candidateStart = $this->findEarliestSlot(
+                                $room->room_id,
+                                $earliestStart->copy(),
+                                $totalHours,
+                                0
+                        );
+                        
+                        $candidateEnd = $candidateStart->copy()->addHours($totalHours);
+                        
+                        if ($bestStart === null || $candidateStart->lt($bestStart)) {
+                        $bestRoom = $room->room_id;
+                        $bestStart = $candidateStart;
+                        $bestEnd   = $candidateEnd;
+                        $bestQuota = $room;
+                        }
+
+                        
+                }
+
+                // Lưu từng batch
+                $currentStart = $bestStart;
+                foreach ($campaignTasks as $index => $task) {
+                        $taskEnd = $currentStart->copy()->addHours((float) $bestQuota->execution_time);
+                        $endCleaning = ($index == $campaignTasks->count()-1)
+                        ? $taskEnd->copy()->addHours((float)$bestQuota->C2_time_hours) // cuối cùng VS-II
+                        : $taskEnd->copy()->addHours((float)$bestQuota->C1_time_hours); // giữa chừng VS-I
+
+                        $this->saveSchedule(
+                        $task->name."-".$task->batch,
+                        $task->id,
+                        $bestRoom,
+                        $currentStart,
+                        $taskEnd,
+                        $endCleaning,
+                        $campaignCode
+                        );
+
+                        $currentStart = $endCleaning->copy();
+                }
         }
+
         
 
 }
@@ -772,4 +898,27 @@ class SchedualController extends Controller
                 return ((int)$hours) * 60 + (int)$minutes;
         }
 
+        if (!function_exists('resolveCampaignDependency')) {
+        /**
+         * Parse campaign_code có dạng <baseCampaign>-<fromStage>-<nthLot>
+         *
+         * @param string $campaignCode
+         * @return array|null
+         */
+        function resolveCampaignDependency(string $campaignCode): ?array
+        {
+                $parts = explode('-', $campaignCode);
+
+                // Nếu không đủ 3 phần thì coi như campaign độc lập
+                if (count($parts) < 3) {
+                return null;
+                }
+
+                return [
+                'baseCampaign' => $parts[0],
+                'fromStage'    => (int) $parts[1],
+                'nthLot'       => (int) $parts[2],
+                ];
+        }
+        }
         
