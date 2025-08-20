@@ -576,16 +576,70 @@ import 'primeicons/primeicons.css';
         );
   };
 
+  // const handleAutoSchedualer = () => {
+  //   Swal.fire({
+  //     title: 'Bạn có chắc muốn chạy Auto Scheduler?',
+  //     //text: "Hành động này sẽ tự động sắp xếp tất cả lịch.",
+  //     icon: 'warning',
+  //     showCancelButton: true,
+  //     confirmButtonText: 'Chạy',
+  //     cancelButtonText: 'Hủy',
+  //     confirmButtonColor: '#3085d6',
+  //     cancelButtonColor: '#d33'
+  //   }).then((result) => {
+  //     if (result.isConfirmed) {
+  //       // Hiển thị loading
+  //       Swal.fire({
+  //         title: 'Đang chạy Auto Scheduler...',
+  //         text: 'Vui lòng chờ trong giây lát',
+  //         allowOutsideClick: false,
+  //         didOpen: () => {
+  //           Swal.showLoading();
+  //         },
+  //       });
+
+  //       // Gọi API
+  //       router.put('/Schedual/scheduleAll', {}, {
+  //         preserveScroll: true,
+  //         onSuccess: () => {
+  //           Swal.fire({
+  //             icon: 'success',
+  //             title:'Hoàn Thành Sắp Lịch',
+  //             timer: 1000,
+  //             showConfirmButton: false,
+  //           });
+  //         },
+  //         onError: (errors) => {
+  //           Swal.fire({
+  //             icon: 'error',
+  //             title:'Lỗi',
+  //             timer: 1000,
+  //             showConfirmButton: false,
+  //           });
+  //         },
+  //       });
+  //     }
+  //   });
+  // };
+
   const handleAutoSchedualer = () => {
     Swal.fire({
-      title: 'Bạn có chắc muốn chạy Auto Scheduler?',
-      //text: "Hành động này sẽ tự động sắp xếp tất cả lịch.",
-      icon: 'warning',
+      title: 'Chọn ngày chạy Auto Scheduler',
+      html: `
+        <input id="schedule-date" type="date" class="swal2-input" value="${new Date().toISOString().split('T')[0]}">
+      `,
       showCancelButton: true,
       confirmButtonText: 'Chạy',
       cancelButtonText: 'Hủy',
       confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33'
+      cancelButtonColor: '#d33',
+      preConfirm: () => {
+        const date = document.getElementById('schedule-date').value;
+        if (!date) {
+          Swal.showValidationMessage('Vui lòng chọn ngày!');
+        }
+        return date;
+      }
     }).then((result) => {
       if (result.isConfirmed) {
         // Hiển thị loading
@@ -598,21 +652,21 @@ import 'primeicons/primeicons.css';
           },
         });
 
-        // Gọi API
-        router.put('/Schedual/scheduleAll', {}, {
+        // Gọi API với ngày
+        router.put('/Schedual/scheduleAll', { date: result.value }, {
           preserveScroll: true,
           onSuccess: () => {
             Swal.fire({
               icon: 'success',
-              title:'Hoàn Thành Sắp Lịch',
+              title: 'Hoàn Thành Sắp Lịch',
               timer: 1000,
               showConfirmButton: false,
             });
           },
-          onError: (errors) => {
+          onError: () => {
             Swal.fire({
               icon: 'error',
-              title:'Lỗi',
+              title: 'Lỗi',
               timer: 1000,
               showConfirmButton: false,
             });
@@ -621,6 +675,7 @@ import 'primeicons/primeicons.css';
       }
     });
   };
+
 
   const handleDeleteAllScheduale = () => {
     Swal.fire({
