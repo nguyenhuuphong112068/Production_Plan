@@ -83,18 +83,18 @@ class UploadDataController extends Controller
                     ]);
                 }elseif ($request->table === 'finished_product_category') {
                         $check = DB::table('finished_product_category')->insert([
-                        'id'=> $row[11],
-                        'process_code'=> $row[0],
-                        'intermediate_code'=> $row[1],
-                        'finished_product_code'=> $row[2],
-                        'name'=> $row[3],
-                        'market'=> $row[4],
-                        'specification'=> $row[5],
-                        'batch_qty'=> $row[6],
-                        'unit_batch_qty'=> $row[7],
-                        'primary_parkaging'=> $row[8],
-                        'secondary_parkaging'=> $row[9],
-                        'deparment_code'=> $row[10],  
+                        'id'=> $row[0],
+                        'process_code'=> $row[1],
+                        'intermediate_code'=> $row[2],
+                        'finished_product_code'=> $row[3],
+                        'name'=> $row[4],
+                        'market'=> $row[5],
+                        'specification'=> $row[6],
+                        'batch_qty'=> $row[7],
+                        'unit_batch_qty'=> $row[8],
+                        'primary_parkaging'=> $row[9],
+                        'secondary_parkaging'=> $row[10],
+                        'deparment_code'=> $row[11],  
                         'prepared_by' => "Nguyễn Hữu Phong",
                 ]);
                 }elseif ($request->table === 'plan_master'){

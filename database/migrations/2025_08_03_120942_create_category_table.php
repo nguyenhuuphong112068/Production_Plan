@@ -43,9 +43,9 @@ return new class extends Migration
         });
 
         Schema::create('finished_product_category', function (Blueprint $table) {
-            $table->id();
-
-            $table->string('finished_product_code',20)->unique();
+            $table->id();	
+            $table->string('process_code',40)->unique();
+            $table->string('finished_product_code',20);
             $table->string('intermediate_code',20);
             $table->string('name',255);
 

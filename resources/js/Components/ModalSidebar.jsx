@@ -15,17 +15,15 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   const [stageFilter, setStageFilter] = useState(1);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState(""); 
-  const sizes = ["20%", "30%", "100%"];
-  const [currentIndex, setCurrentIndex] = useState(1);
+  const sizes = ["20%", "30%", "100%", "close"];
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [tableData, setTableData] = useState(events); 
 
-
-
-    useEffect(() => {
+  useEffect(() => {
       setTableData(events); 
-    }, [events]);
+  }, [events]);
 
-    useEffect(() => {
+  useEffect(() => {
       if (percentShow === "100%") {
 
         setVisibleColumns(allColumns);
@@ -35,13 +33,20 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       } else {
         setVisibleColumns(allColumns.filter(col => ["name", "batch"].includes(col.field)));
       }
-    }, [percentShow]);
+  }, [percentShow]);
 
   const handleToggle = () => {
+    
     const nextIndex = (currentIndex + 1) % sizes.length;
-    setCurrentIndex(nextIndex);
-    setPercentShow(sizes[nextIndex]);
-    setSelectedRows([]);
+    console.log (nextIndex); 
+    if (sizes[nextIndex] == "close"){
+      setCurrentIndex(0)
+      onClose (false)
+    }else {    
+      setCurrentIndex(nextIndex);
+      setPercentShow(sizes[nextIndex]);
+      setSelectedRows([]);}
+
   };
 
   const statusOrderBodyTemplate = (rowData) => {
@@ -82,20 +87,47 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     </div>
   );
 
-  const allColumns = [
-    { field: "intermediate_code", header: "Mã Sản Phẩm",  sortable: true },
-    { field: "name", header: "Sản Phẩm", sortable: true },
-    { field: "batch", header: "Số Lô",  sortable: true },
-    { field: "expected_date", header: "Ngày DK KCS" },
-    { field: "market", header: "Thị Trường",  sortable: true },
-    { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate },
-    { field: "is_val", header: "Lô Thẩm Định",  body: ValidationBodyTemplate },
-    { field: "weight_dates", header: "Cân NL",  sortable: true, body: weightPBodyTemplate },
-    { field: "pakaging_dates", header: "Đóng gói",  sortable: true, body: packagingBodyTemplate },
-    { field: "source_material_name", header: "Nguồn nguyên liệu",  sortable: true, style: { width: '30rem', maxWidth: '30rem',   whiteSpace: 'normal', wordBreak: 'break-word' }},
-    { field: "note", header: "Ghi chú", sortable: true },
-  ];
+  const productCodeBody = (rowData) => {
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span>{rowData.intermediate_code || ''}</span>
+        <span>{rowData.finished_product_code || ''}</span>
+      </div>
+    );
+  };
 
+  const stringToColor = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      let color = "#";
+      for (let i = 0; i < 3; i++) {
+        const value = (hash >> (i * 8)) & 0xff;
+        color += ("00" + value.toString(16)).slice(-2);
+      }
+      return color;
+    };
+
+  const campaignCodeBody = (rowData) => {
+    const color = stringToColor(rowData.campaign_code || "");
+    return (
+      <div
+        style={{
+          backgroundColor: color + "33", // màu nhạt (33 = alpha ~20%)
+          color: "#000",
+          padding: "2px 6px",
+          borderRadius: "6px",
+          textAlign: "center",
+          fontWeight: 600,
+          border: `1px solid ${color}`
+        }}
+      >
+        {rowData.campaign_code}
+      </div>
+    );
+  };
+  
   const stageNames = {
     1: 'Cân', 2: 'NL Khác', 3: 'Pha Chế', 4: 'Trộn Hoàn Tất',
     5: 'Định Hình', 6: 'Bao Phim', 7: 'Đóng Đói',
@@ -136,7 +168,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     }));
     e.dataTransfer.setData("application/json", JSON.stringify(data));
   };
-
   const handleRowReorder = (e) => {
     const { value: newData, dropIndex, dragIndex } = e;
 
@@ -209,8 +240,52 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     });
 
   };
+  const handleCreateManualCampain = (e) => {
+      const filteredRows = selectedRows.map(row => ({
+        id: row.id,
+        plan_master_id: row.plan_master_id,
+        product_caterogy_id: row.product_caterogy_id,
+        predecessor_code: row.predecessor_code,
+        campaign_code: row.campaign_code,
+        code: row.code,
+      }));
+
+      router.put('/Schedual/createManualCampain', { data: filteredRows }, {
+        onSuccess: () =>  console.log('Đã cập nhật thứ tự'),
+        onError: (errors) => console.error('Lỗi cập nhật', errors),
+      });
+
+      setSelectedRows ([]);
+      return;
+  }
+
+  const handleCreateAutoCampain = (e) => {
 
 
+      router.put('/Schedual/createAutoCampain', {
+        onSuccess: () =>  console.log('Đã cập nhật thứ tự'),
+        onError: (errors) => console.error('Lỗi cập nhật', errors),
+      });
+
+      setSelectedRows ([]);
+      return;
+  }
+
+
+  const allColumns = [
+    { field: "intermediate_code", header: "Mã Sản Phẩm",  sortable: true , body: productCodeBody},
+    { field: "name", header: "Sản Phẩm", sortable: true },
+    { field: "batch", header: "Số Lô",  sortable: true },
+    { field: "expected_date", header: "Ngày DK KCS" },
+    { field: "market", header: "Thị Trường",  sortable: true , style: { width: '8rem', maxWidth: '8rem',   whiteSpace: 'normal', wordBreak: 'break-word' } },
+    { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate },
+    { field: "is_val", header: "Thẩm Định",  body: ValidationBodyTemplate , style: { width: '5rem', maxWidth: '5rem',   whiteSpace: 'normal', wordBreak: 'break-word' }},
+    { field: "weight_dates", header: "Cân NL",  sortable: true, body: weightPBodyTemplate },
+    { field: "pakaging_dates", header: "Đóng gói",  sortable: true, body: packagingBodyTemplate },
+    { field: "source_material_name", header: "Nguồn nguyên liệu",  sortable: true, style: { width: '25rem', maxWidth: '25rem',   whiteSpace: 'normal', wordBreak: 'break-word' }},
+    { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true , body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem',   whiteSpace: 'normal', wordBreak: 'break-word' }},
+    { field: "note", header: "Ghi chú", sortable: true },
+  ];
 
   return (
     <div
@@ -221,31 +296,55 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       {/* Thanh điều khiển */}
       <div className="p-4 border-b">
         <Row className="align-items-center">
-          <Col md={3} className='d-flex justify-content-start'>
+
+          <Col md={1} className='d-flex justify-content-start'>
             <div
               className="fc-event cursor-move px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center"
               data-rows={JSON.stringify(selectedRows)}
               draggable="true"
-              onDragStart={handleDragStart}
-            >
+              onDragStart={handleDragStart}  title="Tạo Lịch Với Các Sản Phẩm Đã Chọn">
+               
               <i className="fas fa-arrows-alt"></i> ({selectedRows.length})
             </div>
+          </Col>
+          
+          <Col md={1} className='d-flex justify-content-start'>
+            {percentShow === "100%" ? (
+            <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer " title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
+              onClick={handleCreateManualCampain}>
+              <i className="fas fa-flag"></i> ({selectedRows.length})
+            </div>):<></>}
+          </Col>
+
+          <Col md={1} className='d-flex justify-content-start'>
+           {percentShow === "100%" ? (
+            <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer" title="Tạo Mã Chiến Dịch tự Động"
+            onClick={handleCreateAutoCampain}>
+              <i className="fas fa-flag-checkered"></i>
+            </div>):<></>}
           </Col>
 
           <Col md={6}>
             <div className="p-inputgroup flex-1">
-              <Button icon="pi pi-angle-double-left" className="p-button-success" onClick={handlePrevStage} disabled={stageFilter === 1} />
-              <InputText value={stageNames[stageFilter]} className="text-center" style={{ fontSize: '25px' }} readOnly />
-              <Button icon="pi pi-angle-double-right" className="p-button-success" onClick={handleNextStage} disabled={stageFilter === 7} />
+              <Button icon="pi pi-angle-double-left" className="p-button-success" onClick={handlePrevStage} disabled={stageFilter === 1} title="Chuyển Công Đoạn"/>
+              {percentShow === "100%" ? (
+              <InputText value={"Công Đoạn " + stageNames[stageFilter] + " - Còn " + 
+                tableData.filter(event => Number(event.stage_code) === stageFilter)
+                .filter(ev => ev.name.toLowerCase().includes(searchTerm.toLowerCase())).length + " Sản Phẩm Chờ Sắp Lịch"} className="text-center" style={{ fontSize: '25px' }} readOnly />
+              ):
+              <InputText value={ stageNames[stageFilter]} className="text-center" style={{ fontSize: '15px' }} readOnly />
+              }
+              <Button icon="pi pi-angle-double-right" className="p-button-success" onClick={handleNextStage} disabled={stageFilter === 7}  title="Chuyển Công Đoạn" />
             </div>
           </Col>
-          <Col md={2}>
-            <InputText
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm kiếm..."
-              style={{ width: "100%" }}
-            />
+          <Col md={2} >
+            {percentShow === "100%" ? (
+              <InputText className='border'
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm kiếm..."
+                style={{ width: "100%" }}
+              />):""}
           </Col>
 
           <Col md={1} className='d-flex justify-content-end'>
@@ -253,6 +352,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
               onClick={handleToggle}
               className="fc-event cursor-move px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center"
               style={{ fontSize: "1.5rem" }}
+              title="Điều Chỉnh Độ Rộng Side Bar"
             >
               <i className="pi pi-arrows-h"></i>
             </button>
@@ -279,6 +379,13 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
           reorderableColumns reorderableRows onRowReorder={handleRowReorder}
           
         >
+           {percentShow === "100%" ? (
+            <Column
+            header="STT"
+            body={(rowData, options) => options.rowIndex + 1}
+            style={{ width: "60px", textAlign: "center" }}
+          />):""}
+          
           {/* Cột Kéo thả */}
 
           <Column selectionMode="multiple" headerStyle={{ width: '3em' }} />

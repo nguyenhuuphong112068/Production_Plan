@@ -20,9 +20,14 @@ Route::prefix('/Schedual')
         Route::put('multiStore','multiStore')->name('multiStore');
         Route::put('update', 'update')->name('update');
         Route::put('addEventContent/{id}', 'addEventContent')->name('addEventContent');
+        Route::put('update', 'update')->name('update');
 
         // Sắp Thứ Tự Trong Bảng KH CD
         Route::put('updateOrder', 'updateOrder')->name('updateOrder');
+
+        // Tạo Mã Chiến Dịch
+        Route::put('createManualCampain', 'createManualCampain')->name('createManualCampain');
+        Route::put('createAutoCampain', 'createAutoCampain')->name('createAutoCampain');
 
         // Sắp Lịch Tư Động //
         Route::put('scheduleAll', 'scheduleAll')->name('scheduleAll');

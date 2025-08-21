@@ -27,7 +27,7 @@ return new class extends Migration
             $table->boolean ('finished')->default(0);
             $table->boolean ('active')->default(true);
             $table->timestamps(); // created_at & updated_at
-            
+            $table->string('prepare_by',100); 
            
         });
     }
