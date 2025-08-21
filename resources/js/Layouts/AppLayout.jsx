@@ -26,7 +26,7 @@ export default function AppLayout({ children, user, title }) {
 
         {/* Cột 2: Tiêu đề */}
           <div className="w-1/3 text-center">
-            <h4 className="text-xl font-semibold text-yellow-600">{title}</h4>
+            <h4 className="text-xl font-semibold text-yellow-600" style={{color: "#CDC717"}}>{title}</h4>
             </div>
             {/* Cột 3: User Info */}
             <div className="w-1/3 mr-[50px] flex justify-end text-right">

@@ -264,11 +264,11 @@ import 'primeicons/primeicons.css';
   };
 
 
-  const handleShowList = () => setShowSidebar(!showSidebar);
+  const handleShowList = () => setShowSidebar(true);
 
   const handleViewChange = (view) => {
 
-    setViewConfig({is_clearning:false })
+    setViewConfig({is_clearning:false, timeView: view })
     calendarRef.current?.getApi()?.changeView(view);
 
   };
@@ -576,69 +576,68 @@ import 'primeicons/primeicons.css';
         );
   };
 
-  // const handleAutoSchedualer = () => {
-  //   Swal.fire({
-  //     title: 'Bạn có chắc muốn chạy Auto Scheduler?',
-  //     //text: "Hành động này sẽ tự động sắp xếp tất cả lịch.",
-  //     icon: 'warning',
-  //     showCancelButton: true,
-  //     confirmButtonText: 'Chạy',
-  //     cancelButtonText: 'Hủy',
-  //     confirmButtonColor: '#3085d6',
-  //     cancelButtonColor: '#d33'
-  //   }).then((result) => {
-  //     if (result.isConfirmed) {
-  //       // Hiển thị loading
-  //       Swal.fire({
-  //         title: 'Đang chạy Auto Scheduler...',
-  //         text: 'Vui lòng chờ trong giây lát',
-  //         allowOutsideClick: false,
-  //         didOpen: () => {
-  //           Swal.showLoading();
-  //         },
-  //       });
-
-  //       // Gọi API
-  //       router.put('/Schedual/scheduleAll', {}, {
-  //         preserveScroll: true,
-  //         onSuccess: () => {
-  //           Swal.fire({
-  //             icon: 'success',
-  //             title:'Hoàn Thành Sắp Lịch',
-  //             timer: 1000,
-  //             showConfirmButton: false,
-  //           });
-  //         },
-  //         onError: (errors) => {
-  //           Swal.fire({
-  //             icon: 'error',
-  //             title:'Lỗi',
-  //             timer: 1000,
-  //             showConfirmButton: false,
-  //           });
-  //         },
-  //       });
-  //     }
-  //   });
-  // };
-
   const handleAutoSchedualer = () => {
     Swal.fire({
-      title: 'Chọn ngày chạy Auto Scheduler',
+      title: 'Cấu Hình Chung Sắp Lịch',
       html: `
-        <input id="schedule-date" type="date" class="swal2-input" value="${new Date().toISOString().split('T')[0]}">
+        <div class="cfg-wrapper">
+          <div class="cfg-card">
+            <!-- Hàng Ngày chạy -->
+            <div class="cfg-row">
+              <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
+              <input id="schedule-date" type="date" 
+                    class="swal2-input cfg-input cfg-input--half"  name = "start_date"
+                    value="${new Date().toISOString().split('T')[0]}">
+            </div>
+
+            <!-- Hàng 2 cột -->
+            <label class="cfg-label" >Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
+            <div class="cfg-row cfg-grid-2">
+              <div class="cfg-col">
+                <label class="cfg-label" for="wt_bleding">Trộn Hoàn Tất Lô Thẩm Định</label>
+                <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_bleding">
+                <label class="cfg-label" for="wt_forming">Định Hình Lô Thẩm Định</label>
+                <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_forming">
+                <label class="cfg-label" for="wt_coating">Bao Phim Lô Thẩm Định</label>
+                <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_coating">
+                <label class="cfg-label" for="wt_blitering">Đóng Gói Lô Thẩm Định</label>
+                <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "10" name = "wt_blitering">
+              </div>
+              <div class="cfg-col">
+                <label class="cfg-label" for="wt_bleding_val">Trộn Hoàn Tất Lô Thương Mại</label>
+                <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_bleding_val">
+                <label class="cfg-label" for="wt_forming_val">Định Hình Lô Thương Mại</label>
+                <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_forming_val">
+                <label class="cfg-label" for="wt_coating_val">Bao Phim Lô Thương Mại</label>
+                <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_coating_val">
+                <label class="cfg-label" for="wt_blitering_val">Đóng Gói Lô Thương Mại</label>
+                <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "wt_blitering_val">
+              </div>
+            </div>
+          </div>
+        </div>
       `,
+      width: 700,
+      customClass: { htmlContainer: 'cfg-html-left' , title: 'my-swal-title'},
       showCancelButton: true,
       confirmButtonText: 'Chạy',
       cancelButtonText: 'Hủy',
       confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
+      cancelButtonColor: '#d33'
+      ,
       preConfirm: () => {
-        const date = document.getElementById('schedule-date').value;
-        if (!date) {
+        const formValues = {};
+        // Lấy tất cả input trong Swal
+        document.querySelectorAll('.swal2-input').forEach(input => {
+          formValues[input.name] = input.value;
+        });
+
+        if (!formValues.start_date) {
           Swal.showValidationMessage('Vui lòng chọn ngày!');
+          return false;
         }
-        return date;
+
+        return formValues;
       }
     }).then((result) => {
       if (result.isConfirmed) {
@@ -653,7 +652,7 @@ import 'primeicons/primeicons.css';
         });
 
         // Gọi API với ngày
-        router.put('/Schedual/scheduleAll', { date: result.value }, {
+        router.put('/Schedual/scheduleAll', result.value , {
           preserveScroll: true,
           onSuccess: () => {
             Swal.fire({
@@ -872,8 +871,9 @@ import 'primeicons/primeicons.css';
         <div className="relative group custom-event-content" data-event-id={arg.event.id} >
             
             <div style={{ fontSize: `${eventFontSize}px` }}>
-              <b>{arg.event.title}</b><br/>
-              <span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>
+              {viewConfig.timeView != 'resourceTimelineMonth' ? (<b style={{color: 'white'}}>{arg.event.title}</b>):(<b style={{color: 'red'}}>{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)}
+              <br/>
+              {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""}
             </div>
 
             {/* Nút xóa */}
@@ -982,10 +982,11 @@ import 'primeicons/primeicons.css';
       
       <ModalSidebar
         visible={showSidebar}
-        onClose={() => setShowSidebar(false)}
+        onClose={setShowSidebar}
         events={plan}
         percentShow = {percentShow}
         setPercentShow={setPercentShow}
+
       />
 
       {/* Vùng hover */}

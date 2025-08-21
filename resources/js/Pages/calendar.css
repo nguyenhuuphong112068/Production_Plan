@@ -114,3 +114,124 @@
 
 
 
+/* ////////////////// css swal cấu hình sắp lịch ///////////////////////*/
+.swal-wide {
+  width: 1000px !important;   /* mặc định ~32em (~512px) */
+  /* max-width: 90% !important; cho responsive */
+}
+
+.my-swal-title {
+  color:  #CDC717 !important; /* xanh dương */
+  font-weight: bold;
+}
+
+.swal-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.swal-form {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fff;
+  width: 80%;       /* khung form chiếm 80% hộp Swal */
+  max-width: 600px; /* không quá to */
+  box-sizing: border-box;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.center-row {
+  align-items: center;
+}
+
+.center-row input {
+  margin-top: 5px;
+}
+
+.half-width {
+  width: 50% !important;  /* input ngày chiếm 50% */
+  margin: 0 auto;         /* căn giữa */
+}
+
+.two-cols {
+  display: flex;
+  gap: 15px;
+}
+
+.two-cols > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.swal2-input {
+  width: 100% !important; /* override mặc định swal2-input */
+  box-sizing: border-box;
+}
+
+
+/* Hủy căn giữa mặc định của SweetAlert2 */
+.cfg-html-left { text-align: left; }
+
+/* Khung bao + thẻ card có border */
+.cfg-wrapper {
+  display: flex;
+  justify-content: center;
+}
+.cfg-card {
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  background: #fff;
+  padding: 20px;
+  width: 90%;
+  max-width: 580px;
+  box-sizing: border-box;
+}
+
+/* Hàng/nhãn/ô nhập */
+.cfg-row { margin-bottom: 14px; }
+.cfg-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* Gỡ margin auto của .swal2-input để không bị lệch */
+.cfg-input {
+  width: 100% !important;
+  box-sizing: border-box;
+  margin: 0 !important;
+}
+
+/* Input ngày: 50% bề ngang, căn giữa */
+.cfg-input--half {
+  width: 50% !important;
+  min-width: 260px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Lưới 2 cột cân nhau */
+.cfg-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px; /* khoảng cách giữa 2 cột */
+  align-items: center;/* chống tràn ngang trên màn nhỏ */
+}
+.cfg-col {
+  flex: 1 1 260px;           /* mỗi cột ~50%, tối thiểu 260px */
+  min-width: 0;
+}
+.cfg-input--full { width: 100% !important; }
+
+/* Ngăn cuộn ngang nếu nội dung rộng */
+.swal2-popup { overflow-x: hidden; }
+
+/* ////////////////// css swal cấu hình sắp lịch ///////////////////////*/
