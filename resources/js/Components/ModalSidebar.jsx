@@ -120,7 +120,8 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
           borderRadius: "6px",
           textAlign: "center",
           fontWeight: 600,
-          border: `1px solid ${color}`
+          border: `1px solid ${color}`,
+          display: `${rowData.campaign_code?'block':'none'}`
         }}
       >
         {rowData.campaign_code}
@@ -259,18 +260,32 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       return;
   }
 
-  const handleCreateAutoCampain = (e) => {
-
-
+  const handleCreateAutoCampain = () => {
       router.put('/Schedual/createAutoCampain', {
-        onSuccess: () =>  console.log('Đã cập nhật thứ tự'),
-        onError: (errors) => console.error('Lỗi cập nhật', errors),
-      });
+        onSuccess: () => {
+            Swal.fire({
+              title: 'Thành công!',
+              text: 'Đã cập nhật thứ tự.',
+              icon: 'success',
+              confirmButtonText: 'OK'
+            }).then(() => {
+              setSelectedRows([]);
+            });
+          },
+          onError: (errors) => {
+            Swal.fire({
+              title: 'Lỗi!',
+              text: 'Có lỗi khi cập nhật: ' + (errors?.message || ''),
+              icon: 'error',
+              confirmButtonText: 'Đóng'
+            });
+            console.error('Lỗi cập nhật', errors);
+          },
+        });
 
-      setSelectedRows ([]);
-      return;
   }
 
+  
 
   const allColumns = [
     { field: "intermediate_code", header: "Mã Sản Phẩm",  sortable: true , body: productCodeBody},
@@ -348,6 +363,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
           </Col>
 
           <Col md={1} className='d-flex justify-content-end'>
+            {percentShow != "close" ? (
             <button
               onClick={handleToggle}
               className="fc-event cursor-move px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center"
@@ -355,8 +371,9 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
               title="Điều Chỉnh Độ Rộng Side Bar"
             >
               <i className="pi pi-arrows-h"></i>
-            </button>
+            </button>):""}
           </Col>
+
         </Row>
 
       </div>
@@ -366,7 +383,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
         <DataTable
           key={percentShow}
           value={tableData.filter(event => Number(event.stage_code) === stageFilter).filter(ev => ev.name.toLowerCase().includes(searchTerm.toLowerCase()))}
-          //value={filteredEvents}
           selection={selectedRows}
           onSelectionChange={handleSelectionChange}
           selectionMode="multiple"

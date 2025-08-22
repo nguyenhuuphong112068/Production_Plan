@@ -235,3 +235,27 @@
 .swal2-popup { overflow-x: hidden; }
 
 /* ////////////////// css swal cấu hình sắp lịch ///////////////////////*/
+
+
+
+
+
+/* //////////// process_bar reosourcec //////////// /*/
+.resource-bar {
+  display: flex;
+  width: 200px; /* chiều dài tượng trưng */
+  height: 50px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.resource-bar .busy {
+  background-color: #ff6666; /* màu bận */
+  height: 100%;
+}
+
+.resource-bar .free {
+  background-color: #dfffd6; /* màu trống */
+  height: 100%;
+}

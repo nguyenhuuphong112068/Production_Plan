@@ -47,6 +47,8 @@ import 'primeicons/primeicons.css';
     const [slotIndex, setSlotIndex] = useState(0);
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
 
+
+ 
     useEffect(() => {
     new Draggable(document.getElementById('external-events'), {
       itemSelector: '.fc-event',
@@ -258,39 +260,59 @@ import 'primeicons/primeicons.css';
     if (!el) return;
     el.scrollIntoView({
       behavior: "smooth",
-      block: "nearest",
+      block: "center",
       inline: "center",
     });
   };
 
-
   const handleShowList = () => setShowSidebar(true);
 
   const handleViewChange = (view) => {
+    Swal.fire({
+      title: "Đang tải...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
 
-    setViewConfig({is_clearning:false, timeView: view })
+    // Đổi view
+    setViewConfig({ is_clearning: false, timeView: view });
     calendarRef.current?.getApi()?.changeView(view);
 
+    // Chờ FullCalendar render xong rồi tắt loading
+    setTimeout(() => {
+      Swal.close();
+    }, 500); // bạn chỉnh thời gian tuỳ theo tốc độ render
   };
 
-  const applyHighlights = () => {
-      const api = calendarRef.current.getApi();
-      api.batchRendering(() => {
-        api.getEvents().forEach(ev => {
-          const pm = ev.extendedProps.plan_master_id;
-          const on = highlightedPMIdsRef.current.has(pm);
-          ev.setExtendedProp('isHighlighted', on);
-        });
-      });
-  };
+  const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
 
-  const handleEventHightLine = (event, isCtrlPressed = false) => {
-      const pm = event.extendedProps.plan_master_id;
+    const pm = event.extendedProps.plan_master_id;
 
-      if (!isCtrlPressed) highlightedPMIdsRef.current.clear();
-      highlightedPMIdsRef.current.add(pm);
+    if (!isCtrlPressed) {
+      searchResultsRef.current = [];
+      currentIndexRef.current = -1;
+    }
 
-      applyHighlights();
+    // Lấy tất cả event có cùng plan_master_id
+    const matches = calendarApi.getEvents().filter(
+      ev => ev.extendedProps.plan_master_id === pm
+    );
+
+    // Gộp vào danh sách (tránh trùng nếu đã có)
+    matches.forEach(m => {
+      if (!searchResultsRef.current.some(ev => ev.id === m.id)) {
+        searchResultsRef.current.push(m);
+      }
+    });
+
+    // Đặt index ở phần tử đầu tiên
+    currentIndexRef.current = searchResultsRef.current.length > 0 ? 0 : -1;
+
+    highlightAllEvents();
   };
 
   const handleEventUnHightLine = async (info) => {
@@ -372,18 +394,30 @@ import 'primeicons/primeicons.css';
     const calendarApi = calendarRef.current?.getApi();
     if (!calendarApi) return;
 
-    const view = calendarApi.view?.type;
-
-    calendarApi.getEvents().forEach(event => {
-      if (event.extendedProps.is_clearning) {
-        const els = document.querySelectorAll(`[data-event-id="${event.id}"]`);
-        els.forEach(el => {
-          el.style.display = cleaningHidden ? '' : 'none';
-        });
-      }
+    Swal.fire({
+      title: cleaningHidden ? "Hiển thị sự kiện vệ sinh..." : "Ẩn sự kiện vệ sinh...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
     });
 
-  setCleaningHidden(!cleaningHidden);
+    setTimeout(() => {
+      const view = calendarApi.view?.type;
+
+      calendarApi.getEvents().forEach(event => {
+        if (event.extendedProps.is_clearning) {
+          const els = document.querySelectorAll(`[data-event-id="${event.id}"]`);
+          els.forEach(el => {
+            el.style.display = cleaningHidden ? "" : "none";
+          });
+        }
+      });
+
+      setCleaningHidden(!cleaningHidden);
+
+      Swal.close();
+    }, 300); // delay 300ms để thấy loading
   };
 
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
@@ -675,7 +709,6 @@ import 'primeicons/primeicons.css';
     });
   };
 
-
   const handleDeleteAllScheduale = () => {
     Swal.fire({
       title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
@@ -728,11 +761,11 @@ import 'primeicons/primeicons.css';
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineWeek"
         firstDay={1}
-        
+        events={events}
         eventResourceEditable ={true}
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
-        events={events}
+
         locale="vi"
         height="auto"
         resourceAreaWidth="8%"
@@ -751,6 +784,51 @@ import 'primeicons/primeicons.css';
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
         dateClick ={handleEventUnHightLine}
+      
+        resourceLabelContent={(arg) => {
+          const res = arg.resource.extendedProps;
+          const busy = parseFloat(res.busy_hours) || 0;
+          const free = parseFloat(res.free_hours) || 0;
+          const total = parseFloat(res.total_hours) || 1;
+          const efficiency = ((busy / total) * 100).toFixed(1); 
+          
+          return (
+            <div>
+              <div
+                className="resource-bar"
+                style={{
+                  height: "20px",
+                  background: "#eeeeeeff",
+                  borderRadius: "20px",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center" // căn giữa dọc text
+                }}
+              >
+                <div
+                  className="busy"
+                  style={{
+                    width: `${(busy / total) * 100}%`,
+                    background: "red",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",    // căn giữa dọc
+                    justifyContent: "center" // căn giữa ngang
+                  }}
+                    >
+
+                </div>
+                  <b style={{ fontSize: "80%", color: "#000000ff" }}>
+                    {efficiency}%
+                  </b>
+              </div>
+              <div style={{ fontWeight: "bold", marginTop: "2px" }}>
+                {arg.resource.title}
+              </div>
+            </div>
+          );
+        }}
+
         
         views={{
 
@@ -776,7 +854,7 @@ import 'primeicons/primeicons.css';
             titleFormat: { year: 'numeric', month: 'short' },
           },
           resourceTimelineYear: {
-            slotDuration: { weeks: 1 },
+            slotDuration: { days: 1 },
             slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Năm',
@@ -843,25 +921,19 @@ import 'primeicons/primeicons.css';
         eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
 
         eventDidMount={(info) => {
-
-          
           // gắn data-event-id để tìm kiếm
-          info.el.setAttribute("data-event-id", info.event.id);
+            info.el.setAttribute("data-event-id", info.event.id);
 
-          // cho select evetn => pendingChanges
-          const isPending = pendingChanges.some(e => e.id === info.event.id);
-          if (isPending) {
-            info.el.style.border = '2px dashed orange';
-          }
+            // cho select evetn => pendingChanges
+            const isPending = pendingChanges.some(e => e.id === info.event.id);
+            if (isPending) {
+              info.el.style.border = '2px dashed orange';
+            }
 
-
-          // lắng nghe double click
-          info.el.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            handleEventHightLine(info.event, e.ctrlKey || e.metaKey);
-          });
-
-
+            info.el.addEventListener("dblclick", (e) => {
+                e.stopPropagation();
+                handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
+              });
 
         }}
 
@@ -871,9 +943,10 @@ import 'primeicons/primeicons.css';
         <div className="relative group custom-event-content" data-event-id={arg.event.id} >
             
             <div style={{ fontSize: `${eventFontSize}px` }}>
-              {viewConfig.timeView != 'resourceTimelineMonth' ? (<b style={{color: 'white'}}>{arg.event.title}</b>):(<b style={{color: 'red'}}>{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)}
+              {viewConfig.timeView != 'resourceTimelineMonth' ? (<b >{arg.event.title}</b>):(<b >{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)}
               <br/>
-              {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""}
+              {/* {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""} */}
+              <span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>
             </div>
 
             {/* Nút xóa */}
