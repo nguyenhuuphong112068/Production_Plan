@@ -96,6 +96,7 @@ return new class extends Migration {
             $table->string('schedualed_by',512)->nullable();
             $table->dateTime('schedualed_at')->nullable();
             $table->string('note',255)->nullable();   
+            $table->float('yields')->nullable()->unsigned(); 
         });
 
     }

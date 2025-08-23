@@ -11,7 +11,9 @@ Route::prefix('/Schedual')
 ->middleware(CheckLogin::class)
 ->group(function(){
 
-        Route::get('view','view');
+        //Route::get('view','view');
+        Route::match(['get', 'put'], 'view', 'view');
+
         Route::get('','index')->name('list');
         Route::put('finished','finished')->name('finished'); 
         Route::put('deActive','deActive')->name('deActive');
@@ -24,6 +26,8 @@ Route::prefix('/Schedual')
 
         // Sắp Thứ Tự Trong Bảng KH CD
         Route::put('updateOrder', 'updateOrder')->name('updateOrder');
+
+            
 
         // Tạo Mã Chiến Dịch
         Route::put('createManualCampain', 'createManualCampain')->name('createManualCampain');

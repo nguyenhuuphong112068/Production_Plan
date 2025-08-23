@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -28,7 +28,7 @@ import 'primeicons/primeicons.css';
     const calendarRef = useRef(null);
     moment.locale('vi');
 
-    const { events, resources, title, plan, quota } = usePage().props;
+    const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props;
     const [showSidebar, setShowSidebar] = useState(false);
     const [selectedRow, setSelectedRow] = useState({});
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
@@ -46,7 +46,7 @@ import 'primeicons/primeicons.css';
     const slotViews = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60','resourceTimelineWeek4h']; //, 'resourceTimelineWeek8h', 'resourceTimelineWeek12h', 'resourceTimelineWeek24h'
     const [slotIndex, setSlotIndex] = useState(0);
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
-
+   
 
  
     useEffect(() => {
@@ -265,7 +265,10 @@ import 'primeicons/primeicons.css';
     });
   };
 
-  const handleShowList = () => setShowSidebar(true);
+  const handleShowList = () => {
+   
+    setShowSidebar(true);
+  }
 
   const handleViewChange = (view) => {
     Swal.fire({
@@ -275,15 +278,26 @@ import 'primeicons/primeicons.css';
         Swal.showLoading();
       },
     });
-
-    // Đổi view
     setViewConfig({ is_clearning: false, timeView: view });
-    calendarRef.current?.getApi()?.changeView(view);
+    calendarRef.current?.getApi()?.changeView(view)
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    
+    router.put(`/Schedual/view`,
+      { start: activeStart.toISOString(), end: activeEnd.toISOString() },
+      {
+        preserveState: true,
+        replace: true,
+        only: ['resources'],
+        onSuccess: (page) => {
+                setTimeout(() => {
+                    Swal.close();
+                  }, 500);
+        }
+      }
+    );
 
     // Chờ FullCalendar render xong rồi tắt loading
-    setTimeout(() => {
-      Swal.close();
-    }, 500); // bạn chỉnh thời gian tuỳ theo tốc độ render
+ // bạn chỉnh thời gian tuỳ theo tốc độ render
   };
 
   const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
@@ -648,6 +662,19 @@ import 'primeicons/primeicons.css';
                 <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "wt_blitering_val">
               </div>
             </div>
+
+            <div class="cfg-row">
+              <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
+              <label class="switch">
+                <input id="work-sunday" type="checkbox" checked>
+                <span class="slider round"></span>
+                <span class="switch-labels">
+                  <span class="off">No</span>
+                  <span class="on">Yes</span>
+                </span>
+              </label>
+            </div>
+
           </div>
         </div>
       `,
@@ -665,6 +692,9 @@ import 'primeicons/primeicons.css';
         document.querySelectorAll('.swal2-input').forEach(input => {
           formValues[input.name] = input.value;
         });
+
+        const workSunday = document.getElementById('work-sunday');
+        formValues.work_sunday = workSunday.checked;
 
         if (!formValues.start_date) {
           Swal.showValidationMessage('Vui lòng chọn ngày!');
@@ -752,6 +782,92 @@ import 'primeicons/primeicons.css';
     });
   };
 
+  const formatNumberWithComma = (x) => {
+    if (x == null) return "0";
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  const handleFinished = (event) => {
+    let unit = event._def.extendedProps.stage_code <= 4 ? "Kg": "ĐVL"
+    let id = event._def.publicId
+    Swal.fire({
+      title: 'Hoàn Thành Sản Xuất',
+      html: `
+        <div class="cfg-wrapper">
+          <div class="cfg-card">
+            <!-- Hàng 2 cột -->
+            <div class="cfg-row cfg-grid-2">
+              <div class="cfg-col">
+                <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
+                <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_bleding">
+              </div>
+              <div class="cfg-col">
+                <label class="cfg-label" for="wt_bleding_val">Đơn Vị</label>
+                <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full"  readonly >
+                <input id="stag_plan_id" type="hidden" >
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+          document.getElementById('unit').value = unit;
+          document.getElementById('stag_plan_id').value = id; // set value thủ công
+      },
+      width: 700,
+      customClass: { htmlContainer: 'cfg-html-left' , title: 'my-swal-title'},
+      showCancelButton: true,
+      confirmButtonText: 'Lưu',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33'
+      ,
+      preConfirm: () => {
+        const yields_input = document.getElementById('yields');
+        const stag_plan_id = document.getElementById('stag_plan_id').value;
+        const yields = yields_input ? yields_input.value.trim() : "";
+
+        if (!yields) {
+          Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
+          return false;
+        }
+
+       return { yields, id: stag_plan_id }; 
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+     
+
+        // Gọi API với ngày
+        router.put('/Schedual/finished', result.value , {
+          preserveScroll: true,
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành',
+              timer: 500,
+              showConfirmButton: false,
+            });
+          },
+          onError: () => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              timer: 500,
+              showConfirmButton: false,
+            });
+          },
+        });
+      }
+    });
+  };
+
+
+  const finisedEvent = (dropInfo, draggedEvent) =>{
+        if (draggedEvent.extendedProps.finished) {return false;}
+        return true;
+  }
+
   return (
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
     
@@ -769,11 +885,12 @@ import 'primeicons/primeicons.css';
         locale="vi"
         height="auto"
         resourceAreaWidth="8%"
+       
         editable={true}
         droppable={true}
         selectable={true}
         eventResizableFromStart={true}
-        resourceGroupField= "stage"
+        
         slotDuration= "00:15:00"
         eventDurationEditable={true}
         resourceEditable={true}
@@ -784,19 +901,69 @@ import 'primeicons/primeicons.css';
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
         dateClick ={handleEventUnHightLine}
-      
+        eventAllow = {finisedEvent}
+
+        datesSet={(info) => {
+            const { start, end } = info; 
+            Swal.fire({
+              title: "Đang tải...",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              },
+            });
+            // router.put(`/Schedual/resourceView`,
+            router.put(`/Schedual/view`,
+              { start: start.toISOString(), end: end.toISOString() }, // ✅ lấy từ info
+              {
+                preserveState: true,
+                preserveScroll: true,
+                replace: false,
+                only: ['resources', 'sumBatchByStage'],
+                onSuccess: () => {
+                  setTimeout(() => {
+                    Swal.close();
+                  }, 500);
+                }
+              }
+            );
+          
+        }}
+        resourceGroupField="stage"
+
+        resourceGroupLabelContent={(arg) => {
+          const stage_code = stageMap[arg.groupValue] || {};
+          const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
+          const qty = sumItem ? formatNumberWithComma(sumItem.total_qty) : "0";
+          const unit = sumItem?.unit || "";
+          const yields = `${qty} ${unit}`.trim();
+          return (
+            <div style={{ fontWeight: "bold" }}>
+              {arg.groupValue + " :"} 
+              <span style={{ marginLeft: "10px", color: "green" }}>
+                  {yields} 
+              </span>
+            </div>
+          );
+        }}
+
         resourceLabelContent={(arg) => {
           const res = arg.resource.extendedProps;
           const busy = parseFloat(res.busy_hours) || 0;
-          const free = parseFloat(res.free_hours) || 0;
+          const yields = parseFloat(res.yield)  || 0;
+          const unit = res.unit || null;
           const total = parseFloat(res.total_hours) || 1;
           const efficiency = ((busy / total) * 100).toFixed(1); 
-          
+         
           return (
             <div>
+              <div style={{ fontWeight: "bold", marginBottom: "5px",   width: "8%" }}>
+                {arg.resource.title}
+              </div>
               <div
                 className="resource-bar"
                 style={{
+                  position: "relative", 
                   height: "20px",
                   background: "#eeeeeeff",
                   borderRadius: "20px",
@@ -816,20 +983,28 @@ import 'primeicons/primeicons.css';
                     justifyContent: "center" // căn giữa ngang
                   }}
                     >
-
                 </div>
-                  <b style={{ fontSize: "80%", color: "#000000ff" }}>
-                    {efficiency}%
-                  </b>
+                  <b
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        fontSize: "80%",
+                        color: "#060606ff",
+                      }}
+                    >
+                      {efficiency}% - {formatNumberWithComma(yields)} {unit}
+                    </b>
+
+
+
               </div>
-              <div style={{ fontWeight: "bold", marginTop: "2px" }}>
-                {arg.resource.title}
-              </div>
+
             </div>
           );
         }}
 
-        
         views={{
 
           resourceTimelineDay: {
@@ -950,7 +1125,7 @@ import 'primeicons/primeicons.css';
             </div>
 
             {/* Nút xóa */}
-           <button
+            {arg.event.extendedProps.finished !== 1 && (<button
               onClick={(e) => {
 
                 if (!selectedEvents || selectedEvents.length === 0) {
@@ -1005,9 +1180,10 @@ import 'primeicons/primeicons.css';
               title="Xóa lịch"
             >
               ×
-            </button>
+            </button>)}
 
-             {/* Nút Sửa/Nội dung */}
+            {/* Nút Sửa/Nội dung */}
+
             <button
               onClick={(e) => {
                 console.log (arg.event)
@@ -1048,18 +1224,30 @@ import 'primeicons/primeicons.css';
               >
                 {isSelected ? '✓' : '+'}
             </button>
+
+            {/* ✅ Nút Xác nhận Hoàn thành */}
+            {arg.event.extendedProps.finished !== 1 && (<button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFinished(arg.event);
+                }}
+                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+                title='Xác Nhận Hoàn Thành Lô Sản Xuất'
+              >
+                🎯
+            </button>)}
+
           </div>
 
         )}}    
       />
       
       <ModalSidebar
-        visible={showSidebar}
-        onClose={setShowSidebar}
-        events={plan}
-        percentShow = {percentShow}
-        setPercentShow={setPercentShow}
-
+          visible={showSidebar}
+          onClose={setShowSidebar}
+          events={plan}
+          percentShow = {percentShow}
+          setPercentShow={setPercentShow}
       />
 
       {/* Vùng hover */}
