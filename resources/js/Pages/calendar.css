@@ -238,12 +238,10 @@
 
 
 
-
-
 /* //////////// process_bar reosourcec //////////// /*/
 .resource-bar {
   display: flex;
-  width: 200px; /* chiều dài tượng trưng */
+  width: "8%"; /* chiều dài tượng trưng */
   height: 50px;
   border: 1px solid #aaa;
   border-radius: 4px;
@@ -251,11 +249,75 @@
 }
 
 .resource-bar .busy {
-  background-color: #ff6666; /* màu bận */
+  background-color: #75ff66 !important; /* màu bận */
   height: 100%;
 }
 
-.resource-bar .free {
-  background-color: #dfffd6; /* màu trống */
-  height: 100%;
+/*//////////////////////////////*/
+
+.fc-datagrid-cell-main {
+  font-size: 12px;     /* chữ nhỏ lại */
+  line-height: 16px;   /* giảm khoảng cách dọc */
+}
+
+.fc-timeline-slot,
+.fc-datagrid-row {
+  height: 15px !important; /* ép chiều cao row */
+  min-height: 15px !important;
+}
+
+
+
+/*////////////////////*/
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 28px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 28px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+/* Màu khi bật */
+input:checked + .slider {
+  background-color: #2196F3;
+}
+input:checked + .slider:before {
+  transform: translateX(32px);
+}
+
+/* Label Yes/No hai bên */
+.switch-labels {
+  position: absolute;
+  top: 50%;
+  left: -30px; /* căn chỉnh theo nhu cầu */
+  width: 120px; /* đủ cho cả 2 chữ */
+  display: flex;
+  justify-content: space-between;
+  transform: translateY(-50%);
+  font-size: 12px;
+  pointer-events: none;
+  color: #333;
 }

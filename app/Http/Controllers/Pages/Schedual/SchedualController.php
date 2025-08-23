@@ -12,9 +12,52 @@ use Carbon\Carbon;
 
 class SchedualController extends Controller
 {       
+        public function __construct() {
+                $this->loadRoomAvailability();
+        }
         // Xem Calender
-        public function view(){
+        public function view(Request $request){
+                
+                if ($request->isMethod('put')) {
 
+                        $start = $request->input('start');
+                        $end   = $request->input('end');
+
+                        // Tính thống kê theo khoảng thời gian
+                        $startDate = Carbon::parse($start);
+                        $endDate   = Carbon::parse($end);
+
+                        $roomStatus = $this->getRoomStatistics($startDate, $endDate);
+                        $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
+                        $statsMap = $roomStatus->keyBy('room_id');
+                        $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
+
+                        $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
+
+
+                        // Gắn vào từng resource
+                        $resources = DB::table('room')
+                        ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
+                        ->where('active', 1)
+                        ->orderBy('order_by', 'asc')
+                        ->get()
+                        ->map(function ($room) use ($statsMap, $yieldMap) {
+                                $stat = $statsMap->get($room->id);
+                                $yield = $yieldMap->get($room->id);
+
+                                $room->busy_hours = $stat->busy_hours ?? 0;
+                                $room->free_hours = $stat->free_hours ?? 0;
+                                $room->total_hours = $stat->total_hours ?? 0;
+                                $room->yield    = $yield->total_qty ?? 0;
+                                return $room;
+                        });
+
+                        return Inertia::render('FullCalender', [
+                                'resources' => $resources, 
+                                'sumBatchByStage' => $sumBatchByStage,
+                        ]);
+                }       
+                     
                 $plans = DB::table('stage_plan')
                 ->select(
                         'id',
@@ -26,9 +69,9 @@ class SchedualController extends Controller
                         'title_clearning',
                         'resourceId',
                         'plan_master_id',
-                        'stage_code'
+                        'stage_code',
+                        'finished'
                 )
-                ->where('finished', 0)
                 ->where('active', 1)
                 ->get();
 
@@ -57,11 +100,11 @@ class SchedualController extends Controller
                                 'start' => $plan->start,
                                 'end' => $plan->end,
                                 'resourceId' => $plan->resourceId,
-                                'color' => '#7bed52ff', // màu xanh sản xuất
+                                'color' => $plan->finished === 0?'#7bed52ff':'#526cedff', // màu xanh sản xuất
                                 'plan_master_id'=> $plan->plan_master_id,
                                 'stage_code'=> $plan->stage_code,
                                 'is_clearning' => false,
-                        
+                                'finished' => $plan->finished
                                 ]);
                         }
                         // Event vệ sinh
@@ -78,7 +121,7 @@ class SchedualController extends Controller
                                 'plan_master_id'=> $plan->plan_master_id,
                                 'stage_code'=> $plan->stage_code,
                                 'is_clearning' => true,
-                                
+                                'finished' => $plan->finished
                                 ]);
                         }
                 }
@@ -111,47 +154,31 @@ class SchedualController extends Controller
                                 ->get();
          
                 $quota = DB::table('quota')
-                ->where('active', 1)
-                ->get()
-                ->map(function ($item) {
-                        // Hàm chuyển từ "H:i" sang giây
-                        $toSeconds = function ($time) {
-                        [$h, $m] = explode(':', $time);
-                        return ((int)$h * 3600) + ((int)$m * 60);
-                        };
+                        ->where('active', 1)
+                        ->get()
+                        ->map(function ($item) {
+                                // Hàm chuyển từ "H:i" sang giây
+                                $toSeconds = function ($time) {
+                                [$h, $m] = explode(':', $time);
+                                return ((int)$h * 3600) + ((int)$m * 60);
+                                };
 
-                        // Hàm chuyển từ giây về "H:i"
-                        $toTime = function ($seconds) {
-                        $h = floor($seconds / 3600);
-                        $m = floor(($seconds % 3600) / 60);
-                        return sprintf('%02d:%02d', $h, $m);
-                        };
+                                // Hàm chuyển từ giây về "H:i"
+                                $toTime = function ($seconds) {
+                                $h = floor($seconds / 3600);
+                                $m = floor(($seconds % 3600) / 60);
+                                return sprintf('%02d:%02d', $h, $m);
+                                };
 
-                        // Tính các giá trị thời gian
-                        $p = $toSeconds($item->p_time);
-                        $m = $toSeconds($item->m_time);
-                        $c1 = $toSeconds($item->C1_time);
-                        $c2 = $toSeconds($item->C2_time);
+                                // Tính các giá trị thời gian
+                                $p = $toSeconds($item->p_time);
+                                $m = $toSeconds($item->m_time);
+                                $c1 = $toSeconds($item->C1_time);
+                                $c2 = $toSeconds($item->C2_time);
 
-                        // Gán thêm các cột tổng hợp
-                        $item->PM = $toTime($p + $m);
-                        return $item;
-                });
-
-       
-
-                // Gắn devices vào từng plan
-                $plan->transform(function ($item) use ($quota) {
-                        
-                        if ($item->stage_code < 7) {
-                                // Lấy theo intermediate_code
-                                $item->devices = $quota[$item->intermediate_code] ?? collect();
-                        
-                        } else {
-                                // Lấy theo finished_product_code
-                                $item->devices = $quota[$item->finished_product_code] ?? collect();
-                        }
-                        return $item;
+                                // Gán thêm các cột tổng hợp
+                                $item->PM = $toTime($p + $m);
+                                return $item;
                 });
 
 
@@ -160,22 +187,32 @@ class SchedualController extends Controller
                 $endDate = now()->endOfWeek(Carbon::SUNDAY);
 
                 $roomStatus = $this->getRoomStatistics($startDate, $endDate);
-                $statsMap = $roomStatus->keyBy('room_id');
+                $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
+                $statsMap = $roomStatus->keyBy('room_id');                
+               
+                $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
+                $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
+                $stageMap = DB::table('room')->pluck('stage_code','stage' )->toArray();
 
                 // Gắn vào từng resource
                 $resources = DB::table('room')
-                ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
-                ->where('active', 1)
-                ->orderBy('order_by', 'asc')
-                ->get()
-                ->map(function ($room) use ($statsMap) {
-                        $stat = $statsMap->get($room->id);
-                        $room->busy_hours = $stat->busy_hours ?? 0;
-                        $room->free_hours = $stat->free_hours ?? 0;
-                        $room->total_hours = $stat->total_hours ?? 0;
-                        return $room;
+                        ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
+                        ->where('active', 1)
+                        ->orderBy('order_by', 'asc')
+                        ->get()
+                        ->map(function ($room) use ($statsMap, $yieldMap) {
+                                $stat = $statsMap->get($room->id);
+                                $yield = $yieldMap->get($room->id);
+                                $room->busy_hours = $stat->busy_hours ?? 0;
+                                $room->free_hours = $stat->free_hours ?? 0;
+                                $room->total_hours = $stat->total_hours ?? 0;
+                                $room->yield    = $yield->total_qty ?? 0;
+                                $room->unit  = $yield->unit ?? '';
+                                return $room;
                 });
-                        
+                
+
+                
                 return Inertia::render('FullCalender', [
                         'title' => 'Lịch Sản Xuất',
                         'user' => session('user'),
@@ -183,6 +220,8 @@ class SchedualController extends Controller
                         'resources' => $resources,
                         'plan' => $plan,
                         'quota' => $quota,
+                        'sumBatchByStage' => $sumBatchByStage,
+                        'stageMap' => $stageMap
                         
                 ]);
         }
@@ -225,7 +264,7 @@ class SchedualController extends Controller
                         return view('pages.Schedual.list',['datas' => $datas,'imports' => $imports, 'instruments' => $instruments,  'analysts' => $analysts])
                         ->with('instrument_type', request()->get('instrument_type'));;
         }
-    
+        
         public function store (Request $request) {
                 
                 // $validator = Validator::make($request->all(), [
@@ -396,12 +435,6 @@ class SchedualController extends Controller
                                         'schedualed_at'    => now(),
                                 ]);
 
-                                // Xóa room_status theo các row này
-                                // $affectedIds = DB::table('stage_plan')
-                                // ->where('plan_master_id', $plan->plan_master_id)
-                                // ->where('stage_code', '=', $stageCode)
-                                // ->pluck('id')
-                                // ->toArray();
 
                                 DB::table('room_status')
                                 ->whereIn('stage_plan_id', $plan->plan_master_id)
@@ -458,7 +491,6 @@ class SchedualController extends Controller
                 if ($ids->isEmpty()) {
                         return null;
                 }       
-            
                         DB::table('stage_plan')
                                 ->whereIn('id',  $ids)
                                 ->update([
@@ -484,74 +516,20 @@ class SchedualController extends Controller
         }
 
         public function finished(Request $request){
-               
-                $validator = Validator::make($request->all(), [
-                        'analyst'    => 'required',
-                        'startDate'  => 'required|date',
-                        'endDate'    => 'required|date|after_or_equal:startDate',
-                        'ins_Id' => 'required',
-                        'schedual_id'=> 'required',
-                        'result'=> 'required',
-                        'relativeReport' => 'required'
-                ], [
-                        'analyst.required' => 'Vui lòng chọn kiểm nghiệm viên',
-                        'startDate.required' => 'Vui lòng chọn ngày kiểm',
-                        'endDate.required' => 'Vui lòng chọn ngày kết thúc',
-                        'ins_Id.required' => 'Vui lòng chọn thiết bị kiểm',
-                        'schedual_id.required' => 'Không có sản phẩm được chọn',
-                        'result.required' => 'Vui lòng chọn kết quả',
-                        'relativeReport.required' => 'Vui lòng nhập số báo cáo liên quan, nếu không nhập NA'
-                ]);
-      
-
-                if ($validator->fails()) {
-                        return redirect()->back()->withErrors($validator, 'createHistoryErrors')->withInput();
-                }
                 
+                $id = explode('-', $request->input('id'))[0];
               
-                $check= DB::table('history')->insert([
-                        
-                        'schedual_id' => $request->schedual_id,
-                        'analyst' => $request->analyst,
-                        'startDate' => $request->startDate,
-                        'endDate'  => $request->endDate,
-                        'ins_Id'  => $request->ins_Id,
-                        'note'  => $request->note,
-                        'result'  => $request->result,
-                        'relativeReport'  => $request->relativeReport,
-                        'prepareBy' => session('user')['fullName'] ?? 'Admin',
-                        'created_at' => now(),
-                ]);
-                
-                if ($check){
-                        DB::table('import')->where('id', $request->imported_id)->update(['finished' => 1]);
-                        DB::table('schedules')->where('id', $request->schedual_id)->update(['finished' => 1]);
+                try {
+                        DB::table('stage_plan')
+                                ->where('id', $id)
+                                ->update([
+                                        'yields' => $request->input('yields'),
+                                        'finished'  => 1  
+                        ]);  
 
-                        $datas = DB::table('history')
-                        ->select(
-                                'history.*',
-                                'product_category.code','product_category.name',
-                                'product_category.testing',
-                                'import.batch_no','import.stage',
-                                'instrument.name as instrument_name'
-                        )
-                        ->join('schedules', 'history.schedual_id', '=', 'schedules.id')
-                        ->join('import', 'schedules.imported_id', '=', 'import.id')
-                        ->join('product_category', 'import.testing_code', '=', 'product_category.testing_code')
-                        ->join('instrument', 'history.ins_id', '=', 'instrument.id')
-                        ->get();
-
-                
-                        session()->put(['title'=> 'Lịch Sử Kiểm Nghiệm']);
-
-                        return view('pages.History.list',['datas' => $datas])->with('success', 'Thành công!');
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
                 }
-                else {
-                        return redirect()->back()->withErrors($validator, 'createHistoryErrors');
-                }
-
-
-            
         }
 
         public function addEventContent(int|string $id, Request $request){
@@ -737,9 +715,7 @@ class SchedualController extends Controller
         ///////// Các hàm liên Auto Schedualer
         protected $roomAvailability = [];
 
-        public function __construct() {
-                $this->loadRoomAvailability();
-        }
+
 
         /**Load room_status để lấy các slot đã bận*/
         protected function loadRoomAvailability() {
@@ -818,7 +794,7 @@ class SchedualController extends Controller
 
         /** Scheduler cho tất cả stage*/
         public function scheduleAll(Request $request) {
-               
+             
                 $start_date = Carbon::createFromFormat('Y-m-d', $request->input('start_date'))->setTime(6, 0, 0);
 
                 $stageCodes = DB::table('stage_plan')
@@ -861,14 +837,13 @@ class SchedualController extends Controller
                                         $waite_time_val_batch   = 0;
                                         break;
                         }
-                        $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date);
+                        $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday);
                 }
                
         }
 
-
         /** Scheduler cho 1 stage*/
-        public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0,  ?Carbon $start_date = null ) {
+        public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0,  ?Carbon $start_date = null , bool $working_sunday = false) {
                 $tasks = DB::table('stage_plan')
                 ->select('stage_plan.id',
                         'stage_plan.code', 
@@ -906,15 +881,13 @@ class SchedualController extends Controller
                                 $campaignTasks = $tasks->where('campaign_code', $task->campaign_code);
                                 
 
-                                $this->scheduleCampaign( $campaignTasks, $stageCode, $waite_time,  $start_date );
+                                $this->scheduleCampaign( $campaignTasks, $stageCode, $waite_time,  $start_date, $working_sunday );
                                 // Đánh dấu campaign đã xử lý
                                 $processedCampaigns[] = $task->campaign_code;
                         }
                 }
                 
         }
-
-
          /** Scheduler lô thường*/
         protected function sheduleNotCampaing ($task, $stageCode,  int $waite_time = 0,  ?Carbon $start_date = null){
                         $title = $task->name ."- ". $task->batch ."- ". $task->market;
@@ -1022,7 +995,7 @@ class SchedualController extends Controller
         }
 
         /** Scheduler lô chiến dịch*/
-        protected function scheduleCampaign( $campaignTasks, $stageCode, int $waite_time = 0, ?Carbon $start_date = null){
+        protected function scheduleCampaign( $campaignTasks, $stageCode, int $waite_time = 0, ?Carbon $start_date = null, bool $working_sunday = false){
                 $firstTask = $campaignTasks->first();
                
                 $now = Carbon::now();
@@ -1151,7 +1124,12 @@ class SchedualController extends Controller
                                 }elseif ($counter == 0 && $currCycle >= $prevCycle) {
                                         $currentStart = $currentStart->addHours($waite_time);}
                         }
-
+                        // kiêm tra ngay chủ nhật
+                        if ($working_sunday === false){
+                                if (($currentStart->dayOfWeek === Carbon::SUNDAY) || 
+                                        ($currentStart->dayOfWeek === Carbon::MONDAY && ($currentStart->hour < 6 || ($currentStart->hour === 5 && $currentStart->minute <= 45)))) {
+                                        $currentStart = $currentStart->copy()->next(Carbon::MONDAY)->setTime(6, 0, 0);
+                        }}
 
                         if ($counter == 0) {
                                 $taskEnd = $currentStart->copy()->addHours((float) $bestQuota->p_time_hours + $bestQuota->m_time_hours);
@@ -1168,6 +1146,8 @@ class SchedualController extends Controller
                                 $clearningType = 1;
                         }
 
+
+
         
 
                         $this->saveSchedule(
@@ -1183,7 +1163,6 @@ class SchedualController extends Controller
                         $currentStart = $endCleaning->copy();
                 }
         }
-
 
         public function getRoomStatistics(Carbon $startDate, Carbon $endDate){
                 // Tổng số giây trong khoảng
@@ -1217,8 +1196,33 @@ class SchedualController extends Controller
                 return $result; // 👉 QUAN TRỌNG
         }
 
-
-
+        public function yield($startDate, $endDate, $group_By){
+                return DB::table('stage_plan as sp')
+                        ->leftJoin('intermediate_category as ic', 'sp.product_caterogy_id', '=', 'ic.id')
+                        ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
+                        ->whereBetween('sp.start', [$startDate, $endDate])
+                        ->whereNotNull('sp.start')
+                        ->select(
+                        "sp.$group_By",
+                        DB::raw('
+                                SUM(
+                                CASE 
+                                        WHEN sp.stage_code <= 4 THEN ic.batch_size
+                                        WHEN sp.stage_code <= 6 THEN ic.batch_qty
+                                        ELSE fc.batch_qty
+                                END
+                                ) as total_qty
+                        '),
+                        DB::raw('
+                                CASE 
+                                WHEN sp.stage_code <= 4 THEN "Kg"
+                                ELSE "ĐVL"
+                                END as unit
+                        ')
+                        )
+                        ->groupBy("sp.$group_By", "unit")
+                        ->get();
+        }
 
         //
 }
