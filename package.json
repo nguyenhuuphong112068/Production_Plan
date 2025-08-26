@@ -27,6 +27,7 @@
         "@fullcalendar/timegrid": "^6.1.18",
         "@inertiajs/react": "^2.0.14",
         "bootstrap": "^5.3.7",
+        "bs-stepper": "^1.7.0",
         "classnames": "^2.5.1",
         "dayjs": "^1.11.13",
         "jquery": "^3.7.1",

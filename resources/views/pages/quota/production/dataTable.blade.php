@@ -15,10 +15,8 @@
                     @php
                          
                         $createTarget = ( $stage_code <= 6)
-                         
                             ? '#create_intermediate' 
                             : '#create_finished_product';
-                            
                     @endphp
 
                  <div class="row">
