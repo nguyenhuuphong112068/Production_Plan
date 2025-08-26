@@ -223,9 +223,16 @@
               </li>
 
               <li class="nav-item">
-                <a href="{{ route ('pages.Schedual.list') }}" class="nav-link">
+                <a href="{{ route ('pages.Schedual.list.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p> Danh Sách Lịch</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.step.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Tiến Trình Sản Xuất</p>
                 </a>
               </li>
             
@@ -256,6 +263,13 @@
                 <a href="{{ route ('pages.statistics.room.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p> Phòng Sản Xuất </p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.statistics.stage.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Công Đoạn Sản Xuất  </p>
                 </a>
               </li>
             

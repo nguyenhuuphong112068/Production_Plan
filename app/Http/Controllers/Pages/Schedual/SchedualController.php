@@ -225,45 +225,6 @@ class SchedualController extends Controller
                         
                 ]);
         }
-
-        public function index(){
-                        $analysts = DB::table('analyst')->where ('active',1)->orderBy('created_at','desc')->get();
-                        $instruments = DB::table('instrument')->where ('active',1)->orderBy('created_at','desc')->get();
-        
-                        $imports = DB::table('import')
-                        ->select('import.*', 'product_category.name', 'product_category.code', 'product_category.testing','product_category.testing_code', 
-                                'product_category.sample_Amout', 'product_category.unit', 'product_category.excution_time','product_category.instrument_type',)
-                        ->where ('import.Active',1)->where('import.finished',0)->where('import.scheduled',0)
-                        ->leftJoin('product_category', 'import.testing_code', 'product_category.testing_code')
-                        ->orderBy('experted_date','asc')->get();
-                        
-                        $datas = DB::table('schedules')
-                        ->select(
-                                'schedules.*',
-                                'product_category.name',
-                                'product_category.code',
-                                'product_category.testing',
-                                'import.batch_no',
-                                'import.experted_date',
-                                'import.stage',
-                                'import.imoported_amount',
-                                'product_category.unit',
-                                'import.id as imported_id',
-                                'instrument.name as ins_name',
-                                'product_category.excution_time',
-                                
-                        )
-                        ->where('schedules.finished', 0)->where('schedules.active', 1)
-                        ->leftJoin('import', 'schedules.imported_id', '=', 'import.id')
-                        ->leftJoin('instrument', 'schedules.ins_Id', '=', 'instrument.id')
-                        ->leftJoin('product_category', 'import.testing_code', '=', 'product_category.testing_code')
-                        ->get();
-                
-                        session()->put(['title'=> 'Danh Sách Mẫu Chờ Kiểm']);
-        
-                        return view('pages.Schedual.list',['datas' => $datas,'imports' => $imports, 'instruments' => $instruments,  'analysts' => $analysts])
-                        ->with('instrument_type', request()->get('instrument_type'));;
-        }
         
         public function store (Request $request) {
                 

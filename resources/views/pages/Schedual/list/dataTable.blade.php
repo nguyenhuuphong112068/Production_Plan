@@ -13,9 +13,8 @@
               <!-- /.card-Body -->
               <div class="card-body">
                 
-
                 
-                <form id="filterForm" method="GET" action="{{ route('pages.History.list') }}" class="d-flex flex-wrap gap-2">
+                <form id="filterForm" method="GET" action="{{ route('pages.Schedual.list.list') }}" class="d-flex flex-wrap gap-2">
                     @csrf
                     <div class="row w-100 align-items-center">
 
@@ -23,8 +22,8 @@
                         <div class="col-md-4 d-flex gap-2">
                             @php
                                 use Carbon\Carbon;
-                                $defaultFrom = Carbon::now()->subMonth(1)->toDateString();
-                                $defaultTo   = Carbon::now()->toDateString();
+                                $defaultFrom = Carbon::now()->toDateString();
+                                $defaultTo   = Carbon::now() ->addMonth(2)->toDateString();
                             @endphp
                             <div class="form-group d-flex align-items-center">
                                 <label for="from_date" class="mr-2 mb-0">From:</label>

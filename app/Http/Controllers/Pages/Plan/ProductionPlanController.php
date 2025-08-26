@@ -196,7 +196,8 @@ class ProductionPlanController extends Controller
                                         'stage_code'=> $stage_code[$stage],
                                         'order_by'=>  $plan->id,
                                         'code'=>  $plan->id ."_". $stage_code[$stage],
-                                        'predecessor_code' => $prevCode
+                                        'predecessor_code' => $prevCode,
+                                        'created_date' => now(),
                                 ];
                                  $prevCode = $plan->id ."_". $stage_code[$stage];
                                 }

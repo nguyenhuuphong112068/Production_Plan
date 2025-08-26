@@ -10,12 +10,9 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.Schedual.dataTable')
+  @include('pages.statistics.stage.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.Schedual.create')
-  @include('pages.Schedual.inventory')
-  @include('pages.Schedual.update')
-  @include('pages.Schedual.createHistory')  
+
 @endsection

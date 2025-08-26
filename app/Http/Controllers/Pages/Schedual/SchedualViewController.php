@@ -1,17 +1,18 @@
 <?php
 
-namespace App\Http\Controllers\Pages\History;
-use App\Http\Controllers\Controller;
+namespace App\Http\Controllers\Pages\Schedual;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-class HistoryController extends Controller
-{
-       public function index(Request $request){
-  //dd ($request->all());
+use Illuminate\Support\Facades\DB;
 
-                $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString(); 
-                $toDate   = $request->to_date   ?? Carbon::now()->toDateString();
+class SchedualViewController extends Controller
+{
+         public function list(Request $request){
+                //dd ($request->all());
+
+                $fromDate = $request->from_date ?? Carbon::now()->toDateString();
+                $toDate   = $request->to_date   ?? Carbon::now()->addMonth(2)->toDateString(); 
                 $stage_code = $request->stage_code??3;
                 $production = session('user')['production'];
       
@@ -31,7 +32,7 @@ class HistoryController extends Controller
                 )
                 ->whereBetween('stage_plan.start', [$fromDate, $toDate])
                 ->where('stage_plan.active', 1)->where ('stage_plan.stage_code', $stage_code)
-                ->where('stage_plan.deparment_code', $production)->where('stage_plan.finished', 1)->whereNotNull('stage_plan.start')
+                ->where('stage_plan.deparment_code', $production)->where('stage_plan.finished', 0)->whereNotNull('stage_plan.start')
                 ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
@@ -51,8 +52,8 @@ class HistoryController extends Controller
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                
             
-                session()->put(['title'=> 'Lịch Sử Sản Xuất']);
-                return view('pages.History.list',[
+                session()->put(['title'=> 'Lịch Sản Xuất']);
+                return view('pages.Schedual.list.list',[
 
                         'datas' => $datas,
                         'stages' => $stages,
@@ -60,5 +61,7 @@ class HistoryController extends Controller
                     
                 ]);
         }
-    
+
+
+
 }

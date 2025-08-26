@@ -10,9 +10,7 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.statistics.room.dataTable')
+  @include('pages.Schedual.list.dataTable')
 @endsection
 
-@section('model')
 
-@endsection
