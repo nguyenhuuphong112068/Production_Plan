@@ -5,13 +5,11 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-class HistoryController extends Controller
-{
+class HistoryController extends Controller{
        public function index(Request $request){
-  //dd ($request->all());
 
-                $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString(); 
-                $toDate   = $request->to_date   ?? Carbon::now()->toDateString();
+                $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
+                $toDate   = $request->to_date   ?? Carbon::now()->toDateString(); 
                 $stage_code = $request->stage_code??3;
                 $production = session('user')['production'];
       
@@ -41,7 +39,7 @@ class HistoryController extends Controller
                 ->select('stage_plan.stage_code', 'room.stage')
                 ->where('stage_plan.active', 1)
                 ->where('stage_plan.deparment_code', $production)
-                ->where('stage_plan.finished', 0)
+                ->where('stage_plan.finished', 1)
                 ->whereNotNull('stage_plan.start')
                 ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
                 ->distinct()

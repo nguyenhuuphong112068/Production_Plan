@@ -48,7 +48,7 @@
           <!-- Droplist Menu Dữ Liệu Gốc  -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
-              <i class="nav-icon fas fa-key"></i>
+              <i class="nav-icon fas fa-database"></i>
               <p>
                 Dữ Liệu Gốc
                 <i class="right fas fa-angle-left"></i>
@@ -146,7 +146,7 @@
           <!-- Định Mức  -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
-              <i class="nav-icon fas fa-newspaper"></i>
+              <i class="nav-icon fas fa-chart-line"></i>
               <p>
                 Định Mức 
                 <i class="right fas fa-angle-left"></i>

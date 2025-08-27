@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Route;
                 // Tạo Mã Chiến Dịch
                 Route::put('createManualCampain', 'createManualCampain')->name('createManualCampain');
                 Route::put('createAutoCampain', 'createAutoCampain')->name('createAutoCampain');
+                Route::put('createOrderPlan', 'createOrderPlan')->name('createOrderPlan');
+
                 // Sắp Lịch Tư Động //
                 Route::put('scheduleAll', 'scheduleAll')->name('scheduleAll');
 

@@ -5,19 +5,25 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Row, Col } from 'react-bootstrap';
+import { Row, Col, Modal, Form } from 'react-bootstrap';
 import { Checkbox } from 'primereact/checkbox';
 import { router } from '@inertiajs/react';
 import './ModalSidebar.css'
+import { InputSwitch } from 'primereact/inputswitch';
+import Swal from 'sweetalert2'; 
 
 const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentShow }) => {
+
   const [selectedRows, setSelectedRows] = useState([]);
   const [stageFilter, setStageFilter] = useState(1);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState(""); 
   const sizes = ["20%", "30%", "100%", "close"];
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [tableData, setTableData] = useState(events); 
+  const [tableData, setTableData] = useState(events);
+  const [showModalCreate, setShowModalCreate] = useState(false); 
+  const [orderPlan, setOrderPlan] = useState({checkedClearning: false, title: null});
+
 
   useEffect(() => {
       setTableData(events); 
@@ -38,7 +44,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   const handleToggle = () => {
     
     const nextIndex = (currentIndex + 1) % sizes.length;
-    console.log (nextIndex); 
+    
     if (sizes[nextIndex] == "close"){
       setCurrentIndex(0)
       onClose (false)
@@ -131,7 +137,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   
   const stageNames = {
     1: 'Cân', 2: 'NL Khác', 3: 'Pha Chế', 4: 'Trộn Hoàn Tất',
-    5: 'Định Hình', 6: 'Bao Phim', 7: 'Đóng Đói',
+    5: 'Định Hình', 6: 'Bao Phim', 7: 'ĐGSC-ĐGTC', 8: 'Hiệu Chuẩn - Bảo Trì', 9: 'Kế Hoạch Khác',
   };
 
   const handleSelectionChange = (e) => {
@@ -156,7 +162,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   };
 
   const handlePrevStage = () =>  {setStageFilter((prev) => Math.max(1, prev - 1)); setSelectedRows([])}
-  const handleNextStage = () => {setStageFilter((prev) => Math.min(7, prev + 1)); setSelectedRows([])}
+  const handleNextStage = () => {setStageFilter((prev) => Math.min(9, prev + 1)); console.log (tableData); setSelectedRows([])}
 
   const handleDragStart = (e) => {
     if (selectedRows.length === 0) return;
@@ -169,6 +175,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     }));
     e.dataTransfer.setData("application/json", JSON.stringify(data));
   };
+
   const handleRowReorder = (e) => {
     const { value: newData, dropIndex, dragIndex } = e;
 
@@ -241,6 +248,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     });
 
   };
+
   const handleCreateManualCampain = (e) => {
       const filteredRows = selectedRows.map(row => ({
         id: row.id,
@@ -285,22 +293,81 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 
   }
 
+  const handleCreateOrderPlan = () => {
+
+      if (orderPlan.title === null){
+          Swal.fire({
+              title: 'Lỗi!',
+              text: 'Nội Dung Kế Hoạch Không Để Trống ',
+              icon: 'error',
+              showConfirmButton: false,  // ẩn nút Đóng
+              timer: 500 
+            });
+
+        return
+      }
+
+       router.put('/Schedual/createOrderPlan', orderPlan, {
+        onSuccess: () => {
+            setShowModalCreate (false)
+            Swal.fire({
+              title: 'Thành công!',
+              text: 'Tạo Mới Kế Hoạch Khác',
+              icon: 'success',
+              showConfirmButton: false,
+              timer: 1000 
+            }).then(() => {
+              setOrderPlan({});
+            });
+          },
+          onError: (errors) => {
+            Swal.fire({
+              title: 'Lỗi!',
+              text: 'Có lỗi khi cập nhật: ' + (errors?.message || ''),
+              icon: 'error',
+              confirmButtonText: 'Đóng'
+            });
+            console.error('Lỗi cập nhật', errors);
+          },
+        });
+
+     
+  }
+
+    const naBody = (field) => (rowData) => {
+      if (field === "name" && rowData.stage_code === 9) {
+        return rowData.title ?? "NA";
+      }
+      return rowData[field] ?? "NA";
+    };
+
+
+    const allColumns = [
+      { field: "intermediate_code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody },
+      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name") },
+      { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch") },
+      { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") },
+      { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"),
+        style: { width: '8rem', maxWidth: '8rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
+      },
+      { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate },
+      { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate,
+        style: { width: '5rem', maxWidth: '5rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
+      },
+      { field: "weight_dates", header: "Cân NL", sortable: true, body: naBody("weight_dates") },
+      { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: naBody("pakaging_dates") },
+      { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"),
+        style: { width: '25rem', maxWidth: '25rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
+      },
+      { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody,
+        style: { width: '8rem', maxWidth: '8rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
+      },
+      { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") },
+    ];
+
+
   
 
-  const allColumns = [
-    { field: "intermediate_code", header: "Mã Sản Phẩm",  sortable: true , body: productCodeBody},
-    { field: "name", header: "Sản Phẩm", sortable: true },
-    { field: "batch", header: "Số Lô",  sortable: true },
-    { field: "expected_date", header: "Ngày DK KCS" },
-    { field: "market", header: "Thị Trường",  sortable: true , style: { width: '8rem', maxWidth: '8rem',   whiteSpace: 'normal', wordBreak: 'break-word' } },
-    { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate },
-    { field: "is_val", header: "Thẩm Định",  body: ValidationBodyTemplate , style: { width: '5rem', maxWidth: '5rem',   whiteSpace: 'normal', wordBreak: 'break-word' }},
-    { field: "weight_dates", header: "Cân NL",  sortable: true, body: weightPBodyTemplate },
-    { field: "pakaging_dates", header: "Đóng gói",  sortable: true, body: packagingBodyTemplate },
-    { field: "source_material_name", header: "Nguồn nguyên liệu",  sortable: true, style: { width: '25rem', maxWidth: '25rem',   whiteSpace: 'normal', wordBreak: 'break-word' }},
-    { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true , body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem',   whiteSpace: 'normal', wordBreak: 'break-word' }},
-    { field: "note", header: "Ghi chú", sortable: true },
-  ];
 
   return (
     <div
@@ -312,44 +379,54 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       <div className="p-4 border-b">
         <Row className="align-items-center">
 
-          <Col md={1} className='d-flex justify-content-start'>
+          <Col md={3} className='d-flex justify-content-start'>
             <div
-              className="fc-event cursor-move px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center"
+              className="fc-event cursor-move px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center mr-3"
               data-rows={JSON.stringify(selectedRows)}
               draggable="true"
               onDragStart={handleDragStart}  title="Tạo Lịch Với Các Sản Phẩm Đã Chọn">
-               
               <i className="fas fa-arrows-alt"></i> ({selectedRows.length})
             </div>
-          </Col>
           
-          <Col md={1} className='d-flex justify-content-start'>
+          
             {percentShow === "100%" ? (
-            <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer " title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
+              <>
+
+              <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
               onClick={handleCreateManualCampain}>
               <i className="fas fa-flag"></i> ({selectedRows.length})
-            </div>):<></>}
-          </Col>
+              </div>
 
-          <Col md={1} className='d-flex justify-content-start'>
-           {percentShow === "100%" ? (
-            <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer" title="Tạo Mã Chiến Dịch tự Động"
-            onClick={handleCreateAutoCampain}>
-              <i className="fas fa-flag-checkered"></i>
-            </div>):<></>}
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
+              onClick={handleCreateAutoCampain}>
+                <i className="fas fa-flag-checkered"></i>
+              </div> 
+              </>):<></>}
+              
+              {percentShow === "100%" && stageFilter === 9 ? (
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Kế Hoạch Khác"
+                onClick={ () => setShowModalCreate (true)}>
+                <i className="fas fa-plus"></i>
+              </div> 
+              ):<></>}
+
           </Col>
 
           <Col md={6}>
             <div className="p-inputgroup flex-1">
               <Button icon="pi pi-angle-double-left" className="p-button-success" onClick={handlePrevStage} disabled={stageFilter === 1} title="Chuyển Công Đoạn"/>
               {percentShow === "100%" ? (
+
               <InputText value={"Công Đoạn " + stageNames[stageFilter] + " - Còn " + 
                 tableData.filter(event => Number(event.stage_code) === stageFilter)
-                .filter(ev => ev.name.toLowerCase().includes(searchTerm.toLowerCase())).length + " Sản Phẩm Chờ Sắp Lịch"} className="text-center" style={{ fontSize: '25px' }} readOnly />
+                .filter(ev => (ev.name ?? "").toLowerCase().includes((searchTerm ?? "").toLowerCase())).length + " Sản Phẩm Chờ Sắp Lịch"} className="text-center  fw-bold" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
+                /> 
               ):
-              <InputText value={ stageNames[stageFilter]} className="text-center" style={{ fontSize: '15px' }} readOnly />
+
+              <InputText value={ stageNames[stageFilter]} className="text-center fw-bold" style={{ fontSize: '15px', color: ' #CDC171'}} readOnly />
               }
-              <Button icon="pi pi-angle-double-right" className="p-button-success" onClick={handleNextStage} disabled={stageFilter === 7}  title="Chuyển Công Đoạn" />
+
+              <Button icon="pi pi-angle-double-right" className="p-button-success" onClick={handleNextStage} disabled={stageFilter === 9}  title="Chuyển Công Đoạn" />
             </div>
           </Col>
           <Col md={2} >
@@ -366,11 +443,12 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
             {percentShow != "close" ? (
             <button
               onClick={handleToggle}
-              className="fc-event cursor-move px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center"
+              className="fc-event cursor-pointer rounded text-lg text-center mr-2"
               style={{ fontSize: "1.5rem" }}
               title="Điều Chỉnh Độ Rộng Side Bar"
             >
-              <i className="pi pi-arrows-h"></i>
+              <img src="/img/iconstella.svg" style={{width: '30px', marginRight: '10px'}} />
+              {/* <i className="pi pi-arrows-h"></i> */}
             </button>):""}
           </Col>
 
@@ -382,7 +460,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       <div style={{ flex: 1, overflow: 'auto' }}>
         <DataTable
           key={percentShow}
-          value={tableData.filter(event => Number(event.stage_code) === stageFilter).filter(ev => ev.name.toLowerCase().includes(searchTerm.toLowerCase()))}
+          value={tableData.filter(event => Number(event.stage_code) === stageFilter).filter(ev => (ev.name ?? "").toLowerCase().includes((searchTerm ?? "").toLowerCase()))}
           selection={selectedRows}
           onSelectionChange={handleSelectionChange}
           selectionMode="multiple"
@@ -443,6 +521,50 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 
 
       </div>
+      
+      <Modal size="lg" show={showModalCreate} aria-labelledby="example-modal-sizes-title-lg" onHide = {() => setShowModalCreate (false)}>
+                <Modal.Header style={{color:'#cdc717', backgroundColor: '#ffffffff'}}>
+                  <img src="/img/iconstella.svg" style={{width: '30px', marginRight: '10px'}} /> 
+                  <Modal.Title 
+                      id="example-modal-sizes-title-lg" 
+                      className="mx-auto fw-bold"
+                  >
+                      Tạo Mới Kế Hoạch Khác
+                  </Modal.Title>
+                </Modal.Header>
+                <Modal.Body  style={{fontSize:'20px'}}>
+                  <Form>
+                    <Row className="mb-3">
+                          <Form.Group as={Col} >
+                          <Form.Label>Tên Kế Hoạch</Form.Label>
+                          <Form.Control type="text" name ='fullName' value = {orderPlan.title?? ""} onChange={(e) => setOrderPlan({...orderPlan, title: e.target.value})}   placeholder="Bắt buộc" />
+                          </Form.Group>
+
+                    </Row>
+
+                    <Row className="mb-3">
+                          <Form.Group as={Col} >
+                            <div className='text-center d-flex justify-content-start'>
+                              <Form.Label className='mr-5'>Có Vệ Sinh Lại Không: </Form.Label>
+                              <span className='ml-5 mr-5'> Có </span>
+                              <InputSwitch checked={orderPlan.checkedClearning?? ""} onChange={(e) => setOrderPlan({...orderPlan, checkedClearning : !orderPlan.checkedClearning})} />
+                              <span className='ml-5 mr-5'> Không </span>
+                            </div>
+                          </Form.Group>     
+                    </Row> 
+                  </Form>
+
+                </Modal.Body>
+
+                <Modal.Footer >
+                    <Button className='btn btn-primary' onClick={() => handleCreateOrderPlan (false)}> 
+                        Lưu
+                    </Button>
+                    <Button  className='btn btn-primary' onClick={() => setShowModalCreate (false)}>
+                        Hủy
+                    </Button>
+                </Modal.Footer>
+      </Modal>
     </div>
   );
 };
