@@ -182,35 +182,8 @@
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+{{-- <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script> --}}
 <script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script>
-
-
-{{-- <script>
-    const form = document.getElementById('filterForm');
-    const fromInput = document.getElementById('from_date');
-    const toInput = document.getElementById('to_date');
-
-    [fromInput, toInput].forEach(input => {
-        input.addEventListener('input', function() {
-            const fromDate = new Date(fromInput.value);
-            const toDate = new Date(toInput.value);
-
-            if (fromDate > toDate) {
-                 Swal.fire({
-                    icon: "warning",
-                    title: "Ngày không hợp lệ",
-                    text: "⚠️ Ngày bắt đầu (From) không được lớn hơn ngày kết thúc (To).",
-                    confirmButtonText: "OK"
-                });
-
-                return; // dừng không submit
-            } else {
-                form.requestSubmit(); // submit hợp lệ
-            }
-        });
-    });
-</script> --}}
 
 
 <script>
@@ -227,7 +200,6 @@
       const labels = data.map(cycle => cycle.label);
       const theoretical_data = data.map(cycle => cycle.san_luong_ly_thuyet);
       const practical_data   = data.map(cycle => cycle.san_luong_thuc_te);
-
       const ctx = document.getElementById(`weight-chart-${stageCode}`).getContext('2d');
 
       new Chart(ctx, {
@@ -235,24 +207,38 @@
           data: {
               labels,
               datasets: [
-                  {
+                  { 
                       label: 'Lý Thuyết',
                       backgroundColor:  '#28a745' ,
                       borderColor: '#28a745',
                       data: theoretical_data,
+                      
                   },
                   {
                       label: 'Thực Tế',
                       backgroundColor: '#007bff',
                       borderColor: '#007bff',
                       data: practical_data,
-                  }
+                      
+                  },
+                  
               ]
           },
           options: {
-              responsive: true,
-              maintainAspectRatio: false,
-          }
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true,
+                            min: 0,
+                            callback: function(value) {
+                                return value.toLocaleString();
+                            }
+                        }
+                    }]
+                }
+            }
       });
   }
 

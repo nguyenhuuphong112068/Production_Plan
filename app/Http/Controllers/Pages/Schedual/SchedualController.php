@@ -59,21 +59,31 @@ class SchedualController extends Controller
                 }       
                      
                 $plans = DB::table('stage_plan')
+                ->leftJoin('plan_master','stage_plan.plan_master_id','plan_master.id')
                 ->select(
-                        'id',
-                        'title',
-                        'start',
-                        'end',
-                        'start_clearning',
-                        'end_clearning',
-                        'title_clearning',
-                        'resourceId',
-                        'plan_master_id',
-                        'stage_code',
-                        'finished'
+                        'stage_plan.id',
+                        'stage_plan.title',
+                        'stage_plan.start',
+                        'stage_plan.end',
+                        'stage_plan.start_clearning',
+                        'stage_plan.end_clearning',
+                        'stage_plan.title_clearning',
+                        'stage_plan.resourceId',
+                        'stage_plan.plan_master_id',
+                        'stage_plan.stage_code',
+                        'stage_plan.finished',
+                        'plan_master.expected_date',
+                        'plan_master.after_weigth_date',
+                        'plan_master.before_weigth_date',
+                        'plan_master.after_parkaging_date',
+                        'plan_master.before_parkaging_date',
+                        'plan_master.is_val'
+
                 )
-                ->where('active', 1)
+                ->where('stage_plan.active', 1)
                 ->get();
+
+                         
 
                 $events = collect();
 
@@ -85,6 +95,23 @@ class SchedualController extends Controller
                                 $name   = $parts[0] ?? null;
                                 $batch  = $parts[1] ?? null;
                                 $market = $parts[2] ?? null;
+                        }
+
+                        $color_event = '#46f905ff';
+
+                        if ($plan->finished === 1){
+                                $color_event = '#002af9ff';
+                        }
+                        elseif($plan->is_val === 1){
+                                $color_event = '#02f9f9ff';
+                        }
+                        
+                        if(($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start && $plan->before_weigth_date < $plan->start) ||
+                                ($plan->stage_code >=7 && $plan->after_parkaging_date > $plan->start && $plan->before_parkaging_date < $plan->start)){
+                                $color_event = '#f9b302ff';
+                        }
+                        if ($plan->expected_date < $plan->end){
+                                $color_event = '#f90202ff';
                         }
 
                         // Event chính (sản xuất)
@@ -100,7 +127,7 @@ class SchedualController extends Controller
                                 'start' => $plan->start,
                                 'end' => $plan->end,
                                 'resourceId' => $plan->resourceId,
-                                'color' => $plan->finished === 0?'#7bed52ff':'#526cedff', // màu xanh sản xuất
+                                'color' =>  $color_event,
                                 'plan_master_id'=> $plan->plan_master_id,
                                 'stage_code'=> $plan->stage_code,
                                 'is_clearning' => false,
@@ -108,7 +135,7 @@ class SchedualController extends Controller
                                 ]);
                         }
                         // Event vệ sinh
-                        if ($plan->start_clearning && $plan->end_clearning) {
+                        if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
                                 $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-cleaning",
@@ -148,11 +175,12 @@ class SchedualController extends Controller
                                         )
                                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
                                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-                                ->join('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+                                ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
                                 ->whereNull('stage_plan.start')->where('stage_plan.finished', 0)->where('stage_plan.active', 1)
                                 ->orderBy('stage_plan.order_by', 'asc')
                                 ->get();
-         
+               
+                
                 $quota = DB::table('quota')
                         ->where('active', 1)
                         ->get()
@@ -210,8 +238,8 @@ class SchedualController extends Controller
                                 $room->unit  = $yield->unit ?? '';
                                 return $room;
                 });
+                //dd ($plan);
                 
-
                 
                 return Inertia::render('FullCalender', [
                         'title' => 'Lịch Sản Xuất',
@@ -671,6 +699,31 @@ class SchedualController extends Controller
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['error' => 'Lỗi hệ thống'], 500);
                 }
+        }
+
+        public function createOrderPlan (Request $request) {
+                   
+                try {
+                        DB::table('stage_plan')->insert([
+                                'plan_list_id'       => 0,
+                                'product_caterogy_id'=> 0,
+                                'plan_master_id'     => 0,
+                                'schedualed'         => 0,
+                                'finished'           => 0,
+                                'active'             => 1,
+                                'stage_code'         => 9,
+                                'deparment_code'     => session('user')['production'],
+                                'title'              => $request->title,
+                                'yields'             => $request->checkedClearning ? 0 : -1,
+                                'created_by'         => session('user')['fullName'],
+                                'created_date'       => now(),
+                        ]);
+
+
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
+                }
+
         }
 
         ///////// Các hàm liên Auto Schedualer

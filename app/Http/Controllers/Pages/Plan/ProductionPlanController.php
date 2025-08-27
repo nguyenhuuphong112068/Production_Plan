@@ -197,6 +197,7 @@ class ProductionPlanController extends Controller
                                         'order_by'=>  $plan->id,
                                         'code'=>  $plan->id ."_". $stage_code[$stage],
                                         'predecessor_code' => $prevCode,
+                                        'deparment_code' => session('user')['production'],
                                         'created_date' => now(),
                                 ];
                                  $prevCode = $plan->id ."_". $stage_code[$stage];

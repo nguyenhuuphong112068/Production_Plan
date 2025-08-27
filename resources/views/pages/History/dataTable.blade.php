@@ -12,9 +12,6 @@
               </div>
               <!-- /.card-Body -->
               <div class="card-body">
-                
-
-                
                 <form id="filterForm" method="GET" action="{{ route('pages.History.list') }}" class="d-flex flex-wrap gap-2">
                     @csrf
                     <div class="row w-100 align-items-center">
