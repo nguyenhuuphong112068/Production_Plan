@@ -18,9 +18,7 @@ import 'moment/locale/vi';
 import '@fullcalendar/daygrid/index.js';
 import '@fullcalendar/resource-timeline/index.js';
 
-import 'primereact/resources/themes/lara-light-indigo/theme.css';
-import 'primereact/resources/primereact.min.css';                
-import 'primeicons/primeicons.css'; 
+
 
 
 
@@ -30,7 +28,6 @@ import 'primeicons/primeicons.css';
 
     const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props;
     const [showSidebar, setShowSidebar] = useState(false);
-    const [selectedRow, setSelectedRow] = useState({});
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
     const [cleaningHidden, setCleaningHidden] = useState(false);
     const [pendingChanges, setPendingChanges] = useState([]);
@@ -46,93 +43,27 @@ import 'primeicons/primeicons.css';
     const slotViews = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60','resourceTimelineWeek4h']; //, 'resourceTimelineWeek8h', 'resourceTimelineWeek12h', 'resourceTimelineWeek24h'
     const [slotIndex, setSlotIndex] = useState(0);
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
-   
+    const [selectedRows, setSelectedRows] = useState([]);
 
- 
+
+    //Get dư liệu row được chọn 
     useEffect(() => {
-    new Draggable(document.getElementById('external-events'), {
-      itemSelector: '.fc-event',
-        eventData: function (eventEl) {
-        const isMulti = eventEl.hasAttribute('data-rows');
       
+      new Draggable(document.getElementById('external-events'), {
         
+        itemSelector: '.fc-event',
+        eventData: (eventEl) => {
 
-        if (isMulti) {
-
-          const draggedData = JSON.parse(eventEl.getAttribute('data-rows') || '[]');
-          if (!draggedData.length) return null;
-
-          const { intermediate_code, stage_code } = draggedData[0];
-
-          const matched = quota.find(item =>
-            item.intermediate_code === intermediate_code &&
-            parseInt(item.stage_code) === stage_code
-          );
-
-          if (!matched) {
-            Swal.fire({
-              icon: 'warning',
-              title: 'Sản Phẩm Chưa Được Định Mức',
-              text: 'Vui lòng định mức trước khi sắp lịch!',
-            });
-            return null;
-          }
-
-
-          setSelectedRow({
-            stage_code: stage_code,
-            quota: matched,
-          });
-        
-          // ✅ Trường hợp nhiều mục được chọn
-          
+          // Lấy selectedRows mới nhất từ state
+          const draggedData = selectedRows.length ? selectedRows : [];
+          //console.log (draggedData);
           return {
-            title: 'Nhiều mục được chọn',
-            extendedProps: {
-              rows: draggedData
-            }
+            title: draggedData.length > 1 ? `(${draggedData.length}) sản phẩm` : draggedData[0]?.product_code || 'Trống',
+            extendedProps: { rows: draggedData },
           };
-
-        } else {
-          // ✅ Trường hợp kéo từng item
-          const intermediate_code = eventEl.getAttribute('data-intermediate_code');
-          const stage_code = parseInt(eventEl.getAttribute('data-stage_code'));
-
-  
-          const matched = quota.find(item =>
-            item.intermediate_code === intermediate_code &&
-            parseInt(item.stage_code) === stage_code
-          );
-
-          if (!matched) {
-            Swal.fire({
-              icon: 'warning',
-              title: `Sản phẩm ${eventEl.getAttribute('data-title')} chưa được định mức.`,
-              text: `Vui lòng định mức trước khi sắp lịch!`,
-            });
-            return null;
-          }
-
-          const duration = matched.PM;
-      
-          setSelectedRow({
-            stage_code: stage_code,
-            id: eventEl.getAttribute('data-id'),
-            title: eventEl.getAttribute('data-title'),
-            quota: matched
-          });
-
-          return {
-            title: eventEl.getAttribute('data-title'),
-            duration,
-            extendedProps: {
-            externalId: eventEl.getAttribute('data-id'),
-            },
-          };
-        }
-      }
-    });
-    }, [quota]);
+        },
+      });
+    }, [selectedRows]);
 
     useEffect(() => {
       if (selectedEvents.length === 0) {
@@ -265,11 +196,12 @@ import 'primeicons/primeicons.css';
     });
   };
 
+  // show sidebar
   const handleShowList = () => {
    
     setShowSidebar(true);
   }
-
+  //  Thay đôi khung thời gian
   const handleViewChange = (view) => {
     Swal.fire({
       title: "Đang tải...",
@@ -300,6 +232,7 @@ import 'primeicons/primeicons.css';
  // bạn chỉnh thời gian tuỳ theo tốc độ render
   };
 
+  // Tô màu các event trùng khớp
   const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
     const calendarApi = calendarRef.current?.getApi();
     if (!calendarApi) return;
@@ -329,81 +262,91 @@ import 'primeicons/primeicons.css';
     highlightAllEvents();
   };
 
+  // Bỏ tô màu các event trùng khớp
   const handleEventUnHightLine = async (info) => {
       document.querySelectorAll('.fc-event').forEach(el => {
       el.classList.remove('highlight-event');
     });
   };
  
+  // Nhân Dữ liệu để tạo mới event
   const handleEventReceive = async (info) => {
-      const draggedRows = info.event.extendedProps?.rows || [];
-      const resourceId = info.event.getResources?.()[0]?.id ?? null;
-      const start = info.event.start;
+    // chưa chọn row
+    const start = info.event.start;
+    const now = new Date();
+    const resourceId = info.event.getResources?.()[0]?.id ?? null;
+    info.event.remove(); 
 
-      const matchedRow = quota.find(item =>item.room_id == resourceId);
-
-      
-
-      if (!matchedRow || matchedRow.stage_code == null || matchedRow.stage_code !== selectedRow.stage_code) {
-        info.event.remove();  
+     if (selectedRows.length === 0 ){
+         Swal.fire({
+          icon: 'warning',
+           title:'Vui Lòng Chọn Sản Phẩm Muốn Sắp Lịch',
+             timer: 1000,
+             showConfirmButton: false,
+           });
+        return false
+     }
+    // chưa định mức
+    if (selectedRows[0].permisson_room.length == 0 ){
         Swal.fire({
-            icon: 'warning',
-            title:'Sắp Lịch Sai Công Đoạn',
-            timer: 1000,
-            showConfirmButton: false,
-          });
-        return;
+          icon: 'warning',
+           title:'Sản Phẩm Chưa Được Định Mức',
+             timer: 1000,
+             showConfirmButton: false,
+         });
+        return false;
+     }
+   
+    // Phòng được chọn và định mực k giống
+    const hasPermission = selectedRows.some(row => {
+      if (!row.permisson_room) return false;
+
+      if (Array.isArray(row.permisson_room)) {
+        // Nếu backend trả mảng thì check trực tiếp
+        return row.permisson_room.includes(resourceId);
+      } else if (typeof row.permisson_room === "object") {
+        // Nếu backend trả object {id_room: code}
+        return Object.keys(row.permisson_room).includes(String(resourceId));
       }
+      return false;
+    });
 
+    if (!hasPermission) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sản Phẩm Sắp Lịch Không Đúng Phòng Đã Định Mức",
+        timer: 1000,
+        showConfirmButton: false,
+      });
 
+        return false;
+    }
+    if (start <= now){
+       Swal.fire({
+        icon: "warning",
+        title: "Thời gian bắt đầu nhỏ hơn thời gian hiện tại!",
+        timer: 1000,
+        showConfirmButton: false,
+      });
+        return false;
+    }
+    router.put('/Schedual/store', {
+            room_id: resourceId,
+            start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+            products: selectedRows,
 
-      // ✅ Trường hợp 1: Kéo nhiều dòng (array draggedRows > 0)
-      if (draggedRows.length > 0) {
-          // Tính thời lượng mặc định (ví dụ: 1 giờ mỗi dòng)
-          const startTime = dayjs(start).add(1 * 60, 'minute'); // dàn đều theo giờ
-         
-          router.put('/Schedual/multiStore', {
-            numberofRow: draggedRows.length,
-            draggedRows: draggedRows,
-            extraData: selectedRow.draggedRows,
-            start: startTime.format('YYYY-MM-DD HH:mm:ss'),
-            resourceId,
-            quota: selectedRow.quota
-           
-          }, {
-            preserveScroll: true,
-            onSuccess: () => console.log(`Đã tạo `),
-            onError: (errors) => console.error(`Lỗi tạo `, errors),
-          });
-        
-
-        info.event.remove(); // Loại bỏ event "gộp" ban đầu
-        return;
-      }
-
-      // ✅ Trường hợp 2: Kéo 1 dòng
-      if (selectedRow?.id) {
-        const end = info.event.end;
-        const [hours, minutes] = selectedRow.quota.C2_time?.split(':').map(Number) || [0, 0];
-        const C_end = dayjs(end).add(hours, 'hour').add(minutes, 'minute').format('YYYY-MM-DD HH:mm:ss');
-        router.put('/Schedual/store', {
-          id: selectedRow.id,
-          title: selectedRow.title,
-          start: dayjs(start).format('YYYY-MM-DD HH:mm:ss'),
-          end: dayjs(end).format('YYYY-MM-DD HH:mm:ss'),
-          resourceId,
-          C_end,
         }, {
           preserveScroll: true,
-          onSuccess: () => console.log(`Đã tạo ${selectedRow.title}`),
+          onSuccess: () => {
+            setSelectedRows([]);
+            },
           onError: (errors) => console.error('Lỗi tạo lịch', errors),
-        });
+    });
 
-        info.event.remove();
-        setSelectedRow({});
-      }
+ 
   };
 
+  // Ẩn hiện sự kiện vệ sinh
   const toggleCleaningEvents = () => {
     const calendarApi = calendarRef.current?.getApi();
     if (!calendarApi) return;
@@ -433,20 +376,22 @@ import 'primeicons/primeicons.css';
       Swal.close();
     }, 300); // delay 300ms để thấy loading
   };
-
+  /////// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+      //alert ("handleGroupEventDrop")
       const draggedEvent = info.event;
       const delta = info.delta;
       const calendarApi = info.view.calendar;
-     
       // Nếu chưa được chọn thì tự động chọn
       if (!selectedEvents.includes(draggedEvent.id)) {
         //toggleEventSelect(draggedEvent.id);
         toggleEventSelect(draggedEvent);
       }
+      
 
       // Nếu là event đã được chọn, kéo theo nhóm
-      if (selectedEvents.includes(draggedEvent.id)) {
+      if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+       
         info.revert(); // Hoàn tác vì sẽ xử lý bằng tay
 
         selectedEvents.forEach(eventId => {
@@ -462,16 +407,19 @@ import 'primeicons/primeicons.css';
           }
         });
       } else {
+        alert ("else")
         // Nếu không thuộc danh sách chọn, xử lý đơn
         handleEventChange(info);
       }
   };
 
   const handleEventChange = (changeInfo) => {
+    //alert ("handleEventChange")
     const changedEvent = changeInfo.event;
  
     // Thêm hoặc cập nhật event vào pendingChanges
     setPendingChanges(prev => {
+      
         const exists = prev.find(e => e.id === changedEvent.id);
         const updated = {
           id: changedEvent.id,
@@ -494,7 +442,7 @@ import 'primeicons/primeicons.css';
   };
 
   const handleSaveChanges = async () => {
-   
+    alert ("handleSaveChanges")
 
     if (pendingChanges.length === 0) {
         Swal.fire({
@@ -535,9 +483,10 @@ import 'primeicons/primeicons.css';
     });
 
   };
+  ///////////
 
+  // Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
   const toggleEventSelect = (event) => {
-    
     setSelectedEvents((prevSelected) => {
       const exists = prevSelected.some(ev => ev.id === event.id);
       return exists
@@ -545,24 +494,22 @@ import 'primeicons/primeicons.css';
         : [...prevSelected, { id: event.id, stage_code: event.extendedProps.stage_code }];
     });
   };
-
+  // Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
     const event = clickInfo.event;
     if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
-      setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]);
+      setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
     } else {
       toggleEventSelect(event);
     }
     
   };
 
-  const handleRemove = (id) => {
-    setSelectedEvents(prev => prev.filter(eid => eid !== id));
-  };
+  // bỏ chọn sự kiện đã chọn ở select sidebar -->  selectedEvents
+  const handleRemove = (id) => {setSelectedEvents(prev => prev.filter(eid => eid !== id));};
 
-  const handleClear = () => {
-    setSelectedEvents([]);
-  };
+  // bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
+  const handleClear = () => {setSelectedEvents([]);};
 
   const SelectedEventsSidebar = ({
         events,
@@ -624,6 +571,7 @@ import 'primeicons/primeicons.css';
         );
   };
 
+  // Xử lý Chạy Lịch Tư Động
   const handleAutoSchedualer = () => {
     Swal.fire({
       title: 'Cấu Hình Chung Sắp Lịch',
@@ -739,6 +687,7 @@ import 'primeicons/primeicons.css';
     });
   };
 
+    // Xử lý Xóa Toàn Bộ Lịch
   const handleDeleteAllScheduale = () => {
     Swal.fire({
       title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
@@ -773,6 +722,7 @@ import 'primeicons/primeicons.css';
     });
   };
 
+  // Xử lý độ chia thời gian nhỏ nhất 
   const toggleSlotDuration = () => {
     setSlotIndex((prevIndex) => {
       const nextIndex = (prevIndex + 1) % slotViews.length;
@@ -782,14 +732,17 @@ import 'primeicons/primeicons.css';
     });
   };
 
+  // Xử lý format số thập phân
   const formatNumberWithComma = (x) => {
     if (x == null) return "0";
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
 
+  // Xử lý hoản thành lô
   const handleFinished = (event) => {
     let unit = event._def.extendedProps.stage_code <= 4 ? "Kg": "ĐVL"
     let id = event._def.publicId
+
     Swal.fire({
       title: 'Hoàn Thành Sản Xuất',
       html: `
@@ -861,8 +814,7 @@ import 'primeicons/primeicons.css';
       }
     });
   };
-
-
+  // Ngăn xụ thay đổi lô Sau khi hoàn thành
   const finisedEvent = (dropInfo, draggedEvent) =>{
         if (draggedEvent.extendedProps.finished) {return false;}
         return true;
@@ -903,6 +855,8 @@ import 'primeicons/primeicons.css';
         dateClick ={handleEventUnHightLine}
         eventAllow = {finisedEvent}
 
+  
+
         datesSet={(info) => {
             const { start, end } = info; 
             Swal.fire({
@@ -937,14 +891,18 @@ import 'primeicons/primeicons.css';
           const qty = sumItem ? formatNumberWithComma(sumItem.total_qty) : "0";
           const unit = sumItem?.unit || "";
           const yields = `${qty} ${unit}`.trim();
+
+          const highlight = selectedRows.some(row => row.stage_code == stage_code);
+         
           return (
-            <div style={{ fontWeight: "bold" }}>
+            <div style={{ fontWeight: "bold", color: highlight ? "red" : "black" }}>
               {arg.groupValue + " :"} 
               <span style={{ marginLeft: "10px", color: "green" }}>
-                  {yields} 
+                {yields}
               </span>
             </div>
           );
+
         }}
 
         resourceLabelContent={(arg) => {
@@ -954,9 +912,29 @@ import 'primeicons/primeicons.css';
           const unit = res.unit || null;
           const total = parseFloat(res.total_hours) || 1;
           const efficiency = ((busy / total) * 100).toFixed(1); 
+          
+
+          const highlight = selectedRows.some(row => {
+            if (!row.permisson_room) return false;
+
+            if (Array.isArray(row.permisson_room)) {
+              // nếu backend đổi thành array thì vẫn chạy
+              return row.permisson_room.includes(arg.resource.extendedProps.code);
+            } else if (typeof row.permisson_room === "object") {
+              // trường hợp {id_room: code}
+              return Object.values(row.permisson_room).includes(arg.resource.extendedProps.code);
+            } else {
+              // fallback: string / id
+              return row.permisson_room == arg.resource.id;
+            }
+          });
          
           return (
-            <div>
+            <div style={{
+                  backgroundColor: highlight ? "#c6f7d0" : "transparent", // màu nền cả ô resource
+                  padding: "4px",
+                  borderRadius: "6px",
+                }}>
               <div style={{ fontWeight: "bold", marginBottom: "5px",   width: "8%" }}>
                 {arg.resource.title}
               </div>
@@ -1113,7 +1091,9 @@ import 'primeicons/primeicons.css';
         }}
 
         eventContent={(arg) => {
+          
         const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
+        const now = new Date();
         return (
         <div className="relative group custom-event-content" data-event-id={arg.event.id} >
             
@@ -1225,8 +1205,8 @@ import 'primeicons/primeicons.css';
                 {isSelected ? '✓' : '+'}
             </button>
 
-            {/* ✅ Nút Xác nhận Hoàn thành */}
-            {arg.event.extendedProps.finished !== 1 && (<button
+            {/* ✅ Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */} 
+            {arg.event.extendedProps.finished !== 1  && (<button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleFinished(arg.event);
@@ -1248,6 +1228,9 @@ import 'primeicons/primeicons.css';
           events={plan}
           percentShow = {percentShow}
           setPercentShow={setPercentShow}
+          selectedRows = {selectedRows}
+          setSelectedRows = {setSelectedRows}
+          quota = {quota}
       />
 
       {/* Vùng hover */}

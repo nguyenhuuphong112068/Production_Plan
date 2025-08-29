@@ -62,7 +62,7 @@ class ProductionQuotaController extends Controller
         }
 
         public function store (Request $request) {
-                //dd ($request->all());
+               
                 $selectedRooms = $request->input('room_id');
               
                 $validator = Validator::make($request->all(), [
