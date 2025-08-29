@@ -12,46 +12,65 @@ import './ModalSidebar.css'
 import { InputSwitch } from 'primereact/inputswitch';
 import Swal from 'sweetalert2'; 
 
-const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentShow }) => {
 
-  const [selectedRows, setSelectedRows] = useState([]);
+
+const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentShow, quota, selectedRows,setSelectedRows }) => {
+
+
   const [stageFilter, setStageFilter] = useState(1);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState(""); 
-  const sizes = ["20%", "30%", "100%", "close"];
+  const sizes = [ "20%", "30%", "100%","close"];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tableData, setTableData] = useState(events);
   const [showModalCreate, setShowModalCreate] = useState(false); 
-  const [orderPlan, setOrderPlan] = useState({checkedClearning: false, title: null});
+  const [showModalQuota, setShowModalQuota] = useState(false); 
+  const [orderPlan, setOrderPlan] = useState({checkedClearning: false, title: null, batch: "NA", level: 1});
+  const [modalQuotaData, setModalQuotaData] = useState({name: "",intermediate_code: ""});
+  const [errorsModal, setErrorsModal] = useState(null);
+  
 
-
+ 
   useEffect(() => {
       setTableData(events); 
   }, [events]);
 
+  // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
+
       if (percentShow === "100%") {
+          if (stageFilter === 1 ){
+            setVisibleColumns(allColumns.filter(col => !["pakaging_dates"].includes(col.field)));
+          }
+          else if (stageFilter === 7 ){
+            setVisibleColumns(allColumns.filter(col => !["weight_dates"].includes(col.field)));
+          }
+          else if (stageFilter === 9 ){
+            setVisibleColumns(allColumns.filter(col => ["name", "batch", "expected_date" , "level"].includes(col.field)));
+          }
+          else {
+            setVisibleColumns(allColumns.filter(col => !["weight_dates", "pakaging_dates"].includes(col.field)));
+          }
 
-        setVisibleColumns(allColumns);
+        //setVisibleColumns(allColumns);
       } else if (percentShow === "30%") {
-
-        setVisibleColumns(allColumns.filter(col => ["name", "batch", "level"].includes(col.field)));
+        setVisibleColumns(allColumns.filter(col => ["name", "batch", "expected_date", "level"].includes(col.field)));
       } else {
-        setVisibleColumns(allColumns.filter(col => ["name", "batch"].includes(col.field)));
+        setVisibleColumns(allColumns.filter(col => ["name", "batch", "expected_date"].includes(col.field)));
       }
-  }, [percentShow]);
+  }, [percentShow, stageFilter]);
 
   const handleToggle = () => {
-    
-    const nextIndex = (currentIndex + 1) % sizes.length;
-    
-    if (sizes[nextIndex] == "close"){
-      setCurrentIndex(0)
-      onClose (false)
-    }else {    
-      setCurrentIndex(nextIndex);
-      setPercentShow(sizes[nextIndex]);
-      setSelectedRows([]);}
+      
+      const nextIndex = (currentIndex + 1) % sizes.length;
+      
+      if (sizes[nextIndex] == "close"){
+        setCurrentIndex(0)
+        onClose (false)
+      }else {    
+        setCurrentIndex(nextIndex);
+        setPercentShow(sizes[nextIndex]);
+        setSelectedRows([]);}
 
   };
 
@@ -141,7 +160,9 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   };
 
   const handleSelectionChange = (e) => {
+   
       const currentSelection = e.value;
+ 
       if (percentShow !== "100%"){    
         if (currentSelection.length <= 1) {
           setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: false })));
@@ -161,20 +182,15 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 
   };
 
-  const handlePrevStage = () =>  {setStageFilter((prev) => Math.max(1, prev - 1)); setSelectedRows([])}
-  const handleNextStage = () => {setStageFilter((prev) => Math.min(9, prev + 1)); console.log (tableData); setSelectedRows([])}
+  const handlePrevStage = () =>  {
+      setStageFilter((prev) => (prev === 1 ? 9 : prev - 1)); 
+      setSelectedRows([]
 
-  const handleDragStart = (e) => {
-    if (selectedRows.length === 0) return;
-    const data = selectedRows.map((row) => ({
-      id: row.id,
-      title: `${row.name}-${row.batch}-${row.market}`,
-      intermediate_code: row.intermediate_code,
-      stage_code: row.stage_code,
-      expected_date: row.expected_date,
-    }));
-    e.dataTransfer.setData("application/json", JSON.stringify(data));
-  };
+  )}
+  const handleNextStage = () => {
+    setStageFilter((prev) => (prev === 9 ? 1 : prev + 1)); 
+    setSelectedRows([]);
+  }
 
   const handleRowReorder = (e) => {
     const { value: newData, dropIndex, dragIndex } = e;
@@ -318,9 +334,11 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
               timer: 1000 
             }).then(() => {
               setOrderPlan({});
+              setErrorsModal ({})
             });
           },
           onError: (errors) => {
+            
             Swal.fire({
               title: 'Lỗi!',
               text: 'Có lỗi khi cập nhật: ' + (errors?.message || ''),
@@ -334,16 +352,77 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
      
   }
 
-    const naBody = (field) => (rowData) => {
+  const naBody = (field) => (rowData) => {
       if (field === "name" && rowData.stage_code === 9) {
         return rowData.title ?? "NA";
       }
       return rowData[field] ?? "NA";
-    };
+  };
 
+  const roomBody = (rowData) => {
+  
+    if (!rowData.permisson_room || rowData.permisson_room.length === 0) {
+      return (
+        <span
+          className='btn'
+          onClick={() => { if (rowData.stage_code !== 9){handleOpenQuota(rowData)}}}
+          style={{
+            backgroundColor: "#ffcccc", // đỏ nhạt
+            color: "#b00000",           // chữ đỏ đậm
+            padding: "2px 6px",
+            borderRadius: "6px",
+            display: "inline-block",
+            minWidth: "100%",           // fill cả ô
+            textAlign: "center"
+          }}
+        >
+          {`${rowData.stage_code !==9?"Thiếu Định Mức":"Không Định Mức"}`} 
+        </span>
+      );
+    }
+    return Object.values(rowData.permisson_room).join(", ");
 
-    const allColumns = [
+  };
+
+  const handleOpenQuota = (rowData) => {
+    if (rowData.stage_code !== 9) {
+      setModalQuotaData({
+        name: rowData.name,
+        finished_product_code_code:  rowData.finished_product_code,
+        intermediate_code:  rowData.intermediate_code,
+        stage_code: rowData.stage_code
+      });
+      setShowModalQuota(true);
+    }
+  };
+
+  const handleCreateQuota = () => {
+
+     router.put('/quota/production/store', modalQuotaData, {
+       onSuccess: () => {
+                   Swal.fire({
+                     icon: 'success',
+                     title: 'Hoàn Thành Sắp Lịch',
+                     timer: 1000,
+                     showConfirmButton: false,
+                   });
+                   setShowModalQuota(false);
+                   setErrorsModal ({})
+                 },
+        onError: (errors) => {
+            setErrorsModal (errors)
+           
+        },
+      });
+  }
+
+  const option_rooms = quota.filter((q) => Number(q.stage_code) === Number(stageFilter));
+
+  const allColumns = [
       { field: "intermediate_code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody },
+      { field: "permisson_room",  header: "Phòng SX", sortable: true, body: roomBody ,
+         style: { minWidth: '2rem', maxWidth: '15rem', whiteSpace: 'normal' } 
+      },
       { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name") },
       { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch") },
       { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") },
@@ -354,8 +433,8 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate,
         style: { width: '5rem', maxWidth: '5rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
       },
-      { field: "weight_dates", header: "Cân NL", sortable: true, body: naBody("weight_dates") },
-      { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: naBody("pakaging_dates") },
+      { field: "weight_dates", header: "Cân NL", sortable: true, body: weightPBodyTemplate },
+      { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: packagingBodyTemplate },
       { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"),
         style: { width: '25rem', maxWidth: '25rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
       },
@@ -363,12 +442,10 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
         style: { width: '8rem', maxWidth: '8rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
       },
       { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") },
+      
     ];
 
-
   
-
-
   return (
     <div
       id="external-events"
@@ -380,18 +457,9 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
         <Row className="align-items-center">
 
           <Col md={3} className='d-flex justify-content-start'>
-            <div
-              className="fc-event cursor-move px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center mr-3"
-              data-rows={JSON.stringify(selectedRows)}
-              draggable="true"
-              onDragStart={handleDragStart}  title="Tạo Lịch Với Các Sản Phẩm Đã Chọn">
-              <i className="fas fa-arrows-alt"></i> ({selectedRows.length})
-            </div>
-          
-          
-            {percentShow === "100%" ? (
+        
+            {percentShow === "100%" && stageFilter <=7 ? (
               <>
-
               <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
               onClick={handleCreateManualCampain}>
               <i className="fas fa-flag"></i> ({selectedRows.length})
@@ -402,7 +470,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                 <i className="fas fa-flag-checkered"></i>
               </div> 
               </>):<></>}
-              
               {percentShow === "100%" && stageFilter === 9 ? (
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Kế Hoạch Khác"
                 onClick={ () => setShowModalCreate (true)}>
@@ -414,44 +481,36 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 
           <Col md={6}>
             <div className="p-inputgroup flex-1">
-              <Button icon="pi pi-angle-double-left" className="p-button-success" onClick={handlePrevStage} disabled={stageFilter === 1} title="Chuyển Công Đoạn"/>
+              <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
               {percentShow === "100%" ? (
 
-              <InputText value={"Công Đoạn " + stageNames[stageFilter] + " - Còn " + 
+              <InputText value= {stageFilter +". " + "Công Đoạn " + stageNames[stageFilter] + " - Còn " + 
                 tableData.filter(event => Number(event.stage_code) === stageFilter)
-                .filter(ev => (ev.name ?? "").toLowerCase().includes((searchTerm ?? "").toLowerCase())).length + " Sản Phẩm Chờ Sắp Lịch"} className="text-center  fw-bold" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
+                .filter(ev => (ev.name ?? "").toLowerCase().includes((searchTerm ?? "").toLowerCase())).length + " Sản Phẩm Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
                 /> 
               ):
 
               <InputText value={ stageNames[stageFilter]} className="text-center fw-bold" style={{ fontSize: '15px', color: ' #CDC171'}} readOnly />
               }
 
-              <Button icon="pi pi-angle-double-right" className="p-button-success" onClick={handleNextStage} disabled={stageFilter === 9}  title="Chuyển Công Đoạn" />
+              <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
             </div>
           </Col>
-          <Col md={2} >
+          <Col md={3} className='d-flex justify-content-end'>
+
             {percentShow === "100%" ? (
-              <InputText className='border'
+              <InputText className='border mr-5'
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm kiếm..."
-                style={{ width: "100%" }}
+                style={{ width: "50%" }}
               />):""}
-          </Col>
-
-          <Col md={1} className='d-flex justify-content-end'>
+          
             {percentShow != "close" ? (
-            <button
-              onClick={handleToggle}
-              className="fc-event cursor-pointer rounded text-lg text-center mr-2"
-              style={{ fontSize: "1.5rem" }}
-              title="Điều Chỉnh Độ Rộng Side Bar"
-            >
-              <img src="/img/iconstella.svg" style={{width: '30px', marginRight: '10px'}} />
-              {/* <i className="pi pi-arrows-h"></i> */}
-            </button>):""}
+            <div onClick={handleToggle} className='me-3' style={{ width: '30px', height: '30px' , marginRight: '1%' }} title="Điều Chỉnh Độ Rộng Side Bar">
+              <img src="/img/iconstella.svg" style={{width: '40px', height: '40px'}} />
+            </div>):""}
           </Col>
-
         </Row>
 
       </div>
@@ -480,23 +539,26 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
             style={{ width: "60px", textAlign: "center" }}
           />):""}
           
-          {/* Cột Kéo thả */}
+          
 
           <Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
 
           {percentShow === "100%" ? (
             <Column rowReorder style={{ width: '3rem' }} />) : (
+
+            /* Cột Kéo thả */
             <Column
                   header="-"
                   body={(rowData) => (
                     <div
                       className="fc-event cursor-move px-2 py-1 bg-blue-100 border border-blue-400 rounded text-sm text-center"
+                      // data-id={rowData.id}
+                      // data-single_schedueler = {true}
+                      // data-title={`${rowData.name}-${rowData.batch}-${rowData.market}`}
+                      // data-intermediate_code={rowData.intermediate_code}
+                      // data-stage_code={rowData.stage_code}
                       draggable="true"
-                      data-id={rowData.id}
-                      data-title={`${rowData.name}-${rowData.batch}-${rowData.market}`}
-                      data-intermediate_code={rowData.intermediate_code}
-                      data-stage_code={rowData.stage_code}
-                      data-expected-date={rowData.expected_date}
+                      onClick={handleSelectionChange}
                     >
                       <i className="fas fa-arrows-alt"></i>
                     </div>
@@ -521,7 +583,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 
 
       </div>
-      
+      {/* Thêm Kế Hoạch Khác */}
       <Modal size="lg" show={showModalCreate} aria-labelledby="example-modal-sizes-title-lg" onHide = {() => setShowModalCreate (false)}>
                 <Modal.Header style={{color:'#cdc717', backgroundColor: '#ffffffff'}}>
                   <img src="/img/iconstella.svg" style={{width: '30px', marginRight: '10px'}} /> 
@@ -536,8 +598,24 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                   <Form>
                     <Row className="mb-3">
                           <Form.Group as={Col} >
-                          <Form.Label>Tên Kế Hoạch</Form.Label>
+                          <Form.Label>Tên kế hoạch</Form.Label>
                           <Form.Control type="text" name ='fullName' value = {orderPlan.title?? ""} onChange={(e) => setOrderPlan({...orderPlan, title: e.target.value})}   placeholder="Bắt buộc" />
+                          {errorsModal?.create_inter_Errors?.room_id && (
+                              <div className="alert alert-danger mt-1">
+                                {errorsModal.create_inter_Errors.room_id}
+                              </div>)}
+                          </Form.Group>
+                    </Row>
+
+                    <Row className="mb-3">
+                          <Form.Group as={Col} >
+                          <Form.Label>Số lô</Form.Label>
+                          <Form.Control type="text" name ='fullName' value = {orderPlan.batch?? ""} onChange={(e) => setOrderPlan({...orderPlan, batch: e.target.value})}   placeholder="Không Bắt buộc, nếu không có mặc định NA" />
+                          </Form.Group>
+
+                          <Form.Group as={Col} >
+                          <Form.Label>Mức độ ưu tiên</Form.Label>
+                          <Form.Control type="text" name ='fullName' value = {orderPlan.level?? ""} onChange={(e) => setOrderPlan({...orderPlan, level: e.target.value})}   placeholder="Không Bắt buộc, nếu không có mặc định 1" />
                           </Form.Group>
 
                     </Row>
@@ -545,13 +623,21 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                     <Row className="mb-3">
                           <Form.Group as={Col} >
                             <div className='text-center d-flex justify-content-start'>
-                              <Form.Label className='mr-5'>Có Vệ Sinh Lại Không: </Form.Label>
-                              <span className='ml-5 mr-5'> Có </span>
-                              <InputSwitch checked={orderPlan.checkedClearning?? ""} onChange={(e) => setOrderPlan({...orderPlan, checkedClearning : !orderPlan.checkedClearning})} />
+                              <Form.Label className='mr-5'>Có vệ sinh lại không: </Form.Label>
                               <span className='ml-5 mr-5'> Không </span>
+                              <InputSwitch checked={orderPlan.checkedClearning?? ""} onChange={(e) => setOrderPlan({...orderPlan, checkedClearning : !orderPlan.checkedClearning})} />
+                              <span className='ml-5 mr-5'> Có </span>
                             </div>
                           </Form.Group>     
                     </Row> 
+                    
+                    <Row className="mb-3">
+                          <Form.Group as={Col} >
+                          <Form.Label>Ghi chú</Form.Label>
+                          <Form.Control type="text" name ='fullName' value = {orderPlan.note?? ""} onChange={(e) => setOrderPlan({...orderPlan, note: e.target.value})}   placeholder="Bắt buộc" />
+                          </Form.Group>
+                    </Row>
+
                   </Form>
 
                 </Modal.Body>
@@ -565,6 +651,149 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                     </Button>
                 </Modal.Footer>
       </Modal>
+
+
+      {/* Tạo Đinh Mức */}
+ 
+      <Modal size="xl" show={showModalQuota} aria-labelledby="example-modal-sizes-title-lg" onHide = {() => setShowModalQuota (false)}>
+                <Modal.Header style={{color:'#cdc717', backgroundColor: '#ffffffff'}}>
+                  <img src="/img/iconstella.svg" style={{width: '30px', marginRight: '10px'}} /> 
+                  <Modal.Title 
+                      id="example-modal-sizes-title-lg" 
+                      className="mx-auto fw-bold"
+                  >
+                      Định Mức Sản Xuất
+                  </Modal.Title>
+                </Modal.Header>
+                <Modal.Body  style={{fontSize:'20px'}}>
+
+                  <Form  >
+                    <Row className="mb-3">
+                      <Col md={9}>
+                          <Form.Group >
+                          <Form.Label>Tên Sản Phẩm</Form.Label>
+                          <Form.Control type="text" name ='name' value={modalQuotaData.name?? ""} readOnly />
+                          </Form.Group>                      
+                      </Col>
+                      <Col md={3}>
+                          <Form.Group >
+                          <Form.Label>Mã Sản Phẩm</Form.Label>
+                          <Form.Control type="text" name ='product_code' value={modalQuotaData.stage_code <=6? modalQuotaData.intermediate_code: modalQuotaData.finished_product_code}  readOnly  />
+                          </Form.Group>                      
+                      </Col>
+                    </Row>
+
+                    <Row className="mb-3">
+                          <Form.Group as={Col} >
+                          <Form.Label>Phòng Sản Xuất</Form.Label>
+                          <select className="form-control" name="room_id[]"  multiple="multiple" style= {{width: "100%", height:"30mm" }}
+                          onChange={(e) => {
+                            const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
+                            setModalQuotaData({
+                              ...modalQuotaData,
+                              room_id: selectedValues,   // lưu mảng id vào state
+                            });
+                          }}>
+                            {option_rooms.map((room, idx) => (
+                              <option key={idx} value={room.id}> 
+                                  {room.code + " - " + room.name}
+                              </option>
+                            ))}
+                          </select>
+                          {errorsModal?.create_inter_Errors?.room_id && (
+                              <div className="alert alert-danger mt-1">
+                                {errorsModal.create_inter_Errors.room_id}
+                              </div>)}
+                          </Form.Group>
+
+                    </Row>
+
+                    <Row className="mb-3">
+                        <Col md={3}>
+                            <Form.Group >
+                            <Form.Label>Thời Gian Chuẩn Bi</Form.Label>
+                            <Form.Control type="text" name ='p_time' value = {modalQuotaData.p_time?? ""} onChange={(e) => setModalQuotaData({...modalQuotaData, p_time: e.target.value})} placeholder="HH:mm" 
+                                          pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"  required
+                                          />
+                              {errorsModal?.create_inter_Errors?.p_time && (
+                                <div className="alert alert-danger mt-1">
+                                  {errorsModal.create_inter_Errors.p_time}
+                                </div>)}
+                            </Form.Group> 
+                    
+                        </Col>
+                        <Col md={3}>
+                            <Form.Group >
+                            <Form.Label>Thời Gian Sản Xuất</Form.Label>
+                            <Form.Control type="text" name ='m_time' value = {modalQuotaData.m_time?? ""} onChange={(e) => setModalQuotaData({...modalQuotaData, m_time: e.target.value})}  placeholder="HH:mm" 
+                                          pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$" required />
+                                {errorsModal?.create_inter_Errors?.m_time && (
+                                <div className="alert alert-danger mt-1">
+                                  {errorsModal.create_inter_Errors.m_time}
+                                </div>)}
+                            </Form.Group>                      
+                        </Col> 
+                        <Col md={3}>
+                            <Form.Group >
+                            <Form.Label>Vệ Sịnh Cấp I</Form.Label>
+                            <Form.Control type="text" name ='C1_time' value = {modalQuotaData.C1_time?? ""} onChange={(e) => setModalQuotaData({...modalQuotaData, C1_time: e.target.value})}    placeholder="HH:mm" 
+                                          pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$" required/>
+                                {errorsModal?.create_inter_Errors?.C1_time && (
+                                <div className="alert alert-danger mt-1">
+                                  {errorsModal.create_inter_Errors.C1_time}
+                                </div>)}
+                            </Form.Group>                      
+                        </Col>
+                        <Col md={3}>
+                            <Form.Group >
+                            <Form.Label>Vệ Sịnh Cấp II</Form.Label>
+                            <Form.Control type="text" name ='C2_time' value = {modalQuotaData.C2_time?? ""} onChange={(e) => setModalQuotaData({...modalQuotaData, C2_time: e.target.value})}    placeholder="HH:mm" 
+                                          pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$" required/>
+                            
+                                {errorsModal?.create_inter_Errors?.C2_time && (
+                                <div className="alert alert-danger mt-1">
+                                  {errorsModal.create_inter_Errors.C2_time}
+                                </div>)}
+                            </Form.Group>                      
+                        </Col>
+                    </Row> 
+                    
+                    <Row className="mb-3">
+                      <Col md={3}>
+                          <Form.Group >
+                          <Form.Label>Số lô chiến dịch tối đa</Form.Label>
+                          <Form.Control type="number" min= "0" name ='maxofbatch_campaign' value = {modalQuotaData.maxofbatch_campaign?? ""} onChange={(e) => setModalQuotaData({...modalQuotaData, maxofbatch_campaign: e.target.value})}  required  placeholder="Bắt buộc" />
+                                {errorsModal?.create_inter_Errors?.maxofbatch_campaign && (
+                                <div className="alert alert-danger mt-1">
+                                  {errorsModal.create_inter_Errors.maxofbatch_campaign}
+                                </div>)}
+
+                          </Form.Group>                      
+                      </Col>
+                      <Col md={9}>
+                          <Form.Group >
+                          <Form.Label>Ghi Chú</Form.Label>
+                          <Form.Control type="text" name ='note' value = {modalQuotaData.note?? ""} onChange={(e) => setModalQuotaData({...modalQuotaData, note: e.target.value})} placeholder="Không Bắt Buộc" />
+                          </Form.Group>                      
+                      </Col>
+                    </Row>
+
+                  </Form>
+
+                </Modal.Body>
+
+                <Modal.Footer >
+                    <Button type='submit' className='btn btn-primary' onClick={() => handleCreateQuota ()}> 
+                        Lưu
+                    </Button>
+                    <Button  className='btn btn-primary' onClick={() => setShowModalQuota (false)}>
+                        Đóng
+                    </Button>
+                </Modal.Footer>
+      </Modal>
+
+
+
     </div>
   );
 };
