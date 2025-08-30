@@ -366,29 +366,43 @@ class SchedualController extends Controller
 
 
         public function update(Request $request){
-            
+                
+
+                $changes = $request->input('changes', []);
+
                 try {
-                if (strpos($request->title, "VS-I") !== false ) {
-                DB::table('stage_plan')
-                        ->where('id', $request->id)
-                        ->update([
-                        'start_clearning' => $request->start,
-                        'end_clearning' => $request->end,
-                        'resourceId' => $request->resourceId,
-                        'schedualed_by' => session('user')['fullName'],
-                        'schedualed_at' => now(),
-                        ]);
-                } else {
-                DB::table('stage_plan')
-                        ->where('id', $request->id)
-                        ->update([
-                        'start' => $request->start,
-                        'end' => $request->end,
-                        'resourceId' => $request->resourceId,
-                        'schedualed_by' => session('user')['fullName'],
-                        'schedualed_at' => now(),
-                        ]);
-                }
+                        foreach ($changes as $change) {
+                        // Tách id: "102-main" -> 102
+                        $idParts = explode('-', $change['id']);
+                        $realId = $idParts[0] ?? null;
+
+                        if (!$realId) {
+                                continue; // bỏ qua nếu id không hợp lệ
+                        }
+
+                        // Nếu là sự kiện vệ sinh (title chứa "VS-")
+                        if (strpos($change['title'], "VS-") !== false) {
+                                DB::table('stage_plan')
+                                ->where('id', $realId)
+                                ->update([
+                                        'start_clearning' => $change['start'],
+                                        'end_clearning'   => $change['end'],
+                                        'resourceId'      => $change['resourceId'],
+                                        'schedualed_by'   => session('user')['fullName'],
+                                        'schedualed_at'   => now(),
+                                ]);
+                        } else {
+                                DB::table('stage_plan')
+                                ->where('id', $realId)
+                                ->update([
+                                        'start'           => $change['start'],
+                                        'end'             => $change['end'],
+                                        'resourceId'      => $change['resourceId'],
+                                        'schedualed_by'   => session('user')['fullName'],
+                                        'schedualed_at'   => now(),
+                                ]);
+                        }
+                        }
 
                 
 

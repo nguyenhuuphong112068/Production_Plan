@@ -1,0 +1,8 @@
+1. Lập Lịch: quest khối để chọn nhiều 
+2. Lập Lịch: Chọn khoản thời gian hiểu thị, Từ Ngày --> Đến Ngày.
+3. Lập lịch: Ctrol + Click -> chọn tất cả các event có cùng plan_master_id
+4. Kế Hoạch bảo trì
+5. Dữ liệu Gốc.
+6. Danh mục
+7. Kế Hoạch
+8. Định Mức

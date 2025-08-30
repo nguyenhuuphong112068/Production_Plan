@@ -14,7 +14,7 @@ import Swal from 'sweetalert2';
 
 
 
-const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentShow, quota, selectedRows,setSelectedRows }) => {
+const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentShow, quota, selectedRows,setSelectedRows, resources }) => {
 
 
   const [stageFilter, setStageFilter] = useState(1);
@@ -28,12 +28,24 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   const [orderPlan, setOrderPlan] = useState({checkedClearning: false, title: null, batch: "NA", level: 1});
   const [modalQuotaData, setModalQuotaData] = useState({name: "",intermediate_code: ""});
   const [errorsModal, setErrorsModal] = useState(null);
-  
+  const [isSaving, setIsSaving] = useState(false);
+  const [optionRooms, setOptionRooms] = useState([]);
 
- 
   useEffect(() => {
-      setTableData(events); 
+
+    if (resources && resources.length > 0 && stageFilter) {
+      const filtered = resources.filter(
+        (q) => Number(q.stage_code) == Number(stageFilter)
+      );
+      setOptionRooms(filtered);
+     
+    }
+  }, [resources, stageFilter]); 
+
+  useEffect(() => {
+        setTableData(events); 
   }, [events]);
+
 
   // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
@@ -64,6 +76,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       
       const nextIndex = (currentIndex + 1) % sizes.length;
       
+
       if (sizes[nextIndex] == "close"){
         setCurrentIndex(0)
         onClose (false)
@@ -71,8 +84,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
         setCurrentIndex(nextIndex);
         setPercentShow(sizes[nextIndex]);
         setSelectedRows([]);}
-
-  };
+      };
 
   const statusOrderBodyTemplate = (rowData) => {
     const colors = {
@@ -160,9 +172,11 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   };
 
   const handleSelectionChange = (e) => {
-   
-      const currentSelection = e.value;
- 
+    const currentSelection = e.value?? null;
+    if (!currentSelection || currentSelection.length === 0) {
+      setSelectedRows([]); // reset nếu không có selection
+      return;
+    }
       if (percentShow !== "100%"){    
         if (currentSelection.length <= 1) {
           setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: false })));
@@ -184,12 +198,12 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 
   const handlePrevStage = () =>  {
       setStageFilter((prev) => (prev === 1 ? 9 : prev - 1)); 
-      setSelectedRows([]
-
-  )}
+      setSelectedRows([]);
+  }
   const handleNextStage = () => {
     setStageFilter((prev) => (prev === 9 ? 1 : prev + 1)); 
     setSelectedRows([]);
+    
   }
 
   const handleRowReorder = (e) => {
@@ -388,7 +402,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     if (rowData.stage_code !== 9) {
       setModalQuotaData({
         name: rowData.name,
-        finished_product_code_code:  rowData.finished_product_code,
+        finished_product_code:  rowData.finished_product_code,
         intermediate_code:  rowData.intermediate_code,
         stage_code: rowData.stage_code
       });
@@ -397,6 +411,8 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   };
 
   const handleCreateQuota = () => {
+    if (isSaving) return;
+    setIsSaving(true);
 
      router.put('/quota/production/store', modalQuotaData, {
        onSuccess: () => {
@@ -408,15 +424,17 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                    });
                    setShowModalQuota(false);
                    setErrorsModal ({})
+                   setIsSaving(false);
                  },
         onError: (errors) => {
             setErrorsModal (errors)
-           
+            setIsSaving(false);
         },
       });
   }
+   
+ 
 
-  const option_rooms = quota.filter((q) => Number(q.stage_code) === Number(stageFilter));
 
   const allColumns = [
       { field: "intermediate_code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody },
@@ -686,20 +704,22 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                     <Row className="mb-3">
                           <Form.Group as={Col} >
                           <Form.Label>Phòng Sản Xuất</Form.Label>
+
                           <select className="form-control" name="room_id[]"  multiple="multiple" style= {{width: "100%", height:"30mm" }}
-                          onChange={(e) => {
-                            const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
-                            setModalQuotaData({
-                              ...modalQuotaData,
-                              room_id: selectedValues,   // lưu mảng id vào state
-                            });
-                          }}>
-                            {option_rooms.map((room, idx) => (
-                              <option key={idx} value={room.id}> 
-                                  {room.code + " - " + room.name}
-                              </option>
-                            ))}
+                              onChange={(e) => {
+                                const selectedValues = Array.from(e.target.selectedOptions, option => option.value);
+                                setModalQuotaData({
+                                  ...modalQuotaData,
+                                  room_id: selectedValues,   // lưu mảng id vào state
+                                });
+                              }}>
+                                {optionRooms.map((room, idx) => (
+                                  <option key={idx} value={room.id}> 
+                                      {room.code + " - " + room.title}
+                                  </option>
+                                ))}
                           </select>
+
                           {errorsModal?.create_inter_Errors?.room_id && (
                               <div className="alert alert-danger mt-1">
                                 {errorsModal.create_inter_Errors.room_id}
@@ -783,7 +803,9 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                 </Modal.Body>
 
                 <Modal.Footer >
-                    <Button type='submit' className='btn btn-primary' onClick={() => handleCreateQuota ()}> 
+                    <Button id = "btnQuotaSave" type='submit' className='btn btn-primary' 
+                        icon={isSaving ? "pi pi-spin pi-spinner" : ""}
+                        onClick={() => handleCreateQuota ()}> 
                         Lưu
                     </Button>
                     <Button  className='btn btn-primary' onClick={() => setShowModalQuota (false)}>
@@ -799,7 +821,5 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
 };
 
 export default ModalSidebar;
-
-
 
 
