@@ -196,7 +196,10 @@
 }
 
 /* Hàng/nhãn/ô nhập */
-.cfg-row { margin-bottom: 14px; }
+.cfg-row { 
+  margin-bottom: 14px;  
+  text-align: center;  
+}
 .cfg-label {
   display: block;
   font-weight: 600;

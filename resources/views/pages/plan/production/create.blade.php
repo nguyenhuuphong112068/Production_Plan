@@ -247,7 +247,7 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="btnSave">
                             Lưu
                         </button>
                     </div>
@@ -330,7 +330,9 @@
             $('#source_table').DataTable().search(intermediateCode).draw();
         });
 
-
-
+         preventDoubleSubmit("#createModal", "#btnSave");
+         
+         
     });
+    
 </script>

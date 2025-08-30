@@ -26,16 +26,47 @@
         <script src="{{asset ('dataTable/plugins/bootstrap-switch/js/bootstrap-switch.min.js')}}"></script>
 
         
-        
+     
+        <script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script>
 
-        {{-- <script src="{{asset ('dataTable/dist/js/demo.js')}}"></script>-->
-
+        <script src="{{asset ('dataTable/dist/js/demo.js')}}"></script>
         <script src="{{asset ('dataTable/dist/js/pages/dashboard3.js')}}"></script>
 
-        {{-- <!-- Thêm DataTables CSS -->
+        <!-- Thêm DataTables CSS -->
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
         <!-- Thêm DataTables JS -->
-       <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>  --}}
+       <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>  
 
-   
+        {{-- Chống double submit --}}
+        <script>
+                /**
+                * Chặn double submit cho form
+                * @param {string} formSelector - Selector của form (vd: "#myForm" hoặc ".ajax-form")
+                * @param {string} buttonSelector - Selector của nút submit (vd: "#btnSave")
+                */
+                function preventDoubleSubmit(formSelector, buttonSelector) {
+                       
+                        const form = document.querySelector(formSelector);
+                        const btn = document.querySelector(buttonSelector);
+
+                        if (!form || !btn) return;
+
+                        form.addEventListener("submit", function () {
+                        if (btn.disabled) {
+                                // đã disable rồi thì ngăn submit thêm lần nữa
+                                event.preventDefault();
+                                return;
+                        }
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+                        });
+                }
+
+                // Gọi hàm ở bất cứ form nào bạn muốn
+                document.addEventListener("DOMContentLoaded", function () {
+                        preventDoubleSubmit("form", "#btnSave"); 
+                        // có thể gọi nhiều lần cho form khác:
+                        // preventDoubleSubmit("#form2", "#btnUpdate");
+                });
+        </script>

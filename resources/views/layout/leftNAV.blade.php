@@ -188,7 +188,7 @@
               <li class="nav-item">
                 <a href="{{ route ('pages.plan.production.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Kế Hoạch San Xuất</p>
+                  <p>Kế Hoạch Sản Xuất</p>
                 </a>
               </li>
 

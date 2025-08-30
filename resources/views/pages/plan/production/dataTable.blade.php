@@ -23,15 +23,15 @@
                     <div class="col-md-8"></div> 
                     <div class="col-md-2" style="text-align: right;">
 
-                      <form  action="{{ route('pages.plan.production.send') }}" method="post">
+                      <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
 
                             @csrf
                             <input type="hidden" name="plan_list_id" value="{{$plan_list_id}}">
                             <input type="hidden" name="month" value="{{$month}}"> 
                             <input type="hidden" name="production" value="{{$production}}"> 
                             <button class="btn btn-success btn-create mb-2 "  style="width: 177px" >
-                            <i class="fas fa-paper-plane"></i> Gửi
-                      </button>
+                                <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
+                            </button>
                       </form>
 
                     </div>
@@ -187,7 +187,7 @@
 <script>
 
   $(document).ready(function () {
-
+      preventDoubleSubmit("#send_form", "#send_btn");
       $('.btn-edit').click(function () {
           const button = $(this);
           const modal = $('#updateModal');

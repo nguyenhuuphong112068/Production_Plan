@@ -51,7 +51,7 @@
                       @endphp
 
                       <td style="text-align: center; vertical-align: middle;">
-                          <span style="padding: 6px 15px; border-radius: 30%; {{ $colors[$data->send] ?? '' }}">
+                          <span style="padding: 6px 15px; border-radius: 20px; {{ $colors[$data->send] ?? '' }}">
                               {{ $status[$data->send] }}
                           </span>
                       </td>
