@@ -769,16 +769,27 @@ class SchedualController extends Controller
 
         ///////// Các hàm liên Auto Schedualer
         protected $roomAvailability = [];
+   
+
 
         /**Load room_status để lấy các slot đã bận*/
         protected function loadRoomAvailability() {
-                $schedules = DB::table('room_status')->orderBy('start')->get();
+
+                // $schedules = DB::table('room_status')->orderBy('start')->get();
+                // foreach ($schedules as $row) {
+                // $this->roomAvailability[$row->room_id][] = [
+                //         'start' => Carbon::parse($row->start),
+                //         'end'   => Carbon::parse($row->end)];
+                // }
+
+                $schedules = DB::table('stage_plan')->whereNotNull('start')->orderBy('start')->select('resourceId', 'start', 'end_clearning')->get();
                 foreach ($schedules as $row) {
-                $this->roomAvailability[$row->room_id][] = [
+                        $this->roomAvailability[$row->resourceId][] = [
                         'start' => Carbon::parse($row->start),
-                        'end'   => Carbon::parse($row->end)
-                ];
-        }}
+                        'end'   => Carbon::parse($row->end_clearning)];
+                }
+
+        }
 
         /**Tìm slot trống sớm nhất trong phòng*/
         protected function findEarliestSlot($roomId, Carbon $earliestStart, $durationHours, $cleaningHours){
