@@ -21,7 +21,6 @@ import Selecto from "react-selecto";
 
 
 
-
   const ScheduleTest = () => {
     const calendarRef = useRef(null);
     moment.locale('vi');
@@ -32,7 +31,6 @@ import Selecto from "react-selecto";
     const [cleaningHidden, setCleaningHidden] = useState(false);
     const [pendingChanges, setPendingChanges] = useState([]);
     const [saving, setSaving] = useState(false);
-    //const [sidebarOpen, setSidebarOpen] = useState(false);
     const [selectedEvents, setSelectedEvents] = useState([]);
     const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
     const [percentShow, setPercentShow] = useState("15%");
@@ -45,6 +43,8 @@ import Selecto from "react-selecto";
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
     const [selectedRows, setSelectedRows] = useState([]);
 
+    const [fromDate, setFromDate] = useState(dayjs().startOf('month').format("YYYY-MM-DD"));
+    const [toDate, setToDate] = useState(dayjs().endOf('month').format("YYYY-MM-DD"));
 
     //Get dư liệu row được chọn 
     useEffect(() => {
@@ -79,8 +79,8 @@ import Selecto from "react-selecto";
         const root = ReactDOM.createRoot(container);
         root.render(
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* <EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} /> */}
           <CalendarSearchBox onSearch={handleSearch} />
+
         </div>
           
         );
@@ -93,6 +93,44 @@ import Selecto from "react-selecto";
         
     }, []);
 
+
+    useEffect(() => {
+      const toolbarEl = document.querySelector(".fc-dateRange-button");
+      if (!toolbarEl) return;
+
+      const container = document.createElement("div");
+      toolbarEl.appendChild(container);
+
+      const root = ReactDOM.createRoot(container);
+      root.render(
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="border rounded px-2 py-1 text-black"
+          />
+          <span>→</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="border rounded px-2 py-1 text-black"
+          />
+          <button
+            onClick={handleDateRangeChange}
+            className="bg-blue-500 text-white px-2 py-1 rounded"
+          >
+            Xem
+          </button>
+        </div>
+      );
+
+      return () => {
+        root.unmount();
+        toolbarEl.removeChild(container);
+      };
+    }, [fromDate, toDate]);
 
     useEffect(() => {
       const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
@@ -150,6 +188,51 @@ import Selecto from "react-selecto";
       }
 
       highlightAllEvents();
+        };
+
+    const handleDateRangeChange = () => {
+      const calendarApi = calendarRef.current?.getApi();
+      if (!calendarApi) return;
+
+      const start = dayjs(fromDate);
+      const end = dayjs(toDate);
+      const diffDays = end.diff(start, "day") + 1;
+
+
+
+      Swal.fire({
+        title: "Đang tải...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+        // Chọn view phù hợp
+      let viewType = "resourceTimelineYear";
+      if (diffDays <= 1) {
+        viewType = "resourceTimelineDay";
+      } else if (diffDays <= 7) {
+        viewType = "resourceTimelineWeek";
+      } else if (diffDays <= 30) {
+        viewType = "resourceTimelineMonth";
+      }
+
+
+      calendarApi.changeView('resourceTimelineWeek'); // hoặc giữ view hiện tại
+      calendarApi.gotoDate(fromDate); // nhảy đến fromDate
+
+      router.put(`/Schedual/view`, 
+        { start: new Date(fromDate).toISOString(), end: new Date(toDate).toISOString() }, 
+        {
+          preserveState: true,
+          replace: true,
+          //only: ['resources', 'events'],
+          onSuccess: () => {
+            setTimeout(() => Swal.close(), 500);
+          }
+        }
+      );
     };
 
     // --- Highlight tất cả sự kiện ---
@@ -1037,7 +1120,7 @@ import Selecto from "react-selecto";
         }}
         
         headerToolbar={{
-          left: 'prev,myToday,next hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
+          left: 'prev,myToday,next dateRange hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
           center: 'title',
           right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customYear customList'
         }}
@@ -1089,6 +1172,7 @@ import Selecto from "react-selecto";
             text: '🚫',
             click: handleClear
           },
+          dateRange : {text: ''},
           searchBox: {text: ''},
           fontSizeBox: {text: ''},
           slotDuration: {
@@ -1261,8 +1345,6 @@ import Selecto from "react-selecto";
           quota = {quota}
           resources = {resources}
       />
-
-       
 
         {/* Selecto cho phép quét chọn nhiều .fc-event */}
         <Selecto
