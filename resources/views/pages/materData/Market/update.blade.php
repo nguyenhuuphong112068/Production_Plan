@@ -2,24 +2,23 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <!-- Modal -->
-<div class="modal fade" id="UpdateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
+<div class="modal fade" id="update_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
    
     <form 
-      action="{{route('pages.materData.Analyst.update')}}" 
+
+      action="{{route('pages.materData.Unit.update')}}" 
       method="POST">
       @csrf
 
       <div class="modal-content">
         <div class="modal-header">
-
-           
           <a href="{{ route ('pages.general.home') }}">
               <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
           </a>
 
-          <h4 class="modal-title w-100 text-center" id="pModalLabel" style="color: #CDC717">
-              {{'Cập Nhật Dữ Liệu KNV' }}
+          <h4 class="modal-title w-100 text-center" style="color: #CDC717">
+              {{'Cập Nhật Dữ Liệu Gốc Đơn Vị Tính' }}
           </h4>
 
           <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -28,13 +27,10 @@
         </div>
 
         <div class="modal-body">
-          {{-- ID --}}
-          <input type="hidden" class="form-control" name="id" value="">
-          
-          {{-- CODE --}}
+             {{-- NAME --}}
             <div class="form-group">
-              <label for="code">Mã Số Nhân Viên</label>
-              <input type="text" class="form-control" name="code" disabled
+              <label for="code">Đơn Vị Tính </label>
+              <input type="text" class="form-control" name="code"  placeholder="vd: Kg"
                 value="{{ old('code') }}">
             </div>
             @error('code', 'updateErrors')
@@ -43,35 +39,16 @@
 
             {{-- NAME --}}
             <div class="form-group">
-              <label for="fullName">Tên Kiểm Nghiệm Viên</label>
-              <input type="text" class="form-control" name="fullName" disabled
-                value="{{ old('fullName') }}">
+              <label for="name">Đơn Vị Tính Đầy Đủ </label>
+              <input type="text" class="form-control" name="name"  placeholder="vd: Kilogram"
+                value="{{ old('name') }}">
             </div>
-            @error('fullName', 'updateErrors')
+            @error('name', 'updateErrors')
                 <div class="alert alert-danger">{{ $message }}</div>
             @enderror
-
-
-            {{-- Gourp_ID--}}
-            <div class="form-group">
-                <label for="groupName">Tổ Quản Lý</label>
-                <select class="form-control" name="groupName" id="groupName">
-                    <option value="">-- Chọn nhóm --</option>
-
-                    @foreach ($groups as $group)
-                        <option value="{{ $group->name }}" 
-                            {{ old('groupName') == $group->name ? 'selected' : '' }}>
-                            {{ $group->name }}
-                        </option>
-                    @endforeach
-
-                </select>
-                @error('groupName', 'updateErrors')
-                    <div class="alert alert-danger mt-1">{{ $message }}</div>
-                @enderror
-            </div>
-
         </div>
+
+        <input type="hidden" class="form-control" name="id" value="{{ old('id') }}">
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
@@ -88,12 +65,27 @@
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
+<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->updateErrors->any())
 <script>
     $(document).ready(function () {
-        $('#UpdateModal').modal('show');
+        $('#update_modal').modal('show');
+    });
+</script>
+@endif
+
+
+
+@if (session('success'))
+<script>
+    Swal.fire({
+        title: 'Thành công!',
+        text: '{{ session('success') }}',
+        icon: 'success',
+        timer: 1000, // tự đóng sau 2 giây
+        showConfirmButton: false
     });
 </script>
 @endif

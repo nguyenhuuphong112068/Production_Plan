@@ -10,10 +10,10 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.materData.Analyst.dataTable')
+  @include('pages.materData.Unit.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.materData.Analyst.create')
-  @include('pages.materData.Analyst.update') 
+  @include('pages.materData.Unit.create')
+  @include('pages.materData.Unit.update') 
 @endsection

@@ -19,8 +19,6 @@ import '@fullcalendar/daygrid/index.js';
 import '@fullcalendar/resource-timeline/index.js';
 import Selecto from "react-selecto";
 
-
-
   const ScheduleTest = () => {
     const calendarRef = useRef(null);
     moment.locale('vi');
@@ -43,8 +41,6 @@ import Selecto from "react-selecto";
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
     const [selectedRows, setSelectedRows] = useState([]);
 
-    const [fromDate, setFromDate] = useState(dayjs().startOf('month').format("YYYY-MM-DD"));
-    const [toDate, setToDate] = useState(dayjs().endOf('month').format("YYYY-MM-DD"));
 
     //Get dư liệu row được chọn 
     useEffect(() => {
@@ -92,45 +88,6 @@ import Selecto from "react-selecto";
         };
         
     }, []);
-
-
-    useEffect(() => {
-      const toolbarEl = document.querySelector(".fc-dateRange-button");
-      if (!toolbarEl) return;
-
-      const container = document.createElement("div");
-      toolbarEl.appendChild(container);
-
-      const root = ReactDOM.createRoot(container);
-      root.render(
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="border rounded px-2 py-1 text-black"
-          />
-          <span>→</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="border rounded px-2 py-1 text-black"
-          />
-          <button
-            onClick={handleDateRangeChange}
-            className="bg-blue-500 text-white px-2 py-1 rounded"
-          >
-            Xem
-          </button>
-        </div>
-      );
-
-      return () => {
-        root.unmount();
-        toolbarEl.removeChild(container);
-      };
-    }, [fromDate, toDate]);
 
     useEffect(() => {
       const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
@@ -188,51 +145,6 @@ import Selecto from "react-selecto";
       }
 
       highlightAllEvents();
-        };
-
-    const handleDateRangeChange = () => {
-      const calendarApi = calendarRef.current?.getApi();
-      if (!calendarApi) return;
-
-      const start = dayjs(fromDate);
-      const end = dayjs(toDate);
-      const diffDays = end.diff(start, "day") + 1;
-
-
-
-      Swal.fire({
-        title: "Đang tải...",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-        // Chọn view phù hợp
-      let viewType = "resourceTimelineYear";
-      if (diffDays <= 1) {
-        viewType = "resourceTimelineDay";
-      } else if (diffDays <= 7) {
-        viewType = "resourceTimelineWeek";
-      } else if (diffDays <= 30) {
-        viewType = "resourceTimelineMonth";
-      }
-
-
-      calendarApi.changeView('resourceTimelineWeek'); // hoặc giữ view hiện tại
-      calendarApi.gotoDate(fromDate); // nhảy đến fromDate
-
-      router.put(`/Schedual/view`, 
-        { start: new Date(fromDate).toISOString(), end: new Date(toDate).toISOString() }, 
-        {
-          preserveState: true,
-          replace: true,
-          //only: ['resources', 'events'],
-          onSuccess: () => {
-            setTimeout(() => Swal.close(), 500);
-          }
-        }
-      );
     };
 
     // --- Highlight tất cả sự kiện ---
@@ -307,7 +219,7 @@ import Selecto from "react-selecto";
       );
 
       // Chờ FullCalendar render xong rồi tắt loading
-  // bạn chỉnh thời gian tuỳ theo tốc độ render
+    // bạn chỉnh thời gian tuỳ theo tốc độ render
     };
 
     // Tô màu các event trùng khớp
@@ -464,8 +376,7 @@ import Selecto from "react-selecto";
       }, 300); // delay 300ms để thấy loading
     };
 
-  /////// 3 Ham sử lý thay đôi sự kiện
-
+    /////// 3 Ham sử lý thay đôi sự kiện
     const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
       const draggedEvent = info.event;
       const delta = info.delta;
@@ -506,9 +417,7 @@ import Selecto from "react-selecto";
         handleEventChange(info);
       }
 
-      //console.log (pendingChanges)
     };
-
 
     const handleEventChange = (changeInfo) => {
     
@@ -607,70 +516,8 @@ import Selecto from "react-selecto";
       
     };
 
-
-
     // bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
     const handleClear = () => {setSelectedEvents([]);};
-
-    const SelectedEventsSidebar = ({
-          events,
-          onRemove,
-          onClear,
-          onClose,
-          pendingChanges,
-          handleSaveChanges
-        }) => {
-          if (!events.length) return null;
-
-          return (
-            <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-lg p-4 z-50 overflow-auto">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-semibold">Sản phẩm đã chọn</h2>
-                
-              </div>
-
-              <div className="space-y-2 mb-4">
-                <button
-                  onClick={handleSaveChanges}
-                  disabled={pendingChanges.length === 0}
-                  className={`w-full p-2 rounded ${
-                    pendingChanges.length === 0
-                      ? "bg-gray-300 cursor-not-allowed"
-                      : "bg-green-500 hover:bg-green-600 text-white"
-                  }`}
-                >
-                  Lưu thay đổi ({pendingChanges.length})
-                </button>
-
-                <button
-                  onClick={onClear}
-                  className="w-full p-2 rounded bg-red-500 hover:bg-red-600 text-white"
-                >
-                  Bỏ chọn tất cả
-                </button>
-              </div>
-
-              <ul>
-                {events.map(ev => (
-                  <li key={ev.id} className="mb-2 border-b pb-1">
-                    <div className="flex justify-between items-center">
-                      <span>{ev.title}</span>
-                      <button
-                        onClick={() => onRemove(ev.id)}
-                        className="text-sm text-red-500 hover:text-red-700"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <small>
-                      {moment(ev.start).format("HH:mm")} - {moment(ev.end).format("HH:mm")}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-    };
 
     // Xử lý Chạy Lịch Tư Động
     const handleAutoSchedualer = () => {
@@ -920,7 +767,7 @@ import Selecto from "react-selecto";
     const finisedEvent = (dropInfo, draggedEvent) =>{
           if (draggedEvent.extendedProps.finished) {return false;}
           return true;
-    }
+    };
 
   return (
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
@@ -950,7 +797,7 @@ import Selecto from "react-selecto";
         resourceEditable={true}
         eventStartEditable={true} // <- phải có để kéo thay đổi start
       
-        eventClick={() => handleEventClick}
+        eventClick={handleEventClick}
         eventResize={() => handleEventChange} 
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={() => handleEventReceive}
@@ -1120,7 +967,7 @@ import Selecto from "react-selecto";
         }}
         
         headerToolbar={{
-          left: 'prev,myToday,next dateRange hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
+          left: 'prev,myToday,next hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
           center: 'title',
           right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customYear customList'
         }}

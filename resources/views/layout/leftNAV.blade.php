@@ -45,6 +45,56 @@
       <nav class="mt-2" >
 
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+          <!-- Droplist Menu Chuyển Phân Xưởng  -->
+          <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
+              <i class="nav-icon fas fa-capsules"></i>
+              <p>
+                {{ session('user')['production_name'] }}
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                 <a href="{{ route('switch', ['production_code' => 'PXV1', 'redirect' => url()->current()]) }}" class="nav-link">
+                  <i class="far fa-circle nav-icon {{ session('user')['production_code'] == "PXV1" ? "text-danger":""}}"></i>
+                  <p>PXV1</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                  <a href="{{ route('switch', ['production_code' => 'PXV2', 'redirect' => url()->current()]) }}" class="nav-link">
+                  <i class="far fa-circle nav-icon {{ session('user')['production_code'] == "PXV2" ? "text-danger":""}}"></i>
+                  <p>PXV2</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                  <a href="{{ route('switch', ['production_code' => 'PXVH', 'redirect' => url()->current()]) }}" class="nav-link">
+                  <i class="far fa-circle nav-icon {{ session('user')['production_code'] == "PXVH" ? "text-danger":""}}"></i>
+                  <p>PXVH</p>
+                </a>
+              </li>
+
+               <li class="nav-item">
+                  <a href="{{ route('switch', ['production_code' => 'PXTN', 'redirect' => url()->current()]) }}" class="nav-link">
+                  <i class="far fa-circle nav-icon {{ session('user')['production_code'] == "PXTN" ? "text-danger":""}}" ></i>
+                  <p>PXTN</p>
+                </a>
+              </li> 
+              
+              <li class="nav-item">
+                  <a href="{{ route('switch', ['production_code' => 'PXDN', 'redirect' => url()->current()])}}" class="nav-link">
+                  <i class="far fa-circle nav-icon {{ session('user')['production_code'] == "PXDN" ? "text-danger":""}}"></i>
+                  <p>PXDN</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          
+      
           <!-- Droplist Menu Dữ Liệu Gốc  -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
@@ -70,40 +120,41 @@
                 </a>
               </li>
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.materData.Instrument.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Nhân Sự</p>
-                </a>
-              </li>
-
                <li class="nav-item">
-                <a href="{{ route ('pages.materData.Groups.list') }}" class="nav-link">
+                <a href="{{ route ('pages.materData.Dosage.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Dạng Bào Chế</p>
                 </a>
               </li> 
-
-              <li class="nav-item">
-                <a href="{{ route ('pages.materData.Analyst.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Qui Cách Sản Phẩm</p>
-                </a>
-              </li> 
               
               <li class="nav-item">
-                <a href="{{ route ('pages.materData.Analyst.list') }}" class="nav-link">
+                <a href="{{ route ('pages.materData.Unit.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Đơn Vị Tính</p>
                 </a>
               </li>
-
+              
               <li class="nav-item">
-                <a href="{{ route ('pages.materData.Analyst.list') }}" class="nav-link">
+                <a href="{{ route ('pages.materData.Market.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Thị Trường</p>
                 </a>
-              </li>       
+              </li>
+              
+              <li class="nav-item">
+                <a href="{{ route ('pages.materData.Specification.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Qui Cách Sản Phẩm</p>
+                </a>
+              </li>
+              
+              <li class="nav-item">
+                <a href="{{ route ('pages.materData.Instrument.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Thiết Bị</p>
+                </a>
+              </li>
+
 
             </ul>
           </li>
@@ -275,9 +326,6 @@
             
             </ul>
           </li>
-
-
-
 
           <!-- History-->
           <li class="nav-item">

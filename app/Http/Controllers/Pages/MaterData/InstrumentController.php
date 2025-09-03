@@ -11,7 +11,7 @@ class InstrumentController extends Controller
 {
      
          public function index(){
-
+                dd ("InstrumentController");
                 $groups = DB::table('groups')->where('active', true)->get();
 
                 $datas = DB::table('room')

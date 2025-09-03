@@ -770,8 +770,6 @@ class SchedualController extends Controller
         ///////// Các hàm liên Auto Schedualer
         protected $roomAvailability = [];
    
-
-
         /**Load room_status để lấy các slot đã bận*/
         protected function loadRoomAvailability() {
 

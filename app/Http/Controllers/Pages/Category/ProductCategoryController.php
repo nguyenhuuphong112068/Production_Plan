@@ -14,18 +14,19 @@ class ProductCategoryController extends Controller
                 // $testings = DB::table('testing')->where('active', true)->get();
                 // $units = DB::table('unit')->where('active', true)->get();
                 // $instrument_type = DB::table('instrument')->select('instrument_type')->where('active', true)->groupBy('instrument_type')->get();
-                // $productNames = DB::table('product_name')->where('active', true)->get();
+                $productNames = DB::table('product_name')->where('active', true)->get();
 
                 $datas = DB::table('finished_product_category')->where ('active',1)->orderBy('created_at','desc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC SẢN PHẨM KIỂM NGHIỆM']);
-       
+                dd ($productNames);
                 return view('pages.category.product.list',[
                         'datas' => $datas,
+                        'productNames' => $productNames
                         // 'testings' => $testings,
                         // 'units' => $units,
                         // 'instrument_type' => $instrument_type,
-                        // 'productNames' => $productNames
+                        
                 ]);
         }
     

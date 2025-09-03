@@ -16,14 +16,15 @@ class IntermediateCategoryController extends Controller
 
                 // $units = DB::table('unit')->where('active', true)->get();
                 // $instrument_type = DB::table('instrument')->select('instrument_type')->where('active', true)->groupBy('instrument_type')->get();
-                // $productNames = DB::table('product_name')->where('active', true)->get();
+                $productNames = DB::table('product_name')->where('active', true)->get();
 
                 $datas = DB::table('intermediate_category')->where ('active',1)->orderBy('name','desc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC BÁN THÀNH PHẨM']);
        
                 return view('pages.category.intermediate.list',[
-                        'datas' => $datas
+                        'datas' => $datas,
+                        'productNames' =>$productNames
                     
                 ]);
         }

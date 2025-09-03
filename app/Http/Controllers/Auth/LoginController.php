@@ -48,7 +48,8 @@ class LoginController extends Controller{
         'fullName' => $getUser->fullName,
         'userGroup' => $getUser->userGroup,
         'department' => $getUser->deparment,
-        'production' => "PXV1"
+        'production_code' => "PXV1",
+        'production_name' => "Phân Xưởng Viên 1"
         ]);
 
         AuditTrialController::log('Login',"NA" , 0, 'NA', 'Đăng Nhập Thành Công');
