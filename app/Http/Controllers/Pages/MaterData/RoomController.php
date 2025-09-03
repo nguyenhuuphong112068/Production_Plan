@@ -11,45 +11,53 @@ class RoomController extends Controller
 {
      
          public function index(){
-               
-
-                $datas = DB::table('room')->where('active', true)->get();
-     
+                $datas = DB::table('room')->where('active', true)->where('deparment_code', session ('user') ['production_code'])->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')->get();
+                $stages = DB::table('stages')->get();
+                $stage_groups = DB::table('stage_groups')->get();
                 session()->put(['title'=> 'Phòng Sản Xuất']);
-           
-                return view('pages.materData.room.list',['datas' => $datas]);
+                return view('pages.materData.room.list',[
+                        'datas' => $datas,
+                        'stages' => $stages,
+                        'stage_groups' => $stage_groups
+                ]);
         }
     
 
         public function store (Request $request) {
+              
+
                 $validator = Validator::make($request->all(), [
-                        'code' => 'required|string|min:5|max:255|unique:instrument,code',
-                        'name' => 'required|string|max:255|unique:Instrument,name',
-                        'shortName' => 'required|string|max:255|unique:Instrument,shortName',
-                        'belongGroup_id' => 'required',
-                        'instrument_type' => 'required',
+                        'code' => 'required|unique:room,code',
+                        'name' => 'required|unique:room,name',
+                        'stage_code' => 'required',
+                        'production_group' => 'required',
                 ],[
-                        'code.unique' => 'Mã sản phẩm đã tồn tại trong hệ thống.',
-                        'name.required' => 'Vui lòng nhập tên chỉ tiêu kiểm',
-                        'shortName.required' => 'Vui lòng nhập tên viết tắt.',
-                        'name.unique' => 'Chỉ tiêu kiểm đã tồn tại trong hệ thống.',
-                        'shortName.unique' => 'Tên viết tắt đã tồn tại trong hệ thống.',
-                        'belongGroup_id.required' => 'Vui lòng chọn tổ quản lý',
-                        'instrument_type.required' => 'Vui lòng nhập loại thiết bị'
+                        'code.required' => 'Vui lòng nhập nhập mã phòng sản xuất',
+                        'code.unique' => 'Mã sản phẩm đã tồn tại trong hệ thống',
+                        'name.required' => 'Vui lòng nhập tên phòng sản xuất',
+                        'name.required' => 'Tên Phòng đã tồn tại trong hệ thống',
+                        'stage_code.required' => 'Vui lòng chọn công đoạn',
+                        'production_group.required' => 'Vui lòng nhập tổ quản lý',
+                        
                 ]);
 
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
 
-                DB::table('instrument')->insert([
+                $stage_code = DB::table('stages')->where ('code', $request->stage_code)->pluck('name');
+                $order_by =  DB::table('room')->where ('stage_code', $request->stage_code)->count('name');
+        
+                DB::table('room')->insert([
+                        'order_by' =>  $order_by??0 + 1,
                         'code' => $request->code,
                         'name' => $request->name,
-                        'shortName' => $request->shortName,
-                        'belongGroup_id' => $request->belongGroup_id,
-                        'instrument_type' => $request->instrument_type,
+                        'stage'=>  $stage_code[0],
+                        'stage_code' => $request->stage_code,
+                        'production_group' => $request->production_group,
+                        'deparment_code' => session('user')['production_code'] ,
                         'active' => true,
-                        'prepareBy' => session('user')['fullName'] ?? 'Admin',
+                        'prepareBy' => session('user')['fullName'] ,
                         'created_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
@@ -58,37 +66,45 @@ class RoomController extends Controller
         public function update(Request $request){
                
                 $validator = Validator::make($request->all(), [
-                        'name' => 'required|string|max:255',
-                        'shortName' => 'required|string|max:255',
-                        'belongGroup_id' => 'required',
-                        'instrument_type' => 'required',
+                        'code' => 'required|unique:room,code',
+                        'name' => 'required|unique:room,name',
+                        'stage_code' => 'required',
+                        'production_group' => 'required',
                 ],[
-                        'name.required' => 'Vui lòng nhập tên chỉ tiêu kiểm',
-                        'shortName.required' => 'Vui lòng nhập tên viết tắt.',
-                        'belongGroup_id.required' => 'Vui lòng chọn tổ quản lý',
-                        'instrument_type.required' => 'Vui lòng nhập loại thiết bị'
+                        'code.required' => 'Vui lòng nhập nhập mã phòng sản xuất',
+                        'code.unique' => 'Mã sản phẩm đã tồn tại trong hệ thống',
+                        'name.required' => 'Vui lòng nhập tên phòng sản xuất',
+                        'name.required' => 'Tên Phòng đã tồn tại trong hệ thống',
+                        'stage_code.required' => 'Vui lòng chọn công đoạn',
+                        'production_group.required' => 'Vui lòng nhập tổ quản lý',
+                        
                 ]);
 
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
-                } 
+                }
+
+                $stage_code = DB::table('stages')->where ('code', $request->stage_code)->pluck('name');
+                $order_by =  DB::table('room')->where ('stage_code', $request->stage_code)->count('name');
                 
-               DB::table('Instrument')->where('id', $request->id)->update([
+                DB::table('room')->insert([
+                        'order_by' =>  $order_by??0 + 1,
                         'code' => $request->code,
                         'name' => $request->name,
-                        'shortName' => $request->shortName,
-                        'belongGroup_id' => $request->belongGroup_id,
-                        'instrument_type' => $request->instrument_type,
+                        'stage'=>  $stage_code[0],
+                        'stage_code' => $request->stage_code,
+                        'production_group' => $request->production_group,
+                        'deparment_code' => session('user')['production_code'] ,
                         'active' => true,
-                        'prepareBy' => session('user')['fullName'],
-                        'updated_at' => now(), 
+                        'prepareBy' => session('user')['fullName'] ,
+                        'updated_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Cập nhật thành công!');
         }
 
         public function deActive(string|int $id){
                 
-               DB::table('Instrument')->where('id', $id)->update([
+               DB::table('room')->where('id', $id)->update([
                         'active' => false,
                         'prepareBy' => session('user')['fullName'],
                         'updated_at' => now(), 

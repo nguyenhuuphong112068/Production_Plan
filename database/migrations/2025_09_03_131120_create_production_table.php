@@ -10,17 +10,14 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {   
-        Schema::create('unit', function (Blueprint $table) {
+    {
+        Schema::create('production', function (Blueprint $table) {
             $table->id();
-            $table->string('code')->unique();
-            $table->string('name',20)->unique(); 
-            $table->boolean ('active')->default(true);
-            $table->string ('created_by',100)->default(true);
+            $table->string ('name',50);
+            $table->string ('code',5);
+            $table->string ('create_by',100);
             $table->timestamps();
         });
-
-
     }
 
     /**
@@ -28,9 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-
-        Schema::table('unit', function (Blueprint $table) {
-            Schema::dropIfExists('unit');
-        });
+        Schema::dropIfExists('production');
     }
 };

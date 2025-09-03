@@ -1,99 +1,99 @@
 
- <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet"> 
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+
 <!-- Modal -->
-<div class="modal fade" id="UpdateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
+<div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
    
-  
-    <form action="{{ route('pages.materData.Instrument.update') }}" method="POST">
+    <form 
+      action="{{route('pages.materData.room.update')}}" 
+      method="POST">
       @csrf
 
       <div class="modal-content">
         <div class="modal-header">
 
-
+           
           <a href="{{ route ('pages.general.home') }}">
               <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
           </a>
 
-          <h4 class="modal-title w-100 text-center" id="ModalLabel" style="color: #CDC717">
-              Cập Nhật Tên Sản Phẩm
+          <h4 class="modal-title w-100 text-center" id="pModalLabel" style="color: #CDC717">
+              {{'Cập Nhật Phòng Sản Xuất' }}
           </h4>
-
 
           <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
 
-          {{-- ID --}}
-        <input type="hidden" class="form-control" name="id" value="">
-
         <div class="modal-body">
-              {{-- CODE --}}
-          <div class="form-group">
-            <label for="code">Mã Thiết Bị</label>
-            <input type="text" class="form-control" name="code" 
-              value="{{ old('code') }}">
-          </div>
-          @error('code', 'updateErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
+          {{-- CODE --}}
+            <div class="form-group">
+              <label for="code">Mã Phòng</label>
+              <input type="text" class="form-control" name="code" 
+                value="{{ old('code') }}">
+            </div>
+            @error('code', 'updateErrors')
+                <div class="alert alert-danger">{{ $message }}</div>
+            @enderror
 
-          {{-- NAME --}}
-          <div class="form-group">
-            <label for="name">Thiết Bị Kiểm Nghiệm</label>
-            <input type="text" class="form-control" name="name" 
-              value="{{ old('name') }}">
-          </div>
-          @error('name', 'updateErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
+            {{-- NAME --}}
+            <div class="form-group">
+              <label for="name">Tên Phòng</label>
+              <input type="text" class="form-control" name="name" 
+                value="{{ old('name') }}">
+            </div>
+            @error('name', 'updateErrors')
+                <div class="alert alert-danger">{{ $message }}</div>
+            @enderror
 
-          {{-- SHORT NAME --}}
-          <div class="form-group">
-            <label for="shortName">Tên viết tắt</label>
-            <input type="text" class="form-control" name="shortName" 
-              value="{{ old('shortName') }}">
-          </div>
-          @error('shortName', 'updateErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
 
-         {{-- Instrement Type --}}
-          <div class="form-group">
-            <label for="instrument_type">Loại Thiết Bị</label>
-            <input type="text" class="form-control" name="instrument_type" 
-                value="{{ old('instrument_type') }}">
-          </div>
-          @error('instrument_type', 'createErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
-
-          {{-- Gourp_ID--}}
-          <div class="form-group">
-              <label for="belongGroup_id">Tổ Quản Lý</label>
-              <select class="form-control" name="belongGroup_id" id="belongGroup_id">
-                    <option value="">-- Chọn nhóm --</option>
-                    @foreach ($groups as $group)
-                        <option value="{{ $group->id }}" 
-                            {{ old('belongGroup_id') == $group->id ? 'selected' : '' }}>
-                            {{ $group->name }}
+            {{-- Stage --}}
+            <div class="form-group">
+                <label for="belongGroup_id">Công Đoạn</label>
+                <select class="form-control" name="stage_code" >
+                    <option value="">-- Chọn Công Đoạn --</option>
+                    @foreach ($stages as $stage)
+                        <option value="{{ $stage->code }}" 
+                            {{ old('code') == $stage->code ? 'selected' : '' }}>
+                            {{ $stage->name }}
                         </option>
                     @endforeach
 
-              </select>
-              @error('belongGroup_id', 'updateErrors')
+                </select>
+                @error('stage_code', 'updateErrors')
                     <div class="alert alert-danger mt-1">{{ $message }}</div>
-              @enderror
+                @enderror
+            </div>
 
+            {{-- Stage_groups --}}
+            <div class="form-group">
+                <label for="belongGroup_id">Tổ Quản Lý</label>
+                <select class="form-control" name="production_group" >
+                    <option value="">-- Chọn nhóm --</option>
 
+                    @foreach ($stage_groups as $stage_group)
+                        <option value="{{ $stage_group->name }}" 
+                            {{ old('production_group') == $stage_group->name ? 'selected' : '' }}>
+                            {{ $stage_group->name }}
+                        </option>
+                    @endforeach
+
+                </select>
+                @error('production_group', 'updateErrors')
+                    <div class="alert alert-danger mt-1">{{ $message }}</div>
+                @enderror
+            </div>
+
+    
+  
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
           <button type="submit" class="btn btn-primary">
-                Cập Nhật
+              Lưu
           </button>
         </div>
       </div>
@@ -101,12 +101,16 @@
   </div>
 </div>
 
+<!-- Scripts -->
+<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
+<script src="{{ asset('js/popper.min.js') }}"></script>
+<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->updateErrors->any())
 <script>
     $(document).ready(function () {
-        $('#UpdateModal').modal('show');
+        $('#updateModal').modal('show');
     });
 </script>
 @endif

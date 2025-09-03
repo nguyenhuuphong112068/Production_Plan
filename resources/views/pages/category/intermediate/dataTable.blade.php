@@ -15,11 +15,11 @@
               <!-- /.card-Body -->
               <div class="card-body">
 
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal" style="width: 155px" >
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal" style="width: 155px" >
                       <i class="fas fa-plus"></i> Thêm
                 </button>
 
-                <table id="example1" class="table table-bordered table-striped">
+                <table id="table_data_intermediate" class="table table-bordered table-striped">
 
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                 
@@ -58,6 +58,13 @@
                             <i class="fas fa-check-circle text-primary fs-4"></i>
                           @endif
                       </td>
+
+                      <td class="text-center align-middle">
+                          @if ($data->weight_2)
+                            <i class="fas fa-check-circle text-primary fs-4"></i>
+                          @endif
+                      </td>
+
                       <td class="text-center align-middle">
                           @if ($data->prepering)
                             <i class="fas fa-check-circle text-primary fs-4"></i>

@@ -15,7 +15,7 @@
               <!-- /.card-Body -->
               <div class="card-body">
 
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#Modal" style="width: 155px" >
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#createModal" style="width: 155px" >
                       <i class="fas fa-plus"></i> Thêm
                 </button>
 
@@ -29,6 +29,7 @@
                     <th>Tên Phòng</th>
                     <th>Công Đoạn</th>
                     <th>Tổ Quản Lý</th>
+                    <th>Phân Xưởng</th>
                     <th>Người Tạo</th>
                     <th>Ngày Tạo</th>
                     <th>Edit</th>
@@ -44,6 +45,7 @@
                       <td>{{ $data->name}}</td>
                       <td>{{ $data->stage}}</td>
                       <td>{{ $data->production_group}}</td>
+                      <td>{{ $data->deparment_code}}</td>
                   
                       <td>{{ $data->prepareBy}}</td>
                       <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</td>
@@ -53,10 +55,12 @@
                               data-id="{{ $data->id }}"
                               data-code="{{ $data->code }}"
                               data-name="{{ $data->name }}"
+                              data-stage_code="{{ $data->stage_code }}"
+                              data-production_group="{{ $data->production_group }}"
           
                              
                               data-toggle="modal"
-                              data-target="#UpdateModal">
+                              data-target="#updateModal">
                               <i class="fas fa-edit"></i>
                           </button>
                       </td>
@@ -64,7 +68,7 @@
 
                       <td class="text-center align-middle">  
 
-                        <form class="form-deActive" action="{{ route('pages.materData.Instrument.deActive', ['id' => $data->id]) }}" method="post">
+                        <form class="form-deActive" action="{{ route('pages.materData.room.deActive', ['id' => $data->id]) }}" method="post">
                             @csrf
                             <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
                                 <i class="fas fa-trash"></i>
@@ -115,16 +119,15 @@
 
       $('.btn-edit').click(function () {
           const button = $(this);
-          const modal = $('#UpdateModal');
+          const modal = $('#updateModal');
 
           // Gán dữ liệu vào input
+          modal.find('input[name="id"]').val(button.data('id'));
           modal.find('input[name="code"]').val(button.data('code'));
           modal.find('input[name="name"]').val(button.data('name'));
-          modal.find('input[name="shortName"]').val(button.data('shortname'));
-          modal.find('input[name="id"]').val(button.data('id'));
-          modal.find('input[name="instrument_type"]').val(button.data('instrument_type'));
-          modal.find('select[name="belongGroup_id"]').val(button.data('groupName'));
-          const id = button.data('id');
+          modal.find('select[name="stage_code"]').val(button.data('stage_code'));
+          modal.find('select[name="production_group"]').val(button.data('production_group'));
+  
 
         });
 

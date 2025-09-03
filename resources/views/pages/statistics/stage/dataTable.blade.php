@@ -148,8 +148,8 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div id="chart-container-{{ $stage->stage_code }}" style="height:600px; width:100%;">
-                                                <canvas id="weight-chart-{{ $stage->stage_code }}"></canvas>
+                                            <div id="chart-container-{{$stage->stage_code}}" style="height:600px; width:100%;">
+                                                <canvas id="weight-chart-{{$stage->stage_code}}"></canvas>
                                             </div>
                                         </div>
                                     </div>
@@ -185,68 +185,6 @@
 {{-- <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script> --}}
 <script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script>
 
-
-<script>
-  const groupedCycles = @json($groupedCycles);
-  function renderStageChart(stageCode) {
-      const data = groupedCycles[stageCode] || [];
-      const container = document.getElementById(`chart-container-${stageCode}`);
-      
-      if (!data.length) {
-          container.style.height = "0px";
-          return;
-      }
-
-      const labels = data.map(cycle => cycle.label);
-      const theoretical_data = data.map(cycle => cycle.san_luong_ly_thuyet);
-      const practical_data   = data.map(cycle => cycle.san_luong_thuc_te);
-      const ctx = document.getElementById(`weight-chart-${stageCode}`).getContext('2d');
-
-      new Chart(ctx, {
-          type: 'bar',
-          data: {
-              labels,
-              datasets: [
-                  { 
-                      label: 'Lý Thuyết',
-                      backgroundColor:  '#28a745' ,
-                      borderColor: '#28a745',
-                      data: theoretical_data,
-                      
-                  },
-                  {
-                      label: 'Thực Tế',
-                      backgroundColor: '#007bff',
-                      borderColor: '#007bff',
-                      data: practical_data,
-                      
-                  },
-                  
-              ]
-          },
-          options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    yAxes: [{
-                        ticks: {
-                            beginAtZero: true,
-                            min: 0,
-                            callback: function(value) {
-                                return value.toLocaleString();
-                            }
-                        }
-                    }]
-                }
-            }
-      });
-  }
-
-  
-   @foreach($datas as $stage)
-        renderStageChart({{ $stage->stage_code }});
-    @endforeach
-</script>
 
 <script>
     const form = document.getElementById('filterForm');
@@ -373,5 +311,74 @@
         updateDatesFromYear();
         submitForm();
     });
+</script>
+
+
+<script>
+  const groupedCycles = @json($groupedCycles);
+  const charts = {}; // Lưu chart đã render
+
+  function renderStageChart(stageCode) {
+      const data = groupedCycles[stageCode] || [];
+      const container = document.getElementById(`chart-container-${stageCode}`);
+      const canvas = document.getElementById(`weight-chart-${stageCode}`);
+
+      // Nếu không có canvas hoặc không có data thì ẩn chart
+      if (!canvas || !data.length) {
+          if (container) container.style.height = "0px";
+          return;
+      }
+
+      const ctx = canvas.getContext('2d');
+
+      // Hủy chart cũ nếu có
+      if (charts[stageCode]) {
+          charts[stageCode].destroy();
+      }
+
+      const labels = data.map(cycle => cycle.label);
+      const theoretical_data = data.map(cycle => cycle.san_luong_ly_thuyet);
+      const practical_data   = data.map(cycle => cycle.san_luong_thuc_te);
+
+      charts[stageCode] = new Chart(ctx, {
+          type: 'bar',
+          data: {
+              labels,
+              datasets: [
+                  { 
+                      label: 'Lý Thuyết',
+                      backgroundColor: '#28a745',
+                      borderColor: '#28a745',
+                      data: theoretical_data
+                  },
+                  {
+                      label: 'Thực Tế',
+                      backgroundColor: '#007bff',
+                      borderColor: '#007bff',
+                      data: practical_data
+                  }
+              ]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                  yAxes: [{
+                      ticks: {
+                          beginAtZero: true,
+                          min: 0,
+                          callback: function(value) {
+                              return value.toLocaleString();
+                          }
+                      }
+                  }]
+              }
+          }
+      });
+  }
+
+  @foreach($datas as $stage)
+      renderStageChart({{ $stage->stage_code }});
+  @endforeach
 </script>
 

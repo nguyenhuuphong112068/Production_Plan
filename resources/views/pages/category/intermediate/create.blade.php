@@ -2,7 +2,7 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <!-- Modal -->
-<div class="modal fade" id="productNameModal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
+<div class="modal fade" id="create_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         
         <form action="{{ route('pages.category.product.store') }}" method="POST">
@@ -15,7 +15,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" id="productNameModalLabel" style="color: #CDC717">
-                        Tạo Mới Danh Mục Sản Phẩm Kiểm Nghiệm
+                        Tạo Mới Danh Mục Sản Phẩm Công Đoạn Sản Xuất
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -24,33 +24,46 @@
                 </div>
 
                 <div class="modal-body">
-                    {{-- CODE --}}
-                    <div class="form-group">
-                        <label for="code">Mã sản phẩm</label>
-                        <input type="text" class="form-control" name="code" value="{{ old('code') }}" id = "code">
-                        @error('code', 'createErrors')
-                            <div class="alert alert-danger">{{ $message }}</div>
-                        @enderror
-                    </div>
+
+
+
 
                     {{-- NAME --}}
                     <div class="form-group">
                         <label for="productName">Tên Sản Phẩm</label>
-                        <select class="form-control" name="productName" id="productName">
+                        <select class="form-control" name="productName" >
                             @foreach ($productNames as $productName)
                                 <option value="{{ $productName->name }}"
                                     {{ old('productName') == $productName->name ? 'selected' : '' }}>
-                                    {{ $productName->name }}
+                                    {{ $productName->name}}
                                 </option>
                             @endforeach
                         </select>
                         @error('productName', 'createErrors')
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
+                    </div> 
+                    
+                    {{-- CODE --}}
+                    <div class="form-group">
+                        <label for="intermediate_code">Mã Bán Thành Phẩm</label>
+                        <input type="text" class="form-control" name="intermediate_code" value="{{ old('intermediate_code') }}">
+                        @error('intermediate_code', 'createErrors')
+                            <div class="alert alert-danger">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Code--}}
+                    <div class="form-group">
+                        <label for="intermediate_code">Dạng Bào Chế</label>
+                        <input type="text" class="form-control" name="dosage" value="{{ old('dosage') }}">
+                        @error('dosage', 'createErrors')
+                            <div class="alert alert-danger">{{ $message }}</div>
+                        @enderror
                     </div>
 
                     {{-- TESTING --}}
-                    <div class="form-group">
+                    {{-- <div class="form-group">
                         <label for="testing">Chỉ Tiêu</label>
                         <select class="form-control" name="testing" id="testing">
                             <option value="">-- Chọn chỉ tiêu --</option>
@@ -70,16 +83,16 @@
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
 
-                    </div>
+                    </div> --}}
 
                     {{-- testing_code --}}
               
-                    <input type="hidden" class="form-control" name="testing_code" id="testing_code"
-                            value="{{ old('testing_code') }}">
+                    {{-- <input type="hidden" class="form-control" name="testing_code" id="testing_code"
+                            value="{{ old('testing_code') }}"> --}}
 
-                    <div class="row">
+                    {{-- <div class="row">
                         <div class="col-md-6">
-                            {{-- Amout --}}
+                            
                             <div class="form-group">
                                 <label for="sample_Amout">Số Lượng Mẫu</label>
                                 <input type="number" step="0.01" class="form-control" name="sample_Amout"
@@ -91,7 +104,7 @@
                         </div>
 
                         <div class="col-md-6">
-                            {{-- unit --}}
+                           
                             <div class="form-group">
                                 <label for="unit">Đơn Vị</label>
                                 <select class="form-control" name="unit" id="unit">
@@ -107,11 +120,11 @@
                                 @enderror
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
 
-                    <div class="row">
+                    {{--  <div class="row">
                         <div class="col-md-6">
-                            {{-- Instrument --}}
+                           
                             <div class="form-group">
                                 <label for="instrument_type">Loại Thiết Bị</label>
                                 <select class="form-control" name="instrument_type" id="instrument_type">
@@ -127,9 +140,9 @@
                                     <div class="alert alert-danger mt-1">{{ $message }}</div>
                                 @enderror
                             </div>
-                        </div>
+                        </div> 
 
-                        {{-- excution_time --}}
+                       
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="excution_time">Thời Gian Thực Hiện (h)</label>
@@ -140,7 +153,7 @@
                                 @enderror
                             </div>
                         </div>
-                    </div>
+                    </div>--}}
 
              
                 </div>
@@ -148,7 +161,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
                     <button type="submit" class="btn btn-primary">
-                        {{ isset($product) ? 'Cập Nhật' : 'Lưu' }}
+                       Lưu
                     </button>
                 </div>
             </div>
@@ -165,18 +178,12 @@
 @if ($errors->createErrors->any())
     <script>
         $(document).ready(function() {
-            $('#productNameModal').modal('show');
+            $('#create_modal').modal('show');
         });
     </script>
 @endif
 
 {{-- Gán mã chỉ tiêu tương ứng với chọn lựa --}}
 <script>
-    $(document).ready(function() {
-        $("#testing").on('change', function() {
-            var selectedOption = $(this).find("option:selected");
-            var testingCode = $("#code").val() + "-" + selectedOption.data("id");
-            $("#testing_code").val(testingCode);
-        });
-    });
+   
 </script>

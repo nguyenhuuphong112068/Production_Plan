@@ -10,10 +10,10 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.materData.Testing.dataTable')
+  @include('pages.materData.Dosage.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.materData.Testing.create')
-  @include('pages.materData.Testing.update') 
+  @include('pages.materData.Dosage.create')
+  @include('pages.materData.Dosage.update') 
 @endsection

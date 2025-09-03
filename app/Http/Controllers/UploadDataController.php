@@ -13,8 +13,7 @@ class UploadDataController extends Controller
                    return view('upload.form_load');
         }
 
-        public function import(Request $request)
-        {
+        public function import(Request $request) {
             $request->validate([
                 'excel_file' => 'required|mimes:xlsx,xls'
             ]);
@@ -28,6 +27,7 @@ class UploadDataController extends Controller
             unset($rows[0]); // Bỏ dòng tiêu đề nếu có
 
             foreach ($rows as $row) {
+
                 if ($request->table === 'user_management' ) {
                     $check = DB::table('user_management')->insert([
                         'id'=> $row[0],
@@ -46,8 +46,8 @@ class UploadDataController extends Controller
                         'hisPW_3' => $row[13],
                         'prepareBy' => "Nguyễn Hữu Phong",
                         'created_at' => now (),                   
-                ]);
-                }elseif ($request->table === 'room') {     
+                ]);}
+                elseif ($request->table === 'room') {     
                     $check = DB::table('room')->insert([
                         'id'         => $row[0],
                         'order_by'         => $row[1],
@@ -57,8 +57,8 @@ class UploadDataController extends Controller
                         'stage'            => $row[5],
                         'stage_code'       => $row[6],
                         'prepareBy' => "Nguyễn Hữu Phong",
-                    ]);
-                }elseif ($request->table === 'intermediate_category') {     
+                ]);}
+                elseif ($request->table === 'intermediate_category') {     
                     $check = DB::table('intermediate_category')->insert([
                         'intermediate_code'=> $row[0],
                         'name'=> $row[1],
@@ -68,20 +68,21 @@ class UploadDataController extends Controller
                         'unit_batch_qty'=> $row[5],
                         'dosage'=> $row[6],
                         'weight_1'=> $row[7],
-                        'weight_2'=> false,
-                        'prepering'=> $row[8],
-                        'blending'=> $row[9],
-                        'forming'=> $row[10],
-                        'coating'=> $row[11],
-                        'quarantine_weight'=> $row[12],
-                        'quarantine_preparing'=> $row[13],
-                        'quarantine_blending'=> $row[14],
-                        'quarantine_forming'=> $row[15],
-                        'quarantine_coating'=> $row[16],
-                        'deparment_code'=> $row[17],            
+                        'weight_2'=> $row[8],
+                        'prepering'=> $row[9],
+                        'blending'=> $row[10],
+                        'forming'=> $row[11],
+                        'coating'=> $row[12],
+                        'quarantine_total'=> 0,
+                        'quarantine_weight'=> $row[13],
+                        'quarantine_preparing'=> $row[14],
+                        'quarantine_blending'=> $row[15],
+                        'quarantine_forming'=> $row[16],
+                        'quarantine_coating'=> $row[17],
+                        'deparment_code'=> $row[18],            
                         'prepared_by' => "Nguyễn Hữu Phong",
-                    ]);
-                }elseif ($request->table === 'finished_product_category') {
+                ]);}
+                elseif ($request->table === 'finished_product_category') {
                         $check = DB::table('finished_product_category')->insert([
                         'id'=> $row[0],
                         'process_code'=> $row[1],
@@ -96,8 +97,8 @@ class UploadDataController extends Controller
                         'secondary_parkaging'=> $row[10],
                         'deparment_code'=> $row[11],  
                         'prepared_by' => "Nguyễn Hữu Phong",
-                ]);
-                }elseif ($request->table === 'plan_master'){
+                ]);}
+                elseif ($request->table === 'plan_master'){
                     
                     $check = DB::table('plan_master')->insert([
                             'plan_list_id'=> $row[0],
@@ -116,9 +117,8 @@ class UploadDataController extends Controller
                             'deparment_code'=> $row[13],
                             'note'=> $row[14],
                             'prepared_by' => "Nguyễn Hữu Phong",
-                    ]);
-
-                }elseif ($request->table === 'quota') {
+                ]);}
+                elseif ($request->table === 'quota') {
                     $check = DB::table('quota')->insert([
                         'id'=> $row[10],
                         'process_code'=> $row[11],
@@ -135,8 +135,8 @@ class UploadDataController extends Controller
                         'note' => "NA",
                         'created_at' => now (),             
                         'prepared_by' => "Nguyễn Hữu Phong",
-                ]);
-                }elseif ($request->table === 'product_name') {
+                ]);}
+                elseif ($request->table === 'product_name') {
                     $check = DB::table('product_name')->insert([
                         'name'=> $row[0],
                         'shortName'=> $row[1],
@@ -144,8 +144,8 @@ class UploadDataController extends Controller
                         'active' => true,
                         'productType'=> "Thành Phẩm",             
                         'prepareBy' => "Nguyễn Hữu Phong",
-                ]);
-                }elseif ($request->table === 'source_material') {
+                ]);}
+                elseif ($request->table === 'source_material') {
                     $check = DB::table('source_material')->insert([
                         'id'=> $row[0],
                         'intermediate_code'=> $row[1],
@@ -153,14 +153,26 @@ class UploadDataController extends Controller
                         'name'=> $row[3],
                         'active' => true,          
                         'prepared_by' => "Nguyễn Hữu Phong",
-                ]);
-                }
-
+                ]);}
+                elseif ($request->table === 'stages') {
+                    $check = DB::table('stages')->insert([
+                        'id'=> $row[0],
+                        'name'=> $row[1],   
+                        'code'=> $row[2],
+                        'create_by' => "Nguyễn Hữu Phong",
+                ]);}
+                elseif ($request->table === 'stage_groups') {
+                    $check = DB::table('stage_groups')->insert([
+                        'id'=> $row[0],
+                        'name'=> $row[1],   
+                        'code'=> $row[2],
+                        'create_by' => "Nguyễn Hữu Phong",
+                ]);}
             }
 
             if ($check) {dd ("OK");};
            
-
+            
             //return back()->with('success', 'Import thành công!');
         }
                 
