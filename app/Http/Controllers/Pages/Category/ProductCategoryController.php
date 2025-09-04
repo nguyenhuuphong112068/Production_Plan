@@ -19,7 +19,7 @@ class ProductCategoryController extends Controller
                 $datas = DB::table('finished_product_category')->where ('active',1)->orderBy('created_at','desc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC SẢN PHẨM KIỂM NGHIỆM']);
-                dd ($productNames);
+               
                 return view('pages.category.product.list',[
                         'datas' => $datas,
                         'productNames' => $productNames

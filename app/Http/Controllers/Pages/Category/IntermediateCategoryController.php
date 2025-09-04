@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-
+use Illuminate\Support\Str;
 class IntermediateCategoryController extends Controller
 {
         
@@ -16,74 +16,84 @@ class IntermediateCategoryController extends Controller
 
                 // $units = DB::table('unit')->where('active', true)->get();
                 // $instrument_type = DB::table('instrument')->select('instrument_type')->where('active', true)->groupBy('instrument_type')->get();
+                
                 $productNames = DB::table('product_name')->where('active', true)->get();
+                $dosages = DB::table('dosage')->where('active', true)->get();
+                $units = DB::table('unit')->where('active', true)->get();
 
-                $datas = DB::table('intermediate_category')->where ('active',1)->orderBy('name','desc')->get();
+
+                $datas = DB::table('intermediate_category')->select('intermediate_category.*','dosage.name as dosage_name' , 'product_name.name as product_name')
+                ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
+                ->leftJoin('dosage','intermediate_category.dosage_id','dosage.id')
+                ->where ('intermediate_category.active',1)->orderBy('product_name.name','asc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC BÁN THÀNH PHẨM']);
        
                 return view('pages.category.intermediate.list',[
                         'datas' => $datas,
-                        'productNames' =>$productNames
+                        'productNames' =>$productNames,
+                        'dosages' =>$dosages,
+                        'units'=>$units,
                     
                 ]);
         }
     
 
         public function store (Request $request) {
-
+                //dd ($request->all());
       
                 $validator = Validator::make($request->all(), [
-                'code' => 'required|string|min:5',
-                'productName' => 'required|string|min:5',
-                'testing' => 'required|string',
-                'sample_Amout' => 'required|numeric|gt:0', 
-                'unit' => 'required|string',
-                'excution_time' => 'required|numeric|gt:0', 
-                'instrument_type' => 'required|string',
-                'testing_code' =>  'required|unique:product_category,testing_code',
-
+                        'intermediate_code' => 'required|unique:intermediate_category,intermediate_code',
+                        'product_name_id' => 'required',
+                        'dosage_id' => 'required',
+                        'batch_size' => 'required',
+                        'batch_qty' => 'required',
+                        'unit_batch_qty' => 'required',
                 ], [
-
-                'code.required' => 'Vui lòng nhập Số Qui Trình.',
-                'code.unique' => 'Số qui trình đã tồn tại.',
-                'code.min' => 'Số qui trình phải có ít nhất :min ký tự.',
-                
-                'productName.required' => 'Vui lòng chọn chỉ tiêu kiểm',
-
-                'testing.required' => 'Vui lòng chọn chỉ tiêu kiểm',
-
-                'sample_Amout.required' => 'Vui lòng nhập số lượng mẫu',
-                'sample_Amout.numeric' => 'Số lượng mẫu là kiểu số',
-                'sample_Amout.gt' => 'Số lượng mẫu phải lớn hơn 0',
-
-                'testing.unit' => 'Vui lòng chọn đơn vị tính',
-
-                'excution_time.required' => 'Vui lòng nhập số lượng mẫu',
-                'excution_time.numeric' => 'Số lượng mẫu là kiểu số',
-                'excution_time.gt' => 'Số lượng mẫu phải lớn hơn 0',
-                
-                'instrument_type.required' => 'Vui lòng chọn thiết bị kiểm',
-
-                'testing_code.unique' => 'Danh mục sản phẩm Đã Tồn Tại đã tồn tại.',
+                        'intermediate_code.required' => 'Vui lòng nhập mã bán thành phẩm.',
+                        'intermediate_code.unique' => 'Mã bán thành phẩm đã tồn tại.',
+                        'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
+                        'dosage_id.required' => 'Vui lòng chọn dạng bào chế',
+                        'batch_size.required' => 'Vui lòng nhập cở lô',
+                        'batch_qty.required' => 'Vui lòng nhập cở lô',
+                        'unit_batch_qty.required' => 'Vui lòng chọn đơn vị '
                 ]);
                
-              
-
+        
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
+                $dosage_name = DB::table('dosage')->where('id', $request->dosage_id )->value('name');
 
-                DB::table('product_category')->insert([
-                        'code' => $request->code,
-                        'name' => $request->productName,                       
-                        'testing' => $request->testing,
-                        'sample_Amout'=> $request->sample_Amout,
-                        'unit'=> $request->unit,
-                        'testing_code' => $request->testing_code,
-                        'excution_time' => $request->excution_time,
-                        'instrument_type'=> $request->instrument_type,
-                        'prepareBy' => session('user')['fullName'] ?? 'Admin',
+               
+                if (Str::contains(Str::lower($dosage_name), ['phim', 'nang'])) {$weight_2 = true;}else {$weight_2 = false;};
+
+                DB::table('intermediate_category')->insert([
+                        'intermediate_code' => $request->intermediate_code,
+                        'product_name_id' => $request->product_name_id,                       
+                        'batch_size' => $request->batch_size,
+                        'unit_batch_size'=> $request->unit_batch_size,
+                        'batch_qty'=> $request->batch_qty,
+                        'unit_batch_qty' => $request->unit_batch_qty,
+
+                        'dosage_id' => $request->dosage_id,
+                        'weight_1' => $request->weight_1 === "on" ?true:false,
+                        'weight_2'=> $weight_2,
+                        'prepering'=> $request->prepering === "on" ?true:false,
+                        'blending'=> $request->blending === "on" ?true:false,
+                        'forming'=> $request->forming === "on" ?true:false,
+                        'coating'=> $request->coating === "on" ?true:false,
+
+                        'quarantine_total'=> $request->quarantine_total??0,
+                        'quarantine_weight'=> $request->quarantine_weight??0,
+                        'quarantine_preparing'=> $request->quarantine_preparing??0,
+                        'quarantine_blending'=> $request->quarantine_blending??0,
+                        'quarantine_forming'=> $request->quarantine_forming??0,
+                        'quarantine_coating'=> $request->quarantine_coating??0,
+                        'quarantine_time_unit' => $request->quarantine_time_unit === "on"?true:false,
+
+                        'deparment_code'=> session('user')['production_code'],
+                        'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
@@ -92,40 +102,55 @@ class IntermediateCategoryController extends Controller
         public function update(Request $request){
                
                 $validator = Validator::make($request->all(), [
-              
-                'sample_Amout' => 'required|numeric|gt:0', 
-                'unit' => 'required|string',
-                'excution_time' => 'required|numeric|gt:0', 
-                'instrument_type' => 'required|string',
-                
+                        //'intermediate_code' => 'required|unique:intermediate_category,intermediate_code',
+                        'product_name_id' => 'required',
+                        'dosage_id' => 'required',
+                        'batch_size' => 'required',
+                        'batch_qty' => 'required',
+                        'unit_batch_qty' => 'required',
                 ], [
-
-                'testing.required' => 'Vui lòng chọn chỉ tiêu kiểm',
-
-                'sample_Amout.required' => 'Vui lòng nhập số lượng mẫu',
-                'sample_Amout.numeric' => 'Số lượng mẫu là kiểu số',
-                'sample_Amout.numeric' => 'Số lượng mẫu phải lớn hơn 0',
-
-                'testing.unit' => 'Vui lòng chọn đơn vị tính',
-
-                'excution_time.required' => 'Vui lòng nhập số lượng mẫu',
-                'excution_time.numeric' => 'Số lượng mẫu là kiểu số',
-                'excution_time.numeric' => 'Số lượng mẫu phải lớn hơn 0',
-                
-                'instrument_type.unit' => 'Vui lòng chọn loại thiết bị',
+                        //'intermediate_code.required' => 'Vui lòng nhập mã bán thành phẩm.',
+                        'intermediate_code.unique' => 'Mã bán thành phẩm đã tồn tại.',
+                        'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
+                        'dosage_id.required' => 'Vui lòng chọn dạng bào chế',
+                        'batch_size.required' => 'Vui lòng nhập cở lô',
+                        'batch_qty.required' => 'Vui lòng nhập cở lô',
+                        'unit_batch_qty.required' => 'Vui lòng chọn đơn vị '
                 ]);
                 
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 } 
-    
-                 DB::table('product_category')->where('id', $request->id)->update([
+                $dosage_name = DB::table('dosage')->where('id', $request->dosage_id )->value('name');
+                if (Str::contains(Str::lower($dosage_name), ['phim', 'nang'])) {$weight_2 = true;}else {$weight_2 = false;}
 
-                        'sample_Amout'=> $request->sample_Amout,
-                        'unit'=> $request->unit,
-                        'excution_time' => $request->excution_time,
-                        'instrument_type'=> $request->instrument_type,
-                        'prepareBy' => session('user')['fullName'] ?? 'Admin',
+                DB::table('intermediate_category')->where('id', $request->id)->update([
+
+                        'intermediate_code' => $request->intermediate_code,
+                        'product_name_id' => $request->product_name_id,                       
+                        'batch_size' => $request->batch_size,
+                        'unit_batch_size'=> $request->unit_batch_size,
+                        'batch_qty'=> $request->batch_qty,
+                        'unit_batch_qty' => $request->unit_batch_qty,
+
+                        'dosage_id' => $request->dosage_id,
+                        'weight_1' => $request->weight_1 === "on" ?true:false,
+                        'weight_2'=> $weight_2,
+                        'prepering'=> $request->prepering === "on" ?true:false,
+                        'blending'=> $request->blending === "on" ?true:false,
+                        'forming'=> $request->forming === "on" ?true:false,
+                        'coating'=> $request->coating === "on" ?true:false,
+
+                        'quarantine_total'=> $request->quarantine_total??0,
+                        'quarantine_weight'=> $request->quarantine_weight??0,
+                        'quarantine_preparing'=> $request->quarantine_preparing??0,
+                        'quarantine_blending'=> $request->quarantine_blending??0,
+                        'quarantine_forming'=> $request->quarantine_forming??0,
+                        'quarantine_coating'=> $request->quarantine_coating??0,
+                        'quarantine_time_unit' => $request->quarantine_time_unit === "on"?true:false,
+
+                        'deparment_code'=> session('user')['production_code'],
+                        'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Đã thêm thành công!');   

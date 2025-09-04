@@ -5,15 +5,15 @@
     @include('layout.topNAV')
 @endsection
 
-
 @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
  
 @section('mainContent')
-  @include('pages.category.intermediate.dataTable')
+  @include('pages.materData.Specification.dataTable')
 @endsection
+
 @section('model')
-  @include('pages.category.intermediate.create')
-  @include('pages.category.intermediate.update') 
+  @include('pages.materData.Specification.create')
+  @include('pages.materData.Specification.update') 
 @endsection
