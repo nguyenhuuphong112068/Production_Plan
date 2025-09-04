@@ -6,7 +6,7 @@
   <div class="modal-dialog" role="document">
    
     <form 
-      action="{{route('pages.materData.Unit.store')}}" 
+      action="{{route('pages.materData.Market.store')}}" 
       method="POST">
       @csrf
 
@@ -17,7 +17,7 @@
           </a>
 
           <h4 class="modal-title w-100 text-center" style="color: #CDC717">
-              {{'Tạo Mới Dữ Liệu Gốc Đơn Vị Tính' }}
+              {{'Tạo Mới Dữ Liệu Gốc Thị Trường' }}
           </h4>
 
           <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -28,8 +28,8 @@
         <div class="modal-body">
            {{-- NAME --}}
             <div class="form-group">
-              <label for="code">Đơn Vị Tính </label>
-              <input type="text" class="form-control" name="code"  placeholder="vd: Kg"
+              <label for="code">Mã Thị Trường</label>
+              <input type="text" class="form-control" name="code"  placeholder="vd: VN"
                 value="{{ old('code') }}">
             </div>
             @error('code', 'createErrors')
@@ -38,8 +38,8 @@
 
             {{-- NAME --}}
             <div class="form-group">
-              <label for="name">Đơn Vị Tính Đầy Đủ </label>
-              <input type="text" class="form-control" name="name"  placeholder="vd: Kilogram"
+              <label for="name">Tên Thị Trường </label>
+              <input type="text" class="form-control" name="name"  placeholder="vd: Việt Nam"
                 value="{{ old('name') }}">
             </div>
             @error('name', 'createErrors')

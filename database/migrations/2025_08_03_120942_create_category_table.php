@@ -13,14 +13,13 @@ return new class extends Migration
     {
         Schema::create('intermediate_category', function (Blueprint $table) {
             $table->id();
-
             $table->string('intermediate_code',20)->unique();
-            $table->string('name',255);
+            $table->unsignedMediumInteger('product_name_id');
             $table->float('batch_size');
             $table->string('unit_batch_size',10);
             $table->float('batch_qty');
             $table->string('unit_batch_qty',10);
-            $table->string('dosage',50);
+            $table->unsignedSmallInteger('dosage_id');
             $table->boolean('weight_1');
             $table->boolean('weight_2');
             $table->boolean('prepering');
@@ -34,6 +33,7 @@ return new class extends Migration
             $table->float('quarantine_blending')->nullable();
             $table->float('quarantine_forming')->nullable();
             $table->float('quarantine_coating')->nullable();
+            $table->boolean('quarantine_time_unit');
 
             $table->string('deparment_code',5);
 

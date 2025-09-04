@@ -2,10 +2,10 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <!-- Modal -->
-<div class="modal fade" id="Modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
+<div class="modal fade" id="create_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
    
-    <form 
+    <form
       action="{{route('pages.materData.Instrument.store')}}" 
       method="POST">
       @csrf
@@ -19,7 +19,7 @@
           </a>
 
           <h4 class="modal-title w-100 text-center" id="pModalLabel" style="color: #CDC717">
-              {{'Tạo Mới Chỉ Tiêu Kiểm' }}
+              {{'Tạo Mới Dữ Liệu Gốc Thiết Bị Sản Xuất'}}
           </h4>
 
           <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -48,44 +48,6 @@
                 <div class="alert alert-danger">{{ $message }}</div>
             @enderror
 
-            {{-- Instrement Type --}}
-            <div class="form-group">
-              <label for="name">Loại Thiết Bị</label>
-              <input type="text" class="form-control" name="instrument_type" 
-                value="{{ old('instrument_type') }}">
-            </div>
-            @error('instrument_type', 'createErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
-
-            {{-- SHORT NAME --}}
-            <div class="form-group">
-              <label for="shortName">Tên viết tắt</label>
-              <input type="text" class="form-control" name="shortName" 
-                value="{{ old('shortName') }}">
-            </div>
-            @error('shortName', 'createErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
-
-            {{-- Gourp_ID--}}
-            <div class="form-group">
-                <label for="belongGroup_id">Tổ Quản Lý</label>
-                <select class="form-control" name="belongGroup_id" id="belongGroup_id">
-                    <option value="">-- Chọn nhóm --</option>
-
-                    @foreach ($groups as $group)
-                        <option value="{{ $group->id }}" 
-                            {{ old('belongGroup_id') == $group->id ? 'selected' : '' }}>
-                            {{ $group->name }}
-                        </option>
-                    @endforeach
-
-                </select>
-                @error('belongGroup_id', 'createErrors')
-                    <div class="alert alert-danger mt-1">{{ $message }}</div>
-                @enderror
-            </div>
 
         </div>
 
@@ -109,7 +71,7 @@
 @if ($errors->createErrors->any())
 <script>
     $(document).ready(function () {
-        $('#Modal').modal('show');
+        $('#create_modal').modal('show');
     });
 </script>
 @endif

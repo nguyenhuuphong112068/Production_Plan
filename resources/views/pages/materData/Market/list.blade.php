@@ -10,10 +10,10 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.materData.Unit.dataTable')
+  @include('pages.materData.Market.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.materData.Unit.create')
-  @include('pages.materData.Unit.update') 
+  @include('pages.materData.Market.create')
+  @include('pages.materData.Market.update') 
 @endsection

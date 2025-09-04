@@ -19,17 +19,15 @@
                       <i class="fas fa-plus"></i> Thêm
                 </button>
 
-                <table id="data_table_instrument" class="table table-bordered table-striped">
+                <table id="data_tabale_dosage" class="table table-bordered table-striped">
 
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                 
                     <tr>
                     <th>STT</th>
-                    <th>Mã Thiết Bị</th>
-                    <th>Tên Thiết Bị</th>
-                    <th>Người Tạo/Ngày Tạo</th>
-                    <th>Edit</th>
-                    <th>DeActive</th>
+                    <th>Qui Cách</th>
+                    <th>Người Tạo/ Ngày Tạo</th>
+                    <th>Cập Nhật</th>
                   </tr>
                   </thead>
                   <tbody>
@@ -37,18 +35,21 @@
                   @foreach ($datas as $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
-                      <td>{{ $data->code}}</td>
+                      
                       <td>{{ $data->name}}</td>
+                      
                       <td>
                           <div> {{ $data->created_by}} </div>
                           <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
-                      </td>    
+                      </td>                     
+  
                       
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit"
-                              data-id="{{$data->id}}"
-                              data-code="{{$data->code}}"
-                              data-name="{{$data->name}}"               
+
+                              data-id="{{ $data->id }}"
+                              data-name="{{ $data->name }}"
+
                               data-toggle="modal"
                               data-target="#update_modal">
                               <i class="fas fa-edit"></i>
@@ -56,16 +57,7 @@
                       </td>
 
 
-                      <td class="text-center align-middle">  
-
-                        <form class="form-deActive" action="{{ route('pages.materData.Instrument.deActive', ['id' => $data->id]) }}" method="post">
-                            @csrf
-                            <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
-
-                      </td>
+                
                     </tr>
                   @endforeach
 
@@ -97,7 +89,7 @@
         title: 'Thành công!',
         text: '{{ session('success') }}',
         icon: 'success',
-        timer: 2000, // tự đóng sau 2 giây
+        timer: 1000, // tự đóng sau 2 giây
         showConfirmButton: false
     });
 </script>
@@ -111,41 +103,42 @@
           const button = $(this);
           const modal = $('#update_modal');
 
-          // Gán dữ liệu vào input
-          modal.find('input[name="code"]').val(button.data('code'));
-          modal.find('input[name="name"]').val(button.data('name'));
-          modal.find('input[name="id"]').val(button.data('id'));
-
-        });
-
-        $('.btn-create').click(function () {
-          const modal = $('#update_modal');
-        });
-
-        $('.form-deActive').on('submit', function (e) {
-          e.preventDefault(); // chặn submit mặc định
-          const form = this;
-          const productName = $(form).find('button[type="submit"]').data('name');
          
 
-          Swal.fire({
-            title: 'Bạn chắc chắn muốn vô hiệu hóa?',
-            text: `Chỉ Tiêu: ${productName}`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Đồng ý',
-            cancelButtonText: 'Hủy'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              form.submit(); // chỉ submit sau khi xác nhận
-            }
-          });
+          // Gán dữ liệu vào input
+          modal.find('input[name="id"]').val(button.data('id'));
+        
+          modal.find('input[name="name"]').val(button.data('name'));
+
+          const id = button.data('id');
+
         });
 
+      
 
-         $('#data_table_instrument').DataTable({
+        // $('.form-deActive').on('submit', function (e) {
+        //   e.preventDefault(); // chặn submit mặc định
+        //    const form = this;
+        //   const productName = $(form).find('button[type="submit"]').data('name');
+         
+
+        //   Swal.fire({
+        //     title: 'Bạn chắc chắn muốn vô hiệu hóa?',
+        //     text: `Sản phẩm: ${productName}`,
+        //     icon: 'warning',
+        //     showCancelButton: true,
+        //     confirmButtonColor: '#28a745',
+        //     cancelButtonColor: '#d33',
+        //     confirmButtonText: 'Đồng ý',
+        //     cancelButtonText: 'Hủy'
+        //   }).then((result) => {
+        //     if (result.isConfirmed) {
+        //       form.submit(); // chỉ submit sau khi xác nhận
+        //     }
+        //   });
+        // });
+
+         $('#data_tabale_dosage').DataTable({
             paging: true,
             lengthChange: true,
             searching: true,
@@ -164,7 +157,7 @@
             }
         });
 
-  });
+    });
 </script>
 
 

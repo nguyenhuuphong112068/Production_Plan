@@ -11,35 +11,34 @@ class InstrumentController extends Controller
 {
      
          public function index(){
-                dd ("InstrumentController");
-                $groups = DB::table('groups')->where('active', true)->get();
-
-                $datas = DB::table('room')
-                ->select('room.*', 'groups.name as groupName')
-                ->where ('room.Active',1)
-                ->leftJoin('groups', 'room.belongGroup_id', '=', 'groups.id')
+                
+                $rooms = DB::table ('room')->where ('deparment_code', session('user')['production_code'])->select ('id', 'name','code')->get();
+                
+                $datas = DB::table('instrument')
+                ->where ('instrument.Active',1)
                 ->orderBy('created_at','desc')->get();
-                session()->put(['title'=> 'Thiết Bị Kiểm Nghiệm']);
+
+                session()->put(['title'=> 'Dữ Liệu Gốc Thiết Bị Sản Xuất']);
            
-                return view('pages.materData.Instrument.list',['datas' => $datas, 'groups' => $groups]);
+                return view('pages.materData.Instrument.list',[
+                        'datas' => $datas,
+                        'rooms' => $rooms
+                ]);
         }
     
 
         public function store (Request $request) {
+
+               
                 $validator = Validator::make($request->all(), [
-                        'code' => 'required|string|min:5|max:255|unique:instrument,code',
-                        'name' => 'required|string|max:255|unique:Instrument,name',
-                        'shortName' => 'required|string|max:255|unique:Instrument,shortName',
-                        'belongGroup_id' => 'required',
-                        'instrument_type' => 'required',
+                        'code' => 'required|unique:instrument,code',
+                        'name' => 'required',
+                        //'room_id' => 'required', 
                 ],[
-                        'code.unique' => 'Mã sản phẩm đã tồn tại trong hệ thống.',
-                        'name.required' => 'Vui lòng nhập tên chỉ tiêu kiểm',
-                        'shortName.required' => 'Vui lòng nhập tên viết tắt.',
-                        'name.unique' => 'Chỉ tiêu kiểm đã tồn tại trong hệ thống.',
-                        'shortName.unique' => 'Tên viết tắt đã tồn tại trong hệ thống.',
-                        'belongGroup_id.required' => 'Vui lòng chọn tổ quản lý',
-                        'instrument_type.required' => 'Vui lòng nhập loại thiết bị'
+                        'code.required' => 'Vui lòng nhập mã thiết bị',
+                        'code.unique' => 'Mã thiết bị đã tồn tại trong hệ thống.',
+                        'name.required' => 'Vui lòng nhập tên thiết bị',
+                        //'room_id.required' => 'Vui lòng chọn phòng sản xuất',
                 ]);
 
                 if ($validator->fails()) {
@@ -49,11 +48,9 @@ class InstrumentController extends Controller
                 DB::table('instrument')->insert([
                         'code' => $request->code,
                         'name' => $request->name,
-                        'shortName' => $request->shortName,
-                        'belongGroup_id' => $request->belongGroup_id,
-                        'instrument_type' => $request->instrument_type,
+                        //'room_id' => $request->shortName,
                         'active' => true,
-                        'prepareBy' => session('user')['fullName'] ?? 'Admin',
+                        'created_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
@@ -62,30 +59,24 @@ class InstrumentController extends Controller
         public function update(Request $request){
                
                 $validator = Validator::make($request->all(), [
-                        'name' => 'required|string|max:255',
-                        'shortName' => 'required|string|max:255',
-                        'belongGroup_id' => 'required',
-                        'instrument_type' => 'required',
+                        'name' => 'required',
+                        //'room_id' => 'required', 
                 ],[
-                        'name.required' => 'Vui lòng nhập tên chỉ tiêu kiểm',
-                        'shortName.required' => 'Vui lòng nhập tên viết tắt.',
-                        'belongGroup_id.required' => 'Vui lòng chọn tổ quản lý',
-                        'instrument_type.required' => 'Vui lòng nhập loại thiết bị'
+                        'name.required' => 'Vui lòng nhập tên thiết bị',
+                        //'room_id.required' => 'Vui lòng chọn phòng sản xuất',
                 ]);
 
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 } 
                 
-               DB::table('room')->where('id', $request->id)->update([
-                        'code' => $request->code,
+                DB::table('instrument')->where('id', $request->id)->update([
+         
                         'name' => $request->name,
-                        'shortName' => $request->shortName,
-                        'belongGroup_id' => $request->belongGroup_id,
-                        'instrument_type' => $request->instrument_type,
+                        //'room_id' => $request->shortName,
                         'active' => true,
-                        'prepareBy' => session('user')['fullName'],
-                        'updated_at' => now(), 
+                        'created_by' => session('user')['fullName'],
+                        'created_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Cập nhật thành công!');
         }
@@ -94,7 +85,7 @@ class InstrumentController extends Controller
                 
                DB::table('Instrument')->where('id', $id)->update([
                         'active' => false,
-                        'prepareBy' => session('user')['fullName'],
+                        'created_by' => session('user')['fullName'],
                         'updated_at' => now(), 
                 ]);
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');

@@ -19,72 +19,142 @@
                       <i class="fas fa-plus"></i> Thêm
                 </button>
 
-                <table id="table_data_intermediate" class="table table-bordered table-striped">
+                <table id="data_table_intermediate_category" class="table table-bordered table-striped">
 
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
-                
+               
                     <tr>
-                    <th>STT</th>
-                    <th>Mã BTP</th>
-                    <th>Tên Sản Phẩm</th>
-                    <th>Cở Lô</th>
-                    <th>Dạng Bào Chế</th>
-                    <th>Cân</th>
-                    <th>PC</th>
-                    <th>THT</th>
-                    <th>ĐH</th>
-                    <th>BP</th>
-                    <th>Phân Xưởng</th>
-                    <th>Người Tạo/ Ngày Tạo</th>
-                    <th>Cập Nhật</th>
-                    <th>Vô Hiệu</th>
-                  </tr>
+                      <th rowspan="2">STT</th>
+                      <th rowspan="2">Mã BTP</th>
+                      <th rowspan="2">Tên Sản Phẩm</th>
+                      <th rowspan="2">Cở Lô</th>
+                      <th rowspan="2">Dạng Bào Chế</th>
+                      
+                      <!-- Gom nhóm 6 cột -->
+                      <th colspan="6" class="text-center">Công Đoạn/Thời gian Biệt Trữ</th>
+                      
+                      <th rowspan="2">Phân Xưởng</th>
+                      <th rowspan="2">Người Tạo/ Ngày Tạo</th>
+                      <th rowspan="2">Cập Nhật</th>
+                      <th rowspan="2">Vô Hiệu</th>
+                    </tr>
+                    <tr>
+                      <th>Cân NL</th>
+                      <th>Cân NL Khác</th>
+                      <th>PC</th>
+                      <th>THT</th>
+                      <th>ĐH</th>
+                      <th>BP</th>
+                    </tr>
                   </thead>
+
+                 
                   <tbody>
                  
                   @foreach ($datas as $data)
+
+                    @php
+                        $data->quarantine_time_unit == 1 ? $quarantine_time_unit = 'ngày': $quarantine_time_unit = 'giờ'
+                    @endphp
+
                     <tr>
                       <td>{{ $loop->iteration}} </td>
                       <td> {{$data->intermediate_code}}</td>
-                      <td>{{ $data->name}}</td>
+                      <td>{{ $data->product_name}}</td>
                       <td>
                           <div> {{ $data->batch_size  . " " .  $data->unit_batch_size . "#"}} </div>
                           <div> {{ $data->batch_qty  . " " .  $data->unit_batch_qty}} </div>
                       </td>
-                      <td> {{$data->dosage}}</td>
+                      <td> {{$data->dosage_name}}</td>
 
                       <td class="text-center align-middle">
-                          @if ($data->weight_1)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
+                          <div class="d-flex flex-column align-items-center">
+                              @if ($data->weight_1)
+                                  <i class="fas fa-check-circle text-primary fs-4"></i>
+                                  <span>
+                                      @if ($data->quarantine_total == 0)
+                                          {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                      @else
+                                          {{"total:". $data->quarantine_total ." ". $quarantine_time_unit}}
+                                      @endif
+                                  </span>
+                              @endif
+                              
+                          </div>
                       </td>
 
                       <td class="text-center align-middle">
-                          @if ($data->weight_2)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
+                          <div class="d-flex flex-column align-items-center">
+                              @if ($data->weight_2)
+                                  <i class="fas fa-check-circle text-primary fs-4"></i>
+                                  <span>
+                                    @if ($data->quarantine_total == 0)
+                                        {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                    @endif
+                                  </span>
+                              @endif
+                              
+                          </div>
                       </td>
 
                       <td class="text-center align-middle">
-                          @if ($data->prepering)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
+                          <div class="d-flex flex-column align-items-center">
+                              @if ($data->prepering)
+                                  <i class="fas fa-check-circle text-primary fs-4"></i>
+                                  <span>
+                                    @if ($data->quarantine_total == 0)
+                                        {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                    @endif
+                                  </span>
+                              @endif
+                              
+                          </div>
                       </td>
+
                       <td class="text-center align-middle">
-                          @if ($data->blending)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
+                          <div class="d-flex flex-column align-items-center">
+                              @if ($data->blending)
+                                  <i class="fas fa-check-circle text-primary fs-4"></i>
+                                  <span>
+                                    @if ($data->quarantine_total == 0)
+                                        {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                    @endif
+                                  </span>
+                              @endif
+                              
+                          </div>
                       </td>
+
                       <td class="text-center align-middle">
-                          @if ($data->forming)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
+                          <div class="d-flex flex-column align-items-center">
+                              @if ($data->forming)
+                                  <i class="fas fa-check-circle text-primary fs-4"></i>
+                                  <span>
+                                    @if ($data->quarantine_total == 0)
+                                        {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                    @endif
+                                  </span>
+                              @endif
+                              
+                          </div>
                       </td>
+
                       <td class="text-center align-middle">
-                          @if ($data->coating)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
+                          <div class="d-flex flex-column align-items-center">
+                              @if ($data->coating)
+                                  <i class="fas fa-check-circle text-primary fs-4"></i>
+                                <span>
+                                      @if ($data->quarantine_total == 0)
+                                          {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                      @else
+                                          {{"total:". $data->quarantine_total ." ". $quarantine_time_unit}}
+                                      @endif
+                                </span>
+                              @endif
+                            
+                          </div>
                       </td>
+
                       <td>{{ $data->deparment_code}}</td>
                       <td>
                           <div> {{ $data->prepared_by}} </div>
@@ -97,17 +167,28 @@
                           <button type="button" class="btn btn-warning btn-edit"
 
                               data-id="{{ $data->id }}"
-                              {{-- data-name="{{ $data->name }}"
-                              data-code="{{ $data->code }}"
-                              data-testing="{{ $data->testing }}"
-                              data-sample_amout="{{ $data->sample_Amout }}"
-                              data-unit="{{ $data->unit }}"
-                              data-excution-time="{{ $data->excution_time }}"
-                              data-instrument="{{ $data->instrument_type }}"
-                               --}}
-                              
+                              data-intermediate_code="{{ $data->intermediate_code }}"
+                              data-product_name_id="{{ $data->product_name_id }}"
+                              data-batch_size="{{ $data->batch_size }}"
+                              data-unit_batch_size="{{ $data->unit_batch_size }}"
+                              data-batch_qty="{{ $data->batch_qty }}"
+                              data-unit_batch_qty="{{ $data->unit_batch_qty }}"
+                              data-dosage_id="{{ $data->dosage_id }}"
+                              data-weight_1="{{ $data->weight_1 }}"
+                              data-prepering="{{ $data->prepering }}"
+                              data-blending="{{ $data->blending }}"
+                              data-forming="{{ $data->forming }}"
+                              data-coating="{{ $data->coating }}"
+                              data-quarantine_total="{{ $data->quarantine_total }}"
+                              data-quarantine_weight="{{ $data->quarantine_weight }}"
+                              data-quarantine_preparing="{{ $data->quarantine_preparing }}"
+                              data-quarantine_blending="{{ $data->quarantine_blending }}"
+                              data-quarantine_forming="{{ $data->quarantine_forming }}"
+                              data-quarantine_coating="{{ $data->quarantine_coating }}"
+                              data-quarantine_time_unit="{{ $data->quarantine_time_unit }}"
+
                               data-toggle="modal"
-                              data-target="#updateModal">
+                              data-target="#update_modal">
                               <i class="fas fa-edit"></i>
                           </button>
                       </td>
@@ -117,7 +198,7 @@
 
                         <form class="form-deActive" action="{{ route('pages.category.product.deActive', ['id' => $data->id]) }}" method="post">
                             @csrf
-                            <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
+                            <button type="submit" class="btn btn-danger" data-name="{{ $data->product_name }}">
                                 <i class="fas fa-lock"></i>
                             </button>
                         </form>
@@ -166,27 +247,55 @@
 
       $('.btn-edit').click(function () {
           const button = $(this);
-          const modal = $('#updateModal');
-
-          console.log ( button.data('code') )
+          const modal = $('#update_modal');
 
           // Gán dữ liệu vào input
           modal.find('input[name="id"]').val(button.data('id'));
-          modal.find('input[name="code"]').val(button.data('code'));
-          modal.find('input[name="name"]').val(button.data('name'));
-          modal.find('input[name="testing"]').val(button.data('testing'));
-          modal.find('input[name="sample_Amout"]').val(button.data('sample_amout'));
-          modal.find('input[name="unit"]').val(button.data('unit'));
+          modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+          modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
+          modal.find('input[name="batch_size"]').val(button.data('batch_size'));
+          modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
+          modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
           modal.find('input[name="excution_time"]').val(button.data('excution-time'));
-          modal.find('input[name="instrument_type"]').val(button.data('instrument_type'));
+          modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
 
-          const id = button.data('id');
+          modal.find('input[name="weight_1"]').prop('checked', button.data('weight_1'));
+          modal.find('input[name="prepering"]').prop('checked', button.data('prepering'));
+          modal.find('input[name="blending"]').prop('checked', button.data('blending'));
+          modal.find('input[name="forming"]').prop('checked', button.data('forming'));
+          modal.find('input[name="coating"]').prop('checked', button.data('coating'));
 
+         
+          let isChecked = button.data('quarantine_time_unit') == 1;
+          modal.find('input[name="quarantine_time_unit"]')
+                .prop('checked', isChecked)             // set trạng thái checkbox gốc
+                .bootstrapSwitch('state', isChecked);
+          
+  
+         if (button.data('quarantine_total') >0){
+            modal.find('input[name="quarantine_weight"]').val(0).prop('readonly', true);
+            modal.find('input[name="quarantine_preparing"]').val(0).prop('readonly', true);
+            modal.find('input[name="quarantine_blending"]').val(0).prop('readonly', true);
+            modal.find('input[name="quarantine_forming"]').val(0).prop('readonly', true);
+            modal.find('input[name="quarantine_coating"]').val(0).prop('readonly', true);
+
+            modal.find('input[name="quarantine_total"]').val(button.data('quarantine_total')).prop('readonly', false);
+            modal.find('input[name="quarantine_total_checked"]').prop('checked', true)   
+         }else {
+          
+            modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight')).prop('readonly', !button.data('weight_1'));;
+            modal.find('input[name="quarantine_preparing"]').val(button.data('quarantine_preparing')).prop('readonly', !button.data('prepering'));;
+            modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending')).prop('readonly', !button.data('blending'));;
+            modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming')).prop('readonly', !button.data('forming'));;
+            modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating')).prop('readonly', !button.data('coating'));; 
+
+            modal.find('input[name="quarantine_total"]').val(0).prop('readonly', true);
+            modal.find('input[name="quarantine_total_checked"]').prop('checked', false)   
+         }
+          
         });
 
-        $('.btn-create').click(function () {
-          const modal = $('#productNameModal');
-        });
+
 
         $('.form-deActive').on('submit', function (e) {
           e.preventDefault(); // chặn submit mặc định
@@ -208,6 +317,26 @@
               form.submit(); // chỉ submit sau khi xác nhận
             }
           });
+        });
+
+        $('#data_table_intermediate_category').DataTable({
+            paging: true,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50,100, "Tất cả"]],
+            language: {
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ dòng",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+                paginate: {
+                    previous: "Trước",
+                    next: "Sau"
+                }
+            }
         });
 
   });
