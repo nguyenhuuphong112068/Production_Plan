@@ -46,6 +46,7 @@
                       <th>ĐH</th>
                       <th>BP</th>
                     </tr>
+                    
                   </thead>
 
                  
@@ -59,7 +60,12 @@
 
                     <tr>
                       <td>{{ $loop->iteration}} </td>
-                      <td> {{$data->intermediate_code}}</td>
+                      @if ($data->active)
+                        <td class="text-success"> {{$data->intermediate_code}}</td>
+                      @else
+                        <td class="text-danger"> {{$data->intermediate_code}}</td>
+                      @endif
+                      
                       <td>{{ $data->product_name}}</td>
                       <td>
                           <div> {{ $data->batch_size  . " " .  $data->unit_batch_size . "#"}} </div>
@@ -79,7 +85,6 @@
                                       @endif
                                   </span>
                               @endif
-                              
                           </div>
                       </td>
 
@@ -93,7 +98,6 @@
                                     @endif
                                   </span>
                               @endif
-                              
                           </div>
                       </td>
 
@@ -107,7 +111,6 @@
                                     @endif
                                   </span>
                               @endif
-                              
                           </div>
                       </td>
 
@@ -196,11 +199,22 @@
 
                       <td class="text-center align-middle">  
 
-                        <form class="form-deActive" action="{{ route('pages.category.product.deActive', ['id' => $data->id]) }}" method="post">
+                        <form class="form-deActive" action="{{ route('pages.category.intermediate.deActive') }}" method="post">
                             @csrf
-                            <button type="submit" class="btn btn-danger" data-name="{{ $data->product_name }}">
-                                <i class="fas fa-lock"></i>
-                            </button>
+                            <input type="hidden"  name="id" value = "{{ $data->id }}">
+                            <input type="hidden"  name="active" value="{{ $data->active }}">
+
+                            @if ($data->active)
+                              <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"  data-name="{{$data->intermediate_code ." - ". $data->product_name }}">
+                                  <i class="fas fa-lock"></i>
+                              </button>  
+                            @else
+                              <button type="submit" class="btn btn-success" data-type="{{ $data->active }}" data-name="{{$data->intermediate_code ." - ". $data->product_name }}">
+                                  <i class="fas fa-unlock"></i>
+                              </button>
+                            @endif
+
+
                         </form>
 
                       </td>
@@ -209,6 +223,7 @@
 
                   </tbody>
                 </table>
+
               </div>
               <!-- /.card-body -->
             </div>
@@ -259,17 +274,19 @@
           modal.find('input[name="excution_time"]').val(button.data('excution-time'));
           modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
 
+         
           modal.find('input[name="weight_1"]').prop('checked', button.data('weight_1'));
           modal.find('input[name="prepering"]').prop('checked', button.data('prepering'));
           modal.find('input[name="blending"]').prop('checked', button.data('blending'));
           modal.find('input[name="forming"]').prop('checked', button.data('forming'));
           modal.find('input[name="coating"]').prop('checked', button.data('coating'));
+          
 
          
-          let isChecked = button.data('quarantine_time_unit') == 1;
+       
           modal.find('input[name="quarantine_time_unit"]')
-                .prop('checked', isChecked)             // set trạng thái checkbox gốc
-                .bootstrapSwitch('state', isChecked);
+                .prop('checked', button.data('quarantine_time_unit'))             // set trạng thái checkbox gốc
+                .bootstrapSwitch('state', button.data('quarantine_time_unit'));
           
   
          if (button.data('quarantine_total') >0){
@@ -299,12 +316,15 @@
 
         $('.form-deActive').on('submit', function (e) {
           e.preventDefault(); // chặn submit mặc định
-           const form = this;
+          const form = this;
           const productName = $(form).find('button[type="submit"]').data('name');
+          const active = $(form).find('button[type="submit"]').data('type');
          
+          let title = 'Bạn chắc chắn muốn vô hiệu hóa danh mục?'
+          if (!active){title = 'Bạn chắc chắn muốn phục hồi danh mục?'}
 
           Swal.fire({
-            title: 'Bạn chắc chắn muốn vô hiệu hóa?',
+            title: title,
             text: `Sản phẩm: ${productName}`,
             icon: 'warning',
             showCancelButton: true,
@@ -319,25 +339,47 @@
           });
         });
 
+
+
         $('#data_table_intermediate_category').DataTable({
-            paging: true,
-            lengthChange: true,
-            searching: true,
-            ordering: true,
-            info: true,
-            autoWidth: false,
-            pageLength: 10,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50,100, "Tất cả"]],
-            language: {
-                search: "Tìm kiếm:",
-                lengthMenu: "Hiển thị _MENU_ dòng",
-                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-                paginate: {
-                    previous: "Trước",
-                    next: "Sau"
-                }
-            }
-        });
+          paging: true,
+          lengthChange: true,
+          searching: true,
+          ordering: true,
+          info: true,
+          autoWidth: false,
+          pageLength: 10,
+          lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50,100, "Tất cả"]],
+          language: {
+              search: "Tìm kiếm:",
+              lengthMenu: "Hiển thị _MENU_ dòng",
+              info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+              paginate: {
+                  previous: "Trước",
+                  next: "Sau"
+              }
+          },
+          infoCallback: function (settings, start, end, max, total, pre) {
+              // Đếm số bản ghi active = 1 và active = 0
+              let activeCount = 0;
+              let inactiveCount = 0;
+
+              // lấy toàn bộ data trong DataTable
+              settings.aoData.forEach(function(row){
+                  // row._aData là dữ liệu thô của từng <tr>
+                  // bạn có thể dựa vào class text-success / text-danger hoặc thêm 1 cột hidden active
+                  const td = $(row.anCells[1]); // cột thứ 2 là intermediate_code
+                  if (td.hasClass('text-success')) {
+                      activeCount++;
+                  } else if (td.hasClass('text-danger')) {
+                      inactiveCount++;
+                  }
+              });
+
+              return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
+          }
+      });
+
 
   });
 </script>

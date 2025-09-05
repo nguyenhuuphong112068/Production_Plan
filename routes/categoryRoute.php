@@ -21,7 +21,7 @@ Route::prefix('/category')
             Route::get('','index')->name('list');
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
-            Route::post('deActive/{id}','deActive')->name('deActive'); 
+            Route::post('deActive','deActive')->name('deActive'); 
     });
 
     Route::prefix('/intermediate')
@@ -31,7 +31,7 @@ Route::prefix('/category')
             Route::get('','index')->name('list');
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
-            Route::post('deActive/{id}','deActive')->name('deActive'); 
+            Route::post('deActive','deActive')->name('deActive'); 
     });
 
 

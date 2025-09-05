@@ -2,7 +2,7 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <!-- Modal -->
-<div class="modal fade" id="productNameModal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
+<div class="modal fade" id="create_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         
         <form action="{{ route('pages.category.product.store') }}" method="POST">
@@ -15,7 +15,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" id="productNameModalLabel" style="color: #CDC717">
-                        Tạo Mới Danh Mục Sản Phẩm Kiểm Nghiệm
+                        Tạo Mới Danh Mục Sản Phẩm Công Đoạn Đóng Gói
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -24,131 +24,167 @@
                 </div>
 
                 <div class="modal-body">
-                    {{-- CODE --}}
-                    <div class="form-group">
-                        <label for="code">Mã sản phẩm</label>
-                        <input type="text" class="form-control" name="code" value="{{ old('code') }}" id = "code">
-                        @error('code', 'createErrors')
-                            <div class="alert alert-danger">{{ $message }}</div>
-                        @enderror
+                    {{-- Mã Sản Phẩm --}}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="intermediate_code">Mã Bán Thành Phẩm</label>
+                                <input type="text" class="form-control" name="intermediate_code" value="{{ old('intermediate_code') }} readonly">
+                                @error('intermediate_code', 'createErrors')
+                                    <div class="alert alert-danger">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="finished_product_code">Mã Thành Phẩm</label>
+                                <input type="text" class="form-control" name="finished_product_code" value="{{ old('finished_product_code') }}">
+                                @error('finished_product_code', 'createErrors')
+                                    <div class="alert alert-danger">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
 
                     {{-- NAME --}}
                     <div class="form-group">
-                        <label for="productName">Tên Sản Phẩm</label>
-                        <select class="form-control" name="productName" id="productName">
+                        <label for="name">Tên Sản Phẩm Theo BPR</label>
+                        <select class="form-control" name="product_name_id" >
+                            <option> --- Chọn Sản Phẩm --- </option>
                             @foreach ($productNames as $productName)
-                                <option value="{{ $productName->name }}"
-                                    {{ old('productName') == $productName->name ? 'selected' : '' }}>
-                                    {{ $productName->name }}
+                                <option value="{{ $productName->id }}"
+                                    {{ old('product_name_id') == $productName->id ? 'selected' : '' }}>
+                                    {{ $productName->name}}
                                 </option>
                             @endforeach
                         </select>
-                        @error('productName', 'createErrors')
+                        @error(' product_name_id', 'createErrors')
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
-                    </div>
+                    </div> 
+                     
 
-                    {{-- TESTING --}}
-                    <div class="form-group">
-                        <label for="testing">Chỉ Tiêu</label>
-                        <select class="form-control" name="testing" id="testing">
-                            <option value="">-- Chọn chỉ tiêu --</option>
-                            @foreach ($testings as $testing)
-                                <option value="{{ $testing->name }}"
-                                    {{ old('testing') == $testing->name ? 'selected' : '' }} data-id="{{ $testing->id }}" >
-                                    {{ $testing->name }}
-                                     
-                                </option>
-                                
-                            @endforeach
-                        </select>
-                        @error('testing', 'createErrors')
-                            <div class="alert alert-danger mt-1">{{ $message }}</div>
-                        @enderror
-                        @error('testing_code', 'createErrors')
-                            <div class="alert alert-danger mt-1">{{ $message }}</div>
-                        @enderror
-
-                    </div>
-
-                    {{-- testing_code --}}
-              
-                    <input type="hidden" class="form-control" name="testing_code" id="testing_code"
-                            value="{{ old('testing_code') }}">
-
+                    {{--Cở lô--}}
                     <div class="row">
                         <div class="col-md-6">
-                            {{-- Amout --}}
+                           
                             <div class="form-group">
-                                <label for="sample_Amout">Số Lượng Mẫu</label>
-                                <input type="number" step="0.01" class="form-control" name="sample_Amout"
-                                    value="{{ old('sample_Amout') }}">
-                                @error('sample_Amout', 'createErrors')
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <label for="batch_size">Cỡ Lô Theo Khối Lượng</label>
+                                        <input type="number" min = "0" class="form-control" name="batch_size" value="{{ old('batch_size') }}" readonly>
+                                        @error('batch_size', 'createErrors')
+                                            <div class="alert alert-danger">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label for="unit_batch_size">Đơn Vị</label>
+                                        <input type="text" class="form-control" name="unit_batch_size" value="Kg" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <label for="batch_qty">Cỡ Lô Theo Đơn Vị Liều </label>
+                                        <input type="number" min = "0" class="form-control" name="batch_qty" value="{{ old('batch_qty') }}">
+                                        @error('batch_qty', 'createErrors')
+                                            <div class="alert alert-danger">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="unit_batch_qty">Đơn Vị</label>
+                                         <select class="form-control" name="unit_batch_qty" >
+                                            <option> - Chọn ĐV - </option>
+                                            @foreach ($units as $unit)
+                                                <option value="{{ $unit->code }}"
+                                                    {{ old('unit_batch_qty') == $unit->code ? 'selected' : '' }}>
+                                                    {{ $unit->code}}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('unit_batch_qty', 'createErrors')
+                                            <div class="alert alert-danger">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Thị Trường - Qui Cách --}}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="market_id"> Thị Trường </label>
+                                 <select class="form-control" name="market_id" >
+                                    <option> - Chọn Thị Trường - </option>
+                                    @foreach ($markets as $market)
+                                        <option value="{{ $market->id }}"
+                                            {{ old('market_id') == $unit->id ? 'selected' : '' }}>
+                                            {{ $unit->code}}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('market_id', 'createErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
 
                         <div class="col-md-6">
-                            {{-- unit --}}
                             <div class="form-group">
-                                <label for="unit">Đơn Vị</label>
-                                <select class="form-control" name="unit" id="unit">
+                                <label for="finished_product_code">Qui Cách</label>
+                                 <select class="form-control" name="unit_batch_qty" >
+                                    <option> - Chọn Qui Cách - </option>
                                     @foreach ($units as $unit)
-                                        <option value="{{ $unit->name }}"
-                                            {{ old('unit') == $unit->name ? 'selected' : '' }}>
-                                            {{ $unit->name }}
+                                        <option value="{{ $unit->code }}"
+                                            {{ old('unit_batch_qty') == $unit->code ? 'selected' : '' }}>
+                                            {{ $unit->code}}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('unit', 'createErrors')
-                                    <div class="alert alert-danger mt-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{-- Instrument --}}
-                            <div class="form-group">
-                                <label for="instrument_type">Loại Thiết Bị</label>
-                                <select class="form-control" name="instrument_type" id="instrument_type">
-                                    <option value="">-- Chọn Loại Thiết Bị --</option>
-                                    @foreach ($instrument_type as $data)
-                                        <option value="{{ $data->instrument_type }}"
-                                            {{ old('instrument_type') == $data->instrument_type ? 'selected' : '' }}>
-                                            {{ $data->instrument_type }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('instrument_type', 'createErrors')
-                                    <div class="alert alert-danger mt-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        {{-- excution_time --}}
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="excution_time">Thời Gian Thực Hiện (h)</label>
-                                <input type="number" step="0.25" class="form-control" name="excution_time"
-                                    value="{{ old('excution_time') }}">
-                                @error('excution_time', 'createErrors')
+                                @error('finished_product_code', 'createErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
+                    </div>  
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Công Đoạn Bao Gồm</label>
+                        </div>
                     </div>
 
-             
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group border p-2 rounded">
+                                <!-- Cân Nguyên Liệu -->
+                                <div class="form-group row align-items-center mb-2">
+                                    <div class="col-md-6">
+                                        <div class="icheck-primary">
+                                            <input type="checkbox" class="step-checkbox" id="checkbox1" checked name = "primary_parkaging">
+                                            <label for="checkbox1">ĐGSC - ĐGTC</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
                     <button type="submit" class="btn btn-primary">
-                        {{ isset($product) ? 'Cập Nhật' : 'Lưu' }}
+                       Lưu
                     </button>
                 </div>
             </div>
@@ -162,10 +198,10 @@
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- Tự động mở modal nếu có lỗi --}}
-@if ($errors->createErrors->any())
+@if ($errors->createErrors->any()) 
     <script>
         $(document).ready(function() {
-            $('#productNameModal').modal('show');
+            $('#create_modal').modal('show');
         });
     </script>
 @endif
@@ -173,10 +209,60 @@
 {{-- Gán mã chỉ tiêu tương ứng với chọn lựa --}}
 <script>
     $(document).ready(function() {
-        $("#testing").on('change', function() {
-            var selectedOption = $(this).find("option:selected");
-            var testingCode = $("#code").val() + "-" + selectedOption.data("id");
-            $("#testing_code").val(testingCode);
+        $("input[data-bootstrap-switch]").bootstrapSwitch({
+            onText: 'Ngày',
+            offText: 'Giờ',
+            onColor: 'success',
+            offColor: 'danger'
         });
+        // Khi trang load
+        $("input[data-bootstrap-switch]").each(function() {
+            $(this).bootstrapSwitch('state', $(this).prop('checked'));
+        });
+
+        // Nếu muốn khi modal mở mới khởi tạo
+        $('#createModal').on('shown.bs.modal', function() {
+            $("input[data-bootstrap-switch]").each(function() {
+                $(this).bootstrapSwitch('state', $(this).prop('checked'));
+            });
+        });
+
+
+        // Xử lý check
+        function updateInputs() {
+            if ($("#checkbox6").is(":checked")) {
+                // Chỉ tác động input 1-5, không đổi trạng thái checkbox
+                for (let i = 1; i <= 5; i++) {
+                    const cb = $("#checkbox" + i);
+                    const input = cb.closest(".form-group.row").find(".step-input");
+                    input.val(0).prop("readonly", true);
+                }
+                $("#checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
+            } else {
+                // Quay lại logic cũ
+
+                for (let i = 1; i <= 5; i++) {
+                    const cb = $("#checkbox" + i);
+                    const input = cb.closest(".form-group.row").find(".step-input");
+
+                    if (cb.is(":checked")) {
+                        input.prop("readonly", false);
+                    } else {
+                        input.val(0).prop("readonly", true);
+                    }
+                }
+                $("#checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly", true);
+            }
+        }
+
+        // Lắng nghe thay đổi của tất cả checkbox
+        $(".step-checkbox, #checkbox6").on("change", function() {
+            updateInputs();
+        });
+
+        // Chạy khi load trang
+        updateInputs();
+         
     });
+    
 </script>

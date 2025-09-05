@@ -12,11 +12,6 @@ class IntermediateCategoryController extends Controller
         
         public function index(){
 
-                // $testings = DB::table('intermediate_category')->where('active', true)->get();
-
-                // $units = DB::table('unit')->where('active', true)->get();
-                // $instrument_type = DB::table('instrument')->select('instrument_type')->where('active', true)->groupBy('instrument_type')->get();
-                
                 $productNames = DB::table('product_name')->where('active', true)->get();
                 $dosages = DB::table('dosage')->where('active', true)->get();
                 $units = DB::table('unit')->where('active', true)->get();
@@ -25,7 +20,7 @@ class IntermediateCategoryController extends Controller
                 $datas = DB::table('intermediate_category')->select('intermediate_category.*','dosage.name as dosage_name' , 'product_name.name as product_name')
                 ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
                 ->leftJoin('dosage','intermediate_category.dosage_id','dosage.id')
-                ->where ('intermediate_category.active',1)->orderBy('product_name.name','asc')->get();
+                ->orderBy('product_name.name','asc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC BÁN THÀNH PHẨM']);
        
@@ -156,11 +151,11 @@ class IntermediateCategoryController extends Controller
                 return redirect()->back()->with('success', 'Đã thêm thành công!');   
         }
 
-        public function deActive(string|int $id){
-                
-               DB::table('product_category')->where('id', $id)->update([
-                        'Active' => 0,
-                        'prepareBy' => session('user')['fullName'],
+        public function deActive(Request $request){
+              
+               DB::table('intermediate_category')->where('id', $request->id)->update([
+                        'Active' => !$request->active,
+                        'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(), 
                 ]);
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');

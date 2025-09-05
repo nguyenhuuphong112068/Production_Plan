@@ -99,51 +99,51 @@
 
 
 <script>
-$(document).ready(function () {
-    // Khởi tạo DataTable
-    $('#finished_category').DataTable({
-        paging: true,
-        lengthChange: true,
-        searching: true,
-        ordering: true,
-        info: true,
-        autoWidth: false,
-        pageLength: 10,
-        language: {
-            search: "Tìm kiếm:",
-            lengthMenu: "Hiển thị _MENU_ dòng",
-            info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-            paginate: {
-                previous: "Trước",
-                next: "Sau"
-            }
-        }
-    });
+  $(document).ready(function () {
+      // Khởi tạo DataTable
+      $('#finished_category').DataTable({
+          paging: true,
+          lengthChange: true,
+          searching: true,
+          ordering: true,
+          info: true,
+          autoWidth: false,
+          pageLength: 10,
+          language: {
+              search: "Tìm kiếm:",
+              lengthMenu: "Hiển thị _MENU_ dòng",
+              info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+              paginate: {
+                  previous: "Trước",
+                  next: "Sau"
+              }
+          }
+      });
 
-    // Click nút +
-      $('#finished_category').on('click', '.btn-plus', function () {
-        const button = $(this);
-        const modal = $('#createModal');
+      // Click nút +
+        $('#finished_category').on('click', '.btn-plus', function () {
+          const button = $(this);
+          const modal = $('#createModal');
 
-        modal.find('input[name="product_caterogy_id"]').val(button.data('id'));
-        modal.find('input[name="plan_list_id"]').val(button.data('plan_list_id'));
-        modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-        modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-        modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
-        modal.find('input[name="name"]').val(button.data('name'));
-        modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
-        modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
-        modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
-        modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
-        
-        modal.find("#add_source_material").data("intermediate_code", button.data('intermediate_code'));
+          modal.find('input[name="product_caterogy_id"]').val(button.data('id'));
+          modal.find('input[name="plan_list_id"]').val(button.data('plan_list_id'));
+          modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+          modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
+          modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
+          modal.find('input[name="name"]').val(button.data('name'));
+          modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
+          modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
+          modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
+          modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
+          
+          modal.find("#add_source_material").data("intermediate_code", button.data('intermediate_code'));
 
-        modal.modal('show');
-    });
+          modal.modal('show');
+      });
 
-    // Mở modal nếu có query openModal
-    @if (request()->get('openModal'))
-        $('#createModal').modal('show');
-    @endif
-});
+      // Mở modal nếu có query openModal
+      @if (request()->get('openModal'))
+          $('#createModal').modal('show');
+      @endif
+  });
 </script>

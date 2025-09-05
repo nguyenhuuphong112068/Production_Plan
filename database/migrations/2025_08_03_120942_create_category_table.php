@@ -49,8 +49,8 @@ return new class extends Migration
             $table->string('intermediate_code',20);
             $table->string('name',255);
 
-            $table->string('market', 20);
-            $table->string('specification',50);
+            $table->unsignedMediumInteger('market_id');
+            $table->unsignedMediumInteger('specification_id');
 
             $table->float('batch_qty');
             $table->string('unit_batch_qty',10);
