@@ -14,6 +14,7 @@
   @include('pages.category.product.dataTable')
 @endsection
 @section('model')
-  {{-- @include('pages.category.product.create')
-  @include('pages.category.product.update')  --}}
+  @include('pages.category.product.intermediate_category')
+  @include('pages.category.product.create')
+  {{-- @include('pages.category.product.update')  --}}
 @endsection

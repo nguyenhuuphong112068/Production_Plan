@@ -149,8 +149,8 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox1" checked name = "weight_1">
-                                            <label for="checkbox1">Cân Nguyên Liệu</label>
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox1"  name = "weight_1">
+                                            <label for="update_checkbox1">Cân Nguyên Liệu</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -162,8 +162,8 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox2" checked name = "prepering">
-                                            <label for="checkbox2">Pha Chế</label>
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox2"  name = "prepering">
+                                            <label for="update_checkbox2">Pha Chế</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -175,8 +175,8 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox3" checked name = "blending">
-                                            <label for="checkbox3">Trộn Hoàn Tất</label>
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox3"  name = "blending">
+                                            <label for="update_checkbox3">Trộn Hoàn Tất</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -188,8 +188,8 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox4" checked name = "forming">
-                                            <label for="checkbox4">Định Hình</label>
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox4"  name = "forming">
+                                            <label for="update_checkbox4">Định Hình</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -201,8 +201,8 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox5" checked name = "coating">
-                                            <label for="checkbox5">Bao Phim</label>
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox5"  name = "coating">
+                                            <label for="update_checkbox5">Bao Phim</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -214,8 +214,8 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-danger">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox6" name ="quarantine_total_checked">
-                                            <label for="checkbox6">Thời gian biệt trữ từ Cân đến trước ĐGSC</label>
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox6" name ="quarantine_total_checked">
+                                            <label for="update_checkbox6">Thời gian biệt trữ từ Cân đến trước ĐGSC</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -270,7 +270,7 @@
         });
 
         // Nếu muốn khi modal mở mới khởi tạo
-        $('#updateModal').on('shown.bs.modal', function() {
+        $('#update_modal').on('shown.bs.modal', function() {
             $("input[data-bootstrap-switch]").each(function() {
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
@@ -279,19 +279,20 @@
 
         // Xử lý check
         function updateInputs() {
-            if ($("#checkbox6").is(":checked")) {
+            if ($("#update_checkbox6").is(":checked")) {
+               
                 // Chỉ tác động input 1-5, không đổi trạng thái checkbox
                 for (let i = 1; i <= 5; i++) {
-                    const cb = $("#checkbox" + i);
+                    const cb = $("#update_checkbox" + i);
                     const input = cb.closest(".form-group.row").find(".step-input");
                     input.val(0).prop("readonly", true);
                 }
-                $("#checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
+                $("#update_checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
             } else {
                 // Quay lại logic cũ
 
                 for (let i = 1; i <= 5; i++) {
-                    const cb = $("#checkbox" + i);
+                    const cb = $("#update_checkbox" + i);
                     const input = cb.closest(".form-group.row").find(".step-input");
 
                     if (cb.is(":checked")) {
@@ -300,12 +301,12 @@
                         input.val(0).prop("readonly", true);
                     }
                 }
-                $("#checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly", true);
+                $("#update_checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly", true);
             }
         }
 
         // Lắng nghe thay đổi của tất cả checkbox
-        $(".step-checkbox, #checkbox6").on("change", function() {
+        $(".step-checkbox, #update_checkbox6").on("change", function() {
             updateInputs();
         });
 

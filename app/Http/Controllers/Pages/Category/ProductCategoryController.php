@@ -11,22 +11,34 @@ class ProductCategoryController extends Controller
 {
         
         public function index(){
-                // $testings = DB::table('testing')->where('active', true)->get();
-                // $units = DB::table('unit')->where('active', true)->get();
-                // $instrument_type = DB::table('instrument')->select('instrument_type')->where('active', true)->groupBy('instrument_type')->get();
+
+                $markets = DB::table('market')->where('active', true)->get();
+                $specifications = DB::table('specification')->where('active', true)->get();
+                $units = DB::table('unit')->where('active', true)->get();
                 $productNames = DB::table('product_name')->where('active', true)->get();
 
-                $datas = DB::table('finished_product_category')->where ('active',1)->orderBy('created_at','desc')->get();
-                
-                session()->put(['title'=> 'DANH MỤC SẢN PHẨM KIỂM NGHIỆM']);
-               
+                $intermediate_category = DB::table('intermediate_category')->select('intermediate_category.*','dosage.name as dosage_name' , 'product_name.name as product_name')
+                ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
+                ->leftJoin('dosage','intermediate_category.dosage_id','dosage.id')
+                ->where('intermediate_category.active', true)
+                ->orderBy('product_name.name','asc')->get();
+
+                $datas = DB::table('finished_product_category')
+                ->select('finished_product_category.*', 'product_name.name as product_name', 'intermediate_category.intermediate_code',
+                        'intermediate_category.batch_size','intermediate_category.unit_batch_size'
+                )
+                ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
+                ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
+                ->orderBy('product_name.name','asc')->get();
+
+                session()->put(['title'=> 'DANH MỤC THÀNH PHẨM']);
                 return view('pages.category.product.list',[
                         'datas' => $datas,
-                        'productNames' => $productNames
-                        // 'testings' => $testings,
-                        // 'units' => $units,
-                        // 'instrument_type' => $instrument_type,
-                        
+                        'intermediate_category' => $intermediate_category,                      
+                        'units' => $units,
+                        'productNames' => $productNames,   
+                        'markets' => $markets,     
+                        'specifications' => $specifications        
                 ]);
         }
     

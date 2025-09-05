@@ -247,7 +247,6 @@
 {{-- Tự động mở modal nếu có lỗi --}}
 @if ($errors->createErrors->any()) 
     <script>
-      
         $(document).ready(function() {
             $('#create_modal').modal('show');
         });
@@ -310,10 +309,6 @@
 
         // Chạy khi load trang
         updateInputs();
-
-
-
-
          
     });
     
