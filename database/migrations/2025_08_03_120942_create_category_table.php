@@ -47,7 +47,7 @@ return new class extends Migration
             $table->string('process_code',40)->unique();
             $table->string('finished_product_code',20);
             $table->string('intermediate_code',20);
-            $table->string('name',255);
+            $table->unsignedMediumInteger('product_name_id');
 
             $table->unsignedMediumInteger('market_id');
             $table->unsignedMediumInteger('specification_id');

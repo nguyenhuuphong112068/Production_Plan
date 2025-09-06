@@ -5,15 +5,15 @@
     @include('layout.topNAV')
 @endsection
 
-
 @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
  
 @section('mainContent')
-  @include('pages.quota.production.dataTable')
+  @include('pages.category.maintenance.dataTable')
 @endsection
+
 @section('model')
-  {{-- @include('pages.quota.production.create_intermediate')  --}}
-  {{-- @include('pages.quota.production.create_finished_product') --}}
+  @include('pages.category.maintenance.create')
+  @include('pages.category.maintenance.update') 
 @endsection

@@ -186,9 +186,9 @@
                 </a>
               </li>
               <li class="nav-item">
-                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
+                <a href="{{ route ('pages.category.maintenance.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Bảo Trì</p>
+                  <p>Bảo Trì - Hiệu Chuẩn</p>
                 </a>
               </li>
             </ul>
