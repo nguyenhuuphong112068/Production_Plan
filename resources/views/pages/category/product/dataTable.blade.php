@@ -19,7 +19,7 @@
                       <i class="fas fa-plus"></i> Thêm
                 </button>
 
-                <table id="data_table_intermediate_category" class="table table-bordered table-striped">
+                <table id="data_table_product_category" class="table table-bordered table-striped">
 
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                
@@ -78,26 +78,17 @@
 
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit"
-                              data-id="{{ $data->id }}"
-                              {{-- data-intermediate_code="{{ $data->intermediate_code }}"
-                              data-product_name_id="{{ $data->product_name_id }}"
-                              data-batch_size="{{ $data->batch_size }}"
-                              data-unit_batch_size="{{ $data->unit_batch_size }}"
-                              data-batch_qty="{{ $data->batch_qty }}"
-                              data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                              data-dosage_id="{{ $data->dosage_id }}"
-                              data-weight_1="{{ $data->weight_1 }}"
-                              data-prepering="{{ $data->prepering }}"
-                              data-blending="{{ $data->blending }}"
-                              data-forming="{{ $data->forming }}"
-                              data-coating="{{ $data->coating }}"
-                              data-quarantine_total="{{ $data->quarantine_total }}"
-                              data-quarantine_weight="{{ $data->quarantine_weight }}"
-                              data-quarantine_preparing="{{ $data->quarantine_preparing }}"
-                              data-quarantine_blending="{{ $data->quarantine_blending }}"
-                              data-quarantine_forming="{{ $data->quarantine_forming }}"
-                              data-quarantine_coating="{{ $data->quarantine_coating }}"
-                              data-quarantine_time_unit="{{ $data->quarantine_time_unit }}" --}}
+                              data-id="{{$data->id}}"
+                              data-finished_product_code="{{$data->finished_product_code}}"
+                              data-intermediate_code="{{$data->intermediate_code}}"
+                              data-product_name_id="{{$data->product_name_id}}"
+                              data-market_id="{{$data->market_id }}"
+                              data-specification_id="{{$data->specification_id}}"
+                              data-batch_size="{{$data->batch_size}}"
+                              data-batch_qty="{{$data->batch_qty}}"
+                              data-unit_batch_qty="{{$data->unit_batch_qty}}"
+                              data-primary_parkaging="{{$data->primary_parkaging}}"
+                             
 
                               data-toggle="modal"
                               data-target="#update_modal">
@@ -108,7 +99,7 @@
 
                       <td class="text-center align-middle">  
 
-                        <form class="form-deActive" action="{{ route('pages.category.intermediate.deActive') }}" method="post">
+                        <form class="form-deActive" action="{{ route('pages.category.product.deActive') }}" method="post">
                             @csrf
                             <input type="hidden"  name="id" value = "{{ $data->id }}">
                             <input type="hidden"  name="active" value="{{ $data->active }}">
@@ -164,7 +155,7 @@
 </script>
 @endif
 
-{{-- <script>
+<script>
 
   $(document).ready(function () {
 
@@ -174,49 +165,16 @@
 
           // Gán dữ liệu vào input
           modal.find('input[name="id"]').val(button.data('id'));
+          modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
           modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
           modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
+          modal.find('select[name="market_id"]').val(button.data('market_id'));
+          modal.find('select[name="specification_id"]').val(button.data('specification_id'));
           modal.find('input[name="batch_size"]').val(button.data('batch_size'));
           modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
-          modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
-          modal.find('input[name="excution_time"]').val(button.data('excution-time'));
-          modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
+          modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
+          modal.find('input[name="primary_parkaging"]').prop('checked', button.data('primary_parkaging'));
 
-         
-          modal.find('input[name="weight_1"]').prop('checked', button.data('weight_1'));
-          modal.find('input[name="prepering"]').prop('checked', button.data('prepering'));
-          modal.find('input[name="blending"]').prop('checked', button.data('blending'));
-          modal.find('input[name="forming"]').prop('checked', button.data('forming'));
-          modal.find('input[name="coating"]').prop('checked', button.data('coating'));
-          
-
-         
-       
-          modal.find('input[name="quarantine_time_unit"]')
-                .prop('checked', button.data('quarantine_time_unit'))             // set trạng thái checkbox gốc
-                .bootstrapSwitch('state', button.data('quarantine_time_unit'));
-          
-  
-         if (button.data('quarantine_total') >0){
-            modal.find('input[name="quarantine_weight"]').val(0).prop('readonly', true);
-            modal.find('input[name="quarantine_preparing"]').val(0).prop('readonly', true);
-            modal.find('input[name="quarantine_blending"]').val(0).prop('readonly', true);
-            modal.find('input[name="quarantine_forming"]').val(0).prop('readonly', true);
-            modal.find('input[name="quarantine_coating"]').val(0).prop('readonly', true);
-
-            modal.find('input[name="quarantine_total"]').val(button.data('quarantine_total')).prop('readonly', false);
-            modal.find('input[name="quarantine_total_checked"]').prop('checked', true)   
-         }else {
-          
-            modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight')).prop('readonly', !button.data('weight_1'));;
-            modal.find('input[name="quarantine_preparing"]').val(button.data('quarantine_preparing')).prop('readonly', !button.data('prepering'));;
-            modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending')).prop('readonly', !button.data('blending'));;
-            modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming')).prop('readonly', !button.data('forming'));;
-            modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating')).prop('readonly', !button.data('coating'));; 
-
-            modal.find('input[name="quarantine_total"]').val(0).prop('readonly', true);
-            modal.find('input[name="quarantine_total_checked"]').prop('checked', false)   
-         }
           
         });
 
@@ -249,7 +207,7 @@
 
 
 
-        $('#data_table_intermediate_category').DataTable({
+        $('#data_table_product_category').DataTable({
           paging: true,
           lengthChange: true,
           searching: true,
@@ -290,6 +248,6 @@
 
 
   });
-</script> --}}
+</script>
 
 

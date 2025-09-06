@@ -182,6 +182,7 @@
                           <button type="button" class="btn btn-success btn-plus"
 
                               data-intermediate_code="{{ $data->intermediate_code }}"
+                              data-product_name_id="{{ $data->product_name_id }}"
                               data-batch_size="{{ $data->batch_size }}"
                               data-unit_batch_size="{{ $data->unit_batch_size }}"
                               data-batch_qty="{{ $data->batch_qty }}"
@@ -243,9 +244,10 @@
           const modal = $('#create_modal');
 
           modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+          modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
           modal.find('input[name="batch_size"]').val(button.data('batch_size'));
           modal.find('input[name="unit_batch_size"]').val(button.data('unit_batch_size'));
-          modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
+          modal.find('input[name="batch_qty"]').val(button.data('batch_qty')).attr('max', button.data('batch_qty'));
           modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
       });
       

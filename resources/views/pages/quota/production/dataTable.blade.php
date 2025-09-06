@@ -56,7 +56,8 @@
                       <tr>
                           <th rowspan="2">STT</th>
                           <th rowspan="2">Mã Sản Phẩm</th>
-                          <th rowspan="2">Sản Phẩm</th>
+                          <th rowspan="2">Tên Sản Phẩm</th>
+                          <th rowspan="2">Cở Lô</th>
                           <th rowspan="2">Phòng Sản Xuất</th>
 
                           <th colspan="4" class="text-center">Thời Gian</th>
@@ -64,6 +65,7 @@
                           <th rowspan="2" style="width: 50px">Số Lô Chiến Dịch</th>
                           <th rowspan="2">Ghi Chú</th>
                           <th rowspan="2">Người Tạo/ Ngày Tạo</th>
+                          <th rowspan="2">Thêm</th>
                           <th rowspan="2">Cập Nhật</th>
                           <th rowspan="2">Vô Hiệu</th>
                       </tr>
@@ -77,16 +79,26 @@
         
                   <tbody>
                  
+                       
                   @foreach ($datas as $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
                       <td> 
                           <div> {{ $data->intermediate_code}} </div>
-                          <div> {{ $data->finished_product_code === "NA"? '': $data->finished_product_code}} </div>
+                          <div> {{ $data->finished_product_code??''}} </div>
                       </td>
-                      
-                      <td>{{ $data->finished_product_name === null?$data->intermediate_name:$data->finished_product_name . "(" . $data->batch_qty . " " .  $data->unit_batch_qty}}</td>
-                      <td> {{$data->room_name . " - " . $data->room_code }} </td>
+                      <td>{{ $data->product_name}} </td>
+                      <td>{{ $data->batch_qty . " " .  $data->unit_batch_qty}}</td>
+
+                      <td>
+                          @if($data->room_name == null)
+                              <span class="px-2 py-1 rounded-pill" style="background-color:red; color:white;">
+                                  Chưa Định Mức
+                              </span>
+                          @else
+                              {{ $data->room_name . " - " . $data->room_code }}
+                          @endif
+                      </td>
 
                       <td> {{$data->p_time }} </td>
                       <td> {{$data->m_time }} </td>
@@ -102,7 +114,25 @@
                       </td>                     
 
   
-                      
+                      <td class="text-center align-middle">
+                          <button type="button" class="btn btn-success btn-plus"
+
+                              data-id="{{ $data->id }}"
+                              {{-- data-name="{{ $data->name }}"
+                              data-code="{{ $data->code }}"
+                              data-testing="{{ $data->testing }}"
+                              data-sample_amout="{{ $data->sample_Amout }}"
+                              data-unit="{{ $data->unit }}"
+                              data-excution-time="{{ $data->excution_time }}"
+                              data-instrument="{{ $data->instrument_type }}"
+                               --}}
+                              
+                              data-toggle="modal"
+                              data-target="#updateModal">
+                              <i class="fas fa-plus"></i>
+                          </button>
+                      </td>
+
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit"
 

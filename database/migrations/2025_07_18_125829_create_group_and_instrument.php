@@ -21,10 +21,15 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('instrument', function (Blueprint $table) {
-            $table->id();
-            $table->string('code')->unique();
+        Schema::create('maintenance_category', function (Blueprint $table) {
+            $table->id();	
+            $table->string('code_room_id',50)->unique();
+            $table->string('code',20);
             $table->string('name', 100);
+            $table->unsignedMediumInteger('room_id');
+            $table->string('quota');
+            $table->string('note');
+            $table->string('deparment_code', 5);
             $table->boolean('active')->default(true);
             $table->string('prepareBy');
             $table->timestamps();
@@ -36,7 +41,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('instrument'); // Drop bảng con trước
+        Schema::dropIfExists('maintenance_category'); // Drop bảng con trước
         Schema::dropIfExists('groups');
     }
 };

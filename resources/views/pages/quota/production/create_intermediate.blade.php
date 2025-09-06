@@ -46,10 +46,10 @@
                       <option value="">-- Chọn Bán Thành Phẩm --</option>
                         @foreach ($intermediate_category as $item)
                   
-                            <option value="{{ $item->name }}" 
+                            <option value="{{ $item->intermediate_code }}" 
                                 data-code="{{ $item->intermediate_code }}"
-                                {{ old('name') == $item->name ? 'selected' : '' }}>
-                                {{ $item->name . " - " . $item->intermediate_code}}
+                                {{ old('intermediate_code') == $item->intermediate_code ? 'selected' : '' }}>
+                                {{ $item->product_name . " - " . $item->intermediate_code}}
                             </option>
                       
                         @endforeach

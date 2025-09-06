@@ -28,5 +28,5 @@
       <!-- Theme style -->
       <link rel="stylesheet" href="{{asset ('dataTable/dist/css/adminlte.min.css')}}">
 
-
+      <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
       

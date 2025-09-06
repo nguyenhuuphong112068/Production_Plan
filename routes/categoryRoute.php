@@ -2,6 +2,7 @@
     // use Illuminate\Routing\Route;
 
 use App\Http\Controllers\Pages\Category\IntermediateCategoryController;
+use App\Http\Controllers\Pages\Category\MaintenanceCategoryController;
 use App\Http\Controllers\Pages\Category\ProductCategoryController;
 
 use App\Http\Middleware\CheckLogin;
@@ -14,16 +15,6 @@ Route::prefix('/category')
 ->middleware(CheckLogin::class)
 ->group(function(){
 
-    Route::prefix('/product')
-    ->name('product.')
-    ->controller(ProductCategoryController::class)
-    ->group(function(){
-            Route::get('','index')->name('list');
-            Route::post('store','store')->name('store');
-            Route::post('update', 'update')->name('update');
-            Route::post('deActive','deActive')->name('deActive'); 
-    });
-
     Route::prefix('/intermediate')
     ->name('intermediate.')
     ->controller(IntermediateCategoryController::class)
@@ -35,12 +26,29 @@ Route::prefix('/category')
     });
 
 
+    Route::prefix('/product')
+    ->name('product.')
+    ->controller(ProductCategoryController::class)
+    ->group(function(){
+            Route::get('','index')->name('list');
+            Route::post('store','store')->name('store');
+            Route::post('update', 'update')->name('update');
+            Route::post('deActive','deActive')->name('deActive'); 
+    });
 
 
+    Route::prefix('/maintenance')
+    ->name('maintenance.')
+    ->controller(MaintenanceCategoryController::class)
+    ->group(function(){
+            Route::get('','index')->name('list');
+            Route::post('store','store')->name('store');
+            Route::post('update', 'update')->name('update');
+            Route::post('deActive','deActive')->name('deActive'); 
+            Route::post('check_code_room_id','check_code_room_id')->name('check_code_room_id'); 
 
-
-
-     
+            
+    });
 
 });
    

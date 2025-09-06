@@ -29,7 +29,7 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="intermediate_code">Mã Bán Thành Phẩm</label>
-                                <input type="text" class="form-control" name="intermediate_code" value="{{ old('intermediate_code') }} readonly">
+                                <input type="text" class="form-control" name="intermediate_code" value="{{ old('intermediate_code') }} " readonly>
                                 @error('intermediate_code', 'createErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
@@ -46,7 +46,7 @@
                             </div>
                         </div>
                     </div>
-
+                    <input type="hidden" class="form-control" name="process_code" value="{{ old('process_code') }}">
                     {{-- NAME --}}
                     <div class="form-group">
                         <label for="name">Tên Sản Phẩm Theo BPR</label>
@@ -93,22 +93,14 @@
                                 <div class="row">
                                     <div class="col-md-8">
                                         <label for="batch_qty">Cỡ Lô Theo Đơn Vị Liều </label>
-                                        <input type="number" min = "0" class="form-control" name="batch_qty" value="{{ old('batch_qty') }}">
+                                        <input type="number" min = "0" class="form-control" name="batch_qty" value="{{ old('batch_qty') }}"  > 
                                         @error('batch_qty', 'createErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4">
                                         <label for="unit_batch_qty">Đơn Vị</label>
-                                         <select class="form-control" name="unit_batch_qty" >
-                                            <option> - Chọn ĐV - </option>
-                                            @foreach ($units as $unit)
-                                                <option value="{{ $unit->code }}"
-                                                    {{ old('unit_batch_qty') == $unit->code ? 'selected' : '' }}>
-                                                    {{ $unit->code}}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <input type="text" class="form-control" name="unit_batch_qty" value="{{ old('unit_batch_qty') }}" readonly>
                                         @error('unit_batch_qty', 'createErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
@@ -127,8 +119,8 @@
                                     <option> - Chọn Thị Trường - </option>
                                     @foreach ($markets as $market)
                                         <option value="{{ $market->id }}"
-                                            {{ old('market_id') == $unit->id ? 'selected' : '' }}>
-                                            {{ $unit->code}}
+                                            {{ old('market_id') == $market->id ? 'selected' : '' }}>
+                                            {{ $market->code}}
                                         </option>
                                     @endforeach
                                 </select>
@@ -140,17 +132,17 @@
 
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="finished_product_code">Qui Cách</label>
-                                 <select class="form-control" name="unit_batch_qty" >
+                                <label for="specification_id">Qui Cách</label>
+                                 <select class="form-control" name="specification_id" >
                                     <option> - Chọn Qui Cách - </option>
-                                    @foreach ($units as $unit)
-                                        <option value="{{ $unit->code }}"
-                                            {{ old('unit_batch_qty') == $unit->code ? 'selected' : '' }}>
-                                            {{ $unit->code}}
+                                    @foreach ($specifications as $specification)
+                                        <option value="{{ $specification->id }}"
+                                            {{ old('specification_id') == $specification->id ? 'selected' : '' }}>
+                                            {{ $specification->name}}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('finished_product_code', 'createErrors')
+                                @error('specification_id', 'createErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -209,59 +201,17 @@
 {{-- Gán mã chỉ tiêu tương ứng với chọn lựa --}}
 <script>
     $(document).ready(function() {
-        $("input[data-bootstrap-switch]").bootstrapSwitch({
-            onText: 'Ngày',
-            offText: 'Giờ',
-            onColor: 'success',
-            offColor: 'danger'
+       
+        // Set process_code
+        const intermediateInput = $('input[name="intermediate_code"]');
+        const finishedInput = $('input[name="finished_product_code"]');
+        const processInput = $('input[name="process_code"]');
+
+        finishedInput.on('input change', function () {
+            const intermediateCode = intermediateInput.val() || "";
+            const finishedCode = $(this).val() || "";
+            processInput.val(intermediateCode + "_" + finishedCode);
         });
-        // Khi trang load
-        $("input[data-bootstrap-switch]").each(function() {
-            $(this).bootstrapSwitch('state', $(this).prop('checked'));
-        });
-
-        // Nếu muốn khi modal mở mới khởi tạo
-        $('#createModal').on('shown.bs.modal', function() {
-            $("input[data-bootstrap-switch]").each(function() {
-                $(this).bootstrapSwitch('state', $(this).prop('checked'));
-            });
-        });
-
-
-        // Xử lý check
-        function updateInputs() {
-            if ($("#checkbox6").is(":checked")) {
-                // Chỉ tác động input 1-5, không đổi trạng thái checkbox
-                for (let i = 1; i <= 5; i++) {
-                    const cb = $("#checkbox" + i);
-                    const input = cb.closest(".form-group.row").find(".step-input");
-                    input.val(0).prop("readonly", true);
-                }
-                $("#checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
-            } else {
-                // Quay lại logic cũ
-
-                for (let i = 1; i <= 5; i++) {
-                    const cb = $("#checkbox" + i);
-                    const input = cb.closest(".form-group.row").find(".step-input");
-
-                    if (cb.is(":checked")) {
-                        input.prop("readonly", false);
-                    } else {
-                        input.val(0).prop("readonly", true);
-                    }
-                }
-                $("#checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly", true);
-            }
-        }
-
-        // Lắng nghe thay đổi của tất cả checkbox
-        $(".step-checkbox, #checkbox6").on("change", function() {
-            updateInputs();
-        });
-
-        // Chạy khi load trang
-        updateInputs();
          
     });
     

@@ -18,7 +18,7 @@ Route::prefix('/quota')
     ->group(function(){
             Route::get('','index')->name('list');
             Route::match(['post', 'put'], 'store', 'store');
-            //Route::post('store','store')->name('store');
+            Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
             Route::post('deActive/{id}','deActive')->name('deActive');
             

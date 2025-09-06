@@ -11,52 +11,103 @@ class ProductionQuotaController extends Controller
 {
         public function index(Request $request ){
                
-                $stage_code = $request->stage_code?? 1;
-                $production = session('user')['production'];
-      
-                $datas = DB::table('quota')
-                ->select(
-                        'quota.id',
-                        'quota.intermediate_code',
-                        'quota.finished_product_code',
-                        'quota.room_id',
+                $stage_code = (int) $request->stage_code?? 1;
+                $production = session('user')['production_code'];
+                $room = DB::table('room')->where('stage_code', $stage_code)->where('active', true)->get();
+               
+                if ($stage_code <= 6) {
+                        $stage_name = match($stage_code) {
+                                1 => "weight_1",
+                                2 => "weight_2",
+                                3 => "prepering",
+                                4 => "blending",
+                                5 => "forming",
+                                6 => "coating",
+                        };
+                         
+                        $category = "intermediate_category";
+                        $joinField = "intermediate_code";
+
+                        $datas = DB::table($category)
+                        ->select(
+                        "$category.$joinField",
+                        "$category.product_name_id",
+                        "$category.batch_size",
+                        "$category.unit_batch_size",
+                        "$category.batch_qty",
+                        "$category.unit_batch_qty",
+                        'product_name.name as product_name',
+                        'room.name as room_name',
+                        'room.code as room_code',
                         'quota.p_time',
                         'quota.m_time',
                         'quota.C1_time',
                         'quota.C2_time',
-                        'quota.stage_code',
                         'quota.maxofbatch_campaign',
-                        'quota.deparment_code',
                         'quota.note',
-                        'quota.active',
-                        'quota.created_at',
                         'quota.prepared_by',
-                        'room.name as room_name',
-                        'room.code as room_code',
-                        'finished_product_category.name as finished_product_name',
-                        'intermediate_category.name as intermediate_name',
-                        'intermediate_category.name as batch_qty',
-                        'intermediate_category.name as unit_batch_qty'
-                )
-                ->where('quota.active', 1)->where('quota.stage_code', $stage_code)->where('quota.deparment_code', $production)
-                ->leftJoin('room', 'quota.room_id', 'room.id')
-                ->leftJoin('finished_product_category', 'quota.finished_product_code', '=', 'finished_product_category.finished_product_code')
-                ->leftJoin('intermediate_category', 'quota.intermediate_code', '=', 'intermediate_category.intermediate_code')
-                ->orderBy('quota.created_at', 'desc')
-                ->get();
+                        'quota.created_at',
+                        'quota.id'
+                        )
+                        ->leftJoin('product_name', "$category.product_name_id", '=', 'product_name.id')
+                        ->leftJoin('quota', function($join) use ($stage_code, $production, $category, $joinField) {
+                        $join->on("$category.$joinField", '=', "quota.$joinField")
+                                ->where('quota.stage_code', '=', $stage_code)
+                                ->where('quota.deparment_code', '=', $production);
+                        })
+                        ->leftJoin('room', 'quota.room_id', '=', 'room.id')
+                        ->where("intermediate_category.$stage_name", 1)
+                        ->where('intermediate_category.active', true)
+                        ->where('intermediate_category.deparment_code', session('user')['production_code'])
+                        ->orderBy('product_name.name', 'asc')
+                        ->get();
 
-                $intermediate_category = DB::table('intermediate_category')->where ('active',1)->orderBy('name','asc')->get();
-                $finished_product_category = DB::table('finished_product_category')->where ('active',1)->orderBy('name','asc')->get();
-               
-                $room = DB::table('room')->where('stage_code', $stage_code)->where('active', true)->get();
-               
+                } elseif ($stage_code == 7) {
+                        $stage_name = "primary_parkaging";
+                        $category = "finished_product_category";
+                        $joinField = "finished_product_code";
+
+                        $datas = DB::table($category)
+                                ->select(
+                                "$category.$joinField",
+                                "$category.product_name_id",
+                                "$category.batch_qty",
+                                "$category.unit_batch_qty",
+                                'product_name.name as product_name',
+                                'room.name as room_name',
+                                'room.code as room_code',
+                                'quota.p_time',
+                                'quota.m_time',
+                                'quota.C1_time',
+                                'quota.C2_time',
+                                'quota.maxofbatch_campaign',
+                                'quota.note',
+                                'quota.prepared_by',
+                                'quota.created_at',
+                                'quota.id'
+                                )
+                                ->leftJoin('product_name', "$category.product_name_id", '=', 'product_name.id')
+                                ->leftJoin('quota', function($join) use ($stage_code, $production, $category, $joinField) {
+                                $join->on("$category.$joinField", '=', "quota.$joinField")
+                                        ->where('quota.stage_code', '=', $stage_code)
+                                        ->where('quota.deparment_code', '=', $production);
+                                })
+                                ->leftJoin('room', 'quota.room_id', '=', 'room.id')
+                                ->where("$category.active", true)
+                                ->where("$category.deparment_code", session('user')['production_code'])
+                                ->orderBy('product_name.name', 'asc')
+                                ->get();
+                }
+
+
+
                 session()->put(['title'=> 'Định Mức Sản Xuất']);
                 return view('pages.quota.production.list',[
 
                         'datas' => $datas, 
                         'stage_code' => $stage_code,
-                        'intermediate_category' => $intermediate_category,
-                        'finished_product_category' => $finished_product_category,
+                        //'intermediate_category' => $intermediate_category,
+                        //'finished_product_category' => $finished_product_category,
                         'room' =>  $room
                 ]);
         }
@@ -102,6 +153,7 @@ class ProductionQuotaController extends Controller
                         $process_code = $request->intermediate_code ."_". $request->finished_product_code;
                         $finished_product_code = $request->finished_product_code;                
                 }
+                
                 $dataToInsert = [];
                  foreach ($selectedRooms as $selectedRoom) {
                         $dataToInsert[] = [
@@ -116,7 +168,7 @@ class ProductionQuotaController extends Controller
                                 'stage_code'=> $request->stage_code,
                                 'maxofbatch_campaign'=> $request->maxofbatch_campaign,
                                 'note'=> $request->note,
-                                'deparment_code'=>  session('user')['production'],
+                                'deparment_code'=>  session('user')['production_code'],
                                 'prepared_by' => session('user')['fullName'],
                                 'created_at' => now(),
                         ];
