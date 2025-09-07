@@ -21,18 +21,19 @@ Route::prefix('/quota')
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
             Route::post('deActive/{id}','deActive')->name('deActive');
+            Route::post('check_code_room_id','check_code_room_id')->name('check_code_room_id'); 
             
     });
 
-    Route::prefix('/maintenance')
-    ->name('maintenance.')
-    ->controller(MaintenanceQuotaController::class)
-    ->group(function(){
-            Route::get('','index')->name('list');
-            Route::post('store','store')->name('store');
-            Route::post('update', 'update')->name('update');
-            Route::post('deActive/{id}','deActive')->name('deActive'); 
-    });
+//     Route::prefix('/maintenance')
+//     ->name('maintenance.')
+//     ->controller(MaintenanceQuotaController::class)
+//     ->group(function(){
+//             Route::get('','index')->name('list');
+//             Route::post('store','store')->name('store');
+//             Route::post('update', 'update')->name('update');
+//             Route::post('deActive/{id}','deActive')->name('deActive'); 
+//     });
 
 
 });

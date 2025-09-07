@@ -12,27 +12,12 @@
               </div>
               <!-- /.card-Body -->
               <div class="card-body">
-                    @php
-                         
-                        $createTarget = ( $stage_code <= 6)
-                            ? '#create_intermediate' 
-                            : '#create_finished_product';
-                    @endphp
+                   
 
                  <div class="row">
-                    <div class="col-md-2">
-                      <button class="btn btn-success btn-create mb-2" 
-                            data-toggle="modal" 
-                            data-target="{{ $createTarget }}" 
-                            data-stage_code="{{ $stage_code }}" 
-                            style="width: 155px" >
-                            <i class="fas fa-plus"></i> Thêm
-                      </button>
-                    </div>
 
-
-                    <div class="col-md-8"></div> 
-                    <div class="col-md-2 d-flex justify-content-end">
+                    <div class="col-md-12"></div> 
+                    <div class="col-md-12 d-flex justify-content-end">
                       <form id = "filterForm"  action="{{ route('pages.quota.production.list') }}" method="get">
                             @csrf
                            <div class="form-group" style="width: 177px">
@@ -49,10 +34,7 @@
                     </div>
                 </div>    
                 <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
-
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
-                
-                 
                       <tr>
                           <th rowspan="2">STT</th>
                           <th rowspan="2">Mã Sản Phẩm</th>
@@ -92,8 +74,8 @@
 
                       <td>
                           @if($data->room_name == null)
-                              <span class="px-2 py-1 rounded-pill" style="background-color:red; color:white;">
-                                  Chưa Định Mức
+                              <span class="px-2 py-1 rounded-pill" style="background-color:red; color:white; font-size: 14px">
+                                  Thiếu Định Mức
                               </span>
                           @else
                               {{ $data->room_name . " - " . $data->room_code }}
@@ -117,18 +99,13 @@
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-success btn-plus"
 
-                              data-id="{{ $data->id }}"
-                              {{-- data-name="{{ $data->name }}"
-                              data-code="{{ $data->code }}"
-                              data-testing="{{ $data->testing }}"
-                              data-sample_amout="{{ $data->sample_Amout }}"
-                              data-unit="{{ $data->unit }}"
-                              data-excution-time="{{ $data->excution_time }}"
-                              data-instrument="{{ $data->instrument_type }}"
-                               --}}
+                              data-product_name="{{ $data->product_name }}"
+                              data-intermediate_code="{{ $data->intermediate_code }}"
+                              data-finished_product_code="{{ $data->finished_product_code }}"
+                              data-stage_code="{{ $stage_code }}"
                               
                               data-toggle="modal"
-                              data-target="#updateModal">
+                              data-target="#create_intermediate">
                               <i class="fas fa-plus"></i>
                           </button>
                       </td>
@@ -209,6 +186,27 @@
           const modal = $(button.data('target'));
           modal.find('input[name="stage_code"]').val(button.data('stage_code'));
       });
+
+      $('.btn-plus').click(function () {
+          const button = $(this);
+          const modal = $('#create_intermediate');
+          // Gán dữ liệu vào input
+          modal.find('input[name="stage_code"]').val(button.data('stage_code'));
+          modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+          modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
+          modal.find('input[name="product_name"]').val(button.data('product_name'));
+          
+          if (button.data('stage_code') <= 6) {
+            modal.find('input[name="intermediate_code"]').show();
+            modal.find('input[name="finished_product_code"]').hide();
+           
+        } else if (button.data('stage_code') === 7) {
+            modal.find('input[name="intermediate_code"]').hide();
+            modal.find('input[name="finished_product_code"]').show();
+        }
+
+      });
+
 
 
       // $('.btn-edit').click(function () {
