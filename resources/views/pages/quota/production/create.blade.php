@@ -8,7 +8,7 @@
 </style>
 
 <!-- Modal -->
-<div class="modal fade" id="create_finished_product" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
+<div class="modal fade" id="create_intermediate" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
   <div class="modal-dialog custom-modal-size" role="document">
    
     <form 
@@ -25,7 +25,7 @@
           </a>
 
           <h4 class="modal-title w-100 text-center" id="pModalLabel" style="color: #CDC717">
-              {{'Định Mức Đóng Gói'}}
+              {{'Định Mức Sản Xuất'}}
           </h4>
 
           <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -35,25 +35,14 @@
 
         <div class="modal-body">
 
-
-
+            <input type="hidden" name="stage_code" id="stage_code" value="{{ old('stage_code') }}">
             {{-- San Phẩm--}}
             <div class="row">
               <div class="col-md-9">
                 <div class="form-group">
                     <label >Tên Sản Phẩm</label>
-                      <select class="form-control" name="name" id="productFinishedName">
-                        <option value="">-- Chọn Bán Thành Phẩm --</option>
-                        @foreach ($finished_product_category as $item)
-                          <option value="{{ $item->name }}"
-                              data-intermediate_code="{{ $item->intermediate_code}}"
-                              data-finished_product_code="{{ $item->finished_product_code }}"
-                              {{ old('name') == $item->name ? 'selected' : '' }}>
-                              {{ $item->name  ." - ". $item->intermediate_code ." - ". $item->finished_product_code  }}
-                          </option>
-                        @endforeach
-                      </select>
-                    @error('finished_product_code', 'create_finished_Errors')
+                    <input type="text" class="form-control" name="product_name" readonly value="{{ old('product_name') }}" />
+                    @error('product_name', 'create_inter_Errors')
                         <div class="alert alert-danger mt-1">{{ $message }}</div>
                     @enderror
 
@@ -62,22 +51,21 @@
               <div class="col-md-3">
 
                 <label for="code">Mã Sản Phẩm</label>
-                <input type="text" class="form-control" name="finished_product_code" id="finished_product_code" readonly value="{{ old('finished_product_code') }}"/>
+                
+                <input type="text" class="form-control" name="intermediate_code" id ="intermediate_code" readonly  value="{{ old('intermediate_code') }}"/>
+                <input type="text" class="form-control" name="finished_product_code" id ="finished_product_code" readonly  value="{{ old('finished_product_code') }}"/>
               </div>
             </div>
-
-
-
 
           {{-- PHòng Sản Xuất --}}  
           <div class="row">          
             <div class="col-md-12">
                 <div class="form-group">
                   <label>Phòng Sản Xuất</label>
-                    <select class="select2" multiple="multiple" data-placeholder="Select a State" 
-                            style="width: 100%; height:50mm" name="room_id[]">
-                        @foreach ($room as $item)
 
+                    <select class="select2" multiple="multiple" data-placeholder="Select a State" id ="room_id"
+                            style="width: 100%; height: 50mm" name="room_id[]">
+                        @foreach ($room as $item)
                             <option value="{{ $item->id }}" 
                                 {{ collect(old('room_id', []))->contains($item->id) ? 'selected' : '' }}>
                                 {{ $item->code . " - " . $item->name }}
@@ -85,9 +73,10 @@
                             
                         @endforeach
                     </select>
-                @error('room_id', 'create_finished_Errors')
+                @error('room_id', 'create_inter_Errors')
                   <div class="alert alert-danger">{{ $message }}</div>
                 @enderror 
+                <div id="check_result" class="mt-2"></div>
                 </div>
             </div>
           </div>
@@ -104,7 +93,7 @@
                   title="Nhập giờ hợp lệ"
                   >
               </div>
-              @error('p_time', 'create_finished_Errors')
+              @error('p_time', 'create_inter_Errors')
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>       
@@ -118,7 +107,7 @@
                   pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"  
                   title="Nhập giờ hợp lệ">
               </div>
-              @error('m_time', 'create_finished_Errors')
+              @error('m_time', 'create_inter_Errors')
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>
@@ -132,7 +121,7 @@
                   pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"  
                   title="Nhập giờ hợp lệ">
               </div>
-              @error('C1_time', 'create_finished_Errors')
+              @error('C1_time', 'create_inter_Errors')
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>
@@ -146,7 +135,7 @@
                   pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"  
                   title="Nhập giờ hợp lệ">
               </div>
-              @error('C2_time', 'create_finished_Errors')
+              @error('C2_time', 'create_inter_Errors')
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>
@@ -161,7 +150,7 @@
                       value="{{ old('maxofbatch_campaign') }}" min="1" step="1" 
                       placeholder="Nhập số nguyên dương">
               </div>
-              @error('maxofbatch_campaign', 'create_finished_Errors')
+              @error('maxofbatch_campaign', 'create_inter_Errors')
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>
@@ -173,14 +162,16 @@
                       value="{{ old('note') }}"
                       placeholder="Ghi chú nếu có">
               </div>
-              @error('note', 'create_finished_Errors')
+              @error('note', 'create_inter_Errors')
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>
           </div>
 
-          <input type="text"  name="stage_code" value="{{ old('stage_code') }}">
-          <input type="text" id="intermediate_code" name="intermediate_code" value="{{ old('intermediate_code') }}">
+
+          
+          
+
         </div>
 
         <div class="modal-footer">
@@ -200,32 +191,62 @@
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
-@if ($errors->create_finished_Errors->any())
+@if ($errors->create_inter_Errors->any())
 <script>
     $(document).ready(function () {
-        $('#create_finished_product').modal('show');
+        $('#create_intermediate').modal('show');
     });
 </script>
 @endif
 
 
+
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const productName = document.getElementById('productFinishedName');
-    const finished_product_code = document.getElementById('finished_product_code');
-    const intermediate_code = document.getElementById('intermediate_code');
+  $(document).ready(function() {
     
-    function updateCodes() {
-        const option = productName.options[productName.selectedIndex];
-        finished_product_code.value = option.getAttribute('data-finished_product_code') || '';
-        intermediate_code.value = option.getAttribute('data-intermediate_code') || '';
-        
-    }
 
-    productFinishedName.addEventListener('change', updateCodes);
-    if (productName.selectedIndex > 0) {
-        updateCodes();
-    }
-});
+      $('#room_id').on('change', function() {
+          let intermediate_code = $("#intermediate_code").val();
+          let stage_code = $("#stage_code").val();
+          let roomId = $(this).val()?.slice(-1)[0]; // lấy room_id cuối cùng vừa chọn
+          let $select = $(this);
+          let html = "";
+       
+          if (!intermediate_code) {
+              // reset select về rỗng để tránh chọn nhầm
+              html = '<div class="text-danger"> Vui Lòng Nhập Mã Thiết Bị Trước Khi Chọn Vị Trí Lắp Đặt!</div>';
+              $('#room_id').val([]); 
+              $('#check_result').html(html);
+              return;
+          }
+
+          if (roomId && intermediate_code) {
+              $.ajax({
+                  url: "{{ route('pages.quota.production.check_code_room_id') }}",
+                  type: "POST",
+                  data: {
+                      intermediate_code: intermediate_code,   // gửi 1 giá trị
+                      finished_product_code: "NA",
+                      room_id: roomId,
+                      _token: "{{ csrf_token() }}"
+                  },
+                  success: function(response) {
+                     // let html = "";
+                     
+                      if (response.exists) {
+                          html = '<div class="text-danger"> Dữ liệu đã tồn tại!</div>';
+                          let selected = $select.val() || [];
+                          selected = selected.filter(id => id !== roomId); 
+                          $select.val(selected).trigger('change');
+                      }
+                      $('#check_result').html(html);
+                  }
+              });
+          } else {
+              $('#check_result').html('');
+          }
+      });
+                
+  });
 </script>
-

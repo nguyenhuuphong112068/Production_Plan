@@ -16,7 +16,8 @@ class ProductionQuotaController extends Controller
                 $room = DB::table('room')->where('stage_code', $stage_code)->where('active', true)->get();
                
                 if ($stage_code <= 6) {
-                        $stage_name = match($stage_code) {
+                        
+                        $stage_name = (string) match($stage_code) {
                                 1 => "weight_1",
                                 2 => "weight_2",
                                 3 => "prepering",
@@ -36,6 +37,7 @@ class ProductionQuotaController extends Controller
                         "$category.unit_batch_size",
                         "$category.batch_qty",
                         "$category.unit_batch_qty",
+                         DB::raw("'NA' as finished_product_code"),
                         'product_name.name as product_name',
                         'room.name as room_name',
                         'room.code as room_code',
@@ -59,7 +61,8 @@ class ProductionQuotaController extends Controller
                         ->where("intermediate_category.$stage_name", 1)
                         ->where('intermediate_category.active', true)
                         ->where('intermediate_category.deparment_code', session('user')['production_code'])
-                        ->orderBy('product_name.name', 'asc')
+                        ->orderByRaw('FIELD(room.name, NULL) ASC')
+                        ->orderBy('room.name', 'asc')
                         ->get();
 
                 } elseif ($stage_code == 7) {
@@ -73,6 +76,7 @@ class ProductionQuotaController extends Controller
                                 "$category.product_name_id",
                                 "$category.batch_qty",
                                 "$category.unit_batch_qty",
+                                "$category.intermediate_code",
                                 'product_name.name as product_name',
                                 'room.name as room_name',
                                 'room.code as room_code',
@@ -95,46 +99,62 @@ class ProductionQuotaController extends Controller
                                 ->leftJoin('room', 'quota.room_id', '=', 'room.id')
                                 ->where("$category.active", true)
                                 ->where("$category.deparment_code", session('user')['production_code'])
-                                ->orderBy('product_name.name', 'asc')
+                                ->orderByRaw('FIELD(room.name, NULL) ASC')
+                                ->orderBy('room.name', 'asc')
                                 ->get();
                 }
 
 
-
+                
                 session()->put(['title'=> 'Định Mức Sản Xuất']);
                 return view('pages.quota.production.list',[
 
                         'datas' => $datas, 
                         'stage_code' => $stage_code,
-                        //'intermediate_category' => $intermediate_category,
-                        //'finished_product_category' => $finished_product_category,
                         'room' =>  $room
                 ]);
         }
 
+        public function check_code_room_id(Request $request){
+        
+               
+                $room_id = $request->room_id; 
+                $intermediate_code = $request->intermediate_code; 
+                $finished_product_code = $request->finished_product_code;
+
+                $process_code = $intermediate_code . "_" . $finished_product_code . "_" . $room_id;
+
+                $exists = DB::table('quota')
+                        ->where('process_code', $process_code) // bỏ khoảng trắng
+                        ->exists();
+                
+                return response()->json([
+                        'exists' => $exists,
+                ]);
+        }
+
         public function store (Request $request) {
-               ///dd ($request->all());
+               //dd ($request->all());
                 $selectedRooms = $request->input('room_id');
               
                 $validator = Validator::make($request->all(), [
-                'intermediate_code' => 'required|string',
-                'room_id'   => 'required|array',
-                'room_id.*' => 'integer|exists:room,id',
-                'p_time' => 'required|string',
-                'm_time' => 'required|string', 
-                'C1_time' => 'required|string',
-                'C2_time' =>  'required|string',
-                'maxofbatch_campaign' => 'required',
-
+                        'intermediate_code' => 'required|string',
+                        'room_id'   => 'required|array',
+                        'room_id.*' => 'integer|exists:room,id',
+                        'p_time' => 'required|string',
+                        'm_time' => 'required|string', 
+                        'C1_time' => 'required|string',
+                        'C2_time' =>  'required|string',
+                        'maxofbatch_campaign' => 'required',
                 ], [
 
-                'intermediate_code.required' => 'Vui lòng chọn sản phẩm.',
-                'room_id.required' => 'Vui lòng chọn phòng sản xuất',
-                'p_time.required' => 'Vui lòng nhập thời gian chuẩn bị',
-                'm_time.required' => 'Vui lòng nhập thời gian sản xuất',
-                'C1_time.required' => 'Vui lòng nhập thời gian vệ sinh câp I',
-                'C2_time.required' => 'Vui lòng nhập thời gian vệ sinh câp II',
-                'maxofbatch_campaign.required'=> 'Vui lòng nhập số lô tối đa',
+                        'intermediate_code.required' => 'Vui lòng chọn sản phẩm.',
+                        'room_id.required' => 'Vui lòng chọn phòng sản xuất',
+                        'p_time.required' => 'Vui lòng nhập thời gian chuẩn bị',
+                        'm_time.required' => 'Vui lòng nhập thời gian sản xuất',
+                        'C1_time.required' => 'Vui lòng nhập thời gian vệ sinh câp I',
+                        'C2_time.required' => 'Vui lòng nhập thời gian vệ sinh câp II',
+                        'maxofbatch_campaign.required'=> 'Vui lòng nhập số lô tối đa',
 
                 ]);
         
