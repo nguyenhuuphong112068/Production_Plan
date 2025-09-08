@@ -1,159 +1,94 @@
 
+<!-- Update Modal -->
+<div class="modal fade" id="update_modal" tabindex="-1" role="dialog" aria-labelledby="update_ModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <form action="{{ route('pages.category.maintenance.update') }}" method="POST">
+            @csrf
+            <div class="modal-content">
 
-<!-- Modal -->
-<div class="modal fade" id="update_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg" role="document">
-   
-    <form
-      action="{{route('pages.category.maintenance.update')}}" 
-      method="POST">
-      @csrf
+                {{-- Header --}}
+                <div class="modal-header">
+                    <a href="{{ route('pages.general.home') }}">
+                        <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8; max-width:45px;">
+                    </a>
+                    <h4 class="modal-title w-100 text-center" id="update_ModalLabel" style="color: #CDC717">
+                        {{ 'Cập Nhật Danh Mục Bảo Trì - Hiệu Chuẩn' }}
+                    </h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
 
-      <div class="modal-content">
-        <div class="modal-header">
+                {{-- Body --}}
+                <div class="modal-body">
 
-           
-          <a href="{{ route ('pages.general.home') }}">
-              <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
-          </a>
+                    {{-- CODE --}}
+                    <div class="form-group">
+                        <label for="code">Mã Thiết Bị</label>
+                        <input type="text" class="form-control" name="code" value="{{ old('code') }}" readonly>
+                    </div>
+                 
 
-          <h4 class="modal-title w-100 text-center" id="update_ModalLabel" style="color: #CDC717">
-              {{'Tạo Mới Danh Mục Bảo Trì - Hiệu Chuẩn'}}
-          </h4>
+                    {{-- NAME --}}
+                    <div class="form-group">
+                        <label for="name">Tên Thiết Bị</label>
+                        <input type="text" class="form-control" name="name" value="{{ old('name') }}" readonly>
+                    </div>
+                   
 
-          <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
+                    {{-- Room --}}
+                    <div class="form-group">
+                        <label>Phòng Sản Xuất</label>
+                        <input type="text" class="form-control" name="room" value="{{ old('room') }}" readonly>
+                    </div>
 
-        <div class="modal-body">
-          {{-- CODE --}}
-            <div class="form-group">
-              <label for="code">Mã Thiết Bị</label>
-              <input type="text" class="form-control" name="code" id = "update_code"
-                value="{{ old('code') }}">
-            </div>
-            @error('code', 'updateErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
+                    {{-- QUOTA --}}
+                    <div class="form-group">
+                        <label for="p_time">Thời Gian Thực Hiện</label>
+                        <input type="text" class="form-control" name="quota"
+                            value="{{ old('quota') }}"
+                            placeholder="HH:mm"
+                            pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"
+                            title="Nhập giờ hợp lệ">
+                    </div>
+                    @error('quota', 'updateErrors')
+                        <div class="alert alert-danger">{{ $message }}</div>
+                    @enderror
 
-            {{-- NAME --}}
-            <div class="form-group">
-              <label for="name">Tên Thiết Bị</label>
-              <input type="text" class="form-control" name="name" 
-                value="{{ old('name') }}">
-            </div>
-            @error('name', 'updateErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
+                    {{-- NOTE --}}
+                    <div class="form-group">
+                        <label for="note">Ghi Chú</label>
+                        <input type="text" class="form-control" name="note" value="{{ old('note') }}">
+                    </div>
 
-          {{-- Room --}}
-            {{-- <div class="form-group">
-              <label>Phòng Sản Xuất</label>
-                    <select class="select2" multiple="multiple" data-placeholder="Select a State" id ="room_id"
-                            style="width: 100%; height:30mm" name="room_id[]">
-                        @foreach ($rooms as $item)
-                            <option value="{{ $item->id }}" 
-                                {{ collect(old('room_id', []))->contains($item->id) ? 'selected' : '' }}>
-                                {{ $item->code . " - " . $item->name }}
-                            </option>
-                            
-                        @endforeach
-                    </select>
-                @error('room_id', 'updateErrors')
-                  <div class="alert alert-danger">{{ $message }}</div>
-                @enderror 
-                <div id="check_result" class="mt-2"></div>
-          </div> --}}
+                </div> {{-- /modal-body --}}
+                <input type="hidden" class="form-control" name="id" value="{{ old('id') }}">
+                {{-- Footer --}}
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary" id ="btnUpdate">Lưu</button>
+                </div>
 
-            {{-- quota --}}
-            <div class="form-group">
-                <label for="p_time">Thời Gian Thực Hiện</label>
-                <input type="text" class="form-control" name="quota" 
-                  value="{{ old('quota') }}"
-                  placeholder="HH:mm" 
-                  pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"  
-                  title="Nhập giờ hợp lệ"
-                  >
-              </div>
-            @error('quota', 'updateErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
+            </div> {{-- /modal-content --}}
+        </form>
+    </div> {{-- /modal-dialog --}}
+</div> {{-- /modal --}}
 
-            {{-- Ghi chú --}}
-            <div class="form-group">
-              <label for="note">Ghi Chú</label>
-              <input type="text" class="form-control" name="note" 
-                value="{{ old('note') }}">
-            </div>
-          
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-          <button type="submit" class="btn btn-primary">
-              Lưu
-          </button>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- Scripts -->
 
 
-
-{{-- //Show modal nếu có lỗi validation --}}
+{{-- Show modal nếu có lỗi validation --}}
 @if ($errors->updateErrors->any())
-<script>
-    $(document).ready(function () {
-        $('#update_modal').modal('show');
-    });
-</script>
+    <script>
+        $(document).ready(function() {
+            $('#update_modal').modal('show');
+        });
+    </script>
 @endif
 
-{{-- <script>
-  $(document).ready(function() {
-      $('#update_room_id').on('change', function() {
-          let code = $("#code").val();
-          let roomId = $(this).val()?.slice(-1)[0]; // lấy room_id cuối cùng vừa chọn
-          let $select = $(this);
-          let html = "";
-          if (!code) {
-
-
-              // reset select về rỗng để tránh chọn nhầm
-              html = '<div class="text-danger"> Vui Lòng Nhập Mã Thiết Bị Trước Khi Chọn Vị Trí Lắp Đặt!</div>';
-              $('#update_room_id').val([]); 
-              $('#check_result').html(html);
-              return;
-          }
-
-          if (roomId && code) {
-              $.ajax({
-                  url: "{{ route('pages.category.maintenance.check_code_room_id') }}",
-                  type: "POST",
-                  data: {
-                      room_id: roomId,   // gửi 1 giá trị
-                      code: code,
-                      _token: "{{ csrf_token() }}"
-                  },
-                  success: function(response) {
-                     // let html = "";
-                      if (response.exists) {
-                          html = '<div class="text-danger"> Dữ liệu đã tồn tại!</div>';
-                          let selected = $select.val() || [];
-                          selected = selected.filter(id => id !== roomId); 
-                          $select.val(selected).trigger('change');
-                      }
-                      $('#check_result').html(html);
-                  }
-              });
-          } else {
-              $('#check_result').html('');
-          }
-      });
-                
-  });
-</script> --}}
-
-
-
+<script>
+    $(document).ready(function() {
+       preventDoubleSubmit("#update_modal", "#btnSave");   
+    });
+</script>

@@ -11,7 +11,7 @@ class ProductNameController extends Controller
 {
        public function index(){
 
-                $datas = DB::table('product_name')->where ('Active',1)->orderBy('created_at','desc')->get();
+                $datas = DB::table('product_name')->orderBy('created_at','desc')->get();
                 session()->put(['title'=> 'Tên Sản Phẩm']);
             
                 return view('pages.materData.productName.list',['datas' => $datas]);
@@ -81,10 +81,10 @@ class ProductNameController extends Controller
                 return redirect()->back()->with('success', 'Cập nhật thành công!');
         }
 
-        public function deActive(string|int $id){
+        public function deActive(Request $request){
                 
-               DB::table('product_name')->where('id', $id)->update([
-                        'active' => false,
+               DB::table('product_name')->where('id', $request->id)->update([
+                        'Active' => !$request->active,
                         'prepareBy' => session('user')['fullName'],
                         'updated_at' => now(), 
                 ]);

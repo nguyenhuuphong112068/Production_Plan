@@ -11,7 +11,7 @@ class RoomController extends Controller
 {
      
          public function index(){
-                $datas = DB::table('room')->where('active', true)->where('deparment_code', session ('user') ['production_code'])->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')->get();
+                $datas = DB::table('room')->where('deparment_code', session ('user') ['production_code'])->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')->get();
                 $stages = DB::table('stages')->get();
                 $stage_groups = DB::table('stage_groups')->get();
                 session()->put(['title'=> 'Phòng Sản Xuất']);
@@ -102,10 +102,10 @@ class RoomController extends Controller
                 return redirect()->back()->with('success', 'Cập nhật thành công!');
         }
 
-        public function deActive(string|int $id){
+        public function deActive(Request $request){
                 
-               DB::table('room')->where('id', $id)->update([
-                        'active' => false,
+               DB::table('room')->where('id', $request->id)->update([
+                        'active' => !$request->active,
                         'prepareBy' => session('user')['fullName'],
                         'updated_at' => now(), 
                 ]);

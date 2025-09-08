@@ -40,7 +40,14 @@
                   @foreach ($datas as $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
-                      <td>{{ $data->code}}</td>
+                     
+                      @if ($data->active)
+                        <td class="text-success"> {{$data->code}}</td>
+                      @else
+                        <td class="text-danger"> {{$data->code}}</td>
+                      @endif
+
+                     
                       <td>{{ $data->name}}</td>
                       <td>{{ $data->room_name ."-". $data->room_code }}</td>
                       <td>{{ $data->quota}}</td>
@@ -56,7 +63,7 @@
                               data-id="{{$data->id}}"
                               data-code="{{$data->code}}"
                               data-name="{{$data->name}}"
-                              data-room_id="{{$data->room_id}}"
+                              data-room="{{$data->room_name ."-". $data->room_code}}"
                               data-quota="{{$data->quota}}"
                               data-note="{{$data->note}}"
 
@@ -137,11 +144,11 @@
           modal.find('input[name="id"]').val(button.data('id'));
           modal.find('input[name="code"]').val(button.data('code'));
           modal.find('input[name="name"]').val(button.data('name'));
-          modal.find('select[name="room_id"]').val(button.data('room_id'));
+          modal.find('input[name="room"]').val(button.data('room'));
           modal.find('input[name="quota"]').val(button.data('quota'));
           modal.find('input[name="note"]').val(button.data('note'));
          
-          $('#update_modal').modal('show');
+       
         });
 
 
@@ -185,7 +192,24 @@
                     previous: "Trước",
                     next: "Sau"
                 }
+            },
+            infoCallback: function (settings, start, end, max, total, pre) {
+                let activeCount = 0;
+                let inactiveCount = 0;
+
+                settings.aoData.forEach(function(row){
+                    // row.anCells là danh sách <td> của từng hàng
+                    const lastTd = row.anCells[row.anCells.length - 1]; // cột cuối (Vô Hiệu)
+                    const btn = $(lastTd).find('button[type="submit"]'); 
+                    const status = btn.data('type'); // lấy 1 hoặc 0
+
+                    if (status == 1) activeCount++;
+                    else inactiveCount++;
+                });
+
+                return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
             }
+            
         });
 
   });

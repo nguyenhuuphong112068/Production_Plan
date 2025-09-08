@@ -148,12 +148,12 @@
                 </a>
               </li>
               
-              <li class="nav-item">
+              {{-- <li class="nav-item">
                 <a href="{{ route ('pages.materData.Instrument.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Thiết Bị</p>
                 </a>
-              </li>
+              </li> --}}
 
 
             </ul>
@@ -213,12 +213,12 @@
                 </a>
               </li>
 
-              <li class="nav-item">
+              {{-- <li class="nav-item">
                 <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Bảo Trì</p>
                 </a>
-              </li>
+              </li> --}}
 
             </ul>
           </li>

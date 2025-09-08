@@ -11,21 +11,18 @@ class ProductionQuotaController extends Controller
 {
         public function index(Request $request ){
                
-                $stage_code = (int) $request->stage_code?? 1;
+                $stage_code =  $request->stage_code??1;
                 $production = session('user')['production_code'];
                 $room = DB::table('room')->where('stage_code', $stage_code)->where('active', true)->get();
-               
+                
                 if ($stage_code <= 6) {
-                        
-                        $stage_name = (string) match($stage_code) {
-                                1 => "weight_1",
-                                2 => "weight_2",
-                                3 => "prepering",
-                                4 => "blending",
-                                5 => "forming",
-                                6 => "coating",
-                        };
-                         
+                        if ($stage_code == 1){ $stage_name = "weight_1"; }
+                        elseif ($stage_code == 2){ $stage_name = "weight_2"; }
+                          elseif ($stage_code == 3){ $stage_name = "prepering"; }
+                           elseif ($stage_code == 4){ $stage_name = "blending"; }
+                            elseif ($stage_code == 5){ $stage_name = "forming"; }
+                                elseif($stage_code == 6){ $stage_name = "coating"; }
+
                         $category = "intermediate_category";
                         $joinField = "intermediate_code";
 
@@ -41,6 +38,7 @@ class ProductionQuotaController extends Controller
                         'product_name.name as product_name',
                         'room.name as room_name',
                         'room.code as room_code',
+                        'quota.room_id',
                         'quota.p_time',
                         'quota.m_time',
                         'quota.C1_time',
@@ -49,7 +47,8 @@ class ProductionQuotaController extends Controller
                         'quota.note',
                         'quota.prepared_by',
                         'quota.created_at',
-                        'quota.id'
+                        'quota.id',
+                        'quota.active'
                         )
                         ->leftJoin('product_name', "$category.product_name_id", '=', 'product_name.id')
                         ->leftJoin('quota', function($join) use ($stage_code, $production, $category, $joinField) {
@@ -80,6 +79,7 @@ class ProductionQuotaController extends Controller
                                 'product_name.name as product_name',
                                 'room.name as room_name',
                                 'room.code as room_code',
+                                'quota.room_id',
                                 'quota.p_time',
                                 'quota.m_time',
                                 'quota.C1_time',
@@ -88,7 +88,8 @@ class ProductionQuotaController extends Controller
                                 'quota.note',
                                 'quota.prepared_by',
                                 'quota.created_at',
-                                'quota.id'
+                                'quota.id',
+                                'quota.active'
                                 )
                                 ->leftJoin('product_name', "$category.product_name_id", '=', 'product_name.id')
                                 ->leftJoin('quota', function($join) use ($stage_code, $production, $category, $joinField) {
@@ -104,7 +105,7 @@ class ProductionQuotaController extends Controller
                                 ->get();
                 }
 
-
+               
                 
                 session()->put(['title'=> 'Định Mức Sản Xuất']);
                 return view('pages.quota.production.list',[
@@ -198,5 +199,52 @@ class ProductionQuotaController extends Controller
 
 
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
+        }
+
+        public function update(Request $request){
+                //dd ($request->all());
+                 $validator = Validator::make($request->all(), [
+         
+                        'p_time' => 'required|string',
+                        'm_time' => 'required|string', 
+                        'C1_time' => 'required|string',
+                        'C2_time' =>  'required|string',
+                        'maxofbatch_campaign' => 'required',
+                ], [
+
+                        'p_time.required' => 'Vui lòng nhập thời gian chuẩn bị',
+                        'm_time.required' => 'Vui lòng nhập thời gian sản xuất',
+                        'C1_time.required' => 'Vui lòng nhập thời gian vệ sinh câp I',
+                        'C2_time.required' => 'Vui lòng nhập thời gian vệ sinh câp II',
+                        'maxofbatch_campaign.required'=> 'Vui lòng nhập số lô tối đa',
+
+                ]);
+
+                if ($validator->fails()) {
+                        return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
+                } 
+                
+                DB::table('quota')->where('id', $request->id)->update([
+         
+                        'p_time'=> $request->p_time,
+                        'm_time' => $request->m_time,
+                        'C1_time' => $request->C1_time,
+                        'C2_time'=> $request->C2_time,
+                        'maxofbatch_campaign'=> $request->maxofbatch_campaign,
+                        'note'=> $request->note,
+                        'prepared_by' => session('user')['fullName'],
+                        'updated_at' => now(),
+                ]);
+                return redirect()->back()->with('success', 'Cập nhật thành công!');
+        }
+
+        public function deActive(Request $request){
+              //dd ($request->all());
+               DB::table('quota')->where('id', $request->id)->update([
+                        'active' => !$request->active,
+                        'prepared_by' => session('user')['fullName'],
+                        'updated_at' => now(), 
+                ]);
+                return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
 }

@@ -18,10 +18,15 @@ Route::prefix('/plan')
     ->controller(ProductionPlanController::class)
     ->group(function(){
             Route::get('','index')->name('list');
+            // các hàm xử lý plan_list
+            Route::post('create_plan_list','create_plan_list')->name('create_plan_list');
+
+
+            // các hàm xử lý plan_master
             Route::get('open','open')->name('open');
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
-            Route::post('deActive/{id}','deActive')->name('deActive');
+            Route::post('deActive','deActive')->name('deActive');
             Route::post('send','send')->name('send');
     });
 
