@@ -14,6 +14,6 @@
   @include('pages.plan.production.dataTable_plan_list')
 @endsection
 @section('model')
-  {{-- @include('pages.category.intermediate.create')
-  @include('pages.category.intermediate.update')  --}}
+  @include('pages.plan.production.create_plan_list')
+
 @endsection

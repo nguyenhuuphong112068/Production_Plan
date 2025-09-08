@@ -32,8 +32,8 @@ return new class extends Migration {
 
         Schema::create('plan_list', function (Blueprint $table) {
             $table->id();
-            $table->string('plan_code', 20);
-            $table->string('title', 20);
+            //$table->string('plan_code', 20);
+            $table->string('name', 50);
             $table->unsignedSmallInteger('month');
             $table->string('deparment_code', 5);
             $table->string ('prepared_by',100);

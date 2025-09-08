@@ -155,8 +155,8 @@ class SchedualController extends Controller
                 
                 $plan_waiting = DB::table('stage_plan')
                                 ->select('stage_plan.*',
-                                        'finished_product_category.name',
-                                        'finished_product_category.market',
+                                        'product_name.name',
+                                        'market.name as market',
                                         'finished_product_category.intermediate_code',
                                         'finished_product_category.finished_product_code',
                                         'plan_master.batch',
@@ -174,6 +174,8 @@ class SchedualController extends Controller
                                         'source_material.name as source_material_name'
                                         )
                                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
+                                ->leftJoin('market','finished_product_category.market_id','market.id')
                                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                                 ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
                                 ->whereNull('stage_plan.start')->where('stage_plan.active', 1)

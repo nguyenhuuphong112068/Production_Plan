@@ -325,7 +325,7 @@
 
           Swal.fire({
             title: title,
-            text: `Sản phẩm: ${productName}`,
+            text: ` ${productName}`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#28a745',

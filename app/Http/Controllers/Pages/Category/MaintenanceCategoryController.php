@@ -88,11 +88,9 @@ class MaintenanceCategoryController extends Controller
         public function update(Request $request){
                
                 $validator = Validator::make($request->all(), [
-                        'name' => 'required',
-                        //'room_id' => 'required', 
+                        'quota' => 'required',   
                 ],[
-                        'name.required' => 'Vui lòng nhập tên thiết bị',
-                        //'room_id.required' => 'Vui lòng chọn phòng sản xuất',
+                        'quota.required' => 'Vui lòng nhập thời gian thực hiện',
                 ]);
 
                 if ($validator->fails()) {
@@ -101,9 +99,8 @@ class MaintenanceCategoryController extends Controller
                 
                 DB::table('maintenance_category')->where('id', $request->id)->update([
          
-                        'name' => $request->name,
-                        //'room_id' => $request->shortName,
-                        'active' => true,
+                        'quota' => $request->quota,
+                        'note' => $request->note,
                         'created_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);

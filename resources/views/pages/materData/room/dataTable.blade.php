@@ -41,7 +41,11 @@
                   @foreach ($datas as $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
-                      <td>{{ $data->code}}</td>
+                      @if ($data->active)
+                        <td class="text-success"> {{$data->code}}</td>
+                      @else
+                        <td class="text-danger"> {{$data->code}}</td>
+                      @endif
                       <td>{{ $data->name}}</td>
                       <td>{{ $data->stage}}</td>
                       <td>{{ $data->production_group}}</td>
@@ -68,13 +72,21 @@
 
                       <td class="text-center align-middle">  
 
-                        <form class="form-deActive" action="{{ route('pages.materData.room.deActive', ['id' => $data->id]) }}" method="post">
-                            @csrf
-                            <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
+                        <form class="form-deActive" action="{{ route('pages.materData.room.deActive') }}" method="post">
+                           @csrf
+                            <input type="hidden"  name="id" value = "{{ $data->id }}">
+                            <input type="hidden"  name="active" value="{{ $data->active }}">
 
+                            @if ($data->active)
+                              <button type="submit" class="btn btn-danger" data-active="{{ $data->active }}"  data-name="{{$data->code ." - ". $data->name}}">
+                                  <i class="fas fa-lock"></i>
+                              </button>  
+                            @else
+                              <button type="submit" class="btn btn-success" data-active="{{ $data->active }}" data-name="{{$data->code ." - ". $data->name}}">
+                                  <i class="fas fa-unlock"></i>
+                              </button>
+                            @endif
+                        </form>
                       </td>
                     </tr>
                   @endforeach
@@ -139,11 +151,14 @@
           e.preventDefault(); // chặn submit mặc định
           const form = this;
           const productName = $(form).find('button[type="submit"]').data('name');
-         
+          
+          const active = $(form).find('button[type="submit"]').data('active');
+          let title = 'Bạn chắc chắn muốn vô hiệu hóa danh mục?'
+          if (!active){title = 'Bạn chắc chắn muốn phục hồi phòng sản xuất?'}
 
           Swal.fire({
-            title: 'Bạn chắc chắn muốn vô hiệu hóa?',
-            text: `Chỉ Tiêu: ${productName}`,
+            title: title,
+            text: ` ${productName}`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#28a745',
