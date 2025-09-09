@@ -15,7 +15,6 @@
 
   <!-- General wrapper -->
 <div class="wrapper">
-
   
     @yield('topNAV')
 

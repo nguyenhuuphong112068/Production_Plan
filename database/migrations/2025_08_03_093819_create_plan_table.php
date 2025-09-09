@@ -63,6 +63,7 @@ return new class extends Migration {
             $table->text ('note');
             $table->string('deparment_code',5);
             $table->boolean('active')->default(true);
+            $table->boolean('cancel')->default(false);
             $table->string ('prepared_by',100);
             $table->timestamps();
 

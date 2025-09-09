@@ -30,9 +30,8 @@ import Selecto from "react-selecto";
     const [pendingChanges, setPendingChanges] = useState([]);
     const [saving, setSaving] = useState(false);
     const [selectedEvents, setSelectedEvents] = useState([]);
-    const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
     const [percentShow, setPercentShow] = useState("15%");
-    const highlightedPMIdsRef = useRef(new Set());
+    //const highlightedPMIdsRef = useRef(new Set());
     const searchResultsRef = useRef([]);
     const currentIndexRef = useRef(-1);
     const lastQueryRef = useRef("");
@@ -270,12 +269,13 @@ import Selecto from "react-selecto";
  
     // Nhân Dữ liệu để tạo mới event
     const handleEventReceive = async (info) => {
+     
       // chưa chọn row
       const start = info.event.start;
       const now = new Date();
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
       info.event.remove(); 
-
+      
       if (selectedRows.length === 0 ){
           Swal.fire({
             icon: 'warning',
@@ -800,7 +800,7 @@ import Selecto from "react-selecto";
         eventClick={handleEventClick}
         eventResize={() => handleEventChange} 
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
-        eventReceive={() => handleEventReceive}
+        eventReceive={handleEventReceive}
         dateClick ={() => handleEventUnHightLine}
         eventAllow = {() => finisedEvent}
 

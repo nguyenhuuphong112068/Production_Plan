@@ -106,15 +106,10 @@ $(document).ready(function () {
 
     // Click nút +
     $('#source_material_list').on('click', '.btn-plus', function () {
-        const button = $(this);
-
-        // Giả sử modal nhập dữ liệu có id="createModal"
-        const Modal = $('#createModal');
-
-        Modal.find('textarea[name="source_material_name"]').val(button.data('name'));
-        Modal.find('input[name="material_source_id"]').val(button.data('id'));
- 
-       
+          const button = $(this);
+          const parentModal = $('.modal.show').not('#selectSourceModal');
+          parentModal.find('textarea[name="source_material_name"]').val(button.data('name'));
+          parentModal.find('input[name="material_source_id"]').val(button.data('id'));
     });
 
 

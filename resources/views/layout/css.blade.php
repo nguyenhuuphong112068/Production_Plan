@@ -30,3 +30,9 @@
 
       <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
       
+      <style>
+            body.modal-open {
+            padding: 0 !important;
+            overflow-y: scroll;
+            }
+      </style>
