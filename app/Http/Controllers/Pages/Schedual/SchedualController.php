@@ -83,7 +83,6 @@ class SchedualController extends Controller
                 ->whereNotNull('stage_plan.start')
                 ->get();
 
-                         
 
                 $events = collect();
 
@@ -97,13 +96,13 @@ class SchedualController extends Controller
                                 $market = $parts[2] ?? null;
                         }
 
-                        $color_event = '#40E0D0'; //'#46f905ff';
+                        $color_event = '#46f905ff';
 
                         if ($plan->finished === 1){
                                 $color_event = '#002af9ff';
                         }
                         elseif($plan->is_val === 1){
-                                $color_event = '#46f905ff';
+                                $color_event = '#40E0D0'; 
                         }
                         
                         if(($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start && $plan->before_weigth_date < $plan->start) ||
@@ -782,7 +781,11 @@ class SchedualController extends Controller
                 //         'end'   => Carbon::parse($row->end)];
                 // }
 
-                $schedules = DB::table('stage_plan')->whereNotNull('start')->orderBy('start')->select('resourceId', 'start', 'end_clearning')->get();
+                $schedules = DB::table('stage_plan')
+                ->whereNotNull('start')
+                ->where('start',">=",now())
+                ->orderBy('start')
+                ->select('resourceId', 'start', 'end_clearning')->get();
                 foreach ($schedules as $row) {
                         $this->roomAvailability[$row->resourceId][] = [
                         'start' => Carbon::parse($row->start),
@@ -907,7 +910,8 @@ class SchedualController extends Controller
         }
 
         /** Scheduler cho 1 stage*/
-        public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0,  ?Carbon $start_date = null , bool $working_sunday = false) {
+        public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, 
+        int $waite_time_val_batch = 0,  ?Carbon $start_date = null , bool $working_sunday = false) {
                 $tasks = DB::table('stage_plan')
                 ->select('stage_plan.id',
                         'stage_plan.code', 
@@ -919,13 +923,17 @@ class SchedualController extends Controller
                         'plan_master.before_weigth_date',
                         'plan_master.after_parkaging_date',
                         'plan_master.before_parkaging_date',
-                        'finished_product_category.name',
-                        'finished_product_category.market',
+                        'finished_product_category.product_name_id',
+                        'finished_product_category.market_id',
                         'finished_product_category.finished_product_code',
                         'finished_product_category.intermediate_code',
+                        'product_name.name',
+                        'market.code as market'
                 )
                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', 'finished_product_category.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->where('stage_code', $stageCode)
                 ->whereNull('start')
                 ->orderBy('order_by','asc')

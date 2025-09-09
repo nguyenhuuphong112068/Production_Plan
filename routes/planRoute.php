@@ -28,6 +28,7 @@ Route::prefix('/plan')
             Route::post('update', 'update')->name('update');
             Route::post('deActive','deActive')->name('deActive');
             Route::post('send','send')->name('send');
+            Route::post('history','history')->name('history');
     });
 
     Route::prefix('/maintenance')

@@ -12,14 +12,17 @@ use Illuminate\Support\Str;
 class ProductionPlanController extends Controller
 {
         public function index(){
-        
+           
                 $datas = DB::table('plan_list')
                 ->where ('active',1)
                 ->orderBy('created_at','desc')->get();
         
                 session()->put(['title'=> 'Kế Hoạch Sản Xuất Tháng']);
         
-                return view('pages.plan.production.plan_list',['datas' => $datas ]);
+                return view('pages.plan.production.plan_list',[
+                        'datas' => $datas
+                        
+                ]);
         }
 
         public function create_plan_list (Request $request) {
@@ -32,6 +35,8 @@ class ProductionPlanController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
+                return redirect()->back()->with('success', "Tạo Mới $request->name Thành Công!");
+
         }
 
 
@@ -49,7 +54,7 @@ class ProductionPlanController extends Controller
                         'finished_product_category.deparment_code',
                         'source_material.name as source_material_name'
                         )
-                ->where ('plan_list_id',$request->plan_list_id)
+                ->where ('plan_list_id',$request->plan_list_id)->where('plan_master.active',1)
                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
                 ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
@@ -57,6 +62,19 @@ class ProductionPlanController extends Controller
                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
                 ->orderBy('level','asc')->orderBy('expected_date','asc')->get();
 
+                $planMasterIds = $datas->pluck('id')->toArray();
+
+                $historyCounts = DB::table('plan_master_history')
+                        ->select('plan_master_id', DB::raw('COUNT(*) as total'))
+                        ->whereIn('plan_master_id', $planMasterIds)
+                        ->groupBy('plan_master_id')
+                        ->pluck('total', 'plan_master_id')
+                        ->toArray();
+                $datas = $datas->map(function($item) use ($historyCounts) {
+                        $item->history_count = $historyCounts[$item->id] ?? 0; // nếu không có history thì = 0
+                        return $item;
+                        });
+               
                 $finished_product_category = DB::table('finished_product_category')
                 ->select('finished_product_category.*', 'product_name.name', 'market.name as market', 'specification.name as specification',)
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
@@ -74,19 +92,44 @@ class ProductionPlanController extends Controller
                 session()->put(['title'=> " $request->name - $production"]);
         
                 return view('pages.plan.production.list',[
-                        
                         'datas' => $datas, 
                         'plan_list_id' => $request->plan_list_id,
                         'month' => $request->month, 
                         'production' => $request->production,
                         'finished_product_category' => $finished_product_category,
                         'source_material_list'=> $source_material_list,
-                        'send'=> $request->send??1
+                        'send'=> $request->send??1,
+                        
                 ]);
         }
 
-        public function store (Request $request) {
-               
+        public function history(Request $request) {
+                //dd ($request->all());
+                $histories = DB::table('plan_master_history')
+                ->select('plan_master_history.*', 
+                        'finished_product_category.intermediate_code', 
+                        'finished_product_category.finished_product_code', 
+                        'product_name.name',
+                        'market.name as market', 
+                        'specification.name as specification', 
+                        'finished_product_category.batch_qty',
+                        'finished_product_category.unit_batch_qty',
+                        'finished_product_category.deparment_code',
+                        'source_material.name as source_material_name'
+                        )
+                ->where('plan_master_history.plan_master_id', $request->id)
+                ->leftJoin('finished_product_category', 'plan_master_history.product_caterogy_id', 'finished_product_category.id')
+                ->leftJoin('source_material', 'plan_master_history.material_source_id', 'source_material.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                ->orderBy('version','desc')->orderBy('expected_date','asc')->get();
+                 return response()->json($histories);
+        }
+
+
+       public function store(Request $request)
+        {
 
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
@@ -115,68 +158,84 @@ class ProductionPlanController extends Controller
                         'percent_packaging' => 'vui lòng nhập số lượng đơn vị liều đóng gói',
                         'number_of_batch' => 'vui lòng chọn số lượng lô',
                 ]);
-        
 
-                if ($validator->fails() ) {
-                        return redirect()->back()->withErrors($validator, 'create_Errors')->withInput();
+                if ($validator->fails()) {
+                        return redirect()->back()
+                        ->withErrors($validator, 'create_Errors')
+                        ->withInput();
                 }
-               
-                if ($request->is_val == "on"){$is_val = 1; $charater_val = "V";}else {$is_val = 0;$charater_val = "";}
+
+                $is_val = $request->is_val == "on" ? 1 : 0;
+                $charater_val = $is_val ? "V" : "";
 
                 // Tạo số lô
                 $batches = [];
-        
-                if ($request->format_batch_no == "on"){
+                if ($request->format_batch_no == "on") {
                         $prefix = Str::substr($request->batch, -4);
                         $aa     = intval(Str::substr($request->batch, 0, Str::length($request->batch) - 4));
                         for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                                $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
-                                $aa++;
+                        $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
+                        $aa++;
                         }
-                }else{
-                        $prefix = Str::substr($request->batch,0,3);
-                        $aa     = intval(Str::substr($request->batch, 3,3));
+                } else {
+                        $prefix = Str::substr($request->batch, 0, 3);
+                        $aa     = intval(Str::substr($request->batch, 3, 3));
                         for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                                $batches[] = $prefix. sprintf("%02d", $aa) . $charater_val;
-                                $aa++;
+                        $batches[] = $prefix . sprintf("%02d", $aa) . $charater_val;
+                        $aa++;
                         }
                 }
-                
-                
-                $dataToInsert = [];
 
                 foreach ($batches as $batch) {
+                        // Insert vào plan_master
+                        $planMasterId = DB::table('plan_master')->insertGetId([
+                        "product_caterogy_id" => $request->product_caterogy_id,
+                        "plan_list_id" => $request->plan_list_id,
+                        "batch" => $batch,
+                        "expected_date" => $request->expected_date,
+                        "level" => $request->level,
+                        "is_val" => $is_val,
+                        "after_weigth_date" => $request->after_weigth_date,
+                        "before_weigth_date" => $request->before_weigth_date,
+                        "after_parkaging_date" => $request->after_parkaging_date,
+                        "before_parkaging_date" => $request->before_parkaging_date,
+                        "material_source_id" => $request->material_source_id,
+                        "percent_parkaging" => $request->percent_packaging,
+                        "only_parkaging" => $request->only_parkaging ?? 0,
+                        "note" => $request->note ?? "NA",
+                        'deparment_code'=> session('user')['production_code'],
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        ]);
 
-                        $dataToInsert[] = [
-
-                                "product_caterogy_id" => $request->product_caterogy_id,
-                                "plan_list_id" => $request->plan_list_id,
-                                "batch" => $batch,
-                                "expected_date" => $request->expected_date,
-                                "level" => $request->level,
-                                "is_val" => $is_val,
-                                "after_weigth_date" => $request->after_weigth_date,
-                                "before_weigth_date" => $request->before_weigth_date,
-                                "after_parkaging_date" => $request->after_parkaging_date,
-                                "before_parkaging_date" => $request->before_parkaging_date,
-                                "material_source_id" => $request->material_source_id,
-                                "percent_parkaging" => $request->percent_packaging,
-                                "only_parkaging" => $request->only_parkaging??0,
-                                "note" => $request->note??"NA",
-                                'deparment_code'=>  session('user')['production_code'],
-                                'prepared_by' => session('user')['fullName'],
-                                'created_at' => now(),
-                        ];
+                        // Insert vào plan_master_history
+                        DB::table('plan_master_history')->insert([
+                        "plan_master_id" => $planMasterId,
+                        "plan_list_id" => $request->plan_list_id,
+                        "product_caterogy_id" => $request->product_caterogy_id,
+                        "batch" => $batch,
+                        "expected_date" => $request->expected_date,
+                        "level" => $request->level,
+                        "is_val" => $is_val,
+                        "after_weigth_date" => $request->after_weigth_date,
+                        "before_weigth_date" => $request->before_weigth_date,
+                        "after_parkaging_date" => $request->after_parkaging_date,
+                        "before_parkaging_date" => $request->before_parkaging_date,
+                        "material_source_id" => $request->material_source_id,
+                        "percent_parkaging" => $request->percent_packaging,
+                        "only_parkaging" => $request->only_parkaging ?? 0,
+                        "note" => $request->note ?? "NA",
+                        'deparment_code'=> session('user')['production_code'],
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        "version" => 1, // lần đầu tạo thì version = 1
+                        ]);
                 }
-                //dd ($dataToInsert);
-                DB::table('plan_master')->insert($dataToInsert);
-
-
-                return redirect()->back()->with('success', 'Đã thêm thành công!');    
+                return redirect()->back()->with('success', 'Đã thêm thành công!');
         }
-        
-        public function update (Request $request) {
-               
+ 
+        public function update(Request $request){
                 $validator = Validator::make($request->all(), [
                         'batch' => 'required',
                         'expected_date' => 'required',
@@ -189,61 +248,129 @@ class ProductionPlanController extends Controller
                         'percent_packaging' => 'required',
                         'number_of_batch' => 'required',
                 ], [
-                        'batch' => 'Vui lòng nhập số lô',
-                        'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
-                        'level' => 'vui lòng chọn mức độ ưu tiên',
-                        'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
-                        'before_weigth_date' => 'vui lòng chọn ngày cân trước',
-                        'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
-                        'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
-                        'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
-                        'percent_packaging' => 'vui lòng nhập số lượng đơn vị liều đóng gói',
-                        'number_of_batch' => 'vui lòng chọn số lượng lô',
+                        'batch.required' => 'Vui lòng nhập số lô',
+                        'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
+                        'level.required' => 'Vui lòng chọn mức độ ưu tiên',
+                        'after_weigth_date.required' => 'Vui lòng chọn ngày có thể cân',
+                        'before_weigth_date.required' => 'Vui lòng chọn ngày cân trước',
+                        'after_parkaging_date.required' => 'Vui lòng chọn ngày có thể đóng gói',
+                        'before_parkaging_date.required' => 'Vui lòng chọn ngày có đóng gói trước',
+                        'material_source_id.required' => 'Vui lòng chọn nguồn nguyên liệu',
+                        'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
+                        'number_of_batch.required' => 'Vui lòng chọn số lượng lô',
                 ]);
-        
 
-                if ($validator->fails() ) {
+                if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
                 }
-             
-                DB::table('plan_master')->where ('id',$request->id )->update([
+
+                // Update dữ liệu chính
+                DB::table('plan_master')->where('id', $request->id)->update([
                         "batch" => $request->batch,
                         "expected_date" => $request->expected_date,
                         "level" => $request->level,
-                        "is_val" =>  $request->is_val == null ? 0 : 1,
+                        "is_val" => $request->is_val == null ? 0 : 1,
                         "after_weigth_date" => $request->after_weigth_date,
                         "before_weigth_date" => $request->before_weigth_date,
                         "after_parkaging_date" => $request->after_parkaging_date,
                         "before_parkaging_date" => $request->before_parkaging_date,
                         "material_source_id" => $request->material_source_id,
                         "percent_parkaging" => $request->percent_packaging,
-                        "only_parkaging" => $request->only_parkaging??0,
-                        "note" => $request->note??"NA",
+                        "only_parkaging" => $request->only_parkaging ?? 0,
+                        "note" => $request->note ?? "NA",
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);
 
+                // Lấy dữ liệu gốc từ plan_master
+                $plan = DB::table('plan_master')->where('id', $request->id)->first();
+                
+                // Tìm version cao nhất hiện tại trong history
+                $lastVersion = DB::table('plan_master_history')
+                        ->where('plan_master_id', $request->id)
+                        ->max('version');
 
-                return redirect()->back()->with('success', 'Đã thêm thành công!');    
+                $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+
+                // Insert lịch sử
+                        DB::table('plan_master_history')->insert([
+                        'plan_master_id' => $plan->id,
+                        'plan_list_id' => $plan->plan_list_id,
+                        'product_caterogy_id' => $plan->product_caterogy_id,
+                        'version' => $newVersion,
+
+                        'level' => $request->level,
+                        'batch' => $request->batch,
+                        'expected_date' => $request->expected_date,
+                        'is_val' => $request->is_val == null ? 0 : 1,
+                        'after_weigth_date' => $request->after_weigth_date,
+                        'before_weigth_date' => $request->before_weigth_date,
+                        'after_parkaging_date' => $request->after_parkaging_date,
+                        'before_parkaging_date' => $request->before_parkaging_date,
+                        'material_source_id' => $request->material_source_id,
+                        'percent_parkaging' => $request->percent_packaging,
+                        'only_parkaging' => $request->only_parkaging ?? 0,
+                        'note' => $request->note ?? "NA",
+                        'reason' => $request->reason ?? "NA",
+                        'deparment_code' => $plan->deparment_code,
+
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        ]);
+
+                return redirect()->back()->with('success', 'Đã cập nhật thành công!');
+
         }
+
 
         public function deActive(Request $request){
-              //dd ($request->all());
-               $reason = $request->deactive_reason;
-               
-               DB::table('plan_master')->where('id', $request->id)->update([
-                        'active' => !$request->active,
-                        'note' => $reason,
+                
+                $reason = $request->deactive_reason;
+
+                $updatesql = [
                         'prepared_by' => session('user')['fullName'],
-                        'updated_at' => now(), 
+                        'updated_at' => now(),
+                ];
+
+                if ($request->type === 'delete') {
+                        $updatesql['active'] = 0;
+                } elseif ($request->type === 'cancel') {
+                        $updatesql['cancel'] = 1;
+                        $active_stage_plan = 0;
+                } elseif ($request->type === 'restore') {
+                        $updatesql['cancel'] = 0;
+                        $active_stage_plan = 1;
+                }
+
+                DB::table('plan_master')->where('id', $request->id)->update($updatesql);
+
+                $latest = DB::table('plan_master_history')
+                ->where('plan_master_id', $request->id)
+                ->orderByDesc('version')
+                ->first();
+
+                if ($latest) {
+                        DB::table('plan_master_history')
+                        ->where('id', $latest->id)
+                        ->update(['reason' => $reason]);
+                }
+
+
+                DB::table('stage_plan')->where('plan_master_id', $request->id)->update([
+                        'active' => $active_stage_plan
                 ]);
-                return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
+
+                return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }
+
         
         public function send(Request $request){
                
                 $plans = DB::table('plan_master')
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
+                ->where('plan_master.active',1)
+                ->where('plan_master.cancel',0)
                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                 ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
                 ->select(
@@ -284,7 +411,7 @@ class ProductionPlanController extends Controller
                                         'order_by'=>  $plan->id,
                                         'code'=>  $plan->id ."_". $stage_code[$stage],
                                         'predecessor_code' => $prevCode,
-                                        'deparment_code' => session('user')['production'],
+                                        'deparment_code' => session('user')['production_code'],
                                         'created_date' => now(),
                                 ];
                                  $prevCode = $plan->id ."_". $stage_code[$stage];

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -110,17 +109,24 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     <Checkbox checked={rowData.is_val ? true : false} />
   );
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    if (isNaN(date)) return dateStr; // nếu không parse được thì giữ nguyên
+    return date.toLocaleDateString("vi-VN"); // sẽ thành dd/MM/yyyy
+  };
+
   const weightPBodyTemplate = (rowData) => (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <span>{rowData.after_weigth_date || ''}</span>
-      <span>{rowData.before_weigth_date || ''}</span>
+      <span>{formatDate(rowData.after_weigth_date) || ''}</span>
+      <span>{formatDate(rowData.before_weigth_date) || ''}</span>
     </div>
   );
 
   const packagingBodyTemplate = (rowData) => (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <span>{rowData.after_parkaging_date || ''}</span>
-      <span>{rowData.before_parkaging_date || ''}</span>
+      <span>{formatDate(rowData.after_parkaging_date) || ''}</span>
+      <span>{formatDate(rowData.before_parkaging_date) || ''}</span>
     </div>
   );
 
@@ -370,6 +376,14 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       if (field === "name" && rowData.stage_code === 9) {
         return rowData.title ?? "NA";
       }
+
+      if (field === "expected_date") {
+          if (!rowData.expected_date) return "NA";
+          const date = new Date(rowData.expected_date);
+          if (isNaN(date)) return rowData.expected_date; // giá trị không hợp lệ thì giữ nguyên
+          return date.toLocaleDateString("vi-VN"); // format mặc định: dd/MM/yyyy
+      }
+
       return rowData[field] ?? "NA";
   };
 
@@ -433,8 +447,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       });
   }
    
- 
-
 
   const allColumns = [
       { field: "intermediate_code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody },
@@ -570,11 +582,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                   body={(rowData) => (
                     <div
                       className="fc-event cursor-move px-2 py-1 bg-blue-100 border border-blue-400 rounded text-sm text-center"
-                      // data-id={rowData.id}
-                      // data-single_schedueler = {true}
-                      // data-title={`${rowData.name}-${rowData.batch}-${rowData.market}`}
-                      // data-intermediate_code={rowData.intermediate_code}
-                      // data-stage_code={rowData.stage_code}
                       draggable="true"
                       onClick={handleSelectionChange}
                     >

@@ -237,14 +237,14 @@
 
 
                     {{-- Ghi chú --}}
+             
                     <div class="row mt-3" >
-                        <div class="col-md-12">
-                            <textarea class="form-control" name="note" rows="4"></textarea>
-                        </div>
+                            <div class="col-md-12">
+                                <label >Ghi Chú</label>
+                                <textarea class="form-control" name="note" rows="2"></textarea>
+                            </div>
                     </div>
-
-
-
+              
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
                         <button type="submit" class="btn btn-primary" id="btnSave">
@@ -319,16 +319,18 @@
         });
 
         // truyền ma btp vào ô search 
+
+
         $('#selectSourceModal').on('show.bs.modal', function (e) {
-            const button = $(e.relatedTarget); // nút mở modal
-            const intermediateCode = button.data('intermediate_code');
-            
-            // Giả sử bạn có input search trong modal
-            $(this).find('input[type="search"]').val(intermediateCode).trigger('input');
-            
-            // Hoặc nếu bạn dùng DataTables trong modal
-            $('#source_table').DataTable().search(intermediateCode).draw();
+            const button = $(e.relatedTarget);
+            const intermediateCode = button.data('intermediate_code') || "";
+
+            $('#source_material_list').DataTable().search(intermediateCode).draw();
         });
+
+
+
+
 
          preventDoubleSubmit("#createModal", "#btnSave");
          
