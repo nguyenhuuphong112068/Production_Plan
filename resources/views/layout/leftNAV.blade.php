@@ -17,11 +17,10 @@
       transition: background-color 0.1s;
     }
 
-    #backToTopBtn:hover {
-      background-color: rgba(196, 242, 178, 0.4); /* Đậm hơn khi hover */
-    }
 
-  
+
+
+
   </style>
   
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
@@ -223,7 +222,7 @@
             </ul>
           </li>
 
-            <!-- Droplist Menu Nhận Mẫu -->
+            <!-- Droplist Kế Hoạch-->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
               

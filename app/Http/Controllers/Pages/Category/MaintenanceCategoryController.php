@@ -18,20 +18,25 @@ class MaintenanceCategoryController extends Controller
                 ->select('maintenance_category.*', 'room.name as room_name', 'room.code as room_code')
                 ->leftJoin('room','maintenance_category.room_id','room.id')
                 ->where('maintenance_category.deparment_code', session('user')['production_code'])
-                ->orderBy('maintenance_category.name','asc')->get();
-   
+                ->orderBy('maintenance_category.name','asc')
+                ->get();
+                
 
+               
+                //dd ($datas);
+                
                 session()->put(['title'=> 'DANH MỤC BẢO TRÌ - HIỆU CHUẨN']);
                 //dd ($datas);
                 return view('pages.category.maintenance.list',[
                         'datas' => $datas,
-                        'rooms' => $rooms
+                        'rooms' => $rooms,
+                        
                 ]);
         }
     
 
         public function store (Request $request) {
-                 
+                
                 $selectedRooms = $request->input('room_id');
 
                 $validator = Validator::make($request->all(), [
@@ -58,6 +63,7 @@ class MaintenanceCategoryController extends Controller
                                 'room_id'=> $selectedRoom,
                                 'quota'=> $request->quota,
                                 'note'=> $request->note,
+                                'is_HVAC'=> $request->is_HVAC == "on"?1:0,
                                 'active' => true,
                                 'deparment_code'=> session('user')['production_code'],
                                 'created_by' => session('user')['fullName'],

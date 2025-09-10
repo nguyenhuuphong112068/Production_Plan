@@ -1,6 +1,6 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <style>
-    .createModal-modal-size {
+    .updateModal-modal-size {
         max-width: 50% !important;
         width: 50% !important;
     }
@@ -14,22 +14,20 @@
 </style>
 
 <!-- Modal -->
-<div class="modal fade" id="createModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
-    <div class="modal-dialog createModal-modal-size" role="document">
+<div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
+    <div class="modal-dialog updateModal-modal-size" role="document">
 
-        <form action="{{ route('pages.plan.production.store') }}" method="POST">
+        <form class="form-update" action="{{ route('pages.plan.production.update') }}" method="POST">
             @csrf
 
             <div class="modal-content">
                 <div class="modal-header">
-
-
                     <a href="{{ route('pages.general.home') }}">
                         <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
                     </a>
 
-                    <h4 class="modal-title w-100 text-center" id="pModalLabel" style="color: #CDC717">
-                        {{ 'Tạo Lô' }}
+                    <h4 class="modal-title w-100 text-center" id="updateModalLabel" style="color: #CDC717">
+                        {{ 'Cập Nhật Lô' }}
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -62,9 +60,8 @@
                                     value="{{ old('specification') }}" />
                             </div>
                         </div>
-                        <input type="hidden" name="product_caterogy_id" readonly
-                            value="{{ old('product_caterogy_id') }}" />
-                        <input type="hidden" name="plan_list_id" readonly value="{{ old('plan_list_id') }}" />
+                        <input type="hidden" name="id" value="{{ old('id') }}" />
+                        
 
                     </div>
 
@@ -103,7 +100,7 @@
                             <label>% Đóng gói</label>
                             <div class="input-group">
                                 <!-- number_of_unit -->
-                                <input type="hidden" name="max_number_of_unit" id ="max_number_of_unit">
+                                <input type="hidden" name="max_number_of_unit" id ="update_max_number_of_unit">
 
                                 <input type="number" class="form-control" name="number_of_unit" id="number_of_unit"
                                     placeholder="số lượng đóng gói" min="1" value="{{ old('number_of_unit')}}">
@@ -118,23 +115,19 @@
 
                             <label>Nguồn</label>
                             <div class="input-group">
-                                <textarea class="form-control" name="source_material_name" rows="4" value="{{ old('source_material_name') }}" ></textarea>
-                                <button type="button" class = "btn btn-success" id = "add_source_material" data-toggle="modal" data-target="#selectSourceModal" >   
+                                <textarea class="form-control" name="source_material_name" rows="4" value="{{ old('source_material_name') }}"></textarea>
+                                <button type="button" class = "btn btn-success"  data-toggle="modal" data-target="#selectSourceModal"> 
                                     <i class="fas fa-plus"></i>
                                 </button>
                                 <input type="hidden" class="form-control" name="material_source_id" value="{{ old('material_source_id') }}" />
                             </div>
-                            
-
-                            {{-- Lô thẩm định  --}}
+                            {{-- Lô thẩm định --}}
                             <div class="form-group px-3 mt-4">
                                 <div class="custom-control custom-switch">
-                                    <input type="checkbox" class="custom-control-input" id="customSwitch1" name ="is_val">
-                                    <label class="custom-control-label" for="customSwitch1">Ba Lô Thẩm Định Ban Đầu</label>
+                                    <input type="checkbox" class="custom-control-input" id="update_is_val" name ="is_val" value="{{ old('is_val') }}">
+                                    <label class="custom-control-label" for="update_is_val">Ba Lô Thẩm Định Ban Đầu</label>
                                 </div>
                             </div>
-                 
-
                         </div>
 
                         <div class="col-md-6">
@@ -156,8 +149,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-danger d-inline">
-                                                    <input type="radio" id="radioDanger" name="level" value = "1" {{ old('level') == 1 ||  old('level') === null ? 'checked':'' }}>
-                                                    <label for="radioDanger">
+                                                    <input type="radio" id="update_level_1" name="level" value = "1" {{ old('level') == 1 ||  old('level') === null ? 'checked':'' }}>
+                                                    <label for="update_level_1">
                                                         1: Hàng Gấp, Hàng Thầu
                                                     </label>
                                                 </div>
@@ -167,8 +160,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-warning d-inline">
-                                                    <input type="radio" id="radioWarning" name="level" value = "2" {{ old('level') == 2 ? 'checked':'' }}>
-                                                    <label for="radioWarning">
+                                                    <input type="radio" id="update_level_2" name="level" value = "2" {{ old('level') == 2 ? 'checked':'' }}>
+                                                    <label for="update_level_2">
                                                         2: Hàng Gấp, Hàng sắp hết số đăng ký
                                                     </label>
                                                 </div>
@@ -178,8 +171,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-primary d-inline">
-                                                    <input type="radio" id="radioPrimary" name="level" value = "3" {{ old('level') == 3 ? 'checked':'' }}>
-                                                    <label for="radioPrimary">
+                                                    <input type="radio" id="update_level_3" name="level" value = "3" {{ old('level') == 3 ? 'checked':'' }}>
+                                                    <label for="update_level_3">
                                                         3: Hàng SX dự trù theo kế hoạch bán hàng, đăng ký thuốc
                                                     </label>
                                                 </div>
@@ -189,8 +182,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-success d-inline">
-                                                    <input type="radio" id="radioSuccess" name="level" value = "4" {{ old('level') == 4 ? 'checked':'' }}>
-                                                    <label for="radioSuccess">
+                                                    <input type="radio" id="update_level_4" name="level" value = "4" {{ old('level') == 4 ? 'checked':'' }}>
+                                                    <label for="update_level_4">
                                                         4: Hàng không cần gấp
                                                     </label>
                                                 </div>
@@ -202,7 +195,6 @@
 
                         </div>
                     </div>
-
                     <div class="row">
                         <div class="col-md-3">
                             <label>Có thể cân từ ngày</label>
@@ -234,29 +226,34 @@
                                 </div>
                         </div>
                     </div>
-
-
                     {{-- Ghi chú --}}
-             
                     <div class="row mt-3" >
                             <div class="col-md-12">
                                 <label >Ghi Chú</label>
                                 <textarea class="form-control" name="note" rows="2"></textarea>
                             </div>
                     </div>
-              
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-primary" id="btnSave">
-                            Lưu
-                        </button>
+
+                    {{-- Ghi chú --}}
+                    <div class="row mt-3" style="display: {{ $send == 1 ?'block':'none' }}">
+                        <div class="col-md-12">
+                                <label >Lý Do Cập Nhật</label>
+                                <textarea class="form-control" name="reason" rows="2"></textarea>
+                        </div>
                     </div>
 
+                    <div class="modal-footer" >
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-primary" id="update_btnSave">
+                            Lưu 
+                        </button>
+                    </div>
                 </div>
             </div>
         </form>
     </div>
 </div>
+
 
 <!-- Scripts -->
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
@@ -264,10 +261,10 @@
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
-@if ($errors->create_finished_Errors->any())
+@if ($errors->update_finished_Errors->any())
     <script>
         $(document).ready(function() {
-            $('#createModal').modal('show');
+            $('#updateModal').modal('show');
         });
     </script>
 @endif
@@ -287,7 +284,7 @@
         });
 
         // Nếu muốn khi modal mở mới khởi tạo
-        $('#createModal').on('shown.bs.modal', function() {
+        $('#updateModal').on('shown.bs.modal', function() {
             $("input[data-bootstrap-switch]").each(function() {
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
@@ -295,11 +292,11 @@
 
 
 
-        $("#number_of_unit").on('input', function() {
+        $("#update_number_of_unit").on('input', function() {
             let numberOfUnit = parseInt($(this).val()) || 0;
 
             // Lấy batch_qty và lọc chỉ lấy số
-            let batchQtyStr = $("#max_number_of_unit").val();
+            let batchQtyStr = $("#update_max_number_of_unit").val();
 
             let batchQty = parseInt(batchQtyStr.replace(/[^0-9]/g, '')) || 0;
 
@@ -314,19 +311,19 @@
                 });
             } else {
 
-                $("#percent_packaging").val((numberOfUnit / batchQty).toFixed(4))
+                $("#update_update_percent_packaging").val((numberOfUnit / batchQty).toFixed(4))
             }
         });
-
+        
         $('#selectSourceModal').on('show.bs.modal', function (e) {
             const button = $(e.relatedTarget);
-            const modal = $('#createModal');
+            const modal = $('#updateModal');
             const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
 
-         preventDoubleSubmit("#createModal", "#btnSave");
-         
+
+         preventDoubleSubmit("#updateModal", "#update_btnSave");
          
     });
     

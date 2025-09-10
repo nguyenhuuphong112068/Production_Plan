@@ -61,16 +61,27 @@
                     </div>
 
                     {{-- quota --}}
-                    <div class="form-group">
-                        <label for="p_time">Thời Gian Thực Hiện</label>
-                        <input type="text" class="form-control" name="quota" value="{{ old('quota') }}"
-                            placeholder="HH:mm" pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"
-                            title="Nhập giờ hợp lệ">
+                    <label for="p_time">Thời Gian Thực Hiện</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">                             
+                                <input type="text" class="form-control" name="quota" value="{{ old('quota') }}"
+                                    placeholder="HH:mm" pattern="^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$"
+                                    title="Nhập giờ hợp lệ">
+                            </div>
+                            @error('quota', 'createErrors')
+                                <div class="alert alert-danger">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row align-items-center mb-2 ">
+                                <div class="icheck-primary text-center">
+                                    <input type="checkbox" class="step-checkbox" id="is_HVAC" name = "is_HVAC">
+                                    <label for="is_HVAC">Thiết bị HVAC</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    @error('quota', 'createErrors')
-                        <div class="alert alert-danger">{{ $message }}</div>
-                    @enderror
-
                     {{-- Ghi chú --}}
                     <div class="form-group">
                         <label for="note">Ghi Chú</label>

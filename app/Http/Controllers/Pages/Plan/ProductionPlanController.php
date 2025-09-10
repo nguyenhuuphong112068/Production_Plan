@@ -15,9 +15,10 @@ class ProductionPlanController extends Controller
            
                 $datas = DB::table('plan_list')
                 ->where ('active',1)
+                ->where ('type',1)
                 ->orderBy('created_at','desc')->get();
         
-                session()->put(['title'=> 'Kế Hoạch Sản Xuất Tháng']);
+                session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
         
                 return view('pages.plan.production.plan_list',[
                         'datas' => $datas
@@ -30,6 +31,7 @@ class ProductionPlanController extends Controller
                  DB::table('plan_list')->insert([
                         'name' => $request->name,
                         'month' => date('m'),
+                        'type' => 1,
                         'send' => false,
                         'deparment_code'  => session('user')['production_code'],
                         'prepared_by' => session('user')['fullName'],
@@ -87,6 +89,7 @@ class ProductionPlanController extends Controller
                 ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
                 ->where ('source_material.active',1)->orderBy('source_material.name','asc')->get();
+
                 $production  =  session('user')['production_name'];
 
                 session()->put(['title'=> " $request->name - $production"]);
@@ -127,6 +130,18 @@ class ProductionPlanController extends Controller
                  return response()->json($histories);
         }
 
+        public function source_material(Request $request) {
+                //>where ('intermediate_code', $request->intermediate_code)
+                $source_material_list = DB::table('source_material')
+                ->select('source_material.*', 'product_name.name as product_name')
+                ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
+                ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
+                ->where ('source_material.active',1)
+                ->where ('source_material.intermediate_code',$request->intermediate_code)
+                ->orderBy('source_material.name','asc')->get();
+                
+                 return response()->json($source_material_list);
+        }
 
        public function store(Request $request)
         {

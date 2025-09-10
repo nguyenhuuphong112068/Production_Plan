@@ -23,12 +23,12 @@
                     <div class="col-md-8"></div> 
                     <div class="col-md-2" style="text-align: right;">
 
-                      <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
+                      <form id = "send_form" action="{{ route('pages.plan.maintenance.send') }}" method="post">
 
                             @csrf
                             <input type="hidden" name="plan_list_id" value="{{$plan_list_id}}">
                             <input type="hidden" name="month" value="{{$month}}"> 
-                            <input type="hidden" name="production" value="{{$production}}"> 
+                           
                             <button class="btn btn-success btn-create mb-2 "  style="width: 177px;">
                                 <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
                             </button>
@@ -42,23 +42,17 @@
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                 
                     <tr>
-                    <th>STT</th>
-                    <th>Mã Sản Phẩm</th>
-                    <th>Sản Phẩm</th>
-                    <th>Số Lô</th>
-                    <th>Thị Trường/ Qui Cách</th>
-                    <th>Ưu Tiên</th>
-                    <th>Ngày dự kiến KCS</th>
-                    <th>Lô Thẩm định</th>
-                    <th>Nguồn</th>
-                    <th>Nguyên Liệu</th>
-                    <th>Bao Bì</th>
-                    <th>Ghi Chú</th>
-                    <th>Người Tạo/ Ngày Tạo</th>
-                    <th style="width:1%">Cập Nhật</th>
-                    <th style="width:1%">Vô Hiệu</th>
-                    <th style="width:1%">Lịch Sữ</th>
-                  </tr>
+                        <th>STT</th>
+                        <th>Mã Thiết Bi</th>
+                        <th>Tên Thiết Bị</th>
+                        <th>Thực Hiện Trước Ngày</th>
+                        <th>Phòng SX Liên Quan</th>
+                        <th>Ghi Chú</th>
+                        <th>Người Tạo/ Ngày Tạo</th>
+                        <th style="width:1%">Cập Nhật</th>
+                        <th style="width:1%">Vô Hiệu</th>
+                        <th style="width:1%">Lịch Sữ</th>
+                    </tr>
                   </thead>
                   <tbody>
                  
@@ -68,57 +62,22 @@
 
                       @if (!$data->cancel)
                         <td class="text-success"> 
-                            <div> {{ $data->intermediate_code}} </div>
-                            <div> {{ $data->finished_product_code}} </div>
+                            <div> {{ $data->code}} </div>
                         </td>
                       @else
                         <td class="text-danger"> 
-                            <div> {{ $data->intermediate_code}} </div>
-                            <div> {{ $data->finished_product_code}} </div>
+                            <div> {{ $data->code}} </div>
                         </td>
                       @endif
 
-                      <td>{{ $data->name . "(" . $data->batch_qty . " " .  $data->unit_batch_qty}}</td>
-                      <td> {{$data->batch}}  </td>
-                      <td> 
-                          <div> {{ $data->market}} </div>
-                          <div> {{ $data->specification}} </div>
-                      </td>
-
-                      @php
-                          $colors = [
-                              1 => 'background-color: #f44336; color: white;',   // đỏ
-                              2 => 'background-color: #ff9800; color: white;',   // cam
-                              3 => 'background-color: blue; color: white;',   // vàng
-                              4 => 'background-color: #4caf50; color: white;',   // xanh lá
-                          ];
-                      @endphp
-
-                      <td style="text-align: center; vertical-align: middle;">
-                          <span style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
-                            <b>  {{ $data->level }} </b>
-                          </span>
-                      </td>
+                      <td>{{ $data->name}}</td>
 
                       <td>
                           <div> {{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
                       </td>
-                      <td class="text-center align-middle">
-                          @if ($data->is_val)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
-                      </td>
 
-                      <td>{{ $data->source_material_name}}</td>
-
-                      <td>
-                          <div>{{ \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') }} </div>
-                          <div>{{ \Carbon\Carbon::parse($data->before_weigth_date)->format('d/m/Y') }} </div>
-                      </td>
-                      <td>
-                          <div>{{ \Carbon\Carbon::parse($data->after_parkaging_date)->format('d/m/Y') }} </div>
-                          <div>{{ \Carbon\Carbon::parse($data->before_parkaging_date)->format('d/m/Y') }} </div>
-                      </td>  
+                      <td> {{ $data->rooms}} </td>
+                       
                       <td> {{ $data->note}} </td>
 
                       <td>
@@ -133,24 +92,9 @@
 
                               data-id="{{ $data->id }}"
                               data-name="{{ $data->name }}"
-                              data-intermediate_code="{{ $data->intermediate_code }}"
-                              data-finished_product_code="{{ $data->finished_product_code }}"
-                              data-batch="{{ $data->batch }}"
-                              data-market="{{ $data->market }}"
-                              data-specification="{{ $data->specification }}"
-                              data-level="{{ $data->level }}"
+                              data-code="{{ $data->code }}"
                               data-expected_date="{{ $data->expected_date}}"
-                              data-is_val="{{ $data->is_val }}"
-                              data-source_material_name="{{ $data->source_material_name }}"
-                              data-after_weigth_date="{{ $data->after_weigth_date }}"
-                              data-before_weigth_date="{{ $data->before_weigth_date }}"
-                              data-after_parkaging_date="{{ $data->after_parkaging_date }}"
-                              data-before_parkaging_date="{{ $data->before_parkaging_date }}"
                               data-note="{{ $data->note }}"
-                              data-batch_qty="{{ $data->batch_qty }}"
-                              data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                              data-material_source_id="{{ $data->material_source_id }}"
-
                               data-toggle="modal"
                               data-target="#updateModal">
                               <i class="fas fa-edit"></i>
@@ -159,21 +103,21 @@
                       
                       <td class="text-center align-middle">  
 
-                        <form class="form-deActive" action="{{ route('pages.plan.production.deActive') }}" method="post">
+                        <form class="form-deActive" action="{{ route('pages.plan.maintenance.deActive') }}" method="post">
                              @csrf
                             <input type="hidden"  name="id" value = "{{ $data->id }}">
                             <input type="hidden"  name="active" value="{{ $data->active }}">
 
                             @if ($data->active == true && $send == false)
-                              <button type="submit" class="btn btn-danger" data-type="delete" data-name="{{  $data->name ." - ". $data->batch  }}">
+                              <button type="submit" class="btn btn-danger" data-type="delete" data-name="{{  $data->name }}">
                                   <i class="fas fa-trash"></i>
                               </button>  
                             @elseif ($data->cancel == false && $send == true)
-                              <button type="submit" class="btn btn-danger"   data-type="cancel"  data-name="{{  $data->name ." - ". $data->batch }}">
+                              <button type="submit" class="btn btn-danger"   data-type="cancel"  data-name="{{  $data->name }}">
                                   <i class="fas fa-lock"></i>
                               </button>
                             @elseif ($data->cancel == true && $send == true)
-                              <button type="submit" class="btn btn-success"  data-type="restore"  data-name="{{  $data->name ." - ". $data->batch }}">
+                              <button type="submit" class="btn btn-success"  data-type="restore"  data-name="{{  $data->name }}">
                                   <i class="fas fa-unlock"></i>
                               </button>
                             @endif
@@ -181,16 +125,16 @@
 
                       </td>
 
-                       <td class="text-center align-middle">
-                            <button type="button" class="btn btn-primary btn-history position-relative" 
-                                data-id="{{ $data->id }}"
-                                data-toggle="modal"
-                                data-target="#historyModal">
-                                <i class="fas fa-history"></i>
-                                <span class="badge badge-danger" style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
-                                    {{ $data->history_count ?? 0 }}
-                                </span>
-                            </button>
+                        <td class="text-center align-middle">
+                        <button type="button" class="btn btn-primary btn-history position-relative" 
+                            data-id="{{ $data->id }}"
+                            data-toggle="modal"
+                            data-target="#historyModal">
+                            <i class="fas fa-history"></i>
+                            <span class="badge badge-danger" style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
+                                {{ $data->history_count ?? 0 }}
+                            </span>
+                        </button>
                         </td>
                     </tr>
                   @endforeach
@@ -327,7 +271,7 @@
 
             // Gọi Ajax lấy dữ liệu history
           $.ajax({
-              url: "{{ route('pages.plan.production.history') }}",
+              url: "{{ route('pages.plan.maintenance.history') }}",
               type: 'post',
               data: {
                       id: planMasterId, 

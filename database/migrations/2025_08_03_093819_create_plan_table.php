@@ -36,6 +36,7 @@ return new class extends Migration {
             $table->string('name', 50);
             $table->unsignedSmallInteger('month');
             $table->string('deparment_code', 5);
+            $table->boolean('type');
             $table->string ('prepared_by',100);
             $table->boolean ('send');
             $table->string ('send_by',100)->nullable();

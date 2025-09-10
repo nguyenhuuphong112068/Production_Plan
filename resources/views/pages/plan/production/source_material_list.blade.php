@@ -4,6 +4,7 @@
     max-width: 90% !important;
     width: 90% !important;
   }
+
 </style>
 
 <div class="modal fade" id="selectSourceModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -39,16 +40,22 @@
                     <th>Mã BTP</th>
                     <th>Nguồn</th>
                     <th>Tên Sản Phẩm</th>
+                    <th>Người tạo/ Ngày Tạo</th>
                     <th>Chọn</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id = "source_material_body" >
+
                   @foreach ($source_material_list as $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
                       <td>{{ $data->intermediate_code}}</td>
                       <td>{{ $data->name }}</td>
                       <td> {{$data->product_name}}</td>
+                      <td> 
+                        <div>{{$data->prepared_by}}</div>
+                        <div>{{$data->created_at}}</div>
+                      </td>
                       
                       <td class="text-center align-middle">
                         <button type="summit" class="btn btn-success btn-plus" 
@@ -65,6 +72,7 @@
                       </td>
                     </tr>
                   @endforeach
+                  
                 </tbody>
               </table>
 
@@ -84,14 +92,15 @@
 
 <script>
 $(document).ready(function () {
-    // Khởi tạo DataTable
+    //Khởi tạo DataTable
+
     $('#source_material_list').DataTable({
         paging: true,
         lengthChange: true,
         searching: true,
         ordering: true,
         info: true,
-        autoWidth: false,
+        autoWidth: true,
         pageLength: 10,
         language: {
             search: "Tìm kiếm:",

@@ -29,6 +29,7 @@ Route::prefix('/plan')
             Route::post('deActive','deActive')->name('deActive');
             Route::post('send','send')->name('send');
             Route::post('history','history')->name('history');
+            Route::post('source_material','source_material')->name('source_material');
     });
 
     Route::prefix('/maintenance')
@@ -36,9 +37,19 @@ Route::prefix('/plan')
     ->controller(MaintenancePlanController::class)
     ->group(function(){
             Route::get('','index')->name('list');
+            // các hàm xử lý plan_list
+            Route::post('create_plan_list','create_plan_list')->name('create_plan_list');
+
+
+            // các hàm xử lý plan_master
+            Route::get('open','open')->name('open');
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
-            Route::post('deActive/{id}','deActive')->name('deActive'); 
+            Route::post('deActive','deActive')->name('deActive');
+            Route::post('send','send')->name('send');
+            Route::post('history','history')->name('history');
+            Route::post('source_material','source_material')->name('source_material');
+    
     });
 
 
