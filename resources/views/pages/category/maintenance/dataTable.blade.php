@@ -25,10 +25,11 @@
                 
                     <tr>
                     <th>STT</th>
+                    <th>Phòng SX Liên Quan</th>
                     <th>Mã Thiết Bị</th>
                     <th>Tên Thiết Bị</th>
-                    <th>Vị Trí Lắp Đặt</th>
-                    <th>Thời gian Thực Hiện</th>
+                    <th style="width: 12%">Thời gian Thực Hiện</th>
+                    <th>HVAC</th>
                     <th>Ghi Chú</th>
                     <th>Người Tạo/Ngày Tạo</th>
                     <th>Edit</th>
@@ -36,70 +37,74 @@
                   </tr>
                   </thead>
                   <tbody>
-                 
-                  @foreach ($datas as $data)
-                    <tr>
-                      <td>{{ $loop->iteration}} </td>
-                     
-                      @if ($data->active)
-                        <td class="text-success"> {{$data->code}}</td>
-                      @else
-                        <td class="text-danger"> {{$data->code}}</td>
-                      @endif
-
-                     
-                      <td>{{ $data->name}}</td>
-                      <td>{{ $data->room_name ."-". $data->room_code }}</td>
-                      <td>{{ $data->quota}}</td>
-                      <td>{{ $data->note}}</td>
-                      <td>
-                          <div> {{ $data->created_by}} </div>
-                          <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
-                      </td>    
+                    @foreach ($datas as $data)
+                      <tr>
+                        <td>{{ $loop->iteration}} </td>
+                        <td>{{ $data->room_name ."-". $data->room_code }}</td>
+                        @if ($data->active)
+                          <td class="text-success"> {{$data->code}}</td>
+                        @else
+                          <td class="text-danger"> {{$data->code}}</td>
+                        @endif
+                        <td>{{ $data->name}}</td>
                       
-                      <td class="text-center align-middle">
-                          <button type="button" class="btn btn-warning btn-edit"
-                          
-                              data-id="{{$data->id}}"
-                              data-code="{{$data->code}}"
-                              data-name="{{$data->name}}"
-                              data-room="{{$data->room_name ."-". $data->room_code}}"
-                              data-quota="{{$data->quota}}"
-                              data-note="{{$data->note}}"
-
-                              data-toggle="modal"
-                              data-target="#update_modal">
-                              <i class="fas fa-edit"></i>
-                          </button>
-                      </td>
-
-
-                      <td class="text-center align-middle">  
-
-                        <form class="form-deActive" action="{{ route('pages.category.maintenance.deActive') }}" method="post">
-                            @csrf
-                            <input type="hidden"  name="id" value = "{{ $data->id }}">
-                            <input type="hidden"  name="active" value="{{ $data->active }}">
-
-                            @if ($data->active)
-                              <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"  data-name="{{  $data->name }}">
-                                  <i class="fas fa-lock"></i>
-                              </button>  
-                            @else
-                              <button type="submit" class="btn btn-success" data-type="{{ $data->active }}" data-name="{{ $data->name }}">
-                                  <i class="fas fa-unlock"></i>
-                              </button>
+                        <td>{{ $data->quota}}</td>
+                        <td class="text-center align-middle">
+                            @if ($data->is_HVAC)
+                              <i class="fas fa-check-circle text-primary fs-4"></i>
                             @endif
+                        </td>
+                        <td>{{ $data->note}}</td>
+                        <td>
+                            <div> {{ $data->created_by}} </div>
+                            <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
+                        </td>    
+                        
+                        <td class="text-center align-middle">
+                            <button type="button" class="btn btn-warning btn-edit"
+                            
+                                data-id="{{$data->id}}"
+                                data-code="{{$data->code}}"
+                                data-name="{{$data->name}}"
+                                data-room="{{$data->room_name ."-". $data->room_code}}"
+                                data-quota="{{$data->quota}}"
+                                data-note="{{$data->note}}"
+
+                                data-toggle="modal"
+                                data-target="#update_modal">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
 
 
-                        </form>
+                        <td class="text-center align-middle">  
 
-                      </td>
-                    </tr>
-                  @endforeach
+                          <form class="form-deActive" action="{{ route('pages.category.maintenance.deActive') }}" method="post">
+                              @csrf
+                              <input type="hidden"  name="id" value = "{{ $data->id }}">
+                              <input type="hidden"  name="active" value="{{ $data->active }}">
+
+                              @if ($data->active)
+                                <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"  data-name="{{  $data->name }}">
+                                    <i class="fas fa-lock"></i>
+                                </button>  
+                              @else
+                                <button type="submit" class="btn btn-success" data-type="{{ $data->active }}" data-name="{{ $data->name }}">
+                                    <i class="fas fa-unlock"></i>
+                                </button>
+                              @endif
+
+
+                          </form>
+
+                        </td>
+                      </tr>
+                    @endforeach
 
                   </tbody>
+        
                 </table>
+                
               </div>
               <!-- /.card-body -->
             </div>

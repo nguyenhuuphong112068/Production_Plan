@@ -47,9 +47,10 @@
                           <th rowspan="2" style="width: 50px">Số Lô Chiến Dịch</th>
                           <th rowspan="2">Ghi Chú</th>
                           <th rowspan="2">Người Tạo/ Ngày Tạo</th>
-                          <th rowspan="2">Thêm</th>
-                          <th rowspan="2">Cập Nhật</th>
-                          <th rowspan="2">Vô Hiệu</th>
+                          <th rowspan="2" style="width:1%">Thêm</th>
+                          <th rowspan="2" style="width:1%">Cập Nhật</th>
+                          <th rowspan="2" style="width:1%">Vô Hiệu</th>
+                          <th rowspan="2" style="width:1%">Lich Sữ</th>
                       </tr>
                       <tr>
                           <th>Chuẩn Bị</th>
@@ -149,11 +150,19 @@
                                   <i class="fas fa-unlock"></i>
                               </button>
                             @endif
-
-
                         </form>
-
                       </td>
+                        <td class="text-center align-middle">
+                            <button type="button" class="btn btn-primary btn-history position-relative" 
+                                data-id="{{ $data->id }}"
+                                data-toggle="modal"
+                                data-target="#historyModal">
+                                <i class="fas fa-history"></i>
+                                <span class="badge badge-danger" style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
+                                   1 {{-- {{ $data->history_count ?? 0 }} --}}
+                                </span>
+                            </button>
+                        </td>
                     </tr>
                   @endforeach
 
