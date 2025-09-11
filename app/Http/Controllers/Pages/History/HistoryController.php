@@ -11,7 +11,7 @@ class HistoryController extends Controller{
                 $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
                 $toDate   = $request->to_date   ?? Carbon::now()->toDateString(); 
                 $stage_code = $request->stage_code??3;
-                $production = session('user')['production'];
+                $production = session('user')['production_code'];
       
                 $datas = DB::table('stage_plan')
                 ->select('stage_plan.*',
@@ -25,7 +25,8 @@ class HistoryController extends Controller{
                         'finished_product_category.finished_product_code',
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
-                        'finished_product_category.market'
+                        'market.name as market',
+                        'product_name.name as name'
                 )
                 ->whereBetween('stage_plan.start', [$fromDate, $toDate])
                 ->where('stage_plan.active', 1)->where ('stage_plan.stage_code', $stage_code)
@@ -33,6 +34,8 @@ class HistoryController extends Controller{
                 ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
+                ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->get();
 
                 $stages = DB::table('stage_plan')
@@ -49,7 +52,7 @@ class HistoryController extends Controller{
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                
             
-                session()->put(['title'=> 'Lịch Sử Sản Xuất']);
+                session()->put(['title'=> 'LỊCH SỬ SẢN XUẤT']);
                 return view('pages.History.list',[
 
                         'datas' => $datas,

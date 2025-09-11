@@ -1,5 +1,5 @@
 
-
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <div class="content-wrapper">
     <!-- Main content -->
     <section class="content">
@@ -26,9 +26,7 @@
                       <form id = "send_form" action="{{ route('pages.plan.maintenance.send') }}" method="post">
 
                             @csrf
-                            <input type="hidden" name="plan_list_id" value="{{$plan_list_id}}">
-                            <input type="hidden" name="month" value="{{$month}}"> 
-                           
+                            <input type="hidden" name="plan_list_id" value="{{$plan_list_id}}">                          
                             <button class="btn btn-success btn-create mb-2 "  style="width: 177px;">
                                 <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
                             </button>
@@ -37,7 +35,7 @@
                     </div>
                 </div>
                 @endif   
-                <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 20px">
+                <table id="dt_plan_master_maintenance" class="table table-bordered table-striped" style="font-size: 20px">
 
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                 
@@ -93,10 +91,11 @@
                               data-id="{{ $data->id }}"
                               data-name="{{ $data->name }}"
                               data-code="{{ $data->code }}"
+                              data-rooms="{{ $data->rooms }}"
                               data-expected_date="{{ $data->expected_date}}"
                               data-note="{{ $data->note }}"
                               data-toggle="modal"
-                              data-target="#updateModal">
+                              data-target="#update_modal">
                               <i class="fas fa-edit"></i>
                           </button>
                       </td>
@@ -172,42 +171,24 @@
 <script>
 
   $(document).ready(function () {
-      preventDoubleSubmit("#send_form", "#send_btn");
+        preventDoubleSubmit("#send_form", "#send_btn");
 
         $('.btn-edit').click(function () {
           const button = $(this);
-          const modal = $('#updateModal');
+          const modal = $('#update_modal');
 
-          // Gán dữ liệu vào input
-          modal.find('input[name="id"]').val(button.data('id'));
-          modal.find('input[name="name"]').val(button.data('name'));
-          modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-          modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-          modal.find('input[name="batch"]').val(button.data('batch'));
-          modal.find('input[name="material_source_id"]').val(button.data('material_source_id'));
-
-          modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
-          modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));                            
-          modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
-          modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));                            
-          modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));          
-          modal.find('textarea[name="note"]').val(button.data('note')); 
-
-          modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
-          modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
-          modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
-          modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
-          modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
-          modal.find('input[name="expected_date"]').val(button.data('expected_date'));
-          modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data('is_val'));
-
-          modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked', true);
+            // Gán dữ liệu vào input
+            modal.find('input[name="id"]').val(button.data('id'));
+            modal.find('input[name="code"]').val(button.data('code'));
+            modal.find('input[name="name"]').val(button.data('name'));
+            modal.find('input[name="expected_date"]').val(button.data('expected_date'));
+            modal.find('input[name="rooms"]').val(button.data('rooms'));
+            modal.find('textarea[name="note"]').val(button.data('note'));
+        
 
         });
 
-        $('.btn-create').click(function () {
-          const modal = $('#productNameModal');
-        });
+
 
         $('.form-deActive').on('submit', function (e) {
             e.preventDefault(); // chặn submit mặc định
@@ -270,7 +251,7 @@
             history_modal.empty();
 
             // Gọi Ajax lấy dữ liệu history
-          $.ajax({
+            $.ajax({
               url: "{{ route('pages.plan.maintenance.history') }}",
               type: 'post',
               data: {
@@ -285,52 +266,18 @@
                   } else {
                       res.forEach((item, index) => {
                           // map màu level
-                          const colors = {
-                              1: 'background-color: #f44336; color: white;',   // đỏ
-                              2: 'background-color: #ff9800; color: white;',   // cam
-                              3: 'background-color: blue; color: white;',      // xanh dương
-                              4: 'background-color: #4caf50; color: white;',   // xanh lá
-                          };
+                         
                           history_modal.append(`
                               <tr>
                                   <td>${index + 1}</td>
                                   <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
-                                      <div>${item.intermediate_code ?? ''}</div>
-                                      <div>${item.finished_product_code ?? ''}</div>
+                                      <div>${item.code ?? ''}</div>
                                   </td>
-
-                                  <td>${item.name ?? ''} (${item.batch_qty ?? ''} ${item.unit_batch_qty ?? ''})</td>
-                                  <td>${item.batch ?? ''}</td>
-                                  <td>
-                                      <div>${item.market ?? ''}</div>
-                                      <div>${item.specification ?? ''}</div>
-                                  </td>
-
-                                  <td style="text-align: center; vertical-align: middle;">
-                                      <span style="display: inline-block; padding: 6px 10px; width: 50px; border-radius: 40px; ${colors[item.level] ?? ''}">
-                                          <b>${item.level ?? ''}</b>
-                                      </span>
-                                  </td>
-
+                                  <td>${item.name ?? ''} </td>
                                   <td>
                                       <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
                                   </td>
-
-                                  <td class="text-center align-middle">
-                                      ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
-                                  </td>
-
-                                  <td>${item.source_material_name ?? ''}</td>
-
-                                  <td>
-                                      <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.before_weigth_date ? moment(item.before_weigth_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
-                                  <td>
-                                      <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.before_parkaging_date ? moment(item.before_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
-
+                                  <td>${item.room ?? ''} </td>
                                   <td>${item.note ?? ''}</td>
                                   <td>${item.version ?? ''}</td>
                                   <td >${item.reason ?? ''}</td>
@@ -352,7 +299,7 @@
           }); 
         });
 
-        $('#data_table_plan_master').DataTable({
+        $('#dt_plan_master_maintenance').DataTable({
           paging: true,
           lengthChange: true,
           searching: true,
@@ -387,9 +334,6 @@
               return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
           }
         });
-
-
-        
 
   });
 

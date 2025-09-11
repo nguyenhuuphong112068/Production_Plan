@@ -30,7 +30,7 @@ import Selecto from "react-selecto";
     const [pendingChanges, setPendingChanges] = useState([]);
     const [saving, setSaving] = useState(false);
     const [selectedEvents, setSelectedEvents] = useState([]);
-    const [percentShow, setPercentShow] = useState("15%");
+    const [percentShow, setPercentShow] = useState("30%");
     //const highlightedPMIdsRef = useRef(new Set());
     const searchResultsRef = useRef([]);
     const currentIndexRef = useRef(-1);
@@ -783,10 +783,12 @@ import Selecto from "react-selecto";
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
+
         locale="vi"
         height="auto"
         resourceAreaWidth="8%"
-       
+   
+
         editable={true}
         droppable={true}
         selectable={true}
@@ -877,58 +879,71 @@ import Selecto from "react-selecto";
           });
          
           return (
-            <div style={{
-                  backgroundColor: highlight ? "#c6f7d0" : "transparent", // màu nền cả ô resource
-                  padding: "4px",
-                  borderRadius: "6px",
-                }}>
-              <div style={{ fontWeight: "bold", marginBottom: "5px",   width: "8%" }}>
-                {arg.resource.title}
-              </div>
-              <div
-                className="resource-bar"
+            <div
                 style={{
+                  backgroundColor: highlight ? "#c6f7d0" : "transparent",
+                  padding: "0px",
+                  borderRadius: "6px",
+                  marginTop: "0px",
                   position: "relative", 
-                  height: "20px",
-                  background: "#eeeeeeff",
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center" // căn giữa dọc text
+                  height:"1px" // cần để con có thể dịch lên
                 }}
               >
                 <div
-                  className="busy"
                   style={{
-                    width: `${(busy / total) * 100}%`,
-                    background: "red",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",    // căn giữa dọc
-                    justifyContent: "center" // căn giữa ngang
+                    fontWeight: "bold",
+                    marginBottom: "2px",
+                    width: "8%",
+                    position: "relative",
+                    top: "-26px", // dịch lên trên 6px
                   }}
-                    >
+                >
+                  {arg.resource.title}
                 </div>
+
+                <div
+                  className="resource-bar"
+                  style={{
+                    position: "relative",
+                    top: "-26px", // dịch luôn cả progress bar lên
+                    height: "15px",
+                    background: "#eeeeeeff",
+                    borderRadius: "20px",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    className="busy"
+                    style={{
+                      width: `${(busy / total) * 100}%`,
+                      background: "red",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  />
                   <b
-                      style={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        fontSize: "80%",
-                        color: "#060606ff",
-                      }}
-                    >
-                      {efficiency}% - {formatNumberWithComma(yields)} {unit}
-                    </b>
-
-
-
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      fontSize: "70%",
+                      color: "#060606ff",
+                    }}
+                  >
+                    {efficiency}% - {formatNumberWithComma(yields)} {unit}
+                  </b>
+                </div>
               </div>
 
-            </div>
           );
         }}
+
+
 
         views={{
 

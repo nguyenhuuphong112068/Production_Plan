@@ -15,7 +15,7 @@ class SchedualStepController extends Controller
             //dd ($request->all());
             $fromDate = $request->from_date ?? Carbon::now()->subMonth()->toDateString();
             $toDate   = $request->to_date   ?? Carbon::now()->toDateString(); 
-
+            
             // Lấy danh sách stage_name (danh mục stage)
             $stage_name = DB::table('room')
                 ->distinct()
@@ -25,9 +25,11 @@ class SchedualStepController extends Controller
 
             // Lấy dữ liệu stage_plan + filter trước khi get()
             $datas = DB::table('stage_plan')
-                ->leftJoin('room',  'stage_plan.resourceId' ,'room.id')
+                ->leftJoin('room', 'stage_plan.resourceId' ,'room.id')
                 ->leftJoin('plan_master',  'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id',  'finished_product_category.id')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
+                ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->select(
                     'stage_plan.plan_master_id as plan_id',
                     'stage_plan.stage_code',
@@ -46,10 +48,10 @@ class SchedualStepController extends Controller
                     'plan_master.after_parkaging_date',
                     'plan_master.before_parkaging_date',
 
-                    'finished_product_category.name as product_name',
                     'finished_product_category.batch_qty',
                     'finished_product_category.unit_batch_qty',
-                    'finished_product_category.market',
+                    'market.name as market',
+                    'product_name.name as product_name',
                     DB::raw("
                         CASE 
                             WHEN stage_plan.finished = 1 THEN 'finished'
@@ -63,7 +65,7 @@ class SchedualStepController extends Controller
                 ->orderBy('stage_plan.stage_code')
                 ->get()
                 ->groupBy('plan_id');
-
+            
             // Map thêm stage_name từ stage_code
             $datas = $datas->map(function ($plans) use ($stage_name) {
                 return $plans->map(function ($item) use ($stage_name) {

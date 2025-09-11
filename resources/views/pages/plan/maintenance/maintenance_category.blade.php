@@ -1,4 +1,4 @@
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+
 <style>
   .selectProductModal-modal-size {
     max-width: 90% !important;
@@ -12,10 +12,10 @@
 
       <div class="modal-header">
         <a href="{{ route('pages.general.home') }}">
-          <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8; max-width:45px;">
+          <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8; max-width:35px;">
         </a>
 
-        <h4 class="modal-title w-100 text-center" id="createModal" style="color: #CDC717; font-size: 30px">
+        <h4 class="modal-title w-100 text-center" id="createModal" style="color: #CDC717; font-size: 24px">
              DANH MỤC HIỆU CHUẨN - BẢO TRÌ
         </h4>
 
@@ -27,14 +27,22 @@
 
       <div class="modal-body" style="max-height: 100%; overflow-x: auto;">
         <div class="card">
-          {{-- <div class="card-header mt-4">
-            Có thể thêm nội dung tại đây 
-          </div> --}}
+          <div class="card-header mt-0">
+              <button class="btn btn-success mb-0"  style="width: 177px;" id = "btn_get_multi_select"
+                data-dismiss="modal"
+                {{-- data-toggle="modal"
+                data-target="#create_modal" --}}
+                
+              >
+                <i class="fas fa-download"></i> Tải
+              </button>            
+          </div>
           <div class="card-body">
             <div class="table-responsive">
                 <table id="maintenance_category" class="table table-bordered table-striped">
                   <thead >
                     <tr>
+                    <th>Chọn</th>
                     <th>STT</th>
                     <th>Mã Thiết Bị</th>
                     <th>Tên Thiết Bị</th>
@@ -43,7 +51,7 @@
                     <th>HVAC</th>
                     <th>Ghi Chú</th>
                     <th>Người Tạo/Ngày Tạo</th>
-                    <th>Chọn</th>
+                    
                     
                   </tr>
                   </thead>
@@ -51,6 +59,16 @@
                  
                   @foreach ($category as $data)
                     <tr>
+                      <td class="text-center">
+                        <input type="checkbox" class="row-checkbox" id="is_select" name="is_select"
+                              value="{{ $data->maintenance_category_ids }}"
+                              data-code="{{$data->code}}"
+                              data-name="{{$data->name}}"
+                              data-quota="{{$data->quota}}"
+                              data-rooms="{{$data->rooms}}"
+                              style="transform: scale(1.8); margin: 5px; cursor: pointer;">
+                      </td>
+
                       <td>{{ $loop->iteration}} </td>
                      
                       @if ($data->active)
@@ -74,23 +92,6 @@
                           <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
                       </td>    
                       
-                      <td class="text-center align-middle">
-                          <button type="button" class="btn btn-success btn-plus"
-                              data-maintenance_category_ids="{{ $data->maintenance_category_ids }}"
-                              data-code="{{$data->code}}"
-                              data-name="{{$data->name}}"
-                              data-quota="{{$data->quota}}"
-                              data-rooms="{{$data->rooms}}"
-                              
-                             
-                              data-dismiss="modal"
-
-                              data-toggle="modal"
-                              data-target="#create_modal">
-
-                              <i class="fas fa-plus"></i>
-                          </button>
-                      </td>
                     </tr>
                   @endforeach
 
@@ -105,11 +106,6 @@
     </div>
   </div>
 </div>
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
-
 
 <script>
   $(document).ready(function () {
@@ -133,23 +129,76 @@
           }
       });
 
-      // Click nút +
-        $('#maintenance_category').on('click', '.btn-plus', function () {
-          const button = $(this);
-          const modal = $('#create_modal');
-         
-         
-          modal.find('input[name="code"]').val(button.data('code'));
-          modal.find('input[name="name"]').val(button.data('name'));
-          modal.find('input[name="quota"]').val(button.data('quota'));
-          modal.find('input[name="rooms"]').val(button.data('rooms'));
-          modal.find('input[name="maintenance_category_ids"]').val(button.data('maintenance_category_ids'));
-         
-      });
 
-      // Mở modal nếu có query openModal
-      @if (request()->get('openModal'))
-          $('#createModal').modal('show');
-      @endif
+      $('#btn_get_multi_select').on('click', function () {
+          
+          let selected = [];
+          $('.row-checkbox:checked').each(function () {
+              selected.push({
+                  id: $(this).val(),
+                  code: $(this).data('code'),
+                  name: $(this).data('name'),
+                  rooms: $(this).data('rooms'),
+                  quota: $(this).data('quota')
+              });
+          });
+          
+          if (selected.length === 0) {
+               Swal.fire({
+                  title: 'Chọn Ít Nhất Một Thiết Bị!',
+                  icon: 'warning',
+                  timer: 1000,
+                  showConfirmButton: false
+              });
+              return;
+          }
+          
+          const container = $('#selected_instruments_container');
+          container.empty(); // xóa cũ
+
+          selected.forEach((item, index) => {
+              const block = `
+              <div class="row mb-2 border p-2 rounded">
+                  <div class="col-md-1">
+                      <div class="form-group">
+                          <label>Mã Thiết Bị</label>
+                          <input type="text" class="form-control" name="devices[${index}][code]" value="${item.code}" readonly />
+                      </div>
+                  </div>
+
+                  <div class="col-md-2">
+                      <div class="form-group">
+                          <label>Tên Thiết Bị</label>
+                          <input type="text" class="form-control" name="devices[${index}][name]" value="${item.name}" readonly />
+                      </div>
+                  </div>
+
+                  <div class="col-md-5">
+                      <div class="form-group">
+                          <label>Phòng Sản Xuất Liên Quan</label>
+                          <input type="text" class="form-control" name="devices[${index}][rooms]" value="${item.rooms}" readonly />
+                      </div>
+                  </div>
+
+                  <div class="col-md-2">
+                      <div class="form-group">
+                          <label>Thực Hiện Trước Ngày</label>
+                          <input type="date" class="form-control" name="devices[${index}][expected_date]" />
+                      </div>
+                  </div>
+
+                  <div class="col-md-2">
+                      <div class="form-group">
+                          <label>Ghi chú</label>
+                          <textarea class="form-control" name="devices[${index}][note]" rows="1"></textarea>
+                      </div>
+                  </div>
+
+                  <input type="hidden" name="devices[${index}][maintenance_category_ids]" value="${item.id}" />
+              </div>`;
+              container.append(block);
+          });
+          $('#create_modal').modal('show');
+      });  
   });
 </script>

@@ -27,44 +27,30 @@
       <div class="modal-body" style="max-height: 100%; overflow-x: auto; ">
           <div class="card-body">
             <div class="table-responsive">
-                <table id="data_table_history" class="table table-bordered table-striped" style="font-size: 20px">
-                  
+              <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 20px">
                   <thead >
                     <tr>
-                    <th>STT</th>
-                    <th>Mã Sản Phẩm</th>
-                    <th>Sản Phẩm</th>
-                    <th>Số Lô</th>
-                    <th>Thị Trường/ Qui Cách</th>
-                    <th>Ưu Tiên</th>
-                    <th>Ngày dự kiến KCS</th>
-                    <th>Lô Thẩm định</th>
-                    <th>Nguồn</th>
-                    <th>Nguyên Liệu</th>
-                    <th>Bao Bì</th>
-                    <th>Ghi Chú</th>
-                    <th>Version</th>
-                    <th style="width: 100px" >Lý Do</th>
-                    <th>Người Tạo/ Ngày Tạo</th>
-
-                  </tr>
+                        <th style="width:1%">STT</th>
+                        <th style="width:7%">Mã Thiết Bi</th>
+                        <th>Tên Thiết Bị</th>
+                        <th style="width:3%">Thực Hiện Trước Ngày</th>
+                        <th style="width:10%">Phòng SX Liên Quan</th>
+                        <th>Ghi Chú</th>
+                        <th style="width: 2%">Lần Cập Nhật</th>
+                        <th style="width: 10%">Lý Do</th>
+                        <th style="width: 10%">Người Tạo/ Ngày Tạo</th>
+                    </tr>
                   </thead>
                   <tbody id = "data_table_history_body">
    
                   </tbody>
                 </table>
-
             </div>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 

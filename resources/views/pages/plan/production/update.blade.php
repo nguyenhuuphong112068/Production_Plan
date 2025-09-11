@@ -234,7 +234,7 @@
                             </div>
                     </div>
 
-                    {{-- Ghi chú --}}
+                    {{-- Lý do --}}
                     <div class="row mt-3" style="display: {{ $send == 1 ?'block':'none' }}">
                         <div class="col-md-12">
                                 <label >Lý Do Cập Nhật</label>

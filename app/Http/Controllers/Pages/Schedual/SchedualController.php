@@ -15,6 +15,7 @@ class SchedualController extends Controller
         public function __construct() {
                 $this->loadRoomAvailability();
         }
+        
         // Xem Calender
         public function view(Request $request){
                 
@@ -152,35 +153,61 @@ class SchedualController extends Controller
                         }
                 }
                 
+       
                 $plan_waiting = DB::table('stage_plan')
-                                ->select('stage_plan.*',
-                                        'product_name.name',
-                                        'market.name as market',
-                                        'finished_product_category.intermediate_code',
-                                        'finished_product_category.finished_product_code',
-                                        'plan_master.batch',
-                                        'plan_master.expected_date',
-                                        'plan_master.is_val',
-                                        'plan_master.note',
-                                        'plan_master.level',
-                                        'plan_master.after_weigth_date',
-                                        'plan_master.before_weigth_date',
-                                        'plan_master.after_parkaging_date',
-                                        'plan_master.before_parkaging_date',
-                                        'plan_master.material_source_id',
-                                        'plan_master.only_parkaging',
-                                        'plan_master.percent_parkaging',
-                                        'source_material.name as source_material_name'
-                                        )
-                                ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-                                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
-                                ->leftJoin('market','finished_product_category.market_id','market.id')
-                                ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-                                ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
-                                ->whereNull('stage_plan.start')->where('stage_plan.active', 1)
-                                ->orderBy('stage_plan.order_by', 'asc')
-                                ->get();
-               
+                ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+                ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+                ->leftJoin('finished_product_category', function($join) {
+                        $join->on('stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->where('stage_plan.stage_code', '<=', 7);
+                })
+                ->leftJoin('product_name', function($join) {
+                        $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
+                        ->where('stage_plan.stage_code', '<=', 7);
+                })
+                ->leftJoin('market', function($join) {
+                        $join->on('finished_product_category.market_id', '=', 'market.id')
+                        ->where('stage_plan.stage_code', '<=', 7);
+                })
+                ->leftJoin('maintenance_category', function($join) {
+                        $join->on('stage_plan.product_caterogy_id', '=', 'maintenance_category.id')
+                        ->where('stage_plan.stage_code', '=', 8);
+                })
+                ->select(
+                        'stage_plan.*',
+                        'plan_master.batch',
+                        'plan_master.expected_date',
+                        'plan_master.is_val',
+                        'plan_master.note',
+                        'plan_master.level',
+                        'plan_master.after_weigth_date',
+                        'plan_master.before_weigth_date',
+                        'plan_master.after_parkaging_date',
+                        'plan_master.before_parkaging_date',
+                        'plan_master.material_source_id',
+                        'plan_master.only_parkaging',
+                        'plan_master.percent_parkaging',
+                        'source_material.name as source_material_name',
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.finished_product_code',
+                        DB::raw("CASE 
+                                WHEN stage_plan.stage_code <= 7 THEN product_name.name
+                                ELSE maintenance_category.name END as name"),
+                        DB::raw("CASE 
+                                WHEN stage_plan.stage_code <= 7 THEN market.code
+                                END as market"),
+                        DB::raw("CASE 
+                                WHEN stage_plan.stage_code <= 7 THEN finished_product_category.finished_product_code
+                                ELSE maintenance_category.code END as code")
+                )
+                ->whereNull('stage_plan.start')
+                ->where('stage_plan.active', 1)
+                ->orderBy('stage_plan.order_by', 'asc')
+                ->get();
+                
+
+                //dd ($plan_waiting);
+                
                 
                 $quota = DB::table('quota')
                         ->leftJoin('room', 'quota.room_id', '=', 'room.id')
@@ -210,26 +237,22 @@ class SchedualController extends Controller
                                 $item->PM = $toTime($p + $m);
                                 return $item;
                 });
-                
+
                 $plan_waiting = $plan_waiting->map(function ($plan) use ($quota) {
-                // lọc quota theo điều kiện stage_code
                         if ($plan->stage_code <= 6) {
-                                $matched = $quota->where('intermediate_code', $plan->intermediate_code)->where('stage_code', $plan->stage_code);
-                               
+                                $matched = $quota->where('intermediate_code', $plan->intermediate_code)
+                                                ->where('stage_code', $plan->stage_code);
                         } elseif ($plan->stage_code == 7) {
-                                $matched = $quota->where('finished_product_code', $plan->finished_product_code)->where('stage_code', $plan->stage_code);
-                                
+                                $matched = $quota->where('finished_product_code', $plan->finished_product_code)
+                                                ->where('stage_code', $plan->stage_code);
                         } else {
                                 $matched = collect(); // không match
                         }
-                        
-                        // lấy danh sách room_code từ quota đã match
-                        $plan->permisson_room = $matched->pluck( 'code', "room_id")->unique();
 
+                        $plan->permisson_room = $matched->pluck('code', "room_id")->unique();
                         return $plan;
                 });
                 
-                //dd ($plan_waiting);
 
                 // tính sản lượng trong khoảng thời gian
                 $startDate = now()->startOfWeek(Carbon::MONDAY);
@@ -276,19 +299,20 @@ class SchedualController extends Controller
         }
         
         public function store(Request $request) {
+               
                 DB::beginTransaction();
                 try {
                 $products = collect($request->products);
                 $current_start = Carbon::parse($request->start); 
-
+                       
                 foreach ($products as $index => $product) {
                 if ($index === 0) {
                         if ($product['stage_code'] < 7) {
-                        $process_code = $product['intermediate_code'] . "_NA_" . $product['stage_code'];    
+                        $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;    
                         } else if ($product['stage_code'] === 7) {
-                        $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $product['stage_code'];                                            
+                        $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;                                            
                         }
-
+                       
                         $quota = DB::table('quota')
                         ->select(
                                 'room_id', 'p_time', 'm_time', 'C1_time', 'C2_time', 
@@ -299,6 +323,7 @@ class SchedualController extends Controller
                         )
                         ->where('process_code', $process_code)
                         ->first(); 
+                        
                         
                         $p_time_minutes  = toMinutes($quota->p_time);
                         $m_time_minutes  = toMinutes($quota->m_time);
@@ -325,6 +350,7 @@ class SchedualController extends Controller
                         $clearning_type = "VS-I";
                         }
                 }
+                //dd ($product);
 
                 DB::table('stage_plan')
                         ->where('id', $product['id'])
@@ -911,7 +937,7 @@ class SchedualController extends Controller
 
         /** Scheduler cho 1 stage*/
         public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, 
-        int $waite_time_val_batch = 0,  ?Carbon $start_date = null , bool $working_sunday = false) {
+                int $waite_time_val_batch = 0,  ?Carbon $start_date = null , bool $working_sunday = false) {
                 $tasks = DB::table('stage_plan')
                 ->select('stage_plan.id',
                         'stage_plan.code', 
@@ -961,7 +987,8 @@ class SchedualController extends Controller
                 
         }
          /** Scheduler lô thường*/
-        protected function sheduleNotCampaing ($task, $stageCode,  int $waite_time = 0,  ?Carbon $start_date = null){
+        
+         protected function sheduleNotCampaing ($task, $stageCode,  int $waite_time = 0,  ?Carbon $start_date = null){
                         $title = $task->name ."- ". $task->batch ."- ". $task->market;
 
                         $now = Carbon::now();
