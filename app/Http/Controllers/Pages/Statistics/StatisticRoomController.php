@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 class StatisticRoomController extends Controller
 {
     public function index(Request $request){
-        $production = session('user')['production'];
+        $production = session('user')['production_code'];
 
         // ---- 1. Xác định khoảng thời gian người dùng chọn hoặc mặc định ----
         $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();

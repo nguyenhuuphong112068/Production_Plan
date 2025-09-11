@@ -144,7 +144,7 @@ class ProductionPlanController extends Controller
         }
 
        public function store(Request $request)
-        {
+       {
 
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
@@ -446,6 +446,8 @@ class ProductionPlanController extends Controller
 
                 $datas = DB::table('plan_list')
                 ->where ('active',1)
+                ->where ('type',1)
+                ->where ('deparment_code',session('user')['production_code'])
                 ->orderBy('created_at','desc')->get();
 
                  session()->put(['title'=> 'Kế Hoạch Sản Xuất Tháng']);

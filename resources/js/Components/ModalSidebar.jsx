@@ -19,8 +19,8 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   const [stageFilter, setStageFilter] = useState(1);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState(""); 
-  const sizes = [ "20%", "30%", "100%","close"];
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const sizes = ["close" ,"30%", "100%"];
+  const [currentIndex, setCurrentIndex] = useState(1);
   const [tableData, setTableData] = useState(events);
   const [showModalCreate, setShowModalCreate] = useState(false); 
   const [showModalQuota, setShowModalQuota] = useState(false); 
@@ -45,7 +45,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
         setTableData(events); 
   }, [events]);
 
-
   // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
 
@@ -55,6 +54,10 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
           }
           else if (stageFilter === 7 ){
             setVisibleColumns(allColumns.filter(col => !["weight_dates"].includes(col.field)));
+          }
+          else if (stageFilter === 8 ){
+            setVisibleColumns(allColumns.filter(col => !["weight_dates","pakaging_dates", "level", "permisson_room" ,
+               "batch", "market", "is_val", "source_material_name", "campaign_code"].includes(col.field)));
           }
           else if (stageFilter === 9 ){
             setVisibleColumns(allColumns.filter(col => ["name", "batch", "expected_date" , "level"].includes(col.field)));
@@ -72,10 +75,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   }, [percentShow, stageFilter]);
 
   const handleToggle = () => {
-      
       const nextIndex = (currentIndex + 1) % sizes.length;
-      
-
       if (sizes[nextIndex] == "close"){
         setCurrentIndex(0)
         onClose (false)
@@ -83,7 +83,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
         setCurrentIndex(nextIndex);
         setPercentShow(sizes[nextIndex]);
         setSelectedRows([]);}
-      };
+  };
 
   const statusOrderBodyTemplate = (rowData) => {
     const colors = {
@@ -449,7 +449,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
    
 
   const allColumns = [
-      { field: "intermediate_code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody },
+      { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody },
       { field: "permisson_room",  header: "Phòng SX", sortable: true, body: roomBody ,
          style: { minWidth: '2rem', maxWidth: '15rem', whiteSpace: 'normal' } 
       },
