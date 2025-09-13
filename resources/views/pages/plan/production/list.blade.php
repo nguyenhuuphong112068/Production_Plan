@@ -18,5 +18,6 @@
   @include('pages.plan.production.create')  
   @include('pages.plan.production.finished_category')
   @include('pages.plan.production.source_material_list')
-  @include('pages.plan.production.history') 
+  @include('pages.plan.production.history')
+  @include('pages.plan.production.create_source') 
 @endsection

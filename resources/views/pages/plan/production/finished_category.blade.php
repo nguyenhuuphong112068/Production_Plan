@@ -124,6 +124,8 @@
         $('#finished_category').on('click', '.btn-plus', function () {
           const button = $(this);
           const modal = $('#createModal');
+          const modal_source = $('#create_soure_modal');
+          
 
           modal.find('input[name="product_caterogy_id"]').val(button.data('id'));
           modal.find('input[name="plan_list_id"]').val(button.data('plan_list_id'));
@@ -137,8 +139,16 @@
           modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
           
           modal.find("#add_source_material").data("intermediate_code", button.data('intermediate_code'));
-
           modal.modal('show');
+
+          modal_source.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+          modal_source.find('input[name="product_name"]').val(button.data('name'));
+
+
+
+          
+
+
       });
 
       // Mở modal nếu có query openModal

@@ -8,13 +8,12 @@
             <div class="card">
               <!-- /.card-Body -->
               <div class="card-body mt-5">
-
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_plan_list_modal" style="width: 155px" >
+                  @if (user_has_permission(session('user')['fullName'], 'plan_production_store', "boolean"))
+                    <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_plan_list_modal" style="width: 155px">  
                       <i class="fas fa-plus"></i> Thêm
-                </button>
-
+                    </button>
+                  @endif
                 <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
-
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                     <tr>
                     <th>STT</th>

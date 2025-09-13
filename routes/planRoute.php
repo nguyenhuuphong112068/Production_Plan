@@ -30,6 +30,7 @@ Route::prefix('/plan')
             Route::post('send','send')->name('send');
             Route::post('history','history')->name('history');
             Route::post('source_material','source_material')->name('source_material');
+            Route::post('store_source','store_source')->name('store_source');
     });
 
     Route::prefix('/maintenance')

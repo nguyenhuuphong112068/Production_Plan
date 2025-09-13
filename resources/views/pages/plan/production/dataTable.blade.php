@@ -37,7 +37,7 @@
                     </div>
                 </div>
                 @endif   
-                <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 20px">
+                <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
 
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                 
@@ -78,7 +78,10 @@
                         </td>
                       @endif
 
-                      <td>{{ $data->name . "(" . $data->batch_qty . " " .  $data->unit_batch_qty}}</td>
+                      <td>
+                        <div> {{ $data->name }} </div>
+                        <div> {{ "(" . $data->batch_qty . " " .  $data->unit_batch_qty . ")"}}</div>
+                    </td>
                       <td> {{$data->batch}}  </td>
                       <td> 
                           <div> {{ $data->market}} </div>

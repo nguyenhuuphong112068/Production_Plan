@@ -34,7 +34,7 @@ class ProductCategoryController extends Controller
                 )
                 ->where('finished_product_category.deparment_code', session('user')['production_code'])
                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
-                ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->leftJoin('specification','finished_product_category.specification_id','specification.id')
                 ->orderBy('product_name.name','asc')->get();

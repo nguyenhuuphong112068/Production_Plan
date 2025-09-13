@@ -19,7 +19,8 @@ return new class extends Migration
             $table->unsignedSmallInteger('stage_code');
             $table->string('production_group', 50);
             $table->boolean('active')->default(true);
-            $table->tinyInteger('order_by')->unique()->nullable();
+            $table->tinyInteger('order_by')->nullable();
+            $table->string('deparment_code',5);
             $table->string('prepareBy');
             $table->timestamps();
         });

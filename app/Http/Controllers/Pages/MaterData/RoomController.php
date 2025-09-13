@@ -14,7 +14,7 @@ class RoomController extends Controller
                 $datas = DB::table('room')->where('deparment_code', session ('user') ['production_code'])->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')->get();
                 $stages = DB::table('stages')->get();
                 $stage_groups = DB::table('stage_groups')->get();
-                session()->put(['title'=> 'Phòng Sản Xuất']);
+                session()->put(['title'=> 'DỮ LIỆU GỐC - PHÒNG SẢN XUẤT']);
                 return view('pages.materData.room.list',[
                         'datas' => $datas,
                         'stages' => $stages,
@@ -47,7 +47,7 @@ class RoomController extends Controller
 
                 $stage_code = DB::table('stages')->where ('code', $request->stage_code)->pluck('name');
                 $order_by =  DB::table('room')->where ('stage_code', $request->stage_code)->count('name');
-        
+                
                 DB::table('room')->insert([
                         'order_by' =>  $order_by??0 + 1,
                         'code' => $request->code,

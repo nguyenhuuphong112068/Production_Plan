@@ -12,7 +12,7 @@ class UnitController extends Controller
         public function index(){
 
                 $datas = DB::table('Unit')->orderBy('name','asc')->get();
-                session()->put(['title'=> 'Đơn Vị Tính']);
+                session()->put(['title'=> 'DỮ LIỆU GỐC - ĐƠN VỊ']);
                 return view('pages.materData.Unit.list',['datas' => $datas]);
         }
 

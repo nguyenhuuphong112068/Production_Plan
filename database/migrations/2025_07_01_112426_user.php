@@ -32,7 +32,7 @@ return new class extends Migration
             $table->id();
             $table->string('userName',10)->unique();
             $table->string('userGroup', 30);
-            $table->string('passWord', 255);
+            $table->string('password', 255);
             $table->string('fullName', 255);
             $table->string('deparment', 50);
             $table->string('groupName', 50);

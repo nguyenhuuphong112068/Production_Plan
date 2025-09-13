@@ -32,7 +32,7 @@ return new class extends Migration
             $table->boolean('is_HVSC')->default(false);
             $table->string('deparment_code', 5);
             $table->boolean('active')->default(true);
-            $table->string('prepareBy');
+            $table->string('created_by');
             $table->timestamps();
         });
     }

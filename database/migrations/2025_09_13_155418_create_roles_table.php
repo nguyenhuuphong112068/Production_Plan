@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('source_material', function (Blueprint $table) {
+        Schema::create('roles', function (Blueprint $table) {
             $table->id();
-            $table->string('intermediate_code');
-            $table->string('name');
-            $table->boolean('active')->default(true);
-            $table->string ('prepared_by',100);
+            $table->string('name')->unique(); 
+            $table->string('display_name')->nullable(); 
+            $table->string('description')->nullable();
             $table->timestamps();
         });
     }
@@ -26,7 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('source_material');
-
+        Schema::dropIfExists('roles');
     }
 };

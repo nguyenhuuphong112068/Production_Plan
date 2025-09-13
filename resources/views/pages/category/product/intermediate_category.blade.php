@@ -16,7 +16,7 @@
         </a>
 
         <h4 class="modal-title w-100 text-center" id="createModal" style="color: #CDC717; font-size: 30px">
-             DANH MỤC SẢN PHẨM
+             DANH MỤC BÁN THÀNH PHẨM
         </h4>
 
         <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">

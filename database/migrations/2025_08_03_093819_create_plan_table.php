@@ -95,10 +95,12 @@ return new class extends Migration {
             $table->dateTime('start_clearning')->nullable();
             $table->dateTime('end_clearning')->nullable();
             
+            $table->float('quarantine_time')->nullable();
+            	
             $table->string('schedualed_by',512)->nullable();
             $table->dateTime('schedualed_at')->nullable();
             $table->string('note',255)->nullable();   
-            $table->float('yields')->nullable()->unsigned(); 
+            $table->float('yields')->nullable(); 
             $table->string('deparment_code', 5); 
 
             $table->dateTime('created_date')->nullable();
