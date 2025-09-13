@@ -22,12 +22,9 @@
 
             <div class="modal-content">
                 <div class="modal-header">
-
-
                     <a href="{{ route('pages.general.home') }}">
                         <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
                     </a>
-
                     <h4 class="modal-title w-100 text-center" id="pModalLabel" style="color: #CDC717">
                         {{ 'Tạo Lô' }}
                     </h4>
@@ -106,7 +103,7 @@
                                 <input type="hidden" name="max_number_of_unit" id ="max_number_of_unit">
 
                                 <input type="number" class="form-control" name="number_of_unit" id="number_of_unit"
-                                    placeholder="số lượng đóng gói" min="1" value="{{ old('number_of_unit')}}">
+                                    placeholder="số lượng đóng gói" min="1" value="{{ old('number_of_unit') }}">
 
                                 <!-- percent_packaging -->
                                 <input type="number" step="0.01" min="0" max="1"
@@ -118,22 +115,27 @@
 
                             <label>Nguồn</label>
                             <div class="input-group">
-                                <textarea class="form-control" name="source_material_name" rows="4" value="{{ old('source_material_name') }}" ></textarea>
-                                <button type="button" class = "btn btn-success" id = "add_source_material" data-toggle="modal" data-target="#selectSourceModal" >   
+                                <textarea class="form-control" name="source_material_name" rows="4"
+                                    value="{{ old('source_material_name') }}"></textarea>
+                                <button type="button" class = "btn btn-success" id = "add_source_material"
+                                    data-toggle="modal" data-target="#selectSourceModal">
                                     <i class="fas fa-plus"></i>
                                 </button>
-                                <input type="hidden" class="form-control" name="material_source_id" value="{{ old('material_source_id') }}" />
+                                <input type="hidden" class="form-control" name="material_source_id"
+                                    value="{{ old('material_source_id') }}" />
                             </div>
-                            
+
 
                             {{-- Lô thẩm định  --}}
                             <div class="form-group px-3 mt-4">
                                 <div class="custom-control custom-switch">
-                                    <input type="checkbox" class="custom-control-input" id="customSwitch1" name ="is_val">
-                                    <label class="custom-control-label" for="customSwitch1">Ba Lô Thẩm Định Ban Đầu</label>
+                                    <input type="checkbox" class="custom-control-input" id="customSwitch1"
+                                        name ="is_val">
+                                    <label class="custom-control-label" for="customSwitch1">Ba Lô Thẩm Định Ban
+                                        Đầu</label>
                                 </div>
                             </div>
-                 
+
 
                         </div>
 
@@ -141,8 +143,9 @@
                             <div class="form-group">
                                 <label>Ngày dự kiên KCS</label>
                                 <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "expected_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('expected_date', \Carbon\Carbon::now()->addMonth(2)->format('Y-m-d')) }}">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "expected_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('expected_date', \Carbon\Carbon::now()->addMonth(2)->format('Y-m-d')) }}">
                                 </div>
                             </div>
 
@@ -156,7 +159,9 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-danger d-inline">
-                                                    <input type="radio" id="radioDanger" name="level" value = "1" {{ old('level') == 1 ||  old('level') === null ? 'checked':'' }}>
+                                                    <input type="radio" id="radioDanger" name="level"
+                                                        value = "1"
+                                                        {{ old('level') == 1 || old('level') === null ? 'checked' : '' }}>
                                                     <label for="radioDanger">
                                                         1: Hàng Gấp, Hàng Thầu
                                                     </label>
@@ -167,7 +172,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-warning d-inline">
-                                                    <input type="radio" id="radioWarning" name="level" value = "2" {{ old('level') == 2 ? 'checked':'' }}>
+                                                    <input type="radio" id="radioWarning" name="level"
+                                                        value = "2" {{ old('level') == 2 ? 'checked' : '' }}>
                                                     <label for="radioWarning">
                                                         2: Hàng Gấp, Hàng sắp hết số đăng ký
                                                     </label>
@@ -178,7 +184,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-primary d-inline">
-                                                    <input type="radio" id="radioPrimary" name="level" value = "3" {{ old('level') == 3 ? 'checked':'' }}>
+                                                    <input type="radio" id="radioPrimary" name="level"
+                                                        value = "3" {{ old('level') == 3 ? 'checked' : '' }}>
                                                     <label for="radioPrimary">
                                                         3: Hàng SX dự trù theo kế hoạch bán hàng, đăng ký thuốc
                                                     </label>
@@ -189,7 +196,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-success d-inline">
-                                                    <input type="radio" id="radioSuccess" name="level" value = "4" {{ old('level') == 4 ? 'checked':'' }}>
+                                                    <input type="radio" id="radioSuccess" name="level"
+                                                        value = "4" {{ old('level') == 4 ? 'checked' : '' }}>
                                                     <label for="radioSuccess">
                                                         4: Hàng không cần gấp
                                                     </label>
@@ -206,52 +214,51 @@
                     <div class="row">
                         <div class="col-md-3">
                             <label>Có thể cân từ ngày</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_weigth_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_weigth_date', date('Y-m-d')) }}"> 
-                                </div>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('after_weigth_date', date('Y-m-d')) }}">
+                            </div>
                         </div>
-                        
+
                         <div class="col-md-3">
                             <label>Cân Trước ngày</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_weigth_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
-                                </div>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "before_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label>Có thể ĐG từ ngày</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_parkaging_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
-                                </div>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label>Đóng gói trước ngày</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_parkaging_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
-                                </div>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "before_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
+                            </div>
                         </div>
                     </div>
-
-
                     {{-- Ghi chú --}}
-             
-                    <div class="row mt-3" >
-                            <div class="col-md-12">
-                                <label >Ghi Chú</label>
-                                <textarea class="form-control" name="note" rows="2"></textarea>
-                            </div>
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <label>Ghi Chú</label>
+                            <textarea class="form-control" name="note" rows="2"></textarea>
+                        </div>
                     </div>
-              
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-primary" id="btnSave">
-                            Lưu
-                        </button>
-                    </div>
-
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary" id="btnSave">
+                        Lưu
+                    </button>
                 </div>
             </div>
         </form>
@@ -318,16 +325,15 @@
             }
         });
 
-        $('#selectSourceModal').on('show.bs.modal', function (e) {
+        $('#selectSourceModal').on('show.bs.modal', function(e) {
             const button = $(e.relatedTarget);
             const modal = $('#createModal');
             const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
 
-         preventDoubleSubmit("#createModal", "#btnSave");
-         
-         
+        preventDoubleSubmit("#createModal", "#btnSave");
+
+
     });
-    
 </script>

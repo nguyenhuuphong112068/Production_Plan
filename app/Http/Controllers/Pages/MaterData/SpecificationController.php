@@ -13,7 +13,7 @@ class SpecificationController extends Controller
                
                 $datas = DB::table('specification')->orderBy('name','asc')->get();
 
-                session()->put(['title'=> 'Dữ Liệu Gốc Qui Cách']);
+                session()->put(['title'=> 'DỮ LIỆU GỐC - QUI CÁCH ĐÓNG GÓI']);
                 return view('pages.materData.Specification.list',['datas' => $datas]);
         }
 

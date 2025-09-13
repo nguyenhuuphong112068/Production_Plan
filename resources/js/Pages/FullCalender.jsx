@@ -20,6 +20,7 @@ import '@fullcalendar/resource-timeline/index.js';
 import Selecto from "react-selecto";
 
   const ScheduleTest = () => {
+    
     const calendarRef = useRef(null);
     moment.locale('vi');
 
@@ -30,8 +31,7 @@ import Selecto from "react-selecto";
     const [pendingChanges, setPendingChanges] = useState([]);
     const [saving, setSaving] = useState(false);
     const [selectedEvents, setSelectedEvents] = useState([]);
-    const [percentShow, setPercentShow] = useState("30%");
-    //const highlightedPMIdsRef = useRef(new Set());
+    const [percentShow, setPercentShow] = useState("100%");
     const searchResultsRef = useRef([]);
     const currentIndexRef = useRef(-1);
     const lastQueryRef = useRef("");
@@ -275,7 +275,7 @@ import Selecto from "react-selecto";
       const now = new Date();
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
       info.event.remove(); 
-      
+    
       if (selectedRows.length === 0 ){
           Swal.fire({
             icon: 'warning',
@@ -286,7 +286,7 @@ import Selecto from "react-selecto";
           return false
       }
       // chưa định mức
-      if (selectedRows[0].permisson_room.length == 0 ){
+      if (selectedRows[0].permisson_room.length == 0 && selectedRows[0].stage_code !== 9){
           Swal.fire({
             icon: 'warning',
             title:'Sản Phẩm Chưa Được Định Mức',
@@ -310,7 +310,7 @@ import Selecto from "react-selecto";
         return false;
       });
 
-      if (!hasPermission) {
+      if (!hasPermission && selectedRows[0].stage_code < 8) {
         Swal.fire({
           icon: "warning",
           title: "Sản Phẩm Sắp Lịch Không Đúng Phòng Đã Định Mức",
@@ -320,6 +320,7 @@ import Selecto from "react-selecto";
 
           return false;
       }
+
       if (start <= now){
         Swal.fire({
           icon: "warning",
@@ -329,20 +330,35 @@ import Selecto from "react-selecto";
         });
           return false;
       }
-      router.put('/Schedual/store', {
+
+      if (selectedRows[0].stage_code !== 8){
+          router.put('/Schedual/store', {
               room_id: resourceId,
+              stage_code: selectedRows[0].stage_codes,
               start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
               products: selectedRows,
+              }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                  setSelectedRows([]);
+                  },
+                onError: (errors) => console.error('Lỗi tạo lịch', errors),
+          });
+      }else if (selectedRows[0].stage_code == 8){
+            router.put('/Schedual/store_maintenance', {
+              stage_code: 8,
+              start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+              products: selectedRows,
+              is_HVAC: selectedRows[0].is_HVAC
+              }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                  setSelectedRows([]);
+                  },
+                onError: (errors) => console.error('Lỗi tạo lịch', errors),
+          });
+      }
 
-          }, {
-            preserveScroll: true,
-            onSuccess: () => {
-              setSelectedRows([]);
-              },
-            onError: (errors) => console.error('Lỗi tạo lịch', errors),
-      });
-
-  
     };
 
     // Ẩn hiện sự kiện vệ sinh
@@ -376,7 +392,7 @@ import Selecto from "react-selecto";
       }, 300); // delay 300ms để thấy loading
     };
 
-    /////// 3 Ham sử lý thay đôi sự kiện
+    // 3 Ham sử lý thay đôi sự kiện
     const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
       const draggedEvent = info.event;
       const delta = info.delta;
@@ -539,23 +555,23 @@ import Selecto from "react-selecto";
               <div class="cfg-row cfg-grid-2">
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding">Trộn Hoàn Tất Lô Thẩm Định</label>
-                  <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_bleding">
+                  <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_bleding_val">
                   <label class="cfg-label" for="wt_forming">Định Hình Lô Thẩm Định</label>
-                  <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_forming">
+                  <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_forming_val">
                   <label class="cfg-label" for="wt_coating">Bao Phim Lô Thẩm Định</label>
-                  <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_coating">
+                  <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_coating_val">
                   <label class="cfg-label" for="wt_blitering">Đóng Gói Lô Thẩm Định</label>
-                  <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "10" name = "wt_blitering">
+                  <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "10" name = "wt_blitering_val">
                 </div>
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding_val">Trộn Hoàn Tất Lô Thương Mại</label>
-                  <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_bleding_val">
+                  <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_bledingl">
                   <label class="cfg-label" for="wt_forming_val">Định Hình Lô Thương Mại</label>
-                  <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_forming_val">
+                  <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_forming">
                   <label class="cfg-label" for="wt_coating_val">Bao Phim Lô Thương Mại</label>
-                  <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_coating_val">
+                  <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_coating">
                   <label class="cfg-label" for="wt_blitering_val">Đóng Gói Lô Thương Mại</label>
-                  <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "wt_blitering_val">
+                  <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "wt_blitering">
                 </div>
               </div>
 
@@ -768,7 +784,7 @@ import Selecto from "react-selecto";
           if (draggedEvent.extendedProps.finished) {return false;}
           return true;
     };
-
+    
   return (
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
     
@@ -797,13 +813,13 @@ import Selecto from "react-selecto";
         slotDuration= "00:15:00"
         eventDurationEditable={true}
         resourceEditable={true}
-        eventStartEditable={true} // <- phải có để kéo thay đổi start
+        eventStartEditable={true} 
       
         eventClick={handleEventClick}
-        eventResize={() => handleEventChange} 
+        eventResize={handleEventChange} 
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
-        dateClick ={() => handleEventUnHightLine}
+        dateClick ={ handleEventUnHightLine}
         eventAllow = {() => finisedEvent}
 
         datesSet={(info) => {
@@ -833,7 +849,6 @@ import Selecto from "react-selecto";
           
         }}
         resourceGroupField="stage"
-
         resourceGroupLabelContent={(arg) => {
           const stage_code = stageMap[arg.groupValue] || {};
           const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
@@ -942,8 +957,6 @@ import Selecto from "react-selecto";
 
           );
         }}
-
-
 
         views={{
 
@@ -1072,10 +1085,11 @@ import Selecto from "react-selecto";
         <div className="relative group custom-event-content" data-event-id={arg.event.id} >
             
             <div style={{ fontSize: `${eventFontSize}px` }}>
-              {viewConfig.timeView != 'resourceTimelineMonth' ? (<b >{arg.event.title}</b>):(<b >{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)}
+              {/* {viewConfig.timeView != 'resourceTimelineMonth' ? (<b >{arg.event.title}</b>):(<b>{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)} */}
+              <b>{arg.event.title}</b>
               <br/>
-              {/* {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""} */}
-              <span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>
+              {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""}
+              {/* <span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span> */}
             </div>
 
             {/* Nút xóa */}
@@ -1204,7 +1218,7 @@ import Selecto from "react-selecto";
           setPercentShow={setPercentShow}
           selectedRows = {selectedRows}
           setSelectedRows = {setSelectedRows}
-          quota = {quota}
+          //quota = {quota}
           resources = {resources}
       />
 

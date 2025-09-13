@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Route;
                 Route::put('deActive','deActive')->name('deActive');
                 Route::put('deActiveAll','deActiveAll')->name('deActiveAll');
                 Route::put('store','store')->name('store');
+                Route::put('store_maintenance','store_maintenance')->name('store_maintenance');
+                //Route::put('store_orderPlan','store_orderPlan')->name('store_orderPlan');
                 Route::put('multiStore','multiStore')->name('multiStore');
                 Route::put('update', 'update')->name('update');
                 Route::put('addEventContent/{id}', 'addEventContent')->name('addEventContent');
@@ -29,6 +31,7 @@ use Illuminate\Support\Facades\Route;
                 Route::put('createManualCampain', 'createManualCampain')->name('createManualCampain');
                 Route::put('createAutoCampain', 'createAutoCampain')->name('createAutoCampain');
                 Route::put('createOrderPlan', 'createOrderPlan')->name('createOrderPlan');
+                Route::put('DeActiveOrderPlan', 'DeActiveOrderPlan')->name('DeActiveOrderPlan');
 
                 // Sắp Lịch Tư Động //
                 Route::put('scheduleAll', 'scheduleAll')->name('scheduleAll');

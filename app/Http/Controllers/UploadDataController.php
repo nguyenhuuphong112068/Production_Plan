@@ -168,6 +168,13 @@ class UploadDataController extends Controller
                         'code'=> $row[2],
                         'create_by' => "Nguyễn Hữu Phong",
                 ]);}
+                 elseif ($request->table === 'production') {
+                    $check = DB::table('production')->insert([
+                        'id'=> $row[0],
+                        'name'=> $row[1],   
+                        'code'=> $row[2],
+                        'create_by' => "Nguyễn Hữu Phong",
+                ]);}
             }
 
             if ($check) {dd ("OK");};

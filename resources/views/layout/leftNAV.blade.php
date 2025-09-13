@@ -252,7 +252,6 @@
             </ul>
           </li>
 
-
           <!-- Droplist Menu Lập Lịch -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
@@ -288,7 +287,6 @@
             
             </ul>
           </li>
-
 
           <!-- Droplist Thống Kê -->
           <li class="nav-item has-treeview">
@@ -336,15 +334,38 @@
             </a>
           </li>
 
-
             <!-- User-->
-          <li class="nav-item">
-            <a href="{{ route ('pages.User.list') }}" class="nav-link">
+            <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
               <i class="nav-icon fas fa-user"></i>
               <p>
-                Quản Lý User
+                User Policy
+                <i class="right fas fa-angle-left"></i>
               </p>
             </a>
+            
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ route ('pages.User.user.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Danh Sách User </p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.User.role.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Nhóm Phân Quyền </p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.User.permission.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Danh Sách Quyền </p>
+                </a>
+              </li>
+            </ul>
           </li>
 
           <!-- Audit Trial-->

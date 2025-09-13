@@ -28,9 +28,15 @@
 
       <div class="modal-body" style="max-height: 100%; overflow-x: auto;">
         <div class="card">
-          {{-- <div class="card-header mt-4">
-            Có thể thêm nội dung tại đây 
-          </div> --}}
+          <div class="card-header mt-0">
+            <button class="btn btn-success btn-create-source"
+                data-dismiss="modal"
+                data-toggle="modal" 
+                data-target="#create_soure_modal" 
+                style="width: 155px;">
+                <i class="fas fa-plus"></i> Thêm
+            </button>
+          </div>
           <div class="card-body">
             <div class="table-responsive">
               <table id="source_material_list" class="table table-bordered table-striped w-100">

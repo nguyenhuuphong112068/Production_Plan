@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('source_material', function (Blueprint $table) {
+        Schema::create('permissions', function (Blueprint $table) {
             $table->id();
-            $table->string('intermediate_code');
-            $table->string('name');
-            $table->boolean('active')->default(true);
-            $table->string ('prepared_by',100);
+            $table->unsignedSmallInteger('permission_group');
+            $table->string('name')->unique(); // ví dụ: edit-user, delete-order
+            $table->string('display_name')->nullable(); // tên hiển thị: "Sửa người dùng"
+            $table->string('description')->nullable();
             $table->timestamps();
         });
     }
@@ -26,7 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('source_material');
-
+        Schema::dropIfExists('permissions');
     }
 };

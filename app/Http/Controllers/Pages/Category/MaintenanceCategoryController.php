@@ -33,8 +33,6 @@ class MaintenanceCategoryController extends Controller
                         
                 ]);
         }
-    
-
         public function store (Request $request) {
                 
                 $selectedRooms = $request->input('room_id');
@@ -92,7 +90,7 @@ class MaintenanceCategoryController extends Controller
 
         }
         public function update(Request $request){
-               
+                //dd ($request->all());
                 $validator = Validator::make($request->all(), [
                         'quota' => 'required',   
                 ],[
@@ -103,7 +101,7 @@ class MaintenanceCategoryController extends Controller
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 } 
                 
-                DB::table('maintenance_category')->where('id', $request->id)->update([
+                DB::table('maintenance_category')->where('code', $request->code)->update([
          
                         'quota' => $request->quota,
                         'note' => $request->note,

@@ -12,7 +12,7 @@ class DosageController extends Controller
         public function index(){
 
                 $datas = DB::table('dosage')->orderBy('name','asc')->get();
-                session()->put(['title'=> 'Dạng Bào Chế']);
+                session()->put(['title'=> 'DỮ LIỆU GỐC - DẠNG BÀO CHẾ']);
                 return view('pages.materData.Dosage.list',['datas' => $datas]);
         }
 

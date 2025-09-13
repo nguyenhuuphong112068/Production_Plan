@@ -14,7 +14,7 @@ class SchedualStepController extends Controller
         public function list(Request $request){
             //dd ($request->all());
             $fromDate = $request->from_date ?? Carbon::now()->subMonth()->toDateString();
-            $toDate   = $request->to_date   ?? Carbon::now()->toDateString(); 
+            $toDate   = $request->to_date   ?? Carbon::now()->addMonth(); 
             
             // Lấy danh sách stage_name (danh mục stage)
             $stage_name = DB::table('room')
@@ -31,10 +31,13 @@ class SchedualStepController extends Controller
                 ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->select(
+                    'stage_plan.id',
                     'stage_plan.plan_master_id as plan_id',
                     'stage_plan.stage_code',
                     'stage_plan.start',
                     'stage_plan.end',
+                    'stage_plan.start_clearning',
+                    'stage_plan.end_clearning',
                     'stage_plan.finished',
                     'stage_plan.yields',
 
@@ -73,9 +76,10 @@ class SchedualStepController extends Controller
                     return $item;
                 });
             });
+            //dd ($datas);
 
             session()->put(['title'=> 'Tiến Trình Sản Xuất']);
-
+            //dd ($datas);
             return view('pages.Schedual.step.list', [
                 'datas' => $datas,
             ]);

@@ -18,9 +18,9 @@ class UserController extends Controller
                
                 $datas = DB::table('user_management')->where ('isActive',1)->orderBy('created_at','desc')->get();
                 
-                session()->put(['title'=> 'Danh Sách Người Dùng']);
+                session()->put(['title'=> 'DANH SÁCH NGƯỜI DÙNG']);
            
-                return view('pages.User.list',['datas' => $datas, 'deparments' => $deparments, 'userGroups' => $userGroups, 'groups' => $groups]);
+                return view('pages.User.user.list',['datas' => $datas, 'deparments' => $deparments, 'userGroups' => $userGroups, 'groups' => $groups]);
         }
     
 

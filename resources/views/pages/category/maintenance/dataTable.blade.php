@@ -25,9 +25,10 @@
                 
                     <tr>
                     <th>STT</th>
-                    <th>Phòng SX Liên Quan</th>
+                    
                     <th>Mã Thiết Bị</th>
                     <th>Tên Thiết Bị</th>
+                    <th>Phòng SX Liên Quan</th>
                     <th style="width: 12%">Thời gian Thực Hiện</th>
                     <th>HVAC</th>
                     <th>Ghi Chú</th>
@@ -40,14 +41,14 @@
                     @foreach ($datas as $data)
                       <tr>
                         <td>{{ $loop->iteration}} </td>
-                        <td>{{ $data->room_name ."-". $data->room_code }}</td>
+                       
                         @if ($data->active)
                           <td class="text-success"> {{$data->code}}</td>
                         @else
                           <td class="text-danger"> {{$data->code}}</td>
                         @endif
                         <td>{{ $data->name}}</td>
-                      
+                        <td>{{ $data->room_name ."-". $data->room_code }}</td>
                         <td>{{ $data->quota}}</td>
                         <td class="text-center align-middle">
                             @if ($data->is_HVAC)

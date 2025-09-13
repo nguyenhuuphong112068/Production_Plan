@@ -1,12 +1,11 @@
 
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <!-- Modal -->
 <div class="modal fade" id="UpdateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-xl" role="document">
    
     <form 
-      action="{{route('pages.User.update')}}" 
+      action="{{route('pages.User.user.update')}}" 
       method="POST">
       @csrf
 
@@ -149,10 +148,7 @@
   </div>
 </div>
 
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
+
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->updateErrors->any())

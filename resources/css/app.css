@@ -2,10 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-
 /* Tuỳ chỉnh thêm nếu cần */
 :root {
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+/* ✅ ép viền cho PrimeReact DataTable gridlines */
+.p-datatable.p-datatable-gridlines .p-datatable-thead > tr > th,
+.p-datatable.p-datatable-gridlines .p-datatable-tbody > tr > td {
+  border: 1px solid #d1d5db !important; /* gray-300 */
+}

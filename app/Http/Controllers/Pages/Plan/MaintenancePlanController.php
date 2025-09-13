@@ -137,74 +137,75 @@ class MaintenancePlanController extends Controller
 
         public function store(Request $request)
         {
-        // Validate
-        $validator = Validator::make($request->all(), [
-                'devices.*.expected_date' => 'required|date',
-        ], [
-                'devices.*.expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS cho tất cả thiết bị',
-        ]);
+                
+                $validator = Validator::make($request->all(), [
+                        'devices.*.expected_date' => 'required|date',
+                ], [
+                        'devices.*.expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS cho tất cả thiết bị',
+                ]);
 
-        if ($validator->fails()) {
-                return redirect()->back()
-                ->withErrors($validator, 'create_Errors')
-                ->withInput();
-        }
-
-        $now            = now();
-        $preparedBy     = session('user')['fullName'];
-        $departmentCode = session('user')['production_code'];
-
-        DB::beginTransaction();
-        try {
-                $planMasterHistoryData = [];
-
-                foreach ($request->devices as $device) {
-                // Tách nhiều maintenance_category_ids
-                $maintenanceCategoryIds = explode(',', $device['maintenance_category_ids']);
-
-                foreach ($maintenanceCategoryIds as $catId) {
-                        // Insert từng dòng vào plan_master để lấy id
-                        $pmId = DB::table('plan_master')->insertGetId([
-                        "product_caterogy_id" => $catId,
-                        "plan_list_id"        => $request->plan_list_id,
-                        "batch"               => "NA",
-                        "expected_date"       => $device['expected_date'],
-                        "level"               => 1,
-                        "is_val"              => 0,
-                        "percent_parkaging"   => 1,
-                        "only_parkaging"      => 0,
-                        "note"                => $device['note'] ?? "NA",
-                        "deparment_code"      => $departmentCode,
-                        "prepared_by"         => $preparedBy,
-                        "created_at"          => $now,
-                        ]);
-
-                        // Chuẩn bị dữ liệu cho history
-                        $planMasterHistoryData[] = [
-                        "plan_master_id"      => $pmId,
-                        "plan_list_id"        => $request->plan_list_id,
-                        "product_caterogy_id" => $catId,
-                        "batch"               => "NA",
-                        "expected_date"       => $device['expected_date'],
-                        "level"               => 1,
-                        "is_val"              => 0,
-                        "percent_parkaging"   => 1,
-                        "only_parkaging"      => 0,
-                        "note"                => $device['note'] ?? "NA",
-                        "deparment_code"      => $departmentCode,
-                        "prepared_by"         => $preparedBy,
-                        "created_at"          => $now,
-                        "updated_at"          => $now,
-                        "version"             => 1,
-                        ];
+                if ($validator->fails()) {
+                        return redirect()->back()
+                        ->withErrors($validator, 'create_Errors')
+                        ->withInput();
                 }
+               
+                $now            = now();
+                $preparedBy     = session('user')['fullName'];
+                $departmentCode = session('user')['production_code'];
+
+                DB::beginTransaction();
+                try {
+                        $planMasterHistoryData = [];
+
+                        foreach ($request->devices as $device) {
+                        // Tách nhiều maintenance_category_ids
+                        $maintenanceCategoryIds = explode(',', $device['maintenance_category_ids']);
+                         
+                        foreach ($maintenanceCategoryIds as $catId) {
+                                // Insert từng dòng vào plan_master để lấy id
+                                $pmId = DB::table('plan_master')->insertGetId([
+                                "product_caterogy_id" => $catId,
+                                "plan_list_id"        => $request->plan_list_id,
+                                "batch"               => "NA",
+                                "expected_date"       => $device['expected_date'],
+                                "level"               => 1,
+                                "is_val"              => 0,
+                                "percent_parkaging"   => 1,
+                                "only_parkaging"      => 0,
+                                "note"                => $device['note'] ?? "NA",
+                                "deparment_code"      => $departmentCode,
+                                "prepared_by"         => $preparedBy,
+                                "created_at"          => $now,
+                                ]);
+                                  
+                                // Chuẩn bị dữ liệu cho history
+                                $planMasterHistoryData[] = [
+                                "plan_master_id"      => $pmId,
+                                "plan_list_id"        => $request->plan_list_id,
+                                "product_caterogy_id" => $catId,
+                                "batch"               => "NA",
+                                "expected_date"       => $device['expected_date'],
+                                "level"               => 1,
+                                "is_val"              => 0,
+                                "percent_parkaging"   => 1,
+                                "only_parkaging"      => 0,
+                                "note"                => $device['note'] ?? "NA",
+                                "deparment_code"      => $departmentCode,
+                                "prepared_by"         => $preparedBy,
+                                "created_at"          => $now,
+                                "updated_at"          => $now,
+                                "version"             => 1,
+                                "reason"             => "Tạo Mới",
+                                ];
+                        }
                 }
+                        //dd ($planMasterHistoryData);    
+                        // Insert nhiều dòng vào plan_master_history
+                        DB::table('plan_master_history')->insert($planMasterHistoryData);
 
-                // Insert nhiều dòng vào plan_master_history
-                DB::table('plan_master_history')->insert($planMasterHistoryData);
-
-                DB::commit();
-                return redirect()->back()->with('success', 'Đã thêm thành công!');
+                        DB::commit();
+                        return redirect()->back()->with('success', 'Đã thêm thành công!');
         } catch (\Exception $e) {
                 DB::rollBack();
                 return redirect()->back()->with('error', 'Lỗi khi thêm dữ liệu: ' . $e->getMessage());
@@ -274,7 +275,7 @@ class MaintenancePlanController extends Controller
         }
 
         public function update(Request $request){
-                
+                //dd ($request->all());
                 $validator = Validator::make($request->all(), [
                         'expected_date' => 'required',
                 ], [
@@ -284,9 +285,10 @@ class MaintenancePlanController extends Controller
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
                 }
+                $ids = DB::table('maintenance_category')->where('code',$request->code)->pluck('id')->toArray();;
 
                 // Update dữ liệu chính
-                DB::table('plan_master')->where('id', $request->id)->update([
+                DB::table('plan_master')->whereIn('product_caterogy_id',$ids)->update([
                         "expected_date" => $request->expected_date,
                         "note" => $request->note ?? "NA",
                         'prepared_by' => session('user')['fullName'],
@@ -294,35 +296,37 @@ class MaintenancePlanController extends Controller
                 ]);
 
                 // Lấy dữ liệu gốc từ plan_master
-                $plan = DB::table('plan_master')->where('id', $request->id)->first();
+                $plans = DB::table('plan_master')
+                        ->whereIn('product_caterogy_id', $ids)
+                        ->get();
                 
-                // Tìm version cao nhất hiện tại trong history
-                $lastVersion = DB::table('plan_master_history')
-                        ->where('plan_master_id', $request->id)
-                        ->max('version');
 
-                $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+                foreach ($plans as $plan) {
+                        $lastVersion = DB::table('plan_master_history')
+                                ->where('plan_master_id', $plan->id)
+                                ->max('version');
 
-                
-                DB::table('plan_master_history')->insert([
-                        'plan_master_id' => $plan->id,
-                        'plan_list_id' => $plan->plan_list_id,
-                        'product_caterogy_id' => $plan->product_caterogy_id,
-                        'version' => $newVersion,
-                        'level' => 1,
-                        'batch' => "NA",
-                        'expected_date' => $request->expected_date,
-                        'is_val' => 0,
-                        'percent_parkaging' => 1,
-                        'only_parkaging' =>  0,
-                        'note' => $request->note,
-                        'reason' => $request->reason ?? "NA",
-                        'deparment_code' => session('user')['production_code'],
+                        $newVersion = $lastVersion ? $lastVersion + 1 : 1;
 
-                        'prepared_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        DB::table('plan_master_history')->insert([
+                                'plan_master_id'     => $plan->id,
+                                'plan_list_id'       => $plan->plan_list_id,
+                                'product_caterogy_id'=> $plan->product_caterogy_id,
+                                'version'            => $newVersion,
+                                'level'              => 1,
+                                'batch'              => "NA",
+                                'expected_date'      => $request->expected_date,
+                                'is_val'             => 0,
+                                'percent_parkaging'  => 1,
+                                'only_parkaging'     => 0,
+                                'note'               => $request->note,
+                                'reason'             => $request->reason ?? "NA",
+                                'deparment_code'     => session('user')['production_code'],
+                                'prepared_by'        => session('user')['fullName'],
+                                'created_at'         => now(),
+                                'updated_at'         => now(),
                         ]);
+                }
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
 

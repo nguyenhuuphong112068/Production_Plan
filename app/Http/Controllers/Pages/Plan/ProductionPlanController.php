@@ -145,7 +145,6 @@ class ProductionPlanController extends Controller
 
        public function store(Request $request)
        {
-
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
                         'plan_list_id'   => 'required',
@@ -244,11 +243,40 @@ class ProductionPlanController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                         'updated_at' => now(),
-                        "version" => 1, // lần đầu tạo thì version = 1
+                        "version" => 1,
+                        "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
                         ]);
                 }
                 return redirect()->back()->with('success', 'Đã thêm thành công!');
         }
+
+        public function store_source(Request $request){
+               
+                $validator = Validator::make($request->all(), [
+                        'name' => 'required',  
+                ], [
+                        'name.required' => 'Vui lòng nhập nguồn nguyên liệu',
+                ]);
+
+                if ($validator->fails()) {
+                        return redirect()->back()->withErrors($validator, 'create_source_Errors')->withInput();
+                }
+
+                // Update dữ liệu chính
+                $id = DB::table('source_material')->insertGetId([
+                        "intermediate_code" => $request->intermediate_code,
+                        "name" => $request->name,
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                ]);
+
+                return response()->json([
+                        'id'   => $id,
+                        'name' => $request->name
+                ]);
+
+        }
+
  
         public function update(Request $request){
                 $validator = Validator::make($request->all(), [
