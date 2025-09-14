@@ -14,7 +14,7 @@ class StatisticProductController extends Controller
 
         // ---- 1. Xác định khoảng thời gian người dùng chọn hoặc mặc định ----
         $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
-        $toDate   = $request->to_date   ?? Carbon::now()->toDateString();
+        $toDate   = $request->to_date   ?? Carbon::now()->addMonth(1)->toDateString();
 
         $fromDate = Carbon::parse($fromDate);
         $toDate   = Carbon::parse($toDate);
@@ -25,10 +25,14 @@ class StatisticProductController extends Controller
        
         $products = DB::table('stage_plan')
                 ->select(
-                        'finished_product_category.finished_product_code','finished_product_category.intermediate_code',
-                        'finished_product_category.name','finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty','finished_product_category.market',
-                        'stage_plan.product_caterogy_id', 'stage_plan.stage_code',
+                        'stage_plan.product_caterogy_id', 
+                        'stage_plan.stage_code',
+                        'finished_product_category.finished_product_code',
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.batch_qty',
+                        'finished_product_category.unit_batch_qty',
+                        'product_name.name',
+                        'market.code as market',
                         DB::raw('COUNT(DISTINCT stage_plan.plan_master_id) as so_lo'),
                         DB::raw('SUM(TIMESTAMPDIFF(HOUR, stage_plan.start_clearning, stage_plan.end_clearning)) as tong_thoi_gian_vesinh'),
                         DB::raw('SUM(TIMESTAMPDIFF(HOUR, stage_plan.start, stage_plan.end)) as tong_thoi_gian_sanxuat'),
@@ -36,18 +40,20 @@ class StatisticProductController extends Controller
                         DB::raw('COUNT(DISTINCT stage_plan.plan_master_id) * finished_product_category.batch_qty as san_luong_ly_thuyet')
                 )
                 ->leftJoin('finished_product_category','stage_plan.product_caterogy_id','finished_product_category.id')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
+                ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->whereBetween('stage_plan.start', [$fromDate, $toDate])
                 ->where('stage_plan.active', 1)
                 ->where('stage_plan.deparment_code', $production)
                 ->where('stage_plan.finished', 1)
-                ->where('stage_plan.stage_code', ">=",7)
+                ->where('stage_plan.stage_code', "=",7)
                 ->groupBy(  'finished_product_category.finished_product_code','finished_product_category.intermediate_code',
-                            'finished_product_category.name','finished_product_category.batch_qty',
-                            'finished_product_category.unit_batch_qty','finished_product_category.market',
+                            'product_name.name','finished_product_category.batch_qty',
+                            'finished_product_category.unit_batch_qty','market.code',
                             'stage_plan.product_caterogy_id', 'stage_plan.stage_code')
                 ->get();
         
-        
+                //dd ($products);
 
       
         

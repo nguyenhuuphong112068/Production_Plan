@@ -8,12 +8,13 @@ import moment from 'moment';
 import { usePage, router } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 import ModalSidebar from '../Components/ModalSidebar';
+import NoteModal from '../Components/NoteModal';
 import dayjs from 'dayjs';
 import Swal from 'sweetalert2'; 
 import './calendar.css';
 import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
-
+import axios from "axios";
 import 'moment/locale/vi';
 import '@fullcalendar/daygrid/index.js';
 import '@fullcalendar/resource-timeline/index.js';
@@ -39,7 +40,7 @@ import Selecto from "react-selecto";
     const [slotIndex, setSlotIndex] = useState(0);
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
     const [selectedRows, setSelectedRows] = useState([]);
-
+    const [showNoteModal, setShowNoteModal] = useState(false);
 
     //Get dư liệu row được chọn 
     useEffect(() => {
@@ -708,6 +709,7 @@ import Selecto from "react-selecto";
       let id = event._def.publicId
 
       Swal.fire({
+        
         title: 'Hoàn Thành Sản Xuất',
         html: `
           <div class="cfg-wrapper">
@@ -716,14 +718,15 @@ import Selecto from "react-selecto";
               <div class="cfg-row cfg-grid-2">
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
-                  <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_bleding">
+                  <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min = "0"  name = "wt_bleding">
                 </div>
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding_val">Đơn Vị</label>
                   <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full"  readonly >
                   <input id="stag_plan_id" type="hidden" >
-                </div>
-              </div>
+                </div>  
+              </div>           
+
             </div>
           </div>
         `,
@@ -784,7 +787,116 @@ import Selecto from "react-selecto";
           if (draggedEvent.extendedProps.finished) {return false;}
           return true;
     };
-    
+
+
+    const handleConfirmSource = (event) => {
+      let room_id = event._def.resourceIds[0];
+      let plan_master_id = event._def.extendedProps.plan_master_id;
+      let resource = resources.filter (i => i.id == room_id)[0].title;
+      
+      axios.put('/Schedual/getInforSoure', { plan_master_id })
+        .then(res => {
+          const source_infor = res.data.sourceInfo;
+
+          Swal.fire({
+            title: 'Xác Nhận Nguồn Nguyên Liệu Đã Thẩm Định Trên Thiết Bị',
+            html: `
+              <div class="cfg-wrapper">
+                <div class="cfg-card">
+                
+                    <div class="cfg-col">
+                      <label class="cfg-label" for="intermediate_code">Mã BTP</label>
+                      <input id="intermediate_code" type="text" 
+                            class="swal2-input cfg-input cfg-input--full" readonly>
+                    </div>
+                    <div class="cfg-col">
+                      <label class="cfg-label" for="name">Sản Phẩm</label>
+                      <textarea id="name" rows="2"
+                                class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
+                    </div>
+
+                    <div class="cfg-col">
+                      <label class="cfg-label" for="room">Phòng Sản Xuất</label>
+                      <input id="room" type="text" 
+                            class="swal2-input cfg-input cfg-input--full" readonly>     
+                    </div>
+              
+                    <div class="cfg-col">
+                      <label class="cfg-label" for="material_source_id">Nguồn Nguyên Liệu</label>
+                      <textarea id="material_source_id" rows="2"
+                                class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
+                    </div>
+                </div>
+              </div>
+            `,
+            didOpen: () => {
+              document.getElementById('intermediate_code').value = source_infor.intermediate_code ?? '';
+              document.getElementById('name').value = source_infor.product_name ?? '';
+              document.getElementById('room').value = resource ?? '';
+              document.getElementById('material_source_id').value = source_infor.name ?? '';
+
+              
+            },
+            width: 700,
+            customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+            showCancelButton: true,
+            confirmButtonText: 'Xác Nhận',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            preConfirm: () => {
+              const intermediate_code = document.getElementById('intermediate_code');
+            
+              if (!intermediate_code) {
+                Swal.showValidationMessage('Lỗi: dữ liệu trống');
+                return false;
+              }
+
+              // Trả dữ liệu về để .then(result) nhận được
+              return {
+                source_id: source_infor.material_source_id,
+                room_id,
+                intermediate_code: source_infor.intermediate_code,
+              };
+            }
+          }).then((result) => {
+            if (result.isConfirmed) {
+              router.put('/Schedual/confirm_source', result.value, {
+                preserveScroll: true,
+                onSuccess: () => {
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Hoàn Thành',
+                    timer: 500,
+                    showConfirmButton: false,
+                  });
+                },
+                onError: () => {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    timer: 500,
+                    showConfirmButton: false,
+                  });
+                },
+              });
+            }
+          });
+        })
+        .catch(() => {
+          Swal.fire({
+            icon: 'error',
+            title: 'Lỗi tải dữ liệu',
+            timer: 500,
+            showConfirmButton: false
+          });
+        });
+    };
+
+    const toggleNoteModal = () => {
+          setShowNoteModal (!showNoteModal)
+    }
+
   return (
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
     
@@ -995,7 +1107,7 @@ import Selecto from "react-selecto";
         }}
         
         headerToolbar={{
-          left: 'prev,myToday,next hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
+          left: 'prev,myToday,next noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
           center: 'title',
           right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customYear customList'
         }}
@@ -1023,8 +1135,12 @@ import Selecto from "react-selecto";
             click: () => handleViewChange('resourceTimelineYear')
           },
           myToday: {
-            text: 'Hôm nay',
+            text: 'Hiện Tại',
             click: () => calendarRef.current.getApi().today()
+          },
+          noteModal: {
+            text: 'ℹ️',
+            click: toggleNoteModal
           },
           hiddenClearning: {
             text: '🙈',
@@ -1060,8 +1176,10 @@ import Selecto from "react-selecto";
         eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
 
         eventDidMount={(info) => {
+          
           // gắn data-event-id để tìm kiếm
             info.el.setAttribute("data-event-id", info.event.id);
+            info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
 
             // cho select evetn => pendingChanges
             const isPending = pendingChanges.some(e => e.id === info.event.id);
@@ -1093,7 +1211,8 @@ import Selecto from "react-selecto";
             </div>
 
             {/* Nút xóa */}
-            {arg.event.extendedProps.finished !== 1 && (<button
+            {arg.event.extendedProps.finished !== 1 && (
+              <button
               onClick={(e) => {
 
                 if (!selectedEvents || selectedEvents.length === 0) {
@@ -1105,7 +1224,6 @@ import Selecto from "react-selecto";
                     });
                     return; // Dừng hàm ở đây
                 }
-
                 e.stopPropagation();
                 Swal.fire({
                   title: 'Bạn có chắc muốn xóa lịch này?',
@@ -1151,7 +1269,6 @@ import Selecto from "react-selecto";
             </button>)}
 
             {/* Nút Sửa/Nội dung */}
-
             <button
               onClick={(e) => {
                 console.log (arg.event)
@@ -1193,8 +1310,9 @@ import Selecto from "react-selecto";
                 {isSelected ? '✓' : '+'}
             </button>
 
-            {/* ✅ Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */} 
-            {arg.event.extendedProps.finished !== 1  && (<button
+            {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */} 
+            {arg.event.extendedProps.finished === 0  && (
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleFinished(arg.event);
@@ -1203,6 +1321,19 @@ import Selecto from "react-selecto";
                 title='Xác Nhận Hoàn Thành Lô Sản Xuất'
               >
                 🎯
+            </button>)}
+
+            {/* 📦 Nút Xác nhận nguồn NL Và Phòng Sản Xuất */} 
+            {arg.event.extendedProps.room_source === false  && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConfirmSource(arg.event);
+                }}
+                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+                title='Khai báo nguồn nguyên liệu trên thiết bị sản xuất'
+              >
+                📦
             </button>)}
 
           </div>
@@ -1222,9 +1353,12 @@ import Selecto from "react-selecto";
           resources = {resources}
       />
 
+        <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
+
         {/* Selecto cho phép quét chọn nhiều .fc-event */}
         <Selecto
             onDragStart={(e) => {
+              
               // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
               if (!e.inputEvent.shiftKey) {
                 e.stop(); 
@@ -1236,15 +1370,15 @@ import Selecto from "react-selecto";
             selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
             selectFromInside={true}
             toggleContinueSelect={["shift"]}
-
+            
             onSelectEnd={(e) => {
               const selected = e.selected.map((el) => {
                 const id = el.getAttribute("data-event-id");
-                const stageCode = el.getAttribute("data-stage-code");
+                const stageCode = el.getAttribute("data-stage_code");
                 return { id, stage_code: stageCode };
               });
               setSelectedEvents(selected);
-              
+              console.log (selectedEvents);
             }}
         />
 

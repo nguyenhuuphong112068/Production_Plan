@@ -15,7 +15,7 @@ class SchedualStepController extends Controller
             //dd ($request->all());
             $fromDate = $request->from_date ?? Carbon::now()->subMonth()->toDateString();
             $toDate   = $request->to_date   ?? Carbon::now()->addMonth(); 
-            
+            $production = session ('user')['production_code'];
             // Lấy danh sách stage_name (danh mục stage)
             $stage_name = DB::table('room')
                 ->distinct()
@@ -64,6 +64,8 @@ class SchedualStepController extends Controller
                     ")
                 )
                 ->whereBetween('stage_plan.created_date', [$fromDate, $toDate])
+                ->where ('stage_plan.active', 1)
+                ->where ('stage_plan.deparment_code', $production)
                 ->orderBy('stage_plan.plan_master_id')
                 ->orderBy('stage_plan.stage_code')
                 ->get()

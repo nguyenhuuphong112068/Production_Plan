@@ -1,47 +1,50 @@
 <?php
 
 namespace App\Http\Controllers\Auth;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 
-class LoginController extends Controller{
+class LoginController extends Controller
+{
 
-// dd ($request->all());  
+    // dd ($request->all());  
 
-    public function showLogin(){
+    public function showLogin()
+    {
 
-        session()->put(['title'=> 'KÊ HOẠCH SẢN XUẤT']);
-        return view('login');}
+        session()->put(['title' => 'KÊ HOẠCH SẢN XUẤT']);
+        return view('login');
+    }
 
 
-    public function login(Request $request){
+    public function login(Request $request)
+    {
 
         // $hash = password_hash("Abc@123", PASSWORD_DEFAULT);
         // dd($hash);
-
-        $getUser = DB::table ('user_Management')->where ('userName', '=' ,$request->username)->first();
-
-        
-
-        if (is_null($getUser)){
-           
+        $getUser = DB::table('user_Management')->where('userName', '=', $request->username)->first();
+        if (is_null($getUser)) {
             return redirect()->route('login')->with('error', 'User Không Tồn Tại, Vui Lòng Đăng Nhập Lại!');
         }
-
-       if (!password_verify($request->passWord, $getUser->passWord)){
-            
+        if (!password_verify($request->passWord, $getUser->passWord)) {
             return redirect()->route('login')->with('error', 'PassWord Không Chính Xác, Vui Lòng Đăng Nhập Lại!');
         }
 
+        $production = DB::table('production')
+            ->where('code', $getUser->deparment)
+            ->first();
 
-        // đổi pass khi hết hạn
-        // if ($getUser->changePWdate < date('Y-m-d')){
-        //     AuditTrialController::log('Login',"NA" , 0, 'NA', 'Đăng Nhập Thành Công');
-        //     return redirect()->route('login')->with('error', 'Thay đổi PassWord!');
-        // }
+        if ($production) {
+            $production_code = $production->code;
+            $production_name = $production->name;
+        } else {
+            $production_code = "PXV1";
+            $production_name = "PX Viên 1";
+        }
         
         $request->session()->put('user', [
             'userId' => $getUser->id,
@@ -49,19 +52,20 @@ class LoginController extends Controller{
             'fullName' => $getUser->fullName,
             'userGroup' => $getUser->userGroup,
             'department' => $getUser->deparment,
-            'production_code' => "PXV1",
-            'production_name' => "Phân Xưởng Viên 1"
+            'production_code' => $production_code,
+            'production_name' => $production_name,
         ]);
 
-        AuditTrialController::log('Login',"NA" , 0, 'NA', 'Đăng Nhập Thành Công');
+
+        AuditTrialController::log('Login', "NA", 0, 'NA', 'Đăng Nhập Thành Công');
 
         return redirect()->route('pages.general.home');
     }
 
-     public function logout(Request $request)
+    public function logout(Request $request)
     {
-        AuditTrialController::log('Log Out',"NA" , 0, 'NA', 'Đăng Xuất');
-        $request->session()->flush(); 
+        AuditTrialController::log('Log Out', "NA", 0, 'NA', 'Đăng Xuất');
+        $request->session()->flush();
         return redirect()->route('login');
     }
 }

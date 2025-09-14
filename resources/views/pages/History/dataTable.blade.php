@@ -1,21 +1,17 @@
 <div class="content-wrapper">
     <!-- Main content -->
     <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-12">
             <!-- /.card-header -->
             <div class="card">
 
-              <div class="card-header mt-4">
-                {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-              </div>
+              {{-- <div class="card-header mt-4">
+              
+              </div> --}}
               <!-- /.card-Body -->
-              <div class="card-body">
-                <form id="filterForm" method="GET" action="{{ route('pages.History.list') }}" class="d-flex flex-wrap gap-2">
+              <div class="card-body mt-5">
+                <form id="filterForm" method="GET" action="{{ route('pages.History.list') }}" class="d-flex flex-wrap gap-0">
                     @csrf
                     <div class="row w-100 align-items-center">
-
                         <!-- Filter From/To -->
                         <div class="col-md-4 d-flex gap-2">
                             @php
@@ -51,8 +47,8 @@
                     </div>
                 </form>
                 
-                <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
-                  <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
+                <table id="data_table_hisory" class="table table-bordered table-striped " style="font-size: 20px">
+                  <thead style = "position: sticky; background-color: white; z-index: 1020" >
                     <tr>
                         <th>STT</th>
                         <th>Mã Sản Phẩm</th>
@@ -100,17 +96,6 @@
                           <div>{{ \Carbon\Carbon::parse($data->schedualed_at)->format('d/m/Y') }} </div>
                       </td>                     
 
-  
-                      {{-- <td class="text-center align-middle">  
-                        <form class="form-deActive" action="{{ route('pages.category.product.deActive', ['id' => $data->id]) }}" method="post">
-                            @csrf
-                            <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
-                                <i class="fas fa-lock"></i>
-                            </button>
-                        </form>
-                      </td> --}}
-                 
-
                     </tr>
                   @endforeach
 
@@ -120,11 +105,6 @@
               <!-- /.card-body -->
             </div>
             <!-- /.card -->
-          </div>
-          <!-- /.col -->
-        </div>
-        <!-- /.row -->
-      </div>
       <!-- /.container-fluid -->
     </section>
     <!-- /.content -->
@@ -140,7 +120,7 @@
 
 <script>
   $(document).ready(function() {
-    $('#schedual_list').DataTable({
+    $('#data_table_hisory').DataTable({
       paging: true,
       lengthChange: true,
       searching: true,

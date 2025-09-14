@@ -15,6 +15,7 @@ class ProductionPlanController extends Controller
            
                 $datas = DB::table('plan_list')
                 ->where ('active',1)
+                ->where ('deparment_code',session('user')['production_code'])
                 ->where ('type',1)
                 ->orderBy('created_at','desc')->get();
         
@@ -82,7 +83,10 @@ class ProductionPlanController extends Controller
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->where ('finished_product_category.active',1)->orderBy('name','asc')->get();
+                ->where ('finished_product_category.active',1)
+                ->where ('finished_product_category.deparment_code',session ('user')['production_code'])
+                ->orderBy('name','asc')
+                ->get();
                 
                 $source_material_list = DB::table('source_material')
                 ->select('source_material.*', 'product_name.name as product_name')

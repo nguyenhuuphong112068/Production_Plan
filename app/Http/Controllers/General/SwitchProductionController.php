@@ -15,6 +15,7 @@ class SwitchProductionController extends Controller{
 
        
         $request->session()->put('user', [
+            'userId'          => $user['userId']?? null,
             'userName'        => $user['userName'] ?? null,
             'fullName'        => $user['fullName'] ?? null,
             'userGroup'       => $user['userGroup'] ?? null,

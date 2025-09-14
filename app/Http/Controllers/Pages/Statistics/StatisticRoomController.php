@@ -14,7 +14,7 @@ class StatisticRoomController extends Controller
 
         // ---- 1. Xác định khoảng thời gian người dùng chọn hoặc mặc định ----
         $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
-        $toDate   = $request->to_date   ?? Carbon::now()->toDateString();
+        $toDate   = $request->to_date   ?? Carbon::now()->addMonth(1)->toDateString();
 
         $fromDate = Carbon::parse($fromDate);
         $toDate   = Carbon::parse($toDate);
@@ -50,7 +50,7 @@ class StatisticRoomController extends Controller
             ->groupBy('stage_plan.resourceId')
             ->get();
       
-
+            
         //$yields = $this->yield($fromDate,  $toDate, 'resourceId');
         
         
@@ -59,7 +59,6 @@ class StatisticRoomController extends Controller
                 // Tìm dữ liệu thực tế theo resourceId
                 $dataItem = $datas->firstWhere('resourceId', $room->id);
                 // Tìm sản lượng lý thuyết theo resourceId
-
                 return (object)[
                         'id'                  => $room->id,
                         'code'                => $room->code,
@@ -74,6 +73,7 @@ class StatisticRoomController extends Controller
                 ];
         });
 
+       
         $groupedByStage = $rooms->groupBy('stage_code');
         
         //dd ($groupedByStage);

@@ -20,7 +20,7 @@
                                         @php
                                             
                                             $defaultFrom =\Carbon\Carbon::now()->subMonth(1)->toDateString();
-                                            $defaultTo = \Carbon\Carbon::now()->toDateString();
+                                            $defaultTo = \Carbon\Carbon::now()->addMonth(1)->toDateString();
                                             $defaultWeek = \Carbon\Carbon::parse($defaultTo)->weekOfYear; // số tuần trong năm
                                             $defaultMonth = \Carbon\Carbon::parse($defaultTo)->month; // tháng
                                             $defaultYear = \Carbon\Carbon::parse($defaultTo)->year;
