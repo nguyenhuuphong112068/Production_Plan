@@ -237,6 +237,12 @@
 /* Ngăn cuộn ngang nếu nội dung rộng */
 .swal2-popup { overflow-x: hidden; }
 
+.swal2-textarea {
+  resize: none;        /* không cho resize bằng chuột */
+  overflow: hidden;    /* ẩn thanh scroll */
+  min-height: 2rem;    /* chiều cao tối thiểu */
+}
+
 /* ////////////////// css swal cấu hình sắp lịch ///////////////////////*/
 
 

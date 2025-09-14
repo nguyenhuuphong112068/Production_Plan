@@ -147,10 +147,10 @@
 
                     {{-- Hàng 1: Stepper --}}
                     <tr>
-                      <td rowspan="2">{{ $loop->iteration }}</td>
-                      <td rowspan="2">{{ $plan->product_name ."-". $plan->batch_qty . ' ' . $plan->unit_batch_qty }}</td>
-                      <td rowspan="2">{{ Carbon::parse($plan->expected_date)->format('d/m/Y') }}</td>
-                      <td rowspan="2">{{ $plan->batch }}</td>
+                      <td >{{ $loop->iteration }}</td>
+                      <td >{{ $plan->product_name ."-". $plan->batch_qty . ' ' . $plan->unit_batch_qty }}</td>
+                      <td >{{ Carbon::parse($plan->expected_date)->format('d/m/Y') }}</td>
+                      <td >{{ $plan->batch }}</td>
                       <td>
                         <div id="stepper-{{ $plan_master_id }}" class="bs-stepper">
                           <div class="bs-stepper-header" role="tablist">

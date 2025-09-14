@@ -511,34 +511,25 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   }
    
 
+
+  const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
+
   const allColumns = [
-      { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody },
-      { field: "permisson_room",  header: "Phòng SX", sortable: true, body: roomBody ,
-         style: { minWidth: '2rem', maxWidth: '15rem', whiteSpace: 'normal' } 
-      },
-      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name") },
-      { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch") },
-      { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") },
-      { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"),
-        style: { width: '8rem', maxWidth: '8rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
-      },
+      { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" },
+      { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "name", style: { minWidth: '2rem', maxWidth: '15rem', ...longTextStyle } },
+      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false, filterField: "name" },
+      { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" },
+      { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date"},
+      { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
       { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate },
-      { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate,
-        style: { width: '5rem', maxWidth: '5rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
-      },
+      { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
       { field: "weight_dates", header: "Cân NL", sortable: true, body: weightPBodyTemplate },
       { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: packagingBodyTemplate },
-      { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"),
-        style: { width: '25rem', maxWidth: '25rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
-      },
-      { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody,
-        style: { width: '8rem', maxWidth: '8rem', whiteSpace: 'normal', wordBreak: 'break-word' } 
-      },
-      { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") },
-      
-    ];
-
-  
+      { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"), style: { width: '25rem', maxWidth: '25rem', ...longTextStyle } },
+      { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
+      { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") , filter: false, filterField: "note"},
+  ];
+    
   return (
     <div
       id="external-events"
@@ -587,8 +578,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
               {percentShow === "100%" ? (
 
               <InputText value= {stageFilter +". " + "Công Đoạn " + stageNames[stageFilter] + " - " + 
-                tableData.filter(event => Number(event.stage_code) === stageFilter)
-                .filter(ev => (ev.name ?? "").toLowerCase().includes((searchTerm ?? "").toLowerCase())).length + " Mục Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
+                tableData.filter(event => Number(event.stage_code) === stageFilter).length + " Mục Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
                 /> 
               ):
 
@@ -622,7 +612,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
         <DataTable
           className="p-datatable-gridlines prime-gridlines"
           key={percentShow}
-          value={tableData.filter(event => Number(event.stage_code) === stageFilter).filter(ev => (ev.name ?? "").toLowerCase().includes((searchTerm ?? "").toLowerCase()))}
+          value={tableData.filter(event => Number(event.stage_code) === stageFilter)}
           selection={selectedRows}
           onSelectionChange={handleSelectionChange}
           selectionMode="multiple"

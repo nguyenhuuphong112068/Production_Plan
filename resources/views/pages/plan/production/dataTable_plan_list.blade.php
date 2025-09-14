@@ -8,7 +8,8 @@
             <div class="card">
               <!-- /.card-Body -->
               <div class="card-body mt-5">
-                  @if (user_has_permission(session('user')['fullName'], 'plan_production_store', "boolean"))
+                
+                  @if (user_has_permission(session('user')['userId'], 'plan_production_store', "boolean"))
                     <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_plan_list_modal" style="width: 155px">  
                       <i class="fas fa-plus"></i> Thêm
                     </button>

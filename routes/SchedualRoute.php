@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Route;
                 Route::put('deActiveAll','deActiveAll')->name('deActiveAll');
                 Route::put('store','store')->name('store');
                 Route::put('store_maintenance','store_maintenance')->name('store_maintenance');
-                //Route::put('store_orderPlan','store_orderPlan')->name('store_orderPlan');
                 Route::put('multiStore','multiStore')->name('multiStore');
                 Route::put('update', 'update')->name('update');
                 Route::put('addEventContent/{id}', 'addEventContent')->name('addEventContent');
@@ -36,7 +35,9 @@ use Illuminate\Support\Facades\Route;
                 // Sắp Lịch Tư Động //
                 Route::put('scheduleAll', 'scheduleAll')->name('scheduleAll');
 
-               
+                Route::put('getInforSoure','getInforSoure')->name('getInforSoure');
+                Route::put('confirm_source','confirm_source')->name('confirm_source');
+                
         });
 
 
