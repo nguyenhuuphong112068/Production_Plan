@@ -142,7 +142,14 @@ class SchedualController extends Controller
                         for ($i = 0; $i < $plans->count(); $i++) {
                                 $plan = $plans[$i];
                                 $subtitle = null;
-                                $color_event = '#46f905ff';
+                                if ($plan->stage_code <= 7){
+                                        $color_event = '#46f905ff';
+                                }elseif ($plan->stage_code == 8){
+                                        $color_event = '#003A4F';
+                                }else {
+                                        $color_event = '#eb0cb3ff';
+                                }
+                                
 
                                 // Lấy công đoạn trước (nếu có)
                                 $prevPlan = $i > 0 ? $plans[$i-1] : null;
@@ -339,7 +346,7 @@ class SchedualController extends Controller
                 $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
                 $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
                 $stageMap = DB::table('room')->pluck('stage_code','stage' )->toArray();
-
+                //dd ($sumBatchQtyResourceId);
                 // Gắn vào từng resource
                 $resources = DB::table('room')
                         ->select('id', 'code', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
@@ -366,7 +373,7 @@ class SchedualController extends Controller
                         'events' => $events,
                         'resources' => $resources,
                         'plan' => $plan_waiting,
-                        //'quota' => $quota,
+                        'quota' => $quota,
                         'sumBatchByStage' => $sumBatchByStage,
                         'stageMap' => $stageMap
 
@@ -1272,20 +1279,18 @@ class SchedualController extends Controller
                                         $bestStart = $candidateStart;
                                         $bestEnd = $candidateEnd;
                                 }
+                                $endCleaning = $candidateEnd->copy()->addHours((int) $room->C2_time_hours);
+                                $this->saveSchedule(
+                                        $title,
+                                        $task->id,
+                                        $bestRoom,
+                                        $bestStart,
+                                        $bestEnd,
+                                        $endCleaning, 
+                                        2,
+                                
+                                );
                         }
-
-
-                        $endCleaning = $candidateEnd->copy()->addHours((int) $room->C2_time_hours);
-                        $this->saveSchedule(
-                                $title,
-                                $task->id,
-                                $bestRoom,
-                                $bestStart,
-                                $bestEnd,
-                                $endCleaning, 
-                                2,
-                           
-                        );
         }
 
         /** Scheduler lô chiến dịch*/
@@ -1411,7 +1416,9 @@ class SchedualController extends Controller
                                 $prevCycle = ($pre_room->m_time_hours ?? 0) + ($pre_room->C1_time_hours ?? 0);
                                 $currCycle = ($bestQuota->m_time_hours ?? 0) + ($bestQuota->C1_time_hours ?? 0); 
                                 if ($counter == 0 && $currCycle < $prevCycle) {
-                                        $delay_time =  (($pre_room->m_time_hours - $bestQuota->m_time_hours) + ($pre_room->C1_time_hours - $bestQuota->C1_time_hours))*$campaignTasks->count()-3;
+                                        //$delay_time =  (($pre_room->m_time_hours - $bestQuota->m_time_hours) + ($pre_room->C1_time_hours - $bestQuota->C1_time_hours))*$campaignTasks->count()-5;
+                                        $delay_time = ($pre_room->m_time_hours*($campaignTasks->count() - 1) + $pre_room->C1_time_hours*($campaignTasks->count() - 2)) -
+                                                        (($bestQuota->m_time_hours + $bestQuota->C1_time_hours )* ($campaignTasks->count() - 1));
                                         if ($waite_time > $delay_time) {$delay_time = $waite_time;}
                                         $currentStart = $currentStart->addHours($delay_time);
                                         
@@ -1439,10 +1446,6 @@ class SchedualController extends Controller
                                 $endCleaning = $taskEnd->copy()->addHours((float)$bestQuota->C1_time_hours); //Lô giữa chiến dịch
                                 $clearningType = 1;
                         }
-
-
-
-        
 
                         $this->saveSchedule(
                                 $task->name."-".$task->batch ."-".$task->market,
@@ -1492,19 +1495,19 @@ class SchedualController extends Controller
         }
 
         public function yield($startDate, $endDate, $group_By){
-                return DB::table('stage_plan as sp')
-                        ->leftJoin('intermediate_category as ic', 'sp.product_caterogy_id', '=', 'ic.id')
+                $result =  DB::table('stage_plan as sp')
                         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
+                        ->leftJoin('intermediate_category as ic', 'fc.intermediate_code', '=', 'ic.intermediate_code')
                         ->whereBetween('sp.start', [$startDate, $endDate])
                         ->whereNotNull('sp.start')
-                         ->where('sp.deparment_code', session('user')['production_code'])
+                        ->where('sp.deparment_code', session('user')['production_code'])
                         ->select(
                         "sp.$group_By",
                         DB::raw('
                                 SUM(
                                 CASE 
                                         WHEN sp.stage_code <= 4 THEN ic.batch_size
-                                        WHEN sp.stage_code <= 6 THEN ic.batch_qty
+                                        WHEN sp.stage_code <= 6 THEN fc.batch_qty
                                         ELSE fc.batch_qty
                                 END
                                 ) as total_qty
@@ -1518,6 +1521,7 @@ class SchedualController extends Controller
                         )
                         ->groupBy("sp.$group_By", "unit")
                         ->get();
+                return $result;
                 
         }
 

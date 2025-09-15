@@ -67,19 +67,17 @@ class StatisticProductController extends Controller
     
     public function yield($startDate, $endDate, $group_By){
                return DB::table('stage_plan as sp')
-                ->leftJoin('intermediate_category as ic', 'sp.product_caterogy_id', '=', 'ic.id')
                 ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
+                //->leftJoin('intermediate_category as ic', 'fc.intermediate_code', '=', 'ic.intermediate_code')
                 ->whereBetween('sp.start', [$startDate, $endDate])
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->whereNotNull('sp.start')
                 ->select(
                     "sp.$group_By",
                     DB::raw('
                         SUM(
-                            CASE 
-                                WHEN sp.stage_code <= 4 THEN ic.batch_size
-                                WHEN sp.stage_code <= 6 THEN ic.batch_qty
-                                ELSE fc.batch_qty
-                            END
+                            fc.batch_qty
+                            
                         ) as total_qty
                     '),
                     DB::raw('

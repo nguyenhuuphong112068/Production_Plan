@@ -1079,7 +1079,7 @@ import Selecto from "react-selecto";
             titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
           },
           resourceTimelineWeek: {
-            slotDuration: '00:30:00',
+            slotDuration: '00:15:00',
             slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Tuần',
@@ -1348,7 +1348,7 @@ import Selecto from "react-selecto";
           setPercentShow={setPercentShow}
           selectedRows = {selectedRows}
           setSelectedRows = {setSelectedRows}
-          //quota = {quota}
+          quota = {quota}
           resources = {resources}
       />
 

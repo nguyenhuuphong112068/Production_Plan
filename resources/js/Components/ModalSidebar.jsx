@@ -31,7 +31,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   const [optionRooms, setOptionRooms] = useState([]);
 
   useEffect(() => {
-
+    
     if (resources && resources.length > 0 && stageFilter) {
       const filtered = resources.filter(
         (q) => Number(q.stage_code) == Number(stageFilter)

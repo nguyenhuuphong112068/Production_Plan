@@ -37,7 +37,7 @@ class StatisticRoomController extends Controller
                     SUM(
                         CASE 
                             WHEN stage_plan.stage_code <= 4 THEN intermediate_category.batch_size
-                            WHEN stage_plan.stage_code <= 6 THEN intermediate_category.batch_qty
+                            WHEN stage_plan.stage_code <= 6 THEN finished_product_category.batch_qty
                             ELSE finished_product_category.batch_qty
                         END
                     ) as total_qty
