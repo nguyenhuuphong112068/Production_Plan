@@ -788,7 +788,6 @@ import Selecto from "react-selecto";
           return true;
     };
 
-
     const handleConfirmSource = (event) => {
       let room_id = event._def.resourceIds[0];
       let plan_master_id = event._def.extendedProps.plan_master_id;
@@ -932,7 +931,7 @@ import Selecto from "react-selecto";
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
         dateClick ={ handleEventUnHightLine}
-        eventAllow = {() => finisedEvent}
+        eventAllow = {finisedEvent}
 
         datesSet={(info) => {
             const { start, end } = info; 

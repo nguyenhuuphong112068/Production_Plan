@@ -30,12 +30,13 @@ class SchedualController extends Controller
 
                         $roomStatus = $this->getRoomStatistics($startDate, $endDate);
                         $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
-                        $statsMap = $roomStatus->keyBy('room_id');
+                        
+                        $statsMap = $roomStatus->keyBy('resourceId');
                         $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
 
                         $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
 
-
+                      
                         // Gắn vào từng resource
                         $resources = DB::table('room')
                                 ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
@@ -53,6 +54,7 @@ class SchedualController extends Controller
                                         $room->yield    = $yield->total_qty ?? 0;
                                         return $room;
                         });
+                        //dd ($sumBatchByStage);
 
                         return Inertia::render('FullCalender', [
                                 'resources' => $resources, 
@@ -1254,6 +1256,7 @@ class SchedualController extends Controller
                         $bestStart = null;
                         $bestEnd = null;
                         
+
                         foreach ($rooms as $room) {
                                 $candidateStart = $this->findEarliestSlot(
                                         $room->room_id,
@@ -1460,9 +1463,9 @@ class SchedualController extends Controller
                 $totalSeconds =  $startDate->diffInSeconds($endDate);
 
                 // Query tính busy_hours
-                $data = DB::table('room_status as r')
+                $data = DB::table('stage_plan as r')
                         ->select(
-                        'r.room_id',
+                        'r.resourceId',
                         DB::raw("{$totalSeconds} / 3600 as total_hours"),
                         DB::raw("SUM(
                                 TIMESTAMPDIFF(
@@ -1474,9 +1477,10 @@ class SchedualController extends Controller
                         )
                         ->where('r.end', '>', $startDate)
                         ->where('r.start', '<', $endDate)
-                        ->groupBy('r.room_id')
+                        ->where('r.deparment_code', session('user')['production_code'])
+                        ->groupBy('r.resourceId')
                         ->get();
-
+                               
                 // Bổ sung free_hours = total - busy
                 $result = $data->map(function ($item) {
                         $item->busy_hours = $item->busy_hours ?? 0; // tránh null
@@ -1493,6 +1497,7 @@ class SchedualController extends Controller
                         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
                         ->whereBetween('sp.start', [$startDate, $endDate])
                         ->whereNotNull('sp.start')
+                         ->where('sp.deparment_code', session('user')['production_code'])
                         ->select(
                         "sp.$group_By",
                         DB::raw('
@@ -1513,6 +1518,7 @@ class SchedualController extends Controller
                         )
                         ->groupBy("sp.$group_By", "unit")
                         ->get();
+                
         }
 
         //

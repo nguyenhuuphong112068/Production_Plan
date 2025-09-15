@@ -14,7 +14,7 @@ class StatisticStageController extends Controller
 
         // ---- 1. Xác định khoảng thời gian người dùng chọn hoặc mặc định ----
         $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString(); 
-        $toDate   = $request->to_date   ?? Carbon::now()->toDateString();
+        $toDate   = $request->to_date   ?? Carbon::now()->addMonth(1)->toDateString();
 
 
         $fromDate = Carbon::parse($fromDate);

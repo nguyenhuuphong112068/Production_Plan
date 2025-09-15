@@ -76,113 +76,6 @@
 
                             <section class="content">
                                 <div class="container-fluid">
-                                    {{-- Card Table --}}
-                                    {{-- <div class="card">
-                                        <div class="card-header border-transparent">
-                                            <div class="card-tools">
-                                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                                    <i class="fas fa-minus"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-tool" data-card-widget="remove">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="card-body">
-                                            <table id="room_table" class="table table-bordered table-striped"
-                                                style="font-size: 20px">
-                                                <thead
-                                                    style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
-                                                    <tr>
-                                                        <th >STT</th>
-                                                        <th >Phòng Sản Xuất</th>
-                                                        <th >Thống Kê</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach ($rooms as $room)
-                                                        <tr class = "mb-0">
-                                                            <td>{{ $loop->iteration }} </td>
-                                                            <td> {{ $room->name . '-' . $room->code }} </td>
-                                                            <td>
-                                                                <div class="row mb-0">
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-info"><i
-                                                                                    class="fas fa-box"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Số Lượng Lô
-                                                                                    Thực Hiện</span>
-                                                                                <span
-                                                                                    class="info-box-number">{{ $room->so_lo }}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-danger"><i
-                                                                                    class="fas fa-clock"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Thời Gian:{{ $totalHours }}h
-                                                                                    Tổng - SX - VS </span>
-                                                                                <span class="info-box-number">
-                                                                                    @php
-                                                                                      $H_SX = round(($room->tong_thoi_gian_sanxuat / $totalHours) * 100, 2);
-                                                                                      $H_VS = round(($room->tong_thoi_gian_vesinh / $totalHours) * 100, 2);
-                                                                                    @endphp
-                                                                                   
-                                                                                    {{ $room->tong_thoi_gian_sanxuat }}h # {{ $H_SX }}%
-                                                                                    -
-                                                                                    {{ $room->tong_thoi_gian_vesinh }}h # {{ $H_VS }}%
-
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-success"><i
-                                                                                    class="fas fa-crosshairs"
-                                                                                    style="color: white;"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Tổng Sản Lượng Lý Thuyết</span>
-                                                                                <span
-                                                                                    class="info-box-number">{{ number_format($room->san_luong_ly_thuyet) }}
-                                                                                    {{$room->stage_code >=5?"ĐVL":"Kg"}}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-primary"><i
-                                                                                    class="fas fa-flag-checkered"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Tổng Sản Lượng Thực Tế</span>
-                                                                                    @php
-                                                                                        $H = ($room->san_luong_ly_thuyet > 0 && $room->san_luong_thuc_te > 0)
-                                                                                            ? round(($room->san_luong_thuc_te / $room->san_luong_ly_thuyet) * 100, 2) . "%"
-                                                                                            : "NA";
-                                                                                    @endphp
-                                                                                <span
-                                                                                    class="info-box-number">{{ number_format($room->san_luong_thuc_te) }}
-                                                                                     {{$room->stage_code >=5?"ĐVL":"Kg"}} # {{$room->stage_code >=4?$H:"NA"}} </span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div> --}}
-
                                     {{-- Card Chart --}}
                                     @foreach ($groupedByStage as $key => $Stage)
                                         <div class="card">
@@ -217,118 +110,145 @@
                                                 </h5>
                                             </div>
                                             <div class="card-body">
-                                                
-                                        <div class="card">
-                                        {{-- <div class="card-header border-transparent">
-                                            <div class="card-tools">
-                                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                                    <i class="fas fa-minus"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-tool" data-card-widget="remove">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
-                                        </div> --}}
-                                        <div class="card-body">
-                                            <table id="room_table" class="table table-bordered table-striped"
-                                                style="font-size: 20px">
-                                                <thead
-                                                    style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
-                                                    <tr>
-                                                        <th >STT</th>
-                                                        <th >Phòng Sản Xuất</th>
-                                                        <th >Thống Kê</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach ($groupedByStage[$key] as $room)
-                                                        <tr class = "mb-0">
-                                                            <td>{{ $loop->iteration }} </td>
-                                                            <td> {{ $room->name . '-' . $room->code }} </td>
-                                                            <td>
-                                                                <div class="row mb-0">
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-info"><i
-                                                                                    class="fas fa-box"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Số Lượng Lô
-                                                                                    Thực Hiện</span>
-                                                                                <span
-                                                                                    class="info-box-number">{{ $room->so_lo }}</span>
+
+                                                <div class="card">
+
+                                                    <div class="card-body">
+                                                        <table id="room_table"
+                                                            class="table table-bordered table-striped"
+                                                            style="font-size: 20px">
+                                                            <thead
+                                                                style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
+                                                                <tr>
+                                                                    <th>STT</th>
+                                                                    <th>Phòng Sản Xuất</th>
+                                                                    <th>Thống Kê</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach ($groupedByStage[$key] as $room)
+                                                                    <tr class = "mb-0">
+                                                                        <td>{{ $loop->iteration }} </td>
+                                                                        <td> {{ $room->name . '-' . $room->code }}
+                                                                        </td>
+                                                                        <td>
+                                                                            <div class="row mb-0">
+                                                                                <div class="col-md-3">
+                                                                                    <div class="info-box">
+                                                                                        <span
+                                                                                            class="info-box-icon bg-info"><i
+                                                                                                class="fas fa-box"></i></span>
+                                                                                        <div class="info-box-content">
+                                                                                            <span
+                                                                                                class="info-box-text">Số
+                                                                                                Lượng Lô
+                                                                                                Thực Hiện</span>
+                                                                                            <span
+                                                                                                class="info-box-number">{{ $room->so_lo }}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div class="col-md-3">
+                                                                                    <div class="info-box">
+                                                                                        <span
+                                                                                            class="info-box-icon bg-danger"><i
+                                                                                                class="fas fa-clock"></i></span>
+                                                                                        <div class="info-box-content">
+                                                                                            <span
+                                                                                                class="info-box-text">Thời
+                                                                                                Gian:{{ $totalHours }}h
+                                                                                                Tổng - SX - VS </span>
+                                                                                            <span
+                                                                                                class="info-box-number">
+                                                                                                @php
+                                                                                                    $H_SX = round(
+                                                                                                        ($room->tong_thoi_gian_sanxuat /
+                                                                                                            $totalHours) *
+                                                                                                            100,
+                                                                                                        2,
+                                                                                                    );
+                                                                                                    $H_VS = round(
+                                                                                                        ($room->tong_thoi_gian_vesinh /
+                                                                                                            $totalHours) *
+                                                                                                            100,
+                                                                                                        2,
+                                                                                                    );
+                                                                                                @endphp
+
+                                                                                                {{ $room->tong_thoi_gian_sanxuat }}h
+                                                                                                # {{ $H_SX }}%
+                                                                                                -
+                                                                                                {{ $room->tong_thoi_gian_vesinh }}h
+                                                                                                # {{ $H_VS }}%
+
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div class="col-md-3">
+                                                                                    <div class="info-box">
+                                                                                        <span
+                                                                                            class="info-box-icon bg-success"><i
+                                                                                                class="fas fa-crosshairs"
+                                                                                                style="color: white;"></i></span>
+                                                                                        <div class="info-box-content">
+                                                                                            <span
+                                                                                                class="info-box-text">Tổng
+                                                                                                Sản Lượng Lý
+                                                                                                Thuyết</span>
+                                                                                            <span
+                                                                                                class="info-box-number">{{ number_format($room->san_luong_ly_thuyet) }}
+                                                                                                {{ $room->stage_code >= 5 ? 'ĐVL' : 'Kg' }}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div class="col-md-3">
+                                                                                    <div class="info-box">
+                                                                                        <span
+                                                                                            class="info-box-icon bg-primary"><i
+                                                                                                class="fas fa-flag-checkered"></i></span>
+                                                                                        <div class="info-box-content">
+                                                                                            <span
+                                                                                                class="info-box-text">Tổng
+                                                                                                Sản Lượng Thực Tế</span>
+                                                                                            @php
+                                                                                                $H =
+                                                                                                    $room->san_luong_ly_thuyet >
+                                                                                                        0 &&
+                                                                                                    $room->san_luong_thuc_te >
+                                                                                                        0
+                                                                                                        ? round(
+                                                                                                                ($room->san_luong_thuc_te /
+                                                                                                                    $room->san_luong_ly_thuyet) *
+                                                                                                                    100,
+                                                                                                                2,
+                                                                                                            ) . '%'
+                                                                                                        : 'NA';
+                                                                                            @endphp
+                                                                                            <span
+                                                                                                class="info-box-number">{{ number_format($room->san_luong_thuc_te) }}
+                                                                                                {{ $room->stage_code >= 5 ? 'ĐVL' : 'Kg' }}
+                                                                                                #
+                                                                                                {{ $room->stage_code >= 4 ? $H : 'NA' }}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-danger"><i
-                                                                                    class="fas fa-clock"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Thời Gian:{{ $totalHours }}h
-                                                                                    Tổng - SX - VS </span>
-                                                                                <span class="info-box-number">
-                                                                                    @php
-                                                                                      $H_SX = round(($room->tong_thoi_gian_sanxuat / $totalHours) * 100, 2);
-                                                                                      $H_VS = round(($room->tong_thoi_gian_vesinh / $totalHours) * 100, 2);
-                                                                                    @endphp
-                                                                                   
-                                                                                    {{ $room->tong_thoi_gian_sanxuat }}h # {{ $H_SX }}%
-                                                                                    -
-                                                                                    {{ $room->tong_thoi_gian_vesinh }}h # {{ $H_VS }}%
-
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-success"><i
-                                                                                    class="fas fa-crosshairs"
-                                                                                    style="color: white;"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Tổng Sản Lượng Lý Thuyết</span>
-                                                                                <span
-                                                                                    class="info-box-number">{{ number_format($room->san_luong_ly_thuyet) }}
-                                                                                    {{$room->stage_code >=5?"ĐVL":"Kg"}}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="col-md-3">
-                                                                        <div class="info-box">
-                                                                            <span class="info-box-icon bg-primary"><i
-                                                                                    class="fas fa-flag-checkered"></i></span>
-                                                                            <div class="info-box-content">
-                                                                                <span class="info-box-text">Tổng Sản Lượng Thực Tế</span>
-                                                                                    @php
-                                                                                        $H = ($room->san_luong_ly_thuyet > 0 && $room->san_luong_thuc_te > 0)
-                                                                                            ? round(($room->san_luong_thuc_te / $room->san_luong_ly_thuyet) * 100, 2) . "%"
-                                                                                            : "NA";
-                                                                                    @endphp
-                                                                                <span
-                                                                                    class="info-box-number">{{ number_format($room->san_luong_thuc_te) }}
-                                                                                     {{$room->stage_code >=5?"ĐVL":"Kg"}} # {{$room->stage_code >=4?$H:"NA"}} </span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
+                                                                        </td>
+                                                                    </tr>
+                                                                @endforeach
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
                                                 <div id="chart-container-{{ $key }}"
                                                     style="height:600px; width:100%;">
                                                     <canvas id="weight-chart-{{ $key }}"></canvas>
                                                 </div>
-
                                             </div>
                                         </div>
                                     @endforeach
@@ -366,16 +286,19 @@
 
 
 <script>
-  $(document).ready(function () {
-    $('#room_table').DataTable({
-      "paging": false,        // ❌ tắt phân trang
-      "searching": false,     // ❌ tắt ô search
-      "info": false,          // ❌ tắt dòng "Showing 1 to n of n entries"
-      "ordering": true,       // vẫn giữ sắp xếp nếu muốn
-      "pageLength": 25,
-      "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Tất cả"]]
+    $(document).ready(function() {
+        $('#room_table').DataTable({
+            "paging": false, // ❌ tắt phân trang
+            "searching": false, // ❌ tắt ô search
+            "info": false, // ❌ tắt dòng "Showing 1 to n of n entries"
+            "ordering": true, // vẫn giữ sắp xếp nếu muốn
+            "pageLength": 25,
+            "lengthMenu": [
+                [10, 25, 50, -1],
+                [10, 25, 50, "Tất cả"]
+            ]
+        });
     });
-  });
 </script>
 
 <script>
@@ -508,7 +431,7 @@
 
 <script>
     const groupedCycles = @json($groupedByStage);
-
+    
     function renderStageChart(stageCode) {
         const data = groupedCycles[stageCode] || [];
         const container = document.getElementById(`chart-container-${stageCode}`);
@@ -521,7 +444,7 @@
         const labels = data.map(cycle => cycle.label);
         const theoretical_data = data.map(cycle => cycle.san_luong_ly_thuyet);
         const practical_data = data.map(cycle => cycle.san_luong_thuc_te);
-
+    
         const ctx = document.getElementById(`weight-chart-${stageCode}`).getContext('2d');
 
         new Chart(ctx, {
@@ -543,9 +466,20 @@
                 ]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-            }
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                  yAxes: [{
+                      ticks: {
+                          beginAtZero: true,
+                          min: 0,
+                          callback: function(value) {
+                              return value.toLocaleString();
+                          }
+                      }
+                  }]
+              }
+          }
         });
     }
 
