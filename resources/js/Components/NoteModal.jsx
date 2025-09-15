@@ -13,7 +13,7 @@ export default function NoteModal({ show, setShow }) {
     { color: "#f90202ff", label: "Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch"},
     { color: "#a1a2a2ff", label: "Vệ Sinh Phòng" },
     { color: "#003A4F", label: "Hiệu Chuẩn - Bảo Trì" },
-    { color: "#CDC717", label: "Sự Kiện Khác Ngoài Kế Hoạch" },
+    { color: "#eb0cb3ff", label: "Sự Kiện Khác Ngoài Kế Hoạch" },
     { color: "#002af9ff", label: "Công Đoạn Sản Xuất Hoàn Thành" },
    
   ];

@@ -124,7 +124,7 @@
                       $start = Carbon::parse($firstStage->start);
                       $end   = Carbon::parse($lastStage->end);
                       $diff = $start->diff($end);
-                      $totalDuration = $diff->d . 'd-' . $diff->h . 'h' . $diff->i .'p';
+                      $totalDuration = $diff->d . 'd-' . $diff->h . 'h' ;
                       // Tổng thời gian sản xuất (tính giờ làm trong từng stage)
                       $totalProductionHours = 0;
                       // Tổng thời gian vệ sinh (khoảng trống giữa các stage)

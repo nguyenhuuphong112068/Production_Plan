@@ -13,7 +13,10 @@ class ProductionQuotaController extends Controller
                
                 $stage_code =  $request->stage_code??1;
                 $production = session('user')['production_code'];
-                $room = DB::table('room')->where('stage_code', $stage_code)->where('active', true)->get();
+                $room = DB::table('room')
+                        ->where('deparment_code', $production)
+                        ->where('stage_code', $stage_code)
+                        ->where('active', true)->get();
                 
                 if ($stage_code <= 6) {
                         if ($stage_code == 1){ $stage_name = "weight_1"; }
