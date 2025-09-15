@@ -56,47 +56,51 @@ class UploadDataController extends Controller
                         'production_group' => $row[4],
                         'stage'            => $row[5],
                         'stage_code'       => $row[6],
-                        'prepareBy' => "Nguyễn Hữu Phong",
+                        'deparment_code'   => $row[7],
+                        'prepareBy' => "Auto-generate",
                 ]);}
                 elseif ($request->table === 'intermediate_category') {     
                     $check = DB::table('intermediate_category')->insert([
-                        'intermediate_code'=> $row[0],
-                        'name'=> $row[1],
-                        'batch_size'=> $row[2],
-                        'unit_batch_size'=> $row[3],
-                        'batch_qty'=> $row[4],
-                        'unit_batch_qty'=> $row[5],
-                        'dosage'=> $row[6],
-                        'weight_1'=> $row[7],
-                        'weight_2'=> $row[8],
-                        'prepering'=> $row[9],
-                        'blending'=> $row[10],
-                        'forming'=> $row[11],
-                        'coating'=> $row[12],
-                        'quarantine_total'=> 0,
-                        'quarantine_weight'=> $row[13],
-                        'quarantine_preparing'=> $row[14],
-                        'quarantine_blending'=> $row[15],
-                        'quarantine_forming'=> $row[16],
-                        'quarantine_coating'=> $row[17],
-                        'deparment_code'=> $row[18],            
-                        'prepared_by' => "Nguyễn Hữu Phong",
+                        'id'=> $row[0],
+                        'intermediate_code'=> $row[1],
+                        'product_name_id'=> $row[2],
+                        'batch_size'=> $row[3],
+                        'unit_batch_size'=> $row[4],
+                        'batch_qty'=> $row[5],
+                        'unit_batch_qty'=> $row[6],
+                        'dosage_id'=> $row[7],
+                        'weight_1'=> $row[8],
+                        'weight_2'=> $row[9],
+                        'prepering'=> $row[10],
+                        'blending'=> $row[11],
+                        'forming'=> $row[12],
+                        'coating'=> $row[13],
+                        'quarantine_total'=> $row[14],
+                        'quarantine_weight'=> $row[15],
+                        'quarantine_preparing'=> $row[16],
+                        'quarantine_blending'=> $row[17],
+                        'quarantine_forming'=> $row[18],
+                        'quarantine_coating'=> $row[19],
+                        'quarantine_time_unit'  => $row[20],
+                        'deparment_code'=> $row[21],            
+                        'prepared_by' => "Auto-generate",
                 ]);}
                 elseif ($request->table === 'finished_product_category') {
                         $check = DB::table('finished_product_category')->insert([
                         'id'=> $row[0],
-                        'process_code'=> $row[1],
-                        'intermediate_code'=> $row[2],
-                        'finished_product_code'=> $row[3],
-                        'name'=> $row[4],
-                        'market'=> $row[5],
-                        'specification'=> $row[6],
+                        'process_code'=> $row[1],                       
+                        'finished_product_code'=> $row[2],
+                        'intermediate_code'=> $row[3],
+                        'product_name_id'=> $row[4],
+                        'market_id'=> $row[5],
+                        'specification_id'=> $row[6],
                         'batch_qty'=> $row[7],
                         'unit_batch_qty'=> $row[8],
                         'primary_parkaging'=> $row[9],
                         'secondary_parkaging'=> $row[10],
-                        'deparment_code'=> $row[11],  
-                        'prepared_by' => "Nguyễn Hữu Phong",
+                        'deparment_code'=> $row[11],
+                        'active' => 1,  
+                        'prepared_by' => "Auto-generate",
                 ]);}
                 elseif ($request->table === 'plan_master'){
                     
@@ -138,21 +142,21 @@ class UploadDataController extends Controller
                 ]);}
                 elseif ($request->table === 'product_name') {
                     $check = DB::table('product_name')->insert([
-                        'name'=> $row[0],
-                        'shortName'=> $row[1],
-                        'deparment_code'=> $row[2],
+                        'id'=> $row[0],
+                        'name'=> $row[1],
+                        'shortName'=> $row[2],
+                        'deparment_code'=> $row[3],
                         'active' => true,
-                        'productType'=> "Thành Phẩm",             
-                        'prepareBy' => "Nguyễn Hữu Phong",
+                        'productType'=> "NA",             
+                        'prepareBy' => "Auto-generate",
                 ]);}
                 elseif ($request->table === 'source_material') {
                     $check = DB::table('source_material')->insert([
                         'id'=> $row[0],
                         'intermediate_code'=> $row[1],
-                        'code'=> $row[2],
-                        'name'=> $row[3],
+                        'name'=> $row[2],
                         'active' => true,          
-                        'prepared_by' => "Nguyễn Hữu Phong",
+                        'prepared_by' => "Auto-generate",
                 ]);}
                 elseif ($request->table === 'stages') {
                     $check = DB::table('stages')->insert([
@@ -175,6 +179,35 @@ class UploadDataController extends Controller
                         'code'=> $row[2],
                         'create_by' => "Nguyễn Hữu Phong",
                 ]);}
+                elseif ($request->table === 'dosage') {
+                    $check = DB::table('dosage')->insert([
+                        'id'=> $row[0],
+                        'name'=> $row[1], 
+                        'active' => 1,  
+                        'created_by' => "Auto-generate",
+                ]);}
+                 elseif ($request->table === 'specification') {
+                    $check = DB::table('specification')->insert([
+                        'id'=> $row[0],
+                        'name'=> $row[1], 
+                        'created_by' => "Auto-generate",
+                ]);}
+                 elseif ($request->table === 'unit') {
+                    $check = DB::table('unit')->insert([
+                        'id'=> $row[0],
+                        'code'=> $row[1], 
+                        'name'=> $row[2], 
+                        'active' => 1,  
+                        'created_by' => "Auto-generate",
+                ]);} elseif ($request->table === 'market') {
+                    $check = DB::table('market')->insert([
+                        'id'=> $row[0],
+                        'code'=> $row[1], 
+                        'name'=> $row[2], 
+                        'active' => 1,  
+                        'created_by' => "Auto-generate",
+                ]);}
+                
             }
 
             if ($check) {dd ("OK");};

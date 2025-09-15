@@ -76,7 +76,7 @@ class StatisticRoomController extends Controller
        
         $groupedByStage = $rooms->groupBy('stage_code');
         
-        //dd ($groupedByStage);
+        //dd ($rooms, $groupedByStage);
         
         session()->put(['title' => 'THỐNG KÊ THỜI GIAN HOẠT ĐỘNG THEO PHÒNG SẢN XUẤT']);
        
