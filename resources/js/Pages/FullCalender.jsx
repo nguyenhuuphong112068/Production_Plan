@@ -938,20 +938,16 @@ import Selecto from "react-selecto";
         datesSet={(info) => {
     
           const { start, end } = info; 
-          console.log (start, end);
-          Swal.fire({
-            title: "Đang tải...",
-            allowOutsideClick: false,
-            didOpen: () => {
-              Swal.showLoading();
-            },
-          });
           
-          if (!start || !end) {
-            
-            return;
-          }
+          // Swal.fire({
+          //   title: "Đang tải...",
+          //   allowOutsideClick: false,
+          //   didOpen: () => {
+          //     Swal.showLoading();
+          //   },
+          // });
           
+     
           // router.put(`/Schedual/view`,
           //   { start: start.toISOString(), end: end.toISOString() },
           //   {
