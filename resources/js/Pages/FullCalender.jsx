@@ -934,31 +934,31 @@ import Selecto from "react-selecto";
         eventAllow = {finisedEvent}
 
  
-        datesSet={(info) => {
-          const { start, end } = info; 
-          Swal.fire({
-            title: "Đang tải...",
-            allowOutsideClick: false,
-            didOpen: () => {
-              Swal.showLoading();
-            },
-          });
+        // datesSet={(info) => {
+        //   const { start, end } = info; 
+        //   Swal.fire({
+        //     title: "Đang tải...",
+        //     allowOutsideClick: false,
+        //     didOpen: () => {
+        //       Swal.showLoading();
+        //     },
+        //   });
 
-          router.put(`/Schedual/view`,
-            { start: start.toISOString(), end: end.toISOString() },
-            {
-              preserveState: true,
-              preserveScroll: true,
-              replace: false,
-              only: ['resources', 'sumBatchByStage'],
-              onSuccess: () => {
-                setTimeout(() => Swal.close(), 500);
-              }
-            }
-          );
+        //   router.put(`/Schedual/view`,
+        //     { start: start.toISOString(), end: end.toISOString() },
+        //     {
+        //       preserveState: true,
+        //       preserveScroll: true,
+        //       replace: false,
+        //       only: ['resources', 'sumBatchByStage'],
+        //       onSuccess: () => {
+        //         setTimeout(() => Swal.close(), 500);
+        //       }
+        //     }
+        //   );
 
-          // ✅ Bỏ luôn phần Inertia.visit vì không cần thiết
-        }}
+        //   // ✅ Bỏ luôn phần Inertia.visit vì không cần thiết
+        // }}
 
 
         resourceGroupField="stage"
