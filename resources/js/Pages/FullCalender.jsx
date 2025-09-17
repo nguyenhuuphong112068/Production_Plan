@@ -193,6 +193,7 @@ import Selecto from "react-selecto";
 
     //  Thay đôi khung thời gian
     const handleViewChange = (view) => {
+      alert ("handleViewChange")
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
@@ -700,8 +701,7 @@ import Selecto from "react-selecto";
     // Xử lý format số thập phân
     const formatNumberWithComma = (x) => {
       if (x == null) return "0";
-      return "Á"
-      //x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
     // Xử lý hoản thành lô
@@ -936,6 +936,7 @@ import Selecto from "react-selecto";
 
  
         datesSet={(info) => {
+          alert ("datesSet")
           const { start, end } = info; 
           Swal.fire({
             title: "Đang tải...",
