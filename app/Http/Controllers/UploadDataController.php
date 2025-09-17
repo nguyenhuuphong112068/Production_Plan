@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use mysqli;
+// use mysqli;
 
 class UploadDataController extends Controller
 {

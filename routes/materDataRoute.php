@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::get('/upload', [UploadDataController::class, 'index'])->name('upload.form_load');
-Route::post('/importdata', [UploadDataController::class, 'import'])->name('upload.import');
+
 
 Route::prefix('/materData')
 ->name('pages.materData.')
