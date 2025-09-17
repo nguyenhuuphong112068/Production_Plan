@@ -28,8 +28,8 @@ class UploadDataController extends Controller
             $check = false;
             foreach ($rows as $row) {
                 
-                if ($request->table === 'user_Management' ) {
-                    $check = DB::table('user_Management')->insert([
+                if ($request->table === 'user_management' ) {
+                    $check = DB::table('user_management')->insert([
                         'id'=> $row[0],
                         'userName'=> $row[1],
                         'userGroup'=> $row[2],
