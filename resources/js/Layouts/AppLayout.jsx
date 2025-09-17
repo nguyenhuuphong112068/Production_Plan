@@ -1,9 +1,6 @@
 
 
 import React from 'react';
-import LeftNAV from './leftNAV';
-
-
 
 export default function AppLayout({ children, user, title }) {
   return (
