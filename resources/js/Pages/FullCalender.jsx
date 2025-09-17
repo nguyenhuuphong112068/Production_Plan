@@ -947,7 +947,6 @@ import Selecto from "react-selecto";
           });
 
           if (!start || !end) {
-            console.error("Start hoặc End không hợp lệ", info);
             return;
           }
 
