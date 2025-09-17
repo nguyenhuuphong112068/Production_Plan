@@ -958,7 +958,10 @@ import Selecto from "react-selecto";
               }
             );
 
-                   
+             const nextUrl = getUrlFromDateInfo(info); // phải chắc chắn trả về string hợp lệ
+              if (nextUrl) {
+                Inertia.visit(nextUrl); // chỉ gọi khi nextUrl tồn tại
+              }      
           
         }}
         resourceGroupField="stage"
