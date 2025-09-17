@@ -89,7 +89,7 @@
                                         </div>
                                         <div class="card-body">
                                             <table id="example1" class="table table-bordered table-striped"
-                                                style="font-size: 20px">
+                                                style="font-size: 16px">
                                                 <thead
                                                     style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                                                     <tr>
