@@ -192,35 +192,35 @@ import Selecto from "react-selecto";
     }
 
     //  Thay đôi khung thời gian
-    const handleViewChange = (view) => {
-      Swal.fire({
-        title: "Đang tải...",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-      setViewConfig({ is_clearning: false, timeView: view });
-      calendarRef.current?.getApi()?.changeView(view)
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    // const handleViewChange = (view) => {
+    //   Swal.fire({
+    //     title: "Đang tải...",
+    //     allowOutsideClick: false,
+    //     didOpen: () => {
+    //       Swal.showLoading();
+    //     },
+    //   });
+    //   setViewConfig({ is_clearning: false, timeView: view });
+    //   calendarRef.current?.getApi()?.changeView(view)
+    //   const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       
-      router.put(`/Schedual/view`,
-        { start: activeStart.toISOString(), end: activeEnd.toISOString() },
-        {
-          preserveState: true,
-          replace: true,
-          only: ['resources'],
-          onSuccess: (page) => {
-                  setTimeout(() => {
-                      Swal.close();
-                    }, 500);
-          }
-        }
-      );
+    //   router.put(`/Schedual/view`,
+    //     { start: activeStart.toISOString(), end: activeEnd.toISOString() },
+    //     {
+    //       preserveState: true,
+    //       replace: true,
+    //       only: ['resources'],
+    //       onSuccess: (page) => {
+    //               setTimeout(() => {
+    //                   Swal.close();
+    //                 }, 500);
+    //       }
+    //     }
+    //   );
 
-      // Chờ FullCalendar render xong rồi tắt loading
-    // bạn chỉnh thời gian tuỳ theo tốc độ render
-    };
+    //   // Chờ FullCalendar render xong rồi tắt loading
+    // // bạn chỉnh thời gian tuỳ theo tốc độ render
+    // };
 
     // Tô màu các event trùng khớp
     const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
@@ -934,31 +934,31 @@ import Selecto from "react-selecto";
         eventAllow = {finisedEvent}
 
  
-        // datesSet={(info) => {
-        //   const { start, end } = info; 
-        //   Swal.fire({
-        //     title: "Đang tải...",
-        //     allowOutsideClick: false,
-        //     didOpen: () => {
-        //       Swal.showLoading();
-        //     },
-        //   });
+        datesSet={(info) => {
+          const { start, end } = info; 
+          Swal.fire({
+            title: "Đang tải...",
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
+          });
 
-        //   router.put(`/Schedual/view`,
-        //     { start: start.toISOString(), end: end.toISOString() },
-        //     {
-        //       preserveState: true,
-        //       preserveScroll: true,
-        //       replace: false,
-        //       only: ['resources', 'sumBatchByStage'],
-        //       onSuccess: () => {
-        //         setTimeout(() => Swal.close(), 500);
-        //       }
-        //     }
-        //   );
+          router.put(`/Schedual/view`,
+            { start: start.toISOString(), end: end.toISOString() },
+            {
+              preserveState: true,
+              preserveScroll: true,
+              replace: false,
+              only: ['resources', 'sumBatchByStage'],
+              onSuccess: () => {
+                setTimeout(() => Swal.close(), 500);
+              }
+            }
+          );
 
-        //   // ✅ Bỏ luôn phần Inertia.visit vì không cần thiết
-        // }}
+          // ✅ Bỏ luôn phần Inertia.visit vì không cần thiết
+        }}
 
 
         resourceGroupField="stage"
