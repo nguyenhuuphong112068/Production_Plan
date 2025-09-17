@@ -107,7 +107,7 @@
                                   <i class="fas fa-check-circle text-primary fs-4"></i>
                                   <span>
                                     @if ($data->quarantine_total == 0)
-                                        {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                        {{ $data->quarantine_preparing ." ". $quarantine_time_unit}}
                                     @endif
                                   </span>
                               @endif
@@ -120,7 +120,7 @@
                                   <i class="fas fa-check-circle text-primary fs-4"></i>
                                   <span>
                                     @if ($data->quarantine_total == 0)
-                                        {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                        {{$data->quarantine_blending ." ". $quarantine_time_unit}}
                                     @endif
                                   </span>
                               @endif
@@ -134,7 +134,7 @@
                                   <i class="fas fa-check-circle text-primary fs-4"></i>
                                   <span>
                                     @if ($data->quarantine_total == 0)
-                                        {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                        {{ $data->quarantine_forming ." ". $quarantine_time_unit}}
                                     @endif
                                   </span>
                               @endif
@@ -148,7 +148,7 @@
                                   <i class="fas fa-check-circle text-primary fs-4"></i>
                                 <span>
                                       @if ($data->quarantine_total == 0)
-                                          {{ $data->quarantine_weight ." ". $quarantine_time_unit}}
+                                          {{ $data->quarantine_coating ." ". $quarantine_time_unit}}
                                       @else
                                           {{"total:". $data->quarantine_total ." ". $quarantine_time_unit}}
                                       @endif
@@ -157,15 +157,11 @@
                             
                           </div>
                       </td>
-
                       <td>{{ $data->deparment_code}}</td>
                       <td>
                           <div> {{ $data->prepared_by}} </div>
                           <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
                       </td>                     
-
-  
-                      
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit"
 

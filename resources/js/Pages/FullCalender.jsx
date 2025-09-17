@@ -1108,7 +1108,7 @@ import Selecto from "react-selecto";
         headerToolbar={{
           left: 'prev,myToday,next noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
           center: 'title',
-          right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customYear customList'
+          right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth customList' //customYear
         }}
 
         customButtons={{

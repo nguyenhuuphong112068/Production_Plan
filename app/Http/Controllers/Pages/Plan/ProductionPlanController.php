@@ -432,6 +432,7 @@ class ProductionPlanController extends Controller
                         'finished_product_category.primary_parkaging',
                         'finished_product_category.secondary_parkaging'
                 )
+                ->orderBy('level', 'asc')->orderBy('expected_date', 'asc')
                 ->get();
 
                 $stages = ['weight_1', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging' ];
@@ -445,17 +446,17 @@ class ProductionPlanController extends Controller
                 ];
 
                 $dataToInsert = [];
-
+                
                foreach ($plans as $plan) {
                         $prevCode = null;
-                        foreach ($stages as $stage) {
+                        foreach ($stages as $index => $stage) {
                                 if ($plan->$stage) {
                                 $dataToInsert[] = [
                                         'plan_list_id' => $plan->plan_list_id,
                                         'plan_master_id' => $plan->id,
                                         'product_caterogy_id'=> $plan->product_caterogy_id,
                                         'stage_code'=> $stage_code[$stage],
-                                        'order_by'=>  $plan->id,
+                                        'order_by'=> $index,
                                         'code'=>  $plan->id ."_". $stage_code[$stage],
                                         'predecessor_code' => $prevCode,
                                         'deparment_code' => session('user')['production_code'],

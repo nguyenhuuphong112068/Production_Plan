@@ -127,10 +127,7 @@ class SchedualController extends Controller
                         END as quarantine_time_limit
                 ")
                 ->get();
-               
-                
-                       
-
+                               
                 $events = collect();
                 $groupedPlans = $event_plans->groupBy('plan_master_id');
 
@@ -150,7 +147,6 @@ class SchedualController extends Controller
                                         $color_event = '#eb0cb3ff';
                                 }
                                 
-
                                 // Lấy công đoạn trước (nếu có)
                                 $prevPlan = $i > 0 ? $plans[$i-1] : null;
 
@@ -333,7 +329,8 @@ class SchedualController extends Controller
 
                         $plan->permisson_room = $matched->pluck('code', "room_id")->unique();
                         return $plan;
-                });               
+                });  
+                
 
                 // tính sản lượng trong khoảng thời gian
                 $startDate = now()->startOfWeek(Carbon::MONDAY);
@@ -364,6 +361,8 @@ class SchedualController extends Controller
                                 $room->unit  = $yield->unit ?? '';
                                 return $room;
                 });
+
+                
               
                 //dd ($plan_waiting, $sumBatchByStage, $stageMap, $quota);
                 //dd ($events);
@@ -1524,8 +1523,7 @@ class SchedualController extends Controller
                 return $result;
                 
         }
-
-        //
+        
 }
 
       function toMinutes($time) {
