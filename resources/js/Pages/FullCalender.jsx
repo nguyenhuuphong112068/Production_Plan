@@ -193,7 +193,7 @@ import Selecto from "react-selecto";
 
     //  Thay đôi khung thời gian
     const handleViewChange = (view) => {
-      alert ("handleViewChange")
+     
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
@@ -936,7 +936,7 @@ import Selecto from "react-selecto";
 
  
         datesSet={(info) => {
-          alert ("datesSet")
+    
           const { start, end } = info; 
           Swal.fire({
             title: "Đang tải...",
@@ -945,6 +945,11 @@ import Selecto from "react-selecto";
               Swal.showLoading();
             },
           });
+
+          if (!start || !end) {
+            console.error("Start hoặc End không hợp lệ", info);
+            return;
+          }
 
           router.put(`/Schedual/view`,
             { start: start.toISOString(), end: end.toISOString() },
@@ -959,7 +964,7 @@ import Selecto from "react-selecto";
             }
           );
 
-          // ✅ Bỏ luôn phần Inertia.visit vì không cần thiết
+         
         }}
 
 
