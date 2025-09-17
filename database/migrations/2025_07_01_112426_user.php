@@ -28,7 +28,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('user_Management', function (Blueprint $table) {
+        Schema::create('user_management', function (Blueprint $table) {
             $table->id();
             $table->string('userName',10)->unique();
             $table->string('userGroup', 30);
@@ -45,10 +45,6 @@ return new class extends Migration
             $table->string('hisPW_3', 20)->nullable();
             $table->string('prepareBy');
             $table->timestamps();
-
-            //$table->foreign('userGroup')->references('name')->on('userGroup'); 
-            //$table->foreign('deparment')->references('name')->on('deparments'); 
-
         });
     }
 
