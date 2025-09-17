@@ -938,7 +938,7 @@ import Selecto from "react-selecto";
         datesSet={(info) => {
     
           const { start, end } = info; 
-          console.log (info);
+          console.log (start, end);
           Swal.fire({
             title: "Đang tải...",
             allowOutsideClick: false,
@@ -951,19 +951,19 @@ import Selecto from "react-selecto";
             
             return;
           }
-           
-          router.put(`/Schedual/view`,
-            { start: start.toISOString(), end: end.toISOString() },
-            {
-              preserveState: true,
-              preserveScroll: true,
-              replace: false,
-              only: ['resources', 'sumBatchByStage'],
-              onSuccess: () => {
-                setTimeout(() => Swal.close(), 500);
-              }
-            }
-          );
+          
+          // router.put(`/Schedual/view`,
+          //   { start: start.toISOString(), end: end.toISOString() },
+          //   {
+          //     preserveState: true,
+          //     preserveScroll: true,
+          //     replace: false,
+          //     only: ['resources', 'sumBatchByStage'],
+          //     onSuccess: () => {
+          //       setTimeout(() => Swal.close(), 500);
+          //     }
+          //   }
+          // );
 
          
         }}
