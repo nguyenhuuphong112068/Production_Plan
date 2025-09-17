@@ -6,7 +6,7 @@ export default defineConfig({
     plugins: [
         laravel({
         input: [
-            'resources/css/calendar.css',
+            //'resources/css/calendar.css',
             'resources/js/app.jsx'], 
         refresh: true,
         }),
