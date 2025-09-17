@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('auditTrialLog', function (Blueprint $table) {
+        Schema::create('audittriallog', function (Blueprint $table) {
                 $table->id();
                 $table->string('userName',10);
                 $table->string('action'); 

@@ -25,8 +25,8 @@ class LoginController extends Controller
     {
 
         // $hash = password_hash("Abc@123", PASSWORD_DEFAULT);
-        // dd($hash);
-        $getUser = DB::table('user_Management')->where('userName', '=', $request->username)->first();
+        // dd($hash);1
+        $getUser = DB::table('user_management')->where('userName', '=', $request->username)->first();
         if (is_null($getUser)) {
             return redirect()->route('login')->with('error', 'User Không Tồn Tại, Vui Lòng Đăng Nhập Lại!');
         }
