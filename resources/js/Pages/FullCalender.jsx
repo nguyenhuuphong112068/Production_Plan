@@ -942,7 +942,7 @@ import Selecto from "react-selecto";
                 Swal.showLoading();
               },
             });
-            // router.put(`/Schedual/resourceView`,
+           
             router.put(`/Schedual/view`,
               { start: start.toISOString(), end: end.toISOString() }, // ✅ lấy từ info
               {
@@ -957,6 +957,8 @@ import Selecto from "react-selecto";
                 }
               }
             );
+
+                   
           
         }}
         resourceGroupField="stage"
