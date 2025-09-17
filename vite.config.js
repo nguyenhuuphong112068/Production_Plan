@@ -12,4 +12,8 @@ export default defineConfig({
         }),
         react(),
     ],
+    server: {
+        host: '192.168.56.100', // Cho phép truy cập từ tất cả IP
+        port: 5173,       // Port mặc định, có thể đổi nếu cần
+    },
 });
