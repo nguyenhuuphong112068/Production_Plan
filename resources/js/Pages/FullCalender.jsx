@@ -933,37 +933,61 @@ import Selecto from "react-selecto";
         dateClick ={ handleEventUnHightLine}
         eventAllow = {finisedEvent}
 
-        datesSet={(info) => {
-            const { start, end } = info; 
-            Swal.fire({
-              title: "Đang tải...",
-              allowOutsideClick: false,
-              didOpen: () => {
-                Swal.showLoading();
-              },
-            });
+        // datesSet={(info) => {
+        //     const { start, end } = info; 
+        //     Swal.fire({
+        //       title: "Đang tải...",
+        //       allowOutsideClick: false,
+        //       didOpen: () => {
+        //         Swal.showLoading();
+        //       },
+        //     });
            
-            router.put(`/Schedual/view`,
-              { start: start.toISOString(), end: end.toISOString() }, // ✅ lấy từ info
-              {
-                preserveState: true,
-                preserveScroll: true,
-                replace: false,
-                only: ['resources', 'sumBatchByStage'],
-                onSuccess: () => {
-                  setTimeout(() => {
-                    Swal.close();
-                  }, 500);
-                }
-              }
-            );
+        //     router.put(`/Schedual/view`,
+        //       { start: start.toISOString(), end: end.toISOString() }, // ✅ lấy từ info
+        //       {
+        //         preserveState: true,
+        //         preserveScroll: true,
+        //         replace: false,
+        //         only: ['resources', 'sumBatchByStage'],
+        //         onSuccess: () => {
+        //           setTimeout(() => {
+        //             Swal.close();
+        //           }, 500);
+        //         }
+        //       }
+        //     );
 
-             const nextUrl = getUrlFromDateInfo(info); // phải chắc chắn trả về string hợp lệ
-              if (nextUrl) {
-                Inertia.visit(nextUrl); // chỉ gọi khi nextUrl tồn tại
-              }      
+  
           
+        // }}
+        datesSet={(info) => {
+          const { start, end } = info; 
+          Swal.fire({
+            title: "Đang tải...",
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
+          });
+
+          router.put(`/Schedual/view`,
+            { start: start.toISOString(), end: end.toISOString() },
+            {
+              preserveState: true,
+              preserveScroll: true,
+              replace: false,
+              only: ['resources', 'sumBatchByStage'],
+              onSuccess: () => {
+                setTimeout(() => Swal.close(), 500);
+              }
+            }
+          );
+
+          // ✅ Bỏ luôn phần Inertia.visit vì không cần thiết
         }}
+
+
         resourceGroupField="stage"
         resourceGroupLabelContent={(arg) => {
           const stage_code = stageMap[arg.groupValue] || {};
