@@ -25,11 +25,11 @@ class UploadDataController extends Controller
             $rows = $spreadsheet->getActiveSheet()->toArray();
 
             unset($rows[0]); // Bỏ dòng tiêu đề nếu có
-
+            $check = false;
             foreach ($rows as $row) {
-
-                if ($request->table === 'user_management' ) {
-                    $check = DB::table('user_management')->insert([
+                
+                if ($request->table === 'user_Management' ) {
+                    $check = DB::table('user_Management')->insert([
                         'id'=> $row[0],
                         'userName'=> $row[1],
                         'userGroup'=> $row[2],
@@ -207,11 +207,12 @@ class UploadDataController extends Controller
                         'active' => 1,  
                         'created_by' => "Auto-generate",
                 ]);}
+
+                
                 
             }
-
+                
             if ($check) {dd ("OK");};
-           
             
             //return back()->with('success', 'Import thành công!');
         }
