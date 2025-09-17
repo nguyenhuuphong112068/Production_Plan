@@ -945,8 +945,9 @@ import Selecto from "react-selecto";
               Swal.showLoading();
             },
           });
-
+          
           if (!start || !end) {
+            console.log (info);
             return;
           }
 
