@@ -25,7 +25,7 @@ import Selecto from "react-selecto";
     const calendarRef = useRef(null);
     moment.locale('vi');
     const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props ?? {};
-    //const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props;
+
     const [showSidebar, setShowSidebar] = useState(false);
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
     const [cleaningHidden, setCleaningHidden] = useState(false);
@@ -642,7 +642,7 @@ import Selecto from "react-selecto";
           // Gọi API với ngày
           router.put('/Schedual/scheduleAll', result.value , {
             preserveScroll: true,
-            onSuccess: () => {
+            onFinish: () => {
               Swal.fire({
                 icon: 'success',
                 title: 'Hoàn Thành Sắp Lịch',
