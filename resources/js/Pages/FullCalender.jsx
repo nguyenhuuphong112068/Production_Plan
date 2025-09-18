@@ -205,19 +205,34 @@ import Selecto from "react-selecto";
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       
-      router.put(`/Schedual/view`,
-        { start: activeStart.toISOString(), end: activeEnd.toISOString() },
-        {
-          preserveState: true,
-          replace: true,
-          only: ['resources'],
-          onSuccess: (page) => {
-                  setTimeout(() => {
-                      Swal.close();
-                    }, 500);
-          }
-        }
-      );
+      // router.put(`/Schedual/view`,
+      //   { start: activeStart.toISOString(), end: activeEnd.toISOString() },
+      //   {
+      //     preserveState: true,
+      //     replace: true,
+      //     only: ['resources'],
+      //     onSuccess: (page) => {
+      //             setTimeout(() => {
+      //                 Swal.close();
+      //               }, 500);
+      //     }
+      //   }
+      // );
+        router.put(`/Schedual/view`, 
+            { start: start.toISOString(), end: end.toISOString() },
+            {
+              preserveState: true,
+              preserveScroll: true,
+              replace: false,
+              only: ['resources', 'sumBatchByStage'],
+              onError: (errors) => {
+                console.error("Lỗi Inertia:", errors);
+              },
+              onFinish: () => {
+                console.log("Request đã kết thúc");
+              }
+            }
+          );
 
       // Chờ FullCalendar render xong rồi tắt loading
     // bạn chỉnh thời gian tuỳ theo tốc độ render
