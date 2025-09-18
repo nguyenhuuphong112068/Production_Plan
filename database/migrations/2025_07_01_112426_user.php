@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('userGroup', function (Blueprint $table) {
+        Schema::create('usergroup', function (Blueprint $table) {
             $table->id();
             $table->string('name',50)->unique();
             $table->boolean ('active')->default(true);
@@ -55,6 +55,6 @@ return new class extends Migration
     {
         Schema::dropIfExists('user_Management');
         Schema::dropIfExists('deparments');
-        Schema::dropIfExists('userGroup');
+        Schema::dropIfExists('usergroup');
     }
 };
