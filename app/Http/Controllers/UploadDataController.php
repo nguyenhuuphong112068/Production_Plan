@@ -247,11 +247,11 @@ class UploadDataController extends Controller
 
             foreach ($permissions as $permission ){
                 DB::table('permissions')->insert([
-                    'id'                => $permission[0],
-                    'permission_group'  => $permission[1], 
-                    'name'              => $permission[2], 
-                    'display_name'       => $permission[3],  
-                    'description'        => $permission[4],
+                    'id'                => $permission['id'],
+                    'permission_group'  => $permission['permission_group'], 
+                    'name'              => $permission['name'], 
+                    'display_name'       => $permission['display_name'],  
+                    'description'        => $permission['description'],
                 ]);
             }
             
