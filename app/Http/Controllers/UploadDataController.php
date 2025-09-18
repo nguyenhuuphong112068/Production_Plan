@@ -208,7 +208,14 @@ class UploadDataController extends Controller
                         'name'=> $row[2], 
                         'active' => 1,  
                         'created_by' => "Auto-generate",
+                ]);}elseif ($request->table === 'roles') {
+                    $check = DB::table('roles')->insert([
+                        'id'=> $row[0],
+                        'name '=> $row[1], 
+                        'display_name'=> $row[2], 
+                        'description' =>  $row[3]  
                 ]);}
+                
 
                 
                 
@@ -243,6 +250,24 @@ class UploadDataController extends Controller
                     'description'        => 'Hủy kế hoạch sản Xuất',
                 ],
         
+            ];
+
+            foreach ($permissions as $permission ){
+                DB::table('permissions')->insert([
+                    'id'                => $permission['id'],
+                    'permission_group'  => $permission['permission_group'], 
+                    'name'              => $permission['name'], 
+                    'display_name'       => $permission['display_name'],  
+                    'description'        => $permission['description'],
+                ]);
+            }
+
+            $userGroup = [
+                [
+                    'id'                => 1,
+                    'name'              => 'plan_production_deActive', 
+                    'active'            => 1
+                ],
             ];
 
             foreach ($permissions as $permission ){
