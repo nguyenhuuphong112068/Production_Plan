@@ -219,7 +219,7 @@ import Selecto from "react-selecto";
       //   }
       // );
         router.put(`/Schedual/view`, 
-            { start: start.toISOString(), end: end.toISOString() },
+            { start: activeStart.toISOString(), end: activeEnd.toISOString() },
             {
               preserveState: true,
               preserveScroll: true,
