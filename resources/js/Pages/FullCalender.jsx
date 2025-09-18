@@ -24,8 +24,8 @@ import Selecto from "react-selecto";
     
     const calendarRef = useRef(null);
     moment.locale('vi');
-
-    const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props;
+    const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props ?? {};
+    //const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props;
     const [showSidebar, setShowSidebar] = useState(false);
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
     const [cleaningHidden, setCleaningHidden] = useState(false);
@@ -974,29 +974,7 @@ import Selecto from "react-selecto";
               }
             }
           );
-          // Swal.fire({
-          //   title: "Đang tải...",
-          //   allowOutsideClick: false,
-          //   didOpen: () => {
-          //     Swal.showLoading();
-          //   },
-          // });
           
-     
-          // router.put(`/Schedual/view`,
-          //   { start: start.toISOString(), end: end.toISOString() },
-          //   {
-          //     preserveState: true,
-          //     preserveScroll: true,
-          //     replace: false,
-          //     only: ['resources', 'sumBatchByStage'],
-          //     onSuccess: () => {
-          //       setTimeout(() => Swal.close(), 500);
-          //     }
-          //   }
-          // );
-
-         
         }}
 
 
