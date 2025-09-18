@@ -229,6 +229,10 @@ import Selecto from "react-selecto";
               },
               onFinish: () => {
                 console.log("Request đã kết thúc");
+                setTimeout(() => {
+                      Swal.close();
+                     }, 500);
+                
               }
             }
           );
@@ -964,6 +968,9 @@ import Selecto from "react-selecto";
               },
               onFinish: () => {
                 console.log("Request đã kết thúc");
+                setTimeout(() => {
+                       Swal.close();
+                     }, 500);
               }
             }
           );
