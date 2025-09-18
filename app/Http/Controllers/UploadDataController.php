@@ -13,6 +13,8 @@ class UploadDataController extends Controller
                    return view('upload.form_load');
         }
 
+        
+
         public function import(Request $request) {
             $request->validate([
                 'excel_file' => 'required|mimes:xlsx,xls'
@@ -215,6 +217,44 @@ class UploadDataController extends Controller
             if ($check) {dd ("OK");};
             
             //return back()->with('success', 'Import thành công!');
+        }
+
+        public function import_hard_data () {
+            $permissions = [
+                [
+                    'id'                => 1,
+                    'permission_group'  => 1, 
+                    'name'              => 'plan_production_store', 
+                    'display_name'       => 'Tạo Kế Hoạch Sản Xuất',  
+                    'description'        => 'Tạo Mới Kế Hoạch Sản Xuất',
+                ],
+                [
+                    'id'                => 2,
+                    'permission_group'  => 1, 
+                    'name'              => 'plan_production_update', 
+                    'display_name'       => 'Cập nhật Kế Hoạch Sản Xuất',  
+                    'description'        => 'Cập nhật kế hoạch Sản Xuất',
+                ],
+                [
+                    'id'                => 3,
+                    'permission_group'  => 1, 
+                    'name'              => 'plan_production_deActive', 
+                    'display_name'       => 'Hủy Kế Hoạch Sản Xuất',  
+                    'description'        => 'Hủy kế hoạch sản Xuất',
+                ],
+        
+            ];
+            
+            foreach ($permissions as $permission ){
+                DB::table('permissions')->insert([
+                    'id'                => $permission[0],
+                    'permission_group'  => $permission[1], 
+                    'name'              => $permission[2], 
+                    'display_name'       => $permission[3],  
+                    'description'        => $permission[4],
+                ]);
+            }
+            
         }
                 
             

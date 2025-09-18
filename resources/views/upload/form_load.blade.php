@@ -10,3 +10,11 @@
       <button type="submit" name="import">Import</button>
       
   </form>
+
+  <form 
+      action="{{route('upload.import_permission')}}" 
+      method="POST" enctype="multipart/form-data">
+      @csrf
+      <button type="submit" name="import">import_permission</button>
+      
+  </form>
