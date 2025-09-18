@@ -366,7 +366,7 @@ class SchedualController extends Controller
               
                 //dd ($plan_waiting, $sumBatchByStage, $stageMap, $quota);
                 //dd ($events);
-                return Inertia::render('FullCalender.jsx', [
+                return Inertia::render('FullCalender', [
                         'title' => 'LỊCH SẢN XUẤT',
                         'user' => session('user'),
                         'events' => $events,
