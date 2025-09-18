@@ -938,7 +938,21 @@ import Selecto from "react-selecto";
         datesSet={(info) => {
     
           const { start, end } = info; 
-          
+          router.put(`/Schedual/view`, 
+            { start: start.toISOString(), end: end.toISOString() },
+            {
+              preserveState: true,
+              preserveScroll: true,
+              replace: false,
+              only: ['resources', 'sumBatchByStage'],
+              onError: (errors) => {
+                console.error("Lỗi Inertia:", errors);
+              },
+              onFinish: () => {
+                console.log("Request đã kết thúc");
+              }
+            }
+          );
           // Swal.fire({
           //   title: "Đang tải...",
           //   allowOutsideClick: false,
