@@ -222,8 +222,7 @@ import Selecto from "react-selecto";
             { start: activeStart.toISOString(), end: activeEnd.toISOString() },
             {
               preserveState: true,
-              preserveScroll: true,
-              replace: false,
+              replace: true,
               only: ['resources', 'sumBatchByStage'],
               onError: (errors) => {
                 console.error("Lỗi Inertia:", errors);
