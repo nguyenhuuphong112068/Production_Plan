@@ -19,7 +19,6 @@ class SchedualController extends Controller
                  $production = session ('user')['production_code'];
                 // Lấy Sản Lượng rồi return không chạy tiếp các hàm bên dưới
                 if ($request->isMethod('put')) {
-                        dd ($request->all());
                        
                         $start = $request->input('start');
                         $end   = $request->input('end');
