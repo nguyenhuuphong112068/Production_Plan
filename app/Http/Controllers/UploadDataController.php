@@ -211,7 +211,7 @@ class UploadDataController extends Controller
                 ]);}elseif ($request->table === 'roles') {
                     $check = DB::table('roles')->insert([
                         'id'=> $row[0],
-                        'name '=> $row[1], 
+                        'name'=> $row[1], 
                         'display_name'=> $row[2], 
                         'description' =>  $row[3]  
                 ]);}
