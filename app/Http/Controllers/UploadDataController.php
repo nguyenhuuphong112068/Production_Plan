@@ -219,7 +219,7 @@ class UploadDataController extends Controller
             //return back()->with('success', 'Import thành công!');
         }
 
-        public function import_hard_data () {
+        public function import_permission () {
             $permissions = [
                 [
                     'id'                => 1,
@@ -244,7 +244,7 @@ class UploadDataController extends Controller
                 ],
         
             ];
-            
+
             foreach ($permissions as $permission ){
                 DB::table('permissions')->insert([
                     'id'                => $permission[0],
