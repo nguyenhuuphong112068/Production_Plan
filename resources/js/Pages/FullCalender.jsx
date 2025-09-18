@@ -204,20 +204,6 @@ import Selecto from "react-selecto";
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      
-      // router.put(`/Schedual/view`,
-      //   { start: activeStart.toISOString(), end: activeEnd.toISOString() },
-      //   {
-      //     preserveState: true,
-      //     replace: true,
-      //     only: ['resources'],
-      //     onSuccess: (page) => {
-      //             setTimeout(() => {
-      //                 Swal.close();
-      //               }, 500);
-      //     }
-      //   }
-      // );
         router.put(`/Schedual/view`, 
             { start: activeStart.toISOString(), end: activeEnd.toISOString() },
             {
@@ -235,7 +221,8 @@ import Selecto from "react-selecto";
                 
               }
             }
-          );
+          ).then(res => console.log("Inertia response:", res))
+          .catch(err => console.error("Error:", err));;
 
       // Chờ FullCalendar render xong rồi tắt loading
     // bạn chỉnh thời gian tuỳ theo tốc độ render
