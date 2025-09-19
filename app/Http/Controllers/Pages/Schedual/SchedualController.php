@@ -13,574 +13,346 @@ class SchedualController extends Controller
 {       
         public function __construct() {
                 $this->loadRoomAvailability();
-        }      
-        // Xem Calender
-        // public function view(Request $request){
-        //          $production = session ('user')['production_code'];
-        //         // Lấy Sản Lượng rồi return không chạy tiếp các hàm bên dưới
-        //         if ($request->isMethod('put')) {
+        } 
+        protected function getEvents($production){
+                $event_plans = DB::table('stage_plan')
+                        ->leftJoin('plan_master','stage_plan.plan_master_id','=','plan_master.id')
+                        ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
+                        ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
+                        ->where('stage_plan.active', 1)
+                        ->whereNotNull('stage_plan.start')
+                        ->where('stage_plan.deparment_code', $production)
+                        ->select(
+                        'stage_plan.id',
+                        'stage_plan.title',
+                        'stage_plan.start',
+                        'stage_plan.end',
+                        'stage_plan.start_clearning',
+                        'stage_plan.end_clearning',
+                        'stage_plan.title_clearning',
+                        'stage_plan.resourceId',
+                        'stage_plan.plan_master_id',
+                        'stage_plan.stage_code',
+                        'stage_plan.finished',
+                        'stage_plan.quarantine_time',
+                        'intermediate_category.intermediate_code',
+                        'plan_master.expected_date',
+                        'plan_master.after_weigth_date',
+                        'plan_master.before_weigth_date',
+                        'plan_master.after_parkaging_date',
+                        'plan_master.before_parkaging_date',
+                        'plan_master.is_val'
+                        )
+                        ->selectRaw("
+                        CASE 
+                        WHEN stage_plan.stage_code IN (1,2) 
+                                THEN CASE 
+                                        WHEN intermediate_category.quarantine_time_unit = 1 
+                                        THEN intermediate_category.quarantine_weight * 24
+                                        ELSE intermediate_category.quarantine_weight
+                                END
+                        WHEN stage_plan.stage_code = 3 
+                                THEN CASE 
+                                        WHEN intermediate_category.quarantine_time_unit = 1 
+                                        THEN intermediate_category.quarantine_preparing * 24
+                                        ELSE intermediate_category.quarantine_preparing
+                                END
+                        WHEN stage_plan.stage_code = 4 
+                                THEN CASE 
+                                        WHEN intermediate_category.quarantine_time_unit = 1 
+                                        THEN intermediate_category.quarantine_blending * 24
+                                        ELSE intermediate_category.quarantine_blending
+                                END
+                        WHEN stage_plan.stage_code = 5 
+                                THEN CASE 
+                                        WHEN intermediate_category.quarantine_time_unit = 1 
+                                        THEN intermediate_category.quarantine_forming * 24
+                                        ELSE intermediate_category.quarantine_forming
+                                END
+                        WHEN stage_plan.stage_code = 6 
+                                THEN CASE 
+                                        WHEN intermediate_category.quarantine_time_unit = 1 
+                                        THEN intermediate_category.quarantine_coating * 24
+                                        ELSE intermediate_category.quarantine_coating
+                                END
+                        ELSE 0
+                        END as quarantine_time_limit
+                ")
+                ->get();
+
+                $events = collect();
+                $groupedPlans = $event_plans->groupBy('plan_master_id');
+
+                foreach ($groupedPlans as $plan_master_id => $plans) {
+                $plans = $plans->sortBy('stage_code')->values();
+                $material_source_id = DB::table('plan_master')
+                        ->where('id', $plan_master_id)
+                        ->pluck('material_source_id');
+
+                for ($i = 0; $i < $plans->count(); $i++) {
+                        $plan = $plans[$i];
+                        $subtitle = null;
                        
-        //                 $start = $request->input('start');
-        //                 $end   = $request->input('end');
+                                if ($plan->stage_code <= 7){
+                                        $color_event = '#46f905ff';
+                                }elseif ($plan->stage_code == 8){
+                                        $color_event = '#003A4F';
+                                }else {
+                                        $color_event = '#eb0cb3ff';
+                                }
+                                
+                                // Lấy công đoạn trước (nếu có)
+                                $prevPlan = $i > 0 ? $plans[$i-1] : null;
 
-        //                 // Tính thống kê theo khoảng thời gian
-        //                 $startDate = Carbon::parse($start);
-        //                 $endDate   = Carbon::parse($end);
+                                if ($plan->finished === 1) {
+                                        $color_event = '#002af9ff';
+                                } elseif ($plan->is_val === 1) {
+                                        $color_event = '#40E0D0'; 
+                                }
+                                
+                                // Nếu có công đoạn trước thì check biệt trữ
+                                if ($prevPlan && $plan->stage_code >2 && $plan->stage_code < 7){
+                                        $diffSeconds = (strtotime($plan->start) - strtotime($prevPlan->end))/ 3600; 
+                                        if ($diffSeconds > $prevPlan->quarantine_time_limit) {
+                                                $color_event = '#bda124ff';
+                                                $subtitle = 'Quá Hạn Biệt Trữ: ' . $diffSeconds . "h/" . $prevPlan->quarantine_time_limit . "h";
+                                        }
+                                } 
+                               
+                                if($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start && $plan->before_weigth_date < $plan->start){
+                                        $color_event = '#f99e02ff';
+                                        $subtitle = 'Nguyên Liệu Không Đáp Ứng: '. $plan->after_weigth_date . " - " . $plan->before_weigth_date;
+                                } elseif($plan->stage_code === 7 && $plan->after_parkaging_date > $plan->start && $plan->before_parkaging_date < $plan->start){
+                                        $color_event = '#f99e02ff';
+                                        $subtitle = 'Bao Bì Không Đáp Ứng: '. $plan->after_parkaging_date . " - " . $plan->before_parkaging_date;
+                                }
+                                $room_source = null;
+                                if ( $plan->stage_code >2 && $plan->stage_code < 7){
+                                        $room_source = DB::table('room_source')->where('intermediate_code', $plan->intermediate_code)->where('source_id', $material_source_id)->where ('room_id', $plan->resourceId)->exists();
+                                        if (!$room_source){
+                                                $color_event = '#dc02f9ff'; 
+                                                $subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
+                                }}
 
-        //                 $roomStatus = $this->getRoomStatistics($startDate, $endDate);
-        //                 $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
+                                if ($plan->expected_date < $plan->end && $plan->stage_code < 9){
+                                        $color_event = '#f90202ff';
+                                        $subtitle = 'Không Đáp Ứng Ngày Cần Hàng: '. $plan->expected_date;
+                                        if ($plan->stage_code == 8 ){
+                                                $subtitle = 'Không Đáp Ứng Hạn Bảo Trì: '. $plan->expected_date;
+                                        }                                      
+                                }
                         
-        //                 $statsMap = $roomStatus->keyBy('resourceId');
-        //                 $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
-
-        //                 $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
-
-                      
-        //                 // Gắn vào từng resource
-        //                 $resources = DB::table('room')
-        //                         ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
-        //                         ->where('active', 1)
-        //                         ->where('deparment_code', $production)
-        //                         ->orderBy('order_by', 'asc')
-        //                         ->get()
-        //                         ->map(function ($room) use ($statsMap, $yieldMap) {
-        //                                 $stat = $statsMap->get($room->id);
-        //                                 $yield = $yieldMap->get($room->id);
-
-        //                                 $room->busy_hours = $stat->busy_hours ?? 0;
-        //                                 $room->free_hours = $stat->free_hours ?? 0;
-        //                                 $room->total_hours = $stat->total_hours ?? 0;
-        //                                 $room->yield    = $yield->total_qty ?? 0;
-        //                                 return $room;
-        //                 });
-        //                 //dd ($sumBatchByStage);
-
-        //                 return Inertia::render('FullCalender', [
-        //                         'resources' => $resources, 
-        //                         'sumBatchByStage' => $sumBatchByStage,
-        //                 ]);
-        //         }       
+                        if ($plan->start && $plan->end) {
+                        $events->push([
+                                'plan_id' => $plan->id,
+                                'id' => "{$plan->id}-main",
+                                'title' => $plan->title . " " . $subtitle,
+                                'start' => $plan->start,
+                                'end' => $plan->end,
+                                'resourceId' => $plan->resourceId,
+                                'color' => $color_event,
+                                'stage_code'=> $plan->stage_code,
+                                'finished' => $plan->finished,
+                        ]);
+                        }
+                         // Event chính
+                        if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
+                        $events->push([
+                               'plan_id' => $plan->id,
+                                        'id' => "{$plan->id}-main",
+                                        'title' => $plan->title . " " . $subtitle,
+                                        'name' => $name ?? null,
+                                        'batch' => $batch ?? null,
+                                        'market'=> $market ?? null,
+                                        'start' => $plan->start,
+                                        'end' => $plan->end,
+                                        'resourceId' => $plan->resourceId,
+                                        'color' =>  $color_event,
+                                        'plan_master_id'=> $plan->plan_master_id,
+                                        'stage_code'=> $plan->stage_code,
+                                        'is_clearning' => false,
+                                        'finished' => $plan->finished,
+                                        'room_source' => $room_source,
+                        ]);
+                        }
+                        // Event vệ sinh
+                        if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
+                                $events->push([
+                                        'plan_id' => $plan->id,
+                                        'id' => "{$plan->id}-cleaning",
+                                        'title' => $plan->title_clearning ?? 'Vệ sinh',
+                                        'start' => $plan->start_clearning,
+                                        'end' => $plan->end_clearning,
+                                        'resourceId' => $plan->resourceId,
+                                        'color' => '#a1a2a2ff',
+                                        'plan_master_id'=> $plan->plan_master_id,
+                                        'stage_code'=> $plan->stage_code,
+                                        'is_clearning' => true,
+                                        'finished' => $plan->finished
+                                        ]);
+                        }
+                }
+                }
                 
-        //         // Nếu là Get --> Load toàn bộ dữ liêu
-        //         $event_plans = DB::table('stage_plan')
-        //                 ->leftJoin('plan_master','stage_plan.plan_master_id','=','plan_master.id')
-        //                 ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
-        //                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
-        //                 ->where('stage_plan.active', 1)
-        //                 ->whereNotNull('stage_plan.start')
-        //                 ->where('stage_plan.deparment_code', $production)
-        //                 ->select(
-        //                 'stage_plan.id',
-        //                 'stage_plan.title',
-        //                 'stage_plan.start',
-        //                 'stage_plan.end',
-        //                 'stage_plan.start_clearning',
-        //                 'stage_plan.end_clearning',
-        //                 'stage_plan.title_clearning',
-        //                 'stage_plan.resourceId',
-        //                 'stage_plan.plan_master_id',
-        //                 'stage_plan.stage_code',
-        //                 'stage_plan.finished',
-        //                 'stage_plan.quarantine_time',
-        //                 'intermediate_category.intermediate_code',
-        //                 'plan_master.expected_date',
-        //                 'plan_master.after_weigth_date',
-        //                 'plan_master.before_weigth_date',
-        //                 'plan_master.after_parkaging_date',
-        //                 'plan_master.before_parkaging_date',
-        //                 'plan_master.is_val'
-        //                 )
-        //                 ->selectRaw("
-        //                 CASE 
-        //                 WHEN stage_plan.stage_code IN (1,2) 
-        //                         THEN CASE 
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
-        //                                 THEN intermediate_category.quarantine_weight * 24
-        //                                 ELSE intermediate_category.quarantine_weight
-        //                         END
-        //                 WHEN stage_plan.stage_code = 3 
-        //                         THEN CASE 
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
-        //                                 THEN intermediate_category.quarantine_preparing * 24
-        //                                 ELSE intermediate_category.quarantine_preparing
-        //                         END
-        //                 WHEN stage_plan.stage_code = 4 
-        //                         THEN CASE 
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
-        //                                 THEN intermediate_category.quarantine_blending * 24
-        //                                 ELSE intermediate_category.quarantine_blending
-        //                         END
-        //                 WHEN stage_plan.stage_code = 5 
-        //                         THEN CASE 
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
-        //                                 THEN intermediate_category.quarantine_forming * 24
-        //                                 ELSE intermediate_category.quarantine_forming
-        //                         END
-        //                 WHEN stage_plan.stage_code = 6 
-        //                         THEN CASE 
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
-        //                                 THEN intermediate_category.quarantine_coating * 24
-        //                                 ELSE intermediate_category.quarantine_coating
-        //                         END
-        //                 ELSE 0
-        //                 END as quarantine_time_limit
-        //         ")
-        //         ->get();
-                               
-        //         $events = collect();
-        //         $groupedPlans = $event_plans->groupBy('plan_master_id');
-
-        //         //dd ($groupedPlans);
-        //         foreach ($groupedPlans as $plan_master_id => $plans) {
-        //                 $plans = $plans->sortBy('stage_code')->values(); // đảm bảo theo thứ tự stage
-        //                 $material_source_id = DB::table('plan_master')->where('id', $plan_master_id)->pluck ('material_source_id');
-
-        //                 for ($i = 0; $i < $plans->count(); $i++) {
-        //                         $plan = $plans[$i];
-        //                         $subtitle = null;
-        //                         if ($plan->stage_code <= 7){
-        //                                 $color_event = '#46f905ff';
-        //                         }elseif ($plan->stage_code == 8){
-        //                                 $color_event = '#003A4F';
-        //                         }else {
-        //                                 $color_event = '#eb0cb3ff';
-        //                         }
-                                
-        //                         // Lấy công đoạn trước (nếu có)
-        //                         $prevPlan = $i > 0 ? $plans[$i-1] : null;
-
-        //                         if ($plan->finished === 1) {
-        //                                 $color_event = '#002af9ff';
-        //                         } elseif ($plan->is_val === 1) {
-        //                                 $color_event = '#40E0D0'; 
-        //                         }
-                                
-        //                         // Nếu có công đoạn trước thì check biệt trữ
-        //                         if ($prevPlan && $plan->stage_code >2 && $plan->stage_code < 7){
-        //                                 $diffSeconds = (strtotime($plan->start) - strtotime($prevPlan->end))/ 3600; 
-        //                                 if ($diffSeconds > $prevPlan->quarantine_time_limit) {
-        //                                         $color_event = '#bda124ff';
-        //                                         $subtitle = 'Quá Hạn Biệt Trữ: ' . $diffSeconds . "h/" . $prevPlan->quarantine_time_limit . "h";
-        //                                 }
-        //                         } 
-                               
-        //                         if($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start && $plan->before_weigth_date < $plan->start){
-        //                                 $color_event = '#f99e02ff';
-        //                                 $subtitle = 'Nguyên Liệu Không Đáp Ứng: '. $plan->after_weigth_date . " - " . $plan->before_weigth_date;
-        //                         } elseif($plan->stage_code === 7 && $plan->after_parkaging_date > $plan->start && $plan->before_parkaging_date < $plan->start){
-        //                                 $color_event = '#f99e02ff';
-        //                                 $subtitle = 'Bao Bì Không Đáp Ứng: '. $plan->after_parkaging_date . " - " . $plan->before_parkaging_date;
-        //                         }
-        //                         $room_source = null;
-        //                         if ( $plan->stage_code >2 && $plan->stage_code < 7){
-        //                                 $room_source = DB::table('room_source')->where('intermediate_code', $plan->intermediate_code)->where('source_id', $material_source_id)->where ('room_id', $plan->resourceId)->exists();
-        //                                 if (!$room_source){
-        //                                         $color_event = '#dc02f9ff'; 
-        //                                         $subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
-        //                         }}
-
-        //                         if ($plan->expected_date < $plan->end && $plan->stage_code < 9){
-        //                                 $color_event = '#f90202ff';
-        //                                 $subtitle = 'Không Đáp Ứng Ngày Cần Hàng: '. $plan->expected_date;
-        //                                 if ($plan->stage_code == 8 ){
-        //                                         $subtitle = 'Không Đáp Ứng Hạn Bảo Trì: '. $plan->expected_date;
-        //                                 }                                      
-        //                         }
-        //                         //dd ($plan);
-        //                         // Event chính
-        //                         if ($plan->start && $plan->end) {
-        //                                 $events->push([
-        //                                         'plan_id' => $plan->id,
-        //                                         'id' => "{$plan->id}-main",
-        //                                         'title' => $plan->title . " " . $subtitle,
-        //                                         'name' => $name ?? null,
-        //                                         'batch' => $batch ?? null,
-        //                                         'market'=> $market ?? null,
-        //                                         'start' => $plan->start,
-        //                                         'end' => $plan->end,
-        //                                         'resourceId' => $plan->resourceId,
-        //                                         'color' =>  $color_event,
-        //                                         'plan_master_id'=> $plan->plan_master_id,
-        //                                         'stage_code'=> $plan->stage_code,
-        //                                         'is_clearning' => false,
-        //                                         'finished' => $plan->finished,
-        //                                         'room_source' => $room_source,
-        //                                 ]);
-        //                         }
-
-        //                         // Event vệ sinh
-        //                         if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
-        //                                 $events->push([
-        //                                         'plan_id' => $plan->id,
-        //                                         'id' => "{$plan->id}-cleaning",
-        //                                         'title' => $plan->title_clearning ?? 'Vệ sinh',
-        //                                         'start' => $plan->start_clearning,
-        //                                         'end' => $plan->end_clearning,
-        //                                         'resourceId' => $plan->resourceId,
-        //                                         'color' => '#a1a2a2ff',
-        //                                         'plan_master_id'=> $plan->plan_master_id,
-        //                                         'stage_code'=> $plan->stage_code,
-        //                                         'is_clearning' => true,
-        //                                         'finished' => $plan->finished
-        //                                 ]);
-        //                         }
-        //                 }
-        //         }
-       
-        //         $plan_waiting = DB::table('stage_plan')
-        //                 ->whereNull('stage_plan.start')
-        //                 ->where('stage_plan.active', 1)
-        //                 ->where('stage_plan.deparment_code', $production)
-        //                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-        //                 ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
-        //                 ->leftJoin('finished_product_category', function($join) {
-        //                         $join->on('stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-        //                         ->where('stage_plan.stage_code', '<=', 7);
-        //                 })
-        //                 ->leftJoin('product_name', function($join) {
-        //                         $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
-        //                         ->where('stage_plan.stage_code', '<=', 7);
-        //                 })
-        //                 ->leftJoin('maintenance_category', function($join) {
-        //                         $join->on('stage_plan.product_caterogy_id', '=', 'maintenance_category.id')
-        //                         ->where('stage_plan.stage_code', '=', 8);
-        //                 })
-        //                 ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-        //                 ->select(
-        //                         'stage_plan.*',
-        //                         'plan_master.batch',
-        //                         'plan_master.expected_date',
-        //                         'plan_master.is_val',
-        //                         'plan_master.note',
-        //                         'plan_master.level',
-        //                         'plan_master.after_weigth_date',
-        //                         'plan_master.before_weigth_date',
-        //                         'plan_master.after_parkaging_date',
-        //                         'plan_master.before_parkaging_date',
-        //                         'plan_master.material_source_id',
-        //                         'plan_master.only_parkaging',
-        //                         'plan_master.percent_parkaging',
-        //                         'market.code as market',
-        //                         'source_material.name as source_material_name',
-        //                         'finished_product_category.intermediate_code',
-        //                         'finished_product_category.finished_product_code',
-        //                         DB::raw("CASE 
-        //                                 WHEN stage_plan.stage_code <= 7 THEN product_name.name
-        //                                 ELSE maintenance_category.name END as name"),
-        //                         DB::raw("CASE 
-        //                                 WHEN stage_plan.stage_code = 8 THEN maintenance_category.code  END as instrument_code"),
-        //                         DB::raw("CASE 
-        //                                 WHEN stage_plan.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
-        //                 )
-        //                 ->orderBy('stage_plan.order_by', 'asc')
-        //         ->get();
-        
-        //         //dd ($plan_waiting);
-        //         $maintenance_category = DB::table('maintenance_category')
-        //         ->where('active', 1)
-        //         ->where('deparment_code', $production)
-        //         ->get();
-
-        //         $quota = DB::table('quota')
-        //                 ->leftJoin('room', 'quota.room_id', '=', 'room.id')
-        //                 ->where('quota.active', 1)
-        //                 ->where('quota.deparment_code', $production)
-        //                 ->get()
-        //                 ->map(function ($item) {
-        //                         // Hàm chuyển từ "H:i" sang giây
-        //                         $toSeconds = function ($time) {
-        //                         [$h, $m] = explode(':', $time);
-        //                         return ((int)$h * 3600) + ((int)$m * 60);
-        //                         };
-
-        //                         // Hàm chuyển từ giây về "H:i"
-        //                         $toTime = function ($seconds) {
-        //                         $h = floor($seconds / 3600);
-        //                         $m = floor(($seconds % 3600) / 60);
-        //                         return sprintf('%02d:%02d', $h, $m);
-        //                         };
-
-        //                         // Tính các giá trị thời gian
-        //                         $p = $toSeconds($item->p_time);
-        //                         $m = $toSeconds($item->m_time);
-        //                         $c1 = $toSeconds($item->C1_time);
-        //                         $c2 = $toSeconds($item->C2_time);
-
-        //                         // Gán thêm các cột tổng hợp
-        //                         $item->PM = $toTime($p + $m);
-        //                         return $item;
-        //         });
+                return $events;
                 
+        }
+                // Hàm lấy quota
+        protected function getQuota($production){
+                return DB::table('quota')
+                ->leftJoin('room', 'quota.room_id', '=', 'room.id')
+                ->where('quota.active', 1)
+                ->where('quota.deparment_code', $production)
+                ->get()
+                ->map(function ($item) {
+                        $toSeconds = fn($time) => (($h = (int)explode(':',$time)[0]) * 3600) + ((int)explode(':',$time)[1] * 60);
+                        $toTime = fn($seconds) => sprintf('%02d:%02d', floor($seconds / 3600), floor(($seconds % 3600) / 60));
+                        $item->PM = $toTime($toSeconds($item->p_time) + $toSeconds($item->m_time));
+                        return $item;
+                });
+        }
 
-        //         $plan_waiting = $plan_waiting->map(function ($plan) use ($quota, $maintenance_category) {
-        //                 if ($plan->stage_code <= 6) {
-        //                         $matched = $quota->where('intermediate_code', $plan->intermediate_code)
-        //                                         ->where('stage_code', $plan->stage_code);
-        //                 } elseif ($plan->stage_code == 7) {
-        //                         $matched = $quota->where('finished_product_code', $plan->finished_product_code)
-        //                                         ->where('stage_code', $plan->stage_code);
-        //                 } elseif ($plan->stage_code == 8) {
-        //                         $room_id = $maintenance_category->where('code', $plan->instrument_code)->pluck('room_id'); 
-        //                         $matched = $quota->whereIn('room_id', $room_id);                 
-        //                 } else {
-        //                         $matched = collect(); // không match
-        //                 }
+        protected function getPlanWaiting($production){
+                $plan_waiting = DB::table('stage_plan')
+                        ->whereNull('stage_plan.start')
+                        ->where('stage_plan.active', 1)
+                        ->where('stage_plan.deparment_code', $production)
+                        ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+                        ->leftJoin('finished_product_category', function($join) {
+                                $join->on('stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                                ->where('stage_plan.stage_code', '<=', 7);
+                        })
+                        ->leftJoin('product_name', function($join) {
+                                $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
+                                ->where('stage_plan.stage_code', '<=', 7);
+                        })
+                        ->leftJoin('maintenance_category', function($join) {
+                                $join->on('stage_plan.product_caterogy_id', '=', 'maintenance_category.id')
+                                ->where('stage_plan.stage_code', '=', 8);
+                        })
+                        ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                        ->select(
+                                'stage_plan.*',
+                                'plan_master.batch',
+                                'plan_master.expected_date',
+                                'plan_master.is_val',
+                                'plan_master.note',
+                                'plan_master.level',
+                                'plan_master.after_weigth_date',
+                                'plan_master.before_weigth_date',
+                                'plan_master.after_parkaging_date',
+                                'plan_master.before_parkaging_date',
+                                'plan_master.material_source_id',
+                                'plan_master.only_parkaging',
+                                'plan_master.percent_parkaging',
+                                'market.code as market',
+                                'source_material.name as source_material_name',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                DB::raw("CASE 
+                                        WHEN stage_plan.stage_code <= 7 THEN product_name.name
+                                        ELSE maintenance_category.name END as name"),
+                                DB::raw("CASE 
+                                        WHEN stage_plan.stage_code = 8 THEN maintenance_category.code  END as instrument_code"),
+                                DB::raw("CASE 
+                                        WHEN stage_plan.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
+                        )
+                        ->orderBy('stage_plan.order_by', 'asc')
+                ->get();
 
-        //                 $plan->permisson_room = $matched->pluck('code', "room_id")->unique();
-        //                 return $plan;
-        //         });  
-                
-
-        //         // tính sản lượng trong khoảng thời gian
-        //         $startDate = now()->startOfWeek(Carbon::MONDAY);
-        //         $endDate = now()->endOfWeek(Carbon::SUNDAY);
-
-        //         $roomStatus = $this->getRoomStatistics($startDate, $endDate);
-        //         $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
-        //         $statsMap = $roomStatus->keyBy('room_id');                
+                // Lấy quota & maintenance_category
                
-        //         $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
-        //         $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
-        //         $stageMap = DB::table('room')->pluck('stage_code','stage' )->toArray();
-        //         //dd ($sumBatchQtyResourceId);
-        //         // Gắn vào từng resource
-        //         $resources = DB::table('room')
-        //                 ->select('id', 'code', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
-        //                 ->where('active', 1)
-        //                 ->where('room.deparment_code', $production)
-        //                 ->orderBy('order_by', 'asc')
-        //                 ->get()
-        //                 ->map(function ($room) use ($statsMap, $yieldMap) {
-        //                         $stat = $statsMap->get($room->id);
-        //                         $yield = $yieldMap->get($room->id);
-        //                         $room->busy_hours = $stat->busy_hours ?? 0;
-        //                         $room->free_hours = $stat->free_hours ?? 0;
-        //                         $room->total_hours = $stat->total_hours ?? 0;
-        //                         $room->yield    = $yield->total_qty ?? 0;
-        //                         $room->unit  = $yield->unit ?? '';
-        //                         return $room;
-        //         });
+                $maintenance_category = DB::table('maintenance_category')
+                ->where('active', 1)
+                ->where('deparment_code', $production)
+                ->get();
 
-                
-              
-        //         //dd ($plan_waiting, $sumBatchByStage, $stageMap, $quota);
-        //         //dd ($events);
-        //         return Inertia::render('FullCalender', [
-        //                 'title' => 'LỊCH SẢN XUẤT',
-        //                 'user' => session('user'),
-        //                 'events' => $events,
-        //                 'resources' => $resources,
-        //                 'plan' => $plan_waiting,
-        //                 'quota' => $quota,
-        //                 'sumBatchByStage' => $sumBatchByStage,
-        //                 'stageMap' => $stageMap
+                $quota = $this->getQuota($production);
 
-        //         ]);
-        // }
-
-
-    // Hàm lấy events
-    protected function getEvents($production)
-    {
-        $event_plans = DB::table('stage_plan')
-            ->leftJoin('plan_master','stage_plan.plan_master_id','=','plan_master.id')
-            ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
-            ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
-            ->where('stage_plan.active', 1)
-            ->whereNotNull('stage_plan.start')
-            ->where('stage_plan.deparment_code', $production)
-            ->select(/* ... như bạn đang select ... */)
-            ->get();
-
-        $events = collect();
-        $groupedPlans = $event_plans->groupBy('plan_master_id');
-
-        foreach ($groupedPlans as $plan_master_id => $plans) {
-            $plans = $plans->sortBy('stage_code')->values();
-            $material_source_id = DB::table('plan_master')
-                ->where('id', $plan_master_id)
-                ->pluck('material_source_id');
-
-            for ($i = 0; $i < $plans->count(); $i++) {
-                $plan = $plans[$i];
-                $subtitle = null;
-                $color_event = '#46f905ff';
-
-                // === logic set màu sắc, subtitle, validation ===
-                // (copy toàn bộ logic bạn đã viết ở trên)
-                
-                if ($plan->start && $plan->end) {
-                    $events->push([
-                        'plan_id' => $plan->id,
-                        'id' => "{$plan->id}-main",
-                        'title' => $plan->title . " " . $subtitle,
-                        'start' => $plan->start,
-                        'end' => $plan->end,
-                        'resourceId' => $plan->resourceId,
-                        'color' => $color_event,
-                        'stage_code'=> $plan->stage_code,
-                        'finished' => $plan->finished,
-                    ]);
+                // Ánh xạ room permission
+                $plan_waiting = $plan_waiting->map(function ($plan) use ($quota, $maintenance_category) {
+                if ($plan->stage_code <= 6) {
+                        $matched = $quota->where('intermediate_code', $plan->intermediate_code)
+                                        ->where('stage_code', $plan->stage_code);
+                } elseif ($plan->stage_code == 7) {
+                        $matched = $quota->where('finished_product_code', $plan->finished_product_code)
+                                        ->where('stage_code', $plan->stage_code);
+                } elseif ($plan->stage_code == 8) {
+                        $room_id = $maintenance_category->where('code', $plan->instrument_code)->pluck('room_id');
+                        $matched = $quota->whereIn('room_id', $room_id);
+                } else {
+                        $matched = collect();
                 }
 
-                if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
-                    $events->push([
-                        'plan_id' => $plan->id,
-                        'id' => "{$plan->id}-cleaning",
-                        'title' => $plan->title_clearning ?? 'Vệ sinh',
-                        'start' => $plan->start_clearning,
-                        'end' => $plan->end_clearning,
-                        'resourceId' => $plan->resourceId,
-                        'color' => '#a1a2a2ff',
-                        'stage_code'=> $plan->stage_code,
-                        'finished' => $plan->finished,
-                        'is_clearning' => true,
-                    ]);
-                }
-            }
+                $plan->permisson_room = $matched->pluck('code', "room_id")->unique();
+                return $plan;
+                });
+
+                return $plan_waiting;
         }
 
-        return $events;
-    }
+        // Hàm lấy resources
+        protected function getResources($production, $startDate, $endDate){
+                $roomStatus = $this->getRoomStatistics($startDate, $endDate);
+                $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
 
-    // Hàm lấy danh sách plan waiting
-    protected function getPlanWaiting($production)
-    {
-        $plan_waiting = DB::table('stage_plan')
-            ->whereNull('stage_plan.start')
-            ->where('stage_plan.active', 1)
-            ->where('stage_plan.deparment_code', $production)
-            ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-            ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
-            ->leftJoin('finished_product_category', function($join) {
-                $join->on('stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-                    ->where('stage_plan.stage_code', '<=', 7);
-            })
-            ->leftJoin('product_name', function($join) {
-                $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
-                    ->where('stage_plan.stage_code', '<=', 7);
-            })
-            ->leftJoin('maintenance_category', function($join) {
-                $join->on('stage_plan.product_caterogy_id', '=', 'maintenance_category.id')
-                    ->where('stage_plan.stage_code', '=', 8);
-            })
-            ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-            ->select(/* ... như bạn đang select ... */)
-            ->orderBy('stage_plan.order_by', 'asc')
-            ->get();
+                $statsMap = $roomStatus->keyBy('room_id');                
+                $yieldMap = $sumBatchQtyResourceId->keyBy('resourceId');
 
-        // Lấy quota & maintenance_category
-        $quota = $this->getQuota($production);
-        $maintenance_category = DB::table('maintenance_category')
-            ->where('active', 1)
-            ->where('deparment_code', $production)
-            ->get();
+                return DB::table('room')
+                ->select('id', 'code', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
+                ->where('active', 1)
+                ->where('room.deparment_code', $production)
+                ->orderBy('order_by', 'asc')
+                ->get()
+                ->map(function ($room) use ($statsMap, $yieldMap) {
+                        $stat = $statsMap->get($room->id);
+                        $yield = $yieldMap->get($room->id);
+                        $room->busy_hours = $stat->busy_hours ?? 0;
+                        $room->free_hours = $stat->free_hours ?? 0;
+                        $room->total_hours = $stat->total_hours ?? 0;
+                        $room->yield    = $yield->total_qty ?? 0;
+                        $room->unit  = $yield->unit ?? '';
+                        return $room;
+                });
+        }
 
-        // Ánh xạ room permission
-        $plan_waiting = $plan_waiting->map(function ($plan) use ($quota, $maintenance_category) {
-            if ($plan->stage_code <= 6) {
-                $matched = $quota->where('intermediate_code', $plan->intermediate_code)
-                                 ->where('stage_code', $plan->stage_code);
-            } elseif ($plan->stage_code == 7) {
-                $matched = $quota->where('finished_product_code', $plan->finished_product_code)
-                                 ->where('stage_code', $plan->stage_code);
-            } elseif ($plan->stage_code == 8) {
-                $room_id = $maintenance_category->where('code', $plan->instrument_code)->pluck('room_id');
-                $matched = $quota->whereIn('room_id', $room_id);
-            } else {
-                $matched = collect();
-            }
+        // Hàm view gọn hơn
+        public function view(Request $request){
+                $production = session('user')['production_code'];
 
-            $plan->permisson_room = $matched->pluck('code', "room_id")->unique();
-            return $plan;
-        });
+                if ($request->isMethod('put')) {
+                        $start = Carbon::parse($request->input('start'));
+                        $end   = Carbon::parse($request->input('end'));
 
-        return $plan_waiting;
-    }
+                        $resources = $this->getResources($production, $start, $end);
+                        $sumBatchByStage  = $this->yield($start, $end, "stage_code");
 
-    // Hàm lấy quota
-    protected function getQuota($production)
-    {
-        return DB::table('quota')
-            ->leftJoin('room', 'quota.room_id', '=', 'room.id')
-            ->where('quota.active', 1)
-            ->where('quota.deparment_code', $production)
-            ->get()
-            ->map(function ($item) {
-                $toSeconds = fn($time) => (($h = (int)explode(':',$time)[0]) * 3600) + ((int)explode(':',$time)[1] * 60);
-                $toTime = fn($seconds) => sprintf('%02d:%02d', floor($seconds / 3600), floor(($seconds % 3600) / 60));
-                $item->PM = $toTime($toSeconds($item->p_time) + $toSeconds($item->m_time));
-                return $item;
-            });
-    }
+                        return Inertia::render('FullCalender', [
+                                'resources' => $resources, 
+                                'sumBatchByStage' => $sumBatchByStage,
+                        ]);
+                }
 
-    // Hàm lấy resources
-    protected function getResources($production, $startDate, $endDate)
-    {
-        $roomStatus = $this->getRoomStatistics($startDate, $endDate);
-        $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
+                $events = $this->getEvents($production);
+                $plan_waiting = $this->getPlanWaiting($production);
+                $quota = $this->getQuota($production);
+                $sumBatchByStage = $this->yield(now()->startOfWeek(), now()->endOfWeek(), "stage_code");
+                $stageMap = DB::table('room')->pluck('stage_code','stage')->toArray();
+                $resources = $this->getResources($production, now()->startOfWeek(), now()->endOfWeek());
 
-        $statsMap = $roomStatus->keyBy('room_id');                
-        $yieldMap = $sumBatchQtyResourceId->keyBy('resourceId');
-
-        return DB::table('room')
-            ->select('id', 'code', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
-            ->where('active', 1)
-            ->where('room.deparment_code', $production)
-            ->orderBy('order_by', 'asc')
-            ->get()
-            ->map(function ($room) use ($statsMap, $yieldMap) {
-                $stat = $statsMap->get($room->id);
-                $yield = $yieldMap->get($room->id);
-                $room->busy_hours = $stat->busy_hours ?? 0;
-                $room->free_hours = $stat->free_hours ?? 0;
-                $room->total_hours = $stat->total_hours ?? 0;
-                $room->yield    = $yield->total_qty ?? 0;
-                $room->unit  = $yield->unit ?? '';
-                return $room;
-            });
-    }
-
-    // Hàm view gọn hơn
-    public function view(Request $request)
-    {
-        $production = session('user')['production_code'];
-
-        if ($request->isMethod('put')) {
-            $start = Carbon::parse($request->input('start'));
-            $end   = Carbon::parse($request->input('end'));
-
-            $resources = $this->getResources($production, $start, $end);
-            $sumBatchByStage  = $this->yield($start, $end, "stage_code");
-
-            return Inertia::render('FullCalender', [
-                'resources' => $resources, 
+                return Inertia::render('FullCalender', [
+                'title' => 'LỊCH SẢN XUẤT',
+                'user' => session('user'),
+                'events' => $events,
+                'resources' => $resources,
+                'plan' => $plan_waiting,
+                'quota' => $quota,
                 'sumBatchByStage' => $sumBatchByStage,
-            ]);
+                'stageMap' => $stageMap
+                ]);
         }
-
-        $events = $this->getEvents($production);
-        $plan_waiting = $this->getPlanWaiting($production);
-        $quota = $this->getQuota($production);
-        $sumBatchByStage = $this->yield(now()->startOfWeek(), now()->endOfWeek(), "stage_code");
-        $stageMap = DB::table('room')->pluck('stage_code','stage')->toArray();
-        $resources = $this->getResources($production, now()->startOfWeek(), now()->endOfWeek());
-
-        return Inertia::render('FullCalender', [
-            'title' => 'LỊCH SẢN XUẤT',
-            'user' => session('user'),
-            'events' => $events,
-            'resources' => $resources,
-            'plan' => $plan_waiting,
-            'quota' => $quota,
-            'sumBatchByStage' => $sumBatchByStage,
-            'stageMap' => $stageMap
-        ]);
-    }
-
-
-
-
 
         ////
         public function getInforSoure (Request $request) {
@@ -1735,4 +1507,372 @@ class SchedualController extends Controller
                 [$hours, $minutes] = explode(':', $time);
                 return ((int)$hours) * 60 + (int)$minutes;
         }
+
+
+
+
+                // Xem Calender
+        // public function view(Request $request){
+        //          $production = session ('user')['production_code'];
+
+        //         // Lấy Sản Lượng rồi return không chạy tiếp các hàm bên dưới
+        //         if ($request->isMethod('put')) {
+                       
+        //                 $start = $request->input('start');
+        //                 $end   = $request->input('end');
+
+        //                 // Tính thống kê theo khoảng thời gian
+        //                 $startDate = Carbon::parse($start);
+        //                 $endDate   = Carbon::parse($end);
+
+        //                 $roomStatus = $this->getRoomStatistics($startDate, $endDate);
+        //                 $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
+                        
+        //                 $statsMap = $roomStatus->keyBy('resourceId');
+        //                 $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
+
+        //                 $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
+
+                      
+        //                 // Gắn vào từng resource
+        //                 $resources = DB::table('room')
+        //                         ->select('id', DB::raw("CONCAT(name, '-', code) as title"), 'stage', 'production_group')
+        //                         ->where('active', 1)
+        //                         ->where('deparment_code', $production)
+        //                         ->orderBy('order_by', 'asc')
+        //                         ->get()
+        //                         ->map(function ($room) use ($statsMap, $yieldMap) {
+        //                                 $stat = $statsMap->get($room->id);
+        //                                 $yield = $yieldMap->get($room->id);
+
+        //                                 $room->busy_hours = $stat->busy_hours ?? 0;
+        //                                 $room->free_hours = $stat->free_hours ?? 0;
+        //                                 $room->total_hours = $stat->total_hours ?? 0;
+        //                                 $room->yield    = $yield->total_qty ?? 0;
+        //                                 return $room;
+        //                 });
+        //                 //dd ($sumBatchByStage);
+
+        //                 return Inertia::render('FullCalender', [
+        //                         'resources' => $resources, 
+        //                         'sumBatchByStage' => $sumBatchByStage,
+        //                 ]);
+        //         }       
+                
+        //         // Nếu là Get --> Load toàn bộ dữ liêu
+        //         $event_plans = DB::table('stage_plan')
+        //                 ->leftJoin('plan_master','stage_plan.plan_master_id','=','plan_master.id')
+        //                 ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
+        //                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
+        //                 ->where('stage_plan.active', 1)
+        //                 ->whereNotNull('stage_plan.start')
+        //                 ->where('stage_plan.deparment_code', $production)
+        //                 ->select(
+        //                 'stage_plan.id',
+        //                 'stage_plan.title',
+        //                 'stage_plan.start',
+        //                 'stage_plan.end',
+        //                 'stage_plan.start_clearning',
+        //                 'stage_plan.end_clearning',
+        //                 'stage_plan.title_clearning',
+        //                 'stage_plan.resourceId',
+        //                 'stage_plan.plan_master_id',
+        //                 'stage_plan.stage_code',
+        //                 'stage_plan.finished',
+        //                 'stage_plan.quarantine_time',
+        //                 'intermediate_category.intermediate_code',
+        //                 'plan_master.expected_date',
+        //                 'plan_master.after_weigth_date',
+        //                 'plan_master.before_weigth_date',
+        //                 'plan_master.after_parkaging_date',
+        //                 'plan_master.before_parkaging_date',
+        //                 'plan_master.is_val'
+        //                 )
+        //                 ->selectRaw("
+        //                 CASE 
+        //                 WHEN stage_plan.stage_code IN (1,2) 
+        //                         THEN CASE 
+        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
+        //                                 THEN intermediate_category.quarantine_weight * 24
+        //                                 ELSE intermediate_category.quarantine_weight
+        //                         END
+        //                 WHEN stage_plan.stage_code = 3 
+        //                         THEN CASE 
+        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
+        //                                 THEN intermediate_category.quarantine_preparing * 24
+        //                                 ELSE intermediate_category.quarantine_preparing
+        //                         END
+        //                 WHEN stage_plan.stage_code = 4 
+        //                         THEN CASE 
+        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
+        //                                 THEN intermediate_category.quarantine_blending * 24
+        //                                 ELSE intermediate_category.quarantine_blending
+        //                         END
+        //                 WHEN stage_plan.stage_code = 5 
+        //                         THEN CASE 
+        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
+        //                                 THEN intermediate_category.quarantine_forming * 24
+        //                                 ELSE intermediate_category.quarantine_forming
+        //                         END
+        //                 WHEN stage_plan.stage_code = 6 
+        //                         THEN CASE 
+        //                                 WHEN intermediate_category.quarantine_time_unit = 1 
+        //                                 THEN intermediate_category.quarantine_coating * 24
+        //                                 ELSE intermediate_category.quarantine_coating
+        //                         END
+        //                 ELSE 0
+        //                 END as quarantine_time_limit
+        //         ")
+        //         ->get();
+                               
+        //         $events = collect();
+        //         $groupedPlans = $event_plans->groupBy('plan_master_id');
+
+        //         //dd ($groupedPlans);
+        //         foreach ($groupedPlans as $plan_master_id => $plans) {
+        //                 $plans = $plans->sortBy('stage_code')->values(); // đảm bảo theo thứ tự stage
+        //                 $material_source_id = DB::table('plan_master')->where('id', $plan_master_id)->pluck ('material_source_id');
+
+        //                 for ($i = 0; $i < $plans->count(); $i++) {
+        //                         $plan = $plans[$i];
+        //                         $subtitle = null;
+        //                         if ($plan->stage_code <= 7){
+        //                                 $color_event = '#46f905ff';
+        //                         }elseif ($plan->stage_code == 8){
+        //                                 $color_event = '#003A4F';
+        //                         }else {
+        //                                 $color_event = '#eb0cb3ff';
+        //                         }
+                                
+        //                         // Lấy công đoạn trước (nếu có)
+        //                         $prevPlan = $i > 0 ? $plans[$i-1] : null;
+
+        //                         if ($plan->finished === 1) {
+        //                                 $color_event = '#002af9ff';
+        //                         } elseif ($plan->is_val === 1) {
+        //                                 $color_event = '#40E0D0'; 
+        //                         }
+                                
+        //                         // Nếu có công đoạn trước thì check biệt trữ
+        //                         if ($prevPlan && $plan->stage_code >2 && $plan->stage_code < 7){
+        //                                 $diffSeconds = (strtotime($plan->start) - strtotime($prevPlan->end))/ 3600; 
+        //                                 if ($diffSeconds > $prevPlan->quarantine_time_limit) {
+        //                                         $color_event = '#bda124ff';
+        //                                         $subtitle = 'Quá Hạn Biệt Trữ: ' . $diffSeconds . "h/" . $prevPlan->quarantine_time_limit . "h";
+        //                                 }
+        //                         } 
+                               
+        //                         if($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start && $plan->before_weigth_date < $plan->start){
+        //                                 $color_event = '#f99e02ff';
+        //                                 $subtitle = 'Nguyên Liệu Không Đáp Ứng: '. $plan->after_weigth_date . " - " . $plan->before_weigth_date;
+        //                         } elseif($plan->stage_code === 7 && $plan->after_parkaging_date > $plan->start && $plan->before_parkaging_date < $plan->start){
+        //                                 $color_event = '#f99e02ff';
+        //                                 $subtitle = 'Bao Bì Không Đáp Ứng: '. $plan->after_parkaging_date . " - " . $plan->before_parkaging_date;
+        //                         }
+        //                         $room_source = null;
+        //                         if ( $plan->stage_code >2 && $plan->stage_code < 7){
+        //                                 $room_source = DB::table('room_source')->where('intermediate_code', $plan->intermediate_code)->where('source_id', $material_source_id)->where ('room_id', $plan->resourceId)->exists();
+        //                                 if (!$room_source){
+        //                                         $color_event = '#dc02f9ff'; 
+        //                                         $subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
+        //                         }}
+
+        //                         if ($plan->expected_date < $plan->end && $plan->stage_code < 9){
+        //                                 $color_event = '#f90202ff';
+        //                                 $subtitle = 'Không Đáp Ứng Ngày Cần Hàng: '. $plan->expected_date;
+        //                                 if ($plan->stage_code == 8 ){
+        //                                         $subtitle = 'Không Đáp Ứng Hạn Bảo Trì: '. $plan->expected_date;
+        //                                 }                                      
+        //                         }
+        //                         //dd ($plan);
+        //                         // Event chính
+        //                         if ($plan->start && $plan->end) {
+        //                                 $events->push([
+        //                                         'plan_id' => $plan->id,
+        //                                         'id' => "{$plan->id}-main",
+        //                                         'title' => $plan->title . " " . $subtitle,
+        //                                         'name' => $name ?? null,
+        //                                         'batch' => $batch ?? null,
+        //                                         'market'=> $market ?? null,
+        //                                         'start' => $plan->start,
+        //                                         'end' => $plan->end,
+        //                                         'resourceId' => $plan->resourceId,
+        //                                         'color' =>  $color_event,
+        //                                         'plan_master_id'=> $plan->plan_master_id,
+        //                                         'stage_code'=> $plan->stage_code,
+        //                                         'is_clearning' => false,
+        //                                         'finished' => $plan->finished,
+        //                                         'room_source' => $room_source,
+        //                                 ]);
+        //                         }
+
+        //                         // Event vệ sinh
+        //                         if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
+        //                                 $events->push([
+        //                                         'plan_id' => $plan->id,
+        //                                         'id' => "{$plan->id}-cleaning",
+        //                                         'title' => $plan->title_clearning ?? 'Vệ sinh',
+        //                                         'start' => $plan->start_clearning,
+        //                                         'end' => $plan->end_clearning,
+        //                                         'resourceId' => $plan->resourceId,
+        //                                         'color' => '#a1a2a2ff',
+        //                                         'plan_master_id'=> $plan->plan_master_id,
+        //                                         'stage_code'=> $plan->stage_code,
+        //                                         'is_clearning' => true,
+        //                                         'finished' => $plan->finished
+        //                                 ]);
+        //                         }
+        //                 }
+        //         }
+       
+        //         $plan_waiting = DB::table('stage_plan')
+        //                 ->whereNull('stage_plan.start')
+        //                 ->where('stage_plan.active', 1)
+        //                 ->where('stage_plan.deparment_code', $production)
+        //                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+        //                 ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+        //                 ->leftJoin('finished_product_category', function($join) {
+        //                         $join->on('stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+        //                         ->where('stage_plan.stage_code', '<=', 7);
+        //                 })
+        //                 ->leftJoin('product_name', function($join) {
+        //                         $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
+        //                         ->where('stage_plan.stage_code', '<=', 7);
+        //                 })
+        //                 ->leftJoin('maintenance_category', function($join) {
+        //                         $join->on('stage_plan.product_caterogy_id', '=', 'maintenance_category.id')
+        //                         ->where('stage_plan.stage_code', '=', 8);
+        //                 })
+        //                 ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+        //                 ->select(
+        //                         'stage_plan.*',
+        //                         'plan_master.batch',
+        //                         'plan_master.expected_date',
+        //                         'plan_master.is_val',
+        //                         'plan_master.note',
+        //                         'plan_master.level',
+        //                         'plan_master.after_weigth_date',
+        //                         'plan_master.before_weigth_date',
+        //                         'plan_master.after_parkaging_date',
+        //                         'plan_master.before_parkaging_date',
+        //                         'plan_master.material_source_id',
+        //                         'plan_master.only_parkaging',
+        //                         'plan_master.percent_parkaging',
+        //                         'market.code as market',
+        //                         'source_material.name as source_material_name',
+        //                         'finished_product_category.intermediate_code',
+        //                         'finished_product_category.finished_product_code',
+        //                         DB::raw("CASE 
+        //                                 WHEN stage_plan.stage_code <= 7 THEN product_name.name
+        //                                 ELSE maintenance_category.name END as name"),
+        //                         DB::raw("CASE 
+        //                                 WHEN stage_plan.stage_code = 8 THEN maintenance_category.code  END as instrument_code"),
+        //                         DB::raw("CASE 
+        //                                 WHEN stage_plan.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
+        //                 )
+        //                 ->orderBy('stage_plan.order_by', 'asc')
+        //         ->get();
+        
+        //         //dd ($plan_waiting);
+        //         $maintenance_category = DB::table('maintenance_category')
+        //         ->where('active', 1)
+        //         ->where('deparment_code', $production)
+        //         ->get();
+
+        //         $quota = DB::table('quota')
+        //                 ->leftJoin('room', 'quota.room_id', '=', 'room.id')
+        //                 ->where('quota.active', 1)
+        //                 ->where('quota.deparment_code', $production)
+        //                 ->get()
+        //                 ->map(function ($item) {
+        //                         // Hàm chuyển từ "H:i" sang giây
+        //                         $toSeconds = function ($time) {
+        //                         [$h, $m] = explode(':', $time);
+        //                         return ((int)$h * 3600) + ((int)$m * 60);
+        //                         };
+
+        //                         // Hàm chuyển từ giây về "H:i"
+        //                         $toTime = function ($seconds) {
+        //                         $h = floor($seconds / 3600);
+        //                         $m = floor(($seconds % 3600) / 60);
+        //                         return sprintf('%02d:%02d', $h, $m);
+        //                         };
+
+        //                         // Tính các giá trị thời gian
+        //                         $p = $toSeconds($item->p_time);
+        //                         $m = $toSeconds($item->m_time);
+        //                         $c1 = $toSeconds($item->C1_time);
+        //                         $c2 = $toSeconds($item->C2_time);
+
+        //                         // Gán thêm các cột tổng hợp
+        //                         $item->PM = $toTime($p + $m);
+        //                         return $item;
+        //         });
+                
+
+        //         $plan_waiting = $plan_waiting->map(function ($plan) use ($quota, $maintenance_category) {
+        //                 if ($plan->stage_code <= 6) {
+        //                         $matched = $quota->where('intermediate_code', $plan->intermediate_code)
+        //                                         ->where('stage_code', $plan->stage_code);
+        //                 } elseif ($plan->stage_code == 7) {
+        //                         $matched = $quota->where('finished_product_code', $plan->finished_product_code)
+        //                                         ->where('stage_code', $plan->stage_code);
+        //                 } elseif ($plan->stage_code == 8) {
+        //                         $room_id = $maintenance_category->where('code', $plan->instrument_code)->pluck('room_id'); 
+        //                         $matched = $quota->whereIn('room_id', $room_id);                 
+        //                 } else {
+        //                         $matched = collect(); // không match
+        //                 }
+
+        //                 $plan->permisson_room = $matched->pluck('code', "room_id")->unique();
+        //                 return $plan;
+        //         });  
+                
+
+        //         // tính sản lượng trong khoảng thời gian
+        //         $startDate = now()->startOfWeek(Carbon::MONDAY);
+        //         $endDate = now()->endOfWeek(Carbon::SUNDAY);
+
+        //         $roomStatus = $this->getRoomStatistics($startDate, $endDate);
+        //         $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
+        //         $statsMap = $roomStatus->keyBy('room_id');                
+               
+        //         $yieldMap     = $sumBatchQtyResourceId->keyBy('resourceId');
+        //         $sumBatchByStage  = $this->yield($startDate, $endDate, "stage_code");
+        //         $stageMap = DB::table('room')->pluck('stage_code','stage' )->toArray();
+        //         //dd ($sumBatchQtyResourceId);
+        //         // Gắn vào từng resource
+        //         $resources = DB::table('room')
+        //                 ->select('id', 'code', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
+        //                 ->where('active', 1)
+        //                 ->where('room.deparment_code', $production)
+        //                 ->orderBy('order_by', 'asc')
+        //                 ->get()
+        //                 ->map(function ($room) use ($statsMap, $yieldMap) {
+        //                         $stat = $statsMap->get($room->id);
+        //                         $yield = $yieldMap->get($room->id);
+        //                         $room->busy_hours = $stat->busy_hours ?? 0;
+        //                         $room->free_hours = $stat->free_hours ?? 0;
+        //                         $room->total_hours = $stat->total_hours ?? 0;
+        //                         $room->yield    = $yield->total_qty ?? 0;
+        //                         $room->unit  = $yield->unit ?? '';
+        //                         return $room;
+        //         });
+
+                
+              
+        //         //dd ($plan_waiting, $sumBatchByStage, $stageMap, $quota);
+        //         //dd ($events);
+        //         return Inertia::render('FullCalender', [
+        //                 'title' => 'LỊCH SẢN XUẤT',
+        //                 'user' => session('user'),
+        //                 'events' => $events,
+        //                 'resources' => $resources,
+        //                 'plan' => $plan_waiting,
+        //                 'quota' => $quota,
+        //                 'sumBatchByStage' => $sumBatchByStage,
+        //                 'stageMap' => $stageMap
+
+        //         ]);
+        // }
 
