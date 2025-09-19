@@ -22,7 +22,7 @@
      @if(session('user'))
     <div class="col-sm-2 md-2">
         <div class="info">
-          <a href="#" class="d-block"> 🧑‍💼 {{ session('user')['fullName'] }} </a>
+          <a href="#" class="d-block"> 👤 {{ session('user')['fullName'] }} </a>
           <a href="#" class="d-block"> 🛡️ {{ session('user')['userGroup'] }} </a>
         </div>
 
