@@ -79,7 +79,7 @@ class SchedualController extends Controller
                         END as quarantine_time_limit
                 ")
                 ->get();
-
+                
                 $events = collect();
                 $groupedPlans = $event_plans->groupBy('plan_master_id');
 
@@ -142,19 +142,7 @@ class SchedualController extends Controller
                                         }                                      
                                 }
                         
-                        if ($plan->start && $plan->end) {
-                        $events->push([
-                                'plan_id' => $plan->id,
-                                'id' => "{$plan->id}-main",
-                                'title' => $plan->title . " " . $subtitle,
-                                'start' => $plan->start,
-                                'end' => $plan->end,
-                                'resourceId' => $plan->resourceId,
-                                'color' => $color_event,
-                                'stage_code'=> $plan->stage_code,
-                                'finished' => $plan->finished,
-                        ]);
-                        }
+             
                          // Event chính
                         if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
                         $events->push([
@@ -193,6 +181,7 @@ class SchedualController extends Controller
                         }
                 }
                 }
+                
                 
                 return $events;
                 
@@ -342,6 +331,7 @@ class SchedualController extends Controller
                 $stageMap = DB::table('room')->pluck('stage_code','stage')->toArray();
                 $resources = $this->getResources($production, now()->startOfWeek(), now()->endOfWeek());
 
+                //dd ($events);
                 return Inertia::render('FullCalender', [
                 'title' => 'LỊCH SẢN XUẤT',
                 'user' => session('user'),
@@ -392,94 +382,101 @@ class SchedualController extends Controller
 
                 DB::beginTransaction();
                 try {
-                $products = collect($request->products);
-                $current_start = Carbon::parse($request->start);       
-                foreach ($products as $index => $product) {
-                        if ($index === 0 && $product['stage_code'] !== 9) {
-                                if ($product['stage_code'] < 7) {
-                                $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;    
-                                } else if ($product['stage_code'] === 7) {
-                                $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;                                            
-                                }
-                        
-                                $quota = DB::table('quota')
-                                ->select(
-                                        'room_id', 'p_time', 'm_time', 'C1_time', 'C2_time', 
-                                        DB::raw('(TIME_TO_SEC(p_time)/3600) as p_time_hours'),
-                                        DB::raw('(TIME_TO_SEC(m_time)/3600) as m_time_hours'),
-                                        DB::raw('(TIME_TO_SEC(C1_time)/3600) as C1_time_hours'),
-                                        DB::raw('(TIME_TO_SEC(C2_time)/3600) as C2_time_hours')
-                                )
-                                ->where('process_code', $process_code)
-                                ->first(); 
+                        $products = collect($request->products);
+                        $current_start = Carbon::parse($request->start);       
+                        foreach ($products as $index => $product) {
+                                if ($index === 0 && $product['stage_code'] !== 9) {
+                                        if ($product['stage_code'] < 7) {
+                                        $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;    
+                                        } else if ($product['stage_code'] === 7) {
+                                        $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;                                            
+                                        }
                                 
-                                $p_time_minutes  = toMinutes($quota->p_time);
-                                $m_time_minutes  = toMinutes($quota->m_time);
-                                $C1_time_minutes = toMinutes($quota->C1_time);
-                                $C2_time_minutes = toMinutes($quota->C2_time);    
-                        }elseif ($index === 0 && $product['stage_code'] === 9) {
-                                $p_time_minutes  = 30;
-                                $m_time_minutes  = 60;
-                                $C1_time_minutes = 30;
-                                $C2_time_minutes = 60;  
-                        }
-                        if ($product['stage_code'] === 1) {
-                                $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
-                                $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
-                                $clearning_type = "VS-II";
-                        }else {
-                                if ($products->count() === 1) {
-                                        $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
-                                        $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
-                                        $clearning_type = "VS-II"; 
-                                } else {
-                                        if ($index === 0) {
-                                        $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
-                                        $end_clearning = $end_man->copy()->addMinutes($C1_time_minutes);
-                                        $clearning_type = "VS-I";
-                                        } else if ($index === $products->count() - 1) {
+                                        $quota = DB::table('quota')
+                                        ->select(
+                                                'room_id', 'p_time', 'm_time', 'C1_time', 'C2_time', 
+                                                DB::raw('(TIME_TO_SEC(p_time)/3600) as p_time_hours'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/3600) as m_time_hours'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/3600) as C1_time_hours'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/3600) as C2_time_hours')
+                                        )
+                                        ->where('process_code', $process_code)
+                                        ->first(); 
+                                        
+                                        $p_time_minutes  = toMinutes($quota->p_time);
+                                        $m_time_minutes  = toMinutes($quota->m_time);
+                                        $C1_time_minutes = toMinutes($quota->C1_time);
+                                        $C2_time_minutes = toMinutes($quota->C2_time);    
+                                }elseif ($index === 0 && $product['stage_code'] === 9) {
+                                        $p_time_minutes  = 30;
+                                        $m_time_minutes  = 60;
+                                        $C1_time_minutes = 30;
+                                        $C2_time_minutes = 60;  
+                                }
+                                if ($product['stage_code'] === 1) {
                                         $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
                                         $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
                                         $clearning_type = "VS-II";
+                                }else {
+                                        if ($products->count() === 1) {
+                                                $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
+                                                $clearning_type = "VS-II"; 
                                         } else {
-                                        $end_man = $current_start->copy()->addMinutes($m_time_minutes);
-                                        $end_clearning = $end_man->copy()->addMinutes($C1_time_minutes);
-                                        $clearning_type = "VS-I";
+                                                if ($index === 0) {
+                                                $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes($C1_time_minutes);
+                                                $clearning_type = "VS-I";
+                                                } else if ($index === $products->count() - 1) {
+                                                $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
+                                                $clearning_type = "VS-II";
+                                                } else {
+                                                $end_man = $current_start->copy()->addMinutes($m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes($C1_time_minutes);
+                                                $clearning_type = "VS-I";
+                                                }
                                         }
                                 }
+
+                                DB::table('stage_plan')
+                                        ->where('id', $product['id'])
+                                        ->update([
+                                        'start'           => $current_start,
+                                        'end'             => $end_man,
+                                        'start_clearning' => $end_man,
+                                        'end_clearning'   => $end_clearning,
+                                        'resourceId'      => $request->room_id,
+                                        'title'           => $product['stage_code'] ===9? ($product['title']. "-" . $product['batch'] ): ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
+                                        'title_clearning' => $clearning_type,
+                                        'schedualed'      => 1,
+                                        'schedualed_by'   => session('user')['fullName'],
+                                        'schedualed_at'   => now(),
+                                        ]);
+
+                                if ($product['stage_code'] === 1){
+                                        $current_start = $current_start;
+                                }else{
+                                        $current_start = $end_clearning;
+                                }
+
+
+                        //return response()->json(['status' => 'success', 'events' => $events], 200);
                         }
+                        DB::commit();
 
+                        $events = $this->getEvents(session('user')['production_code']);
 
-                        
                 
-                        DB::table('stage_plan')
-                                ->where('id', $product['id'])
-                                ->update([
-                                'start'           => $current_start,
-                                'end'             => $end_man,
-                                'start_clearning' => $end_man,
-                                'end_clearning'   => $end_clearning,
-                                'resourceId'      => $request->room_id,
-                                'title'           => $product['stage_code'] ===9? ($product['title']. "-" . $product['batch'] ): ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
-                                'title_clearning' => $clearning_type,
-                                'schedualed'      => 1,
-                                'schedualed_by'   => session('user')['fullName'],
-                                'schedualed_at'   => now(),
-                                ]);
-
-                        if ($product['stage_code'] === 1){
-                                $current_start = $current_start;
-                        }else{
-                                $current_start = $end_clearning;
-                        }
-                        
-                }
-                DB::commit();
+                 
+                
                 } catch (\Exception $e) {
                         DB::rollBack();
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
                 }
+                
+                return back();
         }
 
         public function store_maintenance (Request $request){

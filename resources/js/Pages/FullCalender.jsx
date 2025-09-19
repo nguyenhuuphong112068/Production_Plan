@@ -24,8 +24,7 @@ import Selecto from "react-selecto";
     
     const calendarRef = useRef(null);
     moment.locale('vi');
-    const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props ?? {};
-
+    const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props 
     const [showSidebar, setShowSidebar] = useState(false);
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
     const [cleaningHidden, setCleaningHidden] = useState(false);
@@ -41,6 +40,11 @@ import Selecto from "react-selecto";
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
     const [selectedRows, setSelectedRows] = useState([]);
     const [showNoteModal, setShowNoteModal] = useState(false);
+
+     const [calendarEvents, setCalendarEvents] = useState(events || []);
+      useEffect(() => {
+           setCalendarEvents(events || []);
+      }, [events]);
 
     //Get dư liệu row được chọn 
     useEffect(() => {
@@ -212,14 +216,6 @@ import Selecto from "react-selecto";
           replace: true,
           only: ['resources', 'sumBatchByStage'],
 
-          onSuccess: (page) => {
-            console.log("Inertia thành công:", page);
-          },
-
-          onError: (errors) => {
-            console.error("Lỗi Inertia:", errors);
-          },
-
           onFinish: () => {
             console.log("Request đã kết thúc");
             setTimeout(() => {
@@ -280,14 +276,15 @@ import Selecto from "react-selecto";
     };
  
     // Nhân Dữ liệu để tạo mới event
-    const handleEventReceive = async (info) => {
-     
+    const handleEventReceive = useCallback(async (info) => {
+      
+      
       // chưa chọn row
       const start = info.event.start;
       const now = new Date();
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
       info.event.remove(); 
-    
+      console.log("1")
       if (selectedRows.length === 0 ){
           Swal.fire({
             icon: 'warning',
@@ -351,9 +348,12 @@ import Selecto from "react-selecto";
               products: selectedRows,
               }, {
                 preserveScroll: true,
-                onSuccess: () => {
-                  setSelectedRows([]);
-                  },
+                only: ['events'],
+                onFinish: () => {
+                    console.log (events)
+                    setSelectedRows([]);
+                },
+
                 onError: (errors) => console.error('Lỗi tạo lịch', errors),
           });
       }else if (selectedRows[0].stage_code == 8){
@@ -371,7 +371,7 @@ import Selecto from "react-selecto";
           });
       }
 
-    };
+    });
 
     // Ẩn hiện sự kiện vệ sinh
     const toggleCleaningEvents = () => {
@@ -934,7 +934,6 @@ import Selecto from "react-selecto";
         
         slotDuration= "00:15:00"
         eventDurationEditable={true}
-        resourceEditable={true}
         eventStartEditable={true} 
       
         eventClick={handleEventClick}
@@ -969,7 +968,6 @@ import Selecto from "react-selecto";
           
         }}
 
-
         resourceGroupField="stage"
         resourceGroupLabelContent={(arg) => {
           const stage_code = stageMap[arg.groupValue] || {};
@@ -990,7 +988,6 @@ import Selecto from "react-selecto";
           );
 
         }}
-
         resourceLabelContent={(arg) => {
           const res = arg.resource.extendedProps;
           const busy = parseFloat(res.busy_hours) || 0;
@@ -1367,7 +1364,7 @@ import Selecto from "react-selecto";
 
         {/* Selecto cho phép quét chọn nhiều .fc-event */}
         <Selecto
-            onDragStart={(e) => {
+          onDragStart={(e) => {
               
               // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
               if (!e.inputEvent.shiftKey) {
