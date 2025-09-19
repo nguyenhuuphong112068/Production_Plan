@@ -11,7 +11,7 @@ class MarketController extends Controller
 {
         public function index(){
                
-                $datas = DB::table('Market')->orderBy('name','asc')->get();
+                $datas = DB::table('market')->orderBy('name','asc')->get();
                 session()->put(['title'=> 'DỮ LIỆU GỐC - THỊ TRƯỜNG']);
                 return view('pages.materData.Market.list',['datas' => $datas]);
         }
