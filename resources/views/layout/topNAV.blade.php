@@ -1,35 +1,29 @@
-  <nav class="main-header navbar navbar-expand navbar-white navbar-light fixed-top">
-    <!-- Left navbar links -->
-    <div class="col-sm-2 md-2">
-      <ul class="navbar-nav">
 
-        <li class="nav-item">
-          <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i> </a>
-        </li>
+<nav class="main-header navbar navbar-expand navbar-white navbar-light fixed-top">
+  <!-- Left navbar links -->
+  <ul class="navbar-nav">
+      <li class="nav-item">
+          <a class="nav-link ms-5" data-widget="pushmenu" href="#" role="button">
+              <i class="fas fa-bars"></i>
+          </a>
+      </li>
+  </ul>
 
-        <li class="nav-item d-none d-sm-inline-block">
-          <a href="{{ route ('logout') }}" class="nav-link">Log Out</a>
-        </li>
-    
-      </ul>
-    </div>
-    <!-- Title Center -->
-    <div class="col-sm-8 md-8 d-flex justify-content-center align-items-center" style = "color: #CDC717">
-          <h4> {{ session('title') }} </h4>
-    </div>
+  <!-- Title Center -->
+  <div class="mx-auto text-center" style="color: #CDC717">
+      <h4>{{ session('title') }}</h4>
+  </div>
 
-    <!-- Right User infor  -->
-     @if(session('user'))
-    <div class="col-sm-2 md-2">
-        <div class="info">
-          <a href="#" class="d-block"> 👤 {{ session('user')['fullName'] }} </a>
-          <a href="#" class="d-block"> 🛡️ {{ session('user')['userGroup'] }} </a>
-        </div>
-
-
-    </div>
-    @endif
-
-    
-
-  </nav>
+  <!-- Right User Info + Logout -->
+  <ul class="navbar-nav ms-auto">
+      <li class="nav-item d-flex flex-column justify-content-center align-items-end me-3 mr-5">
+          <span>👤 {{ session('user')['fullName'] }}</span>
+          <span>🛡️ {{ session('user')['userGroup'] }}</span>
+      </li>
+      <li class="nav-item">
+          <a href="{{ route('logout') }}" class="nav-link text-primary" style="font-size: 20px">
+              <i class="fas fa-sign-out-alt"></i>
+          </a>
+      </li>
+  </ul>
+</nav>

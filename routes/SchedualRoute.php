@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Route;
         ->name('pages.Schedual.')
         ->middleware(CheckLogin::class)
         ->group(function(){
-
-                Route::match(['get', 'put'], 'view', 'view');
+                Route::get('','index')->name('index'); 
+                Route::get('view', 'view')->name('view');
                 Route::put('finished','finished')->name('finished'); 
                 Route::put('deActive','deActive')->name('deActive');
                 Route::put('deActiveAll','deActiveAll')->name('deActiveAll');
@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Route;
                 Route::put('update', 'update')->name('update');
                 Route::put('addEventContent/{id}', 'addEventContent')->name('addEventContent');
                 Route::put('update', 'update')->name('update');
+                Route::put('getSumaryData', 'getSumaryData')->name('getSumaryData');
 
                 // Sắp Thứ Tự Trong Bảng KH CD
                 Route::put('updateOrder', 'updateOrder')->name('updateOrder');

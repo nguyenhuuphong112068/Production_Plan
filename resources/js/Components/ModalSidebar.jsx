@@ -13,7 +13,7 @@ import Swal from 'sweetalert2';
 
 
 
-const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentShow,  selectedRows,setSelectedRows, resources }) => {
+const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources }) => {
 
 
   const [stageFilter, setStageFilter] = useState(1);
@@ -21,7 +21,7 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
   const [searchTerm, setSearchTerm] = useState(""); 
   const sizes = ["close", "100%" ,"30%" ];
   const [currentIndex, setCurrentIndex] = useState(1);
-  const [tableData, setTableData] = useState(events);
+  const [tableData, setTableData] = useState(waitPlan);
   const [showModalCreate, setShowModalCreate] = useState(false); 
   const [showModalQuota, setShowModalQuota] = useState(false); 
   const [orderPlan, setOrderPlan] = useState({checkedClearning: false, title: null, batch: "NA", level: 1});
@@ -511,8 +511,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
       
   }
    
-
-
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
@@ -533,10 +531,19 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
     
   return (
     <div
-      id="external-events"
-      className={`fixed top-0 right-0 h-full z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
-      style={{ width: percentShow, boxShadow: '2px 0 10px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' }}
+        id="external-events"
+        className={`absolute right-0 h-full z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{
+          width: percentShow,
+          maxWidth: "100%", // ✅ tối đa bằng content-wrapper
+          boxShadow: "2px 0 10px rgba(0,0,0,0.3)",
+          display: "flex",
+          flexDirection: "column",
+          top: "40px"
+        }}
     >
+
+    
       {/* Thanh điều khiển */}
       <div className="p-4 border-b">
         <Row className="align-items-center">
@@ -669,7 +676,6 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
             />
           ))}
         </DataTable>
-
 
       </div>
       {/* Thêm Kế Hoạch Khác */}
@@ -886,9 +892,8 @@ const ModalSidebar = ({ visible, onClose, events = [], percentShow, setPercentSh
                 </Modal.Footer>
       </Modal>
 
-
-
     </div>
+    
   );
 };
 
