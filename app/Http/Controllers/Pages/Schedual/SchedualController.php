@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Inertia\Inertia;
 use Carbon\Carbon;
 
 class SchedualController extends Controller
@@ -208,7 +207,7 @@ class SchedualController extends Controller
                 });
         }
 
-        protected function getPlanWaiting($production){
+        public function getPlanWaiting($production){
                 $plan_waiting = DB::table('stage_plan')
                         ->whereNull('stage_plan.start')
                         ->where('stage_plan.active', 1)
@@ -815,6 +814,9 @@ class SchedualController extends Controller
         
                 DB::statement($updateQuery);
 
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
         }
 
         public function createManualCampain(Request $request){
@@ -850,12 +852,15 @@ class SchedualController extends Controller
                                 ]);
                         }
                         
-
                        
                 }}  catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['error' => 'Lỗi hệ thống'], 500);
                 }
+
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
         }
 
         public function createAutoCampain(){
@@ -953,12 +958,15 @@ class SchedualController extends Controller
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['error' => 'Lỗi hệ thống'], 500);
                 }
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
         }
 
         public function createOrderPlan (Request $request) {          
-                //dd ($request->all());
+                
                 try {
-                DB::transaction(function () use ($request) {
+                        DB::transaction(function () use ($request) {
                         $planMasterId = DB::table('plan_master')->insertGetId([
                                 'plan_list_id'        => 0,
                                 'product_caterogy_id' => 0,
@@ -973,8 +981,8 @@ class SchedualController extends Controller
                                 'created_at'          => now(),
                                 'prepared_by'         => session('user')['fullName'],
                         ]);
-                      
-                        for ($i = 1; $i  <= $request->number_of_batch; $i++) {
+                        $number_of_batch = $request->number_of_batch??1;
+                        for ($i = 1; $i  <= $number_of_batch; $i++) {
                                 // Insert stage_plan và gán plan_master_id
                                 DB::table('stage_plan')->insert([
                                         'plan_list_id'        => 0,
@@ -991,13 +999,18 @@ class SchedualController extends Controller
                                         'created_date'        => now(),
                                 ]);
                         }
-                       
-                
+
+
                 });  
 
                 } catch (\Exception $e) {
-                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);       
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]); 
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);      
                 }
+                
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
 
         }
 
@@ -1015,7 +1028,12 @@ class SchedualController extends Controller
                         ]);
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500); 
                 }
+                
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
 
         }
 

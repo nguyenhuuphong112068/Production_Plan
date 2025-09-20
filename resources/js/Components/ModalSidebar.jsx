@@ -6,11 +6,10 @@ import { InputText } from 'primereact/inputtext';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Row, Col, Modal, Form } from 'react-bootstrap';
 import { Checkbox } from 'primereact/checkbox';
-import { router } from '@inertiajs/react';
 import './ModalSidebar.css'
 import { InputSwitch } from 'primereact/inputswitch';
 import Swal from 'sweetalert2'; 
-
+import axios from "axios";
 
 
 const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources }) => {
@@ -265,12 +264,25 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
       // Cập nhật state
       setTableData(updateOrderData);
-
       // Gửi lên server
-      router.put('/Schedual/updateOrder', { updateOrderData: payload }, {
-        onSuccess: () => console.log('Đã cập nhật thứ tự'),
-        onError: (errors) => console.error('Lỗi cập nhật', errors),
-      });
+      axios.put('/Schedual/updateOrder', { updateOrderData: payload })
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
 
       return;
     }
@@ -312,10 +324,24 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     setTableData(updateOrderData);
 
 
-    router.put('/Schedual/updateOrder', { updateOrderData: payload }, {
-      onSuccess: () => console.log('Đã cập nhật thứ tự'),
-      onError: (errors) => console.error('Lỗi cập nhật', errors),
-    });
+    axios.put('/Schedual/updateOrder', { updateOrderData: payload })
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
 
   };
 
@@ -329,37 +355,59 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         code: row.code,
       }));
 
-      router.put('/Schedual/createManualCampain', { data: filteredRows }, {
-        onSuccess: () =>  console.log('Đã cập nhật thứ tự'),
-        onError: (errors) => console.error('Lỗi cập nhật', errors),
-      });
+      axios.put('/Schedual/createManualCampain', { data: filteredRows })
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
+
 
       setSelectedRows ([]);
       return;
   }
 
   const handleCreateAutoCampain = () => {
-      router.put('/Schedual/createAutoCampain', {
-        onSuccess: () => {
-            Swal.fire({
-              title: 'Thành công!',
-              text: 'Đã cập nhật thứ tự.',
-              icon: 'success',
-              confirmButtonText: 'OK'
-            }).then(() => {
-              setSelectedRows([]);
-            });
-          },
-          onError: (errors) => {
-            Swal.fire({
-              title: 'Lỗi!',
-              text: 'Có lỗi khi cập nhật: ' + (errors?.message || ''),
-              icon: 'error',
-              confirmButtonText: 'Đóng'
-            });
-            console.error('Lỗi cập nhật', errors);
-          },
-        });
+
+      axios.put('/Schedual/createAutoCampain')
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                    Swal.fire({
+                      title: 'Hoàn Thành!',
+                      text: 'Tạo Mã Chiến Dịch Thành Công',
+                      icon: 'success',
+                      confirmButtonText: 'OK'
+                    }).then(() => {
+                      setSelectedRows([]);
+                    });
+
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
 
   }
 
@@ -376,63 +424,72 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
         return
       }
-
-       router.put('/Schedual/createOrderPlan', orderPlan, {
-        onSuccess: () => {
-            setShowModalCreate (false)
-            Swal.fire({
-              title: 'Thành công!',
-              text: 'Tạo Mới Kế Hoạch Khác',
-              icon: 'success',
-              showConfirmButton: false,
-              timer: 1000 
-            }).then(() => {
-              setOrderPlan({});
-              setErrorsModal ({})
-            });
-          },
-          onError: (errors) => {
-            
-            Swal.fire({
-              title: 'Lỗi!',
-              text: 'Có lỗi khi cập nhật: ' + (errors?.message || ''),
-              icon: 'error',
-              confirmButtonText: 'Đóng'
-            });
-            console.error('Lỗi cập nhật', errors);
-          },
-        });
-
-     
+      
+      axios.put('/Schedual/createOrderPlan', orderPlan)
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                    setShowModalCreate (false)
+                    Swal.fire({
+                      title: 'Thành công!',
+                      text: 'Tạo Mới Kế Hoạch Khác',
+                      icon: 'success',
+                      showConfirmButton: false,
+                      timer: 1500 
+                    }).then(() => {
+                      setOrderPlan({});
+                      setErrorsModal ({})
+                    });
+                    
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );    
   }
 
   const handleDeActiveOrderPlan = () => {
 
-    router.put('/Schedual/DeActiveOrderPlan',  selectedRows , {
-        onSuccess: () => {
-            setShowModalCreate (false)
-            Swal.fire({
-              title: 'Thành công!',
-              text: 'Tạo Mới Kế Hoạch Khác',
-              icon: 'success',
-              showConfirmButton: false,
-              timer: 1000 
-            }).then(() => {
-              setOrderPlan({});
-              setErrorsModal ({})
-            });
-          },
-          onError: (errors) => {
-            
-            Swal.fire({
-              title: 'Lỗi!',
-              text: 'Có lỗi khi cập nhật: ' + (errors?.message || ''),
-              icon: 'error',
-              confirmButtonText: 'Đóng'
-            });
-            console.error('Lỗi cập nhật', errors);
-          },
-        });
+      axios.put('/Schedual/DeActiveOrderPlan', selectedRows)
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                    setShowModalCreate (false)
+                    Swal.fire({
+                      title: 'Thành công!',
+                      text: 'Xóa Sự Kiện Khác Thành Công',
+                      icon: 'success',
+                      showConfirmButton: false,
+                      timer: 1500 
+                    }).then(() => {
+                      setOrderPlan({});
+                      setErrorsModal ({})
+                    });
+                    
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      ); 
+
   }
 
   const naBody = (field) => (rowData) => {
@@ -490,24 +547,39 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const handleCreateQuota = () => {
     if (isSaving) return;
     setIsSaving(true);
+    axios.put('/quota/production/store', modalQuotaData)
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
 
-     router.put('/quota/production/store', modalQuotaData, {
-       onSuccess: () => {
-                   Swal.fire({
-                     icon: 'success',
-                     title: 'Hoàn Thành Sắp Lịch',
-                     timer: 1000,
-                     showConfirmButton: false,
-                   });
-                   setShowModalQuota(false);
-                   setErrorsModal ({})
-                   setIsSaving(false);
-                 },
-        onError: (errors) => {
-            setErrorsModal (errors)
-            setIsSaving(false);
-        },
-      });
+                    Swal.fire({
+                      title: 'Thành công!',
+                      text: 'Hoàn Thành Tạo Mới Định Mức',
+                      icon: 'success',
+                      showConfirmButton: false,
+                      timer: 1500 
+                    }).then(() => {
+                        setShowModalQuota(false);
+                        setErrorsModal ({})
+                        setIsSaving(false);
+                    });
+                    
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    setErrorsModal (errors)
+                    setIsSaving(false);
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      ); 
       
   }
    

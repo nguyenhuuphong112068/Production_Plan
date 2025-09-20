@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\Pages\Schedual\SchedualController;
 
 class ProductionQuotaController extends Controller
 {
@@ -199,7 +200,11 @@ class ProductionQuotaController extends Controller
                 }
 
                 DB::table('quota')->insert($dataToInsert);
-
+                
+                $SchedualController = new SchedualController();
+                return response()->json([
+                        'plan' => $SchedualController->getPlanWaiting(session('user')['production_code'])
+                ]);
 
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
