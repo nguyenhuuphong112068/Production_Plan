@@ -265,7 +265,7 @@
             <ul class="nav nav-treeview">
 
               <li class="nav-item">
-                <a href="/Schedual/view" class="nav-link">
+                <a href="/Schedual" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p> Lập Lịch </p>
                 </a>

@@ -32,7 +32,10 @@
       
       <style>
             body.modal-open {
-            padding: 0 !important;
-            overflow-y: scroll;
+                  padding: 0 !important;
+                  overflow-y: scroll;
+            }
+            body {
+                  overflow-x: hidden;
             }
       </style>

@@ -1,30 +1,33 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+
+import '@fullcalendar/daygrid/index.js';
+import '@fullcalendar/resource-timeline/index.js';
 import ReactDOM from 'react-dom/client';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
+
+import axios from "axios";
+import 'moment/locale/vi';
+
 import moment from 'moment';
-import { usePage, router } from '@inertiajs/react';
-import AppLayout from '../Layouts/AppLayout';
-import ModalSidebar from '../Components/ModalSidebar';
-import NoteModal from '../Components/NoteModal';
-import dayjs from 'dayjs';
+import Selecto from "react-selecto";
 import Swal from 'sweetalert2'; 
+
 import './calendar.css';
 import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
-import axios from "axios";
-import 'moment/locale/vi';
-import '@fullcalendar/daygrid/index.js';
-import '@fullcalendar/resource-timeline/index.js';
-import Selecto from "react-selecto";
+import ModalSidebar from '../Components/ModalSidebar';
+import NoteModal from '../Components/NoteModal';
+import dayjs from 'dayjs';
 
   const ScheduleTest = () => {
     
     const calendarRef = useRef(null);
     moment.locale('vi');
-    const { events, resources, sumBatchByStage, plan, quota, stageMap } = usePage().props 
+
+    
     const [showSidebar, setShowSidebar] = useState(false);
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
     const [cleaningHidden, setCleaningHidden] = useState(false);
@@ -41,12 +44,33 @@ import Selecto from "react-selecto";
     const [selectedRows, setSelectedRows] = useState([]);
     const [showNoteModal, setShowNoteModal] = useState(false);
 
-     const [calendarEvents, setCalendarEvents] = useState(events || []);
-      useEffect(() => {
-           setCalendarEvents(events || []);
-      }, [events]);
+    const [events, setEvents] = useState([]);
+    const [resources, setResources] = useState([]);
+    const [sumBatchByStage, setSumBatchByStage] = useState([]);
+    const [plan, setPlan] = useState([]);
+    const [quota, setQuota] = useState([]);
+    const [stageMap, setStageMap] = useState({});
 
-    //Get dư liệu row được chọn 
+    /// Get dữ liệu ban đầu
+    useEffect(() => {
+      axios.get("/Schedual/view")
+        .then(res => {
+          let data = res.data;
+          if (typeof data === "string") {
+            data = data.replace(/^<!--.*?-->/, "").trim();
+            data = JSON.parse(data);
+          }
+          setEvents(data.events);
+          setResources(data.resources);
+          setSumBatchByStage(data.sumBatchByStage);
+          setPlan(data.plan);
+          setQuota(data.quota);
+          setStageMap(data.stageMap);
+        })
+        .catch(err => console.error("API error:", err));
+    }, []);
+
+   /// Get dư liệu row được chọn 
     useEffect(() => {
       
       new Draggable(document.getElementById('external-events'), {
@@ -63,9 +87,9 @@ import Selecto from "react-selecto";
           };
         },
       });
-    }, [selectedRows]);
+    }, []);
 
-    // UseEffect cho render nut search
+    /// UseEffect cho render nut search
     useEffect(() => {
         // sau khi calendar render xong, inject vào toolbar
         const calendarApi = calendarRef.current?.getApi();
@@ -93,6 +117,7 @@ import Selecto from "react-selecto";
         
     }, []);
 
+    ///
     useEffect(() => {
       const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
       if (!toolbarEl) return;
@@ -109,6 +134,7 @@ import Selecto from "react-selecto";
       };
     }, [eventFontSize]); // chỉ chạy 1 lần
 
+    ///
     const handleSearch = (query, direction = "next") => {
       const calendarApi = calendarRef.current?.getApi();
       if (!calendarApi) return;
@@ -151,7 +177,7 @@ import Selecto from "react-selecto";
       highlightAllEvents();
     };
 
-    // --- Highlight tất cả sự kiện ---
+    /// --- Highlight tất cả sự kiện ---
     const highlightAllEvents = () => {
       const matches = searchResultsRef.current;
       if (!matches || matches.length === 0) return;
@@ -172,14 +198,14 @@ import Selecto from "react-selecto";
       });
     };
 
-    // --- Xoá highlight ---
+    /// --- Xoá highlight ---
     const clearHighlights = () => {
       document.querySelectorAll(".highlight-event, .highlight-current-event").forEach(el => {
         el.classList.remove("highlight-event", "highlight-current-event");
       });
     };
 
-    // --- Scroll sự kiện hiện tại vào view ---
+    /// --- Scroll sự kiện hiện tại vào view ---
     const scrollToEvent = (el) => {
       if (!el) return;
       el.scrollIntoView({
@@ -189,13 +215,13 @@ import Selecto from "react-selecto";
       });
     };
 
-    // show sidebar
+    /// show sidebar
     const handleShowList = () => {
     
       setShowSidebar(true);
     }
 
-    //  Thay đôi khung thời gian
+    ///  Thay đôi khung thời gian
     const handleViewChange = (view) => {
      
       Swal.fire({
@@ -208,28 +234,37 @@ import Selecto from "react-selecto";
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      
-      router.put(`/Schedual/view`,
-        { start: activeStart.toISOString(), end: activeEnd.toISOString() },
-        {
-          preserveState: true,
-          replace: true,
-          only: ['resources', 'sumBatchByStage'],
 
-          onFinish: () => {
-            console.log("Request đã kết thúc");
-            setTimeout(() => {
-              Swal.close();
-            }, 500);
-          },
-        }
-      );
+      axios.put(`/Schedual/getSumaryData`, { 
+          start: activeStart.toISOString(), 
+          end: activeEnd.toISOString() 
+        })
+        .then(res => {
+          let data = res.data;
+          // Trường hợp response trả về có HTML thừa (ví dụ: <!-- -->)
+          if (typeof data === "string") {
+            data = data.replace(/^<!--.*?-->/, "").trim();
+            data = JSON.parse(data);
+          }
+          // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
+          if (data.resources) setResources(data.resources);
+          if (data.sumBatchByStage) setSumBatchByStage(data.sumBatchByStage);
 
-      // Chờ FullCalendar render xong rồi tắt loading
-    // bạn chỉnh thời gian tuỳ theo tốc độ render
+          setTimeout(() => {
+            Swal.close();
+          }, 500);
+        })
+        .catch(err => {
+          console.error("API error:", err.response?.data || err.message);
+          Swal.fire({
+            icon: 'error',
+            title: 'Có lỗi xảy ra',
+            text: 'Vui lòng thử lại sau.',
+          });
+        });
     };
 
-    // Tô màu các event trùng khớp
+    /// Tô màu các event trùng khớp
     const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
       const calendarApi = calendarRef.current?.getApi();
       if (!calendarApi) return;
@@ -268,7 +303,7 @@ import Selecto from "react-selecto";
       highlightAllEvents();
     };
 
-    // Bỏ tô màu các event trùng khớp
+    /// Bỏ tô màu các event trùng khớp
     const handleEventUnHightLine = async (info) => {
         document.querySelectorAll('.fc-event').forEach(el => {
         el.classList.remove('highlight-event');
@@ -276,15 +311,13 @@ import Selecto from "react-selecto";
     };
  
     // Nhân Dữ liệu để tạo mới event
-    const handleEventReceive = useCallback(async (info) => {
-      
-      
+    const handleEventReceive = (info) => {
       // chưa chọn row
       const start = info.event.start;
       const now = new Date();
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
       info.event.remove(); 
-      console.log("1")
+      
       if (selectedRows.length === 0 ){
           Swal.fire({
             icon: 'warning',
@@ -340,40 +373,62 @@ import Selecto from "react-selecto";
           return false;
       }
 
+      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
       if (selectedRows[0].stage_code !== 8){
-          router.put('/Schedual/store', {
+          axios.put('/Schedual/store', {
               room_id: resourceId,
               stage_code: selectedRows[0].stage_codes,
               start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
               products: selectedRows,
-              }, {
-                preserveScroll: true,
-                only: ['events'],
-                onFinish: () => {
-                    console.log (events)
-                    setSelectedRows([]);
-                },
-
-                onError: (errors) => console.error('Lỗi tạo lịch', errors),
+              startDate: activeStart.toISOString(),
+              endDate: activeEnd.toISOString()
+          })
+          .then(res => {
+              let data = res.data;
+              if (typeof data === "string") {
+                data = data.replace(/^<!--.*?-->/, "").trim();
+                data = JSON.parse(data);
+              }
+              setEvents(data.events);
+              setResources(data.resources);
+              setSumBatchByStage(data.sumBatchByStage);
+              setPlan(data.plan);
+              
+              setSelectedRows([]);
+          })
+          .catch(err => {
+              console.error("Lỗi tạo lịch:", err.response?.data || err.message);
           });
       }else if (selectedRows[0].stage_code == 8){
-            router.put('/Schedual/store_maintenance', {
-              stage_code: 8,
-              start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
-              products: selectedRows,
-              is_HVAC: selectedRows[0].is_HVAC
-              }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                  setSelectedRows([]);
-                  },
-                onError: (errors) => console.error('Lỗi tạo lịch', errors),
-          });
+            axios.put('/Schedual/store_maintenance', {
+                stage_code: 8,
+                start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+                products: selectedRows,
+                is_HVAC: selectedRows[0]?.is_HVAC ?? false,
+                startDate: activeStart.toISOString(),
+                endDate: activeEnd.toISOString()
+            })
+            .then(res => {
+                let data = res.data;
+                if (typeof data === "string") {
+                  data = data.replace(/^<!--.*?-->/, "").trim();
+                  data = JSON.parse(data);
+                }
+                setEvents(data.events);
+                setResources(data.resources);
+                setSumBatchByStage(data.sumBatchByStage);
+                setPlan(data.plan);
+
+                setSelectedRows([]);
+            })
+            .catch(err => {
+                console.error("Lỗi tạo lịch bảo trì:", err.response?.data || err.message);
+            });
       }
+    };
 
-    });
-
-    // Ẩn hiện sự kiện vệ sinh
+    /// Ẩn hiện sự kiện vệ sinh
     const toggleCleaningEvents = () => {
       const calendarApi = calendarRef.current?.getApi();
       if (!calendarApi) return;
@@ -404,7 +459,7 @@ import Selecto from "react-selecto";
       }, 300); // delay 300ms để thấy loading
     };
 
-    // 3 Ham sử lý thay đôi sự kiện
+    /// 3 Ham sử lý thay đôi sự kiện
     const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
       const draggedEvent = info.event;
       const delta = info.delta;
@@ -446,11 +501,9 @@ import Selecto from "react-selecto";
       }
 
     };
-
+    ///
     const handleEventChange = (changeInfo) => {
-    
       const changedEvent = changeInfo.event;
-  
       // Thêm hoặc cập nhật event vào pendingChanges
       setPendingChanges(prev => {
         
@@ -474,10 +527,8 @@ import Selecto from "react-selecto";
         });
       
     };
-
+    ///
     const handleSaveChanges = async () => {
-      
-
       if (pendingChanges.length === 0) {
           Swal.fire({
             icon: 'info',
@@ -488,42 +539,46 @@ import Selecto from "react-selecto";
           });
         return;
       }
-
+      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       setSaving(true);
 
-      for (const change of pendingChanges) {
-
-        router.put('/Schedual/update',   
-        {
+      axios.put('/Schedual/update', {
           changes: pendingChanges.map(change => ({
               id: change.id,
               start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
               end: dayjs(change.end).format('YYYY-MM-DD HH:mm:ss'),
               resourceId: change.resourceId,
               title: change.title,
-              //C_end: change.C_end || false,
-        })),
-        }, {
-          preserveScroll: true,
-          onSuccess: () => console.log(`Đã lưu event ${change.id}`),
-          onError: (errors) => console.error(`Lỗi khi lưu event ${change.id}`, errors),
-        });
-      }
-
-      setSaving(false);
-      setPendingChanges([]);
-
-      Swal.fire({
-          icon: 'success',
-          title: 'Thành công!',
-          text: 'Đã lưu tất cả thay đổi.',
-          timer: 1000,
-          showConfirmButton: false,
+              C_end: change.C_end || false
+          })),
+          startDate: activeStart.toISOString(), 
+          endDate: activeEnd.toISOString() 
+      })
+      .then(res => {
+          let data = res.data;
+          if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+          }
+          setEvents(data.events);
+          setSumBatchByStage(data.sumBatchByStage);
+          setPlan(data.plan);
+          Swal.fire({
+              icon: 'success',
+              title: 'Thành công!',
+              text: 'Đã lưu tất cả thay đổi.',
+              timer: 1000,
+              showConfirmButton: false,
+          });
+          setSaving(false);
+          setPendingChanges([]);
+      })
+      .catch(err => {
+       console.error("Lỗi khi lưu events:", err.response?.data || err.message);
       });
-
     };
  
-    // Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
+    /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
     const toggleEventSelect = (event) => {
       setSelectedEvents((prevSelected) => {
         const exists = prevSelected.some(ev => ev.id === event.id);
@@ -533,7 +588,7 @@ import Selecto from "react-selecto";
       });
     };
 
-    // Xử lý chọn 1 sự kiện -> selectedEvents
+    /// Xử lý chọn 1 sự kiện -> selectedEvents
     const handleEventClick = (clickInfo) => {
       const event = clickInfo.event;
       if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
@@ -544,10 +599,10 @@ import Selecto from "react-selecto";
       
     };
 
-    // bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
+    /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
     const handleClear = () => {setSelectedEvents([]);};
 
-    // Xử lý Chạy Lịch Tư Động
+    /// Xử lý Chạy Lịch Tư Động
     const handleAutoSchedualer = () => {
       Swal.fire({
         title: 'Cấu Hình Chung Sắp Lịch',
@@ -638,33 +693,47 @@ import Selecto from "react-selecto";
               Swal.showLoading();
             },
           });
+        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
-          // Gọi API với ngày
-          router.put('/Schedual/scheduleAll', result.value , {
-            preserveScroll: true,
-            onFinish: () => {
-              Swal.fire({
-                icon: 'success',
-                title: 'Hoàn Thành Sắp Lịch',
-                timer: 1000,
-                showConfirmButton: false,
-              });
-            },
-            onError: () => {
-              Swal.fire({
-                icon: 'error',
-                title: 'Lỗi',
-                timer: 1000,
-                showConfirmButton: false,
-              });
-            },
+        // Gọi API với ngày
+        axios.put('/Schedual/scheduleAll', {
+            ...result.value,
+            start: activeStart.toISOString(), 
+            end: activeEnd.toISOString() 
+          })
+        .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            setEvents(data.events);
+            setSumBatchByStage(data.sumBatchByStage);
+            setPlan(data.plan);
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành Sắp Lịch',
+              timer: 1000,
+              showConfirmButton: false,
+            });
+          })
+        .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              timer: 1000,
+              showConfirmButton: false,
+            });
+            console.error("ScheduleAll error:", err.response?.data || err.message);
           });
-        }
-      });
+        }});
     };
 
-    // Xử lý Xóa Toàn Bộ Lịch
+    /// Xử lý Xóa Toàn Bộ Lịch
     const handleDeleteAllScheduale = () => {
+      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+      
       Swal.fire({
         title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
         text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
@@ -676,29 +745,38 @@ import Selecto from "react-selecto";
         cancelButtonColor: '#3085d6'
       }).then((result) => {
         if (result.isConfirmed) {
-          router.put(`/Schedual/deActiveAll`, {
-            onSuccess: () => {
+          axios.put('/Schedual/deActiveAll',  { startDate: activeStart.toISOString(), endDate: activeEnd.toISOString()})
+            .then(res => {
+              let data = res.data;
+              if (typeof data === "string") {
+                data = data.replace(/^<!--.*?-->/, "").trim();
+                data = JSON.parse(data);
+              }
+              setEvents(data.events);
+              setSumBatchByStage(data.sumBatchByStage);
+              setPlan(data.plan);
+
               Swal.fire({
                 icon: 'success',
                 title: 'Đã xóa lịch thành công',
                 showConfirmButton: false,
                 timer: 1500
               });
-            },
-            onError: () => {
+            })
+            .catch(err => {
               Swal.fire({
                 icon: 'error',
                 title: 'Xóa lịch thất bại',
                 text: 'Vui lòng thử lại sau.',
                 timer: 1500
               });
-            }
+              console.error("API error:", error.response?.data || error.message);
           });
         }
       });
     };
 
-    // Xử lý độ chia thời gian nhỏ nhất 
+    /// Xử lý độ chia thời gian nhỏ nhất 
     const toggleSlotDuration = () => {
       setSlotIndex((prevIndex) => {
         const nextIndex = (prevIndex + 1) % slotViews.length;
@@ -708,13 +786,13 @@ import Selecto from "react-selecto";
       });
     };
 
-    // Xử lý format số thập phân
+    /// Xử lý format số thập phân
     const formatNumberWithComma = (x) => {
       if (x == null) return "0";
       return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
-    // Xử lý hoản thành lô
+    /// Xử lý hoản thành lô
     const handleFinished = (event) => {
       let unit = event._def.extendedProps.stage_code <= 4 ? "Kg": "ĐVL"
       let id = event._def.publicId
@@ -770,30 +848,37 @@ import Selecto from "react-selecto";
       
 
           // Gọi API với ngày
-          router.put('/Schedual/finished', result.value , {
-            preserveScroll: true,
-            onSuccess: () => {
-              Swal.fire({
-                icon: 'success',
-                title: 'Hoàn Thành',
-                timer: 500,
-                showConfirmButton: false,
-              });
-            },
-            onError: () => {
-              Swal.fire({
-                icon: 'error',
-                title: 'Lỗi',
-                timer: 500,
-                showConfirmButton: false,
-              });
-            },
-          });
-        }
+        axios.put('/Schedual/finished', result.value)
+        .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }    
+            setEvents(data.events);
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành',
+              timer: 500,
+              showConfirmButton: false,
+            });
+          })
+        .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              timer: 500,
+              showConfirmButton: false,
+            });
+            console.error("Finished error:", err.response?.data || err.message);
+        });
+
+      }
       });
     };
 
-    // Ngăn xụ thay đổi lô Sau khi hoàn thành
+    /// Ngăn xụ thay đổi lô Sau khi hoàn thành
     const finisedEvent = (dropInfo, draggedEvent) =>{
           if (draggedEvent.extendedProps.finished) {return false;}
           return true;
@@ -807,7 +892,6 @@ import Selecto from "react-selecto";
       axios.put('/Schedual/getInforSoure', { plan_master_id })
         .then(res => {
           const source_infor = res.data.sourceInfo;
-
           Swal.fire({
             title: 'Xác Nhận Nguồn Nguyên Liệu Đã Thẩm Định Trên Thiết Bị',
             html: `
@@ -871,24 +955,33 @@ import Selecto from "react-selecto";
             }
           }).then((result) => {
             if (result.isConfirmed) {
-              router.put('/Schedual/confirm_source', result.value, {
-                preserveScroll: true,
-                onSuccess: () => {
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Hoàn Thành',
-                    timer: 500,
-                    showConfirmButton: false,
-                  });
-                },
-                onError: () => {
-                  Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    timer: 500,
-                    showConfirmButton: false,
-                  });
-                },
+            axios.put('/Schedual/confirm_source', result.value)
+              .then(res => {
+                // Nếu Laravel trả về JSON
+                let data = res.data;
+                if (typeof data === "string") {
+                  data = data.replace(/^<!--.*?-->/, "").trim();
+                  data = JSON.parse(data);
+                }
+
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Hoàn Thành',
+                  timer: 500,
+                  showConfirmButton: false,
+                });
+
+                // Nếu có dữ liệu mới trả về thì cập nhật state
+                if (data.events) setEvents(data.events);
+                })
+              .catch(err => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Lỗi',
+                  timer: 500,
+                  showConfirmButton: false,
+                });
+                console.error("Confirm_source error:", err.response?.data || err.message);
               });
             }
           });
@@ -908,8 +1001,8 @@ import Selecto from "react-selecto";
     }
 
   return (
-    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
-    
+
+    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}> 
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
@@ -926,7 +1019,7 @@ import Selecto from "react-selecto";
         height="auto"
         resourceAreaWidth="8%"
    
-
+     
         editable={true}
         droppable={true}
         selectable={true}
@@ -947,24 +1040,24 @@ import Selecto from "react-selecto";
         datesSet={(info) => {
     
           const { start, end } = info; 
-          router.put(`/Schedual/view`, 
-            { start: start.toISOString(), end: end.toISOString() },
-            {
-              preserveState: true,
-              preserveScroll: true,
-              replace: false,
-              only: ['resources', 'sumBatchByStage'],
-              onError: (errors) => {
-                console.error("Lỗi Inertia:", errors);
-              },
-              onFinish: () => {
-                console.log("Request đã kết thúc");
-                setTimeout(() => {
-                       Swal.close();
-                     }, 500);
-              }
-            }
-          );
+          // router.put(`/Schedual/view`, 
+          //   { start: start.toISOString(), end: end.toISOString() },
+          //   {
+          //     preserveState: true,
+          //     preserveScroll: true,
+          //     replace: false,
+          //     only: ['resources', 'sumBatchByStage'],
+          //     onError: (errors) => {
+          //       console.error("Lỗi Inertia:", errors);
+          //     },
+          //     onFinish: () => {
+          //       console.log("Request đã kết thúc");
+          //       setTimeout(() => {
+          //              Swal.close();
+          //            }, 500);
+          //     }
+          //   }
+          // );
           
         }}
 
@@ -1219,9 +1312,8 @@ import Selecto from "react-selecto";
 
             {/* Nút xóa */}
             {arg.event.extendedProps.finished !== 1 && (
-              <button
-              onClick={(e) => {
-
+              <button onClick={(e) => {
+                const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
                 if (!selectedEvents || selectedEvents.length === 0) {
                     Swal.fire({
                         icon: 'warning',
@@ -1243,28 +1335,37 @@ import Selecto from "react-selecto";
                 }).then((result) => {
                   if (result.isConfirmed) {
                     arg.event.remove();
-                    router.put(`/Schedual/deActive`,
-                      { 
-                        ids: selectedEvents.map(ev => ev),
-                        //stage_code: selectedEvents.map(ev => ev.stage_code)
-                       }
-                      , {
-                      onSuccess: () => {
+                    axios.put('/Schedual/deActive', { 
+                        ids: selectedEvents,  
+                        startDate: activeStart.toISOString(), 
+                        endDate: activeEnd.toISOString()
+                      })
+                      .then((res) => {
+                        let data = res.data;
+                        if (typeof data === "string") {
+                          data = data.replace(/^<!--.*?-->/, "").trim();
+                          data = JSON.parse(data);
+                        }
+                        setEvents(data.events);
+                        setSumBatchByStage(data.sumBatchByStage);
+                        setPlan(data.plan);
+
                         Swal.fire({
                           icon: 'success',
                           title: 'Đã xóa lịch thành công',
                           showConfirmButton: false,
                           timer: 1500
                         });
-                      },
-                      onError: () => {
+                      })
+
+                      .catch((error) => {
                         Swal.fire({
                           icon: 'error',
                           title: 'Xóa lịch thất bại',
                           text: 'Vui lòng thử lại sau.',
                         });
-                      }
-                    });
+                        console.error("API error:", error.response?.data || error.message);
+                      });
                   }
                   setSelectedEvents([]);
                 });
@@ -1276,7 +1377,7 @@ import Selecto from "react-selecto";
             </button>)}
 
             {/* Nút Sửa/Nội dung */}
-            <button
+            {/* <button
               onClick={(e) => {
                 console.log (arg.event)
                 e.stopPropagation();
@@ -1300,7 +1401,7 @@ import Selecto from "react-selecto";
               title="Thêm nội dung"
             >
               📝
-            </button>
+            </button> */}
 
             {/* ✅ Nút Select thêm vào đây */}
             <button
@@ -1351,9 +1452,10 @@ import Selecto from "react-selecto";
       <ModalSidebar
           visible={showSidebar}
           onClose={setShowSidebar}
-          events={plan}
-          percentShow = {percentShow}
+          waitPlan={plan}
           setPercentShow={setPercentShow}
+          percentShow = {percentShow}
+          setPlan={setPlan}
           selectedRows = {selectedRows}
           setSelectedRows = {setSelectedRows}
           quota = {quota}
@@ -1365,7 +1467,6 @@ import Selecto from "react-selecto";
         {/* Selecto cho phép quét chọn nhiều .fc-event */}
         <Selecto
           onDragStart={(e) => {
-              
               // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
               if (!e.inputEvent.shiftKey) {
                 e.stop(); 
@@ -1396,11 +1497,4 @@ import Selecto from "react-selecto";
 };
 
 export default ScheduleTest;
-
-ScheduleTest.layout = (page) => (
-  <AppLayout title={page.props.title} user={page.props.user}>
-    {page}
-  </AppLayout>
-);
-
 
