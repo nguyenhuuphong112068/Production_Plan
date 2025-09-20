@@ -42,8 +42,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   }, [resources, stageFilter]); 
 
   useEffect(() => {
-        setTableData(events); 
-  }, [events]);
+        setTableData(waitPlan); 
+  }, [waitPlan]);
 
   // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
