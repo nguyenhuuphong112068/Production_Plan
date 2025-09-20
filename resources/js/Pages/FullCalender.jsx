@@ -770,7 +770,7 @@ import dayjs from 'dayjs';
                 text: 'Vui lòng thử lại sau.',
                 timer: 1500
               });
-              console.error("API error:", error.response?.data || error.message);
+              console.error("API error:", err.response?.data || err.message);
           });
         }
       });
