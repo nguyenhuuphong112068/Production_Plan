@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
         ->middleware(CheckLogin::class)
         ->group(function(){
                 Route::get('','index')->name('index'); 
-                Route::get('view', 'view')->name('view');
+                Route::put('view', 'view')->name('view');
                 Route::put('finished','finished')->name('finished'); 
                 Route::put('deActive','deActive')->name('deActive');
                 Route::put('deActiveAll','deActiveAll')->name('deActiveAll');
@@ -38,6 +38,8 @@ use Illuminate\Support\Facades\Route;
 
                 Route::put('getInforSoure','getInforSoure')->name('getInforSoure');
                 Route::put('confirm_source','confirm_source')->name('confirm_source');
+
+                Route::get('test','test')->name('test');
                 
         });
 

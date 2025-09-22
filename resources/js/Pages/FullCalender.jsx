@@ -53,19 +53,26 @@ import dayjs from 'dayjs';
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
-      axios.get("/Schedual/view")
+      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+      axios.put("/Schedual/view", {
+          startDate: activeStart.toISOString(), 
+          endDate: activeEnd.toISOString(),
+          viewtype: "resourceTimelineWeek"
+      })
         .then(res => {
           let data = res.data;
+          
           if (typeof data === "string") {
             data = data.replace(/^<!--.*?-->/, "").trim();
             data = JSON.parse(data);
           }
           setEvents(data.events);
           setResources(data.resources);
-          setSumBatchByStage(data.sumBatchByStage);
           setPlan(data.plan);
           setQuota(data.quota);
           setStageMap(data.stageMap);
+          
+         
         })
         .catch(err => console.error("API error:", err));
     }, []);
@@ -231,13 +238,15 @@ import dayjs from 'dayjs';
           Swal.showLoading();
         },
       });
+
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
-      axios.put(`/Schedual/getSumaryData`, { 
-          start: activeStart.toISOString(), 
-          end: activeEnd.toISOString() 
+      axios.put(`/Schedual/view`, { 
+          startDate: activeStart.toISOString(), 
+          endDate: activeEnd.toISOString() ,
+          viewtype: view
         })
         .then(res => {
           let data = res.data;
@@ -247,8 +256,9 @@ import dayjs from 'dayjs';
             data = JSON.parse(data);
           }
           // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
-          if (data.resources) setResources(data.resources);
-          if (data.sumBatchByStage) setSumBatchByStage(data.sumBatchByStage);
+          setEvents(data.events);
+          setResources(data.resources);
+          
 
           setTimeout(() => {
             Swal.close();
@@ -694,7 +704,7 @@ import dayjs from 'dayjs';
             },
           });
         const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
+          console.log (activeStart.toISOString(), activeEnd.toISOString() )
         // Gọi API với ngày
         axios.put('/Schedual/scheduleAll', {
             ...result.value,
@@ -707,9 +717,6 @@ import dayjs from 'dayjs';
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
             }
-            setEvents(data.events);
-            setSumBatchByStage(data.sumBatchByStage);
-            setPlan(data.plan);
 
             Swal.fire({
               icon: 'success',
@@ -717,6 +724,12 @@ import dayjs from 'dayjs';
               timer: 1000,
               showConfirmButton: false,
             });
+
+            setEvents(data.events);
+            setSumBatchByStage(data.sumBatchByStage);
+            setPlan(data.plan);
+
+            
           })
         .catch(err => {
             Swal.fire({
@@ -1038,30 +1051,22 @@ import dayjs from 'dayjs';
 
  
         datesSet={(info) => {
-    
           const { start, end } = info; 
-          // router.put(`/Schedual/view`, 
-          //   { start: start.toISOString(), end: end.toISOString() },
-          //   {
-          //     preserveState: true,
-          //     preserveScroll: true,
-          //     replace: false,
-          //     only: ['resources', 'sumBatchByStage'],
-          //     onError: (errors) => {
-          //       console.error("Lỗi Inertia:", errors);
-          //     },
-          //     onFinish: () => {
-          //       console.log("Request đã kết thúc");
-          //       setTimeout(() => {
-          //              Swal.close();
-          //            }, 500);
-          //     }
-          //   }
-          // );
-          
+          axios.put("/Schedual/getSumaryData", {startDate: start.toISOString(), endDate: end.toISOString()} )
+          .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            setSumBatchByStage(data.sumBatchByStage);
+          })
+          .catch(err => console.error("datesSet error:", err.response?.data || err.message));
+         
         }}
 
         resourceGroupField="stage"
+        
         resourceGroupLabelContent={(arg) => {
           const stage_code = stageMap[arg.groupValue] || {};
           const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)

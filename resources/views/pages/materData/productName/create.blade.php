@@ -1,6 +1,4 @@
 
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
-
 <!-- Modal -->
 <div class="modal fade" id="productNameModal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
@@ -26,15 +24,7 @@
         </div>
 
         <div class="modal-body">
-          {{-- CODE --}}
-          {{-- <div class="form-group">
-            <label for="code">Mã Sản Phẩm</label>
-            <input type="text" class="form-control" name="code" 
-              value="{{ old('code') }}">
-          </div>
-          @error('code', 'createErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror --}}
+
 
           {{-- NAME --}}
           <div class="form-group">
@@ -81,10 +71,6 @@
   </div>
 </div>
 
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->createErrors->any())
