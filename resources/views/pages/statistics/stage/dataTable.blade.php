@@ -149,7 +149,7 @@
                                                 </div>
                                             </div>
                                             <div id="chart-container-{{$stage->stage_code}}" style="height:600px; width:100%;">
-                                                <canvas id="weight-chart-{{$stage->stage_code}}"></canvas>
+                                                <canvas id="weight-chart-{{$stage->stage_code}}-{{$loop->index}}"></canvas>
                                             </div>
                                         </div>
                                     </div>
@@ -183,7 +183,7 @@
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 {{-- <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script> --}}
-<script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script>
+<script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script> 
 
 
 <script>
@@ -331,6 +331,8 @@
 
       const ctx = canvas.getContext('2d');
 
+       
+
       // Hủy chart cũ nếu có
       if (charts[stageCode]) {
           charts[stageCode].destroy();
@@ -378,7 +380,7 @@
   }
 
   @foreach($datas as $stage)
-      renderStageChart({{ $stage->stage_code }});
+      renderStageChart({{ $stage->stage_code }}-{{$loop->index}});
   @endforeach
 </script>
 

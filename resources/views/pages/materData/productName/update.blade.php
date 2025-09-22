@@ -1,5 +1,4 @@
 
- <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet"> 
 <!-- Modal -->
 <div class="modal fade" id="productNameUpdateModal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
@@ -26,15 +25,7 @@
         </div>
 
         <div class="modal-body">
-          {{-- CODE --}}
-          {{-- <div class="form-group">
-            <label for="code">Mã Sản Phẩm</label>
-            <input type="text" class="form-control" name="code" 
-              value="{{ old('code') }}">
-          </div>
-          @error('code', 'updateErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror --}}
+
 
           {{-- NAME --}}
           <div class="form-group">

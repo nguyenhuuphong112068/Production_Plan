@@ -19,8 +19,15 @@ class SchedualController extends Controller
                 return view('app');
         }
 
-        protected function getEvents($production){
+        protected function getEvents($production, $startDate, $endDate,  $clearning){
 
+                $startDate = Carbon::parse($startDate)->toDateTimeString();
+                $endDate = Carbon::parse($endDate)->toDateTimeString();
+
+                // Log::info('getEvents:', [
+                //         'startDate' => $startDate,
+                //         'endDate' => $endDate,
+                // ]);
                 $event_plans = DB::table('stage_plan')
                         ->leftJoin('plan_master','stage_plan.plan_master_id','=','plan_master.id')
                         ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
@@ -28,6 +35,7 @@ class SchedualController extends Controller
                         ->where('stage_plan.active', 1)
                         ->whereNotNull('stage_plan.start')
                         ->where('stage_plan.deparment_code', $production)
+                        ->whereRaw('((stage_plan.start <= ? AND stage_plan.end >= ?) OR (stage_plan.start_clearning <= ? AND stage_plan.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                         ->select(
                         'stage_plan.id',
                         'stage_plan.title',
@@ -170,7 +178,7 @@ class SchedualController extends Controller
                         ]);
                         }
                         // Event vệ sinh
-                        if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass") {
+                        if ($plan->start_clearning && $plan->end_clearning && $plan->end_clearning !== "Pass" && $clearning == true) {
                                 $events->push([
                                         'plan_id' => $plan->id,
                                         'id' => "{$plan->id}-cleaning",
@@ -192,7 +200,7 @@ class SchedualController extends Controller
                 return $events;
                 
         }
-                // Hàm lấy quota
+        // Hàm lấy quota
         protected function getQuota($production){
                 return DB::table('quota')
                 ->leftJoin('room', 'quota.room_id', '=', 'room.id')
@@ -288,17 +296,18 @@ class SchedualController extends Controller
         }
         // Hàm lấy resources
         protected function getResources($production, $startDate, $endDate){
+
                 $roomStatus = $this->getRoomStatistics($startDate, $endDate);
                 $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
 
                 $statsMap = $roomStatus->keyBy('room_id');                
                 $yieldMap = $sumBatchQtyResourceId->keyBy('resourceId');
-
+                //dump($statsMap);
                 return DB::table('room')
                 ->select('id', 'code', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
-                ->orderBy('order_by', 'asc')
+                ->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')
                 ->get()
                 ->map(function ($room) use ($statsMap, $yieldMap) {
                         $stat = $statsMap->get($room->id);
@@ -310,37 +319,52 @@ class SchedualController extends Controller
                         $room->unit  = $yield->unit ?? '';
                         return $room;
                 });
+
+                
         }
 
         // Hàm view gọn hơn
-        public function view(){
-                //dd ("sa");
+        public function view(Request $request){
+
+                if ($request->viewtype == "resourceTimelineMonth" || $request->viewtype == "resourceTimelineYear" ){
+                        $clearing = false;
+                }else {$clearing = true;}
+                
+
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate,$clearing);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $quota = $this->getQuota($production);
-                $sumBatchByStage = $this->yield(now()->startOfWeek(), now()->endOfWeek(), "stage_code");
-                $stageMap = DB::table('room')->pluck('stage_code','stage')->toArray();
-                $resources = $this->getResources($production, now()->startOfWeek(), now()->endOfWeek());
+                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                $stageMap = DB::table('room')->where ('deparment_code',$production)->pluck('stage_code','stage')->toArray();
+                $resources = $this->getResources($production, $request->endDate, $request->endDate);
+
+                Log::info('resources:', [
+                        'resources' => $sumBatchByStage,
+                ]);
 
 
                  return response()->json([
                         'title' => 'LỊCH SẢN XUẤT',
                         'user' => session('user'),
                         'events' => $events,
-                        'resources' => $resources,
                         'plan' => $plan_waiting,
                         'quota' => $quota,
+                        'stageMap' => $stageMap,
+                        'resources' => $resources,
                         'sumBatchByStage' => $sumBatchByStage,
-                        'stageMap' => $stageMap
+                        
                  ]);
         }
 
         public function getSumaryData(Request $request){
 
-                $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
+                $production = session('user')['production_code'];
+                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                $events = $this->getEvents($production, $request->startDate, $request->endDate, true);
 
                 return response()->json([
+                        'events' => $events,
                         'sumBatchByStage' => $sumBatchByStage,
                 ]);
                 
@@ -374,7 +398,7 @@ class SchedualController extends Controller
                         ]);
 
                         $production = session('user')['production_code'];
-                        $events = $this->getEvents($production);
+                        $events = $this->getEvents($production, $request->startDate, $request->endDate, true);
                         return response()->json([
                                 'events' => $events,
                         ]);
@@ -471,7 +495,7 @@ class SchedualController extends Controller
                         DB::commit();
 
                         $production = session('user')['production_code'];
-                        $events = $this->getEvents($production);
+                        $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
                         $plan_waiting = $this->getPlanWaiting($production);
                         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
@@ -597,7 +621,7 @@ class SchedualController extends Controller
                         }
 
                         $production = session('user')['production_code'];
-                        $events = $this->getEvents($production);
+                        $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
                         $plan_waiting = $this->getPlanWaiting($production);
                         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
@@ -684,7 +708,7 @@ class SchedualController extends Controller
                 }
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
 
@@ -729,7 +753,7 @@ class SchedualController extends Controller
                                 ->delete(); 
                         
                         $production = session('user')['production_code'];
-                        $events = $this->getEvents($production);
+                        $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
                         $plan_waiting = $this->getPlanWaiting($production);
                         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
@@ -766,7 +790,7 @@ class SchedualController extends Controller
                 }
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
                 
                 return response()->json([
                         'events' => $events,
@@ -1130,7 +1154,8 @@ class SchedualController extends Controller
 
         /** Scheduler cho tất cả stage*/
         public function scheduleAll(Request $request) {
-                               
+       
+
                 $start_date = Carbon::createFromFormat('Y-m-d', $request->input('start_date'))->setTime(6, 0, 0);
 
                 $stageCodes = DB::table('stage_plan')
@@ -1178,10 +1203,11 @@ class SchedualController extends Controller
                 }
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
 
+   
                 return response()->json([
                         'events' => $events,
                         'plan' => $plan_waiting,
@@ -1514,28 +1540,34 @@ class SchedualController extends Controller
                 }
         }
 
-        public function getRoomStatistics(Carbon $startDate, Carbon $endDate){
+        public function getRoomStatistics($startDate, $endDate){
                 // Tổng số giây trong khoảng
+                $startDate= Carbon::parse($startDate);
+                $endDate= Carbon::parse($endDate);
+
                 $totalSeconds =  $startDate->diffInSeconds($endDate);
+                
+ 
 
                 // Query tính busy_hours
                 $data = DB::table('stage_plan as r')
-                        ->select(
+                ->select(
                         'r.resourceId',
                         DB::raw("{$totalSeconds} / 3600 as total_hours"),
                         DB::raw("SUM(
-                                TIMESTAMPDIFF(
+                        TIMESTAMPDIFF(
                                 SECOND,
                                 GREATEST(r.start, '{$startDate}'),
-                                LEAST(r.end, '{$endDate}')
-                                )
-                        ) / 3600 as busy_hours")
+                                LEAST(COALESCE(r.end_clearning, r.end), '{$endDate}')
                         )
-                        ->where('r.end', '>', $startDate)
-                        ->where('r.start', '<', $endDate)
-                        ->where('r.deparment_code', session('user')['production_code'])
-                        ->groupBy('r.resourceId')
-                        ->get();
+                        ) / 3600 as busy_hours")
+                )
+
+                ->whereRaw('((r.start <= ? AND r.end >= ?) OR (r.start_clearning <= ? AND r.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
+                ->where('r.start', '<', $endDate)
+                ->where('r.deparment_code', session('user')['production_code'])
+                ->groupBy('r.resourceId')
+                ->get();
                                
                 // Bổ sung free_hours = total - busy
                 $result = $data->map(function ($item) {
@@ -1548,10 +1580,15 @@ class SchedualController extends Controller
         }
 
         public function yield($startDate, $endDate, $group_By){
+               
+                //->whereRaw('((stage_plan.start <= ? AND stage_plan.end >= ?) OR (stage_plan.start_clearning <= ? AND stage_plan.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
+                $startDate = Carbon::parse($startDate)->toDateTimeString();
+                $endDate = Carbon::parse($endDate)->toDateTimeString();
+
                 $result =  DB::table('stage_plan as sp')
                         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
                         ->leftJoin('intermediate_category as ic', 'fc.intermediate_code', '=', 'ic.intermediate_code')
-                        ->whereBetween('sp.start', [$startDate, $endDate])
+                        ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', session('user')['production_code'])
                         ->select(
@@ -1574,11 +1611,16 @@ class SchedualController extends Controller
                         )
                         ->groupBy("sp.$group_By", "unit")
                         ->get();
+
                 return $result;
                 
         }
 
-        
+        public function test(){
+
+                dd ($this->getRoomStatistics('2025-09-22','2025-09-28'));
+        }
+     
 }
 
       function toMinutes($time) {
