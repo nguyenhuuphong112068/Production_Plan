@@ -6,8 +6,8 @@
         </div>
 
         <!-- /.card-Body -->
-        <div class="card-body">
-
+        <div class="card-body ">
+           
             <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal"
                 style="width: 155px">
                 <i class="fas fa-plus"></i> Thêm
@@ -84,8 +84,9 @@
                     @endforeach
 
                 </tbody>
+                </div>
             </table>
-        </div>
+        
         <!-- /.card-body -->
     </div>
     <!-- /.card -->
