@@ -39,6 +39,8 @@ use Illuminate\Support\Facades\Route;
                 Route::put('getInforSoure','getInforSoure')->name('getInforSoure');
                 Route::put('confirm_source','confirm_source')->name('confirm_source');
 
+                Route::put('history','history')->name('history');
+
                 Route::get('test','test')->name('test');
                 
         });

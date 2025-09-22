@@ -20,6 +20,7 @@ import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
 import NoteModal from '../Components/NoteModal';
+import History from '../Components/History';
 import dayjs from 'dayjs';
 
   const ScheduleTest = () => {
@@ -43,6 +44,7 @@ import dayjs from 'dayjs';
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
     const [selectedRows, setSelectedRows] = useState([]);
     const [showNoteModal, setShowNoteModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     const [events, setEvents] = useState([]);
     const [resources, setResources] = useState([]);
@@ -50,6 +52,7 @@ import dayjs from 'dayjs';
     const [plan, setPlan] = useState([]);
     const [quota, setQuota] = useState([]);
     const [stageMap, setStageMap] = useState({});
+    const [historyData, setHistoryData] = useState([]);
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
@@ -704,12 +707,12 @@ import dayjs from 'dayjs';
             },
           });
         const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-          console.log (activeStart.toISOString(), activeEnd.toISOString() )
+         
         // Gọi API với ngày
         axios.put('/Schedual/scheduleAll', {
             ...result.value,
-            start: activeStart.toISOString(), 
-            end: activeEnd.toISOString() 
+            startDate: activeStart.toISOString(), 
+            endDate: activeEnd.toISOString() 
           })
         .then(res => {
             let data = res.data;
@@ -1013,6 +1016,35 @@ import dayjs from 'dayjs';
           setShowNoteModal (!showNoteModal)
     }
 
+    const handleShowHistory = (event) => {
+      let stage_code_id = event._def.extendedProps.plan_id;
+
+      axios.put('/Schedual/history', {stage_code_id: stage_code_id})
+              .then(res => {
+                // Nếu Laravel trả về JSON
+                let data = res.data;
+                if (typeof data === "string") {
+                  data = data.replace(/^<!--.*?-->/, "").trim();
+                  data = JSON.parse(data);
+                }
+                setHistoryData (data.history_data);
+
+
+                })
+              .catch(err => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Lỗi',
+                  timer: 500,
+                  showConfirmButton: false,
+                });
+                console.error("Confirm_source error:", err.response?.data || err.message);
+      });
+
+
+      setShowHistoryModal (true)
+    }
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}> 
@@ -1301,7 +1333,7 @@ import dayjs from 'dayjs';
         }}
 
         eventContent={(arg) => {
-          
+       
         const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
         const now = new Date();
         return (
@@ -1423,13 +1455,18 @@ import dayjs from 'dayjs';
                 {isSelected ? '✓' : '+'}
             </button>
 
+            {/* H Xem History */}
+            <button
+                onClick={(e) => { e.stopPropagation();handleShowHistory(arg.event);}}
+                className={`absolute top-[-15px] left-5 text-xs px-1 rounded shadow bg-red-500 text-white`}
+                title={'Xem Lịch Sử Thay Đổi'}
+              >
+                {arg.event._def.extendedProps.number_of_history}
+            </button>
+
             {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */} 
             {arg.event.extendedProps.finished === 0  && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleFinished(arg.event);
-                }}
+              <button onClick={(e) => { e.stopPropagation(); handleFinished(arg.event);}}
                 className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
                 title='Xác Nhận Hoàn Thành Lô Sản Xuất'
               >
@@ -1468,6 +1505,7 @@ import dayjs from 'dayjs';
       />
 
         <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
+        <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData}/>
 
         {/* Selecto cho phép quét chọn nhiều .fc-event */}
         <Selecto
@@ -1494,6 +1532,8 @@ import dayjs from 'dayjs';
               console.log (selectedEvents);
             }}
         />
+
+        
 
     </div>
 
