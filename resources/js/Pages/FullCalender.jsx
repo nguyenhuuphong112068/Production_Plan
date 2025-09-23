@@ -401,6 +401,7 @@ import dayjs from 'dayjs';
                 data = data.replace(/^<!--.*?-->/, "").trim();
                 data = JSON.parse(data);
               }
+              console.log (data);
               setEvents(data.events);
               setResources(data.resources);
               setSumBatchByStage(data.sumBatchByStage);
