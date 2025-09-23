@@ -943,7 +943,7 @@ class SchedualController extends Controller
 
 
                 $updateQuery = "UPDATE stage_plan SET order_by = CASE code ";
-                
+
                 foreach ($cases as $code => $orderBy) {
                         $updateQuery .= "WHEN '{$code}' THEN {$orderBy} ";
                 }
@@ -954,9 +954,11 @@ class SchedualController extends Controller
                 return response()->json([
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
-        }
+        } 
 
         public function createManualCampain(Request $request){
+                
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $datas = $request->input ('data');
                 $modeCreate = true;
                 $firstCode = null;
@@ -975,15 +977,19 @@ class SchedualController extends Controller
                                 $firstCode = $datas[0]['predecessor_code'];
                                 if ($firstCode === null) {$firstCode = "0_".$datas[0]['code'];}
                                 $ids = collect($datas)->pluck('id')->toArray();
-                                DB::table('stage_plan')
+                                DB::table($stage_plan_table)
                                         ->whereIn('id', $ids)
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                         'campaign_code' => $firstCode
                                         ]);
                         }else {
 
-                                DB::table('stage_plan')
+                                DB::table($stage_plan_table)
                                         ->where('campaign_code', $firstCode)
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                         'campaign_code' => null
                                 ]);
@@ -998,36 +1004,41 @@ class SchedualController extends Controller
                 return response()->json([
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
-        }
+        } // đã có temp
 
         public function createAutoCampain(){
-
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
+                
                 try {
                 // Lấy toàn bộ stage_plan chưa hoàn thành và active
-                DB::table('stage_plan')
+                DB::table($stage_plan_table)
                         ->where('finished', 0)
                         ->where('start', null)
                         ->where('active', 1)
                         ->where('stage_code',">=", 3)
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                 ->update(['campaign_code' => null]);
 
-                $stage_plans = DB::table('stage_plan')
+                $stage_plans = DB::table("$stage_plan_table as sp")
                         ->select(
-                                'stage_plan.id',
-                                'stage_plan.stage_code',
-                                'stage_plan.predecessor_code',
-                                'stage_plan.campaign_code',
-                                'stage_plan.code',
+                                'sp.id',
+                                'sp.stage_code',
+                                'sp.predecessor_code',
+                                'sp.campaign_code',
+                                'sp.code',
                                 'plan_master.expected_date',
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code'
                         )
-                        ->join('plan_master', 'stage_plan.plan_master_id' , '=', 'plan_master.id')
-                        ->join('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-                        ->where('stage_plan.finished', 0)
-                        ->where('stage_plan.start', null)
-                        ->where('stage_plan.active', 1)
-                        ->where('stage_plan.stage_code',">=", 3)
+                        ->join('plan_master', 'sp.plan_master_id' , '=', 'plan_master.id')
+                        ->join('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->where('sp.finished', 0)
+                        ->where('sp.start', null)
+                        ->where('sp.active', 1)
+                        ->where('sp.stage_code',">=", 3)
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->orderBy('order_by', 'asc')
                 ->get();
 
@@ -1087,7 +1098,7 @@ class SchedualController extends Controller
                                 }
                                 $caseSql .= "END";
 
-                                DB::update("UPDATE stage_plan SET campaign_code = $caseSql WHERE id IN ($ids)");
+                                DB::update("UPDATE $stage_plan_table SET campaign_code = $caseSql WHERE id IN ($ids)");
                         }
                 }
 
@@ -1098,7 +1109,7 @@ class SchedualController extends Controller
                 return response()->json([
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
-        }
+        } // đã có temp
 
         public function createOrderPlan (Request $request) {
 
@@ -1149,7 +1160,7 @@ class SchedualController extends Controller
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
 
-        }
+        } 
 
         public function DeActiveOrderPlan (Request $request) {
 
@@ -1557,6 +1568,7 @@ class SchedualController extends Controller
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->where('code', $depCode)->first();
+
                         if ($pred && $pred->end) {
                                 $candidates[] = Carbon::parse($pred->end);
                         }
@@ -1647,13 +1659,25 @@ class SchedualController extends Controller
                                 }
                         }
                         if ($task->predecessor_code){
+
                                 $prevCycle = ($pre_room->m_time_hours ?? 0) + ($pre_room->C1_time_hours ?? 0);
                                 $currCycle = ($bestQuota->m_time_hours ?? 0) + ($bestQuota->C1_time_hours ?? 0);
+                                Log::info('predecessor_code:', [
+                                                'prevCycle' => $prevCycle,
+                                                'currCycle' => $currCycle
+                                ]);
                                 if ($counter == 0 && $currCycle < $prevCycle) {
-                                        //$delay_time =  (($pre_room->m_time_hours - $bestQuota->m_time_hours) + ($pre_room->C1_time_hours - $bestQuota->C1_time_hours))*$campaignTasks->count()-5;
+                                        
                                         $delay_time = ($pre_room->m_time_hours*($campaignTasks->count() - 1) + $pre_room->C1_time_hours*($campaignTasks->count() - 2)) -
                                                         (($bestQuota->m_time_hours + $bestQuota->C1_time_hours )* ($campaignTasks->count() - 1));
+                                
+                                        Log::info('delay_time:', [
+                                                'delay_time' => $delay_time,
+                                                'waite_time' => $waite_time
+                                        ]);
+
                                         if ($waite_time > $delay_time) {$delay_time = $waite_time;}
+
                                         $currentStart = $currentStart->addHours($delay_time);
 
                                 }elseif ($counter == 0 && $currCycle >= $prevCycle) {
