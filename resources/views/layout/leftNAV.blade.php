@@ -267,14 +267,14 @@
               <li class="nav-item">
                 <a href="/Schedual" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p> Lập Lịch  </p>
+                  <p> Lập Lịch Chính </p>
                 </a>
               </li>
 
               <li class="nav-item">
                 <a href="/Schedual/temp" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p> Lập Lịch Tạm Thời </p>
+                  <p> Lập Lịch Tạm </p>
                 </a>
               </li>
 
