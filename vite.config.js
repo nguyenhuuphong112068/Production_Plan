@@ -1,8 +1,11 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv  } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  // <-- loadEnv phải ở đây,b ên trong function
+  const env = loadEnv(mode, process.cwd());
+
   return {
     plugins: [
       laravel({
@@ -12,11 +15,30 @@ export default defineConfig(() => {
       react(),
     ],
     server: {
-      host: process.env.VITE_HOST || 'localhost',
-      port: parseInt(process.env.VITE_PORT) || 5173,
+      host: env.VITE_HOST || 'localhost',
+      port: parseInt(env.VITE_PORT) || 5173,
+
     },
   };
 });
+
+// export default defineConfig(() => {
+//   return {
+//     plugins: [
+//       laravel({
+//         input: ['resources/js/app.jsx'],
+//         refresh: true,
+//       }),
+//       react(),
+//     ],
+//     server: {
+//       host: env.VITE_HOST || 'localhost',
+//       port: parseInt(env.VITE_PORT) || 5173,
+//       strictPort: true, // Nếu port đã dùng sẽ báo lỗi
+//       open: true, // Tự mở trình duyệt
+//     },
+//   };
+// });
 
 
 // import { defineConfig } from 'vite';
