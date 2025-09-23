@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
 use App\Http\Controllers\Pages\Schedual\SchedualStepController;
+use App\Http\Controllers\Pages\Schedual\SchedualTempController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
@@ -42,8 +43,11 @@ use Illuminate\Support\Facades\Route;
                 Route::put('history','history')->name('history');
 
                 Route::get('test','test')->name('test');
+
                 
         });
+
+
 
 
         Route::prefix('/Schedual')
@@ -64,6 +68,18 @@ use Illuminate\Support\Facades\Route;
                 ->group(function(){
                         Route::get('','list')->name('list');
                 });       
+
+        });
+
+        Route::prefix('/Schedual/temp')
+        ->controller(SchedualTempController::class)
+        ->name('pages.Schedual.temp.')
+        ->middleware(CheckLogin::class)
+        ->group(function(){
+
+                Route::get('', 'index')->name('index');
+                Route::POST('store', 'store')->name('store');
+                Route::get('open', 'open')->name('open');
 
         });
    
