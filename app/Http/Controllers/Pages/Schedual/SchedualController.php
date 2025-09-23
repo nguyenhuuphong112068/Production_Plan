@@ -15,41 +15,44 @@ class SchedualController extends Controller
         }
 
         public function index (){
+                session()->put('fullCalender', [
+                        'mode' => "offical",
+                        'stage_plan_temp_list_id' => null
+                ]);
                 session()->put(['title'=> 'LỊCH SẢN XUẤT']);
                 return view('app');
         }
 
-        protected function getEvents($production, $startDate, $endDate,  $clearning){
+        protected function getEvents($production, $startDate, $endDate, $clearning){
+                
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
 
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate = Carbon::parse($endDate)->toDateTimeString();
 
-                // Log::info('getEvents:', [
-                //         'startDate' => $startDate,
-                //         'endDate' => $endDate,
-                // ]);
-
-                $event_plans = DB::table('stage_plan')
-                        ->leftJoin('plan_master','stage_plan.plan_master_id','=','plan_master.id')
+                $event_plans = DB::table("$stage_plan_table as sp")
+                        ->leftJoin('plan_master','sp.plan_master_id','=','plan_master.id')
                         ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
                         ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
-                        ->where('stage_plan.active', 1)
-                        ->whereNotNull('stage_plan.start')
-                        ->where('stage_plan.deparment_code', $production)
-                        ->whereRaw('((stage_plan.start <= ? AND stage_plan.end >= ?) OR (stage_plan.start_clearning <= ? AND stage_plan.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
+                        ->where('sp.active', 1)
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
+                        ->whereNotNull('sp.start')
+                        ->where('sp.deparment_code', $production)
+                        ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                         ->select(
-                        'stage_plan.id',
-                        'stage_plan.title',
-                        'stage_plan.start',
-                        'stage_plan.end',
-                        'stage_plan.start_clearning',
-                        'stage_plan.end_clearning',
-                        'stage_plan.title_clearning',
-                        'stage_plan.resourceId',
-                        'stage_plan.plan_master_id',
-                        'stage_plan.stage_code',
-                        'stage_plan.finished',
-                        'stage_plan.quarantine_time',
+                        'sp.id',
+                        'sp.title',
+                        'sp.start',
+                        'sp.end',
+                        'sp.start_clearning',
+                        'sp.end_clearning',
+                        'sp.title_clearning',
+                        'sp.resourceId',
+                        'sp.plan_master_id',
+                        'sp.stage_code',
+                        'sp.finished',
+                        'sp.quarantine_time',
                         'intermediate_category.intermediate_code',
                         'plan_master.expected_date',
                         'plan_master.after_weigth_date',
@@ -60,31 +63,31 @@ class SchedualController extends Controller
                         )
                         ->selectRaw("
                         CASE
-                        WHEN stage_plan.stage_code IN (1,2)
+                        WHEN sp.stage_code IN (1,2)
                                 THEN CASE
                                         WHEN intermediate_category.quarantine_time_unit = 1
                                         THEN intermediate_category.quarantine_weight * 24
                                         ELSE intermediate_category.quarantine_weight
                                 END
-                        WHEN stage_plan.stage_code = 3
+                        WHEN sp.stage_code = 3
                                 THEN CASE
                                         WHEN intermediate_category.quarantine_time_unit = 1
                                         THEN intermediate_category.quarantine_preparing * 24
                                         ELSE intermediate_category.quarantine_preparing
                                 END
-                        WHEN stage_plan.stage_code = 4
+                        WHEN sp.stage_code = 4
                                 THEN CASE
                                         WHEN intermediate_category.quarantine_time_unit = 1
                                         THEN intermediate_category.quarantine_blending * 24
                                         ELSE intermediate_category.quarantine_blending
                                 END
-                        WHEN stage_plan.stage_code = 5
+                        WHEN sp.stage_code = 5
                                 THEN CASE
                                         WHEN intermediate_category.quarantine_time_unit = 1
                                         THEN intermediate_category.quarantine_forming * 24
                                         ELSE intermediate_category.quarantine_forming
                                 END
-                        WHEN stage_plan.stage_code = 6
+                        WHEN sp.stage_code = 6
                                 THEN CASE
                                         WHEN intermediate_category.quarantine_time_unit = 1
                                         THEN intermediate_category.quarantine_coating * 24
@@ -218,27 +221,32 @@ class SchedualController extends Controller
         }
 
         public function getPlanWaiting($production){
-                $plan_waiting = DB::table('stage_plan')
-                        ->whereNull('stage_plan.start')
-                        ->where('stage_plan.active', 1)
-                        ->where('stage_plan.deparment_code', $production)
-                        ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
+
+                $plan_waiting = DB::table("$stage_plan_table as sp")
+                        ->whereNull('sp.start')
+                        ->where('sp.active', 1)
+                        ->where('sp.deparment_code', $production)
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
+                        ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
                         ->leftJoin('finished_product_category', function($join) {
-                                $join->on('stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-                                ->where('stage_plan.stage_code', '<=', 7);
+                                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                                ->where('sp.stage_code', '<=', 7);
                         })
                         ->leftJoin('product_name', function($join) {
                                 $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
-                                ->where('stage_plan.stage_code', '<=', 7);
+                                ->where('sp.stage_code', '<=', 7);
                         })
                         ->leftJoin('maintenance_category', function($join) {
-                                $join->on('stage_plan.product_caterogy_id', '=', 'maintenance_category.id')
-                                ->where('stage_plan.stage_code', '=', 8);
+                                $join->on('sp.product_caterogy_id', '=', 'maintenance_category.id')
+                                ->where('sp.stage_code', '=', 8);
                         })
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                         ->select(
-                                'stage_plan.*',
+                                'sp.*',
                                 'plan_master.batch',
                                 'plan_master.expected_date',
                                 'plan_master.is_val',
@@ -256,14 +264,14 @@ class SchedualController extends Controller
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code',
                                 DB::raw("CASE
-                                        WHEN stage_plan.stage_code <= 7 THEN product_name.name
+                                        WHEN sp.stage_code <= 7 THEN product_name.name
                                         ELSE maintenance_category.name END as name"),
                                 DB::raw("CASE
-                                        WHEN stage_plan.stage_code = 8 THEN maintenance_category.code  END as instrument_code"),
+                                        WHEN sp.stage_code = 8 THEN maintenance_category.code  END as instrument_code"),
                                 DB::raw("CASE
-                                        WHEN stage_plan.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
+                                        WHEN sp.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
                         )
-                        ->orderBy('stage_plan.order_by', 'asc')
+                        ->orderBy('sp.order_by', 'asc')
                 ->get();
 
                 // Lấy quota & maintenance_category
@@ -327,26 +335,22 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn
         public function view(Request $request){
-
+                 $production = session('user')['production_code'];
                 if ($request->viewtype == "resourceTimelineMonth" || $request->viewtype == "resourceTimelineYear" ){
                         $clearing = false;
                 }else {$clearing = true;}
 
-
-                $production = session('user')['production_code'];
+                $quota = $this->getQuota($production);
+                $stageMap = DB::table('room')->where('deparment_code',$production)->pluck('stage_code','stage')->toArray();
                 $events = $this->getEvents($production, $request->startDate, $request->endDate,$clearing);
                 $plan_waiting = $this->getPlanWaiting($production);
-                $quota = $this->getQuota($production);
                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
-                $stageMap = DB::table('room')->where ('deparment_code',$production)->pluck('stage_code','stage')->toArray();
                 $resources = $this->getResources($production, $request->endDate, $request->endDate);
+              
+                if (session('fullCalender')['mode'] === 'offical'){$title = 'LỊCH SẢN XUẤT';}else{$title = 'LỊCH SẢN XUẤT TẠM THỜI';}
 
-
-
-
-                 return response()->json([
-                        'title' => 'LỊCH SẢN XUẤT',
-                        'user' => session('user'),
+                return response()->json([
+                        'title' => $title,
                         'events' => $events,
                         'plan' => $plan_waiting,
                         'quota' => $quota,
@@ -413,7 +417,7 @@ class SchedualController extends Controller
         public function store(Request $request) {
 
                 DB::beginTransaction();
-                try {
+                        try {
                         $products = collect($request->products);
                         $current_start = Carbon::parse($request->start);
                         foreach ($products as $index => $product) {
@@ -471,38 +475,57 @@ class SchedualController extends Controller
                                         }
                                 }
 
-                                DB::table('stage_plan')
-                                        ->where('id', $product['id'])
-                                        ->update([
-                                        'start'           => $current_start,
-                                        'end'             => $end_man,
-                                        'start_clearning' => $end_man,
-                                        'end_clearning'   => $end_clearning,
-                                        'resourceId'      => $request->room_id,
-                                        'title'           => $product['stage_code'] ===9? ($product['title']. "-" . $product['batch'] ): ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
-                                        'title_clearning' => $clearning_type,
-                                        'schedualed'      => 1,
-                                        'schedualed_by'   => session('user')['fullName'],
-                                        'schedualed_at'   => now(),
+                                
+                                if (session('fullCalender')['mode'] !== 'temp'){
+                                        DB::table('stage_plan')
+                                                ->where('id', $product['id'])
+                                                ->update([
+                                                'start'           => $current_start,
+                                                'end'             => $end_man,
+                                                'start_clearning' => $end_man,
+                                                'end_clearning'   => $end_clearning,
+                                                'resourceId'      => $request->room_id,
+                                                'title'           => $product['stage_code'] ===9? ($product['title']. "-" . $product['batch'] ): ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
+                                                'title_clearning' => $clearning_type,
+                                                'schedualed'      => 1,
+                                                'schedualed_by'   => session('user')['fullName'],
+                                                'schedualed_at'   => now(),
                                         ]);
 
-                                $last_version = DB::table('stage_plan_history')->where('stage_plan_id', $product['id'])->max('version') ?? 0;
+                                        DB::table('stage_plan_temp')->where('id', $product['id'])->update(['active'=> 0]);
+                                        $last_version = DB::table('stage_plan_history')->where('stage_plan_id', $product['id'])->max('version') ?? 0;
+                                        DB::table('stage_plan_history')
+                                                ->insert([
+                                                'stage_plan_id'   => $product['id'],
+                                                'version'         => $last_version + 1,
+                                                'start'           => $current_start,
+                                                'end'             => $end_man,
+                                                'resourceId'      => $request->room_id,
+                                                'schedualed_by'   => session('user')['fullName'],
+                                                'schedualed_at'   => now(),
+                                                'deparment_code'  => session('user')['production_code'],
+                                                'type_of_change'  => "Lập Lịch Thủ Công"
+                                        ]);
 
+                                }else{
+                                        DB::table('stage_plan_temp')
+                                                ->where('id', $product['id'])
+                                                ->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id'])
+                                                ->update([
+                                                'start'           => $current_start,
+                                                'end'             => $end_man,
+                                                'start_clearning' => $end_man,
+                                                'end_clearning'   => $end_clearning,
+                                                'resourceId'      => $request->room_id,
+                                                'title'           => $product['stage_code'] ===9? ($product['title']. "-" . $product['batch'] ): ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
+                                                'title_clearning' => $clearning_type,
+                                                'schedualed'      => 1,
+                                                'schedualed_by'   => session('user')['fullName'],
+                                                'schedualed_at'   => now(),
+                                        ]);
+                                }
 
-                                DB::table('stage_plan_history')
-                                        ->insert([
-                                        'stage_plan_id'   => $product['id'],
-                                        'version'         => $last_version + 1,
-                                        'start'           => $current_start,
-                                        'end'             => $end_man,
-                                        'resourceId'      => $request->room_id,
-                                        'schedualed_by'   => session('user')['fullName'],
-                                        'schedualed_at'   => now(),
-                                        'deparment_code'  => session('user')['production_code'],
-                                        'type_of_change'  => "Lập Lịch Thủ Công"
-                                ]);
-
-
+                                
                                 if ($product['stage_code'] === 1){
                                         $current_start = $current_start;
                                 }else{
@@ -510,24 +533,23 @@ class SchedualController extends Controller
                                 }
                         }
                         DB::commit();
-
-                        $production = session('user')['production_code'];
-                        $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
-                        $plan_waiting = $this->getPlanWaiting($production);
-                        $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
-
-                        return response()->json([
-                                'events' => $events,
-                                'plan' => $plan_waiting,
-                                'sumBatchByStage' => $sumBatchByStage,
-                        ]);
-
                 } catch (\Exception $e) {
                         DB::rollBack();
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
                 }
 
+
+                $production = session('user')['production_code'];
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                $plan_waiting = $this->getPlanWaiting($production);
+                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+
+                return response()->json([
+                        'events' => $events,
+                        'plan' => $plan_waiting,
+                        'sumBatchByStage' => $sumBatchByStage,
+                ]);                
         }
 
         public function history(Request $request){
@@ -683,6 +705,7 @@ class SchedualController extends Controller
                                         'schedualed_at'   => now(),
                                 ]);
 
+
                                 DB::table('stage_plan_history')
                                         ->insert([
                                         'stage_plan_id'   => $realId,
@@ -742,9 +765,8 @@ class SchedualController extends Controller
                                                 'schedualed_by'    => session('user')['fullName'],
                                                 'schedualed_at'    => now(),
                                         ]);
-                                        DB::table('room_status')
-                                        ->where('stage_plan_id', $rowId)
-                                        ->delete();
+                    
+                                        DB::table('stage_plan_temp')->where('id', $rowId)->update(['active' => 1]);
 
                         }else {
 
@@ -772,9 +794,8 @@ class SchedualController extends Controller
                                         ->pluck('id')
                                         ->toArray();
 
-                                        DB::table('room_status')
-                                        ->whereIn('stage_plan_id', $affectedIds)
-                                        ->delete();
+                                        DB::table('stage_plan_temp') ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)->update(['active' => 1]);
+         
                         }
 
                         }
@@ -826,9 +847,7 @@ class SchedualController extends Controller
                                         'schedualed_at' => now(),
                         ]);
 
-                        DB::table('room_status')
-                                ->whereIn('stage_plan_id',  $ids)
-                                ->delete();
+                        DB::table('stage_plan_temp')->whereIn('id', $ids)->update(['active' => 1]);
 
                         $production = session('user')['production_code'];
                         $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
@@ -1144,25 +1163,31 @@ class SchedualController extends Controller
 
         /**Load room_status để lấy các slot đã bận*/
         protected function loadRoomAvailability() {
+                $schedules = DB::table("stage_plan")
+                        ->whereNotNull('start')
+                        ->where('start', ">=", now())
+                        ->select('resourceId', 'start', 'end_clearning')
+                        ->orderBy('start')
+                        ->get();
 
-                // $schedules = DB::table('room_status')->orderBy('start')->get();
-                // foreach ($schedules as $row) {
-                // $this->roomAvailability[$row->room_id][] = [
-                //         'start' => Carbon::parse($row->start),
-                //         'end'   => Carbon::parse($row->end)];
-                // }
+                if (session('fullCalender')['mode'] === 'temp') {
+                        $tempSchedules = DB::table("stage_plan_temp")
+                        ->whereNotNull('start')
+                        ->where('start', ">=", now())
+                        ->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id'])
+                        ->select('resourceId', 'start', 'end_clearning')
+                        ->orderBy('start')
+                        ->get();
 
-                $schedules = DB::table('stage_plan')
-                ->whereNotNull('start')
-                ->where('start',">=",now())
-                ->orderBy('start')
-                ->select('resourceId', 'start', 'end_clearning')->get();
+                        $schedules = $schedules->merge($tempSchedules)->sortBy('start');
+                }
+
                 foreach ($schedules as $row) {
                         $this->roomAvailability[$row->resourceId][] = [
                         'start' => Carbon::parse($row->start),
-                        'end'   => Carbon::parse($row->end_clearning)];
+                        'end'   => Carbon::parse($row->end_clearning),
+                        ];
                 }
-
         }
 
         /**Tìm slot trống sớm nhất trong phòng*/
@@ -1211,6 +1236,7 @@ class SchedualController extends Controller
                                 'schedualed_at'      => now(),
                         ]);
                         // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
+                        DB::table('stage_plan_temp')->where('id', $stageId)->update(['active' => 0]);
 
                         DB::table('stage_plan_history')
                                 ->insert([
@@ -1639,26 +1665,25 @@ class SchedualController extends Controller
 
                 $totalSeconds =  $startDate->diffInSeconds($endDate);
 
-
-
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 // Query tính busy_hours
-                $data = DB::table('stage_plan as r')
+                $data = DB::table("$stage_plan_table as sp")
                 ->select(
-                        'r.resourceId',
+                        'sp.resourceId',
                         DB::raw("{$totalSeconds} / 3600 as total_hours"),
                         DB::raw("SUM(
                         TIMESTAMPDIFF(
                                 SECOND,
-                                GREATEST(r.start, '{$startDate}'),
-                                LEAST(COALESCE(r.end_clearning, r.end), '{$endDate}')
+                                GREATEST(sp.start, '{$startDate}'),
+                                LEAST(COALESCE(sp.end_clearning, sp.end), '{$endDate}')
                         )
                         ) / 3600 as busy_hours")
                 )
-
-                ->whereRaw('((r.start <= ? AND r.end >= ?) OR (r.start_clearning <= ? AND r.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
-                ->where('r.start', '<', $endDate)
-                ->where('r.deparment_code', session('user')['production_code'])
-                ->groupBy('r.resourceId')
+                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
+                ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->groupBy('sp.resourceId')
                 ->get();
 
                 // Bổ sung free_hours = total - busy
@@ -1676,13 +1701,16 @@ class SchedualController extends Controller
                 //->whereRaw('((stage_plan.start <= ? AND stage_plan.end >= ?) OR (stage_plan.start_clearning <= ? AND stage_plan.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate = Carbon::parse($endDate)->toDateTimeString();
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
 
-                $result =  DB::table('stage_plan as sp')
+                $result =  DB::table("$stage_plan_table as sp")
                         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
                         ->leftJoin('intermediate_category as ic', 'fc.intermediate_code', '=', 'ic.intermediate_code')
                         ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', session('user')['production_code'])
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->select(
                         "sp.$group_By",
                         DB::raw('
@@ -1712,6 +1740,12 @@ class SchedualController extends Controller
 
                 dd ($this->getRoomStatistics('2025-09-22','2025-09-28'));
         }
+
+
+        /////////////////////////////////////////////////////////////
+
+
+
 
 }
 

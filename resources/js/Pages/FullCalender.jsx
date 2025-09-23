@@ -74,8 +74,6 @@ import dayjs from 'dayjs';
           setPlan(data.plan);
           setQuota(data.quota);
           setStageMap(data.stageMap);
-          
-         
         })
         .catch(err => console.error("API error:", err));
     }, []);
