@@ -12,7 +12,7 @@ import Swal from 'sweetalert2';
 import axios from "axios";
 
 
-const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources }) => {
+const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources, type }) => {
 
 
   const [stageFilter, setStageFilter] = useState(1);
@@ -634,7 +634,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 <i className="fas fa-flag-checkered"></i>
               </div> 
               </>):<></>}
-              {percentShow === "100%" && stageFilter === 9 ? (
+              {percentShow === "100%" && stageFilter === 9 && type ? (
                 <>
                   <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Sự Kiện Khác"
                     onClick={ () => setShowModalCreate (true)}>
@@ -646,8 +646,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     <i className="fas fa-trash"></i>
                   </div> 
                 </>
-
-              
               ):<></>}
 
           </Col>

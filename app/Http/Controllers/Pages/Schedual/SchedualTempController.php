@@ -11,7 +11,7 @@ use Carbon\Carbon;
 
 class SchedualTempController extends Controller
 {
-    public function index(){    
+        public function index(){    
                 $datas = DB::table('stage_plan_temp_list')
                 ->where ('deparment_code',session('user')['production_code'])
                 ->orderBy('id','desc')->get();
@@ -21,7 +21,7 @@ class SchedualTempController extends Controller
                 return view('pages.Schedual.temp.list',[
                         'datas' => $datas   
                 ]);    
-        }
+        } 
 
         public function store(Request $request){
             $production = session('user')['production_code'];
