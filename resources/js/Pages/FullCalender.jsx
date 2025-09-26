@@ -53,11 +53,12 @@ import dayjs from 'dayjs';
     const [quota, setQuota] = useState([]);
     const [stageMap, setStageMap] = useState({});
     const [historyData, setHistoryData] = useState([]);
+    const [type, setType] = useState(true);
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      axios.put("/Schedual/view", {
+      axios.post("/Schedual/view", {
           startDate: activeStart.toISOString(), 
           endDate: activeEnd.toISOString(),
           viewtype: "resourceTimelineWeek"
@@ -74,8 +75,12 @@ import dayjs from 'dayjs';
           setPlan(data.plan);
           setQuota(data.quota);
           setStageMap(data.stageMap);
+          setType (data.type)
         })
-        .catch(err => console.error("API error:", err));
+        .catch(err => 
+          console.error("API error:", err)
+        );
+
     }, []);
 
    /// Get dư liệu row được chọn 
@@ -413,6 +418,7 @@ import dayjs from 'dayjs';
               console.error("Lỗi tạo lịch:", err.response?.data || err.message);
           });
       }else if (selectedRows[0].stage_code == 8){
+        
             axios.put('/Schedual/store_maintenance', {
                 stage_code: 8,
                 start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
@@ -790,6 +796,66 @@ import dayjs from 'dayjs';
         }
       });
     };
+    /// Xử lý xoa các lịch được chọn
+    const handleDeleteScheduale = (e) => {
+       
+        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+                if (!selectedEvents || selectedEvents.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Chọn Lịch Cần Xóa',
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    return; // Dừng hàm ở đây
+                }
+                e.stopPropagation();
+                Swal.fire({
+                  title: 'Bạn có chắc muốn xóa lịch này?',
+                  icon: 'warning',
+                  showCancelButton: true,
+                  confirmButtonText: 'Xóa',
+                  cancelButtonText: 'Hủy',
+                  confirmButtonColor: '#d33',
+                  cancelButtonColor: '#3085d6',
+
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    axios.put('/Schedual/deActive', { 
+                        ids: selectedEvents,  
+                        startDate: activeStart.toISOString(), 
+                        endDate: activeEnd.toISOString()
+                      })
+                      .then((res) => {
+                        let data = res.data;
+                        if (typeof data === "string") {
+                          data = data.replace(/^<!--.*?-->/, "").trim();
+                          data = JSON.parse(data);
+                        }
+                        setEvents(data.events);
+                        setSumBatchByStage(data.sumBatchByStage);
+                        setPlan(data.plan);
+
+                        Swal.fire({
+                          icon: 'success',
+                          title: 'Đã xóa lịch thành công',
+                          showConfirmButton: false,
+                          timer: 1500
+                        });
+                      })
+
+                      .catch((error) => {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Xóa lịch thất bại',
+                          text: 'Vui lòng thử lại sau.',
+                        });
+                        console.error("API error:", error.response?.data || error.message);
+                      });
+                  }
+                  setSelectedEvents([]);
+          });
+    }
 
     /// Xử lý độ chia thời gian nhỏ nhất 
     const toggleSlotDuration = () => {
@@ -1082,8 +1148,12 @@ import dayjs from 'dayjs';
 
  
         datesSet={(info) => {
-          const { start, end } = info; 
-          axios.put("/Schedual/getSumaryData", {startDate: start.toISOString(), endDate: end.toISOString()} )
+          const { start, end } = info;
+          //console.log ( start.toISOString(), end.toISOString())
+          axios.post("/Schedual/getSumaryData", {
+            startDate: start.toISOString(), 
+            endDate: end.toISOString()
+          })
           .then(res => {
             let data = res.data;
             if (typeof data === "string") {
@@ -1336,7 +1406,7 @@ import dayjs from 'dayjs';
         const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
         const now = new Date();
         return (
-        <div className="relative group custom-event-content" data-event-id={arg.event.id} >
+        <div className="relative  group custom-event-content" data-event-id={arg.event.id} >
             
             <div style={{ fontSize: `${eventFontSize}px` }}>
               {/* {viewConfig.timeView != 'resourceTimelineMonth' ? (<b >{arg.event.title}</b>):(<b>{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)} */}
@@ -1348,63 +1418,9 @@ import dayjs from 'dayjs';
 
             {/* Nút xóa */}
             {arg.event.extendedProps.finished !== 1 && (
-              <button onClick={(e) => {
-                const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-                if (!selectedEvents || selectedEvents.length === 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Chọn Lịch Cần Xóa',
-                        showConfirmButton: false,
-                        timer: 1000
-                    });
-                    return; // Dừng hàm ở đây
-                }
-                e.stopPropagation();
-                Swal.fire({
-                  title: 'Bạn có chắc muốn xóa lịch này?',
-                  icon: 'warning',
-                  showCancelButton: true,
-                  confirmButtonText: 'Xóa',
-                  cancelButtonText: 'Hủy',
-                  confirmButtonColor: '#d33',
-                  cancelButtonColor: '#3085d6',
-                }).then((result) => {
-                  if (result.isConfirmed) {
-                    arg.event.remove();
-                    axios.put('/Schedual/deActive', { 
-                        ids: selectedEvents,  
-                        startDate: activeStart.toISOString(), 
-                        endDate: activeEnd.toISOString()
-                      })
-                      .then((res) => {
-                        let data = res.data;
-                        if (typeof data === "string") {
-                          data = data.replace(/^<!--.*?-->/, "").trim();
-                          data = JSON.parse(data);
-                        }
-                        setEvents(data.events);
-                        setSumBatchByStage(data.sumBatchByStage);
-                        setPlan(data.plan);
-
-                        Swal.fire({
-                          icon: 'success',
-                          title: 'Đã xóa lịch thành công',
-                          showConfirmButton: false,
-                          timer: 1500
-                        });
-                      })
-
-                      .catch((error) => {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Xóa lịch thất bại',
-                          text: 'Vui lòng thử lại sau.',
-                        });
-                        console.error("API error:", error.response?.data || error.message);
-                      });
-                  }
-                  setSelectedEvents([]);
-                });
+              <button onClick={(e) => { 
+                //alert ("sa");
+                handleDeleteScheduale(e);
               }}
               className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
               title="Xóa lịch"
@@ -1455,16 +1471,17 @@ import dayjs from 'dayjs';
             </button>
 
             {/* H Xem History */}
+             { type && (
             <button
                 onClick={(e) => { e.stopPropagation();handleShowHistory(arg.event);}}
                 className={`absolute top-[-15px] left-5 text-xs px-1 rounded shadow bg-red-500 text-white`}
                 title={'Xem Lịch Sử Thay Đổi'}
               >
                 {arg.event._def.extendedProps.number_of_history}
-            </button>
+            </button>)}
 
             {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */} 
-            {arg.event.extendedProps.finished === 0  && (
+            {arg.event.extendedProps.finished === 0  && type && (
               <button onClick={(e) => { e.stopPropagation(); handleFinished(arg.event);}}
                 className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
                 title='Xác Nhận Hoàn Thành Lô Sản Xuất'
@@ -1473,7 +1490,7 @@ import dayjs from 'dayjs';
             </button>)}
 
             {/* 📦 Nút Xác nhận nguồn NL Và Phòng Sản Xuất */} 
-            {arg.event.extendedProps.room_source === false  && (
+            {arg.event.extendedProps.room_source === false  && type && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1501,6 +1518,7 @@ import dayjs from 'dayjs';
           setSelectedRows = {setSelectedRows}
           quota = {quota}
           resources = {resources}
+          type = {type}
       />
 
         <NoteModal show={showNoteModal} setShow={setShowNoteModal} />

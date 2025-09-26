@@ -77,6 +77,7 @@ return new class extends Migration {
             $table->unsignedInteger('plan_master_id');
             $table->unsignedInteger('product_caterogy_id');
             $table->string('predecessor_code',20)->nullable();
+            $table->string('nextcessor_code',20)->nullable();
             $table->string('campaign_code',20)->nullable();
             $table->string('code',512)->nullable();
             $table->unsignedInteger('order_by')->nullable();

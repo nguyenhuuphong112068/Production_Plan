@@ -425,19 +425,21 @@ class ProductionPlanController extends Controller
                         'plan_master.plan_list_id',
                         'plan_master.product_caterogy_id',
                         'intermediate_category.weight_1',
+                        'intermediate_category.weight_2',
                         'intermediate_category.prepering',
                         'intermediate_category.blending',
                         'intermediate_category.forming',
                         'intermediate_category.coating',
                         'finished_product_category.primary_parkaging',
-                        'finished_product_category.secondary_parkaging'
+                       
                 )
                 ->orderBy('level', 'asc')->orderBy('expected_date', 'asc')
                 ->get();
 
-                $stages = ['weight_1', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging' ];
+                $stages = ['weight_1','weight_2', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging'];
                 $stage_code = [
                         'weight_1' => 1,
+                        'weight_2' => 2,
                         'prepering' => 3,
                         'blending'=> 4,
                         'forming'=> 5,
@@ -446,25 +448,65 @@ class ProductionPlanController extends Controller
                 ];
 
                 $dataToInsert = [];
-                
-               foreach ($plans as $plan) {
-                        $prevCode = null;
+
+                foreach ($plans as $plan) {
+                        $stageList = [];
+
+                        // Vòng 1: gom các stage có tồn tại cho plan này
                         foreach ($stages as $index => $stage) {
                                 if ($plan->$stage) {
-                                $dataToInsert[] = [
-                                        'plan_list_id' => $plan->plan_list_id,
-                                        'plan_master_id' => $plan->id,
-                                        'product_caterogy_id'=> $plan->product_caterogy_id,
-                                        'stage_code'=> $stage_code[$stage],
-                                        'order_by'=> $index,
-                                        'code'=>  $plan->id ."_". $stage_code[$stage],
-                                        'predecessor_code' => $prevCode,
-                                        'deparment_code' => session('user')['production_code'],
-                                        'created_date' => now(),
+                                $stageList[] = [
+                                        'code'       => $plan->id . "_" . $stage_code[$stage],
+                                        'stage_code' => $stage_code[$stage],
+                                        'order_by'   => $index,
                                 ];
-                                 $prevCode = $plan->id ."_". $stage_code[$stage];
                                 }
                         }
+                        //dd ($stageList);
+                        // Vòng 2: set predecessor và nextcessor
+                        foreach ($stageList as $i => $stageItem) {
+                                $prevCode = null;
+                                $nextCode = null;
+
+                                // ✅ set prevCode
+                                if ($i > 0) {
+                                        $prevItem = $stageList[$i - 1];
+
+                                        // nếu stage hiện tại >=3 và prev là 2 thì bỏ qua, tìm lại stage_code = 1
+                                        if ($stageItem['stage_code'] >= 3 && $prevItem['stage_code'] == 2) {
+                                        $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
+                                        } else {
+                                        $prevCode = $prevItem['code'];
+                                        }
+                                }
+
+                                // ✅ set nextCode
+                                if ($i < count($stageList) - 1) {
+                                        $nextItem = $stageList[$i + 1];
+
+                                        // nếu stage hiện tại = 1 và next là 2 thì bỏ qua, tìm stage_code >= 3
+                                        if ($stageItem['stage_code'] == 1 && $nextItem['stage_code'] == 2) {
+                                        $nextCode = collect($stageList)
+                                                ->first(fn($s) => $s['stage_code'] >= 3)['code'] ?? null;
+                                        } else {
+                                        $nextCode = $nextItem['code'];
+                                        }
+                                }
+
+                                $dataToInsert[] = [
+                                        'plan_list_id'        => $plan->plan_list_id,
+                                        'plan_master_id'      => $plan->id,
+                                        'product_caterogy_id' => $plan->product_caterogy_id,
+                                        'stage_code'          => $stageItem['stage_code'],
+                                        'order_by'            => $stageItem['order_by'],
+                                        'code'                => $stageItem['code'],
+                                        'predecessor_code'    => $prevCode,
+                                        'nextcessor_code'     => $nextCode,
+                                        'deparment_code'      => session('user')['production_code'],
+                                        'created_date'        => now(),
+                                ];
+                        }
+
                 }
 
                 DB::table('stage_plan')->insert($dataToInsert);
