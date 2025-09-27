@@ -1117,25 +1117,24 @@ class SchedualController extends Controller
 
 
                 for ($i=3; $i<=7; $i++){
-                        $stage_plans_stage =  $stage_plans->where ('stage_code',$i);
+                        $stage_plans_stage = $stage_plans->where ('stage_code',$i);
                         if ($stage_plans_stage->isEmpty()) {continue;}
                         if ($i <=6) {$product_code = "intermediate_code";} else {$product_code = "finished_product_code";}
 
                         $updates = [];
-
+                        
                         // Nhóm theo expected_date + intermediate_code
                         $groups = $stage_plans_stage
-                        ->groupBy(function ($item) use ($product_code) {
-                                return $item->expected_date . '|' . $item->$product_code;
-                        })
-                        ->filter(function ($group) {
-                                return $group->count() > 1; // chỉ giữ group có > 1 phần tử
+                                ->groupBy(function ($item) use ($product_code) {
+                                        return $item->expected_date . '|' . $item->$product_code;})
+                                ->filter(function ($group) {
+                                        return $group->count() > 1; // chỉ giữ group có > 1 phần tử
                         });
 
                 foreach ($groups as $groupKey => $items) {
 
                         [$expected_date, $code] = explode('|', $groupKey);
-                        $quota = DB::table('quota')->where($product_code, $code)->first();
+                        $quota = DB::table('quota')->where($product_code, $code)->where('stage_code',$i)->first();
                         $maxBatch = $quota->maxofbatch_campaign ?? 0;
 
                         // 👉 Bỏ qua nhóm nếu quota <= 1
@@ -1143,7 +1142,7 @@ class SchedualController extends Controller
 
                         $items = $items->values(); // reset index
 
-                        $countInBatch = 1;
+                        $countInBatch = 0;
                         $first = $items[0];
                         $campaignCode = $first->predecessor_code ?? ("0_" . $first->code);
 
@@ -1161,7 +1160,7 @@ class SchedualController extends Controller
                                 $countInBatch++;
                         }
                 }
-                        // Bulk update (tách ra cho hiệu năng)
+                        
                         if (!empty($updates)) {
                                 $ids = collect($updates)->pluck('id')->implode(',');
 

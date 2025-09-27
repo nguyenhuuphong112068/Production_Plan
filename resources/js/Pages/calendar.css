@@ -21,7 +21,11 @@
 .fc .fc-toolbar.fc-header-toolbar button:hover {
     background-color: #00408f;
 }
-
+.fc {
+  height: 100vh;          /* chiều cao chiếm 80% màn hình */
+  overflow-y: auto !important;  /* bật cuộn dọc */
+  overflow-x: auto;    /* tắt cuộn ngang nếu không cần */
+}
 /* Header ngang */
 .fc .fc-col-header-cell {
   background-color: #fffefe;
@@ -76,13 +80,13 @@
 /* Cố định header toolbar trên trục Y */
 .fc-header-toolbar {
   position: sticky;
-  top: 0;           /* cách top container 0px */
+  top: 0px;           /* cách top container 0px */
   z-index: 10;      /* đảm bảo nổi trên timeline */
   background: #fff; /* màu nền để không trong suốt */
 }
 .fc-scroller-harness .fc-header-toolbar {
   position: sticky;
-  top: 0;
+  top: 0px;
   z-index: 10;
   background: #fff;
 }
@@ -92,7 +96,7 @@
 
 .fc-header-toolbar {
   position: sticky;
-  top: 0;
+  top: 0px;
   z-index: 30; /* cao nhất */
   background: #fff;
 }
@@ -254,7 +258,7 @@
   height: 50px;
   border: 1px solid #aaa;
   border-radius: 4px;
-  overflow: hidden;
+  overflow-y: scroll;
 }
 
 .resource-bar .busy {
@@ -335,4 +339,6 @@ input:checked + .slider:before {
 .highlight-resource {
   background-color: rgba(255, 215, 0, 0.4) !important;
 }
+
+
 
