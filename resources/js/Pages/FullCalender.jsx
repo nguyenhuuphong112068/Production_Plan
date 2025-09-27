@@ -1129,7 +1129,7 @@ import dayjs from 'dayjs';
 
         locale="vi"
         height="auto"
-        resourceAreaWidth="8%"
+        resourceAreaWidth="200px"
    
      
         editable={true}
@@ -1533,20 +1533,24 @@ import dayjs from 'dayjs';
 
         )}}    
       />
-      
-      <ModalSidebar
-          visible={showSidebar}
-          onClose={setShowSidebar}
-          waitPlan={plan}
-          setPercentShow={setPercentShow}
-          percentShow = {percentShow}
-          setPlan={setPlan}
-          selectedRows = {selectedRows}
-          setSelectedRows = {setSelectedRows}
-          quota = {quota}
-          resources = {resources}
-          type = {type}
-      />
+      <div className="modal-sidebar">
+        <ModalSidebar
+            
+            visible={showSidebar}
+            onClose={setShowSidebar}
+            waitPlan={plan}
+            setPercentShow={setPercentShow}
+            percentShow = {percentShow}
+            setPlan={setPlan}
+            selectedRows = {selectedRows}
+            setSelectedRows = {setSelectedRows}
+            quota = {quota}
+            resources = {resources}
+            type = {type}
+
+        />
+      </div>
+
 
         <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
         <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData}/>
