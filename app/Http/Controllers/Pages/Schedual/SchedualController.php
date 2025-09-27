@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class SchedualController extends Controller
 {
@@ -61,6 +62,7 @@ class SchedualController extends Controller
                         'sp.finished',
                         'sp.quarantine_time',
                         'sp.yields',
+                        'sp.scheduling_direction',
                         'intermediate_category.intermediate_code',
                         'plan_master.expected_date',
                         'plan_master.after_weigth_date',
@@ -162,7 +164,7 @@ class SchedualController extends Controller
                                         $room_source = DB::table('room_source')->where('intermediate_code', $plan->intermediate_code)->where('source_id', $material_source_id)->where ('room_id', $plan->resourceId)->exists();
                                         if (!$room_source){
                                                 //$color_event = '#dc02f9ff';
-                                                $subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
+                                                //$subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
                                 }}
 
                                 if ($plan->expected_date < $plan->end && $plan->stage_code < 9){
@@ -192,6 +194,7 @@ class SchedualController extends Controller
                                         'is_clearning' => false,
                                         'finished' => $plan->finished,
                                         'room_source' => $room_source,
+                                        'direction' => $plan->scheduling_direction,
                                         'number_of_history' =>  DB::table('stage_plan_history')->where('stage_plan_id', $plan->id)->count()??0,
                         ]);
                         }
@@ -1289,6 +1292,7 @@ class SchedualController extends Controller
 
         /**Tìm slot trống sớm nhất trong phòng*/
         protected function findEarliestSlot($roomId, Carbon $earliestStart, $durationHours, $cleaningHours){
+                $this->loadRoomAvailability();
                 if (!isset($this->roomAvailability[$roomId])) {
                         $this->roomAvailability[$roomId] = [];
                 }
@@ -1316,8 +1320,8 @@ class SchedualController extends Controller
         }
 
         /** Ghi kết quả vào stage_plan + log vào room_status*/
-        protected function saveSchedule($title, $stageId, $roomId, Carbon $start, Carbon $end,  ?Carbon $endCleaning = null, ?string $cleaningType = null) {      
-                DB::transaction(function() use ($title, $stageId, $roomId, $start, $end,  $endCleaning, $cleaningType) {
+        protected function saveSchedule($title, $stageId, $roomId, Carbon $start, Carbon $end,  Carbon $endCleaning, string $cleaningType, bool $direction) {      
+                DB::transaction(function() use ($title, $stageId, $roomId, $start, $end,  $endCleaning, $cleaningType, $direction) {
                         if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                         if ($cleaningType == 2){$titleCleaning = "VS-II";} else {$titleCleaning = "VS-I";}
 
@@ -1333,7 +1337,9 @@ class SchedualController extends Controller
                                 'start_clearning' => $end,
                                 'end_clearning'   => $endCleaning,
                                 'title_clearning' => $titleCleaning,
+                                'scheduling_direction' => $direction,
                                 'schedualed_at'      => now(),
+                                
                         ]);
 
                         // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
@@ -1594,7 +1600,8 @@ class SchedualController extends Controller
                                         $bestStart,
                                         $bestEnd,
                                         $endCleaning,
-                                        2
+                                        2,
+                                        1
 
                         );
         }
@@ -1733,11 +1740,6 @@ class SchedualController extends Controller
                                         
                                         $delay_time = ($pre_room->m_time_hours*($campaignTasks->count() - 1) + $pre_room->C1_time_hours*($campaignTasks->count() - 2)) -
                                                         (($bestQuota->m_time_hours + $bestQuota->C1_time_hours )* ($campaignTasks->count() - 1));
-                                
-                                        Log::info('delay_time:', [
-                                                'delay_time' => $delay_time,
-                                                'waite_time' => $waite_time
-                                        ]);
 
                                         if ($waite_time > $delay_time) {$delay_time = $waite_time;}
 
@@ -1775,7 +1777,8 @@ class SchedualController extends Controller
                                 $currentStart,
                                 $taskEnd,
                                 $endCleaning,
-                                $clearningType
+                                $clearningType,
+                                1
                         );
                         $counter++;
                         $currentStart = $endCleaning->copy();
@@ -1863,19 +1866,18 @@ class SchedualController extends Controller
         public function test(){
 
                 $this->scheduleStartBackward(true, 0);
-                $this->index();
+                //$this->index();
         }
 
-
         ///////// Sắp Lịch Ngược ////////
-        
         public function scheduleStartBackward($work_sunday, int $bufferDate) {
                 if (session('fullCalender')['mode'] === 'offical') {
                         $stage_plan_table = 'stage_plan';
                 } else {
                         $stage_plan_table = 'stage_plan_temp';
                 }
-
+                $start_date = Carbon::parse("2025-09-29");
+               
                 $planMasters = DB::table($stage_plan_table)
                         ->where ('active', 1)
                         ->where ('finished', 0)
@@ -1885,18 +1887,20 @@ class SchedualController extends Controller
                 
                 
                 foreach ($planMasters as $planId) {
-                        $this->schedulePlanBackward($planId, $work_sunday, $bufferDate);
+                        $this->schedulePlanBackward($planId, $work_sunday, $bufferDate, $start_date);
                 }
                 
         } // khởi động và lấy mãng plan_master_id
 
-        protected function schedulePlanBackward($planId,int $bufferDate = 0, bool $working_sunday = false) {
+        protected function schedulePlanBackward($planId,int $bufferDate = 0, bool $working_sunday = false, Carbon $start_date) {
+                
                 if (session('fullCalender')['mode'] === 'offical') {
                         $stage_plan_table = 'stage_plan';
                 } else {
                         $stage_plan_table = 'stage_plan_temp';
                 }
                 
+                // toàn bộ các row trong stage_plan cùng plan_master_id của các công đoạn từ ĐG - PC
                 $tasks = DB::table("$stage_plan_table as sp")
                 ->select (
                         'sp.id',
@@ -1920,45 +1924,316 @@ class SchedualController extends Controller
                 ->leftJoin('market as mk', 'fc.market_id', '=', 'mk.id')
                 ->where('plan_master_id', $planId)
                 ->where('stage_code',">=",3)
-                ->orderByDesc('stage_code') // chạy ngược
+                ->orderBy('stage_code', 'desc') // chạy ngược
                 ->get(); // 1 lô gồm tất cả các stage
 
-                // latestEnd = ngày phải hoàn thành
-                $latestEnd = Carbon::parse($tasks->first()->expected_date)->subDays(2 + $bufferDate);
-                $endBestStart = null;
-                $prevCycle = 0;
-                $totalCount = 0;
+                //dd ($tasks->first()->expected_date);
+                $latestEnd = Carbon::parse($tasks->first()->expected_date)->subDays(5 + 2); //->subDays(1 + $bufferDate); // ngày phải hoàn thành
+               
+                $endBestStart = null; // có thể lựa chọn là bắt đầu của lô đầu hoặc cuối chiến dịch để làm cơ sở tìm khoảng gap thích hợp cho các lô hiện tại
+                $prevCycle = 0; // thời gian sản xuất công đoạn trước = p_time + m_time
+                $totalCount = 0; // vòng lập của ĐG --> không kiểm tra thời gian sản xuất với công đoạn trước
+                $firstBestStart = null; // điểm bắt đầu của lô đầu chiến dịch, dùng khi thời gian sx của lô cđ trước nhở hơn công đoạn sau
                 
-                
-                foreach ($tasks as  $task) {
+                foreach ($tasks as  $task) { // Vòng lập chính duyệt qua toàn bộ các task cùng plan_master_id
+                        
                         $campaign_tasks = null;
-                       
-                        // if ($task->nextcessor_code){
-
-                        //         $prevCycle = ($pre_room->m_time_hours ?? 0) + ($pre_room->C1_time_hours ?? 0);
-                        //         $currCycle = ($bestQuota->m_time_hours ?? 0) + ($bestQuota->C1_time_hours ?? 0);
-      
-                        //         if ($counter == 0 && $currCycle < $prevCycle) {
-                                        
-                        //                 $delay_time = ($pre_room->m_time_hours*($campaignTasks->count() - 1) + $pre_room->C1_time_hours*($campaignTasks->count() - 2)) -
-                        //                                 (($bestQuota->m_time_hours + $bestQuota->C1_time_hours )* ($campaignTasks->count() - 1));
-                                
-                        //                 Log::info('delay_time:', [
-                        //                         'delay_time' => $delay_time,
-                        //                         'waite_time' => $waite_time
-                        //                 ]);
-
-                        //                 if ($waite_time > $delay_time) {$delay_time = $waite_time;}
-
-                        //                 $currentStart = $currentStart->addHours($delay_time);
-
-                        //         }elseif ($counter == 0 && $currCycle >= $prevCycle) {
-                        //                 $currentStart = $currentStart->addHours($waite_time);}
-                        // }
-
-
-                        if ($task->campaign_code){
+                        $stage_plan_ids = []; // chứa id các row đã lưu. trường hợp các stage sau rơi và quá khứ sẽ dùng id này để xóa lịch đã sắp
+                        if ($task->campaign_code){ // trường hợp chiến dịch
                                  $campaign_tasks = DB::table("$stage_plan_table as sp")
+                                  ->select (
+                                        'sp.id',
+                                        'sp.plan_master_id',
+                                        'sp.product_caterogy_id',
+                                        'sp.predecessor_code',
+                                        'sp.nextcessor_code',
+                                        'sp.campaign_code',
+                                        'sp.code',
+                                        'sp.stage_code',
+                                        'fc.finished_product_code',
+                                        'fc.intermediate_code',
+                                        'pm.expected_date',
+                                        'pm.batch',
+                                        'mk.name as market',
+                                        'pn.name')
+                                ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
+                                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                ->leftJoin('product_name as pn', 'fc.product_name_id', '=', 'pn.id')
+                                ->leftJoin('market as mk', 'fc.market_id', '=', 'mk.id')
+                                ->where('sp.campaign_code',$task->campaign_code)
+                                ->orderBy('expected_date', 'asc')
+                                ->orderBy('level', 'asc')
+                                ->get();
+                        }
+                        
+                       
+
+                        if ($task->stage_code <= 6){
+                                $product_category_code = $task->intermediate_code;
+                                $product_category_type = "intermediate_code";
+                        }
+                        else {
+                                $product_category_code = $task->finished_product_code;
+                                $product_category_type = "finished_product_code";
+                        }
+                       
+                        $rooms = DB::table('quota')->select ('room_id', 
+                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),)
+                        ->where($product_category_type,$product_category_code)->where ('stage_code', $task->stage_code)->get();
+                           
+                        $bestRoom = null;
+                        $bestRoomId = null;
+                        $bestStart = null;
+                        $bestEnd = null;
+                        $bestEndCleaning = null;
+                        $curCycleltpreCycle = false;
+
+                        foreach ($rooms as $room) { // duyệt qua toàn bộ các room đã định mức để tìm bestroom
+
+                                $beforeIntervalMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes;
+                                $afterIntervalMinutes =  (float) $room->C2_time_minutes;
+
+                                if ($campaign_tasks !== null){ // chỉ thực hiện khi có chiến dịch
+                                        
+                                        $beforeIntervalMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes * $campaign_tasks->count() + (float) $room->C1_time_minutes * ($campaign_tasks->count()-1);
+                                        $afterIntervalMinutes =  (float) $room->C2_time_minutes;
+
+                                        $currCycle =  (float) $room->C1_time_minutes  + (float) $room->m_time_minutes;
+                                        if ($currCycle < $prevCycle && $firstBestStart != null){
+                                                $curCycleltpreCycle = true;
+                                                $latestEnd = $firstBestStart;
+                                                $beforeIntervalMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes;
+                                                $afterIntervalMinutes =  ((float) $room->m_time_minutes * ($campaign_tasks->count()-1)) + ((float) $room->C1_time_minutes * ($campaign_tasks->count() - 1 )) + (float) $room->C2_time_minutes;
+                                                
+                                        }
+                                }
+                        
+                                $candidateEndClearning = $this->findLatestSlot(
+                                        $room->room_id,
+                                        $latestEnd, 
+                                        $beforeIntervalMinutes, 
+                                        $afterIntervalMinutes,
+                                        $start_date
+                                );
+                               
+                                if ($candidateEndClearning == false){
+                                        if ($stage_plan_ids) {
+                                                DB::table($stage_plan_table)
+                                                ->whereIn('id', $stage_plan_ids)
+                                                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                                {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
+                                                ->update([
+                                                        'start'            => null,
+                                                        'end'              => null,
+                                                        'start_clearning'  => null,
+                                                        'end_clearning'    => null,
+                                                        'resourceId'       => null,
+                                                        'title'            => null,
+                                                        'title_clearning'  => null,
+                                                        'schedualed'       => 0,
+                                                ]);
+                                        }  
+                                         
+                                        $this->schedulePlanForward ($planId, $working_sunday, $start_date);
+
+                                        return false;
+                                }
+                                
+                                if ($bestEndCleaning === null || $candidateEndClearning->gt($bestEndCleaning)) {
+                                        $bestRoom = $room;
+                                        $bestRoomId = $room->room_id;
+                                        $bestEndCleaning  = $candidateEndClearning;
+                                        $bestEnd = $bestEndCleaning->copy()->subMinutes((float) $afterIntervalMinutes);
+                                        $bestStart = $bestEnd->copy()->subMinutes((float) $beforeIntervalMinutes);
+                                } 
+                        }
+                        if ($campaign_tasks !== null){
+                                
+                                $campaign_counter = 1;
+                                if ($curCycleltpreCycle) {
+                                        $currentend = $bestEndCleaning->copy()->subMinutes((float) $afterIntervalMinutes );
+                                        $currentend = $currentend->copy()->addMinutes((float) $room->m_time_minutes * ($campaign_tasks->count()-1) + (float) $room->C1_time_minutes * ($campaign_tasks->count()-1));
+                                }else {
+                                        $currentend = $bestEndCleaning->copy()->subMinutes((float) $afterIntervalMinutes);
+                                }
+                                
+
+
+                                foreach ($campaign_tasks as $task){
+                                        
+                                        // if ($task->nextcessor_code !== null && $curCycleltpreCycle){
+                                        //         $next_stage = DB::table ("$stage_plan_table as sp")->where ('code', $task ->nextcessor_code)->first ();
+                                        //         if ($currentend > $next_stage->start){ $currentend = Carbon::parse($next_stage->start);}
+                                        // }
+
+                                        if ($campaign_counter == 1) {
+                                                $bestEndClearning = $currentend->copy()->addMinutes((float) $bestRoom->C2_time_minutes);
+                                                $bestStart = $currentend->copy()->subMinutes((float) $bestRoom->m_time_minutes); 
+                                                $clearningType = 2;
+                                                $endBestStart = $bestStart;
+                                              
+                                        }elseif ($campaign_counter == $campaign_tasks->count()){
+                                                $bestEndClearning = $currentend->copy()->addMinutes((float) $room->C1_time_minutes);
+                                                $bestStart = $currentend->copy()->subMinutes((float) $bestRoom->p_time_minutes + (float) $bestRoom->m_time_minutes ); //Lô cuối chiến dịch
+                                                
+                                                $firstBestStart = $bestStart->copy()->addMinutes((float) $bestRoom->p_time_minutes);
+                                                $prevCycle = ((float) $bestRoom->m_time_minutes + (float) $bestRoom->C1_time_minutes);
+                                                $clearningType = 1;
+                                        }else {
+                                                $bestEndClearning = $currentend->copy()->addMinutes((float) $room->C1_time_minutes);
+                                                $bestStart = $currentend->copy()->subMinutes((float) $bestRoom->m_time_minutes); //Lô giữa chiến dịch
+                                                $clearningType = 1;
+                                        }
+
+                                        $title = $task->name ."- ". $task->batch ."- ". $task->market;  
+
+                                        $this->saveSchedule(
+                                                $title,
+                                                $task->id,
+                                                $bestRoomId,
+                                                $bestStart,
+                                                $currentend,
+                                                $bestEndClearning,
+                                                $clearningType,
+                                                0
+                                        );
+                                        $currentend = $bestStart->copy()->subMinutes((float) $room->C1_time_minutes) ;
+                                        $stage_plan_ids [] = $task->id;
+                                        $campaign_counter++;
+                                }
+                        }else {
+                                $title = $task->name ."- ". $task->batch ."- ". $task->market;  
+                                $this->saveSchedule(
+                                        $title,
+                                        $task->id,
+                                        $bestRoomId,
+                                        $bestStart,
+                                        $bestEnd,
+                                        $bestEndCleaning,
+                                        2,
+                                        0
+                                );
+                                $endBestStart = $bestStart;
+                                $stage_plan_ids [] = $task->id;
+                        }
+                        // cập nhật latestEnd cho stage tiếp theo
+                        $latestEnd = $endBestStart;
+                        $totalCount++;
+                        
+                }
+
+        } // khởi động và lấy mãng plan_master_id
+
+        protected function findLatestSlot($roomId, $latestEnd, $beforeIntervalMinutes, $afterIntervalMinutes,  ?Carbon $startPoint = null) {
+                $this->loadRoomAvailability();
+                $startPoint = $startPoint ?? Carbon::now();
+                if (!isset($this->roomAvailability[$roomId])) {
+                        $this->roomAvailability[$roomId] = [];
+                }
+
+                $busyList = collect($this->roomAvailability[$roomId])->sortByDesc('end'); // sắp từ cuối về đầu
+                $current_end_clearning = Carbon::parse($latestEnd)->copy()->addMinutes($afterIntervalMinutes);
+                foreach ($busyList as $busy) {
+                // nếu current nằm SAU block bận
+                        if ($current_end_clearning->gt($busy['end'])) {
+                                $gap = $current_end_clearning->diffInMinutes($busy['end']);
+                                if ($gap >= ($beforeIntervalMinutes + $afterIntervalMinutes)) {
+                                        return $current_end_clearning;
+                                }
+                        }
+                        // nếu current rơi VÀO block bận
+                        if ($current_end_clearning->gt($busy['start'])){
+                                // lùi về trước block bận + trừ cleaning
+                                 $current_end_clearning = $busy['start']->copy();
+                }}
+               
+                if (($current_end_clearning->copy()->subMinutes($beforeIntervalMinutes + $afterIntervalMinutes))->lt($startPoint)){
+                        return false;
+                }
+                return $current_end_clearning;
+        }
+
+        protected function findEarliestSlot2($roomId, $Earliest, $intervalTime){
+                $this->loadRoomAvailability();
+
+                if (!isset($this->roomAvailability[$roomId])) {
+                        $this->roomAvailability[$roomId] = [];
+                }
+
+                $busyList = $this->roomAvailability[$roomId]; // danh sách block bận
+                $current_start = $Earliest instanceof Carbon ? $Earliest : Carbon::parse($Earliest);
+
+                foreach ($busyList as $busy) {
+                        // nếu current nằm TRƯỚC block bận
+                        if ($current_start->lt($busy['start'])) {
+                        $gap = $current_start->diffInMinutes($busy['start']);
+                        if ($gap >= $intervalTime) {
+                                return $current_start;
+                        }
+                        }
+
+                        // nếu current rơi VÀO block bận
+                        if ($current_start->lt($busy['end'])) {
+                        // nhảy tới ngay sau block bận
+                        $current_start = $busy['end']->copy();
+                        }
+                }
+
+                // nếu không vướng block nào → trả về current_start
+                return $current_start;
+        }
+
+ 
+        protected function schedulePlanForward($planId,  bool $working_sunday = false, ?Carbon $start_date = null) {
+             
+                if (session('fullCalender')['mode'] === 'offical') {
+                        $stage_plan_table = 'stage_plan';
+                } else {
+                        $stage_plan_table = 'stage_plan_temp';
+                }
+
+                $now = Carbon::now();
+                $minute = $now->minute;
+                $roundedMinute = ceil($minute / 15) * 15;
+                
+                // toàn bộ các row trong stage_plan cùng plan_master_id của các công đoạn từ ĐG - PC
+                $tasks = DB::table("$stage_plan_table as sp")
+                ->select (
+                        'sp.id',
+                        'sp.plan_master_id',
+                        'sp.product_caterogy_id',
+                        'sp.predecessor_code',
+                        'sp.campaign_code',
+                        'sp.code',
+                        'sp.stage_code',
+                        'sp.campaign_code',
+                        'fc.finished_product_code',
+                        'fc.intermediate_code',
+                        'pm.expected_date',
+                        'pm.batch',
+                        'mk.name as market',
+                        'pn.name',
+                )
+                ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
+                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                ->leftJoin('product_name as pn', 'fc.product_name_id', '=', 'pn.id')
+                ->leftJoin('market as mk', 'fc.market_id', '=', 'mk.id')
+                ->where('plan_master_id', $planId)
+                ->where('stage_code',">=",3)
+                ->orderBy('stage_code', 'asc') // chạy thuận
+                ->get(); // 1 lô gồm tất cả các stage
+               
+                $prevCycle = 0;
+                $pre_room = null;
+                $firstBestStart = null;
+                foreach ($tasks as  $task) { // Vòng lập chính duyệt qua toàn bộ các task cùng plan_master_id
+                        $campaign_tasks = null;
+                        $stage_plan_ids = []; // chứa id các row đã lưu. trường hợp các stage sau rơi và quá khứ sẽ dùng id này để xóa lịch đã sắp
+                        if ($task->campaign_code){ // trường hợp chiến dịch
+                                $campaign_tasks = DB::table("$stage_plan_table as sp")
                                   ->select (
                                         'sp.id',
                                         'sp.plan_master_id',
@@ -1974,19 +2249,17 @@ class SchedualController extends Controller
                                         'pm.expected_date',
                                         'pm.batch',
                                         'mk.name as market',
-                                        'pn.name',
-                                )
+                                        'pn.name')
                                 ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
                                 ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
                                 ->leftJoin('product_name as pn', 'fc.product_name_id', '=', 'pn.id')
                                 ->leftJoin('market as mk', 'fc.market_id', '=', 'mk.id')
                                 ->where('campaign_code',$task->campaign_code)
-                                ->orderByDesc('id')
+                                ->orderBy('expected_date', 'asc')
+                                ->orderBy('level', 'asc')
                                 ->get();
                         }
                         
-                        $stage_plan_ids = [];
-
                         if ($task->stage_code <= 6){
                                 $product_category_code = $task->intermediate_code;
                                 $product_category_type = "intermediate_code";
@@ -1996,122 +2269,114 @@ class SchedualController extends Controller
                                 $product_category_type = "finished_product_code";
                         }
                        
-                        $rooms = DB::table('quota')
-                                ->select ('room_id', 'p_time', 'm_time', 'C1_time', 'C2_time',
-                                                DB::raw('(TIME_TO_SEC(p_time)/3600) as p_time_hours'),
-                                                DB::raw('(TIME_TO_SEC(m_time)/3600) as m_time_hours'),
-                                                DB::raw('(TIME_TO_SEC(C1_time)/3600) as C1_time_hours'),
-                                                DB::raw('(TIME_TO_SEC(C2_time)/3600) as C2_time_hours'),)
+                        $rooms = DB::table('quota')->select ('room_id', 
+                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),)
                         ->where($product_category_type,$product_category_code)->where ('stage_code', $task->stage_code)->get();
                            
-
+                        $bestRoom = null;
                         $bestRoomId = null;
-                        $bestEndCleaning = null;
                         $bestStart = null;
                         $bestEnd = null;
-                        $bestRoom = null;
+                        $bestEndCleaning = null;
+           
+                        if ($roundedMinute == 60) {
+                                $now->addHour();
+                                $roundedMinute = 0;
+                        }
+                        $now->minute($roundedMinute)->second(0)->microsecond(0);
 
-                        foreach ($rooms as $room) {
+                        // Gom tất cả candidate time vào 1 mảng
+                        $prev_stage = DB::table ($stage_plan_table)->where ('code', $task->predecessor_code)->first();
+                        $candidatesEarliest = [$now];
+                        $candidatesEarliest[] = $start_date;
+                        $candidatesEarliest[] = $prev_stage->end;
+                        
+                        $earliestStart = collect($candidatesEarliest)->max();
+                        
+                        foreach ($rooms as $room) { // duyệt qua toàn bộ các room đã định mức để tìm bestroom
 
-                                if ($campaign_tasks){
-                                        $execution_time = $room->p_time_hours + $room->m_time_hours * $campaign_tasks->count() + $room->C1_time_hours * ($campaign_tasks->count() -1);
-                                }else {
-                                        $execution_time = $room->p_time_hours + $room->m_time_hours;
-                                }
-
-                                if ($totalCount > 0){
-                                        $currCycle =  (float) $room->p_time_hours * 60 + (float) $room->m_time_hours * 60;
-                                        if ($currCycle < $prevCycle){
-                                                $latestEnd = $endBestStart; // kiểm tra thêm
+                                $intervalTimeMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes + (float) $room->C2_time_minutes;
+                                
+                                if ($campaign_tasks !== null){ // chỉ thực hiện khi có chiến dịch
+                                        $intervalTimeMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes * $campaign_tasks->count() + (float) $room->C1_time_minutes * ($campaign_tasks->count()-1) + (float) $room->C2_time_minutes;
+                                        $currCycle =  (float) $room->C1_time_minutes  + (float) $room->m_time_minutes;
+                                       
+                                        if ($currCycle < $prevCycle && $task->predecessor_code !== null){           
+                                                $delay_time = ((float) $pre_room->m_time_minutes*($campaign_tasks->count() - 1) + (float) $pre_room->C1_time_minutes*($campaign_tasks->count() - 1)) -
+                                                        (($room->m_time_minutes + $room->C1_time_minutes )* ($campaign_tasks->count() - 1)); 
+                                                
+                                                $earliestStart = Carbon::parse($earliestStart)->addMinutes($delay_time);
                                         }
                                 }
-                                
-                                $candidateEndClearning = $this->findLatestSlot(
+                        
+                                $candidateStart = $this->findEarliestSlot2(
                                         $room->room_id,
-                                        $latestEnd, 
-                                        $execution_time, 
-                                        $room->C2_time_hours);
-                                
-                                if ($bestEndCleaning === null || $candidateEndClearning->gt($bestEndCleaning)) {
+                                        $earliestStart, 
+                                        $intervalTimeMinutes, 
+                                );
+                                                                
+                                if ($bestStart === null || $candidateStart->gt(Carbon::parse($bestStart))) {
                                         $bestRoom = $room;
                                         $bestRoomId = $room->room_id;
-                                        $bestEndCleaning  = $candidateEndClearning;
-                                        $bestEnd = $bestEndCleaning->copy()->subMinutes((float) $room->C2_time_hours * 60);
-                                        $bestStart = $bestEnd->copy()->subMinutes((float) $execution_time * 60);
-                                       
-                                }
-                                
-                        }
+                                        $bestStart = $candidateStart;
+                                        $bestEnd = $bestStart->copy()->addMinutes((float) $room->p_time_minutes + (float) $room->m_time_minutes);
+                                        $bestEndCleaning  = $bestEnd->copy()->addMinutes( (float) $room->C2_time_minutes);
+                                } 
 
-                        // Kiêm tra sắp lịch roi vào quá khứ
-                        // if ($bestStart->lt(Carbon::now())) {
-                               
-                        //         DB::table($stage_plan_table)
-                        //                 ->whereIn('id', $stage_plan_ids)
-                        //                 ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
-                        //                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
-                        //                 ->update([
-                        //                         'start'            => null,
-                        //                         'end'              => null,
-                        //                         'start_clearning'  => null,
-                        //                         'end_clearning'    => null,
-                        //                         'resourceId'       => null,
-                        //                         'title'            => null,
-                        //                         'title_clearning'  => null,
-                        //                         'schedualed'       => 0,
-                        //         ]);
-                        //         $tasks->orderByAsc('stage_code');
-                        //         dd ("now");
-                        //         //$this->schedulePlanForward ($tasks, $working_sunday);
-                        //         break;
-                        // }
-                        
-                        if ($campaign_tasks){
-                                $counter = 0;
-                                $currentend = $bestEndCleaning->copy()->addMinutes((float) $bestRoom->C2_time_hours * 60);
+                                $pre_room = $bestRoom;
+
+                        }
+                         
+                        if ($campaign_tasks !== null){
+                                
+                                $campaign_counter = 1;
+                                // if ($curCycleltpreCycle) {
+                                //         $currentend = $bestEndCleaning->copy()->subMinutes((float) $afterIntervalMinutes );
+                                //         $currentend = $currentend->copy()->addMinutes((float) $room->m_time_minutes * ($campaign_tasks->count()-1) + (float) $room->C1_time_minutes * ($campaign_tasks->count()-1));
+                                // }else {
+                                //         $currentend = $bestEndCleaning->copy()->subMinutes((float) $afterIntervalMinutes);
+                                // }
 
                                 foreach ($campaign_tasks as $task){
-                                        
-                                        if ($task->nextcessor_code !== null ){
-                                                $next_stage = DB::table ("$stage_plan_table as sp")->where ('code', $task ->nextcessor_code)->first ();
-                                                if ($currentend > $next_stage->start){ $currentend = Carbon::parse($next_stage->start);}
-                                        }
+                                        // if ($task->nextcessor_code !== null && $curCycleltpreCycle){
+                                        //         $next_stage = DB::table ("$stage_plan_table as sp")->where ('code', $task ->nextcessor_code)->first ();
+                                        //         if ($currentend > $next_stage->start){ $currentend = Carbon::parse($next_stage->start);}
+                                        // }
 
-                                        if ($counter == 0) {
-                                                $bestEndClearning = $currentend->copy()->addMinutes((float) $bestRoom->C2_time_hours * 60);
-                                                $bestStart = $currentend->copy()->subMinutes((float) $bestRoom->m_time * 60); 
+                                        if ($campaign_counter == 1) {
+                                                $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
+                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C1_time_minutes); 
+                                                $clearningType = 1;
+                                                $prevCycle = ((float) $bestRoom->m_time_minutes + (float) $bestRoom->C1_time_minutes);
+
+                                        }elseif ($campaign_counter == $campaign_tasks->count()){
+                                                $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
+                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C2_time_minutes); 
                                                 $clearningType = 2;
-
-                                                $firstBestStart = $bestStart;
-
-                                        }elseif ($counter == $campaign_tasks->count()-1){
-                                                $bestEndClearning = $currentend->copy()->addMinutes((float) $room->C1_time_hours * 60);
-                                                $bestStart = $currentend->copy()->subMinutes((float) $bestRoom->p_time * 60 + (float) $bestRoom->m_time * 60); //Lô cuối chiến dịch
-                                                $clearningType = 1;
-                                                $endBestStart = $bestStart;
-                                                $prevCycle = ((float) $bestRoom->m_time * 60 + (float) $bestRoom->C1_time * 60);
+                                                
                                         }else {
-                                                $bestEndClearning = $currentend->copy()->addMinutes((float) $room->C1_time_hours * 60);
-                                                $bestStart = $currentend->copy()->subMinutes((float) $bestRoom->m_time * 60); //Lô giữa chiến dịch
+                                                $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
+                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C1_time_minutes); 
                                                 $clearningType = 1;
                                         }
-                                      
-
-                                        
                                         $title = $task->name ."- ". $task->batch ."- ". $task->market;  
-
+                                       
                                         $this->saveSchedule(
                                                 $title,
                                                 $task->id,
                                                 $bestRoomId,
                                                 $bestStart,
-                                                $currentend,
-                                                $bestEndClearning,
-                                                $clearningType
+                                                $bestEnd,
+                                                $bestEndCleaning,
+                                                $clearningType,
+                                                1
                                         );
-                                        $currentend = $bestStart->copy()->subMinutes((float) $room->C1_time_hours * 60) ;
+                                        $bestStart = $bestEndCleaning;
                                         $stage_plan_ids [] = $task->id;
-                                        $counter++;
+                                        $campaign_counter++;
                                 }
                         }else {
                                 $title = $task->name ."- ". $task->batch ."- ". $task->market;  
@@ -2122,138 +2387,15 @@ class SchedualController extends Controller
                                         $bestStart,
                                         $bestEnd,
                                         $bestEndCleaning,
-                                        2
+                                        2,
+                                        1
                                 );
-                                $firstBestStart = $bestStart;
                                 $stage_plan_ids [] = $task->id;
-                        }
-                        // cập nhật latestEnd cho stage tiếp theo
-                        $latestEnd = $firstBestStart;
-                        $totalCount++;
+                        }   
+
+                       
                 }
-
-        } // khởi động và lấy mãng plan_master_id
-
-        protected function findLatestSlot($roomId, $latestEnd, $durationHours, $cleaningHours) {
-                
-                if (!isset($this->roomAvailability[$roomId])) {
-                        $this->roomAvailability[$roomId] = [];
-                }
-                
-                $busyList = collect($this->roomAvailability[$roomId])
-                        ->sortByDesc('end'); // sắp từ cuối về đầu
-
-                $durationMinutes = (int) round($durationHours * 60);
-                $cleaningMinutes = (int) round($cleaningHours * 60);
-               
-                $current = Carbon::parse($latestEnd)->copy()->addMinutes($cleaningMinutes);
-                
-                foreach ($busyList as $busy) {
-                                // nếu current nằm SAU block bận
-                        if ($current->gt($busy['end'])) {
-                                $gap = $current->diffInMinutes($busy['end']);
-                                if ($gap >= ($durationMinutes + $cleaningMinutes)) {
-                                        return $current;
-                                }
-                        }
-
-                        // nếu current rơi VÀO block bận
-                        if ($current->gt($busy['start'])){
-                                // lùi về trước block bận + trừ cleaning
-                                 $current = $busy['start']->copy();
-                        }
-                }
-
-                return $current;
         }
-
-        // protected function schedulePlanForward($tasks, bool $working_sunday = false) {
-
-        //         foreach ($tasks as $task) {
-
-        //                 $ids = [];
-        //                 if ($task->stage_code <= 6){
-        //                         $product_category_code = $task->intermediate_code;
-        //                         $product_category_type = "intermediate_code";
-        //                 }
-        //                 else {
-        //                         $product_category_code = $task->finished_product_code;
-        //                         $product_category_type = "finished_product_code";
-        //                 }
-                       
-        //                 $rooms = DB::table('quota')
-        //                         ->select ('room_id', 'p_time', 'm_time', 'C1_time', 'C2_time',
-        //                                         DB::raw('(TIME_TO_SEC(p_time)/3600) as p_time_hours'),
-        //                                         DB::raw('(TIME_TO_SEC(m_time)/3600) as m_time_hours'),
-        //                                         DB::raw('(TIME_TO_SEC(C1_time)/3600) as C1_time_hours'),
-        //                                         DB::raw('(TIME_TO_SEC(C2_time)/3600) as C2_time_hours'),
-        //                                         DB::raw('(TIME_TO_SEC(p_time)/3600 + TIME_TO_SEC(m_time)/3600) as execution_time'))
-        //                 ->where($product_category_type,$product_category_code)->where ('stage_code', $task->stage_code)->get();
-                           
-
-        //                 $bestRoom = null;
-        //                 $bestEndCleaning = null;
-        //                 $bestStart = null;
-        //                 $bestEnd = null;
-
-                       
-        //                 foreach ($rooms as $room) {
-                               
-        //                         $candidateEndClearning = $this->findEarliestSlot(
-        //                                 $room->room_id,
-        //                                 $earliestStart->copy(),
-        //                                 $room->execution_time, 
-        //                                 $room->C2_time_hours);
-                                  
-        //                         if ($bestEndCleaning === null || $candidateEndClearning->gt($bestEndCleaning)) {
-         
-        //                                 $bestRoom = $room->room_id;
-        //                                 $bestEndCleaning  = $candidateEndClearning;
-        //                                 $bestEnd = $bestEndCleaning->copy()->subMinutes((float) $room->C2_time_hours * 60);
-        //                                 $bestStart = $bestEnd->copy()->subMinutes((float) $room->execution_time * 60);
-        //                         }
-                                
-        //                 }
-
-        //                 // Kiêm tra sắp lịch roi vào quá khứ
-        //                 if ($bestStart->lt(Carbon::now())) {
-                               
-        //                         DB::table($stage_plan_table)
-        //                                 ->whereIn('id', $ids)
-        //                                 ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
-        //                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
-        //                                 ->update([
-        //                                         'start'            => null,
-        //                                         'end'              => null,
-        //                                         'start_clearning'  => null,
-        //                                         'end_clearning'    => null,
-        //                                         'resourceId'       => null,
-        //                                         'title'            => null,
-        //                                         'title_clearning'  => null,
-        //                                         'schedualed'       => 0,
-        //                         ]);
-
-        //                         $this->schedulePlanForward ($tasks, $working_sunday);
-        //                         break;
-        //                 }
-
-        //                 $this->saveSchedule(
-        //                         $title,
-        //                         $task->id,
-        //                         $bestRoom,
-        //                         $bestStart,
-        //                         $bestEnd,
-        //                         $bestEndCleaning,
-        //                         2
-        //                 );
-
-        //                 // cập nhật latestEnd cho stage tiếp theo
-        //                 $ids [] = $task->id;
-        //                 $latestEnd = $bestStart;
-
-        //         }
-
-        // }
 
 
 }

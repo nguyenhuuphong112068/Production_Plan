@@ -95,6 +95,7 @@ return new class extends Migration {
             $table->string('title_clearning',512)->nullable();
             $table->dateTime('start_clearning')->nullable();
             $table->dateTime('end_clearning')->nullable();
+            $table->boolean('scheduling_direction')->nullable();
             
             $table->float('quarantine_time')->nullable();
             	
