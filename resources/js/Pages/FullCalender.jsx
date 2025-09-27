@@ -54,6 +54,8 @@ import dayjs from 'dayjs';
     const [stageMap, setStageMap] = useState({});
     const [historyData, setHistoryData] = useState([]);
     const [type, setType] = useState(true);
+    const [loading, setLoading] = useState(false);
+
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
@@ -81,7 +83,7 @@ import dayjs from 'dayjs';
           console.error("API error:", err)
         );
 
-    }, []);
+    }, [loading]);
 
    /// Get dư liệu row được chọn 
     useEffect(() => {
@@ -1313,12 +1315,28 @@ import dayjs from 'dayjs';
         }}
         
         headerToolbar={{
-          left: 'prev,myToday,next noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
           center: 'title',
           right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth customList' //customYear
         }}
 
         customButtons={{
+          customNext: {
+            text: '⏵',
+            click: () => {
+              let api = calendarRef.current.getApi();
+              api.next();  // gọi hành vi gốc
+              setLoading (!loading);
+            }
+          },
+          customPre: {
+            text: '⏴',
+            click: () => {
+              let api = calendarRef.current.getApi();
+              api.prev(); // gọi hành vi gốc
+              setLoading (!loading);
+            }
+          },
           customList: {
             text: 'KHSX',
             click: handleShowList 
@@ -1471,13 +1489,22 @@ import dayjs from 'dayjs';
             </button>
 
             {/* H Xem History */}
-             { type && (
+             {type && (
             <button
                 onClick={(e) => { e.stopPropagation();handleShowHistory(arg.event);}}
-                className={`absolute top-[-15px] left-5 text-xs px-1 rounded shadow bg-red-500 text-white`}
+                className={`absolute top-[-15px] left-4 text-xs px-1 rounded shadow bg-red-500 text-white`}
                 title={'Xem Lịch Sử Thay Đổi'}
               >
                 {arg.event._def.extendedProps.number_of_history}
+            </button>)}
+
+              {/* H Xem History */}
+            {!arg.event._def.extendedProps.is_clearning && (
+            <button
+                className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-white`}
+                title={'Xem Lịch Sử Thay Đổi'}
+              >
+                {arg.event._def.extendedProps.direction ? '➡' : '⬅'}
             </button>)}
 
             {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */} 
@@ -1502,7 +1529,7 @@ import dayjs from 'dayjs';
                 📦
             </button>)}
 
-          </div>
+        </div>
 
         )}}    
       />
