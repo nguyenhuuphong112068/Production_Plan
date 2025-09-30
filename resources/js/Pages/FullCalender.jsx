@@ -250,7 +250,7 @@ import dayjs from 'dayjs';
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
+     
       axios.put(`/Schedual/view`, { 
           startDate: activeStart.toISOString(), 
           endDate: activeEnd.toISOString() ,
@@ -266,7 +266,6 @@ import dayjs from 'dayjs';
           // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
           setEvents(data.events);
           setResources(data.resources);
-          
 
           setTimeout(() => {
             Swal.close();
