@@ -21,10 +21,11 @@
 .fc .fc-toolbar.fc-header-toolbar button:hover {
     background-color: #00408f;
 }
+
 .fc {
-  height: 100vh;          /* chiều cao chiếm 80% màn hình */
-  overflow-y: auto !important;  /* bật cuộn dọc */
-  overflow-x: auto;    /* tắt cuộn ngang nếu không cần */
+  height: calc(100vh - 85px); /* trừ bớt padding/margin nếu bị che */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 /* Header ngang */
 .fc .fc-col-header-cell {
@@ -239,7 +240,7 @@
 .cfg-input--full { width: 100% !important; }
 
 /* Ngăn cuộn ngang nếu nội dung rộng */
-.swal2-popup { overflow-x: hidden; }
+/* .swal2-popup { overflow-x: hidden; } */
 
 .swal2-textarea {
   resize: none;        /* không cho resize bằng chuột */
