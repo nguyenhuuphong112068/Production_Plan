@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\Route;
                 Route::put('DeActiveOrderPlan', 'DeActiveOrderPlan')->name('DeActiveOrderPlan');
 
                 // Sắp Lịch Tư Động //
-                Route::put('scheduleAll', 'scheduleAll')->name('scheduleAll');
+                Route::post('scheduleAll', 'scheduleAll')->name('scheduleAll');
 
                 Route::put('getInforSoure','getInforSoure')->name('getInforSoure');
                 Route::put('confirm_source','confirm_source')->name('confirm_source');

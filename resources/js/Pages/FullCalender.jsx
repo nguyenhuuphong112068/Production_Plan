@@ -60,8 +60,10 @@ import dayjs from 'dayjs';
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
+      // const calendarApi = calendarRef.current?.getApi();
+      // if (!calendarApi) return;
+      
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      //console.log (activeStart.toISOString(), activeEnd.toISOString())
       axios.post("/Schedual/view", {
           startDate: activeStart.toISOString(), 
           endDate: activeEnd.toISOString(),
@@ -80,12 +82,22 @@ import dayjs from 'dayjs';
           setQuota(data.quota);
           setStageMap(data.stageMap);
           setType (data.type)
+
+          
+          // if (data.events?.length > 0) {
+          //   const firstEventStart = new Date(data.events[0].start);
+           
+          //   setTimeout(() => 
+          //     calendarApi.scrollToTime(firstEventId), 300);
+          // }
+          
         })
         .catch(err => 
           console.error("API error:", err)
         );
 
     }, [loading]);
+
 
    /// Get dư liệu row được chọn 
     useEffect(() => {
@@ -223,13 +235,29 @@ import dayjs from 'dayjs';
     };
 
     /// --- Scroll sự kiện hiện tại vào view ---
-    const scrollToEvent = (el) => {
-      if (!el) return;
-      el.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "center",
-      });
+    // const scrollToEvent = (el) => {
+    //   if (!el) return;
+    //   el.scrollIntoView({
+    //     behavior: "smooth",
+    //     block: "center",
+    //     inline: "center",
+    //   });
+    // };
+
+    const scrollToEvent = (eventId) => {
+       const container = document.querySelector(".fc-scroller.fc-scroller-liquid-absolute"); 
+      const el = document.querySelector(`[data-event-id="${eventId}"]`);
+
+      if (!container || !el) {
+        //console.warn("Không tìm thấy event trong DOM", { eventId });
+        return;
+      }
+      
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+
+      container.scrollTop += elRect.top - containerRect.top - container.clientHeight / 2;
+      container.scrollLeft += elRect.left - containerRect.left - container.clientWidth / 2;
     };
 
     /// show sidebar
@@ -726,7 +754,7 @@ import dayjs from 'dayjs';
         const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
          
         // Gọi API với ngày
-        axios.put('/Schedual/scheduleAll', {
+        axios.post('/Schedual/scheduleAll', {
             ...result.value,
             startDate: activeStart.toISOString(), 
             endDate: activeEnd.toISOString() 
