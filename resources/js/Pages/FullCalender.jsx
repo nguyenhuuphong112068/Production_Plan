@@ -45,6 +45,7 @@ import dayjs from 'dayjs';
     const [selectedRows, setSelectedRows] = useState([]);
     const [showNoteModal, setShowNoteModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [viewName, setViewName] = useState("resourceTimelineWeek");
 
     const [events, setEvents] = useState([]);
     const [resources, setResources] = useState([]);
@@ -60,10 +61,11 @@ import dayjs from 'dayjs';
     /// Get dữ liệu ban đầu
     useEffect(() => {
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+      //console.log (activeStart.toISOString(), activeEnd.toISOString())
       axios.post("/Schedual/view", {
           startDate: activeStart.toISOString(), 
           endDate: activeEnd.toISOString(),
-          viewtype: "resourceTimelineWeek"
+          viewtype: viewName,
       })
         .then(res => {
           let data = res.data;
@@ -250,8 +252,8 @@ import dayjs from 'dayjs';
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-     
-      axios.put(`/Schedual/view`, { 
+      setViewName (view)
+      axios.post(`/Schedual/view`, { 
           startDate: activeStart.toISOString(), 
           endDate: activeEnd.toISOString() ,
           viewtype: view
@@ -266,6 +268,7 @@ import dayjs from 'dayjs';
           // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
           setEvents(data.events);
           setResources(data.resources);
+          
 
           setTimeout(() => {
             Swal.close();
@@ -629,11 +632,19 @@ import dayjs from 'dayjs';
           <div class="cfg-wrapper">
             <div class="cfg-card">
               <!-- Hàng Ngày chạy -->
-              <div class="cfg-row">
+              <div class="cfg-row cfg-grid-2">
+               <div class="cfg-col">
                 <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
                 <input id="schedule-date" type="date" 
                       class="swal2-input cfg-input cfg-input--half"  name = "start_date"
                       value="${new Date().toISOString().split('T')[0]}">
+                </div>
+                
+                <div class="cfg-col">
+                <label class="cfg-label" for="schedule-date">Thời Gian Đệm (ngày):</label>
+                <input id="buffer_date" type="number"  class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "buffer_date">
+                </div>
+
               </div>
 
               <!-- Hàng 2 cột -->
@@ -1125,7 +1136,6 @@ import dayjs from 'dayjs';
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
-
         locale="vi"
         height="auto"
         resourceAreaWidth="200px"
@@ -1419,7 +1429,7 @@ import dayjs from 'dayjs';
         }}
 
         eventContent={(arg) => {
-       
+
         const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
         const now = new Date();
         return (
@@ -1488,17 +1498,25 @@ import dayjs from 'dayjs';
             </button>
 
             {/* H Xem History */}
-             {type && (
+            {type && viewName == "resourceTimelineWeek"  && (
             <button
                 onClick={(e) => { e.stopPropagation();handleShowHistory(arg.event);}}
-                className={`absolute top-[-15px] left-4 text-xs px-1 rounded shadow bg-red-500 text-white`}
+                className={`absolute top-[-15px] left-2 text-xs px-1 rounded shadow bg-red-500 text-white`}
                 title={'Xem Lịch Sử Thay Đổi'}
               >
                 {arg.event._def.extendedProps.number_of_history}
             </button>)}
+            {arg.event._def.extendedProps.experted_date && (
+            <div
+                className={`absolute top-[-15px] left-[50px] text-xs px-1 rounded shadow bg-blue-500 text-white`}
+                title={'Ngày Cần Hàng'}
+              >
+                {arg.event._def.extendedProps.experted_date}
+            </div>)}
+            
 
               {/* H Xem History */}
-            {!arg.event._def.extendedProps.is_clearning && (
+            {!arg.event._def.extendedProps.is_clearning &&  viewName == "resourceTimelineWeek"  && (
             <button
                 className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-white`}
                 title={'Xem Lịch Sử Thay Đổi'}
@@ -1530,7 +1548,15 @@ import dayjs from 'dayjs';
 
         </div>
 
-        )}}    
+        )}} 
+        
+        slotLaneDidMount={(info) => {
+          if (info.date < new Date()) {
+            info.el.style.backgroundColor = "rgba(0,0,0,0.05)";
+          }
+        }}
+        
+
       />
       <div className="modal-sidebar">
         <ModalSidebar

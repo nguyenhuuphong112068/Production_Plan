@@ -190,6 +190,7 @@ class SchedualController extends Controller
                                         'finished' => $plan->finished,
                                         'room_source' => $room_source,
                                         'direction' => $plan->scheduling_direction,
+                                        'experted_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
                                         'number_of_history' =>  DB::table('stage_plan_history')->where('stage_plan_id', $plan->id)->count()??0,
                         ]);
                         }
@@ -1393,17 +1394,23 @@ class SchedualController extends Controller
         public function scheduleAll(Request $request) {
              
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-
-                $start_date = Carbon::createFromFormat('Y-m-d', $request->input('start_date'))->setTime(6, 0, 0);
+                $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? "2025-10-01")->setTime(6, 0, 0);
                 
-                $stageCodes = DB::table($stage_plan_table)
-                ->distinct()
-                ->where('stage_code',">=",3)
-                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
-                                {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
-                ->orderBy('stage_code')
-                ->pluck('stage_code');
+                // Log::info('request:', [
+                //         'request' => $request->all(),
+                // ]);
 
+                $stageCodes = DB::table($stage_plan_table)
+                        ->distinct()
+                        ->where('stage_code',">=",3)
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
+                        ->orderBy('stage_code')
+                        ->pluck('stage_code');
+                $waite_time = [];
+
+                
+               
                 foreach ($stageCodes as $stageCode) {
                         $waite_time_nomal_batch = 0;
                         $waite_time_val_batch   = 0;
@@ -1411,46 +1418,64 @@ class SchedualController extends Controller
                                 case 3:
                                         $waite_time_nomal_batch = 0;
                                         $waite_time_val_batch   = 0;
+                                        $waite_time[$stageCode] = [
+                                                'waite_time_nomal_batch' => 0,
+                                                'waite_time_val_batch'   => 0,
+                                        ];
                                         break;
-
                                 case 4:
-                                        $waite_time_nomal_batch = $request->input('wt_bleding') * 24 ?? 0;
-                                        $waite_time_val_batch   = $request->input('wt_bleding_val')* 24 ?? 0;
+                                        $waite_time_nomal_batch = ($request->wt_bleding ?? 0)  * 24 ;
+                                        $waite_time_val_batch   = ($request->wt_bleding_val ?? 0) * 24;
+                                        $waite_time[$stageCode] = [
+                                                'waite_time_nomal_batch' => (($request->wt_bleding ?? 1) * 24 * 60) ,
+                                                'waite_time_val_batch'   => (($request->wt_bleding_val ?? 5) * 24 * 60) ,
+                                        ];
                                         break;
 
                                 case 5:
-                                        $waite_time_nomal_batch = $request->input('wt_forming') * 24 ?? 0;
-                                        $waite_time_val_batch   = $request->input('wt_forming_val')* 24 ?? 0;
+                                        $waite_time_nomal_batch = ($request->wt_forming?? 0) * 24 ;
+                                        $waite_time_val_batch   = ($request->wt_forming_val ?? 0) * 24;
+                                        $waite_time[$stageCode] = [
+                                                'waite_time_nomal_batch' => (($request->wt_forming ?? 1) * 24 * 60) ,
+                                                'waite_time_val_batch'   => (($request->wt_forming_val ?? 5) * 24 * 60) ,
+                                        ];
                                         break;
 
                                 case 6:
-                                        $waite_time_nomal_batch = $request->input('wt_coating') * 24 ?? 0;
-                                        $waite_time_val_batch   = $request->input('wt_coating_val')* 24 ?? 0;
+                                        $waite_time_nomal_batch = ($request->wt_coating?? 0) * 24 ;
+                                        $waite_time_val_batch   = ($request->wt_coating_val ?? 0) * 24;
+                                        $waite_time[$stageCode] = [
+                                                'waite_time_nomal_batch' => (($request->wt_coating ?? 1) * 24 * 60)  ,
+                                                'waite_time_val_batch'   => (($request->wt_coating_val ?? 5) * 24 * 60) ,
+                                        ];
                                         break;
 
                                 case 7: // Đóng gói
-                                        $waite_time_nomal_batch = $request->input('wt_blitering') * 24 ?? 0;
-                                        $waite_time_val_batch   = $request->input('wt_blitering_val') * 24 ?? 0;
+                                        $waite_time_nomal_batch = ($request->wt_blitering ?? 24) ;
+                                        $waite_time_val_batch   = ($request->wt_blitering_val ?? 24);
+                                        $waite_time[$stageCode] = [
+                                                'waite_time_nomal_batch' => (($request->wt_blitering ?? 3) * 24 * 60) ,
+                                                'waite_time_val_batch'   => (($request->wt_blitering_val ?? 10) * 24 * 60) ,
+                                        ];
                                         break;
 
-                                default:
-                                        $waite_time_nomal_batch = 0;
-                                        $waite_time_val_batch   = 0;
-                                        break;
+                               
                         }
-
-                        $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday);    
+                        //$this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday);    
                 }
-
+                //dd ($waite_time);
+                $this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
+ 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                $events = $this->getEvents($production, $request->startDate ?? '2025-09-28T17:00:00.000Z', $request->endDate ??'2025-10-05T17:00:00.000Z' , true);
                 $plan_waiting = $this->getPlanWaiting($production);
-                $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
+                $sumBatchByStage = $this->yield($request->start ?? '2025-09-28T17:00:00.000Z', $request->end ??'2025-10-05T17:00:00.000Z', "stage_code");
                 return response()->json([
                         'events' => $events,
                         'plan' => $plan_waiting,
                         'sumBatchByStage' => $sumBatchByStage,
                 ]);
+
         }// đã có temp
 
         /** Scheduler cho 1 stage*/
@@ -1880,23 +1905,17 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function test(){
-                $bufferDate = 1;
-
-
-                
-                $this->scheduleStartBackward(true, $bufferDate);
-                //$this->index();
+               // $this->scheduleAll (null);
         }
 
         ///////// Sắp Lịch Ngược ////////
-        public function scheduleStartBackward($work_sunday, int $bufferDate) {
+        public function scheduleStartBackward($work_sunday, int $bufferDate, $start_date, $waite_time) {
                
                 if (session('fullCalender')['mode'] === 'offical') {
                         $stage_plan_table = 'stage_plan';
                 } else {
                         $stage_plan_table = 'stage_plan_temp';
                 }
-                $start_date = Carbon::parse("2025-09-29");
                
                 // Danh sách thứ tự Uu tiên Chính --> quyết định trình tự sắp lịch
                 $planMasters = DB::table("$stage_plan_table as sp")
@@ -1910,8 +1929,7 @@ class SchedualController extends Controller
                         ->orderBy('pm.expected_date', 'asc')
                         ->orderBy('pm.level', 'asc')
                         ->orderBy('pm.batch', 'asc')
-                        ->distinct()
-                ->pluck('plan_master_id');
+                        ->pluck('plan_master_id');
                 
                 
                 foreach ($planMasters as $planId) {
@@ -1927,14 +1945,14 @@ class SchedualController extends Controller
                         ->exists();
 
                         if ($check_plan_master_id_complete){
-                                $this->schedulePlanBackward($planId, $work_sunday, $bufferDate, $start_date);
+                                $this->schedulePlanBackward($planId, $work_sunday, $bufferDate, $waite_time , $start_date);
                         }
                 }
                 
         } // khởi động và lấy mãng plan_master_id
 
-        protected function schedulePlanBackward($plan_master_id,bool $working_sunday = false,int $bufferDate, Carbon $start_date) {
-                
+        protected function schedulePlanBackward($plan_master_id,bool $working_sunday = false,int $bufferDate, $waite_time, Carbon $start_date) {
+
                 $stage_plan_ids = [];
                 $stage_plan_ids_null = [];
                 if (session('fullCalender')['mode'] === 'offical') {
@@ -1957,10 +1975,11 @@ class SchedualController extends Controller
                         'sp.campaign_code',
                         'fc.finished_product_code',
                         'fc.intermediate_code',
+                        'pm.is_val',
                         'pm.expected_date',
                         'pm.level',
                         'pm.batch',
-                        'mk.name as market',
+                        'mk.code as market',
                         'pn.name',
                 )
                 ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
@@ -1972,13 +1991,22 @@ class SchedualController extends Controller
                 ->orderBy('stage_code', 'desc')
                 ->get(); // 1 lô gồm tất cả các stage
                
-                $latestEnd = Carbon::parse($tasks->first()->expected_date)->subDays(5 + $bufferDate); //->subDays(1 + $bufferDate); // ngày phải hoàn thành
+                $latestEnd = Carbon::parse($tasks->first()->expected_date)->subDays(5 + $bufferDate);
                 $nextCycle = 0; // thời gian sản xuất công đoạn trước = p_time + m_time
                 $totalCount = 0; // vòng lập của ĐG --> không kiểm tra thời gian sản xuất với công đoạn trước
                 
                 
                 foreach ($tasks as $task) { // Vòng lập chính duyệt qua toàn bộ các task cùng plan_master_id
+                        if ($task->nextcessor_code){
+                                $next_stage_code = explode('_', $task->nextcessor_code)[1];
+                                if ($next_stage_code  && !$task->is_val) {
+                                        $waite_time_for_task = $waite_time[$next_stage_code]['waite_time_nomal_batch'];
+                                } else {
+                                        $waite_time_for_task = $waite_time[$next_stage_code]['waite_time_val_batch'];
+                                }
+                        }else {$waite_time_for_task = null;}
 
+                        
                         $campaign_tasks = null;
                          // chứa id các row đã lưu. trường hợp các stage sau rơi và quá khứ sẽ dùng id này để xóa lịch đã sắp
                         if ($task->campaign_code){ // trường hợp chiến dịch
@@ -1994,10 +2022,11 @@ class SchedualController extends Controller
                                         'sp.stage_code',
                                         'fc.finished_product_code',
                                         'fc.intermediate_code',
+                                        'pm.is_val',
                                         'pm.expected_date',
                                         'pm.level',
                                         'pm.batch',
-                                        'mk.name as market',
+                                        'mk.code as market',
                                         'pn.name')
                                 ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
                                 ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
@@ -2090,6 +2119,12 @@ class SchedualController extends Controller
                                                 $afterIntervalMinutes =  ((float) $room->m_time_minutes * ($index_campaign_tasks)) + ((float) $room->C1_time_minutes * ($index_campaign_tasks - 1)) + (float) $room->C2_time_minutes;    
                                         }             
                                 }
+                                //dd ($waite_time_for_task);
+                                if ($waite_time_for_task){
+                                        $latestEnd = $latestEnd->copy()->subMinutes($waite_time_for_task);
+                                }
+                                        
+
                                 $candidateEndClearning = $this->findLatestSlot(
                                         $room->room_id,
                                         $latestEnd, 
@@ -2117,7 +2152,7 @@ class SchedualController extends Controller
                                                         'schedualed'       => 0,
                                                 ]);
                                         }  
-                                        $this->schedulePlanForwardPlanMasterId ($plan_master_id, $working_sunday, $start_date);
+                                        $this->schedulePlanForwardPlanMasterId ($plan_master_id, $working_sunday, $waite_time, $start_date);
 
                                         return false;
                                 }
@@ -2139,9 +2174,11 @@ class SchedualController extends Controller
                                 
                                 $campaign_counter = 1;
                                 $current_end_clearning = $candidateEndClearning;
-                                
+
+
                                 foreach ($campaign_tasks as $campaign_task){
-                                        
+
+
                                         if ($campaign_counter == 1) {
                                                 $bestEndClearning = $current_end_clearning;
                                                 $bestEnd = $bestEndClearning->copy()->subMinutes((float) $bestRoom->C2_time_minutes); 
@@ -2271,14 +2308,13 @@ class SchedualController extends Controller
         }
 
  
-        protected function schedulePlanForwardPlanMasterId($planId,  bool $working_sunday = false, ?Carbon $start_date = null) {
+        protected function schedulePlanForwardPlanMasterId($planId, bool $working_sunday = false, $waite_time,  ?Carbon $start_date = null) {
               
                 if (session('fullCalender')['mode'] === 'offical') {
                         $stage_plan_table = 'stage_plan';
                 } else {
                         $stage_plan_table = 'stage_plan_temp';
                 }
-
                 $now = Carbon::now();
                 $minute = $now->minute;
                 $roundedMinute = ceil($minute / 15) * 15;
@@ -2295,9 +2331,10 @@ class SchedualController extends Controller
                                 'sp.stage_code',
                                 'fc.finished_product_code',
                                 'fc.intermediate_code',
+                                'pm.is_val',
                                 'pm.expected_date',
                                 'pm.batch',
-                                'mk.name as market',
+                                'mk.code as market',
                                 'pn.name',
                         )
                 ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
@@ -2312,6 +2349,13 @@ class SchedualController extends Controller
                
                 $prevCycle = 0;
                 foreach ($tasks as  $task) { // Vòng lập chính duyệt qua toàn bộ các task cùng plan_master_id
+                        $waite_time_for_task = null;
+
+                        if (!$task->is_val) {
+                                $waite_time_for_task = $waite_time[$task->stage_code]['waite_time_nomal_batch'];
+                        } else {
+                                $waite_time_for_task = $waite_time[$task->stage_code]['waite_time_val_batch'];
+                        }
 
                         $campaign_tasks = null;
                         $candidatesEarliest = [];
@@ -2329,10 +2373,11 @@ class SchedualController extends Controller
                                         'sp.campaign_code',
                                         'fc.finished_product_code',
                                         'fc.intermediate_code',
+                                        'pm.is_val',
                                         'pm.expected_date',
                                         'pm.level',
                                         'pm.batch',
-                                        'mk.name as market',
+                                        'mk.code as market',
                                         'pn.name')
                                 ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
                                 ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
@@ -2365,7 +2410,7 @@ class SchedualController extends Controller
                         $bestStart = null;
                         $bestEnd = null;
                         $bestEndCleaning = null;
-                        $delay_mark = null;
+                        
                         if ($roundedMinute == 60) {
                                 $now->addHour();
                                 $roundedMinute = 0;
@@ -2415,11 +2460,7 @@ class SchedualController extends Controller
                                         $intervalTimeMinutes, 
                                 );
 
-                                // if ($delay_mark !== null && $candidateStart < $delay_mark){
-                                //         $delay_time = $candidateStart->diffInMinutes($delay_mark);
-                                //         $candidateStart = $candidateStart->addMinutes($delay_time);
-                                //         $candidateStart = $candidateStart->subMinutes((float) $room->m_time_minutes * ($campaign_tasks->count()-1) + (float) $room->C1_time_minutes * ($campaign_tasks->count()-1));
-                                // }
+
                            
                                 if ($bestStart === null || $candidateStart->lt(Carbon::parse($bestStart))) {
                                         $bestRoom = $room;
@@ -2432,6 +2473,11 @@ class SchedualController extends Controller
                          
                         if ($campaign_tasks !== null){
                                 $campaign_counter = 1;
+                                $pre_stage_code = explode('_', $task->predecessor_code)[1];
+                                if ($pre_stage_code > 2 && $waite_time_for_task){
+                                        $bestStart = $bestStart->copy()->addMinutes($waite_time_for_task);
+                                }
+                          
                                 foreach ($campaign_tasks as $task){
                                         if ($campaign_counter == 1) {
                                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
@@ -2480,54 +2526,7 @@ class SchedualController extends Controller
                 }
         }
 
-        // protected function schedulePlanForwardstageCodeId ($stage_plan_ids_null, bool $working_sunday = false, Carbon $start_date){
 
-                
-        //         if (session('fullCalender')['mode'] === 'offical') {
-        //                 $stage_plan_table = 'stage_plan';
-        //         } else {
-        //                 $stage_plan_table = 'stage_plan_temp';
-        //         }
-                
-
-        //         $incomplete_plan_master_ids = DB::table("$stage_plan_table as sp")
-        //         ->select (
-        //                 'sp.id',
-        //                 'sp.plan_master_id',
-        //                 'sp.product_caterogy_id',
-        //                 'sp.predecessor_code',
-        //                 'sp.nextcessor_code',
-        //                 'sp.campaign_code',
-        //                 'sp.code',
-        //                 'sp.stage_code',
-        //                 'sp.campaign_code',
-        //                 'fc.finished_product_code',
-        //                 'fc.intermediate_code',
-        //                 'pm.expected_date',
-        //                 'pm.level',
-        //                 'pm.batch',
-        //                 'mk.name as market',
-        //                 'pn.name',
-        //         )
-        //         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
-        //         ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-        //         ->leftJoin('product_name as pn', 'fc.product_name_id', '=', 'pn.id')
-        //         ->leftJoin('market as mk', 'fc.market_id', '=', 'mk.id')
-        //         ->whereIn('sp.id', $stage_plan_ids_null)
-        //         ->orderBy('expected_date', 'asc')
-        //         ->orderBy('level', 'asc')
-        //         ->orderBy('batch', 'asc')
-        //         ->orderBy('stage_code', 'desc')
-        //         ->pluck('plan_master_id')
-        //         ->unique();
-
-             
-
-        //         foreach ($incomplete_plan_master_ids as $incomplete_plan_master_id ){
-        //                 $this->schedulePlanForwardPlanMasterId ($incomplete_plan_master_id, $working_sunday, $start_date);
-        //         }
-   
-        // }
 
         protected function findQuarantineTimeHours ($intermediate_code, $stage_code) {
 
@@ -2566,7 +2565,7 @@ class SchedualController extends Controller
 
                 return $value; // ngược lại là giờ
 
-        } 
+        } // chưa dùng
 
 
 }
