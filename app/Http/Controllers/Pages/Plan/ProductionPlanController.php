@@ -431,6 +431,8 @@ class ProductionPlanController extends Controller
                         'intermediate_category.forming',
                         'intermediate_category.coating',
                         'finished_product_category.primary_parkaging',
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.finished_product_code',
                        
                 )
                 ->orderBy('level', 'asc')->orderBy('expected_date', 'asc')
@@ -474,16 +476,15 @@ class ProductionPlanController extends Controller
 
                                         // nếu stage hiện tại >=3 và prev là 2 thì bỏ qua, tìm lại stage_code = 1
                                         if ($stageItem['stage_code'] >= 3 && $prevItem['stage_code'] == 2) {
-                                        $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
+                                                $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
                                         } else {
-                                        $prevCode = $prevItem['code'];
+                                                $prevCode = $prevItem['code'];
                                         }
                                 }
 
                                 // ✅ set nextCode
                                 if ($i < count($stageList) - 1) {
                                         $nextItem = $stageList[$i + 1];
-
                                         // nếu stage hiện tại = 1 và next là 2 thì bỏ qua, tìm stage_code >= 3
                                         if ($stageItem['stage_code'] == 1 && $nextItem['stage_code'] == 2) {
                                         $nextCode = collect($stageList)
@@ -492,6 +493,19 @@ class ProductionPlanController extends Controller
                                         $nextCode = $nextItem['code'];
                                         }
                                 }
+
+
+                                $tank = DB::table('quota')
+                                        ->select('tank', 'keep_dry')
+                                        ->when($stageItem['stage_code'] != 7, function ($q) use ($plan, $stageItem) {
+                                                return $q->where('intermediate_code', $plan->intermediate_code)
+                                                        ->where('stage_code', $stageItem['stage_code']);
+                                        })
+                                        ->when($stageItem['stage_code'] == 7, function ($q) use ($plan, $stageItem) {
+                                                return $q->where('finished_product_code', $plan->finished_product_code)
+                                                        ->where('stage_code', $stageItem['stage_code']);
+                                        })
+                                        ->first();
 
                                 $dataToInsert[] = [
                                         'plan_list_id'        => $plan->plan_list_id,
@@ -502,6 +516,8 @@ class ProductionPlanController extends Controller
                                         'code'                => $stageItem['code'],
                                         'predecessor_code'    => $prevCode,
                                         'nextcessor_code'     => $nextCode,
+                                        'tank'                => $tank->tank??0,
+                                        'keep_dry'            => $tank->keep_dry??0,
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
                                 ];
