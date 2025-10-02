@@ -24,6 +24,8 @@ return new class extends Migration {
             $table->unsignedSmallInteger('maxofbatch_campaign'); 
             $table->string('note');
             $table->string('deparment_code',5);
+            $table->boolean('tank')->default(false);
+            $table->boolean('keep_dry')->default(false);
 
             $table->boolean('active')->default(true);
             $table->string ('prepared_by',100);
@@ -96,7 +98,10 @@ return new class extends Migration {
             $table->dateTime('start_clearning')->nullable();
             $table->dateTime('end_clearning')->nullable();
             $table->boolean('scheduling_direction')->nullable();
-            
+            $table->boolean('tank')->default(false);
+            $table->boolean('keep_dry')->default(false);
+            $table->unsignedTinyInteger('AHU_group')->default(0);
+
             $table->float('quarantine_time')->nullable();
             	
             $table->string('schedualed_by',512)->nullable();
@@ -106,7 +111,7 @@ return new class extends Migration {
             $table->string('deparment_code', 5); 
 
             $table->dateTime('created_date')->nullable();
-             $table->string('created_by',100)->nullable();
+            $table->string('created_by',100)->nullable();
             $table->dateTime('finished_date')->nullable();
             $table->string('finished_by',100)->nullable();
         });

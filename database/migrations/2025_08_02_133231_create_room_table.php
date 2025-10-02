@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('production_group', 50);
             $table->boolean('active')->default(true);
             $table->tinyInteger('order_by')->nullable();
+            $table->unsignedTinyInteger('AHU_group')->nullable();
             $table->string('deparment_code',5);
             $table->string('prepareBy');
             $table->timestamps();

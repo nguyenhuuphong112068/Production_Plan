@@ -13,7 +13,7 @@ import 'moment/locale/vi';
 
 import moment from 'moment';
 import Selecto from "react-selecto";
-import Swal from 'sweetalert2'; 
+import Swal from 'sweetalert2';
 
 import './calendar.css';
 import CalendarSearchBox from '../Components/CalendarSearchBox';
@@ -24,11 +24,11 @@ import History from '../Components/History';
 import dayjs from 'dayjs';
 
   const ScheduleTest = () => {
-    
+
     const calendarRef = useRef(null);
     moment.locale('vi');
 
-    
+
     const [showSidebar, setShowSidebar] = useState(false);
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
     const [cleaningHidden, setCleaningHidden] = useState(false);
@@ -62,16 +62,16 @@ import dayjs from 'dayjs';
     useEffect(() => {
       // const calendarApi = calendarRef.current?.getApi();
       // if (!calendarApi) return;
-      
+
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       axios.post("/Schedual/view", {
-          startDate: activeStart.toISOString(), 
+          startDate: activeStart.toISOString(),
           endDate: activeEnd.toISOString(),
           viewtype: viewName,
       })
         .then(res => {
           let data = res.data;
-          
+
           if (typeof data === "string") {
             data = data.replace(/^<!--.*?-->/, "").trim();
             data = JSON.parse(data);
@@ -83,27 +83,27 @@ import dayjs from 'dayjs';
           setStageMap(data.stageMap);
           setType (data.type)
 
-          
+
           // if (data.events?.length > 0) {
           //   const firstEventStart = new Date(data.events[0].start);
-           
-          //   setTimeout(() => 
+
+          //   setTimeout(() =>
           //     calendarApi.scrollToTime(firstEventId), 300);
           // }
-          
+
         })
-        .catch(err => 
+        .catch(err =>
           console.error("API error:", err)
         );
 
     }, [loading]);
 
 
-   /// Get dư liệu row được chọn 
+   /// Get dư liệu row được chọn
     useEffect(() => {
-      
+
       new Draggable(document.getElementById('external-events'), {
-        
+
         itemSelector: '.fc-event',
         eventData: (eventEl) => {
 
@@ -125,7 +125,7 @@ import dayjs from 'dayjs';
         if (!calendarApi) return;
 
         const toolbarEl = document.querySelector(".fc-searchBox-button");
-          
+
         const container = document.createElement("div");
         toolbarEl.appendChild(container);
 
@@ -135,7 +135,7 @@ import dayjs from 'dayjs';
           <CalendarSearchBox onSearch={handleSearch} />
 
         </div>
-          
+
         );
         return () => {
           root.unmount();
@@ -143,7 +143,7 @@ import dayjs from 'dayjs';
             toolbarEl.removeChild(container);
           }
         };
-        
+
     }, []);
 
     ///
@@ -245,14 +245,14 @@ import dayjs from 'dayjs';
     // };
 
     const scrollToEvent = (eventId) => {
-       const container = document.querySelector(".fc-scroller.fc-scroller-liquid-absolute"); 
+       const container = document.querySelector(".fc-scroller.fc-scroller-liquid-absolute");
       const el = document.querySelector(`[data-event-id="${eventId}"]`);
 
       if (!container || !el) {
         //console.warn("Không tìm thấy event trong DOM", { eventId });
         return;
       }
-      
+
       const containerRect = container.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
 
@@ -262,13 +262,13 @@ import dayjs from 'dayjs';
 
     /// show sidebar
     const handleShowList = () => {
-    
+
       setShowSidebar(true);
     }
 
     ///  Thay đôi khung thời gian
     const handleViewChange = (view) => {
-     
+
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
@@ -281,8 +281,8 @@ import dayjs from 'dayjs';
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       setViewName (view)
-      axios.post(`/Schedual/view`, { 
-          startDate: activeStart.toISOString(), 
+      axios.post(`/Schedual/view`, {
+          startDate: activeStart.toISOString(),
           endDate: activeEnd.toISOString() ,
           viewtype: view
         })
@@ -296,7 +296,7 @@ import dayjs from 'dayjs';
           // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
           setEvents(data.events);
           setResources(data.resources);
-          
+
 
           setTimeout(() => {
             Swal.close();
@@ -357,15 +357,15 @@ import dayjs from 'dayjs';
         el.classList.remove('highlight-event');
       });
     };
- 
+
     // Nhân Dữ liệu để tạo mới event
     const handleEventReceive = (info) => {
       // chưa chọn row
       const start = info.event.start;
       const now = new Date();
       const resourceId = info.event.getResources?.()[0]?.id ?? null;
-      info.event.remove(); 
-      
+      info.event.remove();
+
       if (selectedRows.length === 0 ){
           Swal.fire({
             icon: 'warning',
@@ -385,7 +385,7 @@ import dayjs from 'dayjs';
           });
           return false;
       }
-    
+
       // Phòng được chọn và định mực k giống
       const hasPermission = selectedRows.some(row => {
         if (!row.permisson_room) return false;
@@ -443,14 +443,14 @@ import dayjs from 'dayjs';
               setResources(data.resources);
               setSumBatchByStage(data.sumBatchByStage);
               setPlan(data.plan);
-              
+
               setSelectedRows([]);
           })
           .catch(err => {
               console.error("Lỗi tạo lịch:", err.response?.data || err.message);
           });
       }else if (selectedRows[0].stage_code == 8){
-        
+
             axios.put('/Schedual/store_maintenance', {
                 stage_code: 8,
                 start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
@@ -556,7 +556,7 @@ import dayjs from 'dayjs';
       const changedEvent = changeInfo.event;
       // Thêm hoặc cập nhật event vào pendingChanges
       setPendingChanges(prev => {
-        
+
           const exists = prev.find(e => e.id === changedEvent.id);
           const updated = {
             id: changedEvent.id,
@@ -575,7 +575,7 @@ import dayjs from 'dayjs';
             return [...prev, updated];
           }
         });
-      
+
     };
     ///
     const handleSaveChanges = async () => {
@@ -601,8 +601,8 @@ import dayjs from 'dayjs';
               title: change.title,
               C_end: change.C_end || false
           })),
-          startDate: activeStart.toISOString(), 
-          endDate: activeEnd.toISOString() 
+          startDate: activeStart.toISOString(),
+          endDate: activeEnd.toISOString()
       })
       .then(res => {
           let data = res.data;
@@ -627,7 +627,7 @@ import dayjs from 'dayjs';
        console.error("Lỗi khi lưu events:", err.response?.data || err.message);
       });
     };
- 
+
     /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
     const toggleEventSelect = (event) => {
       setSelectedEvents((prevSelected) => {
@@ -646,7 +646,7 @@ import dayjs from 'dayjs';
       } else {
         toggleEventSelect(event);
       }
-      
+
     };
 
     /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
@@ -663,11 +663,11 @@ import dayjs from 'dayjs';
               <div class="cfg-row cfg-grid-2">
                <div class="cfg-col">
                 <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
-                <input id="schedule-date" type="date" 
+                <input id="schedule-date" type="date"
                       class="swal2-input cfg-input cfg-input--half"  name = "start_date"
                       value="${new Date().toISOString().split('T')[0]}">
                 </div>
-                
+
                 <div class="cfg-col">
                 <label class="cfg-label" for="schedule-date">Thời Gian Đệm (ngày):</label>
                 <input id="buffer_date" type="number"  class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "buffer_date">
@@ -752,12 +752,12 @@ import dayjs from 'dayjs';
             },
           });
         const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-         
+
         // Gọi API với ngày
         axios.post('/Schedual/scheduleAll', {
             ...result.value,
-            startDate: activeStart.toISOString(), 
-            endDate: activeEnd.toISOString() 
+            startDate: activeStart.toISOString(),
+            endDate: activeEnd.toISOString()
           })
         .then(res => {
             let data = res.data;
@@ -777,7 +777,7 @@ import dayjs from 'dayjs';
             setSumBatchByStage(data.sumBatchByStage);
             setPlan(data.plan);
 
-            
+
           })
         .catch(err => {
             Swal.fire({
@@ -794,7 +794,7 @@ import dayjs from 'dayjs';
     /// Xử lý Xóa Toàn Bộ Lịch
     const handleDeleteAllScheduale = () => {
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      
+
       Swal.fire({
         title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
         text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
@@ -838,7 +838,7 @@ import dayjs from 'dayjs';
     };
     /// Xử lý xoa các lịch được chọn
     const handleDeleteScheduale = (e) => {
-       
+
         const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
                 if (!selectedEvents || selectedEvents.length === 0) {
                     Swal.fire({
@@ -861,9 +861,9 @@ import dayjs from 'dayjs';
 
                 }).then((result) => {
                   if (result.isConfirmed) {
-                    axios.put('/Schedual/deActive', { 
-                        ids: selectedEvents,  
-                        startDate: activeStart.toISOString(), 
+                    axios.put('/Schedual/deActive', {
+                        ids: selectedEvents,
+                        startDate: activeStart.toISOString(),
                         endDate: activeEnd.toISOString()
                       })
                       .then((res) => {
@@ -897,7 +897,7 @@ import dayjs from 'dayjs';
           });
     }
 
-    /// Xử lý độ chia thời gian nhỏ nhất 
+    /// Xử lý độ chia thời gian nhỏ nhất
     const toggleSlotDuration = () => {
       setSlotIndex((prevIndex) => {
         const nextIndex = (prevIndex + 1) % slotViews.length;
@@ -919,7 +919,7 @@ import dayjs from 'dayjs';
       let id = event._def.publicId
 
       Swal.fire({
-        
+
         title: 'Hoàn Thành Sản Xuất',
         html: `
           <div class="cfg-wrapper">
@@ -934,8 +934,8 @@ import dayjs from 'dayjs';
                   <label class="cfg-label" for="wt_bleding_val">Đơn Vị</label>
                   <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full"  readonly >
                   <input id="stag_plan_id" type="hidden" >
-                </div>  
-              </div>           
+                </div>
+              </div>
 
             </div>
           </div>
@@ -962,11 +962,11 @@ import dayjs from 'dayjs';
             return false;
           }
 
-        return { yields, id: stag_plan_id }; 
+        return { yields, id: stag_plan_id };
         }
       }).then((result) => {
         if (result.isConfirmed) {
-      
+
 
           // Gọi API với ngày
         axios.put('/Schedual/finished', result.value)
@@ -975,7 +975,7 @@ import dayjs from 'dayjs';
             if (typeof data === "string") {
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
-            }    
+            }
             setEvents(data.events);
 
             Swal.fire({
@@ -1009,7 +1009,7 @@ import dayjs from 'dayjs';
       let room_id = event._def.resourceIds[0];
       let plan_master_id = event._def.extendedProps.plan_master_id;
       let resource = resources.filter (i => i.id == room_id)[0].title;
-      
+
       axios.put('/Schedual/getInforSoure', { plan_master_id })
         .then(res => {
           const source_infor = res.data.sourceInfo;
@@ -1018,10 +1018,10 @@ import dayjs from 'dayjs';
             html: `
               <div class="cfg-wrapper">
                 <div class="cfg-card">
-                
+
                     <div class="cfg-col">
                       <label class="cfg-label" for="intermediate_code">Mã BTP</label>
-                      <input id="intermediate_code" type="text" 
+                      <input id="intermediate_code" type="text"
                             class="swal2-input cfg-input cfg-input--full" readonly>
                     </div>
                     <div class="cfg-col">
@@ -1032,10 +1032,10 @@ import dayjs from 'dayjs';
 
                     <div class="cfg-col">
                       <label class="cfg-label" for="room">Phòng Sản Xuất</label>
-                      <input id="room" type="text" 
-                            class="swal2-input cfg-input cfg-input--full" readonly>     
+                      <input id="room" type="text"
+                            class="swal2-input cfg-input cfg-input--full" readonly>
                     </div>
-              
+
                     <div class="cfg-col">
                       <label class="cfg-label" for="material_source_id">Nguồn Nguyên Liệu</label>
                       <textarea id="material_source_id" rows="2"
@@ -1050,7 +1050,7 @@ import dayjs from 'dayjs';
               document.getElementById('room').value = resource ?? '';
               document.getElementById('material_source_id').value = source_infor.name ?? '';
 
-              
+
             },
             width: 700,
             customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
@@ -1061,7 +1061,7 @@ import dayjs from 'dayjs';
             cancelButtonColor: '#d33',
             preConfirm: () => {
               const intermediate_code = document.getElementById('intermediate_code');
-            
+
               if (!intermediate_code) {
                 Swal.showValidationMessage('Lỗi: dữ liệu trống');
                 return false;
@@ -1152,7 +1152,7 @@ import dayjs from 'dayjs';
 
   return (
 
-    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}> 
+    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
@@ -1167,30 +1167,30 @@ import dayjs from 'dayjs';
         locale="vi"
         height="auto"
         resourceAreaWidth="200px"
-   
-     
+
+
         editable={true}
         droppable={true}
         selectable={true}
         eventResizableFromStart={true}
-        
+
         slotDuration= "00:15:00"
         eventDurationEditable={true}
-        eventStartEditable={true} 
-      
+        eventStartEditable={true}
+
         eventClick={handleEventClick}
-        eventResize={handleEventChange} 
+        eventResize={handleEventChange}
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
         dateClick ={ handleEventUnHightLine}
         eventAllow = {finisedEvent}
 
- 
+
         datesSet={(info) => {
           const { start, end } = info;
           //console.log ( start.toISOString(), end.toISOString())
           axios.post("/Schedual/getSumaryData", {
-            startDate: start.toISOString(), 
+            startDate: start.toISOString(),
             endDate: end.toISOString()
           })
           .then(res => {
@@ -1202,11 +1202,11 @@ import dayjs from 'dayjs';
             setSumBatchByStage(data.sumBatchByStage);
           })
           .catch(err => console.error("datesSet error:", err.response?.data || err.message));
-         
+
         }}
 
         resourceGroupField="stage"
-        
+
         resourceGroupLabelContent={(arg) => {
           const stage_code = stageMap[arg.groupValue] || {};
           const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
@@ -1215,10 +1215,10 @@ import dayjs from 'dayjs';
           const yields = `${qty} ${unit}`.trim();
 
           const highlight = selectedRows.some(row => row.stage_code == stage_code);
-         
+
           return (
             <div style={{ fontWeight: "bold", color: highlight ? "red" : "black" }}>
-              {arg.groupValue + " :"} 
+              {arg.groupValue + " :"}
               <span style={{ marginLeft: "10px", color: "green" }}>
                 {yields}
               </span>
@@ -1232,8 +1232,8 @@ import dayjs from 'dayjs';
           const yields = parseFloat(res.yield)  || 0;
           const unit = res.unit || null;
           const total = parseFloat(res.total_hours) || 1;
-          const efficiency = ((busy / total) * 100).toFixed(1); 
-          
+          const efficiency = ((busy / total) * 100).toFixed(1);
+
 
           const highlight = selectedRows.some(row => {
             if (!row.permisson_room) return false;
@@ -1249,7 +1249,7 @@ import dayjs from 'dayjs';
               return row.permisson_room == arg.resource.id;
             }
           });
-         
+
           return (
             <div
                 style={{
@@ -1257,7 +1257,7 @@ import dayjs from 'dayjs';
                   padding: "0px",
                   borderRadius: "6px",
                   marginTop: "0px",
-                  position: "relative", 
+                  position: "relative",
                   height:"1px" // cần để con có thể dịch lên
                 }}
               >
@@ -1350,7 +1350,7 @@ import dayjs from 'dayjs';
           resourceTimelineWeek60: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
           resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
         }}
-        
+
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
           center: 'title',
@@ -1376,12 +1376,12 @@ import dayjs from 'dayjs';
           },
           customList: {
             text: 'KHSX',
-            click: handleShowList 
+            click: handleShowList
           },
           customDay: {
             text: 'Ngày',
             click: () => handleViewChange('resourceTimelineDay'),
-            
+
           },
           customWeek: {
             text: 'Tuần',
@@ -1410,7 +1410,7 @@ import dayjs from 'dayjs';
           autoSchedualer: {
             text: '🤖',
             click: handleAutoSchedualer,
-           
+
           },
           deleteAllScheduale: {
             text: '🗑️',
@@ -1431,13 +1431,13 @@ import dayjs from 'dayjs';
             text: 'Slot',
             click: toggleSlotDuration
           },
-          
+
         }}
 
         eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
 
         eventDidMount={(info) => {
-          
+
           // gắn data-event-id để tìm kiếm
             info.el.setAttribute("data-event-id", info.event.id);
             info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
@@ -1449,7 +1449,7 @@ import dayjs from 'dayjs';
             }
 
             info.el.addEventListener("dblclick", (e) => {
-               
+
                 e.stopPropagation();
                 handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
               });
@@ -1462,7 +1462,7 @@ import dayjs from 'dayjs';
         const now = new Date();
         return (
         <div className="relative  group custom-event-content" data-event-id={arg.event.id} >
-            
+
             <div style={{ fontSize: `${eventFontSize}px` }}>
               {/* {viewConfig.timeView != 'resourceTimelineMonth' ? (<b >{arg.event.title}</b>):(<b>{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)} */}
               <b>{arg.event.title}</b>
@@ -1473,7 +1473,7 @@ import dayjs from 'dayjs';
 
             {/* Nút xóa */}
             {arg.event.extendedProps.finished !== 1 && (
-              <button onClick={(e) => { 
+              <button onClick={(e) => {
                 //alert ("sa");
                 handleDeleteScheduale(e);
               }}
@@ -1541,7 +1541,23 @@ import dayjs from 'dayjs';
               >
                 {arg.event._def.extendedProps.experted_date}
             </div>)}
-            
+
+            {arg.event._def.extendedProps.tank == true &&  viewName == "resourceTimelineWeek"  && (
+            <div
+                className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
+                title={'Bồn Trộn Lập Phương'}
+              >
+                ⚗️
+            </div>)}
+
+            {arg.event._def.extendedProps.keep_dry == true &&  viewName == "resourceTimelineWeek"  && (
+            <div
+                className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
+                title={'Đóng Gói Độ Ẩm Thấp'}
+              >
+                🌡
+            </div>)}
+
 
               {/* H Xem History */}
             {!arg.event._def.extendedProps.is_clearning &&  viewName == "resourceTimelineWeek"  && (
@@ -1552,8 +1568,8 @@ import dayjs from 'dayjs';
                 {arg.event._def.extendedProps.direction ? '➡' : '⬅'}
             </button>)}
 
-            {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */} 
-            {arg.event.extendedProps.finished === 0  && type && (
+            {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */}
+            {arg.event.extendedProps.finished == 0  && type && (
               <button onClick={(e) => { e.stopPropagation(); handleFinished(arg.event);}}
                 className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
                 title='Xác Nhận Hoàn Thành Lô Sản Xuất'
@@ -1561,7 +1577,7 @@ import dayjs from 'dayjs';
                 🎯
             </button>)}
 
-            {/* 📦 Nút Xác nhận nguồn NL Và Phòng Sản Xuất */} 
+            {/* 📦 Nút Xác nhận nguồn NL Và Phòng Sản Xuất */}
             {arg.event.extendedProps.room_source === false  && type && (
               <button
                 onClick={(e) => {
@@ -1576,19 +1592,19 @@ import dayjs from 'dayjs';
 
         </div>
 
-        )}} 
-        
+        )}}
+
         slotLaneDidMount={(info) => {
           if (info.date < new Date()) {
             info.el.style.backgroundColor = "rgba(0,0,0,0.05)";
           }
         }}
-        
+
 
       />
       <div className="modal-sidebar">
         <ModalSidebar
-            
+
             visible={showSidebar}
             onClose={setShowSidebar}
             waitPlan={plan}
@@ -1613,7 +1629,7 @@ import dayjs from 'dayjs';
           onDragStart={(e) => {
               // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
               if (!e.inputEvent.shiftKey) {
-                e.stop(); 
+                e.stop();
               }
             }}
             container=".calendar-wrapper"
@@ -1622,7 +1638,7 @@ import dayjs from 'dayjs';
             selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
             selectFromInside={true}
             toggleContinueSelect={["shift"]}
-            
+
             onSelectEnd={(e) => {
               const selected = e.selected.map((el) => {
                 const id = el.getAttribute("data-event-id");
@@ -1634,11 +1650,11 @@ import dayjs from 'dayjs';
             }}
         />
 
-        
+
 
     </div>
 
-    
+
   );
 };
 
