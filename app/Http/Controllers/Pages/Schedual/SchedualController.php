@@ -45,6 +45,9 @@ class SchedualController extends Controller
                         ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                         ->select(
                         'sp.id',
+                        'sp.predecessor_code',
+                        'sp.nextcessor_code',
+                        'sp.code',
                         'sp.title',
                         'sp.start',
                         'sp.end',
@@ -122,6 +125,10 @@ class SchedualController extends Controller
                         $plan = $plans[$i];
                         $subtitle = null;
 
+                                // Kiêm tra vi pham
+
+
+
                                 if ($plan->stage_code <= 7){
                                         $color_event = '#46f905ff';
                                 }elseif ($plan->stage_code == 8){
@@ -169,6 +176,23 @@ class SchedualController extends Controller
                                         $subtitle = 'Không Đáp Ứng Ngày Cần Hàng: '. $plan->expected_date;
                                         if ($plan->stage_code == 8 ){
                                                 $subtitle = 'Không Đáp Ứng Hạn Bảo Trì: '. $plan->expected_date;
+                                        }
+                                }
+
+                                                                // Kiểm tra vi phạm predecessor / successor
+                                if ($plan->predecessor_code) {
+                                        $prePlan = $plans->firstWhere('code', $plan->predecessor_code);
+                                        if ($prePlan && $plan->start < $prePlan->end) {
+                                                $color_event = '#4d4b4bff'; // đỏ
+                                                $subtitle = 'Vi phạm: Start < End của công đoạn trước';
+                                        }
+                                }
+
+                                if ($plan->nextcessor_code) {
+                                        $nextPlan = $plans->firstWhere('code', $plan->nextcessor_code);
+                                        if ($nextPlan && $plan->end > $nextPlan->start) {
+                                                $color_event = '#4d4b4bff'; // đỏ
+                                                $subtitle = 'Vi phạm: End > Start của công đoạn sau';
                                         }
                                 }
       
@@ -855,6 +879,7 @@ class SchedualController extends Controller
                                                 'title'            => null,
                                                 'title_clearning'  => null,
                                                 'schedualed'       => 0,
+                                                'AHU_group' => 0,
                                                 'schedualed_by'    => session('user')['fullName'],
                                                 'schedualed_at'    => now(),
                                         ]);
@@ -953,6 +978,7 @@ class SchedualController extends Controller
                                         'resourceId' => null,
                                         'title_clearning' => null,
                                         'schedualed' => 0,
+                                        'AHU_group' => 0,
                                         'schedualed_by' =>  session('user')['fullName'],
                                         'schedualed_at' => now(),
                         ]);
@@ -1121,13 +1147,15 @@ class SchedualController extends Controller
                                 'sp.campaign_code',
                                 'sp.code',
                                 'plan_master.expected_date',
+                                'plan_master.is_val',
+                                'plan_master.code_val',
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code'
                         )
                         ->join('plan_master', 'sp.plan_master_id' , '=', 'plan_master.id')
                         ->join('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                         ->where('sp.finished', 0)
-                        ->where('sp.start', null)
+                        ->whereNull('sp.start')
                         ->where('sp.active', 1)
                         ->where('sp.stage_code',">=", 3)
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
@@ -1135,38 +1163,63 @@ class SchedualController extends Controller
                         ->orderBy('order_by', 'asc')
                 ->get();
 
-
                 for ($i=3; $i<=7; $i++){
-                        $stage_plans_stage = $stage_plans->where ('stage_code',$i);
+                        $stage_plans_stage = $stage_plans->where('stage_code',$i);
                         if ($stage_plans_stage->isEmpty()) {continue;}
                         if ($i <=6) {$product_code = "intermediate_code";} else {$product_code = "finished_product_code";}
-
                         $updates = [];
-                        
-                        // Nhóm theo expected_date + intermediate_code
-                        $groups = $stage_plans_stage
+                                                   
+                        // Lọc dữ liệu theo điều kiện code_val
+                        if ($i == 3) {
+                                
+                                $stage_plans_stage = $stage_plans_stage->filter(function($item) {
+                                        return $item->code_val === null || explode("_", $item->code_val)[1] > 1;
+                                });
+
+                                $groups = $stage_plans_stage
                                 ->groupBy(function ($item) use ($product_code) {
-                                        return $item->expected_date . '|' . $item->$product_code;})
+                                        // tách code_val
+                                        if ($item->code_val === null) {
+                                        $cvFlag = 'NULL';
+                                        } else {
+                                        $parts = explode('_', $item->code_val);
+                                        $cvFlag = $parts[0]; // chỉ lấy phần yy (trước dấu "_")
+                                        }
+
+                                        return $item->expected_date . '|' . $item->$product_code . '|' . $cvFlag;
+                                })
                                 ->filter(function ($group) {
                                         return $group->count() > 1; // chỉ giữ group có > 1 phần tử
-                        });
+                                });
 
-                foreach ($groups as $groupKey => $items) {
+                        } else {
+                                // i > 3 thì loại bỏ những record có code_val (chỉ giữ code_val == null)
+                                $stage_plans_stage = $stage_plans_stage->filter(function($item){
+                                        return empty($item->code_val);
+                                });
+                                // Group theo expected_date + product_code
+                                $groups = $stage_plans_stage
+                                ->groupBy(function ($item) use ($product_code) {
+                                        return $item->expected_date . '|' . $item->$product_code;
+                                })
+                                ->filter(function ($group) {
+                                        return $group->count() > 1;
+                                });
+                        }
 
-                        [$expected_date, $code] = explode('|', $groupKey);
-                        $quota = DB::table('quota')->where($product_code, $code)->where('stage_code',$i)->first();
-                        $maxBatch = $quota->maxofbatch_campaign ?? 0;
+                        foreach ($groups as $groupKey => $items) {
+                                [$expected_date, $code] = explode('|', $groupKey);
+                                $quota = DB::table('quota')->where($product_code, $code)->where('stage_code',$i)->first();
+                                $maxBatch = $quota->maxofbatch_campaign ?? 0;
 
-                        // 👉 Bỏ qua nhóm nếu quota <= 1
-                        if ($maxBatch <= 1) {continue;}
+                                if ($maxBatch <= 1) {continue;}
 
-                        $items = $items->values(); // reset index
+                                $items = $items->values(); // reset index
+                                $countInBatch = 0;
+                                $first = $items[0];
+                                $campaignCode = $first->predecessor_code ?? ("0_" . $first->code);
 
-                        $countInBatch = 0;
-                        $first = $items[0];
-                        $campaignCode = $first->predecessor_code ?? ("0_" . $first->code);
-
-                        foreach ($items as $item) {
+                                foreach ($items as $item) {
                                 if ($countInBatch >= $maxBatch) {
                                         $campaignCode = $item->predecessor_code ?? ("0_" . $item->code);
                                         $countInBatch = 1;
@@ -1178,15 +1231,15 @@ class SchedualController extends Controller
                                 ];
 
                                 $countInBatch++;
+                                }
                         }
-                }
-                        
+
                         if (!empty($updates)) {
                                 $ids = collect($updates)->pluck('id')->implode(',');
 
                                 $caseSql = "CASE id ";
                                 foreach ($updates as $row) {
-                                        $caseSql .= "WHEN {$row['id']} THEN '{$row['campaign_code']}' ";
+                                $caseSql .= "WHEN {$row['id']} THEN '{$row['campaign_code']}' ";
                                 }
                                 $caseSql .= "END";
 
@@ -1194,6 +1247,8 @@ class SchedualController extends Controller
                         }
                 }
 
+
+                                
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['error' => 'Lỗi hệ thống'], 500);
@@ -1345,7 +1400,8 @@ class SchedualController extends Controller
                 DB::transaction(function() use ($title, $stageId, $roomId, $start, $end,  $endCleaning, $cleaningType, $direction) {
                         if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                         if ($cleaningType == 2){$titleCleaning = "VS-II";} else {$titleCleaning = "VS-I";}
-                        $AHU_group  = DB::table ('room')->where ('id',$roomId)->pluck('AHU_group');
+                        $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group')?? 0;
+                        
                         DB::table($stage_plan_table)
                                 ->where('id', $stageId)->whereNull('start')
                                 ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
@@ -1382,7 +1438,7 @@ class SchedualController extends Controller
                                         'schedualed_at'   => now(),
                                         'deparment_code'  => session('user')['production_code'],
                                         'type_of_change'  => "Lập Lịch Tự Động",
-                                        'AHU_group'       => $AHU_group??null,
+                                        //'AHU_group'       => $AHU_group??null,
                                 ]);
                         }
 
@@ -1397,7 +1453,7 @@ class SchedualController extends Controller
         }// đã có temp
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll( $request) {
+        public function scheduleAll(Request $request) {
              
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? "2025-10-01")->setTime(6, 0, 0);
@@ -1911,7 +1967,7 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function test(){
-               $this->scheduleAll (null);
+               //$this->scheduleAll (null);
         }
 
         ///////// Sắp Lịch Ngược ////////
@@ -1935,9 +1991,10 @@ class SchedualController extends Controller
                         ->orderBy('pm.expected_date', 'asc')
                         ->orderBy('pm.level', 'asc')
                         ->orderBy('pm.batch', 'asc')
+                        ->distinct('plan_master_id')
                         ->pluck('plan_master_id');
                 
-                
+               
                 foreach ($planMasters as $planId) {
                         
                         $check_plan_master_id_complete =  DB::table("$stage_plan_table as sp")
@@ -1984,6 +2041,7 @@ class SchedualController extends Controller
                         'fc.finished_product_code',
                         'fc.intermediate_code',
                         'pm.is_val',
+                        'pm.code_val',
                         'pm.expected_date',
                         'pm.level',
                         'pm.batch',
@@ -2037,6 +2095,7 @@ class SchedualController extends Controller
                                         'fc.finished_product_code',
                                         'fc.intermediate_code',
                                         'pm.is_val',
+                                        'pm.code_val',
                                         'pm.expected_date',
                                         'pm.level',
                                         'pm.batch',
@@ -2056,21 +2115,116 @@ class SchedualController extends Controller
                                 ->orderBy('batch', 'desc')
                                 ->get();      
                         }
-                        
-                        $rooms = DB::table('quota')->select('room_id', 
+                        $parts = explode("_", $task->code_val);
+
+                        if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
+                                $code_val_first = $parts[0] . '_1';
+                               
+                                $room_id_first = DB::table("$stage_plan_table as sp")
+                                        ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                        ->where('code_val', $code_val_first)
+                                        ->where('stage_code', $task->stage_code)
+                                        ->first(); 
+                                if ($room_id_first) {
+                                        $rooms = DB::table('quota')
+                                        ->select(
+                                                'room_id',
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                        )
+                                        ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                                return $query->where('intermediate_code', $task->intermediate_code);
+                                        }, function ($query) use ($task) {
+                                                return $query->where('finished_product_code', $task->finished_product_code);
+                                        })
+                                        ->where('room_id', $room_id_first->resourceId)
+                                        ->get();
+                                        
+                                } else {
+                                        $rooms = DB::table('quota')
+                                        ->select(
+                                        'room_id',
                                         DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
                                         DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
                                         DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
                                         DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                                )
-                        ->when($task->stage_code <= 6, function ($query) use ($task) {
-                                return $query->where('intermediate_code', $task->intermediate_code);
-                        }, function ($query) use ($task) {
-                                return $query->where('finished_product_code', $task->finished_product_code);
-                        })
-                        ->where('stage_code', $task->stage_code)
-                        ->get();
-                           
+                                        )
+                                        ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                        return $query->where('intermediate_code', $task->intermediate_code);
+                                        }, function ($query) use ($task) {
+                                        return $query->where('finished_product_code', $task->finished_product_code);
+                                        })
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get();
+                                }
+                        } 
+                        elseif ($task->code_val !== null && $task->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
+                                $code_val_first = $parts[0];
+                               
+                                $room_id_first = DB::table("$stage_plan_table as sp")
+                                        ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                        ->whereRaw("SUBSTRING_INDEX(sp.code_val, '_', 1) = ?", [$parts[0]])
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get();                               
+
+                                if ($room_id_first) {
+
+                                        $rooms = DB::table('quota')
+                                        ->select(
+                                                'room_id',
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                )
+                                                ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                                return $query->where('intermediate_code', $task->intermediate_code);
+                                                }, function ($query) use ($task) {
+                                                return $query->where('finished_product_code', $task->finished_product_code);
+                                                })
+                                        ->where ('room_id',"!=", $room_id_first->resourceId)
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get();
+                                        
+                                } else {
+                                        $rooms = DB::table('quota')
+                                        ->select(
+                                        'room_id',
+                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                        )
+                                        ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                        return $query->where('intermediate_code', $task->intermediate_code);
+                                        }, function ($query) use ($task) {
+                                        return $query->where('finished_product_code', $task->finished_product_code);
+                                        })
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get();
+                                }
+                        
+                               
+                        }else {
+                                $rooms = DB::table('quota')
+                                        ->select(
+                                        'room_id',
+                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                        )
+                                        ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                        return $query->where('intermediate_code', $task->intermediate_code);
+                                        }, function ($query) use ($task) {
+                                        return $query->where('finished_product_code', $task->finished_product_code);
+                                        })
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get(); // dùng first() để đồng nhất với nhánh if
+                        }
+
                         $bestRoom = null;
                         $bestRoomId = null;
                         $bestStart = null;
@@ -2082,7 +2236,7 @@ class SchedualController extends Controller
                         foreach ($rooms as $room) { // duyệt qua toàn bộ các room đã định mức để tìm bestroom
 
                                 if ($campaign_tasks !== null){ $number_of_batch = $campaign_tasks->count();}else {$number_of_batch = 1;}
-
+                                
                                 $beforeIntervalMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes * $number_of_batch + (float) $room->C1_time_minutes * ($number_of_batch - 1);
                                 $afterIntervalMinutes =  (float) $room->C2_time_minutes;
                                 $currCycle = (float) $room->m_time_minutes;
@@ -2287,7 +2441,7 @@ class SchedualController extends Controller
                                 'sp.code',
                                 'sp.stage_code',
                                 'sp.tank',
-                                'sp.Keep_dry',
+                                'sp.keep_dry',
                                 'fc.finished_product_code',
                                 'fc.intermediate_code',
                                 'pm.is_val',
@@ -2335,7 +2489,7 @@ class SchedualController extends Controller
                                         'sp.stage_code',
                                         'sp.campaign_code',
                                         'sp.tank',
-                                        'sp.Keep_dry',
+                                        'sp.keep_dry',
                                         'fc.finished_product_code',
                                         'fc.intermediate_code',
                                         'pm.is_val',
@@ -2430,13 +2584,15 @@ class SchedualController extends Controller
                                                 $earliestStart = $pre_task_last_batch->end;
                                         }
                                 }
-                                
+                                //findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = false, $requireAHU = false, $stage_plan_table = 'stage_plan',  $maxTank = 1, $tankInterval = 60)
                                 $candidateStart = $this->findEarliestSlot2(
                                         $room->room_id,
                                         $earliestStart, 
                                         $intervalTimeMinutes,
                                         $C2_time_minutes, 
                                         $task->tank,
+                                        $task->keep_dry,
+                                        $stage_plan_table,
                                         2,
                                         60
                                 );
@@ -2512,7 +2668,7 @@ class SchedualController extends Controller
                 
                 $this->loadRoomAvailability();
                 $startPoint = $startPoint ?? Carbon::now();
-                $AHU_group  = DB::table ('room')->where ('id',$roomId)->pluck('AHU_group');  
+                $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');  
 
                 if (!isset($this->roomAvailability[$roomId])) {
                         $this->roomAvailability[$roomId] = [];
@@ -2564,10 +2720,9 @@ class SchedualController extends Controller
                                                         ->count();
 
                                                         if ($overlapAHUCount >= 3) {
-                                                                // Nếu AHU nhóm này đã đầy thì lùi thêm 15 phút và thử lại
                                                                 $current_end_clearning = $bestStart
                                                                 ->copy()
-                                                                ->addMinutes($beforeIntervalMinutes + $time_clearning_tank);
+                                                                ->addMinutes($beforeIntervalMinutes);
                                                                 $tryCount++;
                                                                 if ($tryCount > 100) return false; // tránh vòng lặp vô hạn
                                                                 continue 2; // quay lại vòng while
@@ -2624,9 +2779,9 @@ class SchedualController extends Controller
                                                                 ->where('end', '>', $bestStart)
                                 ->count();
 
-                                if ($overlapTankCount >= $maxTank) {
+                                if ($overlapAHUCount >= $maxTank) {
                                 // $current_end_clearning = $bestStart->copy()->subMinutes(15);
-                                        $current_end_clearning = $bestStart->copy()->addMinutes($beforeIntervalMinutes + $time_clearning_tank);
+                                        $current_end_clearning = $bestStart->copy()->addMinutes($beforeIntervalMinutes);
                                         $tryCount++;
                                         if ($tryCount > 100) return false;
                                         continue; // thử lại
@@ -2637,7 +2792,7 @@ class SchedualController extends Controller
                 }
         }
 
-        protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = false, $maxTank = 1, $tankInterval = 60){
+        protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = false, $requireAHU = false, $stage_plan_table = 'stage_plan',  $maxTank = 1, $tankInterval = 60){
                 
                 $this->loadRoomAvailability();
 
@@ -2647,75 +2802,118 @@ class SchedualController extends Controller
 
                 $busyList = $this->roomAvailability[$roomId]; // danh sách block bận
                 $current_start = $Earliest instanceof Carbon ? $Earliest : Carbon::parse($Earliest);
+                $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');  
 
                 $tryCount = 0;
 
                 while (true) {
                         foreach ($busyList as $busy) {
                         // nếu current nằm TRƯỚC block bận
-                        if ($current_start->lt($busy['start'])) {
-                                $gap = $current_start->diffInMinutes($busy['start']);
-                                if ($gap >= $intervalTime + $C2_time_minutes) {
-                                
-                                // --- kiểm tra tank ---
-                                if ($requireTank) {
-                                        $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
-                                        $bestStart = $current_start->copy();
+                                if ($current_start->lt($busy['start'])) {
+                                        $gap = $current_start->diffInMinutes($busy['start']);
+                                        if ($gap >= $intervalTime + $C2_time_minutes) {
+                                        
+                                        // --- kiểm tra tank ---
+                                        if ($requireTank) {
+                                                $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
+                                                $bestStart = $current_start->copy();
 
-                                        $overlapTankCount = DB::table('stage_plan') // thay bằng $stage_plan_table nếu cần
-                                        ->whereNotNull('start')
-                                        ->where('tank', 1)
-                                        ->whereIn('stage_code', [3, 4])
-                                        ->where('start', '<', $bestEnd)
-                                        ->where('end', '>', $bestStart)
-                                        ->count();
+                                                $overlapTankCount = DB::table($stage_plan_table) // thay bằng $stage_plan_table nếu cần
+                                                ->whereNotNull('start')
+                                                ->where('tank', 1)
+                                                ->whereIn('stage_code', [3, 4])
+                                                ->where('start', '<', $bestEnd)
+                                                ->where('end', '>', $bestStart)
+                                                ->count();
 
-                                        if ($overlapTankCount >= $maxTank) {
-                                                // Nếu tank đã đầy → dời thêm $tankInterval phút rồi thử lại
-                                                $current_start = $busy['end']->copy()->addMinutes($tankInterval);
-                                                $tryCount++;
-                                                if ($tryCount > 100) return false; // tránh vòng lặp vô hạn
-                                                continue 2; // quay lại while
+                                                if ($overlapTankCount >= $maxTank) {
+                                                        // Nếu tank đã đầy → dời thêm $tankInterval phút rồi thử lại
+                                                        $current_start = $busy['end']->copy()->addMinutes($tankInterval);
+                                                        $tryCount++;
+                                                        if ($tryCount > 100) return false; // tránh vòng lặp vô hạn
+                                                        continue 2; // quay lại while
+                                                }
                                         }
-                                }
+
+                                        if ($requireAHU && $AHU_group) {
+                                                $bestEnd = $current_start->copy()->addMinutes($intervalTime);
+                                                $bestStart = $current_start->copy();
+
+                                                $overlapAHUCount = DB::table($stage_plan_table)
+                                                        ->whereNotNull('start')
+                                                        ->where('stage_code', 7)
+                                                        ->where('keep_dry', 1)
+                                                        ->where('AHU_group', $AHU_group) 
+                                                        ->where('start', '<', $bestEnd)
+                                                        ->where('end', '>', $bestStart)
+                                                ->count();
+
+                                                if ($overlapAHUCount >= 3) {
+                                                        $current_start = $busy['end']->copy()->addMinutes($tankInterval);
+                                                        $tryCount++;
+                                                        if ($tryCount > 100) return false; // tránh vòng lặp vô hạn
+                                                        continue 2; // quay lại vòng while
+                                                }
+                                        }                               
 
                                 return $current_start;
                                 }
                         }
 
                         // nếu current rơi VÀO block bận
-                        if ($current_start->lt($busy['end'])) {
-                                // nhảy tới ngay sau block bận
-                                $current_start = $busy['end']->copy();
-                        }
+                                if ($current_start->lt($busy['end'])) {
+                                        // nhảy tới ngay sau block bận
+                                        $current_start = $busy['end']->copy();
+                                }
                         }
 
                         // nếu không vướng block nào → kiểm tra tank trước khi trả về
-                        if ($requireTank) {
-                        $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
-                        $bestStart = $current_start->copy();
+                                if ($requireTank) {
+                                        $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
+                                        $bestStart = $current_start->copy();
 
-                        $overlapTankCount = DB::table('stage_plan')
-                                ->whereNotNull('start')
-                                ->where('tank', 1)
-                                ->whereIn('stage_code', [3, 4])
-                                ->where('start', '<', $bestEnd)
-                                ->where('end', '>', $bestStart)
-                                ->count();
+                                        $overlapTankCount = DB::table('stage_plan')
+                                                ->whereNotNull('start')
+                                                ->where('tank', 1)
+                                                ->whereIn('stage_code', [3, 4])
+                                                ->where('start', '<', $bestEnd)
+                                                ->where('end', '>', $bestStart)
+                                                ->count();
 
-                        if ($overlapTankCount >= $maxTank) {
-                                $current_start->addMinutes($tankInterval);
-                                $tryCount++;
-                                if ($tryCount > 100) return false;
-                                continue; // quay lại while
-                        }
-                        }
+                                        if ($overlapTankCount >= $maxTank) {
+                                                $current_start->addMinutes($tankInterval);
+                                                $tryCount++;
+                                                if ($tryCount > 100) return false;
+                                                continue; // quay lại while
+                                        }
+                        
+                                }
+
+
+                                if ($requireAHU && $AHU_group) {
+                                                $bestEnd = $current_start->copy()->addMinutes($intervalTime);
+                                                $bestStart = $current_start->copy();
+
+                                                $overlapAHUCount = DB::table($stage_plan_table)
+                                                        ->whereNotNull('start')
+                                                        ->where('stage_code', 7)
+                                                        ->where('keep_dry', 1)
+                                                        ->where('AHU_group', $AHU_group) 
+                                                        ->where('start', '<', $bestEnd)
+                                                        ->where('end', '>', $bestStart)
+                                                ->count();
+
+                                                if ($overlapAHUCount >= 3) {
+                                                        $current_start->addMinutes(15);
+                                                        $tryCount++;
+                                                        if ($tryCount > 100) return false; // tránh vòng lặp vô hạn
+                                                        continue ; // quay lại vòng while
+                                                }
+                                        }
 
                         return $current_start;
                 }
         }
-
-
 
         protected function findQuarantineTimeHours ($intermediate_code, $stage_code) {
 

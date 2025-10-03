@@ -147,8 +147,7 @@ class ProductionPlanController extends Controller
                  return response()->json($source_material_list);
         }
 
-       public function store(Request $request)
-       {
+       public function store(Request $request){
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
                         'plan_list_id'   => 'required',
@@ -372,7 +371,7 @@ class ProductionPlanController extends Controller
 
 
         public function deActive(Request $request){
-                
+                //dd ($request->all());
                 $reason = $request->deactive_reason;
 
                 $updatesql = [
@@ -382,6 +381,7 @@ class ProductionPlanController extends Controller
 
                 if ($request->type === 'delete') {
                         $updatesql['active'] = 0;
+                         $active_stage_plan = 0;
                 } elseif ($request->type === 'cancel') {
                         $updatesql['cancel'] = 1;
                         $active_stage_plan = 0;

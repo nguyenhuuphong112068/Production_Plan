@@ -270,9 +270,16 @@
                   <p> Lập Lịch Chính </p>
                 </a>
               </li>
+              
+              <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.report.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Báo Cáo </p>
+                </a>
+              </li>
 
               <li class="nav-item">
-                <a href="/Schedual/temp" class="nav-link">
+                <a href="/Schedual/report" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p> Lập Lịch Tạm </p>
                 </a>
