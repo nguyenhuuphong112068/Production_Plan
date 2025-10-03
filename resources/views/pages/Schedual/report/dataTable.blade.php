@@ -13,7 +13,7 @@
               <!-- /.card-Body -->
               <div class="card-body">
                 
-                
+     
                 <form id="filterForm" method="GET" action="{{ route('pages.Schedual.list.list') }}" class="d-flex flex-wrap gap-2">
                     @csrf
                     <div class="row w-100 align-items-center">
@@ -43,7 +43,7 @@
                                 {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
                             </span>
                             <button type="button" id="nextStage" class="btn btn-link stage-btn" style="font-size: 25px;">&raquo;</button>
-                        </div>
+                        </div> 
 
                         <!-- Optional Right Side -->
                         <div class="col-md-4 d-flex justify-content-end">
@@ -53,66 +53,23 @@
                     </div>
                 </form>
                 
-                <table id="data_table_Schedual_list" class="table table-bordered table-striped" style="font-size: 20px">
+                <table id="data_table_Schedual_report" class="table table-bordered table-striped" style="font-size: 20px">
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                     <tr>
-                        <th>STT</th>
-                        <th>Mã Sản Phẩm</th>
-                        <th>Sản Phẩm</th>
-                        <th>Cở lô</th>
-                        <th>Số Lô</th>
-                        <th>Ngày Dự Kiến KCS</th>
-                        <th>Lô Thẩm Định</th>
-                        <th>Phòng Sản Xuất</th>
-                        <th>Thới Gian Sản Xuất</th>
-                        <th>Thời Gian Vệ Sinh</th>
-                        <th>Ghi Chú</th>
-                        <th>Người Tạo/ Ngày Tạo</th>
+                        <th style = "width: 5%">STT</th>
+                        <th style = "width: 45%">Thông số Kiểm Soát</th>
+                        <th style = "width: 55%">Kết Quả</th>
                     </tr>
                   </thead>
                   <tbody>
 
-                  @foreach ($datas as $data)
+                  @foreach ($datas as $key => $data)
                     <tr>
                       <td>{{ $loop->iteration}} </td>
-                      <td> 
-                          <div> {{ $data->intermediate_code}} </div>
-                          <div> {{ $data->finished_product_code}} </div>
-                      </td>
-                      <td>{{$data->title}}</td>
-                      <td>{{$data->batch_qty . " " .  $data->unit_batch_qty}}</td>
-                      <td>{{$data->batch}}  </td>
+                      <td>{{$key}}</td>
+                      <td>{{$data}}  </td>
                      
-                      <td>
-                          <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
-                      </td>
-                      <td class="text-center align-middle">
-                          @if ($data->is_val)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
-                      </td>
-                      <td> {{ $data->room_name ." - ". $data->room_code}} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }} </td>
-
-                      <td> {{ $data->note}} </td>
-
-                      <td>
-                          <div> {{ $data->schedualed_by}} </div>
-                          <div>{{ \Carbon\Carbon::parse($data->schedualed_at)->format('d/m/Y') }} </div>
-                      </td>                     
-
-  
-                      {{-- <td class="text-center align-middle">  
-                        <form class="form-deActive" action="{{ route('pages.category.product.deActive', ['id' => $data->id]) }}" method="post">
-                            @csrf
-                            <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
-                                <i class="fas fa-lock"></i>
-                            </button>
-                        </form>
-                      </td> --}}
-                 
-
+                      {{-- <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td> --}}
                     </tr>
                   @endforeach
 
@@ -142,7 +99,7 @@
 
 <script>
   $(document).ready(function() {
-    $('#data_table_Schedual_list').DataTable({
+    $('#data_table_Schedual_report').DataTable({
       paging: true,
       lengthChange: true,
       searching: true,
@@ -163,7 +120,7 @@
   });
 </script> 
 
-<script>
+{{-- <script>
     let stages = @json($stages);
     let currentIndex = stages.findIndex(s => s.stage_code == {{ $stageCode ?? 'null' }});
     
@@ -188,7 +145,7 @@
         updateStage();
         filterForm.submit();
     });
-</script> 
+</script>  --}}
 
 
 

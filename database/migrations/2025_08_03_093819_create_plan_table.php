@@ -56,6 +56,7 @@ return new class extends Migration {
             $table->string ('batch',10);
             $table->date ('expected_date');
             $table->boolean ('is_val');
+            $table->unsignedTinyInteger ('nth_val')->nullable();
             $table->date ('after_weigth_date')->nullable();
             $table->date ('before_weigth_date')->nullable();
             $table->date ('after_parkaging_date')->nullable();

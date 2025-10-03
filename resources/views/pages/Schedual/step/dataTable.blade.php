@@ -102,7 +102,7 @@
                 </div>
               </div>
 
-              <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
+              <table id="data_table_Schedual_step" class="table table-bordered table-striped" style="font-size: 20px">
                 <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020">
                   <tr>
                     <th>STT</th>

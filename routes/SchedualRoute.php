@@ -2,6 +2,7 @@
     // use Illuminate\Routing\Route;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
+use App\Http\Controllers\Pages\Schedual\SchedualReportController;
 use App\Http\Controllers\Pages\Schedual\SchedualStepController;
 use App\Http\Controllers\Pages\Schedual\SchedualTempController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
@@ -67,7 +68,15 @@ use Illuminate\Support\Facades\Route;
                 ->name('step.')
                 ->group(function(){
                         Route::get('','list')->name('list');
-                });       
+                });   
+                
+                
+                Route::prefix('/report')
+                ->controller(SchedualReportController::class)
+                ->name('report.')
+                ->group(function(){
+                        Route::get('','list')->name('list');
+                });  
 
         });
 
