@@ -1454,13 +1454,14 @@ class SchedualController extends Controller
 
         /** Scheduler cho tất cả stage Request */
         public function scheduleAll(Request $request) {
-             
-                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-                $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? "2025-10-01")->setTime(6, 0, 0);
                 
-                // Log::info('request:', [
-                //         'request' => $request->all(),
-                // ]);
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
+                $today = Carbon::now()->toDateString(); 
+                $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? $today)->setTime(6, 0, 0);
+                
+                Log::info('request:', [
+                        'request' => $request->all(),
+                ]);
 
                 $stageCodes = DB::table($stage_plan_table)
                         ->distinct()
@@ -1967,7 +1968,7 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function test(){
-               //$this->scheduleAll (null);
+              // $this->scheduleAll (null);
         }
 
         ///////// Sắp Lịch Ngược ////////
@@ -2117,6 +2118,7 @@ class SchedualController extends Controller
                         }
                         $parts = explode("_", $task->code_val);
 
+                        /// Tìm Phòng Sản Xuất Thịch Hợp
                         if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
                                 $code_val_first = $parts[0] . '_1';
                                
@@ -2164,10 +2166,11 @@ class SchedualController extends Controller
                                 $code_val_first = $parts[0];
                                
                                 $room_id_first = DB::table("$stage_plan_table as sp")
-                                        ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-                                        ->whereRaw("SUBSTRING_INDEX(sp.code_val, '_', 1) = ?", [$parts[0]])
-                                        ->where('stage_code', $task->stage_code)
-                                        ->get();                               
+                                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                ->where(DB::raw("SUBSTRING_INDEX(pm.code_val, '_', 1)"), '=', $parts[0])
+                                ->where('sp.stage_code', $task->stage_code)
+                                ->whereNotNull('start')
+                                ->get();                           
 
                                 if ($room_id_first) {
 
@@ -2184,9 +2187,15 @@ class SchedualController extends Controller
                                                 }, function ($query) use ($task) {
                                                 return $query->where('finished_product_code', $task->finished_product_code);
                                                 })
-                                        ->where ('room_id',"!=", $room_id_first->resourceId)
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
+                                        
+                                        
+                                        if ($rooms->count () > $room_id_first->count ()) {
+                                                foreach ($room_id_first as $first) {
+                                                        $rooms->where('room_id', '!=', $first->resourceId);
+                                                }    
+                                        }
                                         
                                 } else {
                                         $rooms = DB::table('quota')
@@ -2445,6 +2454,7 @@ class SchedualController extends Controller
                                 'fc.finished_product_code',
                                 'fc.intermediate_code',
                                 'pm.is_val',
+                                'pm.code_val',
                                 'pm.expected_date',
                                 'pm.batch',
                                 'pm.after_weigth_date',
@@ -2493,6 +2503,7 @@ class SchedualController extends Controller
                                         'fc.finished_product_code',
                                         'fc.intermediate_code',
                                         'pm.is_val',
+                                        'pm.code_val',
                                         'pm.expected_date',
                                         'pm.level',
                                         'pm.batch',
@@ -2513,20 +2524,118 @@ class SchedualController extends Controller
                                 ->orderBy('batch', 'asc')
                                 ->get();
                         }
+
+                        /// Tìm Phòng Sản Xuất Thịch Hợp
+                        if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
+                                $code_val_first = $parts[0] . '_1';
+                               
+                                $room_id_first = DB::table("$stage_plan_table as sp")
+                                        ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                        ->where('code_val', $code_val_first)
+                                        ->where('stage_code', $task->stage_code)
+                                        ->first(); 
+
+                                if ($room_id_first) {
+                                        $rooms = DB::table('quota')
+                                        ->select(
+                                                'room_id',
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                        )
+                                        ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                                return $query->where('intermediate_code', $task->intermediate_code);
+                                        }, function ($query) use ($task) {
+                                                return $query->where('finished_product_code', $task->finished_product_code);
+                                        })
+                                        ->where('room_id', $room_id_first->resourceId)
+                                        ->get();
+                                        
+                                } else {
+   
+                                        $rooms = DB::table('quota')->select('room_id', 
+                                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                )
+                                        ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                                return $query->where('intermediate_code', $task->intermediate_code);
+                                        }, function ($query) use ($task) {
+                                                return $query->where('finished_product_code', $task->finished_product_code);
+                                        })
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get();
+
+                                }
+                        } 
+                        elseif ($task->code_val !== null && $task->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
+                                $code_val_first = $parts[0];
+                               
+                                $room_id_first = DB::table("$stage_plan_table as sp")
+                                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                ->where(DB::raw("SUBSTRING_INDEX(pm.code_val, '_', 1)"), '=', $parts[0])
+                                ->where('sp.stage_code', $task->stage_code)
+                                ->whereNotNull('start')
+                                ->get();                           
+
+                                if ($room_id_first) {
+
+                                        $rooms = DB::table('quota')
+                                        ->select(
+                                                'room_id',
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                )
+                                                ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                                return $query->where('intermediate_code', $task->intermediate_code);
+                                                }, function ($query) use ($task) {
+                                                return $query->where('finished_product_code', $task->finished_product_code);
+                                                })
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get();
+                                        
+                                        
+                                        if ($rooms->count () > $room_id_first->count ()) {
+                                                foreach ($room_id_first as $first) {
+                                                        $rooms->where('room_id', '!=', $first->resourceId);
+                                                }    
+                                        }
+                                        
+                                } else {
+                                        $rooms = DB::table('quota')->select('room_id', 
+                                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                )
+                                        ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                                return $query->where('intermediate_code', $task->intermediate_code);
+                                        }, function ($query) use ($task) {
+                                                return $query->where('finished_product_code', $task->finished_product_code);
+                                        })
+                                        ->where('stage_code', $task->stage_code)
+                                        ->get();
+                                }
                         
-                        $rooms = DB::table('quota')->select('room_id', 
-                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                                )
-                        ->when($task->stage_code <= 6, function ($query) use ($task) {
-                                return $query->where('intermediate_code', $task->intermediate_code);
-                        }, function ($query) use ($task) {
-                                return $query->where('finished_product_code', $task->finished_product_code);
-                        })
-                        ->where('stage_code', $task->stage_code)
-                        ->get();
+                        }else {
+                                $rooms = DB::table('quota')->select('room_id', 
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                        )
+                                ->when($task->stage_code <= 6, function ($query) use ($task) {
+                                        return $query->where('intermediate_code', $task->intermediate_code);
+                                }, function ($query) use ($task) {
+                                        return $query->where('finished_product_code', $task->finished_product_code);
+                                })
+                                ->where('stage_code', $task->stage_code)
+                                ->get();
+                        }
 
                         $bestRoom = null;
                         $bestRoomId = null;
