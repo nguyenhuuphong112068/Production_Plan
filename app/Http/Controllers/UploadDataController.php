@@ -13,8 +13,6 @@ class UploadDataController extends Controller
                    return view('upload.form_load');
         }
 
-        
-
         public function import(Request $request) {
             $request->validate([
                 'excel_file' => 'required|mimes:xlsx,xls'
