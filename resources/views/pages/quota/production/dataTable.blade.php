@@ -1,9 +1,5 @@
 <div class="content-wrapper">
     <!-- Main content -->
-    <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-12">
             <!-- /.card-header -->
             <div class="card">
 
@@ -171,14 +167,6 @@
               </div>
               <!-- /.card-body -->
             </div>
-            <!-- /.card -->
-          </div>
-          <!-- /.col -->
-        </div>
-        <!-- /.row -->
-      </div>
-      <!-- /.container-fluid -->
-    </section>
     <!-- /.content -->
   </div>
 
@@ -203,7 +191,7 @@
 <script>
 
   $(document).ready(function () {
-
+      document.body.style.overflowY = "auto";
       $('.btn-create').click(function () {
           const button = $(this);
           const modal = $(button.data('target'));
