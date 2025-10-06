@@ -60,7 +60,7 @@
                                 return;
                         }
                         btn.disabled = true;
-                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang...';
                         });
                 }
 

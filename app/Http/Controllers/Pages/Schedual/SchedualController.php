@@ -1127,7 +1127,7 @@ class SchedualController extends Controller
 
         public function createAutoCampain(){
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-                
+               
                 try {
                 // Lấy toàn bộ stage_plan chưa hoàn thành và active
                 DB::table($stage_plan_table)
@@ -1152,8 +1152,8 @@ class SchedualController extends Controller
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code'
                         )
-                        ->join('plan_master', 'sp.plan_master_id' , '=', 'plan_master.id')
-                        ->join('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('plan_master', 'sp.plan_master_id' , '=', 'plan_master.id')
+                        ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                         ->where('sp.finished', 0)
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
@@ -1162,7 +1162,7 @@ class SchedualController extends Controller
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->orderBy('order_by', 'asc')
                 ->get();
-
+               
                 for ($i=3; $i<=7; $i++){
                         $stage_plans_stage = $stage_plans->where('stage_code',$i);
                         if ($stage_plans_stage->isEmpty()) {continue;}
@@ -1453,7 +1453,7 @@ class SchedualController extends Controller
         }// đã có temp
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll(Request $request) {
+        public function scheduleAll( $request) {
                 
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $today = Carbon::now()->toDateString(); 
@@ -1968,7 +1968,8 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function test(){
-              // $this->scheduleAll (null);
+              $this->scheduleAll (null);
+              //$this->createAutoCampain();
         }
 
         ///////// Sắp Lịch Ngược ////////

@@ -213,6 +213,7 @@
 
     <script>
         $(document).ready(function() {
+            document.body.style.overflowY = "auto";
             preventDoubleSubmit("#send_form", "#send_btn");
 
             $('.btn-edit').click(function() {

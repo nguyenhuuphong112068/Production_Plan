@@ -11,7 +11,7 @@ class UnitController extends Controller
 {
         public function index(){
 
-                $datas = DB::table('Unit')->orderBy('name','asc')->get();
+                $datas = DB::table('unit')->orderBy('name','asc')->get();
                 session()->put(['title'=> 'DỮ LIỆU GỐC - ĐƠN VỊ']);
                 return view('pages.materData.Unit.list',['datas' => $datas]);
         }
@@ -60,7 +60,7 @@ class UnitController extends Controller
 
                 //$oldData = DB::table('Unit')->where('id', $request->id)->first();
 
-                DB::table('Unit')->where('id', $request->id)->update([
+                DB::table('unit')->where('id', $request->id)->update([
                         'code' => $request->code,
                         'name' => $request->name,
                         'active' => true,
