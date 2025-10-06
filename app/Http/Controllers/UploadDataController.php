@@ -13,9 +13,11 @@ class UploadDataController extends Controller
     {
         return view('upload.form_load');
     }
+    public function import(Request $request){
+        // ⚙️ Cho phép chạy lâu và dùng nhiều RAM hơn
+        ini_set('max_execution_time', 300); // 5 phút
+        //ini_set('memory_limit', '512M');
 
-    public function import(Request $request)
-    {
         $request->validate([
             'excel_file' => 'required|mimes:xlsx,xls',
             'table' => 'required'
@@ -24,8 +26,7 @@ class UploadDataController extends Controller
         $path = $request->file('excel_file')->getRealPath();
         $spreadsheet = IOFactory::load($path);
         $rows = $spreadsheet->getActiveSheet()->toArray();
-        unset($rows[0]); // Bỏ dòng tiêu đề
-        //dd ($rows);
+        unset($rows[0]); // bỏ dòng tiêu đề
 
         // ⚙️ Cấu hình mapping bảng <-> cột
         $tableMappings = [
@@ -69,24 +70,14 @@ class UploadDataController extends Controller
                     'specification_id',
                     'batch_qty',
                     'unit_batch_qty',
-                    'primary_parkaging',     // DG thứ nhất
-                    'secondary_parkaging',   // DG thứ hai
-                    'deparment_code'         // bophan
+                    'primary_parkaging',
+                    'secondary_parkaging',
+                    'deparment_code'
                 ],
                 'extra' => [
                     'active' => 1,
                     'prepared_by' => 'Auto-generate',
                 ],
-            ],
-
-            'plan_master' => [
-                'columns' => [
-                    'plan_list_id','product_caterogy_id','level','batch','expected_date',
-                    'is_val','after_weigth_date','before_weigth_date','after_parkaging_date',
-                    'before_parkaging_date','material_source','only_parkaging','percent_parkaging',
-                    'deparment_code','note'
-                ],
-                'extra' => ['prepared_by' => 'Nguyễn Hữu Phong'],
             ],
 
 
@@ -101,19 +92,9 @@ class UploadDataController extends Controller
 
             'quota' => [
                 'columns' => [
-                    'id',
-                    'process_code',
-                    'intermediate_code',
-                    'finished_product_code',
-                    'room_id',
-                    'p_time',
-                    'm_time',
-                    'C1_time',
-                    'C2_time',
-                    'stage_code',
-                    'maxofbatch_campaign',
-                    'note',
-                    'deparment_code'
+                    'id','process_code','intermediate_code','finished_product_code',
+                    'room_id','p_time','m_time','C1_time','C2_time',
+                    'stage_code','maxofbatch_campaign','note','deparment_code'
                 ],
                 'extra' => [
                     'active' => true,
@@ -124,6 +105,34 @@ class UploadDataController extends Controller
                 ],
             ],
 
+            'plan_master' => [
+                'columns' => [
+                    'id',
+                    'plan_list_id',
+                    'product_caterogy_id',
+                    'level',
+                    'batch',
+                    'expected_date',
+                    'is_val',
+                    'after_weigth_date',
+                    'before_weigth_date',
+                    'after_parkaging_date',
+                    'before_parkaging_date',
+                    'material_source_id',
+                    'only_parkaging',
+                    'percent_parkaging',
+                    'note',
+                    'deparment_code',
+                    
+                ],
+                'extra' => [
+                    
+                    'active' => true,
+                    'cancel' => 0,
+                    'prepared_by' => 'Auto-generate',
+                    'created_at' => now(),
+                ],
+            ],
 
             'source_material' => [
                 'columns' => ['id','intermediate_code','name'],
@@ -169,6 +178,24 @@ class UploadDataController extends Controller
                 'columns' => ['id','name','display_name','description'],
                 'extra' => [],
             ],
+
+            'permissions' => [
+                'columns' => [
+                    'id',
+                    'permission_group',
+                    'name',
+                    'display_name',
+                    'description'
+                ],
+                'extra' => [],
+            ],
+            'role_permission' => [
+                'columns' => [
+                    'role_id',
+                    'permission_id',
+                ],
+                'extra' => [],
+            ],
         ];
 
         $table = $request->table;
@@ -179,19 +206,30 @@ class UploadDataController extends Controller
 
         $mapping = $tableMappings[$table];
         $inserted = 0;
+        $batchSize = 500; // chèn 500 dòng mỗi lần
 
-        foreach ($rows as $row) {
-            $data = [];
+        foreach (array_chunk($rows, $batchSize) as $chunkIndex => $chunk) {
+            $insertData = [];
 
-            foreach ($mapping['columns'] as $i => $colName) {
-                $data[$colName] = $row[$i] ?? null;
+            foreach ($chunk as $row) {
+                $data = [];
+                foreach ($mapping['columns'] as $i => $colName) {
+                    $data[$colName] = $row[$i] ?? null;
+                }
+                $insertData[] = array_merge($data, $mapping['extra']);
             }
 
-            $data = array_merge($data, $mapping['extra']);
-                DB::table($table)->insert($data);
-            $inserted++;
+            try {
+                DB::table($table)->insert($insertData);
+                $inserted += count($insertData);
+            } catch (\Exception $e) {
+                return back()->with('error', "❌ Lỗi tại batch thứ " . ($chunkIndex + 1) . ": " . $e->getMessage());
+            }
         }
 
-        return back()->with('success', "Đã import $inserted dòng vào bảng [$table] thành công!");
+        return back()->with('success', "✅ Đã import $inserted dòng vào bảng [$table] thành công!");
     }
+
+
+
 }

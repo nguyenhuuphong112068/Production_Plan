@@ -586,25 +586,25 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
-      { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" },
-      { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "name", style: { minWidth: '2rem', maxWidth: '15rem', ...longTextStyle } },
-      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false, filterField: "name" },
+      { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" , style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
+      { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "name", style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
+      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false, filterField: "name" , style: { width: '10%', maxWidth: '10%', ...longTextStyle }},
       { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" },
       { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date"},
-      { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
+      { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle }},
       { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate },
       { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
       { field: "weight_dates", header: "Cân NL", sortable: true, body: weightPBodyTemplate },
       { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: packagingBodyTemplate },
       { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"), style: { width: '25rem', maxWidth: '25rem', ...longTextStyle } },
       { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
-      { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") , filter: false, filterField: "note"},
+      { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") , filter: false, filterField: "note", style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
   ];
     
   return (
     <div
         id="external-events"
-        className={`absolute right-0 h-full z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`absolute right-0 h-90 z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
         style={{
           width: percentShow,
           maxWidth: "100%", // ✅ tối đa bằng content-wrapper
@@ -686,7 +686,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       </div>
 
       {/* Khu vực bảng */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'auto'}}>
         <DataTable
           className="p-datatable-gridlines prime-gridlines"
           key={percentShow}
@@ -697,7 +697,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
           dataKey="id"
           size="medium"
           paginator paginatorPosition="bottom" rows={20} rowsPerPageOptions={[5, 10, 25, 50, 100, 500, 1000]}
-          scrollable scrollHeight="calc(100vh - 160px)"
+          scrollable scrollHeight="calc(100vh - 200px)"
           columnResizeMode="expand" resizableColumns
           globalFilter={searchTerm} 
           reorderableColumns reorderableRows onRowReorder={handleRowReorder}
@@ -748,6 +748,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         </DataTable>
 
       </div>
+
       {/* Thêm Kế Hoạch Khác */}
       <Modal size="lg" show={showModalCreate} aria-labelledby="example-modal-sizes-title-lg" onHide = {() => setShowModalCreate (false)}>
                 <Modal.Header style={{color:'#cdc717', backgroundColor: '#ffffffff'}}>
@@ -820,7 +821,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
 
       {/* Tạo Đinh Mức */}
- 
       <Modal size="xl" show={showModalQuota} aria-labelledby="example-modal-sizes-title-lg" onHide = {() => setShowModalQuota (false)}>
                 <Modal.Header style={{color:'#cdc717', backgroundColor: '#ffffffff'}}>
                   <img src="/img/iconstella.svg" style={{width: '30px', marginRight: '10px'}} /> 

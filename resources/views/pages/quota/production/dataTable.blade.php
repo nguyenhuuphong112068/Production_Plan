@@ -295,20 +295,22 @@
               }
           },
           infoCallback: function (settings, start, end, max, total, pre) {
-              let activeCount = 0;
-              let inactiveCount = 0;
+              let thieuDinhMuc = 0;
+              let daDinhMuc = 0;
 
-              settings.aoData.forEach(function(row){
-                  // row.anCells là danh sách <td> của từng hàng
-                  const lastTd = row.anCells[row.anCells.length - 1]; // cột cuối (Vô Hiệu)
-                  const btn = $(lastTd).find('button[type="submit"]'); 
-                  const status = btn.data('type'); // lấy 1 hoặc 0
+              settings.aoData.forEach(function(row) {
+                  // Lấy ô Phòng Sản Xuất (ở cột thứ 5 — tính từ 0)
+                  const roomCell = row.anCells[4];
+                  const text = $(roomCell).text().trim();
 
-                  if (status == 1) activeCount++;
-                  else inactiveCount++;
+                  if (text.includes('Thiếu Định Mức')) {
+                      thieuDinhMuc++;
+                  } else {
+                      daDinhMuc++;
+                  }
               });
 
-              return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
+              return pre + ` (Đã Định Mức: ${daDinhMuc}, Chưa Định Mức: ${thieuDinhMuc})`;
           }
       });
 
