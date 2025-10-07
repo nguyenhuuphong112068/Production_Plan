@@ -9,10 +9,17 @@
 
               <!-- /.card-Body -->
               <div class="card-body">
+                @if (user_has_permission(session('user')['userId'], 'category_maintenance_create', 'boolean'))
+                  <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal" style="width: 155px" >
+                        <i class="fas fa-plus"></i> Thêm
+                  </button>
+                @endif
 
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal" style="width: 155px" >
-                      <i class="fas fa-plus"></i> Thêm
-                </button>
+                @php
+                    $auth_update = user_has_permission(session('user')['userId'], 'category_maintenance_update', 'disabled');
+                    $auth_deActive = user_has_permission(session('user')['userId'], 'category_maintenance_deActive', 'disabled');
+                @endphp
+
 
                 <table id="data_table_instrument" class="table table-bordered table-striped">
 

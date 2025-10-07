@@ -4,16 +4,25 @@
         <div class="card-header mt-4" >
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
         </div>
+        @php
+            $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
+            $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
+        @endphp
         <!-- /.card-Body -->
         <div class="card-body">
             @if (!$send)
                 <div class="row">
                     <div class="col-md-2">
-                        <button class="btn btn-success btn-create mb-2" data-toggle="modal"
-                            data-target="#selectProductModal" style="width: 155px;">
-                            <i class="fas fa-plus"></i> Thêm
-                        </button>
+                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
+                            <button class="btn btn-success btn-create mb-2" data-toggle="modal"
+                                data-target="#selectProductModal" style="width: 155px;">
+                                <i class="fas fa-plus"></i> Thêm
+                            </button>
+                        @endif
                     </div>
+
+
+
                     <div class="col-md-8"></div>
                     <div class="col-md-2" style="text-align: right;">
 
@@ -23,9 +32,11 @@
                             <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
                             <input type="hidden" name="month" value="{{ $month }}">
                             <input type="hidden" name="production" value="{{ $production }}">
+                            @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean'))
                             <button class="btn btn-success btn-create mb-2 " style="width: 177px;">
                                 <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
                             </button>
+                            @endif
                         </form>
 
                     </div>
@@ -128,7 +139,7 @@
 
 
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit"
+                                <button type="button"  class="btn btn-warning btn-edit" {{ $auth_update }}
                                     {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                     data-name="{{ $data->name }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"
@@ -159,16 +170,19 @@
 
                                     @if ($data->active == true && $send == false)
                                         <button type="submit" class="btn btn-danger" data-type="delete"
+                                            {{ $auth_deActive }}
                                             data-name="{{ $data->name . ' - ' . $data->batch }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     @elseif ($data->cancel == false && $send == true)
                                         <button type="submit" class="btn btn-danger" data-type="cancel"
+                                            {{ $auth_deActive }}
                                             data-name="{{ $data->name . ' - ' . $data->batch }}">
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @elseif ($data->cancel == true && $send == true)
                                         <button type="submit" class="btn btn-success" data-type="restore"
+                                            {{ $auth_deActive }}
                                             data-name="{{ $data->name . ' - ' . $data->batch }}">
                                             <i class="fas fa-unlock"></i>
                                         </button>

@@ -1,5 +1,5 @@
 
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+
 <style>
   .custom-modal-size {
     max-width: 60% !important;
@@ -185,10 +185,7 @@
   </div>
 </div>
 
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
+
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->create_Errors->any())

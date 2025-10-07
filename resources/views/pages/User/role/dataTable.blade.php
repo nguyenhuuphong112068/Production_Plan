@@ -14,8 +14,6 @@
 </style>
 
 <div class="content-wrapper">
-    <!-- Main content -->
-    <section class="content">
         <div class="card">
             <div class="card-header mt-4"></div>
             <div class="card-body">
@@ -58,7 +56,6 @@
               <!-- /.card-body -->
             </div>
             <!-- /.card -->
-    </section>
     <!-- /.content -->
   </div>
 
@@ -82,31 +79,27 @@
 
 
 <script>
+  $(document).ready(function () {
+      document.body.style.overflowY = "auto";
+  })
+
   $(document).on('change', '.step-checkbox', function () {
       let roleId = $(this).data('role');
       let permissionId = $(this).data('permission');
       let checked = $(this).is(':checked');
       
       $.ajax({
-          url: "{{ route('pages.User.role.store_or_update') }}",
-          type: 'POST',
-          data: {
-               _token: '{{ csrf_token() }}',
-              role_id: roleId,          
-              permission_id: permissionId,
-              checked: checked
-          },
-          success: function (res) {
-              if (res.success) {
-                
-              } else {
-                  alert("Lỗi khi cập nhật quyền!");
-              }
-          },
-          error: function () {
-              alert("Không thể kết nối server!");
-          }
+        url: "{{ route('pages.User.role.store_or_update') }}",
+        type: 'POST',
+        dataType: 'json', // 👉 ép jQuery hiểu rõ kiểu dữ liệu trả về
+        data: {
+          _token: '{{ csrf_token() }}',
+          role_id: roleId,
+          permission_id: permissionId,
+          checked: checked
+        }
       });
+
   });
 </script>
 

@@ -1,4 +1,4 @@
-
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <!-- Update Modal -->
 <div class="modal fade" id="update_modal" tabindex="-1" role="dialog" aria-labelledby="update_ModalLabel"
     aria-hidden="true">

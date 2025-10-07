@@ -1,10 +1,7 @@
+
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <div class="content-wrapper">
     <!-- Main content -->
-    <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-12">
-            <!-- /.card-header -->
             <div class="card">
 
               <div class="card-header mt-4">
@@ -14,12 +11,18 @@
 
               <!-- /.card-Body -->
               <div class="card-body">
-
+                
+                @if (user_has_permission(session('user')['userId'], 'materData_Specification_store', 'boolean'))
                 <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal" style="width: 155px" >
                       <i class="fas fa-plus"></i> Thêm
                 </button>
+                @endif
 
-                <table id="data_tabale_dosage" class="table table-bordered table-striped">
+                @php
+                    $auth_update = user_has_permission(session('user')['userId'], 'materData_Specification_update', 'disabled');
+                @endphp
+
+                <table id="data_tabale_spec" class="table table-bordered table-striped">
 
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
                 
@@ -46,12 +49,11 @@
                       
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit"
-
                               data-id="{{ $data->id }}"
                               data-name="{{ $data->name }}"
-
                               data-toggle="modal"
-                              data-target="#update_modal">
+                              data-target="#update_modal"
+                              {{ $auth_update }}>
                               <i class="fas fa-edit"></i>
                           </button>
                       </td>
@@ -67,14 +69,6 @@
               <!-- /.card-body -->
             </div>
             <!-- /.card -->
-          </div>
-          <!-- /.col -->
-        </div>
-        <!-- /.row -->
-      </div>
-      <!-- /.container-fluid -->
-    </section>
-    <!-- /.content -->
   </div>
 
 
@@ -98,13 +92,10 @@
 <script>
 
   $(document).ready(function () {
-
+      document.body.style.overflowY = "auto";
       $('.btn-edit').click(function () {
           const button = $(this);
           const modal = $('#update_modal');
-
-         
-
           // Gán dữ liệu vào input
           modal.find('input[name="id"]').val(button.data('id'));
         
@@ -114,31 +105,7 @@
 
         });
 
-      
-
-        // $('.form-deActive').on('submit', function (e) {
-        //   e.preventDefault(); // chặn submit mặc định
-        //    const form = this;
-        //   const productName = $(form).find('button[type="submit"]').data('name');
-         
-
-        //   Swal.fire({
-        //     title: 'Bạn chắc chắn muốn vô hiệu hóa?',
-        //     text: `Sản phẩm: ${productName}`,
-        //     icon: 'warning',
-        //     showCancelButton: true,
-        //     confirmButtonColor: '#28a745',
-        //     cancelButtonColor: '#d33',
-        //     confirmButtonText: 'Đồng ý',
-        //     cancelButtonText: 'Hủy'
-        //   }).then((result) => {
-        //     if (result.isConfirmed) {
-        //       form.submit(); // chỉ submit sau khi xác nhận
-        //     }
-        //   });
-        // });
-
-         $('#data_tabale_dosage').DataTable({
+        $('#data_tabale_spec').DataTable({
             paging: true,
             lengthChange: true,
             searching: true,
@@ -146,6 +113,10 @@
             info: true,
             autoWidth: false,
             pageLength: 10,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",

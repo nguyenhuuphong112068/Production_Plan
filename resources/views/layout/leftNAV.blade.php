@@ -257,7 +257,7 @@
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-calendar-alt"></i>
               <p>
-                Lập Lịch
+                Lịch Sản Xuất
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -303,6 +303,7 @@
           </li>
 
           <!-- Droplist Thống Kê -->
+           @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-chart-bar"></i>
@@ -337,8 +338,10 @@
             
             </ul>
           </li>
+          @endif
 
           <!-- History-->
+          @if (user_has_permission(session('user')['userId'], 'layout_history', 'boolean'))
           <li class="nav-item">
             <a href="{{ route ('pages.History.list') }}" class="nav-link">
               <i class="nav-icon fas fa-history"></i>
@@ -347,9 +350,11 @@
               </p>
             </a>
           </li>
+          @endif
 
             <!-- User-->
-            <li class="nav-item has-treeview">
+          @if (user_has_permission(session('user')['userId'], 'layout_User', 'boolean'))
+          <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-user"></i>
               <p>
@@ -381,6 +386,7 @@
               </li>
             </ul>
           </li>
+          @endif
 
           <!-- Audit Trial-->
           <li class="nav-item">
@@ -391,7 +397,6 @@
               </p>
             </a>
           </li>
-
 
           <li class="nav-item">
             <a href="/Schedual/test" class="nav-link">

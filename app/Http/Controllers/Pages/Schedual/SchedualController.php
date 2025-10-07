@@ -405,6 +405,7 @@ class SchedualController extends Controller
                                 $title = 'LỊCH SẢN XUẤT TẠM THỜI';
                                 $type = false;
                         }
+                        $authorization = session('user')['userGroup'];
 
                         return response()->json([
                                 'title' => $title,
@@ -415,6 +416,7 @@ class SchedualController extends Controller
                                 'resources' => $resources,
                                 'sumBatchByStage' => $sumBatchByStage,
                                 'type' => $type,
+                                'authorization' => $authorization,
                         ]);
 
                 } catch (\Throwable $e) {

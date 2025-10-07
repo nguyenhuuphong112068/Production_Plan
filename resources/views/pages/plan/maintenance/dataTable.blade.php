@@ -16,20 +16,30 @@
                 @if(!$send)
                 <div class="row" >
                     <div class="col-md-2">
-                      <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#selectProductModal" style="width: 155px;">
-                            <i class="fas fa-plus"></i> Thêm
-                      </button>
+                      @if (user_has_permission(session('user')['userId'], 'plan_maintenance_create', 'boolean'))
+                        <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#selectProductModal" style="width: 155px;">
+                              <i class="fas fa-plus"></i> Thêm
+                        </button>
+                      @endif
                     </div>
+
+                    @php
+                        $auth_update = user_has_permission(session('user')['userId'], 'plan_maintenance_update', 'disabled');
+                        $auth_deActive = user_has_permission(session('user')['userId'], 'plan_maintenance_deActive', 'disabled');
+                    @endphp
+
                     <div class="col-md-8"></div> 
                     <div class="col-md-2" style="text-align: right;">
 
                       <form id = "send_form" action="{{ route('pages.plan.maintenance.send') }}" method="post">
 
                             @csrf
-                            <input type="hidden" name="plan_list_id" value="{{$plan_list_id}}">                          
+                            <input type="hidden" name="plan_list_id" value="{{$plan_list_id}}"> 
+                            @if (user_has_permission(session('user')['userId'], 'plan_maintenance_send', 'boolean'))                         
                             <button class="btn btn-success btn-create mb-2 "  style="width: 177px;">
                                 <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
                             </button>
+                            @endif
                       </form>
 
                     </div>
@@ -87,7 +97,7 @@
                       
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit" {{ $data->active?'':'disabled' }}
-
+                              {{ $auth_update }}
                               data-id="{{ $data->id }}"
                               data-name="{{ $data->name }}"
                               data-code="{{ $data->code }}"
@@ -108,15 +118,15 @@
                             <input type="hidden"  name="active" value="{{ $data->active }}">
 
                             @if ($data->active == true && $send == false)
-                              <button type="submit" class="btn btn-danger" data-type="delete" data-name="{{  $data->name }}">
+                              <button type="submit"  {{ $auth_deActive }} class="btn btn-danger" data-type="delete" data-name="{{  $data->name }}">
                                   <i class="fas fa-trash"></i>
                               </button>  
                             @elseif ($data->cancel == false && $send == true)
-                              <button type="submit" class="btn btn-danger"   data-type="cancel"  data-name="{{  $data->name }}">
+                              <button type="submit" {{ $auth_deActive }} class="btn btn-danger"   data-type="cancel"  data-name="{{  $data->name }}">
                                   <i class="fas fa-lock"></i>
                               </button>
                             @elseif ($data->cancel == true && $send == true)
-                              <button type="submit" class="btn btn-success"  data-type="restore"  data-name="{{  $data->name }}">
+                              <button type="submit" {{ $auth_deActive }} class="btn btn-success"  data-type="restore"  data-name="{{  $data->name }}">
                                   <i class="fas fa-unlock"></i>
                               </button>
                             @endif

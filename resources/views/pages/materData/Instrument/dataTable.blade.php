@@ -106,7 +106,7 @@
 <script>
 
   $(document).ready(function () {
-
+      document.body.style.overflowY = "auto";
       $('.btn-edit').click(function () {
           const button = $(this);
           const modal = $('#update_modal');
@@ -144,8 +144,7 @@
           });
         });
 
-
-         $('#data_table_instrument').DataTable({
+        $('#data_table_instrument').DataTable({
             paging: true,
             lengthChange: true,
             searching: true,
@@ -153,6 +152,10 @@
             info: true,
             autoWidth: false,
             pageLength: 10,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",

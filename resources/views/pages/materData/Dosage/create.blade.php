@@ -1,5 +1,5 @@
 
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+
 
 <!-- Modal -->
 <div class="modal fade" id="create_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
@@ -35,10 +35,7 @@
             @error('name', 'createErrors')
                 <div class="alert alert-danger">{{ $message }}</div>
             @enderror
-
         </div>
-
-
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
           <button type="submit" class="btn btn-primary">
@@ -51,10 +48,6 @@
 </div>
 
 <!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->createErrors->any())

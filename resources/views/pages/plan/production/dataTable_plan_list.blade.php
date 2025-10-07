@@ -1,7 +1,7 @@
 <div class="content-wrapper" >
     <div class="card">
         <div class="card-body mt-5" style="min-height: 96vh">
-            @if (user_has_permission(session('user')['userId'], 'plan_production_store', 'boolean'))
+            @if (user_has_permission(session('user')['userId'], 'plan_production_create_plan_list', 'boolean'))
                 <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_plan_list_modal"
                     style="width: 155px">
                     <i class="fas fa-plus"></i> Thêm
@@ -73,12 +73,6 @@
         </div>
     </div>
 </div>
-
-{{-- 
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script> --}}
 
 @if (session('success'))
     <script>
