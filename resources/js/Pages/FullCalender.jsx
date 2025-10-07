@@ -1573,7 +1573,7 @@ import dayjs from 'dayjs';
 
 
               {/* H Xem History */}
-            {!arg.event._def.extendedProps.is_clearning &&  viewName == "resourceTimelineWeek"  && (
+            {!arg.event._def.extendedProps.is_clearning &&  (
             <button
                 className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-white`}
                 title={'Xem Lịch Sử Thay Đổi'}
