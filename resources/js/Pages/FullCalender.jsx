@@ -63,6 +63,14 @@ import dayjs from 'dayjs';
       // const calendarApi = calendarRef.current?.getApi();
       // if (!calendarApi) return;
 
+      Swal.fire({
+        title: "Đang tải...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       axios.post("/Schedual/view", {
           startDate: activeStart.toISOString(),
@@ -84,6 +92,10 @@ import dayjs from 'dayjs';
           setStageMap(data.stageMap);
           setType (data.type)
 
+
+          setTimeout(() => {
+            Swal.close();
+          }, 500);
 
           // if (data.events?.length > 0) {
           //   const firstEventStart = new Date(data.events[0].start);
