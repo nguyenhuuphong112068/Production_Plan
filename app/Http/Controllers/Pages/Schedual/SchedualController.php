@@ -1453,7 +1453,7 @@ class SchedualController extends Controller
         }// đã có temp
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll($request) {
+        public function scheduleAll(Request $request) {
                 
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $today = Carbon::now()->toDateString(); 
@@ -1967,7 +1967,7 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function test(){
-              $this->scheduleAll (null);
+              //$this->scheduleAll (null);
               //$this->createAutoCampain();
         }
 
