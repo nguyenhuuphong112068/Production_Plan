@@ -1979,21 +1979,22 @@ class SchedualController extends Controller
                 } else {
                         $stage_plan_table = 'stage_plan_temp';
                 }
-               
-                // Danh sách thứ tự Uu tiên Chính --> quyết định trình tự sắp lịch
-                $planMasters = DB::table("$stage_plan_table as sp")
-                        ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-                        ->whereNull ('sp.start')
-                        ->where ('sp.active', 1)
-                        ->where ('sp.finished', 0)
-                        ->where('sp.deparment_code', session('user')['production_code'])
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
-                                                {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
+                $planMasters = DB::table('plan_master as pm')
+                        ->whereIn('pm.id', function ($query) use ($stage_plan_table) {
+                                $query->select(DB::raw('DISTINCT sp.plan_master_id'))
+                                ->from("$stage_plan_table as sp")
+                                ->whereNull('sp.start')
+                                ->where('sp.active', 1)
+                                ->where('sp.finished', 0)
+                                ->where('sp.deparment_code', session('user')['production_code'])
+                                ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
+                                        return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
+                                });
+                        })
                         ->orderBy('pm.expected_date', 'asc')
                         ->orderBy('pm.level', 'asc')
                         ->orderBy('pm.batch', 'asc')
-                        ->distinct('plan_master_id')
-                        ->pluck('plan_master_id');
+                        ->pluck('pm.id');
                 
                
                 foreach ($planMasters as $planId) {
