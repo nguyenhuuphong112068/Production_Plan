@@ -604,7 +604,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   return (
     <div
         id="external-events"
-        className={`absolute right-0 h-90 z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`absolute right-0 h-100 z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
         style={{
           width: percentShow,
           maxWidth: "100%", // ✅ tối đa bằng content-wrapper

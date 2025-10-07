@@ -41,8 +41,8 @@
                         <th>Sản Phẩm</th>
                         <th>Số Lô</th>
                         <th>Thị Trường/ Qui Cách</th>
-                        <th>Ưu Tiên</th>
                         <th>Ngày dự kiến KCS</th>
+                        <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
                         <th>Nguồn</th>
                         <th>Nguyên Liệu</th>
@@ -81,7 +81,10 @@
                                 <div> {{ $data->market }} </div>
                                 <div> {{ $data->specification }} </div>
                             </td>
-
+                            <td>
+                                <div> {{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
+                            </td>
+                            
                             @php
                                 $colors = [
                                     1 => 'background-color: #f44336; color: white;', // đỏ
@@ -98,9 +101,7 @@
                                 </span>
                             </td>
 
-                            <td>
-                                <div> {{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
-                            </td>
+
                             <td class="text-center align-middle">
                                 @if ($data->is_val)
                                     <i class="fas fa-check-circle text-primary fs-4"></i>

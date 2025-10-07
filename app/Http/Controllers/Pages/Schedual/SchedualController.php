@@ -130,7 +130,8 @@ class SchedualController extends Controller
 
 
                                 if ($plan->stage_code <= 7){
-                                        $color_event = '#46f905ff';
+                                        $color_event = '#4CAF50';
+                                        
                                 }elseif ($plan->stage_code == 8){
                                         $color_event = '#003A4F';
                                 }else {
@@ -220,7 +221,7 @@ class SchedualController extends Controller
                                         'tank' => $plan->tank,
                                         'experted_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
                                         'number_of_history' =>  DB::table('stage_plan_history')->where('stage_plan_id', $plan->id)->count()??0,
-                        ]);
+                                        ]);
                         }
                         // Event vệ sinh
                         if ($plan->start_clearning && $plan->end_clearning && $plan->yields >= 0 && $clearning == true) {
@@ -380,10 +381,10 @@ class SchedualController extends Controller
                 try {
                         $production = session('user')['production_code'];
 
-                        if ($request->viewtype == "resourceTimelineMonth" || $request->viewtype == "resourceTimelineYear") {
-                        $clearing = false;
+                        if ($request->viewtype == "resourceTimelineMonth" || $request->viewtype == "resourceTimelineYear" || $request->viewtype == "resourceTimelineQuarter") {
+                                $clearing = false;
                         } else {
-                        $clearing = true;
+                                $clearing = true;
                         }
 
                         $quota = $this->getQuota($production);
