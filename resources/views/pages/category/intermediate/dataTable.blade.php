@@ -1,19 +1,24 @@
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <div class="content-wrapper">
     <!-- /.card-header -->
     <div class="card">
-
         <div class="card-header mt-4">
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
 
         </div>
-
         <!-- /.card-Body -->
         <div class="card-body">
+            @if (user_has_permission(session('user')['userId'], 'category_intermediate_create', 'boolean'))
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal"
+                    style="width: 155px">
+                    <i class="fas fa-plus"></i> Thêm
+                </button>
+            @endif
 
-            <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal"
-                style="width: 155px">
-                <i class="fas fa-plus"></i> Thêm
-            </button>
+            @php
+                $auth_update = user_has_permission(session('user')['userId'], 'category_intermediate_update', 'disabled');
+                $auth_deActive = user_has_permission(session('user')['userId'], 'category_intermediate_deActive', 'disabled');
+            @endphp
 
             <table id="data_table_intermediate_category" class="table table-bordered table-striped">
 
@@ -177,7 +182,8 @@
                                     data-quarantine_forming="{{ $data->quarantine_forming }}"
                                     data-quarantine_coating="{{ $data->quarantine_coating }}"
                                     data-quarantine_time_unit="{{ $data->quarantine_time_unit }}" data-toggle="modal"
-                                    data-target="#update_modal">
+                                    data-target="#update_modal"
+                                    {{ $auth_update }}>
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </td>
@@ -193,12 +199,14 @@
 
                                     @if ($data->active)
                                         <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"
-                                            data-name="{{ $data->intermediate_code . ' - ' . $data->product_name }}">
+                                            data-name="{{ $data->intermediate_code . ' - ' . $data->product_name }}"
+                                            {{ $auth_deActive }}>
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @else
                                         <button type="submit" class="btn btn-success" data-type="{{ $data->active }}"
-                                            data-name="{{ $data->intermediate_code . ' - ' . $data->product_name }}">
+                                            data-name="{{ $data->intermediate_code . ' - ' . $data->product_name }}"
+                                            {{ $auth_deActive }}>
                                             <i class="fas fa-unlock"></i>
                                         </button>
                                     @endif

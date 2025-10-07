@@ -21,14 +21,13 @@ import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
 import NoteModal from '../Components/NoteModal';
 import History from '../Components/History';
+import {CheckAuthorization} from '../Components/CheckAuthorization';
 import dayjs from 'dayjs';
 
   const ScheduleTest = () => {
 
     const calendarRef = useRef(null);
     moment.locale('vi');
-
-
     const [showSidebar, setShowSidebar] = useState(false);
     const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
     const [cleaningHidden, setCleaningHidden] = useState(false);
@@ -56,7 +55,8 @@ import dayjs from 'dayjs';
     const [historyData, setHistoryData] = useState([]);
     const [type, setType] = useState(true);
     const [loading, setLoading] = useState(false);
-
+    const [authorization, setAuthorization] = useState(false);
+   
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
@@ -91,7 +91,7 @@ import dayjs from 'dayjs';
           setQuota(data.quota);
           setStageMap(data.stageMap);
           setType (data.type)
-
+          setAuthorization (data.authorization)
 
           setTimeout(() => {
             Swal.close();
@@ -275,13 +275,13 @@ import dayjs from 'dayjs';
 
     /// show sidebar
     const handleShowList = () => {
-
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
       setShowSidebar(true);
     }
 
     ///  Thay đôi khung thời gian
     const handleViewChange = (view) => {
-
+      
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
@@ -318,6 +318,7 @@ import dayjs from 'dayjs';
           setTimeout(() => {
             Swal.close();
           }, 500);
+
         })
         .catch(err => {
           console.error("API error:", err.response?.data || err.message);
@@ -528,6 +529,12 @@ import dayjs from 'dayjs';
 
     /// 3 Ham sử lý thay đôi sự kiện
     const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
+        info.revert();
+        return false
+      } ;
+
       const draggedEvent = info.event;
       const delta = info.delta;
       const calendarApi = info.view.calendar;
@@ -596,6 +603,12 @@ import dayjs from 'dayjs';
     };
     ///
     const handleSaveChanges = async () => {
+
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
+        info.revert();
+        return false
+      } ;
+
       if (pendingChanges.length === 0) {
           Swal.fire({
             icon: 'info',
@@ -671,6 +684,9 @@ import dayjs from 'dayjs';
 
     /// Xử lý Chạy Lịch Tư Động
     const handleAutoSchedualer = () => {
+
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+
       Swal.fire({
         title: 'Cấu Hình Chung Sắp Lịch',
         html: `
@@ -810,8 +826,10 @@ import dayjs from 'dayjs';
 
     /// Xử lý Xóa Toàn Bộ Lịch
     const handleDeleteAllScheduale = () => {
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+
+      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       Swal.fire({
         title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
         text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
@@ -822,6 +840,14 @@ import dayjs from 'dayjs';
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6'
       }).then((result) => {
+        Swal.fire({
+          title: "Đang tải...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
         if (result.isConfirmed) {
           axios.put('/Schedual/deActiveAll',  { startDate: activeStart.toISOString(), endDate: activeEnd.toISOString()})
             .then(res => {
@@ -834,6 +860,10 @@ import dayjs from 'dayjs';
               setSumBatchByStage(data.sumBatchByStage);
               setPlan(data.plan);
 
+              setTimeout(() => {
+                Swal.close();
+              }, 100);
+
               Swal.fire({
                 icon: 'success',
                 title: 'Đã xóa lịch thành công',
@@ -842,6 +872,11 @@ import dayjs from 'dayjs';
               });
             })
             .catch(err => {
+
+              setTimeout(() => {
+                Swal.close();
+              }, 100);
+
               Swal.fire({
                 icon: 'error',
                 title: 'Xóa lịch thất bại',
@@ -851,11 +886,16 @@ import dayjs from 'dayjs';
               console.error("API error:", err.response?.data || err.message);
           });
         }
-      });
+        setTimeout(() => {
+                Swal.close();
+              }, 100);
+
+        });
     };
+
     /// Xử lý xoa các lịch được chọn
     const handleDeleteScheduale = (e) => {
-
+        if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return};
         const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
                 if (!selectedEvents || selectedEvents.length === 0) {
                     Swal.fire({
@@ -932,6 +972,7 @@ import dayjs from 'dayjs';
 
     /// Xử lý hoản thành lô
     const handleFinished = (event) => {
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return};
       let unit = event._def.extendedProps.stage_code <= 4 ? "Kg": "ĐVL"
       let id = event._def.publicId
 
@@ -1023,6 +1064,8 @@ import dayjs from 'dayjs';
     };
 
     const handleConfirmSource = (event) => {
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return} ;
+
       let room_id = event._def.resourceIds[0];
       let plan_master_id = event._def.extendedProps.plan_master_id;
       let resource = resources.filter (i => i.id == room_id)[0].title;
@@ -1340,7 +1383,6 @@ import dayjs from 'dayjs';
 
 
         views={{
-
           resourceTimelineDay: {
             slotDuration: '00:15:00',
             slotMinTime: '00:00:00',
@@ -1400,6 +1442,7 @@ import dayjs from 'dayjs';
               setLoading (!loading);
             }
           },
+          
           customList: {
             text: 'KHSX',
             click: handleShowList

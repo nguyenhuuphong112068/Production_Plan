@@ -11,10 +11,11 @@ if (! function_exists('user_has_permission')) {
                 ->where('user_role.user_id', $userId)
                 ->where('permissions.name', $permissionName)
                 ->exists();
+
         //dd ($userId);
         if ($typeReturn == "boolean"){
             return $result;
-        }elseif ($typeReturn == "class") {
+        }elseif ($typeReturn == "disabled") {
                 if ($result){
                     return "";
                 }else{

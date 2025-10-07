@@ -1,10 +1,6 @@
+
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <div class="content-wrapper">
-    <!-- Main content -->
-    <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-12">
-            <!-- /.card-header -->
             <div class="card">
 
               <div class="card-header mt-4">
@@ -14,10 +10,15 @@
 
               <!-- /.card-Body -->
               <div class="card-body">
+                @if (user_has_permission(session('user')['userId'], 'materData_unit_store', 'boolean'))
+                  <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal" style="width: 155px" >
+                        <i class="fas fa-plus"></i> Thêm
+                  </button>
+                @endif
 
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal" style="width: 155px" >
-                      <i class="fas fa-plus"></i> Thêm
-                </button>
+                @php
+                    $auth_update = user_has_permission(session('user')['userId'], 'materData_unit_update', 'disabled');
+                @endphp
 
                 <table id="data_tabale_unit" class="table table-bordered table-striped">
 
@@ -52,7 +53,7 @@
                               data-id="{{ $data->id }}"
                               data-name="{{ $data->name }}"
                               data-code="{{ $data->code }}"
-
+                              {{ $auth_update }}
                               data-toggle="modal"
                               data-target="#update_modal">
                               <i class="fas fa-edit"></i>
@@ -70,14 +71,6 @@
               <!-- /.card-body -->
             </div>
             <!-- /.card -->
-          </div>
-          <!-- /.col -->
-        </div>
-        <!-- /.row -->
-      </div>
-      <!-- /.container-fluid -->
-    </section>
-    <!-- /.content -->
   </div>
 
 
@@ -101,7 +94,7 @@
 <script>
 
   $(document).ready(function () {
-
+      document.body.style.overflowY = "auto";
       $('.btn-edit').click(function () {
           const button = $(this);
           const modal = $('#update_modal');
@@ -123,6 +116,10 @@
             info: true,
             autoWidth: false,
             pageLength: 10,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",
@@ -132,7 +129,7 @@
                     next: "Sau"
                 }
             }
-        });
+      });
 
     });
 </script>

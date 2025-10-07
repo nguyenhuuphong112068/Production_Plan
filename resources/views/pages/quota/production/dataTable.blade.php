@@ -1,3 +1,4 @@
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <div class="content-wrapper">
     <!-- Main content -->
             <!-- /.card-header -->
@@ -9,6 +10,11 @@
               <!-- /.card-Body -->
               <div class="card-body">
                    
+                  @php
+                      $auth_create = user_has_permission(session('user')['userId'], 'quota_production_create', 'disabled');
+                      $auth_update = user_has_permission(session('user')['userId'], 'quota_production_update', 'disabled');
+                      $auth_deActive = user_has_permission(session('user')['userId'], 'quota_production_deActive', 'disabled');
+                  @endphp
 
                  <div class="row">
 
@@ -95,19 +101,22 @@
   
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-success btn-plus"
+                              {{ $auth_create }}
                               data-product_name="{{ $data->product_name }}"
                               data-intermediate_code="{{ $data->intermediate_code }}"
                               data-finished_product_code="{{ $data->finished_product_code}}"
                               data-stage_code="{{ $stage_code }}"
                               
                               data-toggle="modal"
-                              data-target="#create_modal">
+                              data-target="#create_modal"
+                              >
                               <i class="fas fa-plus"></i>
                           </button>
                       </td>
 
                       <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit" {{$data->room_name?'':'disabled'}}
+                             {{ $auth_update }}  
                               data-id="{{ $data->id }}"
                               data-product_name="{{ $data->product_name }}"
                               data-intermediate_code="{{ $data->intermediate_code }}"
@@ -122,7 +131,7 @@
                               data-c2_time="{{$data->C2_time?? ''}}"
                               data-maxofbatch_campaign="{{ $data->maxofbatch_campaign??''}}"
                               data-note="{{ $data->note??''}}"
-                              
+                             
                               data-toggle="modal"
                               data-target="#update_modal">
                               <i class="fas fa-edit"></i>
@@ -138,11 +147,11 @@
                             <input type="hidden"  name="active" value="{{ $data->active }}">
 
                             @if ($data->active)
-                              <button type="submit" class="btn btn-danger" {{$data->room_name?'':'disabled'}} data-type="{{ $data->active }}"  data-name="{{ $data->intermediate_code ."-". $data->finished_product_code ."-".  $data->product_name }}">
+                              <button type="submit"  {{ $auth_deActive }} class="btn btn-danger" {{$data->room_name?'':'disabled'}} data-type="{{ $data->active }}"  data-name="{{ $data->intermediate_code ."-". $data->finished_product_code ."-".  $data->product_name }}">
                                   <i class="fas fa-lock"></i>
                               </button>  
                             @else
-                              <button type="submit" class="btn btn-success" {{$data->room_name?'':'disabled'}} data-type="{{ $data->active }}" data-name="{{ $data->intermediate_code ."-". $data->finished_product_code ."-". $data->product_name }}">
+                              <button type="submit" {{ $auth_deActive }} class="btn btn-success" {{$data->room_name?'':'disabled'}} data-type="{{ $data->active }}" data-name="{{ $data->intermediate_code ."-". $data->finished_product_code ."-". $data->product_name }}">
                                   <i class="fas fa-unlock"></i>
                               </button>
                             @endif
@@ -312,7 +321,7 @@
 
               return pre + ` (Đã Định Mức: ${daDinhMuc}, Chưa Định Mức: ${thieuDinhMuc})`;
           }
-      });
+        });
 
   });
 </script>

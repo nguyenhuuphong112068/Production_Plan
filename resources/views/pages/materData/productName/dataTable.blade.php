@@ -1,3 +1,4 @@
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <div class="content-wrapper">
     <div class="card">
 
@@ -7,13 +8,19 @@
 
         <!-- /.card-Body -->
         <div class="card-body ">
-           
-            <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal"
-                style="width: 155px">
-                <i class="fas fa-plus"></i> Thêm
-            </button>
+            @if (user_has_permission(session('user')['userId'], 'materData_productName_store', 'boolean'))
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal"
+                    style="width: 155px">
+                    <i class="fas fa-plus"></i> Thêm
+                </button>
+            @endif
 
-            <table id="example1" class="table table-bordered table-striped">
+            @php
+                $auth_update = user_has_permission(session('user')['userId'], 'materData_productName_update', 'disabled');
+                $auth_deActive = user_has_permission(session('user')['userId'], 'materData_productName_deActive', 'disabled');
+            @endphp
+
+            <table id="data_table_Product_Name" class="table table-bordered table-striped">
 
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
 
@@ -47,10 +54,12 @@
                             <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</td>
 
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
+                                <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}" 
                                     {{-- data-code="{{ $data->code }}" --}} data-name="{{ $data->name }}"
                                     data-shortname="{{ $data->shortName }}" data-producttype="{{ $data->productType }}"
-                                    data-toggle="modal" data-target="#productNameUpdateModal">
+                                    data-toggle="modal" data-target="#productNameUpdateModal"
+                                    {{$auth_update }}
+                                    >
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </td>
@@ -66,12 +75,14 @@
                                     <input type="hidden" name="active" value="{{ $data->active }}">
 
                                     @if ($data->active)
-                                        <button type="submit" class="btn btn-danger" data-active="{{ $data->active }}"
+                                        <button type="submit" class="btn btn-danger" data-active="{{ $data->active }}" 
+                                            {{$auth_deActive}}
                                             data-name="{{ $data->name }}">
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @else
-                                        <button type="submit" class="btn btn-success"
+                                        <button type="submit" class="btn btn-success" 
+                                            {{$auth_deActive}}
                                             data-active="{{ $data->active }}" data-name="{{ $data->name }}">
                                             <i class="fas fa-unlock"></i>
                                         </button>
@@ -112,7 +123,7 @@
 
 <script>
     $(document).ready(function() {
-
+        document.body.style.overflowY = "auto";
         $('.btn-edit').click(function() {
             const button = $(this);
             const modal = $('#productNameUpdateModal');
@@ -160,9 +171,28 @@
             });
         });
 
-
-
-
+        $('#data_table_Product_Name').DataTable({
+            paging: true,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            pageLength: 10,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
+            language: {
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ dòng",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+                paginate: {
+                    previous: "Trước",
+                    next: "Sau"
+                }
+            }
+        });
         
     });
 </script>

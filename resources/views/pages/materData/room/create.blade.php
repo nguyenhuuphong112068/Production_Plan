@@ -1,5 +1,5 @@
 
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+
 
 <!-- Modal -->
 <div class="modal fade" id="createModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
@@ -101,10 +101,6 @@
   </div>
 </div>
 
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->createErrors->any())

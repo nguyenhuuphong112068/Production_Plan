@@ -8,10 +8,11 @@
             <div class="card">
               <!-- /.card-Body -->
               <div class="card-body mt-5">
-
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_plan_list_modal" style="width: 155px" >
-                      <i class="fas fa-plus"></i> Thêm
-                </button>
+                @if (user_has_permission(session('user')['userId'], 'plan_maintenance_create_plan_list', 'boolean'))
+                  <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_plan_list_modal" style="width: 155px" >
+                        <i class="fas fa-plus"></i> Thêm
+                  </button>
+                @endif
 
                 <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
 

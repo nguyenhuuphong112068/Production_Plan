@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pages\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RoleController extends Controller
 {
@@ -38,28 +39,32 @@ class RoleController extends Controller
     }
 
     public function store_or_update(Request $request){
-        $roleId = $request->input('role_id');   // lấy role từ data gửi lên
-        $permissionId = $request->input('permission_id');
-        $checked = $request->input('checked');
+        try {
+            $roleId = $request->input('role_id');
+            $permissionId = $request->input('permission_id');
+            $checked = filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN);
 
-        
-        if ($checked === true) {
-            // Gán quyền nếu chưa có
-             DB::table('role_permission')->updateOrInsert([
-                'role_id' => $roleId,
-                'permission_id' => $permissionId,
-            ]);
-           
-        } else {
-            // Xóa quyền
-             if ($roleId != 1) {
-             DB::table('role_permission')
-                ->where('role_id', $roleId)
-                ->where('permission_id', $permissionId)
-                ->delete();
-             }
+            if (!$roleId || !$permissionId) {
+                return response()->json(['error' => 'Thiếu dữ liệu role hoặc permission'], 400);
+            }
+
+            if ($checked) {
+                DB::table('role_permission')->updateOrInsert([
+                    'role_id' => $roleId,
+                    'permission_id' => $permissionId,
+                ]);
+            } else {
+                if ($roleId != 1) {
+                    DB::table('role_permission')
+                        ->where('role_id', $roleId)
+                        ->where('permission_id', $permissionId)
+                        ->delete();
+                }
+            }
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        return response()->json(['success' => true]);
     }
 }

@@ -17,7 +17,8 @@ class ProductionPlanController extends Controller
                 ->where ('active',1)
                 ->where ('deparment_code',session('user')['production_code'])
                 ->where ('type',1)
-                ->orderBy('created_at','desc')->get();
+                ->orderBy('id','desc')
+                ->get();
         
                 session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
         

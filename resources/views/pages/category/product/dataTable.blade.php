@@ -1,3 +1,4 @@
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <div class="content-wrapper">
     <div class="card">
         <div class="card-header mt-4">
@@ -6,11 +7,18 @@
 
         <!-- /.card-Body -->
         <div class="card-body">
-
-            <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#intermediate_category"
-                style="width: 155px">
-                <i class="fas fa-plus"></i> Thêm
-            </button>
+            @if (user_has_permission(session('user')['userId'], 'category_product_create', 'boolean'))
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#intermediate_category"
+                    style="width: 155px">
+                    <i class="fas fa-plus"></i> Thêm
+                </button>
+            @endif
+                                    
+            @php
+                $auth_update = user_has_permission(session('user')['userId'], 'category_product_update','disabled');
+                $auth_deActive = user_has_permission(session('user')['userId'], 'category_product_deActive','disabled');
+               
+            @endphp
 
             <table id="data_table_product_category" class="table table-bordered table-striped">
 
@@ -78,39 +86,36 @@
                                     data-batch_size="{{ $data->batch_size }}" data-batch_qty="{{ $data->batch_qty }}"
                                     data-unit_batch_qty="{{ $data->unit_batch_qty }}"
                                     data-primary_parkaging="{{ $data->primary_parkaging }}" data-toggle="modal"
-                                    data-target="#update_modal">
+                                    data-target="#update_modal"
+                                    {{ $auth_update }}>
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </td>
 
 
                             <td class="text-center align-middle">
-
                                 <form class="form-deActive" action="{{ route('pages.category.product.deActive') }}"
                                     method="post">
                                     @csrf
                                     <input type="hidden" name="id" value = "{{ $data->id }}">
                                     <input type="hidden" name="active" value="{{ $data->active }}">
-
                                     @if ($data->active)
-                                        <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"
-                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->product_name }}">
+                                        <button type="submit" class="btn btn-danger" {{ $auth_deActive }} data-type="{{ $data->active }}"
+                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->product_name }}"
+                                            >
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @else
-                                        <button type="submit" class="btn btn-success" data-type="{{ $data->active }}"
-                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->product_name }}">
+                                        <button type="submit" class="btn btn-success" {{ $auth_deActive }} data-type="{{ $data->active }}" 
+                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->product_name }}"
+                                            >
                                             <i class="fas fa-unlock"></i>
                                         </button>
                                     @endif
-
-
                                 </form>
-
                             </td>
                         </tr>
                     @endforeach
-
                 </tbody>
             </table>
         </div>
@@ -118,7 +123,6 @@
     </div>
     <!-- /.content -->
 </div>
-
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
