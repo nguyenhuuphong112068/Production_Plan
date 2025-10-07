@@ -19,7 +19,7 @@ class UploadDataController extends Controller
         //ini_set('memory_limit', '512M');
 
         $request->validate([
-            'excel_file' => 'required|mimes:xlsx,xls',
+            'excel_file' => 'required|mimes:xlsx,xls,csv',
             'table' => 'required'
         ]);
 
@@ -101,6 +101,23 @@ class UploadDataController extends Controller
                     'tank' => 0,
                     'keep_dry' => 0,
                     'prepared_by' => 'Auto-generate',
+                    'created_at' => now(),
+                ],
+            ],
+
+            'plan_list' => [
+                'columns' => [
+                    'id',
+                    'name',
+                    'month',
+                    'deparment_code',
+                    'type',
+                    'prepared_by',
+                    'send',
+                    
+                ],
+                'extra' => [
+                    'active' => 1,
                     'created_at' => now(),
                 ],
             ],
