@@ -398,11 +398,11 @@ class SchedualController extends Controller
                         $resources = $this->getResources($production, $request->endDate, $request->endDate);
 
                         if (session('fullCalender')['mode'] === 'offical') {
-                        $title = 'LỊCH SẢN XUẤT';
-                        $type = true;
+                                $title = 'LỊCH SẢN XUẤT';
+                                $type = true;
                         } else {
-                        $title = 'LỊCH SẢN XUẤT TẠM THỜI';
-                        $type = false;
+                                $title = 'LỊCH SẢN XUẤT TẠM THỜI';
+                                $type = false;
                         }
 
                         return response()->json([
@@ -1453,15 +1453,12 @@ class SchedualController extends Controller
         }// đã có temp
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll( $request) {
+        public function scheduleAll($request) {
                 
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $today = Carbon::now()->toDateString(); 
                 $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? $today)->setTime(6, 0, 0);
                 
-                Log::info('request:', [
-                        'request' => $request->all(),
-                ]);
 
                 $stageCodes = DB::table($stage_plan_table)
                         ->distinct()
@@ -1527,6 +1524,8 @@ class SchedualController extends Controller
                         //$this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday);    
                 }
                 //dd ($waite_time);
+
+               
                 $this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
  
                 $production = session('user')['production_code'];
@@ -2694,7 +2693,7 @@ class SchedualController extends Controller
                                                 $earliestStart = $pre_task_last_batch->end;
                                         }
                                 }
-                                //findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = false, $requireAHU = false, $stage_plan_table = 'stage_plan',  $maxTank = 1, $tankInterval = 60)
+                                
                                 $candidateStart = $this->findEarliestSlot2(
                                         $room->room_id,
                                         $earliestStart, 
@@ -2795,7 +2794,7 @@ class SchedualController extends Controller
                                         $gap = $current_end_clearning->diffInMinutes($busy['end']);
                                         if ($gap >= ($beforeIntervalMinutes + $afterIntervalMinutes)) {
                                                 // kiểm tra tank nếu cần
-                                                if ($requireTank) {
+                                                if ($requireTank !=0 ) {
                                                         $bestEnd = $current_end_clearning->copy()->subMinutes($afterIntervalMinutes);
                                                         $bestStart = $bestEnd->copy()->subMinutes($beforeIntervalMinutes);
 
@@ -2816,7 +2815,7 @@ class SchedualController extends Controller
                                                         }
                                                 }
 
-                                                if ($requireAHU && $AHU_group) {
+                                                if ($requireAHU !=0 && $AHU_group !=0) {
                                                         $bestEnd = $current_end_clearning->copy()->subMinutes($afterIntervalMinutes);
                                                         $bestStart = $bestEnd->copy()->subMinutes($beforeIntervalMinutes);
 
@@ -2856,7 +2855,7 @@ class SchedualController extends Controller
                         }
 
                         // kiểm tra tank ở vị trí cuối cùng (ngoài busyList)
-                        if ($requireTank) {
+                        if ($requireTank !=0) {
                                 $bestEnd = $current_end_clearning->copy()->subMinutes($afterIntervalMinutes);
                                 $bestStart = $bestEnd->copy()->subMinutes($beforeIntervalMinutes);
 
@@ -2876,7 +2875,7 @@ class SchedualController extends Controller
                                 }
                         }
 
-                        if ($requireAHU && $AHU_group) {
+                        if ($requireAHU !=0 && $AHU_group !=0) {
                                 $bestEnd = $current_end_clearning->copy()->subMinutes($afterIntervalMinutes);
                                 $bestStart = $bestEnd->copy()->subMinutes($beforeIntervalMinutes);
 
@@ -2902,7 +2901,7 @@ class SchedualController extends Controller
                 }
         }
 
-        protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = false, $requireAHU = false, $stage_plan_table = 'stage_plan',  $maxTank = 1, $tankInterval = 60){
+        protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = 0, $requireAHU = 0, $stage_plan_table = 'stage_plan',  $maxTank = 1, $tankInterval = 60){
                 
                 $this->loadRoomAvailability();
 
@@ -2918,13 +2917,13 @@ class SchedualController extends Controller
 
                 while (true) {
                         foreach ($busyList as $busy) {
-                        // nếu current nằm TRƯỚC block bận
+                     
                                 if ($current_start->lt($busy['start'])) {
                                         $gap = $current_start->diffInMinutes($busy['start']);
                                         if ($gap >= $intervalTime + $C2_time_minutes) {
                                         
                                         // --- kiểm tra tank ---
-                                        if ($requireTank) {
+                                        if ($requireTank !=0){
                                                 $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
                                                 $bestStart = $current_start->copy();
 
@@ -2945,7 +2944,7 @@ class SchedualController extends Controller
                                                 }
                                         }
 
-                                        if ($requireAHU && $AHU_group) {
+                                        if ($requireAHU !=0 && $AHU_group !=0) {
                                                 $bestEnd = $current_start->copy()->addMinutes($intervalTime);
                                                 $bestStart = $current_start->copy();
 
@@ -2978,7 +2977,7 @@ class SchedualController extends Controller
                         }
 
                         // nếu không vướng block nào → kiểm tra tank trước khi trả về
-                                if ($requireTank) {
+                                if ($requireTank !=0) {
                                         $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
                                         $bestStart = $current_start->copy();
 
@@ -3000,7 +2999,7 @@ class SchedualController extends Controller
                                 }
 
 
-                                if ($requireAHU && $AHU_group) {
+                                if ($requireAHU !=0 && $AHU_group !=0) {
                                                 $bestEnd = $current_start->copy()->addMinutes($intervalTime);
                                                 $bestStart = $current_start->copy();
 

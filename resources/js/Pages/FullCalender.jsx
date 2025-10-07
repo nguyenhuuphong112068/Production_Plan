@@ -70,6 +70,7 @@ import dayjs from 'dayjs';
           viewtype: viewName,
       })
         .then(res => {
+          
           let data = res.data;
 
           if (typeof data === "string") {
@@ -1602,7 +1603,7 @@ import dayjs from 'dayjs';
 
 
       />
-      <div className="modal-sidebar">
+      {/* <div className="modal-sidebar"> */}
         <ModalSidebar
 
             visible={showSidebar}
@@ -1618,7 +1619,7 @@ import dayjs from 'dayjs';
             type = {type}
 
         />
-      </div>
+      {/* </div> */}
 
 
         <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
