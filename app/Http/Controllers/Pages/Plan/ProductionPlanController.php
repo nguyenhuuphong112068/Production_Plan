@@ -62,8 +62,11 @@ class ProductionPlanController extends Controller
                 ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->orderBy('level','asc')->orderBy('expected_date','asc')->get();
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id') 
+                ->orderBy('expected_date','asc')
+                ->orderBy('level','asc')
+                ->orderBy('batch','asc')
+                ->get();
 
                 $planMasterIds = $datas->pluck('id')->toArray();
 

@@ -258,7 +258,7 @@ import dayjs from 'dayjs';
     // };
 
     const scrollToEvent = (eventId) => {
-       const container = document.querySelector(".fc-scroller.fc-scroller-liquid-absolute");
+      const container = document.querySelector(".fc-scroller.fc-scroller-liquid-absolute");
       const el = document.querySelector(`[data-event-id="${eventId}"]`);
 
       if (!container || !el) {
@@ -268,7 +268,7 @@ import dayjs from 'dayjs';
 
       const containerRect = container.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
-
+      
       container.scrollTop += elRect.top - containerRect.top - container.clientHeight / 2;
       container.scrollLeft += elRect.left - containerRect.left - container.clientWidth / 2;
     };
@@ -289,10 +289,14 @@ import dayjs from 'dayjs';
           Swal.showLoading();
         },
       });
+      
 
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
+      console.log (activeStart, activeEnd)
+
       setViewName (view)
       axios.post(`/Schedual/view`, {
           startDate: activeStart.toISOString(),
@@ -1328,6 +1332,13 @@ import dayjs from 'dayjs';
           );
         }}
 
+        headerToolbar={{
+          left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
+          center: 'title',
+          right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
+        }}
+
+
         views={{
 
           resourceTimelineDay: {
@@ -1351,6 +1362,13 @@ import dayjs from 'dayjs';
             buttonText: 'Tháng',
             titleFormat: { year: 'numeric', month: 'short' },
           },
+          resourceTimelineQuarter: {
+              slotDuration: { days: 1 },
+              duration: { months: 4 },      
+              buttonText: 'Quý',
+              titleFormat: { year: 'numeric', month: 'short' },
+              type: 'resourceTimeline',
+          },
           resourceTimelineYear: {
             slotDuration: { days: 1 },
             slotMinTime: '00:00:00',
@@ -1364,11 +1382,6 @@ import dayjs from 'dayjs';
           resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
         }}
 
-        headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
-          center: 'title',
-          right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth customList' //customYear
-        }}
 
         customButtons={{
           customNext: {
@@ -1403,6 +1416,10 @@ import dayjs from 'dayjs';
           customMonth: {
             text: 'Tháng',
             click: () => handleViewChange('resourceTimelineMonth')
+          },
+          customQuarter: {
+            text: '3T',
+            click: () => handleViewChange('resourceTimelineQuarter')
           },
           customYear: {
             text: 'Năm',
@@ -1476,12 +1493,10 @@ import dayjs from 'dayjs';
         return (
         <div className="relative  group custom-event-content" data-event-id={arg.event.id} >
 
-            <div style={{ fontSize: `${eventFontSize}px` }}>
-              {/* {viewConfig.timeView != 'resourceTimelineMonth' ? (<b >{arg.event.title}</b>):(<b>{arg.event.extendedProps.name ? arg.event.extendedProps.name.split(" ")[0] : ""}-{arg.event.extendedProps.batch}</b>)} */}
+            <div style={{fontSize: `${eventFontSize}px`}}>
               <b>{arg.event.title}</b>
               <br/>
               {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""}
-              {/* <span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span> */}
             </div>
 
             {/* Nút xóa */}
@@ -1541,7 +1556,9 @@ import dayjs from 'dayjs';
             {/* H Xem History */}
             {type && viewName == "resourceTimelineWeek"  && (
             <button
-                onClick={(e) => { e.stopPropagation();handleShowHistory(arg.event);}}
+                onClick={(e) => { 
+                  e.stopPropagation();
+                  handleShowHistory(arg.event);}}
                 className={`absolute top-[-15px] left-2 text-xs px-1 rounded shadow bg-red-500 text-white`}
                 title={'Xem Lịch Sử Thay Đổi'}
               >
