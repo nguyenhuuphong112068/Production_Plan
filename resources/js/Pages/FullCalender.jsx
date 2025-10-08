@@ -72,6 +72,7 @@ import dayjs from 'dayjs';
       });
 
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+      //console.log (activeStart.toISOString(), activeEnd.toISOString())
       axios.post("/Schedual/view", {
           startDate: activeStart.toISOString(),
           endDate: activeEnd.toISOString(),
@@ -92,8 +93,10 @@ import dayjs from 'dayjs';
           setPlan(data.plan);
           setQuota(data.quota);
           setStageMap(data.stageMap);
+          setSumBatchByStage(data.sumBatchByStage);
      
-
+          
+         
 
           setTimeout(() => {
             Swal.close();
@@ -315,7 +318,7 @@ import dayjs from 'dayjs';
           // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
           setEvents(data.events);
           setResources(data.resources);
-
+          
 
           setTimeout(() => {
             Swal.close();
@@ -872,7 +875,7 @@ import dayjs from 'dayjs';
                 showConfirmButton: false,
                 timer: 1500
               });
-              
+
             })
             .catch(err => {
 
@@ -1229,7 +1232,7 @@ import dayjs from 'dayjs';
 
         locale="vi"
         height="auto"
-        resourceAreaWidth="200px"
+        resourceAreaWidth="250px"
 
 
         editable={true}
@@ -1251,7 +1254,7 @@ import dayjs from 'dayjs';
 
         datesSet={(info) => {
           const { start, end } = info;
-          //console.log ( start.toISOString(), end.toISOString())
+         
           axios.post("/Schedual/getSumaryData", {
             startDate: start.toISOString(),
             endDate: end.toISOString()
@@ -1270,7 +1273,9 @@ import dayjs from 'dayjs';
 
         resourceGroupField="stage"
 
+        // stage
         resourceGroupLabelContent={(arg) => {
+          
           const stage_code = stageMap[arg.groupValue] || {};
           const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
           const qty = sumItem ? formatNumberWithComma(sumItem.total_qty) : "0";
@@ -1289,7 +1294,10 @@ import dayjs from 'dayjs';
           );
 
         }}
+
+        // Phòng
         resourceLabelContent={(arg) => {
+           //console.log (arg.resource)
           const res = arg.resource.extendedProps;
           const busy = parseFloat(res.busy_hours) || 0;
           const yields = parseFloat(res.yield)  || 0;
@@ -1326,6 +1334,7 @@ import dayjs from 'dayjs';
               >
                 <div
                   style={{
+                    fontSize: "14px",
                     fontWeight: "bold",
                     marginBottom: "2px",
                     width: "8%",
@@ -1333,7 +1342,7 @@ import dayjs from 'dayjs';
                     top: "-26px", // dịch lên trên 6px
                   }}
                 >
-                  {arg.resource.title}
+                  {arg.resource.title}-{arg.resource.extendedProps.main_equiment_name}
                 </div>
 
                 <div
@@ -1427,7 +1436,6 @@ import dayjs from 'dayjs';
           resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
         }}
 
-
         customButtons={{
           customNext: {
             text: '⏵',
@@ -1464,7 +1472,7 @@ import dayjs from 'dayjs';
             click: () => handleViewChange('resourceTimelineMonth')
           },
           customQuarter: {
-            text: '3T',
+            text: '4 Tháng',
             click: () => handleViewChange('resourceTimelineQuarter')
           },
           customYear: {
