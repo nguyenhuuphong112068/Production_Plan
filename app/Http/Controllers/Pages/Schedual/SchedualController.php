@@ -25,9 +25,9 @@ class SchedualController extends Controller
         }
 
         protected function getEvents($production, $startDate, $endDate, $clearning){
-                
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-               
+
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate = Carbon::parse($endDate)->toDateTimeString();
 
@@ -38,7 +38,7 @@ class SchedualController extends Controller
                         ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
                         ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
                         ->where('sp.active', 1)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', $production)
@@ -63,7 +63,7 @@ class SchedualController extends Controller
                         'sp.keep_dry',
                         'sp.yields',
                         'sp.scheduling_direction',
-                        'intermediate_category.intermediate_code',
+                        'finished_product_category.intermediate_code',
                         'plan_master.expected_date',
                         'plan_master.after_weigth_date',
                         'plan_master.before_weigth_date',
@@ -110,16 +110,20 @@ class SchedualController extends Controller
 
                 $events = collect();
                 $groupedPlans = $event_plans->groupBy('plan_master_id');
-                
+
 
 
                 foreach ($groupedPlans as $plan_master_id => $plans) {
                 $plans = $plans->sortBy('stage_code')->values();
-                $material_source_id = DB::table('plan_master')
-                        ->where('id', $plan_master_id)
-                        ->pluck('material_source_id');
-                
-        
+
+                // $material_source_id = DB::table('plan_master')
+                //         ->where('id', $plan_master_id)
+                //         ->pluck('material_source_id');
+
+                $historyCounts = DB::table('stage_plan_history')
+                                ->select('stage_plan_id', DB::raw('COUNT(*) as count'))
+                                ->groupBy('stage_plan_id')
+                                ->pluck('count', 'stage_plan_id');        
 
                 for ($i = 0; $i < $plans->count(); $i++) {
                         $plan = $plans[$i];
@@ -131,7 +135,7 @@ class SchedualController extends Controller
 
                                 if ($plan->stage_code <= 7){
                                         $color_event = '#4CAF50';
-                                        
+
                                 }elseif ($plan->stage_code == 8){
                                         $color_event = '#003A4F';
                                 }else {
@@ -164,13 +168,13 @@ class SchedualController extends Controller
                                         $subtitle = 'Bao Bì Không Đáp Ứng: '. $plan->after_parkaging_date . " - " . $plan->before_parkaging_date;
                                 }
 
-                                $room_source = null;
-                                if ( $plan->stage_code >2 && $plan->stage_code < 7){
-                                        $room_source = DB::table('room_source')->where('intermediate_code', $plan->intermediate_code)->where('source_id', $material_source_id)->where ('room_id', $plan->resourceId)->exists();
-                                        if (!$room_source){
-                                                //$color_event = '#dc02f9ff';
-                                                //$subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
-                                }}
+                                // $room_source = null;
+                                // if ( $plan->stage_code >2 && $plan->stage_code < 7){
+                                //         $room_source = DB::table('room_source')->where('intermediate_code', $plan->intermediate_code)->where('source_id', $material_source_id)->where ('room_id', $plan->resourceId)->exists();
+                                //         if (!$room_source){
+                                //                 //$color_event = '#dc02f9ff';
+                                //                 //$subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
+                                // }}
 
                                 if ($plan->expected_date < $plan->end && $plan->stage_code < 9){
                                         $color_event = '#f90202ff';
@@ -196,7 +200,7 @@ class SchedualController extends Controller
                                                 $subtitle = 'Vi phạm: End > Start của công đoạn sau';
                                         }
                                 }
-      
+
 
                          // Event chính
                         if ($plan->start && $plan->end ) {
@@ -215,12 +219,12 @@ class SchedualController extends Controller
                                         'stage_code'=> $plan->stage_code,
                                         'is_clearning' => false,
                                         'finished' => $plan->finished,
-                                        'room_source' => $room_source,
+                                        //'room_source' => $room_source,
                                         'direction' => $plan->scheduling_direction,
                                         'keep_dry' => $plan->keep_dry,
                                         'tank' => $plan->tank,
                                         'experted_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
-                                        'number_of_history' =>  DB::table('stage_plan_history')->where('stage_plan_id', $plan->id)->count()??0,
+                                        'number_of_history' =>  $historyCounts[$plan->id] ?? 0 //DB::table('stage_plan_history')->where('stage_plan_id', $plan->id)->count()??0,
                                         ]);
                         }
                         // Event vệ sinh
@@ -247,6 +251,7 @@ class SchedualController extends Controller
                 return $events;
 
         }  // đã có temp
+
         // Hàm lấy quota
         protected function getQuota($production){
                 return DB::table('quota')
@@ -270,7 +275,7 @@ class SchedualController extends Controller
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
                         ->where('sp.deparment_code', $production)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
@@ -346,7 +351,7 @@ class SchedualController extends Controller
 
                 return $plan_waiting;
         } // đã có temp
-        
+
         // Hàm lấy resources
         protected function getResources($production, $startDate, $endDate){
 
@@ -387,14 +392,13 @@ class SchedualController extends Controller
                                 $clearing = true;
                         }
 
-                        $quota = $this->getQuota($production);
-                        $stageMap = DB::table('room')
-                        ->where('deparment_code', $production)
-                        ->pluck('stage_code', 'stage')
-                        ->toArray();
+                        if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
+                                $quota = $this->getQuota($production);
+                                $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
+                                $plan_waiting = $this->getPlanWaiting($production);
+                        }
 
                         $events = $this->getEvents($production, $request->startDate, $request->endDate, $clearing);
-                        $plan_waiting = $this->getPlanWaiting($production);
                         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
                         $resources = $this->getResources($production, $request->endDate, $request->endDate);
 
@@ -410,9 +414,9 @@ class SchedualController extends Controller
                         return response()->json([
                                 'title' => $title,
                                 'events' => $events,
-                                'plan' => $plan_waiting,
-                                'quota' => $quota,
-                                'stageMap' => $stageMap,
+                                'plan' => $plan_waiting ?? [],
+                                'quota' => $quota ?? [],
+                                'stageMap' => $stageMap ?? [],
                                 'resources' => $resources,
                                 'sumBatchByStage' => $sumBatchByStage,
                                 'type' => $type,
@@ -482,7 +486,7 @@ class SchedualController extends Controller
         }
 
         public function store(Request $request) {
-                
+
                 DB::beginTransaction();
                         try {
                         $products = collect($request->products);
@@ -542,7 +546,7 @@ class SchedualController extends Controller
                                         }
                                 }
 
-                                
+
                                 if (session('fullCalender')['mode'] === 'offical'){
                                         DB::table('stage_plan')
                                                 ->where('id', $product['id'])
@@ -592,7 +596,7 @@ class SchedualController extends Controller
                                         ]);
                                 }
 
-                                
+
                                 if ($product['stage_code'] === 1){
                                         $current_start = $current_start;
                                 }else{
@@ -616,7 +620,7 @@ class SchedualController extends Controller
                         'events' => $events,
                         'plan' => $plan_waiting,
                         'sumBatchByStage' => $sumBatchByStage,
-                ]);                
+                ]);
         } // đã có temp
 
         public function history(Request $request){
@@ -686,7 +690,7 @@ class SchedualController extends Controller
 
                                 DB::table($stage_plan_table)
                                         ->where('id', $product['id'])
-                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                                 'start'           => $current_start,
@@ -732,7 +736,7 @@ class SchedualController extends Controller
 
                                         DB::table($stage_plan_table)
                                         ->where('id', $product['id'])
-                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                                 'start'           => $current_start,
@@ -803,7 +807,7 @@ class SchedualController extends Controller
                         if (strpos($change['title'], "VS-") !== false) {
                                 DB::table($stage_plan_table)
                                 ->where('id', $realId)
-                                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 ->update([
                                         'start_clearning' => $change['start'],
@@ -815,7 +819,7 @@ class SchedualController extends Controller
                         } else {
                                 DB::table($stage_plan_table)
                                 ->where('id', $realId)
-                                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 ->update([
                                         'start'           => $change['start'],
@@ -871,7 +875,7 @@ class SchedualController extends Controller
                                         DB::table($stage_plan_table)
                                         ->where('id', $rowId)
                                         ->where('stage_code', '=', $stageCode)
-                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                                 'start'            => null,
@@ -897,7 +901,7 @@ class SchedualController extends Controller
                                         // Update tất cả stage_plan theo rule
                                         DB::table($stage_plan_table)
                                         ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)
-                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                                 'start'            => null,
@@ -924,8 +928,8 @@ class SchedualController extends Controller
                                                 // DB::table('stage_plan_temp') ->where('plan_master_id', $plan->plan_master_id)
                                                 // ->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id'])
                                                 // ->where('stage_code', '>=', $stageCode)->update(['active' => 1]);
-                                        } 
-                        }       
+                                        }
+                        }
                         }
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
@@ -955,9 +959,9 @@ class SchedualController extends Controller
                         ->whereNotNull('start')
                         ->where('active', 1)
                         ->where('finished', 0)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
-                        ->pluck('id'); 
+                        ->pluck('id');
 
                         if ($ids->isEmpty()) {
                                 $production = session('user')['production_code'];
@@ -1076,10 +1080,10 @@ class SchedualController extends Controller
                 return response()->json([
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
-        } 
+        }
 
         public function createManualCampain(Request $request){
-                
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $datas = $request->input ('data');
                 $modeCreate = true;
@@ -1101,7 +1105,7 @@ class SchedualController extends Controller
                                 $ids = collect($datas)->pluck('id')->toArray();
                                 DB::table($stage_plan_table)
                                         ->whereIn('id', $ids)
-                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                         'campaign_code' => $firstCode
@@ -1110,7 +1114,7 @@ class SchedualController extends Controller
 
                                 DB::table($stage_plan_table)
                                         ->where('campaign_code', $firstCode)
-                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                         ->update([
                                         'campaign_code' => null
@@ -1130,7 +1134,7 @@ class SchedualController extends Controller
 
         public function createAutoCampain(){
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-               
+
                 try {
                 // Lấy toàn bộ stage_plan chưa hoàn thành và active
                 DB::table($stage_plan_table)
@@ -1138,7 +1142,7 @@ class SchedualController extends Controller
                         ->where('start', null)
                         ->where('active', 1)
                         ->where('stage_code',">=", 3)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                 ->update(['campaign_code' => null]);
 
@@ -1161,20 +1165,20 @@ class SchedualController extends Controller
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
                         ->where('sp.stage_code',">=", 3)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->orderBy('order_by', 'asc')
                 ->get();
-               
+
                 for ($i=3; $i<=7; $i++){
                         $stage_plans_stage = $stage_plans->where('stage_code',$i);
                         if ($stage_plans_stage->isEmpty()) {continue;}
                         if ($i <=6) {$product_code = "intermediate_code";} else {$product_code = "finished_product_code";}
                         $updates = [];
-                                                   
+
                         // Lọc dữ liệu theo điều kiện code_val
                         if ($i == 3) {
-                                
+
                                 $stage_plans_stage = $stage_plans_stage->filter(function($item) {
                                         return $item->code_val === null || explode("_", $item->code_val)[1] > 1;
                                 });
@@ -1251,7 +1255,7 @@ class SchedualController extends Controller
                 }
 
 
-                                
+
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['error' => 'Lỗi hệ thống'], 500);
@@ -1310,7 +1314,7 @@ class SchedualController extends Controller
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
 
-        } 
+        }
 
         public function DeActiveOrderPlan (Request $request) {
 
@@ -1398,16 +1402,16 @@ class SchedualController extends Controller
         }
 
         /** Ghi kết quả vào stage_plan + log vào room_status*/
-        protected function saveSchedule($title, $stageId, $roomId, Carbon $start, Carbon $end,  Carbon $endCleaning, string $cleaningType, bool $direction) {   
+        protected function saveSchedule($title, $stageId, $roomId, Carbon $start, Carbon $end,  Carbon $endCleaning, string $cleaningType, bool $direction) {
 
                 DB::transaction(function() use ($title, $stageId, $roomId, $start, $end,  $endCleaning, $cleaningType, $direction) {
                         if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                         if ($cleaningType == 2){$titleCleaning = "VS-II";} else {$titleCleaning = "VS-I";}
                         $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group')?? 0;
-                        
+
                         DB::table($stage_plan_table)
                                 ->where('id', $stageId)->whereNull('start')
-                                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 ->update([
                                 'title'           => $title,
@@ -1420,13 +1424,13 @@ class SchedualController extends Controller
                                 'scheduling_direction' => $direction,
                                 'AHU_group' => $AHU_group??null,
                                 'schedualed_at'      => now(),
-                                
+
                         ]);
 
                         // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
                         if (session('fullCalender')['mode'] === 'offical'){
                                 // DB::table('stage_plan_temp')
-                                //  ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                //  ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 // {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 // ->where('stage_plan_id', $stageId)->update(['active' => 0]);
 
@@ -1457,23 +1461,23 @@ class SchedualController extends Controller
 
         /** Scheduler cho tất cả stage Request */
         public function scheduleAll(Request $request) {
-                
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-                $today = Carbon::now()->toDateString(); 
+                $today = Carbon::now()->toDateString();
                 $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? $today)->setTime(6, 0, 0);
-                
+
 
                 $stageCodes = DB::table($stage_plan_table)
                         ->distinct()
                         ->where('stage_code',">=",3)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->orderBy('stage_code')
                         ->pluck('stage_code');
                 $waite_time = [];
 
-                
-               
+
+
                 foreach ($stageCodes as $stageCode) {
                         $waite_time_nomal_batch = 0;
                         $waite_time_val_batch   = 0;
@@ -1522,15 +1526,15 @@ class SchedualController extends Controller
                                         ];
                                         break;
 
-                               
+
                         }
-                        //$this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday);    
+                        //$this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday);
                 }
                 //dd ($waite_time);
 
-               
+
                 $this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
- 
+
                 $production = session('user')['production_code'];
                 $events = $this->getEvents($production, $request->startDate ?? '2025-09-28T17:00:00.000Z', $request->endDate ??'2025-10-05T17:00:00.000Z' , true);
                 $plan_waiting = $this->getPlanWaiting($production);
@@ -1546,7 +1550,7 @@ class SchedualController extends Controller
         /** Scheduler cho 1 stage*/
         public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0,
                 int $waite_time_val_batch = 0,  ?Carbon $start_date = null , bool $working_sunday = false) {
-                
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
 
                 $tasks = DB::table("$stage_plan_table as sp")
@@ -1573,7 +1577,7 @@ class SchedualController extends Controller
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->where('stage_code', $stageCode)
                 ->whereNull('start')
-                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                 ->orderBy('order_by','asc')
                 ->get();
@@ -1602,7 +1606,7 @@ class SchedualController extends Controller
         protected function sheduleNotCampaing ($task, $stageCode,  int $waite_time = 0,  ?Carbon $start_date = null){
 
                         if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-                        
+
                         $title = $task->name ."- ". $task->batch ."- ". $task->market;
                         $now = Carbon::now();
                         $minute = $now->minute;
@@ -1631,7 +1635,7 @@ class SchedualController extends Controller
 
                         foreach ($dependencyCodes as $depCode) {
                                 $pred = DB::table($stage_plan_table)
-                                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 ->where('code', $depCode)->first();
                                 if ($pred && $pred->end) {
@@ -1745,7 +1749,7 @@ class SchedualController extends Controller
 
                 foreach ($dependencyCodes as $depCode) {
                         $pred = DB::table($stage_plan_table)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->where('code', $depCode)->first();
 
@@ -1807,7 +1811,7 @@ class SchedualController extends Controller
                 $counter = 0;
                 foreach ($campaignTasks as  $task) {
                         $pred = DB::table($stage_plan_table)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->where('code', $task->predecessor_code)->first();
 
@@ -1843,7 +1847,7 @@ class SchedualController extends Controller
                                 $prevCycle = ($pre_room->m_time_hours ?? 0) + ($pre_room->C1_time_hours ?? 0);
                                 $currCycle = ($bestQuota->m_time_hours ?? 0) + ($bestQuota->C1_time_hours ?? 0);
                                 if ($counter == 0 && $currCycle < $prevCycle) {
-                                        
+
                                         $delay_time = ($pre_room->m_time_hours*($campaignTasks->count() - 1) + $pre_room->C1_time_hours*($campaignTasks->count() - 2)) -
                                                         (($bestQuota->m_time_hours + $bestQuota->C1_time_hours )* ($campaignTasks->count() - 1));
 
@@ -1912,7 +1916,7 @@ class SchedualController extends Controller
                         )
                         ) / 3600 as busy_hours")
                 )
-                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                 ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                 ->where('sp.deparment_code', session('user')['production_code'])
@@ -1942,7 +1946,7 @@ class SchedualController extends Controller
                         ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', session('user')['production_code'])
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->select(
                         "sp.$group_By",
@@ -1976,7 +1980,7 @@ class SchedualController extends Controller
 
         ///////// Sắp Lịch Ngược ////////
         public function scheduleStartBackward($work_sunday, int $bufferDate, $start_date, $waite_time) {
-               
+
                 if (session('fullCalender')['mode'] === 'offical') {
                         $stage_plan_table = 'stage_plan';
                 } else {
@@ -1998,17 +2002,17 @@ class SchedualController extends Controller
                         ->orderBy('pm.level', 'asc')
                         ->orderBy('pm.batch', 'asc')
                         ->pluck('pm.id');
-                
-               
+
+
                 foreach ($planMasters as $planId) {
-                        
+
                         $check_plan_master_id_complete =  DB::table("$stage_plan_table as sp")
                         ->where ('plan_master_id', $planId)
                         ->whereNull ('sp.start')
                         ->where ('sp.active', 1)
                         ->where ('sp.finished', 0)
                         ->where('sp.deparment_code', session('user')['production_code'])
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->exists();
 
@@ -2016,7 +2020,7 @@ class SchedualController extends Controller
                                 $this->schedulePlanBackward($planId, $work_sunday, $bufferDate, $waite_time , $start_date);
                         }
                 }
-                
+
         } // khởi động và lấy mãng plan_master_id
 
         protected function schedulePlanBackward($plan_master_id,bool $working_sunday = false,int $bufferDate, $waite_time, Carbon $start_date) {
@@ -2028,7 +2032,7 @@ class SchedualController extends Controller
                 } else {
                         $stage_plan_table = 'stage_plan_temp';
                 }
-                
+
                 // toàn bộ các row trong stage_plan cùng plan_master_id của các công đoạn từ ĐG - PC
                 $tasks = DB::table("$stage_plan_table as sp")
                 ->select (
@@ -2065,12 +2069,12 @@ class SchedualController extends Controller
                 ->where('stage_code',">=",3)
                 ->orderBy('stage_code', 'desc')
                 ->get(); // 1 lô gồm tất cả các stage
-               
+
                 $latestEnd = Carbon::parse($tasks->first()->expected_date)->subDays(5 + $bufferDate);
                 $nextCycle = 0; // thời gian sản xuất công đoạn trước = p_time + m_time
                 $totalCount = 0; // vòng lập của ĐG --> không kiểm tra thời gian sản xuất với công đoạn trước
-                
-                
+
+
                 foreach ($tasks as $task) { // Vòng lập chính duyệt qua toàn bộ các task cùng plan_master_id
                         if ($task->nextcessor_code){
                                 $next_stage_code = explode('_', $task->nextcessor_code)[1];
@@ -2081,7 +2085,7 @@ class SchedualController extends Controller
                                 }
                         }else {$waite_time_for_task = null;}
 
-                        
+
                         $campaign_tasks = null;
                          // chứa id các row đã lưu. trường hợp các stage sau rơi và quá khứ sẽ dùng id này để xóa lịch đã sắp
                         if ($task->campaign_code){ // trường hợp chiến dịch
@@ -2118,19 +2122,19 @@ class SchedualController extends Controller
                                 ->orderBy('expected_date', 'desc')
                                 ->orderBy('level', 'desc')
                                 ->orderBy('batch', 'desc')
-                                ->get();      
+                                ->get();
                         }
                         $parts = explode("_", $task->code_val);
 
                         /// Tìm Phòng Sản Xuất Thịch Hợp
                         if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
                                 $code_val_first = $parts[0] . '_1';
-                               
+
                                 $room_id_first = DB::table("$stage_plan_table as sp")
                                         ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
                                         ->where('code_val', $code_val_first)
                                         ->where('stage_code', $task->stage_code)
-                                        ->first(); 
+                                        ->first();
                                 if ($room_id_first) {
                                         $rooms = DB::table('quota')
                                         ->select(
@@ -2147,7 +2151,7 @@ class SchedualController extends Controller
                                         })
                                         ->where('room_id', $room_id_first->resourceId)
                                         ->get();
-                                        
+
                                 } else {
                                         $rooms = DB::table('quota')
                                         ->select(
@@ -2165,16 +2169,16 @@ class SchedualController extends Controller
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
                                 }
-                        } 
+                        }
                         elseif ($task->code_val !== null && $task->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
                                 $code_val_first = $parts[0];
-                               
+
                                 $room_id_first = DB::table("$stage_plan_table as sp")
                                 ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
                                 ->where(DB::raw("SUBSTRING_INDEX(pm.code_val, '_', 1)"), '=', $parts[0])
                                 ->where('sp.stage_code', $task->stage_code)
                                 ->whereNotNull('start')
-                                ->get();                           
+                                ->get();
 
                                 if ($room_id_first) {
 
@@ -2193,14 +2197,14 @@ class SchedualController extends Controller
                                                 })
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
-                                        
-                                        
+
+
                                         if ($rooms->count () > $room_id_first->count ()) {
                                                 foreach ($room_id_first as $first) {
                                                         $rooms->where('room_id', '!=', $first->resourceId);
-                                                }    
+                                                }
                                         }
-                                        
+
                                 } else {
                                         $rooms = DB::table('quota')
                                         ->select(
@@ -2218,8 +2222,8 @@ class SchedualController extends Controller
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
                                 }
-                        
-                               
+
+
                         }else {
                                 $rooms = DB::table('quota')
                                         ->select(
@@ -2249,7 +2253,7 @@ class SchedualController extends Controller
                         foreach ($rooms as $room) { // duyệt qua toàn bộ các room đã định mức để tìm bestroom
 
                                 if ($campaign_tasks !== null){ $number_of_batch = $campaign_tasks->count();}else {$number_of_batch = 1;}
-                                
+
                                 $beforeIntervalMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes * $number_of_batch + (float) $room->C1_time_minutes * ($number_of_batch - 1);
                                 $afterIntervalMinutes =  (float) $room->C2_time_minutes;
                                 $currCycle = (float) $room->m_time_minutes;
@@ -2266,7 +2270,7 @@ class SchedualController extends Controller
                                                  $latestEnd = Carbon::parse($batch_of_next_campaign->start);
                                         }else {
                                                 $nextCycle = Carbon::parse($batch_of_next_campaign->start)->diffInMinutes(Carbon::parse($batch_of_next_campaign->end));
-                                                                        
+
                                                 if ($currCycle >= $nextCycle){
                                                         if ($count_room == 1){ // chỉ dò $index_campaign_tasks ở lần đầu tiên
                                                                 foreach ($campaign_tasks as $campaign_task) {
@@ -2279,7 +2283,7 @@ class SchedualController extends Controller
                                                                         ->first();
                                                                         if ($next_last_batch &&  $next_last_batch->plan_master_id !== null){break;}
                                                                 }
-                                                        }                               
+                                                        }
                                                 }else {
 
                                                           if ($count_room == 1){ // chỉ dò $index_campaign_tasks ở lần đầu tiên
@@ -2301,10 +2305,10 @@ class SchedualController extends Controller
                                                                         return $item->plan_master_id == $next_last_batch->plan_master_id;});
                                                 $latestEnd = Carbon::parse($next_last_batch->start);
                                                 $beforeIntervalMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes * ($number_of_batch - $index_campaign_tasks) + ((float) $room->C1_time_minutes * ($number_of_batch - $index_campaign_tasks) - 1);
-                                                $afterIntervalMinutes =  ((float) $room->m_time_minutes * ($index_campaign_tasks)) + ((float) $room->C1_time_minutes * ($index_campaign_tasks - 1)) + (float) $room->C2_time_minutes;    
-                                        }             
+                                                $afterIntervalMinutes =  ((float) $room->m_time_minutes * ($index_campaign_tasks)) + ((float) $room->C1_time_minutes * ($index_campaign_tasks - 1)) + (float) $room->C2_time_minutes;
+                                        }
                                 }
-                               
+
                                 if ($waite_time_for_task){
                                         $latestEnd = $latestEnd->copy()->subMinutes($waite_time_for_task);
                                 }
@@ -2320,12 +2324,12 @@ class SchedualController extends Controller
                                                 $latestEnd = $before_weigth_date;
                                         }
                                 }
-                                
+
 
                                 $candidateEndClearning = $this->findLatestSlot(
                                         $room->room_id,
-                                        $latestEnd, 
-                                        $beforeIntervalMinutes, 
+                                        $latestEnd,
+                                        $beforeIntervalMinutes,
                                         $afterIntervalMinutes,
                                         60,
                                         $start_date,
@@ -2339,10 +2343,10 @@ class SchedualController extends Controller
                                // candidateEndClearning Có vi phảm vào quá khứ không
                                 if ($candidateEndClearning == false){
                                         if ($stage_plan_ids) {
-                                               
+
                                                 DB::table($stage_plan_table)
                                                 ->whereIn('id', $stage_plan_ids)
-                                                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                                 ->update([
                                                         'start'            => null,
@@ -2354,7 +2358,7 @@ class SchedualController extends Controller
                                                         'title_clearning'  => null,
                                                         'schedualed'       => 0,
                                                 ]);
-                                        }  
+                                        }
                                         $this->schedulePlanForwardPlanMasterId ($plan_master_id, $working_sunday, $waite_time, $start_date);
 
                                         return false;
@@ -2365,34 +2369,34 @@ class SchedualController extends Controller
                                         $bestEndCleaning  = $candidateEndClearning;
                                         $bestEnd = $bestEndCleaning->copy()->subMinutes((float) $afterIntervalMinutes);
                                         $bestStart = $bestEnd->copy()->subMinutes((float) $beforeIntervalMinutes);
-                                } 
+                                }
                                 $count_room++;
                         }
 
-                        /// Lưu 
+                        /// Lưu
                         if ($campaign_tasks !== null){
                                 $campaign_counter = 1;
                                 $current_end_clearning = $candidateEndClearning;
                                 foreach ($campaign_tasks as $campaign_task){
                                         if ($campaign_counter == 1) {
                                                 $bestEndClearning = $current_end_clearning;
-                                                $bestEnd = $bestEndClearning->copy()->subMinutes((float) $bestRoom->C2_time_minutes); 
+                                                $bestEnd = $bestEndClearning->copy()->subMinutes((float) $bestRoom->C2_time_minutes);
                                                 $bestStart = $bestEnd->copy()->subMinutes((float) $bestRoom->m_time_minutes); ;
                                                 $clearningType = 2;
 
                                         }elseif ($campaign_counter == $campaign_tasks->count()){
 
                                                 $bestEndClearning = $current_end_clearning;
-                                                $bestEnd = $bestEndClearning->copy()->subMinutes((float) $bestRoom->C1_time_minutes); 
+                                                $bestEnd = $bestEndClearning->copy()->subMinutes((float) $bestRoom->C1_time_minutes);
                                                 $bestStart = $bestEnd->copy()->subMinutes((float) $bestRoom->p_time_minutes + (float) $bestRoom->m_time_minutes); ;
                                                 $clearningType = 1;
                                         }else {
                                                 $bestEndClearning = $current_end_clearning;
-                                                $bestEnd = $bestEndClearning->copy()->subMinutes((float) $bestRoom->C1_time_minutes); 
+                                                $bestEnd = $bestEndClearning->copy()->subMinutes((float) $bestRoom->C1_time_minutes);
                                                 $bestStart = $bestEnd->copy()->subMinutes((float) $bestRoom->m_time_minutes); //Lô giữa chiến dịch
                                                 $clearningType = 1;
                                         }
-                                        $title = $campaign_task->name ."- ". $campaign_task->batch ."- ". $campaign_task->market;  
+                                        $title = $campaign_task->name ."- ". $campaign_task->batch ."- ". $campaign_task->market;
                                         $this->saveSchedule(
                                                 $title,
                                                 $campaign_task->id,
@@ -2409,7 +2413,7 @@ class SchedualController extends Controller
                                         $campaign_counter++;
                                 }
                         }else {
-                                $title = $task->name ."- ". $task->batch ."- ". $task->market;  
+                                $title = $task->name ."- ". $task->batch ."- ". $task->market;
                                 $this->saveSchedule(
                                         $title,
                                         $task->id,
@@ -2423,17 +2427,17 @@ class SchedualController extends Controller
                                 $stage_plan_ids [] = $task->id;
                         }
                         // cập nhật latestEnd cho stage tiếp theo
-                        $totalCount++;    
+                        $totalCount++;
                 }
                 $stage_plan_ids_null = array_unique($stage_plan_ids_null);
                 $stage_plan_ids_null = array_diff($stage_plan_ids_null, $stage_plan_ids);
                 // if (!empty($stage_plan_ids_null)){
                 //       $this->schedulePlanForwardstageCodeId ($stage_plan_ids_null, $working_sunday , $start_date);
-                // }      
+                // }
         } // khởi động và lấy mãng plan_master_id
 
         protected function schedulePlanForwardPlanMasterId($planId, bool $working_sunday = false, $waite_time,  ?Carbon $start_date = null) {
-              
+
                 if (session('fullCalender')['mode'] === 'offical') {
                         $stage_plan_table = 'stage_plan';
                 } else {
@@ -2442,7 +2446,7 @@ class SchedualController extends Controller
                 $now = Carbon::now();
                 $minute = $now->minute;
                 $roundedMinute = ceil($minute / 15) * 15;
-                
+
                 // toàn bộ các row trong stage_plan cùng plan_master_id của các công đoạn từ ĐG - PC
                 $tasks = DB::table("$stage_plan_table as sp")
                         ->select (
@@ -2477,7 +2481,7 @@ class SchedualController extends Controller
                 ->where('stage_code',">=",3)
                 ->orderBy('stage_code', 'asc') // chạy thuận
                 ->get(); // 1 lô gồm tất cả các stage
-               
+
                 $prevCycle = 0;
                 foreach ($tasks as  $task) { // Vòng lập chính duyệt qua toàn bộ các task cùng plan_master_id
                         $waite_time_for_task = null;
@@ -2532,12 +2536,12 @@ class SchedualController extends Controller
                         /// Tìm Phòng Sản Xuất Thịch Hợp
                         if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
                                 $code_val_first = $parts[0] . '_1';
-                               
+
                                 $room_id_first = DB::table("$stage_plan_table as sp")
                                         ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
                                         ->where('code_val', $code_val_first)
                                         ->where('stage_code', $task->stage_code)
-                                        ->first(); 
+                                        ->first();
 
                                 if ($room_id_first) {
                                         $rooms = DB::table('quota')
@@ -2555,10 +2559,10 @@ class SchedualController extends Controller
                                         })
                                         ->where('room_id', $room_id_first->resourceId)
                                         ->get();
-                                        
+
                                 } else {
-   
-                                        $rooms = DB::table('quota')->select('room_id', 
+
+                                        $rooms = DB::table('quota')->select('room_id',
                                                         DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
                                                         DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
                                                         DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
@@ -2573,16 +2577,16 @@ class SchedualController extends Controller
                                         ->get();
 
                                 }
-                        } 
+                        }
                         elseif ($task->code_val !== null && $task->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
                                 $code_val_first = $parts[0];
-                               
+
                                 $room_id_first = DB::table("$stage_plan_table as sp")
                                 ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
                                 ->where(DB::raw("SUBSTRING_INDEX(pm.code_val, '_', 1)"), '=', $parts[0])
                                 ->where('sp.stage_code', $task->stage_code)
                                 ->whereNotNull('start')
-                                ->get();                           
+                                ->get();
 
                                 if ($room_id_first) {
 
@@ -2601,16 +2605,16 @@ class SchedualController extends Controller
                                                 })
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
-                                        
-                                        
+
+
                                         if ($rooms->count () > $room_id_first->count ()) {
                                                 foreach ($room_id_first as $first) {
                                                         $rooms->where('room_id', '!=', $first->resourceId);
-                                                }    
+                                                }
                                         }
-                                        
+
                                 } else {
-                                        $rooms = DB::table('quota')->select('room_id', 
+                                        $rooms = DB::table('quota')->select('room_id',
                                                         DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
                                                         DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
                                                         DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
@@ -2624,9 +2628,9 @@ class SchedualController extends Controller
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
                                 }
-                        
+
                         }else {
-                                $rooms = DB::table('quota')->select('room_id', 
+                                $rooms = DB::table('quota')->select('room_id',
                                                 DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
                                                 DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
                                                 DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
@@ -2646,7 +2650,7 @@ class SchedualController extends Controller
                         $bestStart = null;
                         $bestEnd = null;
                         $bestEndCleaning = null;
-                        
+
                         if ($roundedMinute == 60) {
                                 $now->addHour();
                                 $roundedMinute = 0;
@@ -2673,7 +2677,7 @@ class SchedualController extends Controller
                         }elseif ($task->stage_code == 3) {
                                 $candidatesEarliest[] = Carbon::parse($task->after_weigth_date);
                         }
-                        
+
                         $earliestStart = collect($candidatesEarliest)->max();
 
                         foreach ($rooms as $room) { // duyệt qua toàn bộ các room đã định mức để tìm bestroom
@@ -2686,23 +2690,23 @@ class SchedualController extends Controller
                                         foreach ($campaign_tasks->reverse() as $campaign_task) {
                                                 $pre_task_last_batch = DB::table ($stage_plan_table)
                                                 ->where('code', $campaign_task->predecessor_code)
-                                                ->when(session('fullCalender')['mode'] === 'temp',function ($query) 
+                                                ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                                 ->first();
                                                 if ($pre_task_last_batch && $pre_task_last_batch->end !== null){break;}
                                         }
                                         $prevCycle = Carbon::parse($pre_task_last_batch->start)->diffInMinutes(Carbon::parse($pre_task_last_batch->end));
-                                        
-                                        if ($currCycle < $prevCycle && $pre_task_last_batch){ 
+
+                                        if ($currCycle < $prevCycle && $pre_task_last_batch){
                                                 $earliestStart = $pre_task_last_batch->end;
                                         }
                                 }
-                                
+
                                 $candidateStart = $this->findEarliestSlot2(
                                         $room->room_id,
-                                        $earliestStart, 
+                                        $earliestStart,
                                         $intervalTimeMinutes,
-                                        $C2_time_minutes, 
+                                        $C2_time_minutes,
                                         $task->tank,
                                         $task->keep_dry,
                                         $stage_plan_table,
@@ -2711,7 +2715,7 @@ class SchedualController extends Controller
                                 );
 
 
-                           
+
                                 if ($bestStart === null || $candidateStart->lt(Carbon::parse($bestStart))) {
                                         $bestRoom = $room;
                                         $bestRoomId = $room->room_id;
@@ -2720,33 +2724,33 @@ class SchedualController extends Controller
                                         $bestEndCleaning  = $bestEnd->copy()->addMinutes( (float) $room->C2_time_minutes);
                                 }
                         }
-                         
+
                         if ($campaign_tasks !== null){
                                 $campaign_counter = 1;
                                 $pre_stage_code = explode('_', $task->predecessor_code)[1];
                                 if ($pre_stage_code > 2 && $waite_time_for_task){
                                         $bestStart = $bestStart->copy()->addMinutes($waite_time_for_task);
                                 }
-                          
+
                                 foreach ($campaign_tasks as $task){
                                         if ($campaign_counter == 1) {
                                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
-                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C1_time_minutes); 
+                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C1_time_minutes);
                                                 $clearningType = 1;
                                                 $prevCycle = ((float) $bestRoom->m_time_minutes + (float) $bestRoom->C1_time_minutes);
 
                                         }elseif ($campaign_counter == $campaign_tasks->count()){
                                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
-                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C2_time_minutes); 
+                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C2_time_minutes);
                                                 $clearningType = 2;
-                                                
+
                                         }else {
                                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
-                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C1_time_minutes); 
+                                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C1_time_minutes);
                                                 $clearningType = 1;
                                         }
-                                        $title = $task->name ."- ". $task->batch ."- ". $task->market;  
-                                       
+                                        $title = $task->name ."- ". $task->batch ."- ". $task->market;
+
                                         $this->saveSchedule(
                                                 $title,
                                                 $task->id,
@@ -2761,7 +2765,7 @@ class SchedualController extends Controller
                                         $campaign_counter++;
                                 }
                         }else {
-                                $title = $task->name ."- ". $task->batch ."- ". $task->market;  
+                                $title = $task->name ."- ". $task->batch ."- ". $task->market;
                                 $this->saveSchedule(
                                         $title,
                                         $task->id,
@@ -2772,22 +2776,22 @@ class SchedualController extends Controller
                                         2,
                                         1
                                 );
-                        }   
+                        }
                 }
         }
 
-        protected function findLatestSlot($roomId,$latestEnd,$beforeIntervalMinutes,$afterIntervalMinutes, $time_clearning_tank = 60, 
+        protected function findLatestSlot($roomId,$latestEnd,$beforeIntervalMinutes,$afterIntervalMinutes, $time_clearning_tank = 60,
                 ?Carbon $startPoint = null, bool $requireTank = false,bool $requireAHU = false, int $maxTank = 2, string $stage_plan_table = 'stage_plan') {
-                
+
                 $this->loadRoomAvailability();
                 $startPoint = $startPoint ?? Carbon::now();
-                $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');  
+                $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');
 
                 if (!isset($this->roomAvailability[$roomId])) {
                         $this->roomAvailability[$roomId] = [];
                 }
 
-                $busyList = collect($this->roomAvailability[$roomId])->sortByDesc('end'); 
+                $busyList = collect($this->roomAvailability[$roomId])->sortByDesc('end');
                 $current_end_clearning = Carbon::parse($latestEnd)->copy()->addMinutes($afterIntervalMinutes);
 
                 $tryCount = 0;
@@ -2827,7 +2831,7 @@ class SchedualController extends Controller
                                                                 ->whereNotNull('start')
                                                                 ->where('stage_code', 7)
                                                                 ->where('keep_dry', 1)
-                                                                ->where('AHU_group', $AHU_group) 
+                                                                ->where('AHU_group', $AHU_group)
                                                                 ->where('start', '<', $bestEnd)
                                                                 ->where('end', '>', $bestStart)
                                                         ->count();
@@ -2887,7 +2891,7 @@ class SchedualController extends Controller
                                                                 ->whereNotNull('start')
                                                                 ->where('stage_code', 7)
                                                                 ->where('keep_dry', 1)
-                                                                ->where('AHU_group', $AHU_group) 
+                                                                ->where('AHU_group', $AHU_group)
                                                                 ->where('start', '<', $bestEnd)
                                                                 ->where('end', '>', $bestStart)
                                 ->count();
@@ -2906,7 +2910,7 @@ class SchedualController extends Controller
         }
 
         protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = 0, $requireAHU = 0, $stage_plan_table = 'stage_plan',  $maxTank = 1, $tankInterval = 60){
-                
+
                 $this->loadRoomAvailability();
 
                 if (!isset($this->roomAvailability[$roomId])) {
@@ -2915,17 +2919,17 @@ class SchedualController extends Controller
 
                 $busyList = $this->roomAvailability[$roomId]; // danh sách block bận
                 $current_start = $Earliest instanceof Carbon ? $Earliest : Carbon::parse($Earliest);
-                $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');  
+                $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');
 
                 $tryCount = 0;
 
                 while (true) {
                         foreach ($busyList as $busy) {
-                     
+
                                 if ($current_start->lt($busy['start'])) {
                                         $gap = $current_start->diffInMinutes($busy['start']);
                                         if ($gap >= $intervalTime + $C2_time_minutes) {
-                                        
+
                                         // --- kiểm tra tank ---
                                         if ($requireTank !=0){
                                                 $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
@@ -2956,7 +2960,7 @@ class SchedualController extends Controller
                                                         ->whereNotNull('start')
                                                         ->where('stage_code', 7)
                                                         ->where('keep_dry', 1)
-                                                        ->where('AHU_group', $AHU_group) 
+                                                        ->where('AHU_group', $AHU_group)
                                                         ->where('start', '<', $bestEnd)
                                                         ->where('end', '>', $bestStart)
                                                 ->count();
@@ -2967,7 +2971,7 @@ class SchedualController extends Controller
                                                         if ($tryCount > 100) return false; // tránh vòng lặp vô hạn
                                                         continue 2; // quay lại vòng while
                                                 }
-                                        }                               
+                                        }
 
                                 return $current_start;
                                 }
@@ -2999,7 +3003,7 @@ class SchedualController extends Controller
                                                 if ($tryCount > 100) return false;
                                                 continue; // quay lại while
                                         }
-                        
+
                                 }
 
 
@@ -3011,7 +3015,7 @@ class SchedualController extends Controller
                                                         ->whereNotNull('start')
                                                         ->where('stage_code', 7)
                                                         ->where('keep_dry', 1)
-                                                        ->where('AHU_group', $AHU_group) 
+                                                        ->where('AHU_group', $AHU_group)
                                                         ->where('start', '<', $bestEnd)
                                                         ->where('end', '>', $bestStart)
                                                 ->count();

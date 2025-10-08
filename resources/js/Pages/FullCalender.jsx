@@ -87,15 +87,17 @@ import dayjs from 'dayjs';
           }
           setEvents(data.events);
           setResources(data.resources);
+          setType (data.type)
+          setAuthorization (data.authorization)
           setPlan(data.plan);
           setQuota(data.quota);
           setStageMap(data.stageMap);
-          setType (data.type)
-          setAuthorization (data.authorization)
+     
+
 
           setTimeout(() => {
             Swal.close();
-          }, 500);
+          }, 100);
 
           // if (data.events?.length > 0) {
           //   const firstEventStart = new Date(data.events[0].start);
@@ -870,6 +872,7 @@ import dayjs from 'dayjs';
                 showConfirmButton: false,
                 timer: 1500
               });
+              
             })
             .catch(err => {
 
