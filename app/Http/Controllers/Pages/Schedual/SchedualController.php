@@ -450,6 +450,13 @@ class SchedualController extends Controller
 
         }// đã có temp
 
+        public function getSumaryData(Request $request){
+                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                return response()->json([
+                        'sumBatchByStage' => $sumBatchByStage,
+                ]);
+        }  // đã có temp
+
         ////
         public function getInforSoure (Request $request) {
 
@@ -1979,7 +1986,7 @@ class SchedualController extends Controller
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
-              //$this->view (null);
+              $this->view (null);
         }
 
         ///////// Sắp Lịch Ngược ////////

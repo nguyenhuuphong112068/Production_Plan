@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name', 50);
+            $table->string('main_equiment_name', 100);
             $table->string('stage', 50);
             $table->unsignedSmallInteger('stage_code');
             $table->string('production_group', 50);
