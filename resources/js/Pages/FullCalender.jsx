@@ -95,8 +95,6 @@ import dayjs from 'dayjs';
           setStageMap(data.stageMap);
           setSumBatchByStage(data.sumBatchByStage);
      
-          
-         
 
           setTimeout(() => {
             Swal.close();
@@ -1252,24 +1250,24 @@ import dayjs from 'dayjs';
         eventAllow = {finisedEvent}
 
 
-        datesSet={(info) => {
-          const { start, end } = info;
+        // datesSet={(info) => {
+        //   const { start, end } = info;
          
-          axios.post("/Schedual/getSumaryData", {
-            startDate: start.toISOString(),
-            endDate: end.toISOString()
-          })
-          .then(res => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-            }
-            setSumBatchByStage(data.sumBatchByStage);
-          })
-          .catch(err => console.error("datesSet error:", err.response?.data || err.message));
+        //   axios.post("/Schedual/getSumaryData", {
+        //     startDate: start.toISOString(),
+        //     endDate: end.toISOString()
+        //   })
+        //   .then(res => {
+        //     let data = res.data;
+        //     if (typeof data === "string") {
+        //       data = data.replace(/^<!--.*?-->/, "").trim();
+        //       data = JSON.parse(data);
+        //     }
+        //     //setSumBatchByStage(data.sumBatchByStage);
+        //   })
+        //   .catch(err => console.error("datesSet error:", err.response?.data || err.message));
 
-        }}
+        // }}
 
         resourceGroupField="stage"
 
