@@ -115,7 +115,17 @@ return new class extends Migration {
             $table->string('created_by',100)->nullable();
             $table->dateTime('finished_date')->nullable();
             $table->string('finished_by',100)->nullable();
+
+            $table->index('finished', 'idx_finished');
+            $table->index('deparment_code', 'idx_department');
+            $table->index('plan_master_id', 'idx_plan_master');
+            $table->index('stage_code', 'idx_stage_code');
+            $table->index('start', 'idx_start');
+            $table->index(['start', 'end'], 'idx_start_end');
+            $table->index(['start_clearning', 'end_clearning'], 'idx_start_end_cleaning');
         });
+
+
 
     }
 
