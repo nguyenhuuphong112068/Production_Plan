@@ -43,7 +43,7 @@ class UploadDataController extends Controller
 
             'room' => [
                 'columns' => [
-                    'id','order_by','code','name','production_group','stage','stage_code','deparment_code'
+                    'id','order_by','code','name','main_equiment_name','production_group','stage','stage_code','deparment_code'
                 ],
                 'extra' => ['prepareBy' => 'Auto-generate'],
             ],
