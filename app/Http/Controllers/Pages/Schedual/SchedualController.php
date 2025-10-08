@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class SchedualController extends Controller
 {
@@ -354,15 +353,17 @@ class SchedualController extends Controller
 
         // Hàm lấy resources
         protected function getResources($production, $startDate, $endDate){
-
+              
                 $roomStatus = $this->getRoomStatistics($startDate, $endDate);
                 $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
 
-                $statsMap = $roomStatus->keyBy('room_id');
+                $statsMap = $roomStatus->keyBy('resourceId');
                 $yieldMap = $sumBatchQtyResourceId->keyBy('resourceId');
-                //dump($statsMap);
-                return DB::table('room')
-                ->select('id', 'code', DB::raw("CONCAT(name, '-', code) as title"), 'stage','stage_code', 'production_group')
+
+                
+
+                $result = DB::table('room')
+                ->select('id', 'code',  DB::raw("CONCAT(code,'-', name) as title"), 'main_equiment_name', 'stage','stage_code', 'production_group')
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
                 ->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')
@@ -377,16 +378,22 @@ class SchedualController extends Controller
                         $room->unit  = $yield->unit ?? '';
                         return $room;
                 });
-
+                //dd ($roomStatus, $sumBatchQtyResourceId ,$statsMap, $yieldMap, $result);
+                return $result;
 
         } // đã có temp
 
-        // Hàm view gọn hơn
+        // Hàm view gọn hơn Request
         public function view(Request $request){
+
+                $startDate = $request->startDate ??'2025-10-01T17:00:00.000Z';
+                $endDate = $request->endDate ?? '2025-10-30T17:00:00.000Z';
+                $viewtype = $request->viewtype??'';
+                
                 try {
                         $production = session('user')['production_code'];
 
-                        if ($request->viewtype == "resourceTimelineMonth" || $request->viewtype == "resourceTimelineYear" || $request->viewtype == "resourceTimelineQuarter") {
+                        if ($viewtype == "resourceTimelineMonth" || $viewtype == "resourceTimelineYear" || $viewtype == "resourceTimelineQuarter") {
                                 $clearing = false;
                         } else {
                                 $clearing = true;
@@ -398,10 +405,10 @@ class SchedualController extends Controller
                                 $plan_waiting = $this->getPlanWaiting($production);
                         }
 
-                        $events = $this->getEvents($production, $request->startDate, $request->endDate, $clearing);
-                        $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
-                        $resources = $this->getResources($production, $request->endDate, $request->endDate);
-
+                        $events = $this->getEvents($production, $startDate, $endDate, $clearing);
+                        $sumBatchByStage = $this->yield($startDate, $endDate, "stage_code");
+                        $resources = $this->getResources($production, $startDate, $endDate);
+                       
                         if (session('fullCalender')['mode'] === 'offical') {
                                 $title = 'LỊCH SẢN XUẤT';
                                 $type = true;
@@ -411,10 +418,14 @@ class SchedualController extends Controller
                         }
                         $authorization = session('user')['userGroup'];
 
+                        Log::info('resources', [
+                                'resources' => $resources,
+                        ]);
+
                         return response()->json([
                                 'title' => $title,
                                 'events' => $events,
-                                'plan' => $plan_waiting ?? [],
+                                'plan' => $plan_waiting ?? [], // [phân quyền]
                                 'quota' => $quota ?? [],
                                 'stageMap' => $stageMap ?? [],
                                 'resources' => $resources,
@@ -438,13 +449,6 @@ class SchedualController extends Controller
                 }
 
         }// đã có temp
-
-        public function getSumaryData(Request $request){
-                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
-                return response()->json([
-                        'sumBatchByStage' => $sumBatchByStage,
-                ]);
-        }  // đã có temp
 
         ////
         public function getInforSoure (Request $request) {
@@ -1896,7 +1900,7 @@ class SchedualController extends Controller
         }
 
         public function getRoomStatistics($startDate, $endDate){
-                // Tổng số giây trong khoảng
+               
                 $startDate= Carbon::parse($startDate);
                 $endDate= Carbon::parse($endDate);
 
@@ -1934,11 +1938,10 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function yield($startDate, $endDate, $group_By){
-
-                //->whereRaw('((stage_plan.start <= ? AND stage_plan.end >= ?) OR (stage_plan.start_clearning <= ? AND stage_plan.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
+                
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate = Carbon::parse($endDate)->toDateTimeString();
-                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
 
                 $result =  DB::table("$stage_plan_table as sp")
                         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
@@ -1976,6 +1979,7 @@ class SchedualController extends Controller
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
+              //$this->view (null);
         }
 
         ///////// Sắp Lịch Ngược ////////
