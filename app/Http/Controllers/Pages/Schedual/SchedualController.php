@@ -1986,7 +1986,7 @@ class SchedualController extends Controller
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
-              $this->view (null);
+              //$this->view (null);
         }
 
         ///////// Sắp Lịch Ngược ////////
