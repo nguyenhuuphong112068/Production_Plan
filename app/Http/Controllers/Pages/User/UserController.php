@@ -12,15 +12,19 @@ class UserController extends Controller
 {
          public function index(){
 
-                $groups = DB::table('groups')->where('active', true)->get();
+                $groups = DB::table('stage_groups')->get();
                 $deparments = DB::table('deparments')->where('active', true)->get();
-                $userGroups = DB::table('usergroup')->where('active', true)->get();
+                $roles = DB::table('roles')->get();
                
                 $datas = DB::table('user_management')->where ('isActive',1)->orderBy('created_at','desc')->get();
-                
+               
                 session()->put(['title'=> 'DANH SÁCH NGƯỜI DÙNG']);
            
-                return view('pages.User.user.list',['datas' => $datas, 'deparments' => $deparments, 'userGroups' => $userGroups, 'groups' => $groups]);
+                return view('pages.User.user.list',[
+                        'datas' => $datas, 
+                        'deparments' => $deparments, 
+                        'roles' => $roles, 
+                        'groups' => $groups]);
         }
     
 
@@ -65,7 +69,7 @@ class UserController extends Controller
                         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
 
-                DB::table('user_management')->insert([
+                $user_id = DB::table('user_management')->insertGetId([
                         'userName' => $request->userName,
                         'passWord' => Hash::make($request->passWord),
                         'fullName' => $request->fullName,
@@ -77,6 +81,13 @@ class UserController extends Controller
                         'prepareBy' => session('user')['fullName'] ?? 'Admin',
                         'created_at' => now(),
                 ]);
+                $role_id = DB::table('roles')->where ('name', $request->userGroup)->value('id');
+
+                DB::table('user_role')->insert([
+                        'user_id' =>  $user_id,
+                        'role_id' => $role_id
+                ]);
+
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
 

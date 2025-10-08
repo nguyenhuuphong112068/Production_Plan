@@ -17,7 +17,7 @@ class UploadDataController extends Controller
         // ⚙️ Cho phép chạy lâu và dùng nhiều RAM hơn
         ini_set('max_execution_time', 300); // 5 phút
         //ini_set('memory_limit', '512M');
-
+        
         $request->validate([
             'excel_file' => 'required|mimes:xlsx,xls,csv',
             'table' => 'required'
@@ -27,7 +27,7 @@ class UploadDataController extends Controller
         $spreadsheet = IOFactory::load($path);
         $rows = $spreadsheet->getActiveSheet()->toArray();
         unset($rows[0]); // bỏ dòng tiêu đề
-
+      
         // ⚙️ Cấu hình mapping bảng <-> cột
         $tableMappings = [
             'user_management' => [
@@ -43,7 +43,7 @@ class UploadDataController extends Controller
 
             'room' => [
                 'columns' => [
-                    'id','order_by','code','name','main_equiment_name','production_group','stage','stage_code','deparment_code'
+                    'id','order_by','code','name','main_equiment_name','stage', 'production_group','stage_code','deparment_code'
                 ],
                 'extra' => ['prepareBy' => 'Auto-generate'],
             ],
@@ -194,6 +194,14 @@ class UploadDataController extends Controller
             'roles' => [
                 'columns' => ['id','name','display_name','description'],
                 'extra' => [],
+            ],
+
+            'deparments' => [
+                'columns' => ['id','name','shortName'],
+                'extra' => [
+                    'active' => 1,
+                    'prepareBy' => 'Auto-generate'
+                ],
             ],
 
             'permissions' => [
