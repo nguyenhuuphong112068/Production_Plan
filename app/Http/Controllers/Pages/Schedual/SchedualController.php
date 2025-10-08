@@ -122,7 +122,7 @@ class SchedualController extends Controller
                 $historyCounts = DB::table('stage_plan_history')
                                 ->select('stage_plan_id', DB::raw('COUNT(*) as count'))
                                 ->groupBy('stage_plan_id')
-                                ->pluck('count', 'stage_plan_id');        
+                                ->pluck('count', 'stage_plan_id');
 
                 for ($i = 0; $i < $plans->count(); $i++) {
                         $plan = $plans[$i];
@@ -353,14 +353,14 @@ class SchedualController extends Controller
 
         // Hàm lấy resources
         protected function getResources($production, $startDate, $endDate){
-              
+
                 $roomStatus = $this->getRoomStatistics($startDate, $endDate);
                 $sumBatchQtyResourceId = $this->yield($startDate, $endDate, "resourceId");
 
                 $statsMap = $roomStatus->keyBy('resourceId');
                 $yieldMap = $sumBatchQtyResourceId->keyBy('resourceId');
 
-                
+
 
                 $result = DB::table('room')
                 ->select('id', 'code',  DB::raw("CONCAT(code,'-', name) as title"), 'main_equiment_name', 'stage','stage_code', 'production_group')
@@ -389,26 +389,26 @@ class SchedualController extends Controller
                 $startDate = $request->startDate ??'2025-10-01T17:00:00.000Z';
                 $endDate = $request->endDate ?? '2025-10-30T17:00:00.000Z';
                 $viewtype = $request->viewtype??'';
-                
+
                 try {
                         $production = session('user')['production_code'];
 
-                        if ($viewtype == "resourceTimelineMonth" || $viewtype == "resourceTimelineYear" || $viewtype == "resourceTimelineQuarter") {
-                                $clearing = false;
-                        } else {
-                                $clearing = true;
-                        }
-
+                        // if ($viewtype == "resourceTimelineMonth" || $viewtype == "resourceTimelineYear" || $viewtype == "resourceTimelineQuarter") {
+                        //         $clearing = true;
+                        // } else {
+                        //         $clearing = true;
+                        // }
+                        $clearing = true;
                         if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
                                 $quota = $this->getQuota($production);
-                                $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
                                 $plan_waiting = $this->getPlanWaiting($production);
                         }
 
+                        $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
                         $events = $this->getEvents($production, $startDate, $endDate, $clearing);
                         $sumBatchByStage = $this->yield($startDate, $endDate, "stage_code");
                         $resources = $this->getResources($production, $startDate, $endDate);
-                       
+
                         if (session('fullCalender')['mode'] === 'offical') {
                                 $title = 'LỊCH SẢN XUẤT';
                                 $type = true;
@@ -1907,7 +1907,7 @@ class SchedualController extends Controller
         }
 
         public function getRoomStatistics($startDate, $endDate){
-               
+
                 $startDate= Carbon::parse($startDate);
                 $endDate= Carbon::parse($endDate);
 
@@ -1945,7 +1945,7 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function yield($startDate, $endDate, $group_By){
-                
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate = Carbon::parse($endDate)->toDateTimeString();

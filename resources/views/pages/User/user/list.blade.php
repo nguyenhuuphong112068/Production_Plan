@@ -15,5 +15,5 @@
 
 @section('model')
   @include('pages.User.user.create')
-  @include('pages.User.user.update') 
+  {{-- @include('pages.User.user.update')  --}}
 @endsection

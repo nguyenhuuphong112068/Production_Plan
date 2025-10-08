@@ -3,7 +3,7 @@
   <div class="modal-dialog" role="document">
    
     <form 
-      action="{{route('pages.User.user.update')}}" 
+      action="{{route('pages.User.user.store')}}" 
       method="POST">
       @csrf
 
@@ -34,7 +34,7 @@
                     <input type="text" class="form-control" name="userName"  
                       value="{{ old('userName') }}" placeholder="Mã Số Nhân Viên">
                   </div>
-                  @error('userName','updateErrors')
+                  @error('userName','createErrors')
                       <div class="alert alert-danger">{{ $message }}</div>
                   @enderror
 
@@ -46,7 +46,7 @@
                     <input type="text" class="form-control" name="passWord"   
                       value=" ***** ">
                   </div>
-                  @error('passWord','updateErrors')
+                  @error('passWord','createErrors')
                       <div class="alert alert-danger">{{ $message }}</div>
                   @enderror
             </div>
@@ -58,23 +58,23 @@
               <input type="text" class="form-control" name="fullName"  placeholder="Tên Đầy Đủ"
                 value="{{ old('fullName') }}">
             </div>
-            @error('fullName','updateErrors')
+            @error('fullName','createErrors')
                 <div class="alert alert-danger">{{ $message }}</div>
             @enderror
 
             {{-- USER GROUP --}}
               <div class="form-group">
-                  <label for="userGroupUpdate">Phân Quyền</label>
-                  <select class="form-control" name="userGroup" id="userGroupUpdate">
+                  <label for="userGroupcreate">Phân Quyền</label>
+                  <select class="form-control" name="userGroup" id="userGroupcreate">
                       <option value="">-- Chọn phân quyền --</option>
-                      @foreach ($userGroups as $userGroup)
-                          <option value="{{ $userGroup->name }}" 
-                              {{ old('userGroup') == $userGroup->name ? 'selected' : '' }}>
-                              {{ $userGroup->name }}
+                      @foreach ($roles as $role)
+                          <option value="{{ $role->name }}" 
+                              {{ old('role') == $role->name ? 'selected' : '' }}>
+                              {{ $role->name }}
                           </option>
                       @endforeach
                   </select>
-                  @error('userGroup','updateErrors')
+                  @error('userGroup','createErrors')
                         <div class="alert alert-danger mt-1">{{ $message }}</div>
                   @enderror
               </div>
@@ -85,8 +85,8 @@
                 <div class="form-group">
 
                   {{-- GROUP IN DEPARTMENT --}}
-                    <label for="groupNameUpdate">Tổ</label>
-                    <select class="form-control" name="groupName" id="groupNameUpdate">
+                    <label for="groupNamecreate">Tổ</label>
+                    <select class="form-control" name="groupName" id="groupNamecreate">
                         <option value="">-- Chọn Tổ --</option>
                         @foreach ($groups as $group)
                             <option value="{{ $group->name }}" 
@@ -95,7 +95,7 @@
                             </option>
                         @endforeach
                     </select>
-                    @error('groupName','updateErrors')
+                    @error('groupName','createErrors')
                           <div class="alert alert-danger mt-1">{{ $message }}</div>
                     @enderror
                 </div>               
@@ -104,19 +104,19 @@
               <div class="col-md-6">
                   {{-- DEPARTMENT--}}
                   <div class="form-group">
-                      <label for="deparmentUpdate">Phòng Ban</label>
-                      <select class="form-control" name="deparment" id="deparmentUpdate">
+                      <label for="deparmentcreate">Phòng Ban</label>
+                      <select class="form-control" name="deparment" id="deparmentcreate">
                           <option value="">-- Chọn phòng ban --</option>
 
                           @foreach ($deparments as $department)
-                              <option value="{{ $department->name }}" 
-                                  {{ old('deparment') == $department->name ? 'selected' : '' }}>
+                              <option value="{{ $department->shortName }}" 
+                                  {{ old('deparment') == $department->shortName ? 'selected' : '' }}>
                                   {{ $department->name }}
                               </option>
                           @endforeach
                       </select>
 
-                      @error('deparment','updateErrors')
+                      @error('deparment','createErrors')
                           <div class="alert alert-danger mt-1">{{ $message }}</div>
                       @enderror
                   </div>
