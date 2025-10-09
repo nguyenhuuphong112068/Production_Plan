@@ -264,6 +264,33 @@
 <script src="{{ asset('libs/bs-stepper/js/bs-stepper.min.js') }}"></script>
 
 <script>
+
+$(document).ready(function () {
+    document.body.style.overflowY = "auto";
+    
+     $('#data_table_Schedual_step').DataTable({
+            paging: true,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50,100, "Tất cả"]],
+            language: {
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ dòng",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+                paginate: {
+                    previous: "Trước",
+                    next: "Sau"
+                }
+            },
+        });
+
+
+})
+
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
       new Stepper(stepperEl, { linear: false, animation: true });

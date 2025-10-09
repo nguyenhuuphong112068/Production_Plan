@@ -142,6 +142,7 @@
 
 <script>
   $(document).ready(function() {
+    document.body.style.overflowY = "auto";
     $('#data_table_Schedual_list').DataTable({
       paging: true,
       lengthChange: true,
@@ -150,6 +151,7 @@
       info: true,
       autoWidth: false,
       pageLength: 10,
+      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50,100, "Tất cả"]],
       language: {
         search: "Tìm kiếm:",
         lengthMenu: "Hiển thị _MENU_ dòng",

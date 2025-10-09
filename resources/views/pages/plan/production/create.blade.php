@@ -97,7 +97,7 @@
                                 </span>
                             </div>
 
-                            <label>% Đóng gói</label>
+                            <label class ="mt-1">% Đóng gói</label>
                             <div class="input-group">
                                 <!-- number_of_unit -->
                                 <input type="hidden" name="max_number_of_unit" id ="max_number_of_unit">
@@ -113,9 +113,10 @@
                             </div>
 
 
-                            <label>Nguồn</label>
+
+                            <label class ="mt-1">Nguồn</label>
                             <div class="input-group">
-                                <textarea class="form-control" name="source_material_name" rows="4"
+                                <textarea class="form-control" name="source_material_name" rows="2"
                                     value="{{ old('source_material_name') }}"></textarea>
                                 <button type="button" class = "btn btn-success" id = "add_source_material"
                                     data-toggle="modal" data-target="#selectSourceModal">
@@ -126,16 +127,39 @@
                             </div>
 
 
+
                             {{-- Lô thẩm định  --}}
-                            <div class="form-group px-3 mt-4">
+                            {{-- <div class="form-group px-3 mt-4">
                                 <div class="custom-control custom-switch">
                                     <input type="checkbox" class="custom-control-input" id="customSwitch1"
                                         name ="is_val">
                                     <label class="custom-control-label" for="customSwitch1">Ba Lô Thẩm Định Ban
                                         Đầu</label>
                                 </div>
-                            </div>
+                            </div> --}}
 
+                            <label class ="mt-1">Lô Thẩm Định</label>
+                            <div class="card ">
+                                <div class="card-body">
+                                    <div class="icheck-primary d-inline mx-4">
+                                        <input type="checkbox" class="step-checkbox" id="checkbox1" 
+                                            name = "first_val_batch">
+                                        <label for="checkbox1">Lô thứ nhất</label>
+                                    </div>
+
+                                    <div class="icheck-primary d-inline mx-4">
+                                        <input type="checkbox" class="step-checkbox" id="checkbox2" 
+                                            name = "second_val_batch">
+                                        <label for="checkbox2">Lô thứ hai</label>
+                                    </div>
+
+                                    <div class="icheck-primary d-inline mx-4">
+                                        <input type="checkbox" class="step-checkbox" id="checkbox3" 
+                                            name = "third_val_batch">
+                                        <label for="checkbox3">Lô thứ ba</label>
+                                    </div>
+                                </div>
+                            </div>
 
                         </div>
 
@@ -265,10 +289,6 @@
     </div>
 </div>
 
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->create_finished_Errors->any())
@@ -301,7 +321,6 @@
         });
 
 
-
         $("#number_of_unit").on('input', function() {
             let numberOfUnit = parseInt($(this).val()) || 0;
 
@@ -331,6 +350,106 @@
             const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
+
+
+        $(".step-checkbox").on("change", function() {
+            let checkbox1 = $("#checkbox1").is(":checked") ? 1 : 0;
+            let checkbox2 = $("#checkbox2").is(":checked") ? 1 : 0;
+            let checkbox3 = $("#checkbox3").is(":checked") ? 1 : 0;
+            let intermediate_code = $('input[name="intermediate_code"]').val()|| "" ;
+            const first_batch_modal = $('#data_table_first_val_batch')
+
+            let total = checkbox1 + checkbox2 + checkbox3;
+            $('input[name="number_of_batch"]').val(total);
+
+            if ((checkbox1 == 0 && checkbox2 == 1) || (checkbox1 == 0 && checkbox3 == 1)){
+                
+                $.ajax({
+                    url: "{{ route('pages.plan.production.first_batch') }}",
+                    type: 'post',
+                    data: {
+                        intermediate_code: intermediate_code,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                        if (res.length === 0) {
+                            first_batch_modal.append(
+                                `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                                // map màu level
+                                const colors = {
+                                    1: 'background-color: #f44336; color: white;', // đỏ
+                                    2: 'background-color: #ff9800; color: white;', // cam
+                                    3: 'background-color: blue; color: white;', // xanh dương
+                                    4: 'background-color: #4caf50; color: white;', // xanh lá
+                                };
+                                first_batch_modal.append(`
+                              <tr>
+                                  <td>${index + 1}</td>
+                                  <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
+                                      <div>${item.intermediate_code ?? ''}</div>
+                                      <div>${item.finished_product_code ?? ''}</div>
+                                  </td>
+
+                                  <td>${item.name ?? ''} (${item.batch_qty ?? ''} ${item.unit_batch_qty ?? ''})</td>
+                                  <td>${item.batch ?? ''}</td>
+                                  <td>
+                                      <div>${item.market ?? ''}</div>
+                                      <div>${item.specification ?? ''}</div>
+                                  </td>
+
+                                  <td style="text-align: center; vertical-align: middle;">
+                                      <span style="display: inline-block; padding: 6px 10px; width: 50px; border-radius: 40px; ${colors[item.level] ?? ''}">
+                                          <b>${item.level ?? ''}</b>
+                                      </span>
+                                  </td>
+
+                                  <td>
+                                      <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
+
+                                  <td class="text-center align-middle">
+                                      ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
+                                  </td>
+
+                                  <td>${item.source_material_name ?? ''}</td>
+
+                                  <td>
+                                      <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.before_weigth_date ? moment(item.before_weigth_date).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
+                                  <td>
+                                      <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.before_parkaging_date ? moment(item.before_parkaging_date).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
+
+                                  <td>${item.note ?? ''}</td>
+                                  <td>${item.version ?? ''}</td>
+                                  <td >${item.reason ?? ''}</td>
+
+                                  <td>
+                                      <div>${item.prepared_by ?? ''}</div>
+                                      <div>${item.created_at ? moment(item.created_at).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
+                              </tr>
+                          `);
+                            });
+                        }
+                    },
+                    error: function() {
+                        first_batch_modal.append(
+                            `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                        );
+                    }
+                });
+
+                $('#fist_batch_modal').modal('show');
+            }
+
+        });
+
 
         preventDoubleSubmit("#createModal", "#btnSave");
 

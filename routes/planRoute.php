@@ -31,6 +31,9 @@ Route::prefix('/plan')
             Route::post('history','history')->name('history');
             Route::post('source_material','source_material')->name('source_material');
             Route::post('store_source','store_source')->name('store_source');
+
+            Route::post('updateInput','updateInput')->name('updateInput');
+            Route::post('first_batch','first_batch')->name('first_batch');
     });
 
     Route::prefix('/maintenance')

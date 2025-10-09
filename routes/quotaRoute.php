@@ -22,6 +22,8 @@ Route::prefix('/quota')
             Route::post('update', 'update')->name('update');
             Route::post('deActive','deActive')->name('deActive');
             Route::post('check_code_room_id','check_code_room_id')->name('check_code_room_id'); 
+            Route::post('tank_keepDry','tank_keepDry')->name('tank_keepDry');
+            Route::post('updateTime','updateTime')->name('updateTime');
             
     });
 

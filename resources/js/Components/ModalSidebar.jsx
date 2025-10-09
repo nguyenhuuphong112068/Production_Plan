@@ -582,6 +582,38 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       ); 
       
   }
+
+  const handleFinished = () => {
+    const ids = selectedRows.map(row => row.plan_master_id);
+    const stageCode = selectedRows[0].stage_code
+
+      axios.put('/Schedual/finished',{id : ids, temp : true, stage_code: stageCode} )
+
+        .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            setTableData (data.plan_waiting)
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành',
+              timer: 500,
+              showConfirmButton: false,
+            });
+          })
+        .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              timer: 500,
+              showConfirmButton: false,
+            });
+            console.error("Finished error:", err.response?.data || err.message);
+        });
+    };
    
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
@@ -614,7 +646,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
           top: "40px"
         }}
     >
-
     
       {/* Thanh điều khiển */}
       <div className="p-4 border-b">
@@ -633,6 +664,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               onClick={handleCreateAutoCampain}>
                 <i className="fas fa-flag-checkered"></i>
               </div> 
+
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
+                onClick={handleFinished}>
+                <i className="fas fa-check"></i>
+              </div> 
+
               </>):<></>}
               {percentShow === "100%" && stageFilter === 9 && type ? (
                 <>

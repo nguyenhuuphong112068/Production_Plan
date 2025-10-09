@@ -1,3 +1,40 @@
+<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+
+<style>
+.step-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #007bff; /* màu xanh bootstrap */
+}
+
+.step-checkbox:checked {
+    box-shadow: 0 0 5px #007bff;
+}
+.updateInput {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    text-align: center;
+    height: 100%;
+    padding: 2px 4px;
+    box-sizing: border-box;
+  }
+
+  /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
+  .updateInput:focus {
+    border: 1px solid #007bff;
+    border-radius: 2px;
+    background-color: #fff;
+  }
+
+  /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
+  td input.updateInput {
+    display: block;
+    margin: auto;
+  }
+</style>
 <div class="content-wrapper">
     <div class="card" style="min-height: 100vh">
 
@@ -21,8 +58,6 @@
                         @endif
                     </div>
 
-
-
                     <div class="col-md-8"></div>
                     <div class="col-md-2" style="text-align: right;">
 
@@ -43,7 +78,6 @@
                 </div>
             @endif
             <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
-
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
 
                     <tr>
@@ -64,6 +98,7 @@
                         <th style="width:1%">Vô Hiệu</th>
                         <th style="width:1%">Lịch Sữ</th>
                     </tr>
+
                 </thead>
                 <tbody>
 
@@ -87,13 +122,15 @@
                                 <div> {{ $data->name }} </div>
                                 <div> {{ '(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')' }}</div>
                             </td>
-                            <td> {{ $data->batch }} </td>
+                            <td>
+                                <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }}>
+                            </td>
                             <td>
                                 <div> {{ $data->market }} </div>
                                 <div> {{ $data->specification }} </div>
                             </td>
                             <td>
-                                <div> {{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
+                                <input type= "date" class="updateInput" name="expected_date"  value="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
                             </td>
                             
                             @php
@@ -104,32 +141,40 @@
                                     4 => 'background-color: #4caf50; color: white;', // xanh lá
                                 ];
                             @endphp
-
-                            <td style="text-align: center; vertical-align: middle;">
+                            {{-- style="text-align: center; vertical-align: middle;" --}}
+                            <td class="text-center "> 
                                 <span
                                     style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
-                                    <b> {{ $data->level }} </b>
+                                    <input type= "text" class="updateInput" name="level" value = "{{$data->level }}" data-id = {{ $data->id }}>
                                 </span>
                             </td>
 
-
-                            <td class="text-center align-middle">
-                                @if ($data->is_val)
-                                    <i class="fas fa-check-circle text-primary fs-4"></i>
-                                @endif
+                            <td class="text-center ">
+                                  <input class="form-check-input step-checkbox"
+                                      type="checkbox" role="switch"
+                                      data-id="{{ $data->id }}"
+                                      id="{{ $data->id }}"
+                                      {{ $data->is_val ? 'checked' : '' }}
+                                      >
+                                      <br>
+                                    <span> Lô Thứ {{explode ("_",$data->code_val)[1]}} </span>
+                          
                             </td>
 
                             <td>{{ $data->source_material_name }}</td>
 
                             <td>
-                                <div>{{ \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') }} </div>
-                                <div>{{ \Carbon\Carbon::parse($data->before_weigth_date)->format('d/m/Y') }} </div>
+                                <input type= "date" class="updateInput" name="after_weigth_date" value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                <input type= "date" class="updateInput" name="before_weigth_date" value="{{ $data->before_weigth_date ? \Carbon\Carbon::parse($data->before_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                
                             </td>
                             <td>
-                                <div>{{ \Carbon\Carbon::parse($data->after_parkaging_date)->format('d/m/Y') }} </div>
-                                <div>{{ \Carbon\Carbon::parse($data->before_parkaging_date)->format('d/m/Y') }} </div>
+                                <input type= "date" class="updateInput" name="after_parkaging_date" value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                <input type= "date" class="updateInput" name="before_parkaging_date" value="{{ $data->before_parkaging_date ? \Carbon\Carbon::parse($data->before_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
                             </td>
-                            <td> {{ $data->note }} </td>
+                            <td> 
+                                <input type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}>
+                            </td>
 
                             <td>
                                 <div> {{ $data->prepared_by }} </div>
@@ -453,5 +498,63 @@
                     return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
                 }
             });
+
+            $(document).on('focus', '.updateInput', function () {
+                $(this).data('old-value', $(this).val());
+            });
+
+            $(document).on('blur', '.updateInput', function () {
+                
+                let id = $(this).data('id');
+                let name = $(this).attr('name');
+                let updateValue = $(this).val();
+                let oldValue = $(this).data('old-value');
+              
+                if (updateValue === oldValue)return;
+                
+                if (id == ''){
+                    Swal.fire({
+                    title: 'Cảnh Báo!',
+                    text: 'Sản Phẩm Chưa Định Mức',
+                    icon: 'warning',
+                    timer: 1000, // tự đóng sau 2 giây
+                    showConfirmButton: false
+                });
+                    $(this).val('');
+                    return
+                }
+
+                if (name == "level"){
+                    const pattern = /^[1-9]\d*$/;
+                    if (updateValue && !pattern.test(updateValue)) {
+                        Swal.fire({
+                            title: 'Lỗi định dạng!',
+                            text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                            icon: 'error',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        $(this).focus();
+                        $(this).css('border', '1px solid red');
+                        return;
+                    } else {
+                        $(this).css('border', '');
+                    }
+                }
+
+
+                $.ajax({
+                    url: "{{ route('pages.plan.production.updateInput') }}",
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    name: name,
+                    updateValue: updateValue
+                    }
+                });
+            });
+
         });
     </script>

@@ -549,9 +549,13 @@ class ProductionPlanController extends Controller
                  return view('pages.plan.production.plan_list',['datas' => $datas ]);
         }
 
-
-
-
-
+        public function updateInput(Request $request){
+                DB::table('plan_master')
+                        ->where('id', $request->id)
+                        ->update([
+                                $request->name => $request->updateValue
+                ]);
+                return response()->json(['success' => true]);
+        }
 
 }
