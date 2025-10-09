@@ -1,4 +1,42 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+<style>
+  .step-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #007bff; /* màu xanh bootstrap */
+  }
+
+  .step-checkbox:checked {
+    box-shadow: 0 0 5px #007bff;
+  }
+
+  .time {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    text-align: center;
+    height: 100%;
+    padding: 2px 4px;
+    box-sizing: border-box;
+  }
+
+  /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
+  .time:focus {
+    border: 1px solid #007bff;
+    border-radius: 2px;
+    background-color: #fff;
+  }
+
+  /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
+  td input.time {
+    display: block;
+    margin: auto;
+  }
+</style>
+
+
 <div class="content-wrapper">
     <!-- Main content -->
             <!-- /.card-header -->
@@ -17,7 +55,6 @@
                   @endphp
 
                  <div class="row">
-
                     <div class="col-md-12"></div> 
                     <div class="col-md-12 d-flex justify-content-end">
                       <form id = "filterForm"  action="{{ route('pages.quota.production.list') }}" method="get">
@@ -42,6 +79,13 @@
                           <th rowspan="2">Mã Sản Phẩm</th>
                           <th rowspan="2">Tên Sản Phẩm</th>
                           <th rowspan="2">Cở Lô</th>
+                          @if ($stage_code == 3)
+                            <th rowspan="2" style="width:1%">Bồn LP</th>
+                          @endif
+                          @if ($stage_code == 7)
+                            <th rowspan="2" style="width:3%">Khử Ẩm EV</th>
+                          @endif
+                  
                           <th rowspan="2">Phòng Sản Xuất</th>
 
                           <th colspan="4" class="text-center">Thời Gian</th>
@@ -50,9 +94,10 @@
                           <th rowspan="2">Ghi Chú</th>
                           <th rowspan="2">Người Tạo/ Ngày Tạo</th>
                           <th rowspan="2" style="width:1%">Thêm</th>
-                          <th rowspan="2" style="width:1%">Cập Nhật</th>
+                          {{-- <th rowspan="2" style="width:1%">Cập Nhật</th> --}}
                           <th rowspan="2" style="width:1%">Vô Hiệu</th>
                           <th rowspan="2" style="width:1%">Lich Sữ</th>
+                          
                       </tr>
                       <tr>
                           <th>Chuẩn Bị</th>
@@ -75,27 +120,60 @@
                       <td>{{ $data->product_name}} </td>
                       <td>{{ $data->batch_qty . " " .  $data->unit_batch_qty}}</td>
 
+                      @php
+                          $field = $stage_code == 3 ? 'tank' : ($stage_code == 7 ? 'keep_dry' : null);
+                      @endphp
+
+                      @if ($field)
+                          <td class="text-center align-middle">
+                              <div class="form-check form-switch text-center">
+                                  <input class="form-check-input step-checkbox"
+                                      type="checkbox" role="switch"
+                                      data-id="{{ $data->id }}"
+                                      data-stage_code="{{ $stage_code }}"
+                                      id="{{ $data->id }}"
+                                      {{ $data->$field ? 'checked' : '' }}
+                                      
+                                      >
+                              </div>
+                          </td>
+                      @endif
+
                       <td>
                           @if($data->room_name == null)
                               <span class="px-2 py-1 rounded-pill" style="background-color:red; color:white; font-size: 14px">
                                   Thiếu Định Mức
                               </span>
+                             {{ $typeInput = 'hidden'  }}
                           @else
                               {{ $data->room_name . " - " . $data->room_code }}
+                              {{ $typeInput = 'text'  }}
                           @endif
                       </td>
 
-                      <td> {{$data->p_time }} </td>
-                      <td> {{$data->m_time }} </td>
-                      <td> {{$data->C1_time }} </td>
-                      <td> {{$data->C2_time }} </td>
+                      <td> 
+                        <input  type= "{{$typeInput}}" class="time" name="p_time" value = "{{$data->p_time }}" data-id = {{ $data->id }}>
+                      </td>
 
-                      <td> {{$data->maxofbatch_campaign }} </td>
-                      <td> {{$data->note }} </td>
+                      <td> 
+                        <input type= "{{$typeInput}}" class="time" name="m_time" value = "{{$data->m_time }}" data-id = {{ $data->id }}>
+                      </td>
+                      <td> 
+                        <input type= "{{$typeInput}}" class="time" name="C1_time" value = "{{$data->C1_time }}" data-id = {{ $data->id }}>
+                      </td>
+                      <td> 
+                        <input type= "{{$typeInput}}" class="time" name="C2_time" value = "{{$data->C2_time }}" data-id = {{ $data->id }}>
+                      </td>
+                      <td> 
+                        <input type= "{{$typeInput}}" class="time" name="maxofbatch_campaign" value = "{{$data->maxofbatch_campaign }}" data-id = {{ $data->id }}>
+                      </td>
+                      <td> 
+                        <input type= "{{$typeInput}}" class="time" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}>
+                      </td>
                       
                       <td>
                           <div> {{ $data->prepared_by}} </div>
-                          <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
+                          <div>{{$typeInput == 'hidden' ?'':\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
                       </td>                     
 
   
@@ -114,7 +192,7 @@
                           </button>
                       </td>
 
-                      <td class="text-center align-middle">
+                      {{-- <td class="text-center align-middle">
                           <button type="button" class="btn btn-warning btn-edit" {{$data->room_name?'':'disabled'}}
                              {{ $auth_update }}  
                               data-id="{{ $data->id }}"
@@ -136,7 +214,7 @@
                               data-target="#update_modal">
                               <i class="fas fa-edit"></i>
                           </button>
-                      </td>
+                      </td> --}}
 
 
                       <td class="text-center align-middle">  
@@ -168,7 +246,7 @@
                                 </span>
                             </button>
                         </td>
-                    </tr>
+                    </tr>   
                   @endforeach
 
                   </tbody>
@@ -324,6 +402,114 @@
         });
 
   });
+
+  $(document).on('change', '.step-checkbox', function () {
+   
+      let id = $(this).data('id');
+      
+      if (id == ''){
+          Swal.fire({
+          title: 'Cảnh Báo!',
+          text: 'Sản Phẩm Chưa Định Mức',
+          icon: 'warning',
+          timer: 1000, // tự đóng sau 2 giây
+          showConfirmButton: false
+      });
+          $(this).prop('checked', false);
+        return
+      }
+      let stage_code = $(this).data('stage_code');
+      let checked = $(this).is(':checked');
+      //console.log (id, stage_code, checked)
+      $.ajax({
+        url: "{{ route('pages.quota.production.tank_keepDry') }}",
+        type: 'POST',
+        dataType: 'json',
+        data: {
+          _token: '{{ csrf_token() }}',
+          id: id,
+          stage_code: stage_code,
+          checked: checked
+        }
+      });
+  });
+
+  $(document).on('focus', '.time', function () {
+      $(this).data('old-value', $(this).val());
+  });
+
+   $(document).on('blur', '.time', function () {
+   
+      let id = $(this).data('id');
+      let name = $(this).attr('name');
+      let time = $(this).val();
+      let oldValue = $(this).data('old-value');
+
+      if (time === oldValue)return;
+  
+      if (id == ''){
+          Swal.fire({
+          title: 'Cảnh Báo!',
+          text: 'Sản Phẩm Chưa Định Mức',
+          icon: 'warning',
+          timer: 1000, // tự đóng sau 2 giây
+          showConfirmButton: false
+      });
+          $(this).val('');
+        return
+      }
+
+      if (name == "maxofbatch_campaign"){
+        const pattern = /^[1-9]\d*$/;
+        if (time && !pattern.test(time)) {
+            Swal.fire({
+                title: 'Lỗi định dạng!',
+                text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                icon: 'error',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            $(this).focus();
+            $(this).css('border', '1px solid red');
+            return;
+        } else {
+            $(this).css('border', '');
+        }
+      }else if (name != "note"){
+        const pattern = /^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/;
+        if (time && !pattern.test(time)) {
+            Swal.fire({
+                title: 'Lỗi định dạng!',
+                text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                icon: 'error',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            $(this).focus();
+            $(this).css('border', '1px solid red');
+            return;
+        } else {
+            $(this).css('border', '');
+        }
+      }
+
+
+      $.ajax({
+        url: "{{ route('pages.quota.production.updateTime') }}",
+        type: 'POST',
+        dataType: 'json',
+        data: {
+          _token: '{{ csrf_token() }}',
+          id: id,
+          name: name,
+          time: time
+        }
+      });
+  });
+
+
 </script>
+
+
 
 

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
+use Illuminate\Support\Facades\Log;
 
 class ProductionQuotaController extends Controller
 {
@@ -56,7 +57,8 @@ class ProductionQuotaController extends Controller
                                 'quota.prepared_by',
                                 'quota.created_at',
                                 'quota.id',
-                                'quota.active'
+                                'quota.active',
+                                'quota.tank'
                         )
                         ->where("{$category}.{$stage_name}", 1)
                         ->where("{$category}.active", true)
@@ -101,7 +103,8 @@ class ProductionQuotaController extends Controller
                                 'quota.prepared_by',
                                 'quota.created_at',
                                 'quota.id',
-                                'quota.active'
+                                'quota.active',
+                                'quota.keep_dry'
                         )
                         ->leftJoin('product_name', 'product_name.id', '=', "{$category}.product_name_id")
                         ->leftJoin('quota', function ($join) use ($stage_code, $production, $category, $joinField) {
@@ -121,7 +124,7 @@ class ProductionQuotaController extends Controller
                 }
 
                 session()->put(['title' => 'Định Mức Sản Xuất']);
-
+              
                 return view('pages.quota.production.list', [
                         'datas' => $datas,
                         'stage_code' => $stage_code,
@@ -264,5 +267,33 @@ class ProductionQuotaController extends Controller
                         'updated_at' => now(), 
                 ]);
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
+        }
+
+
+        public function tank_keepDry(Request $request){
+
+
+                DB::table('quota')
+                        ->where('id', $request->id)
+                        ->when($request->stage_code == 3, function ($query) use ($request) {
+                        $query->update(['tank' => $request->checked == "false" ? 0 : 1]);
+                        })
+                        ->when($request->stage_code == 7, function ($query) use ($request) {
+                        $query->update(['keep_dry' => $request->checked == "false" ? 0 : 1]);
+                });
+
+                return response()->json(['success' => true]);
+        }
+
+        public function updateTime(Request $request){
+
+
+                DB::table('quota')
+                        ->where('id', $request->id)
+                        ->update([
+                                $request->name => $request->time
+                        ]);
+             
+                return response()->json(['success' => true]);
         }
 }

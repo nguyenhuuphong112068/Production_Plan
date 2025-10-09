@@ -68,7 +68,8 @@ class SchedualController extends Controller
                         'plan_master.before_weigth_date',
                         'plan_master.after_parkaging_date',
                         'plan_master.before_parkaging_date',
-                        'plan_master.is_val'
+                        'plan_master.is_val',
+                        'plan_master.level'
                         )
                         ->selectRaw("
                         CASE
@@ -129,9 +130,6 @@ class SchedualController extends Controller
                         $subtitle = null;
 
                                 // Kiêm tra vi pham
-
-
-
                                 if ($plan->stage_code <= 7){
                                         $color_event = '#4CAF50';
 
@@ -218,6 +216,7 @@ class SchedualController extends Controller
                                         'stage_code'=> $plan->stage_code,
                                         'is_clearning' => false,
                                         'finished' => $plan->finished,
+                                        'level' => $plan->level,
                                         //'room_source' => $room_source,
                                         'direction' => $plan->scheduling_direction,
                                         'keep_dry' => $plan->keep_dry,
@@ -273,6 +272,7 @@ class SchedualController extends Controller
                 $plan_waiting = DB::table("$stage_plan_table as sp")
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
+                        ->where('sp.finished', 0)
                         ->where('sp.deparment_code', $production)
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
@@ -386,19 +386,18 @@ class SchedualController extends Controller
         // Hàm view gọn hơn Request
         public function view(Request $request){
 
-                $startDate = $request->startDate ??'2025-10-01T17:00:00.000Z';
-                $endDate = $request->endDate ?? '2025-10-30T17:00:00.000Z';
-                $viewtype = $request->viewtype??'';
+                $startDate = $request->startDate ;
+                $endDate = $request->endDate;
+                $viewtype = $request->viewtype;
 
                 try {
                         $production = session('user')['production_code'];
-
-                        // if ($viewtype == "resourceTimelineMonth" || $viewtype == "resourceTimelineYear" || $viewtype == "resourceTimelineQuarter") {
-                        //         $clearing = true;
-                        // } else {
-                        //         $clearing = true;
-                        // }
+                        
                         $clearing = true;
+                        if ($viewtype == "resourceTimelineMonth" || $viewtype == "resourceTimelineYear" || $viewtype == "resourceTimelineQuarter") {
+                                $clearing = false;
+                        }
+                       
                         if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
                                 $quota = $this->getQuota($production);
                                 $plan_waiting = $this->getPlanWaiting($production);
@@ -1018,20 +1017,54 @@ class SchedualController extends Controller
 
         }// đã có temp
 
+        // public function finished(Request $request){
+
+        //         $id = explode('-', $request->input('id'))[0];
+
+        //         try {
+        //                 DB::table('stage_plan')
+        //                         ->where('id', $id)
+        //                         ->update([
+        //                                 'yields' => $request->input('yields'),
+        //                                 'finished'  => 1
+        //                 ]);
+        //                 DB::table('room_status')
+        //                         ->where('stage_plan_id', $id)
+        //                         ->delete();
+
+        //         } catch (\Exception $e) {
+        //                 Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+        //                 return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        //         }
+
+        //         $production = session('user')['production_code'];
+        //         $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+
+        //         return response()->json([
+        //                 'events' => $events,
+        //         ]);
+        // }
         public function finished(Request $request){
-
-                $id = explode('-', $request->input('id'))[0];
-
+                $ids = $request->id;
                 try {
-                        DB::table('stage_plan')
-                                ->where('id', $id)
-                                ->update([
+                        if (isset($request->temp)) {
+                                foreach ($ids as $id) {  
+                                        DB::table('stage_plan')
+                                                ->where('plan_master_id', $id) 
+                                                ->where('stage_code','<=', $request->stage_code)
+                                                ->update([
+                                                'finished' => 1
+                                                ]);
+                                }
+                        }else {
+                                DB::table('stage_plan')
+                                        ->where('id', $ids)
+                                        ->update([
                                         'yields' => $request->input('yields'),
-                                        'finished'  => 1
-                        ]);
-                        DB::table('room_status')
-                                ->where('stage_plan_id', $id)
-                                ->delete();
+                                        'finished' => 1
+                                        ]);
+                        }
+
 
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
@@ -1039,12 +1072,23 @@ class SchedualController extends Controller
                 }
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                
+        
+                if (isset($request->temp)) {
+                        $plan_waiting = $this->getPlanWaiting($production);
+                        return response()->json([
+                                'plan_waiting' => $plan_waiting
+                        ]);      
+                }else {
+                        $events = $this->getEvents($production, $request->startDate, $request->endDate, true);
+                        return response()->json([
+                                'events' => $events,
+                        ]); 
+                }
 
-                return response()->json([
-                        'events' => $events,
-                ]);
+
         }
+
 
         public function addEventContent(int|string $id, Request $request){
 

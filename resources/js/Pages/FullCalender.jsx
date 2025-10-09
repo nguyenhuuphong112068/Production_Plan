@@ -1249,26 +1249,6 @@ import dayjs from 'dayjs';
         dateClick ={ handleEventUnHightLine}
         eventAllow = {finisedEvent}
 
-
-        // datesSet={(info) => {
-        //   const { start, end } = info;
-         
-        //   axios.post("/Schedual/getSumaryData", {
-        //     startDate: start.toISOString(),
-        //     endDate: end.toISOString()
-        //   })
-        //   .then(res => {
-        //     let data = res.data;
-        //     if (typeof data === "string") {
-        //       data = data.replace(/^<!--.*?-->/, "").trim();
-        //       data = JSON.parse(data);
-        //     }
-        //     //setSumBatchByStage(data.sumBatchByStage);
-        //   })
-        //   .catch(err => console.error("datesSet error:", err.response?.data || err.message));
-
-        // }}
-
         resourceGroupField="stage"
 
         // stage
@@ -1616,9 +1596,17 @@ import dayjs from 'dayjs';
               >
                 {arg.event._def.extendedProps.number_of_history}
             </button>)}
+
             {arg.event._def.extendedProps.experted_date && (
             <div
-                className={`absolute top-[-15px] left-[50px] text-xs px-1 rounded shadow bg-blue-500 text-white`}
+                className={`
+                  absolute top-[-15px] left-[50px] text-xs px-1 rounded shadow text-white
+                  ${arg.event._def.extendedProps.level == '1' ? 'bg-red-500' : ''}
+                  ${arg.event._def.extendedProps.level == '2' ? 'bg-orange-500' : ''}
+                  ${arg.event._def.extendedProps.level == '3' ? 'bg-blue-500' : ''}
+                  ${arg.event._def.extendedProps.level == '3' ? 'bg-green-500' : ''}
+                  ${!['low','medium','high'].includes(arg.event._def.extendedProps.level) ? 'bg-blue-500' : ''}
+                `}
                 title={'Ngày Cần Hàng'}
               >
                 {arg.event._def.extendedProps.experted_date}
@@ -1690,15 +1678,15 @@ import dayjs from 'dayjs';
             visible={showSidebar}
             onClose={setShowSidebar}
             waitPlan={plan}
-            setPercentShow={setPercentShow}
-            percentShow = {percentShow}
             setPlan={setPlan}
+            percentShow = {percentShow}
+            setPercentShow={setPercentShow}
             selectedRows = {selectedRows}
             setSelectedRows = {setSelectedRows}
             quota = {quota}
             resources = {resources}
             type = {type}
-
+           
         />
       {/* </div> */}
 
