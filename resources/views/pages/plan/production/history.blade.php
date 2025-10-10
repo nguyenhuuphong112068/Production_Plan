@@ -28,7 +28,6 @@
           <div class="card-body">
             <div class="table-responsive">
                 <table id="data_table_history" class="table table-bordered table-striped" style="font-size: 20px">
-                  
                   <thead >
                     <tr>
                     <th>STT</th>

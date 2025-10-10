@@ -34,6 +34,7 @@ Route::prefix('/plan')
 
             Route::post('updateInput','updateInput')->name('updateInput');
             Route::post('first_batch','first_batch')->name('first_batch');
+            Route::post('get_last_id','get_last_id')->name('get_last_id');
     });
 
     Route::prefix('/maintenance')

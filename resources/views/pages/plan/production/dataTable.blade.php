@@ -120,7 +120,7 @@
 
                             <td>
                                 <div> {{ $data->name }} </div>
-                                <div> {{ '(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')' }}</div>
+                                <div> {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}}</div>
                             </td>
                             <td>
                                 <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }}>
@@ -145,7 +145,7 @@
                             <td class="text-center "> 
                                 <span
                                     style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
-                                    <input type= "text" class="updateInput" name="level" value = "{{$data->level }}" data-id = {{ $data->id }}>
+                                    <input type= "text" class="updateInput" name="level" value = "{{$data->level}}" data-id = {{$data->id}}>
                                 </span>
                             </td>
 
@@ -157,8 +157,9 @@
                                       {{ $data->is_val ? 'checked' : '' }}
                                       >
                                       <br>
-                                    <span> Lô Thứ {{explode ("_",$data->code_val)[1]}} </span>
-                          
+                                    @if ($data->is_val)
+                                        Lô thứ  {{$data->code_val ? explode('_', $data->code_val)[1] ?? '' : '' }}
+                                    @endif
                             </td>
 
                             <td>{{ $data->source_material_name }}</td>

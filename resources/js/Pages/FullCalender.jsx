@@ -250,33 +250,25 @@ import dayjs from 'dayjs';
       });
     };
 
-    /// --- Scroll sự kiện hiện tại vào view ---
-    // const scrollToEvent = (el) => {
-    //   if (!el) return;
-    //   el.scrollIntoView({
-    //     behavior: "smooth",
-    //     block: "center",
-    //     inline: "center",
-    //   });
-    // };
+    // / --- Scroll sự kiện hiện tại vào view ---
+    const scrollToEvent = (el) => {
+      if (!el) return;
 
-    const scrollToEvent = (eventId) => {
-      const container = document.querySelector(".fc-scroller.fc-scroller-liquid-absolute");
-      const el = document.querySelector(`[data-event-id="${eventId}"]`);
+      el.scrollIntoView({
+        behavior: "auto", // không smooth để tránh rung
+        block: "center",
+        inline: "center",
+      });
 
-      if (!container || !el) {
-        //console.warn("Không tìm thấy event trong DOM", { eventId });
-        return;
-      }
+      setTimeout(() => {
+        window.scrollBy({ top: -50, left: -500, behavior: "auto" });
+      }, 1);
 
-      const containerRect = container.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      
-      container.scrollTop += elRect.top - containerRect.top - container.clientHeight / 2;
-      container.scrollLeft += elRect.left - containerRect.left - container.clientWidth / 2;
+
+
     };
 
-    /// show sidebar
+    
     const handleShowList = () => {
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
       setShowSidebar(true);
