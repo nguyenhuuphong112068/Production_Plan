@@ -20,7 +20,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const [searchTerm, setSearchTerm] = useState(""); 
   const sizes = ["close", "100%" ,"30%" ];
   const [currentIndex, setCurrentIndex] = useState(1);
-  const [tableData, setTableData] = useState(waitPlan);
+  //const [tableData, setTableData] = useState(waitPlan);
   const [showModalCreate, setShowModalCreate] = useState(false); 
   const [showModalQuota, setShowModalQuota] = useState(false); 
   const [orderPlan, setOrderPlan] = useState({checkedClearning: false, title: null, batch: "NA", level: 1});
@@ -40,9 +40,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     }
   }, [resources, stageFilter]); 
 
-  useEffect(() => {
-        setTableData(waitPlan); 
-  }, [waitPlan]);
+  // useEffect(() => {
+  //       setTableData(waitPlan); 
+  // }, [waitPlan]);
 
   // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
@@ -195,7 +195,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       // lấy instrument_code của row vừa chọn
       const code = lastSelected.instrument_code;
       // tìm tất cả row trong dataset có cùng instrument_code
-      const sameInstrument = tableData.filter(
+      const sameInstrument = waitPlan.filter(
         (row) => row.instrument_code === code && row.stage_code === 8
       );
       // đánh dấu multi
@@ -207,7 +207,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       // chọn theo permisson_room
       const targetRoom = JSON.stringify(lastSelected.permisson_room);
 
-      const sameRoom = tableData.filter(
+      const sameRoom = waitPlan.filter(
         (row) =>
           row.stage_code === 8 &&
           JSON.stringify(row.permisson_room) === targetRoom
@@ -263,7 +263,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       }));
 
       // Cập nhật state
-      setTableData(updateOrderData);
+      //setTableData(updateOrderData);
+      setPlan (updateOrderData)
       // Gửi lên server
       axios.put('/Schedual/updateOrder', { updateOrderData: payload })
       . then (res => {
@@ -321,8 +322,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       order_by: r.order_by
     }));
 
-    setTableData(updateOrderData);
-
+    //setTableData(updateOrderData);
+    setPlan (updateOrderData)
 
     axios.put('/Schedual/updateOrder', { updateOrderData: payload })
       . then (res => {
@@ -381,6 +382,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
   const handleCreateAutoCampain = () => {
 
+     Swal.fire({
+              title: "Đang thực thi, vui lòng đợi giây lát..",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              },
+      });
+
       axios.put('/Schedual/createAutoCampain')
       . then (res => {
                     let data = res.data;
@@ -388,7 +397,13 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                       data = data.replace(/^<!--.*?-->/, "").trim();
                       data = JSON.parse(data);
                     }
+
                     setPlan(data.plan);
+
+                    setTimeout(() => {
+                      Swal.close();
+                    }, 100);
+                    
                     Swal.fire({
                       title: 'Hoàn Thành!',
                       text: 'Tạo Mã Chiến Dịch Thành Công',
@@ -400,6 +415,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
                   }
       ).catch (err => {
+                    setTimeout(() => {
+                      Swal.close();
+                    }, 100);
+
                     Swal.fire({
                       icon: 'error',
                       title: 'Lỗi',
@@ -595,8 +614,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
             }
-            setTableData (data.plan_waiting)
-
+           
+            setPlan(data.plan_waiting)
             Swal.fire({
               icon: 'success',
               title: 'Hoàn Thành',
@@ -693,7 +712,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               {percentShow === "100%" ? (
 
               <InputText value= {stageFilter +". " + "Công Đoạn " + stageNames[stageFilter] + " - " + 
-                tableData.filter(event => Number(event.stage_code) === stageFilter).length + " Mục Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
+                waitPlan.filter(event => Number(event.stage_code) === stageFilter).length + " Mục Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
                 /> 
               ):
 
@@ -727,7 +746,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         <DataTable
           className="p-datatable-gridlines prime-gridlines"
           key={percentShow}
-          value={tableData.filter(event => Number(event.stage_code) === stageFilter)}
+          value={waitPlan.filter(event => Number(event.stage_code) === stageFilter)}
           selection={selectedRows}
           onSelectionChange={handleSelectionChange}
           selectionMode="multiple"

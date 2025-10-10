@@ -385,7 +385,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-
+               
                 $startDate = $request->startDate ;
                 $endDate = $request->endDate;
                 $viewtype = $request->viewtype;
@@ -417,9 +417,9 @@ class SchedualController extends Controller
                         }
                         $authorization = session('user')['userGroup'];
 
-                        Log::info('resources', [
-                                'resources' => $resources,
-                        ]);
+
+
+                   
 
                         return response()->json([
                                 'title' => $title,
@@ -1017,33 +1017,6 @@ class SchedualController extends Controller
 
         }// đã có temp
 
-        // public function finished(Request $request){
-
-        //         $id = explode('-', $request->input('id'))[0];
-
-        //         try {
-        //                 DB::table('stage_plan')
-        //                         ->where('id', $id)
-        //                         ->update([
-        //                                 'yields' => $request->input('yields'),
-        //                                 'finished'  => 1
-        //                 ]);
-        //                 DB::table('room_status')
-        //                         ->where('stage_plan_id', $id)
-        //                         ->delete();
-
-        //         } catch (\Exception $e) {
-        //                 Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
-        //                 return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-        //         }
-
-        //         $production = session('user')['production_code'];
-        //         $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
-
-        //         return response()->json([
-        //                 'events' => $events,
-        //         ]);
-        // }
         public function finished(Request $request){
                 $ids = $request->id;
                 try {
@@ -1950,6 +1923,7 @@ class SchedualController extends Controller
                 }
         }
 
+        //Thời gian của từng phòng
         public function getRoomStatistics($startDate, $endDate){
 
                 $startDate= Carbon::parse($startDate);
@@ -1988,6 +1962,7 @@ class SchedualController extends Controller
                 return $result; // 👉 QUAN TRỌNG
         } // đã có temp
 
+        // trả về tổngsản lượng lý thuyết
         public function yield($startDate, $endDate, $group_By){
 
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
@@ -1997,7 +1972,7 @@ class SchedualController extends Controller
                 $result =  DB::table("$stage_plan_table as sp")
                         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
                         ->leftJoin('intermediate_category as ic', 'fc.intermediate_code', '=', 'ic.intermediate_code')
-                        ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
+                        ->whereRaw('((sp.start <= ? AND sp.end >= ?))', [$endDate, $startDate]) 
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', session('user')['production_code'])
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query)
@@ -2451,7 +2426,7 @@ class SchedualController extends Controller
                                                 $bestStart = $bestEnd->copy()->subMinutes((float) $bestRoom->m_time_minutes); //Lô giữa chiến dịch
                                                 $clearningType = 1;
                                         }
-                                        $title = $campaign_task->name ."- ". $campaign_task->batch ."- ". $campaign_task->market;
+                                        $title = $campaign_task->name ."- ". $campaign_task->batch ."-". $campaign_task->market;
                                         $this->saveSchedule(
                                                 $title,
                                                 $campaign_task->id,
@@ -2468,7 +2443,7 @@ class SchedualController extends Controller
                                         $campaign_counter++;
                                 }
                         }else {
-                                $title = $task->name ."- ". $task->batch ."- ". $task->market;
+                                $title = $task->name ."- ". $task->batch ."- ". $task->market ;
                                 $this->saveSchedule(
                                         $title,
                                         $task->id,
@@ -2804,7 +2779,7 @@ class SchedualController extends Controller
                                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float) $bestRoom->C1_time_minutes);
                                                 $clearningType = 1;
                                         }
-                                        $title = $task->name ."- ". $task->batch ."- ". $task->market;
+                                        $title = $task->name ."-". $task->batch ."-". $task->market ;
 
                                         $this->saveSchedule(
                                                 $title,
@@ -2820,7 +2795,7 @@ class SchedualController extends Controller
                                         $campaign_counter++;
                                 }
                         }else {
-                                $title = $task->name ."- ". $task->batch ."- ". $task->market;
+                                $title = $task->name ."- ". $task->batch ."- ". $task->market ;
                                 $this->saveSchedule(
                                         $title,
                                         $task->id,

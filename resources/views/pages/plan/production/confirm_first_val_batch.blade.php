@@ -27,8 +27,8 @@
       <div class="modal-body" style="max-height: 100%; overflow-x: auto; ">
           <div class="card-body">
             <div class="table-responsive">
-                            <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
-                <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
+              <table id="data_table_first_batch" class="table table-bordered table-striped" style="font-size: 20px">
+                <thead >
 
                     <tr>
                         <th>STT</th>
@@ -43,11 +43,12 @@
                         <th>Nguyên Liệu</th>
                         <th>Bao Bì</th>
                         <th>Ghi Chú</th>
-                        <th>Người Tạo/ Ngày Tạo</th>
+                        <th>Chọn</th>
+                       
                     </tr>
 
                 </thead>
-                  <tbody id = "data_table_first_val_batch">
+                  <tbody id = "tbody_first_val_batch">
    
                   </tbody>
                 </table>
@@ -60,7 +61,24 @@
     </div>
   </div>
 </div>
-<!-- Scripts -->
 
 
+<script>
+$(document).ready(function () {
+
+    // Bắt sự kiện động
+    $(document).on('click', '.btn-confirm-first-batch', function () {
+        
+        const batch = $(this).data('batch');
+        const code_val = $(this).data('code_val'); // hoặc data('batch') nếu bạn dùng tên đó
+        const createModal = $('#createModal')
+        
+        createModal.find('input[name="batchNo1"]').val(batch);
+        createModal.find('input[name="code_val_first"]').val(code_val);
+
+       
+    });
+
+})
+</script>
 

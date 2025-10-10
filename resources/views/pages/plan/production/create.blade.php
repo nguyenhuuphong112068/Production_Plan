@@ -11,6 +11,28 @@
         align-items: center;
         /* căn giữa theo chiều dọc */
     }
+
+    .batchNo {
+        display: flex;
+        justify-content: center;   /* canh giữa ngang */
+        align-items: center;       /* canh giữa dọc */
+        font-weight: bold;         /* in đậm */
+        color: green;              /* màu chữ xanh */
+    }
+
+    .updateInput {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        text-align: center;
+        height: 100%;
+        padding: 2px 4px;
+        box-sizing: border-box;
+    }
+
+
+
 </style>
 
 <!-- Modal -->
@@ -87,7 +109,7 @@
 
                             <label>Số lô</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" name="batch"
+                                <input type="text" class="form-control batchNo" name="batch"
                                     value="{{ old('batch') }}" />
                                 <input type="number" min="1" step="1" class="form-control"
                                     name="number_of_batch" value="{{ old('number_of_batch', 1) }}"
@@ -126,39 +148,38 @@
                                     value="{{ old('material_source_id') }}" />
                             </div>
 
-
-
-                            {{-- Lô thẩm định  --}}
-                            {{-- <div class="form-group px-3 mt-4">
-                                <div class="custom-control custom-switch">
-                                    <input type="checkbox" class="custom-control-input" id="customSwitch1"
-                                        name ="is_val">
-                                    <label class="custom-control-label" for="customSwitch1">Ba Lô Thẩm Định Ban
-                                        Đầu</label>
-                                </div>
-                            </div> --}}
-
                             <label class ="mt-1">Lô Thẩm Định</label>
                             <div class="card ">
                                 <div class="card-body">
-                                    <div class="icheck-primary d-inline mx-4">
-                                        <input type="checkbox" class="step-checkbox" id="checkbox1" 
-                                            name = "first_val_batch">
-                                        <label for="checkbox1">Lô thứ nhất</label>
+                                <div class="row">
+                                    <div class="col-md-4">        
+                                        <div class="icheck-primary d-inline">
+                                            <input type="checkbox" class="step-checkbox" id="checkbox1" 
+                                                name = "first_val_batch">
+                                            <label for="checkbox1">Lô thứ nhất</label>
+                                            <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}" />
+                                            <input type="text" name="code_val_first" value="{{ old('code_val_first') }}"/>
+                                        </div>
                                     </div>
-
-                                    <div class="icheck-primary d-inline mx-4">
-                                        <input type="checkbox" class="step-checkbox" id="checkbox2" 
-                                            name = "second_val_batch">
-                                        <label for="checkbox2">Lô thứ hai</label>
+                                    <div class="col-md-4"> 
+                                        <div class="icheck-primary d-inline">
+                                            <input type="checkbox" class="step-checkbox" id="checkbox2" 
+                                                name = "second_val_batch">
+                                            <label for="checkbox2">Lô thứ hai</label>
+                                            <span  class = "batchNo batchNo2" ></span>
+                                        </div>
                                     </div>
-
-                                    <div class="icheck-primary d-inline mx-4">
-                                        <input type="checkbox" class="step-checkbox" id="checkbox3" 
-                                            name = "third_val_batch">
-                                        <label for="checkbox3">Lô thứ ba</label>
+                                    <div class="col-md-4"> 
+                                        <div class="icheck-primary d-inline">
+                                            <input type="checkbox" class="step-checkbox" id="checkbox3" 
+                                                name = "third_val_batch">
+                                            <label for="checkbox3">Lô thứ ba</label>
+                                            <span class = "batchNo batchNo3"></span>
+                                        </div>
                                     </div>
                                 </div>
+                                </div>
+                                
                             </div>
 
                         </div>
@@ -180,7 +201,7 @@
                                 <div class="card-body">
                                     <!-- Minimal style -->
                                     <div class="row">
-                                        <div class="col-sm-12">
+                                        <div class="col-sm-12 mb-1">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-danger d-inline">
                                                     <input type="radio" id="radioDanger" name="level"
@@ -193,7 +214,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="col-sm-12">
+                                        <div class="col-sm-12 mb-1">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-warning d-inline">
                                                     <input type="radio" id="radioWarning" name="level"
@@ -205,7 +226,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="col-sm-12">
+                                        <div class="col-sm-12 mb-1">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-primary d-inline">
                                                     <input type="radio" id="radioPrimary" name="level"
@@ -217,7 +238,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="col-sm-12">
+                                        <div class="col-sm-12 mb-1">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-success d-inline">
                                                     <input type="radio" id="radioSuccess" name="level"
@@ -353,17 +374,65 @@
 
 
         $(".step-checkbox").on("change", function() {
+
+            let batch = $('#createModal input[name="batch"]').val();
             let checkbox1 = $("#checkbox1").is(":checked") ? 1 : 0;
             let checkbox2 = $("#checkbox2").is(":checked") ? 1 : 0;
             let checkbox3 = $("#checkbox3").is(":checked") ? 1 : 0;
+            let code_val = $('input[name="code_val_first"]').val()|| null;
             let intermediate_code = $('input[name="intermediate_code"]').val()|| "" ;
-            const first_batch_modal = $('#data_table_first_val_batch')
+            let first_batch_modal =  $('#tbody_first_val_batch')
+
+            if (checkbox1 == 1 && !batch || batch.trim() === '') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Nhập số lô trước khi chọn lô thẩm định',
+                    confirmButtonText: 'OK'
+                });
+                $('input[name="batchNo1"]').val('');
+                $('input[name="code_val_first"]').val('');
+                return;
+            }
+
+             if (checkbox1 == 0) {
+                    $('input[name="batchNo1"]').val('');
+                    $('input[name="code_val_first"]').val('');
+             }
+
+            if (checkbox1 == 1 && code_val == null ){
+
+                $.ajax({
+                    url: "{{ route('pages.plan.production.get_last_id') }}",
+                    type: 'post',
+                    data: {
+                        table: "plan_master",
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                      
+                        $('input[name="batchNo1"]').val(batch);
+                        $('input[name="code_val_first"]').val(res.last_id + "_1");
+                    },
+                    error: function(xhr, status, error) {
+                            console.error("❌ Lỗi Ajax:", {
+                                status: status,
+                                error: error,
+                                responseText: xhr.responseText
+                            });
+                        }
+                });
+
+                         
+                return;
+
+            }
+            
 
             let total = checkbox1 + checkbox2 + checkbox3;
             $('input[name="number_of_batch"]').val(total);
 
-            if ((checkbox1 == 0 && checkbox2 == 1) || (checkbox1 == 0 && checkbox3 == 1)){
-                
+            if ((checkbox1 == 0 && checkbox2 == 1 && code_val != null) || (checkbox1 == 0 && checkbox3 == 1 && code_val != null)){
+                first_batch_modal.empty();
                 $.ajax({
                     url: "{{ route('pages.plan.production.first_batch') }}",
                     type: 'post',
@@ -372,6 +441,8 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(res) {
+          
+
                         if (res.length === 0) {
                             first_batch_modal.append(
                                 `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
@@ -400,18 +471,21 @@
                                       <div>${item.specification ?? ''}</div>
                                   </td>
 
+                                    <td>
+                                      <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
+
                                   <td style="text-align: center; vertical-align: middle;">
                                       <span style="display: inline-block; padding: 6px 10px; width: 50px; border-radius: 40px; ${colors[item.level] ?? ''}">
                                           <b>${item.level ?? ''}</b>
                                       </span>
-                                  </td>
 
-                                  <td>
-                                      <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
                                   </td>
 
                                   <td class="text-center align-middle">
-                                      ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
+                                      ${item.is_val ? '<i class="fas fa-check text-primary fs-4"></i>' : ''}
+                                      <br>
+                                       <span class="fw-bold text-success">Lô thứ ${item.code_val ? item.code_val.split('_')[1] ?? '' : ''}</span>
                                   </td>
 
                                   <td>${item.source_material_name ?? ''}</td>
@@ -426,23 +500,32 @@
                                   </td>
 
                                   <td>${item.note ?? ''}</td>
-                                  <td>${item.version ?? ''}</td>
-                                  <td >${item.reason ?? ''}</td>
+                                <td>
+                                    <button type="button" class="btn btn-success btn-confirm-first-batch" 
+                                    data-id="${item.id}"
+                                    data-code_val="${item.code_val}"
+                                    data-batch="${item.batch}"
 
-                                  <td>
-                                      <div>${item.prepared_by ?? ''}</div>
-                                      <div>${item.created_at ? moment(item.created_at).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
+                                    data-dismiss="modal">
+                                    <i class="fas fa-plus"></i>
+                                    </button>
+                                </td>
+                            
                               </tr>
                           `);
                             });
                         }
                     },
-                    error: function() {
-                        first_batch_modal.append(
-                            `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-                        );
-                    }
+                    error: function(xhr, status, error) {
+                            console.error("❌ Lỗi Ajax:", {
+                                status: status,
+                                error: error,
+                                responseText: xhr.responseText
+                            });
+                            first_batch_modal.empty().append(
+                                `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                            );
+                        }
                 });
 
                 $('#fist_batch_modal').modal('show');

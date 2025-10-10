@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pages\Plan;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -152,6 +153,7 @@ class ProductionPlanController extends Controller
         }
 
        public function store(Request $request){
+                
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
                         'plan_list_id'   => 'required',
@@ -186,28 +188,48 @@ class ProductionPlanController extends Controller
                         ->withInput();
                 }
 
-                $is_val = $request->is_val == "on" ? 1 : 0;
-                $charater_val = $is_val ? "V" : "";
+                $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
+                $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
+                $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
+                $total =  $first_val_batch +  $second_val_batch + $third_val_batch;
 
-                // Tạo số lô
+                $current_val_batch = 4 - $total;
+                $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
+
+                // // Tạo số lô
                 $batches = [];
+
                 if ($request->format_batch_no == "on") {
                         $prefix = Str::substr($request->batch, -4);
                         $aa     = intval(Str::substr($request->batch, 0, Str::length($request->batch) - 4));
                         for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                        $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
-                        $aa++;
+                                $charater_val = ($i <= $total) ? "V" : "";
+                                $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
+                                $aa++;
                         }
                 } else {
                         $prefix = Str::substr($request->batch, 0, 3);
                         $aa     = intval(Str::substr($request->batch, 3, 3));
                         for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                        $batches[] = $prefix . sprintf("%02d", $aa) . $charater_val;
-                        $aa++;
+                                 $charater_val = ($i <= $total) ? "V" : "";
+                                $batches[] = $prefix . sprintf("%02d", $aa) . $charater_val;
+                                $aa++;
                         }
                 }
+                
 
-                foreach ($batches as $batch) {
+                $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
+                $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
+                $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
+
+              
+                $i = 1;
+                foreach ($batches as  $batch) {
+                        if ($i <= $total){
+                                $code_val_part_1 = $current_val_batch - 1 + $i;
+                        }
+                        
+ 
                         // Insert vào plan_master
                         $planMasterId = DB::table('plan_master')->insertGetId([
                         "product_caterogy_id" => $request->product_caterogy_id,
@@ -215,7 +237,8 @@ class ProductionPlanController extends Controller
                         "batch" => $batch,
                         "expected_date" => $request->expected_date,
                         "level" => $request->level,
-                        "is_val" => $is_val,
+                        "is_val" => ($i <= $total) ? 1 : 0,
+                        "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
                         "after_weigth_date" => $request->after_weigth_date,
                         "before_weigth_date" => $request->before_weigth_date,
                         "after_parkaging_date" => $request->after_parkaging_date,
@@ -237,7 +260,8 @@ class ProductionPlanController extends Controller
                         "batch" => $batch,
                         "expected_date" => $request->expected_date,
                         "level" => $request->level,
-                        "is_val" => $is_val,
+                        "is_val" => ($i <= $total) ? 1 : 0,
+                        //"code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
                         "after_weigth_date" => $request->after_weigth_date,
                         "before_weigth_date" => $request->before_weigth_date,
                         "after_parkaging_date" => $request->after_parkaging_date,
@@ -253,6 +277,7 @@ class ProductionPlanController extends Controller
                         "version" => 1,
                         "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
                         ]);
+                        $i++;
                 }
                 return redirect()->back()->with('success', 'Đã thêm thành công!');
         }
@@ -428,6 +453,9 @@ class ProductionPlanController extends Controller
                         'plan_master.id',
                         'plan_master.plan_list_id',
                         'plan_master.product_caterogy_id',
+                        'plan_master.expected_date',
+                        'plan_master.level',
+                        'plan_master.batch',
                         'intermediate_category.weight_1',
                         'intermediate_category.weight_2',
                         'intermediate_category.prepering',
@@ -439,7 +467,9 @@ class ProductionPlanController extends Controller
                         'finished_product_category.finished_product_code',
                        
                 )
-                ->orderBy('level', 'asc')->orderBy('expected_date', 'asc')
+                ->orderBy('expected_date', 'asc')
+                ->orderBy('level', 'asc')
+                ->orderBy('batch', 'asc')
                 ->get();
 
                 $stages = ['weight_1','weight_2', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging'];
@@ -557,5 +587,44 @@ class ProductionPlanController extends Controller
                 ]);
                 return response()->json(['success' => true]);
         }
+
+        public function first_batch(Request $request) {
+                 ob_clean();
+                $datas = DB::table('plan_master')
+                ->select('plan_master.*', 
+                        'finished_product_category.intermediate_code', 
+                        'finished_product_category.finished_product_code', 
+                        'product_name.name',
+                        'market.name as market', 
+                        'specification.name as specification', 
+                        'finished_product_category.batch_qty',
+                        'finished_product_category.unit_batch_qty',
+                        'finished_product_category.deparment_code',
+                        'source_material.name as source_material_name'
+                        )
+                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id') 
+                ->where('plan_master.active',1)
+                ->where ('is_val',1)
+                ->whereRaw("SUBSTRING_INDEX(plan_master.code_val, '_', -1) = '1'") 
+                ->where ('finished_product_category.intermediate_code',$request->intermediate_code)
+                ->orderBy('id','desc')
+                ->get();
+
+
+                 return response()->json($datas);    
+        }
+
+          public function get_last_id(Request $request) {
+                ob_clean();
+                $last = DB::table($request->table)->latest('id')->value('id');
+                return response()->json([
+                        'last_id' => $last ?? 0
+                ]);
+          }
+
 
 }

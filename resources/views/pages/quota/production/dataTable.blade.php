@@ -144,10 +144,10 @@
                               <span class="px-2 py-1 rounded-pill" style="background-color:red; color:white; font-size: 14px">
                                   Thiếu Định Mức
                               </span>
-                             {{ $typeInput = 'hidden'  }}
+                            @php $typeInput = 'hidden'; @endphp
                           @else
                               {{ $data->room_name . " - " . $data->room_code }}
-                              {{ $typeInput = 'text'  }}
+                               @php $typeInput = 'text'; @endphp
                           @endif
                       </td>
 
