@@ -1,6 +1,6 @@
 .highlight-event {
-  border: 2px solid red !important;
-  background-color: #0bcad0 !important;
+  border: 5px solid red !important;
+  background-color: #9d59a2 !important;
   color: #042df9 !important;
 }
 
@@ -73,7 +73,8 @@
 
 /* highlight match event */
 .highlight-current-event {
-  background-color: rgba(255, 193, 7, 0.9) !important;
+  border: 5px solid red !important;
+  background-color: rgba(228, 3, 249, 0.9) !important;
   transition: background-color 0.3s;
 }
 

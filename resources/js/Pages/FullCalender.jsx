@@ -38,7 +38,8 @@ import dayjs from 'dayjs';
     const searchResultsRef = useRef([]);
     const currentIndexRef = useRef(-1);
     const lastQueryRef = useRef("");
-    const slotViews = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60','resourceTimelineWeek4h']; //, 'resourceTimelineWeek8h', 'resourceTimelineWeek12h', 'resourceTimelineWeek24h'
+    const slotViewWeeks = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60','resourceTimelineWeek4h'];
+    const slotViewMonths = ['resourceTimelineMonth1h', 'resourceTimelineMonth4h', 'resourceTimelineMonth1d'];
     const [slotIndex, setSlotIndex] = useState(0);
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
     const [selectedRows, setSelectedRows] = useState([]);
@@ -98,14 +99,10 @@ import dayjs from 'dayjs';
 
           setTimeout(() => {
             Swal.close();
+           
           }, 100);
 
-          // if (data.events?.length > 0) {
-          //   const firstEventStart = new Date(data.events[0].start);
-
-          //   setTimeout(() =>
-          //     calendarApi.scrollToTime(firstEventId), 300);
-          // }
+         
 
         })
         .catch(err =>
@@ -185,9 +182,14 @@ import dayjs from 'dayjs';
       if (!calendarApi) return;
 
       const events = calendarApi.getEvents();
-      const matches = events.filter(ev =>
+      
+      const matches = events.filter(ev => 
+
         ev.title.toLowerCase().includes(query.toLowerCase())
+      
+        
       );
+      
 
       // Nếu không tìm thấy
       if (matches.length === 0) {
@@ -264,11 +266,9 @@ import dayjs from 'dayjs';
         window.scrollBy({ top: -50, left: -500, behavior: "auto" });
       }, 1);
 
-
-
     };
-
     
+
     const handleShowList = () => {
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
       setShowSidebar(true);
@@ -289,8 +289,6 @@ import dayjs from 'dayjs';
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
-      console.log (activeStart, activeEnd)
 
       setViewName (view)
       axios.post(`/Schedual/view`, {
@@ -952,11 +950,21 @@ import dayjs from 'dayjs';
 
     /// Xử lý độ chia thời gian nhỏ nhất
     const toggleSlotDuration = () => {
+      const calendarApi = calendarRef.current?.getApi();
+      var currentView = calendarApi.view.type;
+     
+    
       setSlotIndex((prevIndex) => {
-        const nextIndex = (prevIndex + 1) % slotViews.length;
-        const calendarApi = calendarRef.current?.getApi();
-        calendarApi.changeView(slotViews[nextIndex]);
-        return nextIndex;
+        if (currentView.includes("Week")){
+          console.log (currentView)
+            const nextIndex = (prevIndex + 1) % slotViewWeeks.length;
+            calendarApi.changeView(slotViewWeeks[nextIndex]);
+             return nextIndex;
+        }else if (currentView.includes("Month")) {
+            const nextIndex = (prevIndex + 1) % slotViewMonths.length;
+            calendarApi.changeView(slotViewMonths[nextIndex]);
+             return nextIndex;
+        } 
       });
     };
 
@@ -1221,9 +1229,8 @@ import dayjs from 'dayjs';
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
         locale="vi"
-        height="auto"
         resourceAreaWidth="250px"
-
+        expandRows = {false}
 
         editable={true}
         droppable={true}
@@ -1404,6 +1411,10 @@ import dayjs from 'dayjs';
           resourceTimelineWeek30: { type: 'resourceTimelineWeek', slotDuration: '00:30:00' },
           resourceTimelineWeek60: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
           resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
+
+          resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00' },
+          resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00' },
+          resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 }},
         }}
 
         customButtons={{
@@ -1481,6 +1492,7 @@ import dayjs from 'dayjs';
           dateRange : {text: ''},
           searchBox: {text: ''},
           fontSizeBox: {text: ''},
+
           slotDuration: {
             text: 'Slot',
             click: toggleSlotDuration
