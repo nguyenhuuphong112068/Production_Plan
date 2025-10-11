@@ -108,7 +108,8 @@ return new class extends Migration {
             $table->string('schedualed_by',512)->nullable();
             $table->dateTime('schedualed_at')->nullable();
             $table->string('note',255)->nullable();   
-            $table->float('yields')->nullable(); 
+            $table->float('yields')->nullable();
+            $table->float('theoretical_yields')->nullable();  
             $table->string('deparment_code', 5); 
 
             $table->dateTime('created_date')->nullable();

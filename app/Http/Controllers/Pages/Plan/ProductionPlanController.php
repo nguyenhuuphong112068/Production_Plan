@@ -462,10 +462,11 @@ class ProductionPlanController extends Controller
                         'intermediate_category.blending',
                         'intermediate_category.forming',
                         'intermediate_category.coating',
+                        'intermediate_category.batch_size',
                         'finished_product_category.primary_parkaging',
                         'finished_product_category.intermediate_code',
                         'finished_product_category.finished_product_code',
-                       
+                        'finished_product_category.batch_qty',     
                 )
                 ->orderBy('expected_date', 'asc')
                 ->orderBy('level', 'asc')
@@ -554,6 +555,7 @@ class ProductionPlanController extends Controller
                                         'keep_dry'            => $tank->keep_dry??0,
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
+                                        'Theoretical_yields' => $stageItem['stage_code'] <= 6 ? $plan->batch_size:$plan->batch_qty,
                                 ];
                         }
 
