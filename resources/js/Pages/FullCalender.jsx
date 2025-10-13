@@ -1636,10 +1636,10 @@ import dayjs from 'dayjs';
               {/* H Xem History */}
             {!arg.event._def.extendedProps.is_clearning &&  (
             <button
-                className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-white`}
+                className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-red`}
                 title={'Xem Lịch Sử Thay Đổi'}
               >
-                {arg.event._def.extendedProps.direction ? '➡' : '⬅'}
+            {arg.event._def.extendedProps.direction ? '➡' : '⬅'} <b>{arg.event._def.extendedProps.order_by}</b>
             </button>)}
 
             {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */}
