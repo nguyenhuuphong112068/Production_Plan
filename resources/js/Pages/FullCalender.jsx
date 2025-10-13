@@ -58,6 +58,7 @@ import dayjs from 'dayjs';
     const [loading, setLoading] = useState(false);
     const [authorization, setAuthorization] = useState(false);
    
+   
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
@@ -96,7 +97,7 @@ import dayjs from 'dayjs';
           setStageMap(data.stageMap);
           setSumBatchByStage(data.sumBatchByStage);
      
-
+          
           setTimeout(() => {
             Swal.close();
            
@@ -675,11 +676,22 @@ import dayjs from 'dayjs';
     /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
     const handleClear = () => {setSelectedEvents([]);};
 
+
+
     /// Xử lý Chạy Lịch Tư Động
+
     const handleAutoSchedualer = () => {
-
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
-
+      // Kiểm tra đầy đủ định mức chưa
+      const hasEmptyPermission = plan.some(item => {
+        const perm = item.permisson_room
+        const isEmptyArray = Array.isArray(perm) && perm.length === 0;
+        return (
+          item.stage_code >= 3 &&
+          item.stage_code <= 7 &&
+          (isEmptyArray)
+        );
+      });
       Swal.fire({
         title: 'Cấu Hình Chung Sắp Lịch',
         html: `
@@ -687,42 +699,41 @@ import dayjs from 'dayjs';
             <div class="cfg-card">
               <!-- Hàng Ngày chạy -->
               <div class="cfg-row cfg-grid-2">
-               <div class="cfg-col">
-                <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
-                <input id="schedule-date" type="date"
-                      class="swal2-input cfg-input cfg-input--half"  name = "start_date"
-                      value="${new Date().toISOString().split('T')[0]}">
+                <div class="cfg-col">
+                  <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
+                  <input id="schedule-date" type="date"
+                        class="swal2-input cfg-input cfg-input--half" name="start_date"
+                        value="${new Date().toISOString().split('T')[0]}">
                 </div>
 
                 <div class="cfg-col">
-                <label class="cfg-label" for="schedule-date">Thời Gian Đệm (ngày):</label>
-                <input id="buffer_date" type="number"  class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "buffer_date">
+                  <label class="cfg-label" for="buffer_date">Thời Gian Đệm (ngày):</label>
+                  <input id="buffer_date" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="3" name="buffer_date">
                 </div>
-
               </div>
 
               <!-- Hàng 2 cột -->
-              <label class="cfg-label" >Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
+              <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
               <div class="cfg-row cfg-grid-2">
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding">Trộn Hoàn Tất Lô Thẩm Định</label>
-                  <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_bleding_val">
+                  <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_bleding_val">
                   <label class="cfg-label" for="wt_forming">Định Hình Lô Thẩm Định</label>
-                  <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_forming_val">
+                  <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_forming_val">
                   <label class="cfg-label" for="wt_coating">Bao Phim Lô Thẩm Định</label>
-                  <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "5" name = "wt_coating_val">
+                  <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_coating_val">
                   <label class="cfg-label" for="wt_blitering">Đóng Gói Lô Thẩm Định</label>
-                  <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "10" name = "wt_blitering_val">
+                  <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="10" name="wt_blitering_val">
                 </div>
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding_val">Trộn Hoàn Tất Lô Thương Mại</label>
-                  <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_bledingl">
+                  <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_bledingl">
                   <label class="cfg-label" for="wt_forming_val">Định Hình Lô Thương Mại</label>
-                  <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_forming">
+                  <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_forming">
                   <label class="cfg-label" for="wt_coating_val">Bao Phim Lô Thương Mại</label>
-                  <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "1" name = "wt_coating">
+                  <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_coating">
                   <label class="cfg-label" for="wt_blitering_val">Đóng Gói Lô Thương Mại</label>
-                  <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min = "0" value = "3" name = "wt_blitering">
+                  <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="3" name="wt_blitering">
                 </div>
               </div>
 
@@ -738,20 +749,35 @@ import dayjs from 'dayjs';
                 </label>
               </div>
 
+              ${
+                hasEmptyPermission
+                  ? `<p style="color:red;font-weight:600;margin-top:10px;">
+                      ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
+                      Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
+                    </p>`
+                  : ''
+              }
             </div>
           </div>
         `,
         width: 700,
-        customClass: { htmlContainer: 'cfg-html-left' , title: 'my-swal-title'},
+        customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
         showCancelButton: true,
         confirmButtonText: 'Chạy',
         cancelButtonText: 'Hủy',
         confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33'
-        ,
+        cancelButtonColor: '#d33',
+        didOpen: () => {
+          // disable nút Chạy nếu thiếu permission
+          if (hasEmptyPermission) {
+            const confirmBtn = Swal.getConfirmButton();
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = "0.5";
+            confirmBtn.style.cursor = "not-allowed";
+          }
+        },
         preConfirm: () => {
           const formValues = {};
-          // Lấy tất cả input trong Swal
           document.querySelectorAll('.swal2-input').forEach(input => {
             formValues[input.name] = input.value;
           });
@@ -768,7 +794,6 @@ import dayjs from 'dayjs';
         }
       }).then((result) => {
         if (result.isConfirmed) {
-          // Hiển thị loading
           Swal.fire({
             title: 'Đang chạy Auto Scheduler...',
             text: 'Vui lòng chờ trong giây lát',
@@ -777,45 +802,45 @@ import dayjs from 'dayjs';
               Swal.showLoading();
             },
           });
-        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
-        // Gọi API với ngày
-        axios.post('/Schedual/scheduleAll', {
-            ...result.value,
-            startDate: activeStart.toISOString(),
-            endDate: activeEnd.toISOString()
-          })
-        .then(res => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-            }
+          const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
-            Swal.fire({
-              icon: 'success',
-              title: 'Hoàn Thành Sắp Lịch',
-              timer: 1000,
-              showConfirmButton: false,
+          axios.post('/Schedual/scheduleAll', {
+              ...result.value,
+              startDate: activeStart.toISOString(),
+              endDate: activeEnd.toISOString()
+            })
+          .then(res => {
+              let data = res.data;
+              if (typeof data === "string") {
+                data = data.replace(/^<!--.*?-->/, "").trim();
+                data = JSON.parse(data);
+              }
+
+              Swal.fire({
+                icon: 'success',
+                title: 'Hoàn Thành Sắp Lịch',
+                timer: 1000,
+                showConfirmButton: false,
+              });
+
+              setEvents(data.events);
+              setSumBatchByStage(data.sumBatchByStage);
+              setPlan(data.plan);
+            })
+          .catch(err => {
+              Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                timer: 1000,
+                showConfirmButton: false,
+              });
+              console.error("ScheduleAll error:", err.response?.data || err.message);
             });
-
-            setEvents(data.events);
-            setSumBatchByStage(data.sumBatchByStage);
-            setPlan(data.plan);
-
-
-          })
-        .catch(err => {
-            Swal.fire({
-              icon: 'error',
-              title: 'Lỗi',
-              timer: 1000,
-              showConfirmButton: false,
-            });
-            console.error("ScheduleAll error:", err.response?.data || err.message);
-          });
-        }});
+        }
+      });
     };
+
 
     /// Xử lý Xóa Toàn Bộ Lịch
     const handleDeleteAllScheduale = () => {
@@ -853,9 +878,7 @@ import dayjs from 'dayjs';
               setSumBatchByStage(data.sumBatchByStage);
               setPlan(data.plan);
 
-              setTimeout(() => {
-                Swal.close();
-              }, 100);
+              setTimeout(() => {Swal.close();}, 100);
 
               Swal.fire({
                 icon: 'success',
@@ -863,26 +886,24 @@ import dayjs from 'dayjs';
                 showConfirmButton: false,
                 timer: 1500
               });
-
+              
             })
+
             .catch(err => {
-
-              setTimeout(() => {
-                Swal.close();
-              }, 100);
-
+              setTimeout(() => {Swal.close();}, 100);
               Swal.fire({
                 icon: 'error',
                 title: 'Xóa lịch thất bại',
                 text: 'Vui lòng thử lại sau.',
                 timer: 1500
               });
+              
+     
+
               console.error("API error:", err.response?.data || err.message);
           });
         }
-        setTimeout(() => {
-                Swal.close();
-              }, 100);
+        setTimeout(() => {Swal.close();}, 100);
 
         });
     };
@@ -1214,6 +1235,123 @@ import dayjs from 'dayjs';
       setShowHistoryModal (true)
     }
 
+    const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, handleConfirmSource, viewConfig, viewName, eventFontSize, type, authorization }) => {
+        const adminAutho = CheckAuthorization(authorization, ['Admin']);
+        const event = arg.event;
+        const props = event.extendedProps;
+        const isSelected = selectedEvents.some(ev => ev.id === event.id);
+        const now = new Date();
+
+        const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
+        const isWeekView = viewName === 'resourceTimelineWeek';
+
+        const renderBadge = (text, color, left) => (
+          <div
+            className={`absolute top-[-15px] left-[${left}px] text-xs px-1 rounded shadow text-white ${color}`}
+          >
+            {text}
+          </div>
+        );
+
+        return (
+          <div className="relative group custom-event-content" data-event-id={event.id}>
+            {/* Tiêu đề + thời gian */}
+            <div style={{ fontSize: `${eventFontSize}px` }}>
+              <b>{event.title}</b>
+              {!isTimelineMonth && (
+                <>
+                  <br />
+                  <span>{moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}</span>
+                </>
+              )}
+            </div>
+
+            {/* Nút Xóa */}
+            {!props.finished && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
+                className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
+                title="Xóa lịch"
+              >
+                ×
+              </button>
+            )}
+
+            {/* Nút Chọn */}
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleEventSelect(event); }}
+              className={`absolute top-0 left-0 text-xs px-1 rounded shadow 
+                ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}
+              `}
+              title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
+            >
+              {isSelected ? '✓' : '+'}
+            </button>
+
+            {/* Nút Xem Lịch Sử */}
+            {type && isWeekView && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleShowHistory(event); }}
+                className="absolute top-[-15px] left-2 text-xs px-1 rounded shadow bg-red-500 text-white"
+                title="Xem Lịch Sử Thay Đổi"
+              >
+                {props.number_of_history}
+              </button>
+            )}
+
+            {/* Badge Ngày cần hàng */}
+            {props.experted_date && renderBadge(
+              props.experted_date,
+              {
+                1: 'bg-red-500',
+                2: 'bg-orange-500',
+                3: 'bg-green-500'
+              }[props.level] || 'bg-blue-500',
+              50
+            )}
+
+            {/* Icon đặc biệt */}
+            {isWeekView && props.tank? renderBadge('⚗️', 'bg-red-500', 170):''}
+            {isWeekView && props.keep_dry ? renderBadge('🌡', 'bg-red-500', 200):''}
+
+
+          
+            {/* Hướng công đoạn */}
+            {!props.is_clearning && adminAutho && (
+              <button
+                className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
+                title="Thứ tự công đoạn"
+              >
+                {props.direction ? '➡' : '⬅'} <b>{props.order_by}</b>
+              </button>
+            )}
+
+            {/* 🎯 Hoàn thành */}
+            {props.finished === 0 && type && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleFinished(event); }}
+                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+                title="Xác Nhận Hoàn Thành Lô Sản Xuất"
+              >
+                🎯
+              </button>
+            )}
+
+            {/* 📦 Nguồn nguyên liệu */}
+            {props.room_source === false && type && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleConfirmSource(event); }}
+                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+                title="Khai báo nguồn nguyên liệu"
+              >
+                📦
+              </button>
+            )}
+          </div>
+        );
+    };
+
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
@@ -1522,157 +1660,177 @@ import dayjs from 'dayjs';
 
         }}
 
-        eventContent={(arg) => {
+        // eventContent={(arg) => {
 
-        const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
-        const now = new Date();
-        return (
-        <div className="relative  group custom-event-content" data-event-id={arg.event.id} >
+        // const adminAutho = CheckAuthorization(authorization, ['Admin']);
+        // const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
+        // const now = new Date();
+        // return (
+        // <div className="relative  group custom-event-content" data-event-id={arg.event.id} >
 
-            <div style={{fontSize: `${eventFontSize}px`}}>
-              <b>{arg.event.title}</b>
-              <br/>
-              {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""}
-            </div>
+        //     <div style={{fontSize: `${eventFontSize}px`}}>
+        //       <b>{arg.event.title}</b>
+        //       <br/>
+        //       {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""}
+        //     </div>
 
-            {/* Nút xóa */}
-            {arg.event.extendedProps.finished !== 1 && (
-              <button onClick={(e) => {
-                //alert ("sa");
-                handleDeleteScheduale(e);
-              }}
-              className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
-              title="Xóa lịch"
-            >
-              ×
-            </button>)}
+        //     {/* Nút xóa */}
+        //     {arg.event.extendedProps.finished !== 1 && (
+        //       <button onClick={(e) => {
+        //         //alert ("sa");
+        //         handleDeleteScheduale(e);
+        //       }}
+        //       className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
+        //       title="Xóa lịch"
+        //     >
+        //       ×
+        //     </button>)}
 
-            {/* Nút Sửa/Nội dung */}
-            {/* <button
-              onClick={(e) => {
-                console.log (arg.event)
-                e.stopPropagation();
-                Swal.fire({
-                  title: 'Thêm nội dung cho lịch',
-                  input: 'textarea',
-                  //inputLabel: 'Ghi chú',
-                  inputPlaceholder: 'Nhập nội dung tại đây...',
-                  showCancelButton: true,
-                  confirmButtonText: 'Lưu',
-                  cancelButtonText: 'Hủy',
-                  preConfirm: (value) => {
-                    if (!value) return Swal.showValidationMessage('Nội dung không được để trống');
-                    // Cập nhật nội dung hoặc gửi server
-                    arg.event.setExtendedProp('note', value);
-                    router.put(`/Schedual/addEventContent/${arg.event.id}`, { note: value});
-                  }
-                });
-              }}
-              className="absolute top-0 right-6 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-              title="Thêm nội dung"
-            >
-              📝
-            </button> */}
+        //     {/* Nút Sửa/Nội dung */}
+        //     {/* <button
+        //       onClick={(e) => {
+        //         console.log (arg.event)
+        //         e.stopPropagation();
+        //         Swal.fire({
+        //           title: 'Thêm nội dung cho lịch',
+        //           input: 'textarea',
+        //           //inputLabel: 'Ghi chú',
+        //           inputPlaceholder: 'Nhập nội dung tại đây...',
+        //           showCancelButton: true,
+        //           confirmButtonText: 'Lưu',
+        //           cancelButtonText: 'Hủy',
+        //           preConfirm: (value) => {
+        //             if (!value) return Swal.showValidationMessage('Nội dung không được để trống');
+        //             // Cập nhật nội dung hoặc gửi server
+        //             arg.event.setExtendedProp('note', value);
+        //             router.put(`/Schedual/addEventContent/${arg.event.id}`, { note: value});
+        //           }
+        //         });
+        //       }}
+        //       className="absolute top-0 right-6 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+        //       title="Thêm nội dung"
+        //     >
+        //       📝
+        //     </button> */}
 
-            {/* ✅ Nút Select thêm vào đây */}
-            <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleEventSelect(arg.event);
-                }}
-                className={`absolute top-0 left-0 text-xs px-1 rounded shadow
-                  ${isSelected ? 'block' : 'hidden group-hover:block'}
-                  ${isSelected ? 'bg-blue-500 text-white' : 'bg-white text-blue-500 border border-blue-500'}
-                `}
-                title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
-              >
-                {isSelected ? '✓' : '+'}
-            </button>
+        //     {/* ✅ Nút Select thêm vào đây */}
+        //     <button
+        //         onClick={(e) => {
+        //           e.stopPropagation();
+        //           toggleEventSelect(arg.event);
+        //         }}
+        //         className={`absolute top-0 left-0 text-xs px-1 rounded shadow
+        //           ${isSelected ? 'block' : 'hidden group-hover:block'}
+        //           ${isSelected ? 'bg-blue-500 text-white' : 'bg-white text-blue-500 border border-blue-500'}
+        //         `}
+        //         title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
+        //       >
+        //         {isSelected ? '✓' : '+'}
+        //     </button>
 
-            {/* H Xem History */}
-            {type && viewName == "resourceTimelineWeek"  && (
-            <button
-                onClick={(e) => { 
-                  e.stopPropagation();
-                  handleShowHistory(arg.event);}}
-                className={`absolute top-[-15px] left-2 text-xs px-1 rounded shadow bg-red-500 text-white`}
-                title={'Xem Lịch Sử Thay Đổi'}
-              >
-                {arg.event._def.extendedProps.number_of_history}
-            </button>)}
+        //     {/* H Xem History */}
+        //     {type && viewName == "resourceTimelineWeek"  && (
+        //     <button
+        //         onClick={(e) => { 
+        //           e.stopPropagation();
+        //           handleShowHistory(arg.event);}}
+        //         className={`absolute top-[-15px] left-2 text-xs px-1 rounded shadow bg-red-500 text-white`}
+        //         title={'Xem Lịch Sử Thay Đổi'}
+        //       >
+        //         {arg.event._def.extendedProps.number_of_history}
+        //     </button>)}
 
-            {arg.event._def.extendedProps.experted_date && (
-            <div
-                className={`
-                  absolute top-[-15px] left-[50px] text-xs px-1 rounded shadow text-white
-                  ${arg.event._def.extendedProps.level == '1' ? 'bg-red-500' : ''}
-                  ${arg.event._def.extendedProps.level == '2' ? 'bg-orange-500' : ''}
-                  ${arg.event._def.extendedProps.level == '3' ? 'bg-blue-500' : ''}
-                  ${arg.event._def.extendedProps.level == '3' ? 'bg-green-500' : ''}
-                  ${!['low','medium','high'].includes(arg.event._def.extendedProps.level) ? 'bg-blue-500' : ''}
-                `}
-                title={'Ngày Cần Hàng'}
-              >
-                {arg.event._def.extendedProps.experted_date}
-            </div>)}
+        //     {arg.event._def.extendedProps.experted_date && (
+        //     <div
+        //         className={`
+        //           absolute top-[-15px] left-[50px] text-xs px-1 rounded shadow text-white
+        //           ${arg.event._def.extendedProps.level == '1' ? 'bg-red-500' : ''}
+        //           ${arg.event._def.extendedProps.level == '2' ? 'bg-orange-500' : ''}
+        //           ${arg.event._def.extendedProps.level == '3' ? 'bg-blue-500' : ''}
+        //           ${arg.event._def.extendedProps.level == '3' ? 'bg-green-500' : ''}
+        //           ${!['low','medium','high'].includes(arg.event._def.extendedProps.level) ? 'bg-blue-500' : ''}
+        //         `}
+        //         title={'Ngày Cần Hàng'}
+        //       >
+        //         {arg.event._def.extendedProps.experted_date}
+        //     </div>)}
 
-            {arg.event._def.extendedProps.tank == true &&  viewName == "resourceTimelineWeek"  && (
-            <div
-                className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
-                title={'Bồn Trộn Lập Phương'}
-              >
-                ⚗️
-            </div>)}
+        //     {arg.event._def.extendedProps.tank == true &&  viewName == "resourceTimelineWeek"  && (
+        //     <div
+        //         className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
+        //         title={'Bồn Trộn Lập Phương'}
+        //       >
+        //         ⚗️
+        //     </div>)}
 
-            {arg.event._def.extendedProps.keep_dry == true &&  viewName == "resourceTimelineWeek"  && (
-            <div
-                className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
-                title={'Đóng Gói Độ Ẩm Thấp'}
-              >
-                🌡
-            </div>)}
+        //     {arg.event._def.extendedProps.keep_dry == true &&  viewName == "resourceTimelineWeek"  && (
+        //     <div
+        //         className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
+        //         title={'Đóng Gói Độ Ẩm Thấp'}
+        //       >
+        //         🌡
+        //     </div>)}
 
 
-              {/* H Xem History */}
-            {!arg.event._def.extendedProps.is_clearning &&  (
-            <button
-                className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-red`}
-                title={'Xem Lịch Sử Thay Đổi'}
-              >
-            {arg.event._def.extendedProps.direction ? '➡' : '⬅'} <b>{arg.event._def.extendedProps.order_by}</b>
-            </button>)}
+        //       {/* H Xem History */}
+        //     {!arg.event._def.extendedProps.is_clearning && adminAutho && (
+        //     <button
+        //         className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-red`}
+        //         title={'Xem Lịch Sử Thay Đổi'}
+        //       >
+        //     {arg.event._def.extendedProps.direction ? '➡' : '⬅'} <b>{arg.event._def.extendedProps.order_by}</b>
+        //     </button>)}
 
-            {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */}
-            {arg.event.extendedProps.finished == 0  && type && (
-              <button onClick={(e) => { e.stopPropagation(); handleFinished(arg.event);}}
-                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-                title='Xác Nhận Hoàn Thành Lô Sản Xuất'
-              >
-                🎯
-            </button>)}
+        //     {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */}
+        //     {arg.event.extendedProps.finished == 0  && type && (
+        //       <button onClick={(e) => { e.stopPropagation(); handleFinished(arg.event);}}
+        //         className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+        //         title='Xác Nhận Hoàn Thành Lô Sản Xuất'
+        //       >
+        //         🎯
+        //     </button>)}
 
-            {/* 📦 Nút Xác nhận nguồn NL Và Phòng Sản Xuất */}
-            {arg.event.extendedProps.room_source === false  && type && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConfirmSource(arg.event);
-                }}
-                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-                title='Khai báo nguồn nguyên liệu trên thiết bị sản xuất'
-              >
-                📦
-            </button>)}
+        //     {/* 📦 Nút Xác nhận nguồn NL Và Phòng Sản Xuất */}
+        //     {arg.event.extendedProps.room_source === false  && type && (
+        //       <button
+        //         onClick={(e) => {
+        //           e.stopPropagation();
+        //           handleConfirmSource(arg.event);
+        //         }}
+        //         className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+        //         title='Khai báo nguồn nguyên liệu trên thiết bị sản xuất'
+        //       >
+        //         📦
+        //     </button>)}
 
-        </div>
+        // </div>
 
-        )}}
+        // )}}
+
+          
 
         slotLaneDidMount={(info) => {
           if (info.date < new Date()) {
             info.el.style.backgroundColor = "rgba(0,0,0,0.05)";
           }
         }}
+
+        eventContent={(arg) => (
+            <EventContent
+              arg={arg}
+              selectedEvents={selectedEvents}
+              toggleEventSelect={toggleEventSelect}
+              handleDeleteScheduale={handleDeleteScheduale}
+              handleShowHistory={handleShowHistory}
+              handleFinished={handleFinished}
+              handleConfirmSource={handleConfirmSource}
+              viewConfig={viewConfig}
+              viewName={viewName}
+              eventFontSize={eventFontSize}
+              type={type}
+              authorization={authorization}
+            />
+          )}
 
 
       />

@@ -674,6 +674,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         
             {percentShow === "100%" && stageFilter <=7 ? (
               <>
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3">
+                {selectedRows.length} 
+              </div>
+
               <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
               onClick={handleCreateManualCampain}>
               <i className="fas fa-flag"></i> ({selectedRows.length})
@@ -687,7 +691,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
                 onClick={handleFinished}>
                 <i className="fas fa-check"></i>
-              </div> 
+              </div>
+
+
 
               </>):<></>}
               {percentShow === "100%" && stageFilter === 9 && type ? (
