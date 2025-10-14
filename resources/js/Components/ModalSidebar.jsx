@@ -40,10 +40,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     }
   }, [resources, stageFilter]); 
 
-  // useEffect(() => {
-  //       setTableData(waitPlan); 
-  // }, [waitPlan]);
-
   // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
 
@@ -527,8 +523,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   };
 
   const roomBody = (rowData) => {
-  
-    if (!rowData.permisson_room || rowData.permisson_room.length === 0) {
+     
+    if (!rowData.permisson_room ||  rowData.permisson_room.length === 0 ) {
+       
       return (
         <span
           className='btn'
@@ -547,6 +544,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         </span>
       );
     }
+    
     return Object.values(rowData.permisson_room).join(", ");
 
   };
