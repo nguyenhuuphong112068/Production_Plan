@@ -39,7 +39,7 @@ import dayjs from 'dayjs';
     const currentIndexRef = useRef(-1);
     const lastQueryRef = useRef("");
     const slotViewWeeks = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60','resourceTimelineWeek4h'];
-    const slotViewMonths = ['resourceTimelineMonth1h', 'resourceTimelineMonth4h', 'resourceTimelineMonth1d'];
+    const slotViewMonths = [ 'resourceTimelineMonth1d','resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
     const [slotIndex, setSlotIndex] = useState(0);
     const [eventFontSize, setEventFontSize] = useState(14); // default 14px
     const [selectedRows, setSelectedRows] = useState([]);
@@ -57,14 +57,11 @@ import dayjs from 'dayjs';
     const [type, setType] = useState(true);
     const [loading, setLoading] = useState(false);
     const [authorization, setAuthorization] = useState(false);
-   
-   
+
+
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
-      // const calendarApi = calendarRef.current?.getApi();
-      // if (!calendarApi) return;
-
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
@@ -74,14 +71,13 @@ import dayjs from 'dayjs';
       });
 
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      //console.log (activeStart.toISOString(), activeEnd.toISOString())
       axios.post("/Schedual/view", {
           startDate: activeStart.toISOString(),
           endDate: activeEnd.toISOString(),
           viewtype: viewName,
       })
         .then(res => {
-          
+
           let data = res.data;
 
           if (typeof data === "string") {
@@ -96,14 +92,15 @@ import dayjs from 'dayjs';
           setQuota(data.quota);
           setStageMap(data.stageMap);
           setSumBatchByStage(data.sumBatchByStage);
-     
-          
+
+         // console.log (data.events)
+
           setTimeout(() => {
             Swal.close();
-           
+
           }, 100);
 
-         
+
 
         })
         .catch(err =>
@@ -183,14 +180,14 @@ import dayjs from 'dayjs';
       if (!calendarApi) return;
 
       const events = calendarApi.getEvents();
-      
-      const matches = events.filter(ev => 
+
+      const matches = events.filter(ev =>
 
         ev.title.toLowerCase().includes(query.toLowerCase())
-      
-        
+
+
       );
-      
+
 
       // Nếu không tìm thấy
       if (matches.length === 0) {
@@ -268,7 +265,7 @@ import dayjs from 'dayjs';
       }, 1);
 
     };
-    
+
 
     const handleShowList = () => {
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
@@ -277,7 +274,7 @@ import dayjs from 'dayjs';
 
     ///  Thay đôi khung thời gian
     const handleViewChange = (view) => {
-      
+
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
@@ -285,7 +282,7 @@ import dayjs from 'dayjs';
           Swal.showLoading();
         },
       });
-      
+
 
       setViewConfig({ is_clearning: false, timeView: view });
       calendarRef.current?.getApi()?.changeView(view)
@@ -307,7 +304,7 @@ import dayjs from 'dayjs';
           // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
           setEvents(data.events);
           setResources(data.resources);
-          
+
 
           setTimeout(() => {
             Swal.close();
@@ -328,7 +325,7 @@ import dayjs from 'dayjs';
     const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
       const calendarApi = calendarRef.current?.getApi();
       if (!calendarApi) return;
-
+      alert ("sa")
       const pm = event.extendedProps.plan_master_id;
 
       if (!isCtrlPressed) {
@@ -450,7 +447,7 @@ import dayjs from 'dayjs';
                 data = data.replace(/^<!--.*?-->/, "").trim();
                 data = JSON.parse(data);
               }
-              console.log (data);
+              
               setEvents(data.events);
               setResources(data.resources);
               setSumBatchByStage(data.sumBatchByStage);
@@ -676,8 +673,6 @@ import dayjs from 'dayjs';
     /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
     const handleClear = () => {setSelectedEvents([]);};
 
-
-
     /// Xử lý Chạy Lịch Tư Động
 
     const handleAutoSchedualer = () => {
@@ -874,10 +869,11 @@ import dayjs from 'dayjs';
                 data = data.replace(/^<!--.*?-->/, "").trim();
                 data = JSON.parse(data);
               }
-              setEvents(data.events);
-              setSumBatchByStage(data.sumBatchByStage);
-              setPlan(data.plan);
+              // setEvents(data.events);
+              // setSumBatchByStage(data.sumBatchByStage);
+              // setPlan(data.plan);
 
+              setLoading (!loading)
               setTimeout(() => {Swal.close();}, 100);
 
               Swal.fire({
@@ -886,7 +882,7 @@ import dayjs from 'dayjs';
                 showConfirmButton: false,
                 timer: 1500
               });
-              
+
             })
 
             .catch(err => {
@@ -897,8 +893,8 @@ import dayjs from 'dayjs';
                 text: 'Vui lòng thử lại sau.',
                 timer: 1500
               });
-              
-     
+
+
 
               console.error("API error:", err.response?.data || err.message);
           });
@@ -973,11 +969,11 @@ import dayjs from 'dayjs';
     const toggleSlotDuration = () => {
       const calendarApi = calendarRef.current?.getApi();
       var currentView = calendarApi.view.type;
-     
-    
+
+
       setSlotIndex((prevIndex) => {
         if (currentView.includes("Week")){
-          console.log (currentView)
+         
             const nextIndex = (prevIndex + 1) % slotViewWeeks.length;
             calendarApi.changeView(slotViewWeeks[nextIndex]);
              return nextIndex;
@@ -985,7 +981,7 @@ import dayjs from 'dayjs';
             const nextIndex = (prevIndex + 1) % slotViewMonths.length;
             calendarApi.changeView(slotViewMonths[nextIndex]);
              return nextIndex;
-        } 
+        }
       });
     };
 
@@ -1238,7 +1234,7 @@ import dayjs from 'dayjs';
     const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, handleConfirmSource, viewConfig, viewName, eventFontSize, type, authorization }) => {
         const adminAutho = CheckAuthorization(authorization, ['Admin']);
         const event = arg.event;
-        const props = event.extendedProps;
+        const props = event._def.extendedProps;
         const isSelected = selectedEvents.some(ev => ev.id === event.id);
         const now = new Date();
 
@@ -1252,6 +1248,8 @@ import dayjs from 'dayjs';
             {text}
           </div>
         );
+       
+      
 
         return (
           <div className="relative group custom-event-content" data-event-id={event.id}>
@@ -1280,7 +1278,7 @@ import dayjs from 'dayjs';
             {/* Nút Chọn */}
             <button
               onClick={(e) => { e.stopPropagation(); toggleEventSelect(event); }}
-              className={`absolute top-0 left-0 text-xs px-1 rounded shadow 
+              className={`absolute top-0 left-0 text-xs px-1 rounded shadow
                 ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}
               `}
               title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
@@ -1300,8 +1298,8 @@ import dayjs from 'dayjs';
             )}
 
             {/* Badge Ngày cần hàng */}
-            {props.experted_date && renderBadge(
-              props.experted_date,
+            {props.expected_date && renderBadge(
+              props.expected_date,
               {
                 1: 'bg-red-500',
                 2: 'bg-orange-500',
@@ -1315,14 +1313,14 @@ import dayjs from 'dayjs';
             {isWeekView && props.keep_dry ? renderBadge('🌡', 'bg-red-500', 200):''}
 
 
-          
+
             {/* Hướng công đoạn */}
             {!props.is_clearning && adminAutho && (
               <button
                 className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
                 title="Thứ tự công đoạn"
               >
-                {props.direction ? '➡' : '⬅'} <b>{props.order_by}</b>
+                 <b>{props.order_by}</b> {/*  {props.direction ? '➡' : '⬅'} */}
               </button>
             )}
 
@@ -1390,7 +1388,7 @@ import dayjs from 'dayjs';
 
         // stage
         resourceGroupLabelContent={(arg) => {
-          
+
           const stage_code = stageMap[arg.groupValue] || {};
           const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
           const qty = sumItem ? formatNumberWithComma(sumItem.total_qty) : "0";
@@ -1533,7 +1531,7 @@ import dayjs from 'dayjs';
           },
           resourceTimelineQuarter: {
               slotDuration: { days: 1 },
-              duration: { months: 4 },      
+              duration: { months: 4 },
               buttonText: 'Quý',
               titleFormat: { year: 'numeric', month: 'short' },
               type: 'resourceTimeline',
@@ -1572,7 +1570,7 @@ import dayjs from 'dayjs';
               setLoading (!loading);
             }
           },
-          
+
           customList: {
             text: 'KHSX',
             click: handleShowList
@@ -1653,161 +1651,14 @@ import dayjs from 'dayjs';
             }
 
             info.el.addEventListener("dblclick", (e) => {
-
+                alert ("sa")
                 e.stopPropagation();
                 handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
               });
 
         }}
 
-        // eventContent={(arg) => {
 
-        // const adminAutho = CheckAuthorization(authorization, ['Admin']);
-        // const isSelected = selectedEvents.some(ev => ev.id === arg.event.id);
-        // const now = new Date();
-        // return (
-        // <div className="relative  group custom-event-content" data-event-id={arg.event.id} >
-
-        //     <div style={{fontSize: `${eventFontSize}px`}}>
-        //       <b>{arg.event.title}</b>
-        //       <br/>
-        //       {viewConfig.timeView != 'resourceTimelineMonth' ? (<span >{moment(arg.event.start).format('HH:mm')} - {moment(arg.event.end).format('HH:mm')}</span>):""}
-        //     </div>
-
-        //     {/* Nút xóa */}
-        //     {arg.event.extendedProps.finished !== 1 && (
-        //       <button onClick={(e) => {
-        //         //alert ("sa");
-        //         handleDeleteScheduale(e);
-        //       }}
-        //       className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
-        //       title="Xóa lịch"
-        //     >
-        //       ×
-        //     </button>)}
-
-        //     {/* Nút Sửa/Nội dung */}
-        //     {/* <button
-        //       onClick={(e) => {
-        //         console.log (arg.event)
-        //         e.stopPropagation();
-        //         Swal.fire({
-        //           title: 'Thêm nội dung cho lịch',
-        //           input: 'textarea',
-        //           //inputLabel: 'Ghi chú',
-        //           inputPlaceholder: 'Nhập nội dung tại đây...',
-        //           showCancelButton: true,
-        //           confirmButtonText: 'Lưu',
-        //           cancelButtonText: 'Hủy',
-        //           preConfirm: (value) => {
-        //             if (!value) return Swal.showValidationMessage('Nội dung không được để trống');
-        //             // Cập nhật nội dung hoặc gửi server
-        //             arg.event.setExtendedProp('note', value);
-        //             router.put(`/Schedual/addEventContent/${arg.event.id}`, { note: value});
-        //           }
-        //         });
-        //       }}
-        //       className="absolute top-0 right-6 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-        //       title="Thêm nội dung"
-        //     >
-        //       📝
-        //     </button> */}
-
-        //     {/* ✅ Nút Select thêm vào đây */}
-        //     <button
-        //         onClick={(e) => {
-        //           e.stopPropagation();
-        //           toggleEventSelect(arg.event);
-        //         }}
-        //         className={`absolute top-0 left-0 text-xs px-1 rounded shadow
-        //           ${isSelected ? 'block' : 'hidden group-hover:block'}
-        //           ${isSelected ? 'bg-blue-500 text-white' : 'bg-white text-blue-500 border border-blue-500'}
-        //         `}
-        //         title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
-        //       >
-        //         {isSelected ? '✓' : '+'}
-        //     </button>
-
-        //     {/* H Xem History */}
-        //     {type && viewName == "resourceTimelineWeek"  && (
-        //     <button
-        //         onClick={(e) => { 
-        //           e.stopPropagation();
-        //           handleShowHistory(arg.event);}}
-        //         className={`absolute top-[-15px] left-2 text-xs px-1 rounded shadow bg-red-500 text-white`}
-        //         title={'Xem Lịch Sử Thay Đổi'}
-        //       >
-        //         {arg.event._def.extendedProps.number_of_history}
-        //     </button>)}
-
-        //     {arg.event._def.extendedProps.experted_date && (
-        //     <div
-        //         className={`
-        //           absolute top-[-15px] left-[50px] text-xs px-1 rounded shadow text-white
-        //           ${arg.event._def.extendedProps.level == '1' ? 'bg-red-500' : ''}
-        //           ${arg.event._def.extendedProps.level == '2' ? 'bg-orange-500' : ''}
-        //           ${arg.event._def.extendedProps.level == '3' ? 'bg-blue-500' : ''}
-        //           ${arg.event._def.extendedProps.level == '3' ? 'bg-green-500' : ''}
-        //           ${!['low','medium','high'].includes(arg.event._def.extendedProps.level) ? 'bg-blue-500' : ''}
-        //         `}
-        //         title={'Ngày Cần Hàng'}
-        //       >
-        //         {arg.event._def.extendedProps.experted_date}
-        //     </div>)}
-
-        //     {arg.event._def.extendedProps.tank == true &&  viewName == "resourceTimelineWeek"  && (
-        //     <div
-        //         className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
-        //         title={'Bồn Trộn Lập Phương'}
-        //       >
-        //         ⚗️
-        //     </div>)}
-
-        //     {arg.event._def.extendedProps.keep_dry == true &&  viewName == "resourceTimelineWeek"  && (
-        //     <div
-        //         className={`absolute top-[-15px] left-[170px] text-xs px-1 rounded shadow bg-red-500 text-white`}
-        //         title={'Đóng Gói Độ Ẩm Thấp'}
-        //       >
-        //         🌡
-        //     </div>)}
-
-
-        //       {/* H Xem History */}
-        //     {!arg.event._def.extendedProps.is_clearning && adminAutho && (
-        //     <button
-        //         className={`absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white-500 text-red`}
-        //         title={'Xem Lịch Sử Thay Đổi'}
-        //       >
-        //     {arg.event._def.extendedProps.direction ? '➡' : '⬅'} <b>{arg.event._def.extendedProps.order_by}</b>
-        //     </button>)}
-
-        //     {/* 🎯 Nút Xác nhận Hoàn thành && arg.event._instance.range.end <= now */}
-        //     {arg.event.extendedProps.finished == 0  && type && (
-        //       <button onClick={(e) => { e.stopPropagation(); handleFinished(arg.event);}}
-        //         className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-        //         title='Xác Nhận Hoàn Thành Lô Sản Xuất'
-        //       >
-        //         🎯
-        //     </button>)}
-
-        //     {/* 📦 Nút Xác nhận nguồn NL Và Phòng Sản Xuất */}
-        //     {arg.event.extendedProps.room_source === false  && type && (
-        //       <button
-        //         onClick={(e) => {
-        //           e.stopPropagation();
-        //           handleConfirmSource(arg.event);
-        //         }}
-        //         className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-        //         title='Khai báo nguồn nguyên liệu trên thiết bị sản xuất'
-        //       >
-        //         📦
-        //     </button>)}
-
-        // </div>
-
-        // )}}
-
-          
 
         slotLaneDidMount={(info) => {
           if (info.date < new Date()) {
@@ -1848,7 +1699,7 @@ import dayjs from 'dayjs';
             quota = {quota}
             resources = {resources}
             type = {type}
-           
+
         />
       {/* </div> */}
 
@@ -1878,7 +1729,7 @@ import dayjs from 'dayjs';
                 return { id, stage_code: stageCode };
               });
               setSelectedEvents(selected);
-              console.log (selectedEvents);
+              //console.log (selectedEvents);
             }}
         />
 
