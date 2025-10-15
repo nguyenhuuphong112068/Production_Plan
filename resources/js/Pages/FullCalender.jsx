@@ -7,6 +7,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
+import { Calendar } from 'primereact/calendar';
+
 
 import axios from "axios";
 import 'moment/locale/vi';
@@ -47,6 +49,8 @@ import dayjs from 'dayjs';
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [viewName, setViewName] = useState("resourceTimelineWeek");
 
+
+
     const [events, setEvents] = useState([]);
     const [resources, setResources] = useState([]);
     const [sumBatchByStage, setSumBatchByStage] = useState([]);
@@ -57,6 +61,7 @@ import dayjs from 'dayjs';
     const [type, setType] = useState(true);
     const [loading, setLoading] = useState(false);
     const [authorization, setAuthorization] = useState(false);
+
 
 
 
@@ -93,7 +98,7 @@ import dayjs from 'dayjs';
           setStageMap(data.stageMap);
           setSumBatchByStage(data.sumBatchByStage);
 
-         // console.log (data.events)
+          
 
           setTimeout(() => {
             Swal.close();
@@ -173,6 +178,7 @@ import dayjs from 'dayjs';
         toolbarEl.removeChild(container);
       };
     }, [eventFontSize]); // chỉ chạy 1 lần
+
 
     ///
     const handleSearch = (query, direction = "next") => {
@@ -304,6 +310,7 @@ import dayjs from 'dayjs';
           // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
           setEvents(data.events);
           setResources(data.resources);
+          setSumBatchByStage (data.sumBatchByStage)
 
 
           setTimeout(() => {
@@ -325,7 +332,7 @@ import dayjs from 'dayjs';
     const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
       const calendarApi = calendarRef.current?.getApi();
       if (!calendarApi) return;
-      alert ("sa")
+     
       const pm = event.extendedProps.plan_master_id;
 
       if (!isCtrlPressed) {
@@ -671,22 +678,28 @@ import dayjs from 'dayjs';
     };
 
     /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
-    const handleClear = () => {setSelectedEvents([]);};
+    const handleClear = () => {
+      setSelectedEvents([]);
+      handleEventUnHightLine 
+    };
 
     /// Xử lý Chạy Lịch Tư Động
 
     const handleAutoSchedualer = () => {
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
-      // Kiểm tra đầy đủ định mức chưa
-      const hasEmptyPermission = plan.some(item => {
+        if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+
+        const hasEmptyPermission = plan.some(item => {
         const perm = item.permisson_room
         const isEmptyArray = Array.isArray(perm) && perm.length === 0;
+
         return (
           item.stage_code >= 3 &&
           item.stage_code <= 7 &&
           (isEmptyArray)
         );
       });
+
+      let selectedDates = [];
       Swal.fire({
         title: 'Cấu Hình Chung Sắp Lịch',
         html: `
@@ -744,6 +757,11 @@ import dayjs from 'dayjs';
                 </label>
               </div>
 
+              <div class="cfg-row">
+              <!-- ✅ Vùng để gắn Calendar -->
+              <label class="cfg-label" for="work-sunday">Ngày Không Sắp Lịch:</label> 
+              <div id="calendar-container" style="margin-top: 15px;"></div>
+              </div>
               ${
                 hasEmptyPermission
                   ? `<p style="color:red;font-weight:600;margin-top:10px;">
@@ -763,6 +781,49 @@ import dayjs from 'dayjs';
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
         didOpen: () => {
+          const container = document.getElementById("calendar-container");
+          // ✅ Tạo root riêng cho Calendar
+          const root = ReactDOM.createRoot(container);
+         
+
+          // ✅ Dùng state nội bộ để update Calendar ngay khi click
+          const CalendarPopup = () => {
+            const [localDates, setLocalDates] = React.useState([]);
+
+            const handleChange = (e) => {
+              const selected = e.value.map(d => {
+                const date = new Date(d);
+
+                // Lấy ngày, tháng, năm theo múi giờ local (VN)
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const day = String(date.getDate()).padStart(2, "0");
+
+                return `${year}-${month}-${day}`; // không dùng toISOString()
+              });
+
+              setLocalDates(e.value);
+              selectedDates = selected;
+            };
+
+            return (
+              <div className="card flex justify-content-center">
+                <Calendar
+                  value={localDates}
+                  onChange={handleChange}
+                  selectionMode="multiple"
+                  inline
+                  readOnlyInput
+                />
+              </div>
+            );
+          };
+
+
+
+
+          root.render(<CalendarPopup />);
+
           // disable nút Chạy nếu thiếu permission
           if (hasEmptyPermission) {
             const confirmBtn = Swal.getConfirmButton();
@@ -779,6 +840,8 @@ import dayjs from 'dayjs';
 
           const workSunday = document.getElementById('work-sunday');
           formValues.work_sunday = workSunday.checked;
+
+          formValues.selectedDates = selectedDates;
 
           if (!formValues.start_date) {
             Swal.showValidationMessage('Vui lòng chọn ngày!');
@@ -799,11 +862,12 @@ import dayjs from 'dayjs';
           });
 
           const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
+          
           axios.post('/Schedual/scheduleAll', {
               ...result.value,
               startDate: activeStart.toISOString(),
-              endDate: activeEnd.toISOString()
+              endDate: activeEnd.toISOString(),
+             
             })
           .then(res => {
               let data = res.data;
@@ -1375,7 +1439,7 @@ import dayjs from 'dayjs';
 
         slotDuration= "00:15:00"
         eventDurationEditable={true}
-        eventStartEditable={true}
+        //eventStartEditable={true}
 
         eventClick={handleEventClick}
         eventResize={handleEventChange}
@@ -1650,8 +1714,7 @@ import dayjs from 'dayjs';
               info.el.style.border = '2px dashed orange';
             }
 
-            info.el.addEventListener("dblclick", (e) => {
-                alert ("sa")
+            info.el.addEventListener("dblclick", (e) => {             
                 e.stopPropagation();
                 handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
               });

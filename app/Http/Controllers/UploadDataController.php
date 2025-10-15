@@ -138,6 +138,7 @@ class UploadDataController extends Controller
                     'material_source_id',
                     'only_parkaging',
                     'percent_parkaging',
+                    'main_parkaging_id',
                     'note',
                     'deparment_code',
                     

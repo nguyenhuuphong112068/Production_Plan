@@ -443,10 +443,12 @@ class ProductionPlanController extends Controller
         
         public function send(Request $request){
                
-                $plans = DB::table('plan_master')
+                // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
+                $plans_main = DB::table('plan_master')
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
-                ->where('plan_master.active',1)
-                ->where('plan_master.cancel',0)
+                ->where('plan_master.active', 1)
+                ->where('plan_master.cancel', 0)
+                ->where('plan_master.only_parkaging', 0)
                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                 ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
                 ->select(
@@ -456,6 +458,9 @@ class ProductionPlanController extends Controller
                         'plan_master.expected_date',
                         'plan_master.level',
                         'plan_master.batch',
+                        'plan_master.only_parkaging',
+                        'plan_master.percent_parkaging',
+                        'plan_master.main_parkaging_id',
                         'intermediate_category.weight_1',
                         'intermediate_category.weight_2',
                         'intermediate_category.prepering',
@@ -466,12 +471,48 @@ class ProductionPlanController extends Controller
                         'finished_product_category.primary_parkaging',
                         'finished_product_category.intermediate_code',
                         'finished_product_category.finished_product_code',
-                        'finished_product_category.batch_qty',     
+                        'finished_product_category.batch_qty'
                 )
                 ->orderBy('expected_date', 'asc')
                 ->orderBy('level', 'asc')
                 ->orderBy('batch', 'asc')
                 ->get();
+                
+                // Phần 2: Các plan chỉ đóng gói (only_parkaging = 1)
+                $plans_packaging = DB::table('plan_master')
+                ->where('plan_master.plan_list_id', $request->plan_list_id)
+                ->where('plan_master.active', 1)
+                ->where('plan_master.cancel', 0)
+                ->where('plan_master.only_parkaging', 1)
+                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
+                ->select(
+                        'plan_master.id',
+                        'plan_master.plan_list_id',
+                        'plan_master.product_caterogy_id',
+                        'plan_master.expected_date',
+                        'plan_master.level',
+                        'plan_master.batch',
+                        'plan_master.only_parkaging',
+                        'plan_master.percent_parkaging',
+                        'plan_master.main_parkaging_id',
+                        'intermediate_category.weight_1',
+                        'intermediate_category.weight_2',
+                        'intermediate_category.prepering',
+                        'intermediate_category.blending',
+                        'intermediate_category.forming',
+                        'intermediate_category.coating',
+                        'intermediate_category.batch_size',
+                        'finished_product_category.primary_parkaging',
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.finished_product_code',
+                        'finished_product_category.batch_qty'
+                )
+                ->orderBy('expected_date', 'asc')
+                ->orderBy('level', 'asc')
+                ->orderBy('batch', 'asc')
+                ->get();
+
 
                 $stages = ['weight_1','weight_2', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging'];
                 $stage_code = [
@@ -483,10 +524,11 @@ class ProductionPlanController extends Controller
                         'coating'=> 6,
                         'primary_parkaging'=> 7,
                 ];
+                
 
                 $dataToInsert = [];
 
-                foreach ($plans as $plan) {
+                foreach ($plans_main as $plan) {
                         $stageList = [];
 
                         // Vòng 1: gom các stage có tồn tại cho plan này
@@ -499,7 +541,8 @@ class ProductionPlanController extends Controller
                                 ];
                                 }
                         }
-                        //dd ($stageList);
+                        
+                        
                         // Vòng 2: set predecessor và nextcessor
                         foreach ($stageList as $i => $stageItem) {
                                 $prevCode = null;
@@ -508,7 +551,6 @@ class ProductionPlanController extends Controller
                                 // ✅ set prevCode
                                 if ($i > 0) {
                                         $prevItem = $stageList[$i - 1];
-
                                         // nếu stage hiện tại >=3 và prev là 2 thì bỏ qua, tìm lại stage_code = 1
                                         if ($stageItem['stage_code'] >= 3 && $prevItem['stage_code'] == 2) {
                                                 $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
@@ -541,8 +583,9 @@ class ProductionPlanController extends Controller
                                                         ->where('stage_code', $stageItem['stage_code']);
                                         })
                                         ->first();
-
-                                $dataToInsert[] = [
+                             
+                                
+                                        $dataToInsert[] = [
                                         'plan_list_id'        => $plan->plan_list_id,
                                         'plan_master_id'      => $plan->id,
                                         'product_caterogy_id' => $plan->product_caterogy_id,
@@ -556,7 +599,29 @@ class ProductionPlanController extends Controller
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
                                         'Theoretical_yields' => $stageItem['stage_code'] <= 6 ? $plan->batch_size:$plan->batch_qty,
-                                ];
+                                        ];
+
+                                if ($plan->percent_parkaging  < 1 && $stageItem['stage_code'] == 7){
+                                        $plan_packagings = $plans_packaging->where ('main_parkaging_id',$plan->id);
+                                        foreach ($plan_packagings as $plan_packaging) {
+                                                $dataToInsert[] = [
+                                                        'plan_list_id'        => $plan_packaging->plan_list_id,
+                                                        'plan_master_id'      => $plan_packaging->id,
+                                                        'product_caterogy_id' => $plan_packaging->product_caterogy_id,
+                                                        'stage_code'          => $stageItem['stage_code'],
+                                                        'order_by'            => $stageItem['order_by'],
+                                                        'code'                => $stageItem['code'],
+                                                        'predecessor_code'    => $prevCode,
+                                                        'nextcessor_code'     => $nextCode,
+                                                        'tank'                => $tank->tank??0,
+                                                        'keep_dry'            => $tank->keep_dry??0,
+                                                        'deparment_code'      => session('user')['production_code'],
+                                                        'created_date'        => now(),
+                                                        'Theoretical_yields' => $stageItem['stage_code'] <= 6 ? $plan_packaging->batch_size:$plan_packaging->batch_qty,
+                                                ];
+                                        }
+
+                                }
                         }
 
                 }
