@@ -50,7 +50,6 @@ import dayjs from 'dayjs';
     const [viewName, setViewName] = useState("resourceTimelineWeek");
 
 
-
     const [events, setEvents] = useState([]);
     const [resources, setResources] = useState([]);
     const [sumBatchByStage, setSumBatchByStage] = useState([]);
@@ -98,7 +97,6 @@ import dayjs from 'dayjs';
           setStageMap(data.stageMap);
           setSumBatchByStage(data.sumBatchByStage);
 
-          
 
           setTimeout(() => {
             Swal.close();
@@ -178,7 +176,6 @@ import dayjs from 'dayjs';
         toolbarEl.removeChild(container);
       };
     }, [eventFontSize]); // chỉ chạy 1 lần
-
 
     ///
     const handleSearch = (query, direction = "next") => {
@@ -1570,7 +1567,6 @@ import dayjs from 'dayjs';
           right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
 
-
         views={{
           resourceTimelineDay: {
             slotDuration: '00:15:00',
@@ -1595,7 +1591,7 @@ import dayjs from 'dayjs';
           },
           resourceTimelineQuarter: {
               slotDuration: { days: 1 },
-              duration: { months: 4 },
+              duration: { months: 3 },
               buttonText: 'Quý',
               titleFormat: { year: 'numeric', month: 'short' },
               type: 'resourceTimeline',
@@ -1653,7 +1649,7 @@ import dayjs from 'dayjs';
             click: () => handleViewChange('resourceTimelineMonth')
           },
           customQuarter: {
-            text: '4 Tháng',
+            text: '3 Tháng',
             click: () => handleViewChange('resourceTimelineQuarter')
           },
           customYear: {
@@ -1720,7 +1716,6 @@ import dayjs from 'dayjs';
               });
 
         }}
-
 
 
         slotLaneDidMount={(info) => {

@@ -53,8 +53,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     level: '15%',          // Ưu tiên
   };
 
-
-
   useEffect(() => {
     
     if (resources && resources.length > 0 && stageFilter) {
@@ -273,6 +271,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   };
 
   const handlePrevStage = () =>  {
+    if (isSaving) return;
+    setIsSaving(true);
+
     setStageFilter((prev) => {
       const nextStage = prev === 1 ? 9 : prev - 1;
       let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
@@ -281,9 +282,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       return nextStage;
     });
     setSelectedRows([]);
+    setIsSaving(false);
   }
 
   const handleNextStage = () => {
+
+    if (isSaving) return;
+    setIsSaving(true);
+
     setStageFilter((prev) => {
       const nextStage = prev === 9 ? 1 : prev + 1;
       let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
@@ -292,6 +298,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       return nextStage;
     });
     setSelectedRows([]);
+    setIsSaving(false);
   }
 
   const handleRowReorder = (e) => {
@@ -616,6 +623,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const handleCreateQuota = () => {
     if (isSaving) return;
     setIsSaving(true);
+
     axios.put('/quota/production/store', modalQuotaData)
       . then (res => {
                     let data = res.data;
