@@ -12,6 +12,8 @@ Route::get('/', [LoginController::class, 'showLogin']);
 
 Route::post('/', [LoginController::class, 'login'])->name('login');
 
+Route::post('/changePassword', [LoginController::class, 'changePassword'])->name('changePassword');
+
 Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::get('/home', [HomeController::class, 'showHomeForm'])->name('pages.general.home')->middleware(CheckLogin::class);

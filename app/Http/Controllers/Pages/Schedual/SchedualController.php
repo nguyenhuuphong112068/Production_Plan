@@ -1467,7 +1467,7 @@ class SchedualController extends Controller
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 ->update([
                                 'title'           => $title,
-                                'order_by'        => $order_by,
+                                //'order_by'        => $order_by,
                                 'resourceId'      => $roomId,
                                 'start'           => $start,
                                 'end'             => $end,
