@@ -119,10 +119,23 @@
                       $plan = $stages->first();
                       $lastFinished = collect($stages)->where('finished', '1')->sortByDesc('stage_code')->first();
                       $sortedStages = $stages->sortBy('stage_code')->values();
-                      $firstStage   = $sortedStages->first();
-                      $lastStage    = $sortedStages->last();
+
+                      foreach ( $sortedStages as $sortedStage){
+                        if ($sortedStage->start != null){
+                            $firstStage = $sortedStage;
+                            break;
+                        }
+                      }
+                      foreach ( $sortedStages->reverse () as $sortedStage){
+                        if ($sortedStage->start != null){
+                            $lastStage  = $sortedStage;
+                            break;
+                        }
+                      }
+                      
                       $start = Carbon::parse($firstStage->start);
                       $end   = Carbon::parse($lastStage->end);
+
                       $diff = $start->diff($end);
                       $totalDuration = $diff->d . 'd-' . $diff->h . 'h' ;
                       // Tổng thời gian sản xuất (tính giờ làm trong từng stage)
@@ -212,9 +225,10 @@
                                   <span class="bs-stepper-circle">{{ $loop->iteration }}</span>
                                   <span class="bs-stepper-label">
                                     {{ $stage->stage_name }}
-                                    <small class="d-block">{{ Carbon::parse($stage->start)->format('d/m/Y H:i') }}</small>
-                                    <small class="d-block">{{ Carbon::parse($stage->end)->format('d/m/Y H:i') }}</small>
-
+                                    <small class="d-block">{{$stage->room_name }}</small>
+                                    <small class="d-block">{{ $stage->start == null ? '' : Carbon::parse($stage->start)->format('d/m/Y H:i') }}</small>
+                                    <small class="d-block">{{ $stage->start == null ? '' : Carbon::parse($stage->end)->format('d/m/Y H:i') }}</small>
+                                    
                                     @if(!is_null($stage->yields))
                                       <small class="d-block">Yield: {{ $stage->yields }} {{ $stage->stage_code<=4 ? "Kg" : "ĐVL" }}</small>
                                     @endif

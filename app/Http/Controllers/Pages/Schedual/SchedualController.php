@@ -20,235 +20,6 @@ class SchedualController extends Controller
                 return view('app');
         }
 
-        // protected function getEvents($production, $startDate, $endDate, $clearning){
-
-        //         if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-
-        //         $startDate = Carbon::parse($startDate)->toDateTimeString();
-        //         $endDate = Carbon::parse($endDate)->toDateTimeString();
-
-
-
-        //         $event_plans = DB::table("$stage_plan_table as sp")
-        //                 ->leftJoin('plan_master','sp.plan_master_id','=','plan_master.id')
-        //                 ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
-        //                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
-        //                 ->where('sp.active', 1)
-        //                 ->when(session('fullCalender')['mode'] === 'temp',function ($query)
-        //                         {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
-        //                 ->whereNotNull('sp.start')
-        //                 ->where('sp.deparment_code', $production)
-        //                 ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))', [$endDate, $startDate, $endDate, $startDate])
-        //                 ->select(
-        //                 'sp.id',
-        //                 'sp.predecessor_code',
-        //                 'sp.nextcessor_code',
-        //                 'sp.code',
-        //                 'sp.title',
-        //                 'sp.start',
-        //                 'sp.end',
-        //                 'sp.start_clearning',
-        //                 'sp.end_clearning',
-        //                 'sp.title_clearning',
-        //                 'sp.resourceId',
-        //                 'sp.plan_master_id',
-        //                 'sp.stage_code',
-        //                 'sp.finished',
-        //                 'sp.quarantine_time',
-        //                 'sp.tank',
-        //                 'sp.keep_dry',
-        //                 'sp.yields',
-        //                 'sp.order_by',
-        //                 'sp.scheduling_direction',
-        //                 'finished_product_category.intermediate_code',
-        //                 'plan_master.expected_date',
-        //                 'plan_master.after_weigth_date',
-        //                 'plan_master.before_weigth_date',
-        //                 'plan_master.after_parkaging_date',
-        //                 'plan_master.before_parkaging_date',
-        //                 'plan_master.is_val',
-        //                 'plan_master.level'
-        //                 )
-        //                 ->selectRaw("
-        //                 CASE
-        //                 WHEN sp.stage_code IN (1,2)
-        //                         THEN CASE
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1
-        //                                 THEN intermediate_category.quarantine_weight * 24
-        //                                 ELSE intermediate_category.quarantine_weight
-        //                         END
-        //                 WHEN sp.stage_code = 3
-        //                         THEN CASE
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1
-        //                                 THEN intermediate_category.quarantine_preparing * 24
-        //                                 ELSE intermediate_category.quarantine_preparing
-        //                         END
-        //                 WHEN sp.stage_code = 4
-        //                         THEN CASE
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1
-        //                                 THEN intermediate_category.quarantine_blending * 24
-        //                                 ELSE intermediate_category.quarantine_blending
-        //                         END
-        //                 WHEN sp.stage_code = 5
-        //                         THEN CASE
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1
-        //                                 THEN intermediate_category.quarantine_forming * 24
-        //                                 ELSE intermediate_category.quarantine_forming
-        //                         END
-        //                 WHEN sp.stage_code = 6
-        //                         THEN CASE
-        //                                 WHEN intermediate_category.quarantine_time_unit = 1
-        //                                 THEN intermediate_category.quarantine_coating * 24
-        //                                 ELSE intermediate_category.quarantine_coating
-        //                         END
-        //                 ELSE 0
-        //                 END as quarantine_time_limit
-        //         ")
-        //         ->get();
-
-        //         $events = collect();
-        //         $groupedPlans = $event_plans->groupBy('plan_master_id');
-
-
-
-        //         foreach ($groupedPlans as $plan_master_id => $plans) {
-        //         $plans = $plans->sortBy('stage_code')->values();
-
-        //         // $material_source_id = DB::table('plan_master')
-        //         //         ->where('id', $plan_master_id)
-        //         //         ->pluck('material_source_id');
-
-        //         $historyCounts = DB::table('stage_plan_history')
-        //                         ->select('stage_plan_id', DB::raw('COUNT(*) as count'))
-        //                         ->groupBy('stage_plan_id')
-        //                         ->pluck('count', 'stage_plan_id');
-
-        //         for ($i = 0; $i < $plans->count(); $i++) {
-        //                 $plan = $plans[$i];
-        //                 $subtitle = null;
-
-        //                         // Kiêm tra vi pham
-        //                         if ($plan->stage_code <= 7){
-        //                                 $color_event = '#4CAF50';
-
-        //                         }elseif ($plan->stage_code == 8){
-        //                                 $color_event = '#003A4F';
-        //                         }else {
-        //                                 $color_event = '#eb0cb3ff';
-        //                         }
-
-        //                         // Lấy công đoạn trước (nếu có)
-        //                         $prevPlan = $i > 0 ? $plans[$i-1] : null;
-
-        //                         if ($plan->finished === 1) {
-        //                                 $color_event = '#002af9ff';
-        //                         } elseif ($plan->is_val === 1) {
-        //                                 $color_event = '#40E0D0';
-        //                         }
-
-        //                         // Nếu có công đoạn trước thì check biệt trữ
-        //                         if ($prevPlan && $plan->stage_code >2 && $plan->stage_code < 7){
-        //                                 $diffSeconds = (strtotime($plan->start) - strtotime($prevPlan->end))/ 3600;
-        //                                 if ($diffSeconds > $prevPlan->quarantine_time_limit) {
-        //                                         $color_event = '#bda124ff';
-        //                                         $subtitle = 'Quá Hạn Biệt Trữ: ' . $diffSeconds . "h/" . $prevPlan->quarantine_time_limit . "h";
-        //                                 }
-        //                         }
-
-        //                         if($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start && $plan->before_weigth_date < $plan->start){
-        //                                 $color_event = '#f99e02ff';
-        //                                 $subtitle = 'Nguyên Liệu Không Đáp Ứng: '. $plan->after_weigth_date . " - " . $plan->before_weigth_date;
-        //                         } elseif($plan->stage_code === 7 && $plan->after_parkaging_date > $plan->start && $plan->before_parkaging_date < $plan->start){
-        //                                 $color_event = '#f99e02ff';
-        //                                 $subtitle = 'Bao Bì Không Đáp Ứng: '. $plan->after_parkaging_date . " - " . $plan->before_parkaging_date;
-        //                         }
-
-        //                         // $room_source = null;
-        //                         // if ( $plan->stage_code >2 && $plan->stage_code < 7){
-        //                         //         $room_source = DB::table('room_source')->where('intermediate_code', $plan->intermediate_code)->where('source_id', $material_source_id)->where ('room_id', $plan->resourceId)->exists();
-        //                         //         if (!$room_source){
-        //                         //                 //$color_event = '#dc02f9ff';
-        //                         //                 //$subtitle = 'Nguồn NL Chưa Được Khai Báo Tại Phòng Sản Xuất';
-        //                         // }}
-
-        //                         if ($plan->expected_date < $plan->end && $plan->stage_code < 9){
-        //                                 $color_event = '#f90202ff';
-        //                                 $subtitle = 'Không Đáp Ứng Ngày Cần Hàng: '. $plan->expected_date;
-        //                                 if ($plan->stage_code == 8 ){
-        //                                         $subtitle = 'Không Đáp Ứng Hạn Bảo Trì: '. $plan->expected_date;
-        //                                 }
-        //                         }
-
-        //                                                         // Kiểm tra vi phạm predecessor / successor
-        //                         if ($plan->predecessor_code) {
-        //                                 $prePlan = $plans->firstWhere('code', $plan->predecessor_code);
-        //                                 if ($prePlan && $plan->start < $prePlan->end) {
-        //                                         $color_event = '#4d4b4bff'; // đỏ
-        //                                         $subtitle = 'Vi phạm: Start < End của công đoạn trước';
-        //                                 }
-        //                         }
-
-        //                         if ($plan->nextcessor_code) {
-        //                                 $nextPlan = $plans->firstWhere('code', $plan->nextcessor_code);
-        //                                 if ($nextPlan && $plan->end > $nextPlan->start) {
-        //                                         $color_event = '#4d4b4bff'; // đỏ
-        //                                         $subtitle = 'Vi phạm: End > Start của công đoạn sau';
-        //                                 }
-        //                         }
-
-
-        //                  // Event chính
-        //                 if ($plan->start && $plan->end ) {
-        //                         $events->push([
-        //                                 'plan_id' => $plan->id,
-        //                                 'id' => "{$plan->id}-main",
-        //                                 'title' => $plan->title . " " . $subtitle,
-        //                                 'name' => $name ?? null,
-        //                                 'batch' => $batch ?? null,
-        //                                 'market'=> $market ?? null,
-        //                                 'start' => $plan->start,
-        //                                 'end' => $plan->end,
-        //                                 'resourceId' => $plan->resourceId,
-        //                                 'color' =>  $color_event,
-        //                                 'plan_master_id'=> $plan->plan_master_id,
-        //                                 'stage_code'=> $plan->stage_code,
-        //                                 'is_clearning' => false,
-        //                                 'finished' => $plan->finished,
-        //                                 'level' => $plan->level,
-        //                                 //'room_source' => $room_source,
-        //                                 'direction' => $plan->scheduling_direction,
-        //                                 'keep_dry' => $plan->keep_dry,
-        //                                 'tank' => $plan->tank,
-        //                                 'experted_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
-        //                                 'number_of_history' =>  $historyCounts[$plan->id] ?? 0,
-        //                                 'order_by' => $plan->order_by
-        //                                 ]);
-        //                 }
-        //                 // Event vệ sinh
-        //                 if ($plan->start_clearning && $plan->end_clearning && $plan->yields >= 0 && $clearning == true) {
-        //                         $events->push([
-        //                                 'plan_id' => $plan->id,
-        //                                 'id' => "{$plan->id}-cleaning",
-        //                                 'title' => $plan->title_clearning ?? 'Vệ sinh',
-        //                                 'start' => $plan->start_clearning,
-        //                                 'end' => $plan->end_clearning,
-        //                                 'resourceId' => $plan->resourceId,
-        //                                 'color' => '#a1a2a2ff',
-        //                                 'plan_master_id'=> $plan->plan_master_id,
-        //                                 'stage_code'=> $plan->stage_code,
-        //                                 'is_clearning' => true,
-        //                                 'finished' => $plan->finished
-        //                                 ]);
-        //                 }
-
-        //         }
-        //         }
-
-
-        //         return $events;
-
-        // }  // đã có temp
-
         protected function getEvents($production, $startDate, $endDate, $clearning){
                 // 1️⃣ Chọn bảng dữ liệu chính
                 $stage_plan_table = session('fullCalender')['mode'] === 'offical'
@@ -480,92 +251,6 @@ class SchedualController extends Controller
                 });
         }
 
-        // public function getPlanWaiting($production){
-
-        //         if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-
-        //         $plan_waiting = DB::table("$stage_plan_table as sp")
-        //                 ->whereNull('sp.start')
-        //                 ->where('sp.active', 1)
-        //                 ->where('sp.finished', 0)
-        //                 ->where('sp.deparment_code', $production)
-        //                 ->when(session('fullCalender')['mode'] === 'temp',function ($query)
-        //                         {return $query->where('sp.stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
-        //                 ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
-        //                 ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
-        //                 ->leftJoin('finished_product_category', function($join) {
-        //                         $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-        //                         ->where('sp.stage_code', '<=', 7);
-        //                 })
-        //                 ->leftJoin('product_name', function($join) {
-        //                         $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
-        //                         ->where('sp.stage_code', '<=', 7);
-        //                 })
-        //                 ->leftJoin('maintenance_category', function($join) {
-        //                         $join->on('sp.product_caterogy_id', '=', 'maintenance_category.id')
-        //                         ->where('sp.stage_code', '=', 8);
-        //                 })
-        //                 ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-        //                 ->select(
-        //                         'sp.*',
-        //                         'plan_master.batch',
-        //                         'plan_master.expected_date',
-        //                         'plan_master.is_val',
-        //                         'plan_master.note',
-        //                         'plan_master.level',
-        //                         'plan_master.after_weigth_date',
-        //                         'plan_master.before_weigth_date',
-        //                         'plan_master.after_parkaging_date',
-        //                         'plan_master.before_parkaging_date',
-        //                         'plan_master.material_source_id',
-        //                         'plan_master.only_parkaging',
-        //                         'plan_master.percent_parkaging',
-        //                         'market.code as market',
-        //                         'source_material.name as source_material_name',
-        //                         'finished_product_category.intermediate_code',
-        //                         'finished_product_category.finished_product_code',
-        //                         DB::raw("CASE
-        //                                 WHEN sp.stage_code <= 7 THEN product_name.name
-        //                                 ELSE maintenance_category.name END as name"),
-        //                         DB::raw("CASE
-        //                                 WHEN sp.stage_code = 8 THEN maintenance_category.code  END as instrument_code"),
-        //                         DB::raw("CASE
-        //                                 WHEN sp.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
-        //                 )
-        //                 ->orderBy('sp.order_by', 'asc')
-        //         ->get();
-
-        //         // Lấy quota & maintenance_category
-
-        //         $maintenance_category = DB::table('maintenance_category')
-        //         ->where('active', 1)
-        //         ->where('deparment_code', $production)
-        //         ->get();
-
-        //         $quota = $this->getQuota($production);
-
-        //         // Ánh xạ room permission
-        //         $plan_waiting = $plan_waiting->map(function ($plan) use ($quota, $maintenance_category) {
-        //         if ($plan->stage_code <= 6) {
-        //                 $matched = $quota->where('intermediate_code', $plan->intermediate_code)
-        //                                 ->where('stage_code', $plan->stage_code);
-        //         } elseif ($plan->stage_code == 7) {
-        //                 $matched = $quota->where('finished_product_code', $plan->finished_product_code)
-        //                                 ->where('stage_code', $plan->stage_code);
-        //         } elseif ($plan->stage_code == 8) {
-        //                 $room_id = $maintenance_category->where('code', $plan->instrument_code)->pluck('room_id');
-        //                 $matched = $quota->whereIn('room_id', $room_id);
-        //         } else {
-        //                 $matched = collect();
-        //         }
-
-        //         $plan->permisson_room = $matched->pluck('code', "room_id")->unique();
-        //         return $plan;
-        //         });
-
-        //         return $plan_waiting;
-        // } 
-
         public function getPlanWaiting($production){
                 // 1️⃣ Xác định bảng stage_plan hoặc stage_plan_temp
                 $stage_plan_table = session('fullCalender')['mode'] === 'offical'
@@ -619,6 +304,9 @@ class SchedualController extends Controller
                         DB::raw("CASE WHEN sp.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
                         )
                         ->orderBy('sp.order_by', 'asc')
+                        // ->orderBy('plan_master.expected_date', 'asc')
+                        // ->orderBy('plan_master.level', 'asc')
+                        // ->orderBy('plan_master.batch', 'asc')
                         ->get();
 
                 if ($plan_waiting->isEmpty()) {
@@ -661,7 +349,7 @@ class SchedualController extends Controller
                         $matched = collect();
                         }
 
-                        $plan->permission_room = collect($matched)->pluck('code', 'room_id')->unique();
+                        $plan->permisson_room = collect($matched)->pluck('code', 'room_id')->unique();
                         return $plan;
                 });
 
@@ -706,9 +394,7 @@ class SchedualController extends Controller
                 $startDate = $request->startDate ;
                 $endDate = $request->endDate;
                 $viewtype = $request->viewtype;
-                        Log::info ('view', [
-                                'request' => $request->all()
-                        ]);
+
                 try {
                         $production = session('user')['production_code'];
                         
@@ -719,20 +405,20 @@ class SchedualController extends Controller
                        
                         if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
                                 $quota = $this->getQuota($production);
-                                Log::info ('quota');
+                              
                                 $plan_waiting = $this->getPlanWaiting($production);
-                                Log::info ('plan_waiting');
+                               
 
                         }
 
                         $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
-                        Log::info ('stageMap');
+                        
                         $events = $this->getEvents($production, $startDate, $endDate, $clearing);
-                        Log::info ('events');
+                        
                         $sumBatchByStage = $this->yield($startDate, $endDate, "stage_code");
-                        Log::info ('sumBatchByStage');
+                       
                         $resources = $this->getResources($production, $startDate, $endDate);
-                        Log::info ('resources');
+      
 
                        
 
@@ -1695,9 +1381,11 @@ class SchedualController extends Controller
         ///////// Các hàm liên Auto Schedualer
         protected $roomAvailability = [];
         protected $order_by = 1;
+        protected $selectedDates = [];
+        protected $work_sunday = true;
 
         /**Load room_status để lấy các slot đã bận*/
-        protected function loadRoomAvailability(string $sort, int $roomId, bool $working_sunday = false){
+        protected function loadRoomAvailability(string $sort, int $roomId){
                 $this->roomAvailability[$roomId] = []; // reset
 
                 // --- 1. Lấy lịch hiện có ---
@@ -1727,7 +1415,7 @@ class SchedualController extends Controller
                 }
 
                 // --- 3. Thêm thời gian bận nếu không làm việc Chủ nhật ---
-                if (!$working_sunday) {
+                if (!$this->work_sunday) {
                         $startBase = Carbon::now()->startOfWeek(Carbon::MONDAY)->subDay(); // Chủ nhật đầu tiên
                         for ($i = 0; $i < 10; $i++) {
                         $sundayStart = $startBase->copy()->addWeeks($i)->startOfDay(); // CN 00:00
@@ -1736,6 +1424,22 @@ class SchedualController extends Controller
                                 'start' => $sundayStart,
                                 'end'   => $mondayEnd,
                         ];
+                        }
+                }
+
+                // --- 4. Thêm các ngày được chọn từ selectedDates ---
+                if (!empty($this->selectedDates) && is_array($this->selectedDates)) {
+                        foreach ($this->selectedDates as $dateStr) {
+                                try {
+                                        $date = Carbon::parse($dateStr)->startOfDay(); // 00:00 của ngày đó
+                                        $nextDay = $date->copy()->addDay()->setTime(6, 0, 0); // 06:00 hôm sau
+                                        $this->roomAvailability[$roomId][] = [
+                                        'start' => $date,
+                                        'end'   => $nextDay,
+                                        ];
+                                } catch (\Exception $e) {
+                                        // Nếu parse lỗi thì bỏ qua
+                                }
                         }
                 }
 
@@ -1811,6 +1515,13 @@ class SchedualController extends Controller
         /** Scheduler cho tất cả stage Request */
         public function scheduleAll(Request $request) {
 
+                $this->selectedDates = $request->selectedDates;
+                $this->work_sunday = $request->work_sunday;
+
+                // Log::info('selectedDates', [
+                //         'selectedDates' =>$this->selectedDates
+                // ]);
+               
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $today = Carbon::now()->toDateString();
                 $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? $today)->setTime(6, 0, 0);
@@ -1880,7 +1591,7 @@ class SchedualController extends Controller
                         // Log::info ("waite_time. $stageCode ",[
                         //         $waite_time_nomal_batch , $waite_time_val_batch
                         // ]);
-                        $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday?? false);
+                        $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday?? true);
                 }
                         //dd ($waite_time);
 
@@ -3422,7 +3133,7 @@ class SchedualController extends Controller
         protected function findLatestSlot($roomId,$latestEnd,$beforeIntervalMinutes,$afterIntervalMinutes, $time_clearning_tank = 60,
                 
                 ?Carbon $start_date = null, bool $requireTank = false,bool $requireAHU = false, int $maxTank = 2, string $stage_plan_table = 'stage_plan') {
-                $this->loadRoomAvailability('desc',$roomId);
+                $this->loadRoomAvailability('desc',$roomId );
                 $start_date = $start_date ?? Carbon::now();
                 $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');
 
@@ -3546,14 +3257,15 @@ class SchedualController extends Controller
 
         protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = 0, $requireAHU = 0, $stage_plan_table = 'stage_plan',  $maxTank = 1, $tankInterval = 60){
 
-                $this->loadRoomAvailability('asc', $roomId);
+                $this->loadRoomAvailability('asc', $roomId );
+
 
                 if (!isset($this->roomAvailability[$roomId])) {
                         $this->roomAvailability[$roomId] = [];
                 }
 
                 $busyList = $this->roomAvailability[$roomId]; // danh sách block bận
-     
+
                 $current_start = $Earliest instanceof Carbon ? $Earliest : Carbon::parse($Earliest);
                 $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group');
 

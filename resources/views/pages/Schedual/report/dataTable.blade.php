@@ -150,6 +150,10 @@
 
 
 <script>
+  $(document).ready(function() {
+    document.body.style.overflowY = "auto";
+  })
+
     const form = document.getElementById('filterForm');
     const fromInput = document.getElementById('from_date');
     const toInput = document.getElementById('to_date');
@@ -159,9 +163,7 @@
             form.submit();
         });
     });
-</script>
 
-<script>
   document.addEventListener('DOMContentLoaded', function () {
       // Init tất cả stepper
       document.querySelectorAll('.bs-stepper').forEach(stepperEl => {

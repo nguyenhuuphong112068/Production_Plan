@@ -64,6 +64,8 @@ return new class extends Migration {
             $table->unsignedInteger ('material_source_id')->nullable();
             $table->boolean ('only_parkaging');
             $table->float ('percent_parkaging');
+            $table->unsignedInteger ('main_parkaging_id');
+
             $table->text ('note');
             $table->string('deparment_code',5);
             $table->boolean('active')->default(true);

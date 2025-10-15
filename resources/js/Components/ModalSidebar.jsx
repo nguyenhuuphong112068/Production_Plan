@@ -20,7 +20,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const [searchTerm, setSearchTerm] = useState(""); 
   const sizes = ["close", "100%" ,"30%" ];
   const [currentIndex, setCurrentIndex] = useState(1);
-  //const [tableData, setTableData] = useState(waitPlan);
+  const [tableData, setTableData] = useState([]);
   const [showModalCreate, setShowModalCreate] = useState(false); 
   const [showModalQuota, setShowModalQuota] = useState(false); 
   const [orderPlan, setOrderPlan] = useState({checkedClearning: false, title: null, batch: "NA", level: 1});
@@ -28,6 +28,32 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const [errorsModal, setErrorsModal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [optionRooms, setOptionRooms] = useState([]);
+  const [unQuota, setUnQuota] = useState(0);
+
+  const columnWidths100 = {
+    code: '8%',                // Mã sản phẩm
+    permisson_room: '6%',      // Phòng SX
+    name: '10%',               // Sản phẩm
+    batch: '8%',               // Số lô
+    expected_date: '8%',       // Ngày DK KCS
+    market: '6%',              // Thị trường
+    level: '4%',               // Ưu tiên
+    is_val: '5%',              // Thẩm định
+    weight_dates: '8%',        // Cân NL
+    pakaging_dates: '8%',      // Đóng gói
+    source_material_name: '10%',// Nguồn nguyên liệu
+    campaign_code: '6%',       // Mã chiến dịch
+    note: '23%',               // Ghi chú
+  };
+
+  const columnWidths30 = {
+    name: '45%',           // Sản phẩm
+    batch: '20%',          // Số lô
+    expected_date: '20%',  // Ngày DK KCS
+    level: '15%',          // Ưu tiên
+  };
+
+
 
   useEffect(() => {
     
@@ -40,34 +66,49 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     }
   }, [resources, stageFilter]); 
 
+  useEffect(() => {
+    if (waitPlan && waitPlan.length > 0) {
+      setTableData(waitPlan.filter(event => Number(event.stage_code) === 1));
+      setUnQuota (tableData.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
+    }
+  }, [waitPlan]);
+
   // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
+    let visibleCols = [];
 
-      if (percentShow === "100%") {
-          if (stageFilter === 1 ){
-            setVisibleColumns(allColumns.filter(col => !["pakaging_dates"].includes(col.field)));
-          }
-          else if (stageFilter === 7 ){
-            setVisibleColumns(allColumns.filter(col => !["weight_dates"].includes(col.field)));
-          }
-          else if (stageFilter === 8 ){
-            setVisibleColumns(allColumns.filter(col => !["weight_dates","pakaging_dates", "level",
-               "batch", "market", "is_val", "source_material_name", "campaign_code"].includes(col.field)));
-          }
-          else if (stageFilter === 9 ){
-            setVisibleColumns(allColumns.filter(col => ["name", "batch", "note"].includes(col.field)));
-          }
-          else {
-            setVisibleColumns(allColumns.filter(col => !["weight_dates", "pakaging_dates"].includes(col.field)));
-          }
-
-        //setVisibleColumns(allColumns);
-      } else if (percentShow === "30%") {
-        setVisibleColumns(allColumns.filter(col => ["name", "batch", "expected_date", "level"].includes(col.field)));
+    if (percentShow === "100%") {
+      if (stageFilter === 1) {
+        visibleCols = allColumns.filter(col => !["pakaging_dates"].includes(col.field));
+      } else if (stageFilter === 7) {
+        visibleCols = allColumns.filter(col => !["weight_dates"].includes(col.field));
+      } else if (stageFilter === 8) {
+        visibleCols = allColumns.filter(col => ![
+          "weight_dates", "pakaging_dates", "level",
+          "batch", "market", "is_val", "source_material_name", "campaign_code"
+        ].includes(col.field));
+      } else if (stageFilter === 9) {
+        visibleCols = allColumns.filter(col => ["name", "batch", "note"].includes(col.field));
       } else {
-        setVisibleColumns(allColumns.filter(col => ["name", "batch", "expected_date"].includes(col.field)));
+        visibleCols = allColumns.filter(col => !["weight_dates", "pakaging_dates"].includes(col.field));
       }
+
+      visibleCols = visibleCols.map(col => ({
+        ...col,
+        style: { ...col.style, width: columnWidths100[col.field] || 'auto', maxWidth: columnWidths100[col.field] || 'auto' }
+      }));
+
+    } else if (percentShow === "30%") {
+      visibleCols = allColumns.filter(col => ["name", "batch", "expected_date", "level"].includes(col.field))
+        .map(col => ({
+          ...col,
+          style: { ...col.style, width: columnWidths30[col.field] || 'auto', maxWidth: columnWidths30[col.field] || 'auto' }
+        }));
+    } 
+
+    setVisibleColumns(visibleCols);
   }, [percentShow, stageFilter]);
+
 
   const handleToggle = () => {
       const nextIndex = (currentIndex + 1) % sizes.length;
@@ -232,13 +273,25 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   };
 
   const handlePrevStage = () =>  {
-      setStageFilter((prev) => (prev === 1 ? 9 : prev - 1)); 
-      setSelectedRows([]);
-  }
-  const handleNextStage = () => {
-    setStageFilter((prev) => (prev === 9 ? 1 : prev + 1)); 
+    setStageFilter((prev) => {
+      const nextStage = prev === 1 ? 9 : prev - 1;
+      let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
+      setTableData(stage_plan);
+      setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
+      return nextStage;
+    });
     setSelectedRows([]);
-    
+  }
+
+  const handleNextStage = () => {
+    setStageFilter((prev) => {
+      const nextStage = prev === 9 ? 1 : prev + 1;
+      let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
+      setTableData(stage_plan);
+      setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
+      return nextStage;
+    });
+    setSelectedRows([]);
   }
 
   const handleRowReorder = (e) => {
@@ -259,7 +312,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       }));
 
       // Cập nhật state
-      //setTableData(updateOrderData);
+
       setPlan (updateOrderData)
       // Gửi lên server
       axios.put('/Schedual/updateOrder', { updateOrderData: payload })
@@ -318,7 +371,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       order_by: r.order_by
     }));
 
-    //setTableData(updateOrderData);
     setPlan (updateOrderData)
 
     axios.put('/Schedual/updateOrder', { updateOrderData: payload })
@@ -636,12 +688,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
   const allColumns = [
       { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" , style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
-      { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "name", style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
-      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false, filterField: "name" , style: { width: '10%', maxWidth: '10%', ...longTextStyle }},
-      { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" },
-      { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date"},
+      { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "permisson_room", style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
+      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false, filterField: "name" , style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
+      { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" , style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
+      { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date", style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
       { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle }},
-      { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate },
+      { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate, style: { width: '5%', maxWidth: '5%', ...longTextStyle } },
       { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
       { field: "weight_dates", header: "Cân NL", sortable: true, body: weightPBodyTemplate },
       { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: packagingBodyTemplate },
@@ -667,14 +719,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       {/* Thanh điều khiển */}
       <div className="p-4 border-b">
         <Row className="align-items-center">
-
           <Col md={3} className='d-flex justify-content-start'>
         
             {percentShow === "100%" && stageFilter <=7 ? (
               <>
-              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3">
-                {selectedRows.length} 
-              </div>
+              {unQuota > 0 && (
+              <div className="fc-event  px-3 py-1 bg-red-400 border border-red-400 rounded text-md text-center cursor-pointer mr-3">
+                {unQuota} Lô Thiếu Định Mức 
+              </div>)}
 
               <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
               onClick={handleCreateManualCampain}>
@@ -716,7 +768,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               {percentShow === "100%" ? (
 
               <InputText value= {stageFilter +". " + "Công Đoạn " + stageNames[stageFilter] + " - " + 
-                waitPlan.filter(event => Number(event.stage_code) === stageFilter).length + " Mục Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
+                tableData.length + " Mục Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
                 /> 
               ):
 
@@ -750,7 +802,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         <DataTable
           className="p-datatable-gridlines prime-gridlines"
           key={percentShow}
-          value={waitPlan.filter(event => Number(event.stage_code) === stageFilter)}
+          value= {tableData}
           selection={selectedRows}
           onSelectionChange={handleSelectionChange}
           selectionMode="multiple"
