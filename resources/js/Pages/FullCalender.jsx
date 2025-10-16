@@ -719,17 +719,13 @@ import dayjs from 'dayjs';
           <div class="cfg-wrapper">
             <div class="cfg-card">
               <!-- Hàng Ngày chạy -->
-              <div class="cfg-row cfg-grid-2">
+              
+              <div class="cfg-row">
                 <div class="cfg-col">
                   <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
                   <input id="schedule-date" type="date"
                         class="swal2-input cfg-input cfg-input--half" name="start_date"
                         value="${new Date().toISOString().split('T')[0]}">
-                </div>
-
-                <div class="cfg-col">
-                  <label class="cfg-label" for="buffer_date">Thời Gian Đệm (ngày):</label>
-                  <input id="buffer_date" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="3" name="buffer_date">
                 </div>
               </div>
 
