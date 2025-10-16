@@ -157,8 +157,8 @@
                                             <input type="checkbox" class="step-checkbox" id="checkbox1" 
                                                 name = "first_val_batch">
                                             <label for="checkbox1">Lô thứ nhất</label>
-                                            <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}" />
-                                            <input type="text" name="code_val_first" value="{{ old('code_val_first') }}"/>
+                                            <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}"  readonly/>
+                                            <input type="hidden" name="code_val_first" value="{{ old('code_val_first') }}"/>
                                         </div>
                                     </div>
                                     <div class="col-md-4"> 
@@ -382,6 +382,7 @@
             let code_val = $('input[name="code_val_first"]').val()|| null;
             let intermediate_code = $('input[name="intermediate_code"]').val()|| "" ;
             let first_batch_modal =  $('#tbody_first_val_batch')
+            let total = checkbox1 + checkbox2 + checkbox3;
 
             if (checkbox1 == 1 && !batch || batch.trim() === '') {
                 Swal.fire({
@@ -391,13 +392,18 @@
                 });
                 $('input[name="batchNo1"]').val('');
                 $('input[name="code_val_first"]').val('');
+                $("#checkbox1").prop("checked", false);
+                $("#checkbox2").prop("checked", false);
+                $("#checkbox3").prop("checked", false);
                 return;
             }
 
-             if (checkbox1 == 0) {
-                    $('input[name="batchNo1"]').val('');
-                    $('input[name="code_val_first"]').val('');
-             }
+            if (total == 0){
+                $('input[name="batchNo1"]').val('');
+                $('input[name="code_val_first"]').val('');
+            }
+                        
+            $('input[name="number_of_batch"]').val(total);
 
             if (checkbox1 == 1 && code_val == null ){
 
@@ -428,10 +434,7 @@
             }
             
 
-            let total = checkbox1 + checkbox2 + checkbox3;
-            $('input[name="number_of_batch"]').val(total);
-
-            if ((checkbox1 == 0 && checkbox2 == 1 && code_val != null) || (checkbox1 == 0 && checkbox3 == 1 && code_val != null)){
+            if ((checkbox1 == 0 && checkbox2 == 1 && code_val == null) || (checkbox1 == 0 && checkbox2 == 0 && checkbox3 == 1 && code_val == null)){
                 first_batch_modal.empty();
                 $.ajax({
                     url: "{{ route('pages.plan.production.first_batch') }}",

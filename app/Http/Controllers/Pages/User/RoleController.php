@@ -33,11 +33,12 @@ class RoleController extends Controller
                     'id' => $items->first()->role_id,
                     'name' => $items->first()->role_name,
                     'permissions' => $permissions
+                   
                 ];
             })
             ->values();
 
-            //dd ($datas);
+
         session()->put(['title'=> 'DANH SÁCH NHÓM QUYỀN']);
         return view('pages.User.role.list', ['datas' => $datas]);
     }
