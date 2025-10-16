@@ -286,7 +286,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   }
 
   const handleNextStage = () => {
-
     if (isSaving) return;
     setIsSaving(true);
 
@@ -700,6 +699,19 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         });
     setIsSaving(false);
   };
+
+  const filterUnQuotaRow = () => {
+    if (isSaving) return;
+    setIsSaving(true);
+  
+    let UnQuotaRow = waitPlan.filter(event => Number(event.stage_code) === stageFilter && Array.isArray(event.permisson_room) && event.permisson_room.length === 0)
+    setTableData(UnQuotaRow)
+
+    setSelectedRows([]);
+    setIsSaving(false);
+  
+  }
+
    
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
@@ -741,12 +753,13 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
             {percentShow === "100%" && stageFilter <=7 ? (
               <>
               {unQuota > 0 && (
-              <div className="fc-event  px-3 py-1 bg-red-400 border border-red-400 rounded text-md text-center cursor-pointer mr-3">
+              <div className="fc-event px-3 py-1 bg-red-400 border border-red-400 rounded text-md text-center cursor-pointer mr-3"
+                onClick={filterUnQuotaRow}>
                 {unQuota} Lô Thiếu Định Mức 
               </div>)}
 
               <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
-              onClick={handleCreateManualCampain}>
+                onClick={handleCreateManualCampain}>
                  {isSaving === false ?<i className="fas fa-flag"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
               </div>
 
