@@ -381,24 +381,24 @@
                   next: "Sau"
               }
           },
-          infoCallback: function (settings, start, end, max, total, pre) {
-              let thieuDinhMuc = 0;
-              let daDinhMuc = 0;
+          // infoCallback: function (settings, start, end, max, total, pre) {
+          //     let thieuDinhMuc = 0;
+          //     let daDinhMuc = 0;
 
-              settings.aoData.forEach(function(row) {
-                  // Lấy ô Phòng Sản Xuất (ở cột thứ 5 — tính từ 0)
-                  const roomCell = row.anCells[4];
-                  const text = $(roomCell).text().trim();
+          //     settings.aoData.forEach(function(row) {
+          //         // Lấy ô Phòng Sản Xuất (ở cột thứ 5 — tính từ 0)
+          //         const roomCell = row.anCells[4];
+          //         const text = $(roomCell).text().trim();
 
-                  if (text.includes('Thiếu Định Mức')) {
-                      thieuDinhMuc++;
-                  } else {
-                      daDinhMuc++;
-                  }
-              });
+          //         if (text.includes('Thiếu Định Mức')) {
+          //             thieuDinhMuc++;
+          //         } else {
+          //             daDinhMuc++;
+          //         }
+          //     });
 
-              return pre + ` (Đã Định Mức: ${daDinhMuc}, Chưa Định Mức: ${thieuDinhMuc})`;
-          }
+          //     return pre + ` (Đã Định Mức: ${daDinhMuc}, Chưa Định Mức: ${thieuDinhMuc})`;
+          // }
         });
 
   });

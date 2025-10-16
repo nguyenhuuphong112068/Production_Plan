@@ -60,10 +60,8 @@ import dayjs from 'dayjs';
     const [type, setType] = useState(true);
     const [loading, setLoading] = useState(false);
     const [authorization, setAuthorization] = useState(false);
-
-
-
-
+    const [heightResource, setHeightResource] = useState("1px");
+    const [production, setProduction] = useState("PXV1");
     /// Get dữ liệu ban đầu
     useEffect(() => {
       Swal.fire({
@@ -96,7 +94,25 @@ import dayjs from 'dayjs';
           setQuota(data.quota);
           setStageMap(data.stageMap);
           setSumBatchByStage(data.sumBatchByStage);
+          setProduction (data.production)
 
+          switch (data.production) {
+            case "PXV1":
+              setHeightResource('1px');
+              break;
+            case "PXV2":
+              setHeightResource('50px');
+              break;
+            case "PXVH":
+              setHeightResource('50px');
+              break;
+            case "PXTN":
+              setHeightResource('50px');
+              break;
+            case "PXDN":
+              setHeightResource('60px');
+              break;
+          }
 
           setTimeout(() => {
             Swal.close();
@@ -1503,7 +1519,7 @@ import dayjs from 'dayjs';
                   borderRadius: "6px",
                   marginTop: "0px",
                   position: "relative",
-                  height:"1px" // cần để con có thể dịch lên
+                  height: heightResource // cần để con có thể dịch lên
                 }}
               >
                 <div
@@ -1524,7 +1540,7 @@ import dayjs from 'dayjs';
                   style={{
                     position: "relative",
                     top: "-26px", // dịch luôn cả progress bar lên
-                    height: "15px",
+                    height: "15px", 
                     background: "#eeeeeeff",
                     borderRadius: "20px",
                     overflow: "hidden",
