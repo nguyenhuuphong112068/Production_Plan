@@ -404,13 +404,11 @@ class SchedualController extends Controller
                         }
                        
                         if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
-                                $quota = $this->getQuota($production);
-                              
+                                
                                 $plan_waiting = $this->getPlanWaiting($production);
-                               
-
                         }
-
+                        $quota = $this->getQuota($production);
+                        
                         $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
                         
                         $events = $this->getEvents($production, $startDate, $endDate, $clearing);
