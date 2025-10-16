@@ -20,6 +20,7 @@ class RoleController extends Controller
                 'permissions.display_name as permission_name',
                 'permissions.permission_group',
             )
+            ->orderBy('role_id')
             ->orderBy('permission_group', 'asc')
             ->get()
             ->groupBy('role_id')
