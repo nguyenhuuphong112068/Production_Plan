@@ -17,8 +17,10 @@ class RoleController extends Controller
                 'roles.id as role_id',
                 'roles.name as role_name',
                 'permissions.id as permission_id',
-                'permissions.display_name as permission_name'
+                'permissions.display_name as permission_name',
+                'permissions.permission_group',
             )
+            ->orderBy('permission_group', 'asc')
             ->get()
             ->groupBy('role_id')
             ->map(function ($items) {
@@ -33,6 +35,7 @@ class RoleController extends Controller
                 ];
             })
             ->values();
+
             //dd ($datas);
         session()->put(['title'=> 'DANH SÁCH NHÓM QUYỀN']);
         return view('pages.User.role.list', ['datas' => $datas]);

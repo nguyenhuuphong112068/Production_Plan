@@ -52,6 +52,7 @@
                       $auth_create = user_has_permission(session('user')['userId'], 'quota_production_create', 'disabled');
                       $auth_update = user_has_permission(session('user')['userId'], 'quota_production_update', 'disabled');
                       $auth_deActive = user_has_permission(session('user')['userId'], 'quota_production_deActive', 'disabled');
+                      //dd ($auth_create, $auth_update, $auth_deActive)
                   @endphp
 
                  <div class="row">
@@ -152,23 +153,23 @@
                       </td>
 
                       <td> 
-                        <input  type= "{{$typeInput}}" class="time" name="p_time" value = "{{$data->p_time }}" data-id = {{ $data->id }}>
+                        <input  type= "{{$typeInput}}" class="time" name="p_time" value = "{{$data->p_time }}" data-id = {{ $data->id }} {{ $auth_update }} >
                       </td>
 
                       <td> 
-                        <input type= "{{$typeInput}}" class="time" name="m_time" value = "{{$data->m_time }}" data-id = {{ $data->id }}>
+                        <input type= "{{$typeInput}}" class="time" name="m_time" value = "{{$data->m_time }}" data-id = {{ $data->id }} {{ $auth_update }}>
                       </td>
                       <td> 
-                        <input type= "{{$typeInput}}" class="time" name="C1_time" value = "{{$data->C1_time }}" data-id = {{ $data->id }}>
+                        <input type= "{{$typeInput}}" class="time" name="C1_time" value = "{{$data->C1_time }}" data-id = {{ $data->id }} {{ $auth_update }}>
                       </td>
                       <td> 
-                        <input type= "{{$typeInput}}" class="time" name="C2_time" value = "{{$data->C2_time }}" data-id = {{ $data->id }}>
+                        <input type= "{{$typeInput}}" class="time" name="C2_time" value = "{{$data->C2_time }}" data-id = {{ $data->id }} {{ $auth_update }}>
                       </td>
                       <td> 
-                        <input type= "{{$typeInput}}" class="time" name="maxofbatch_campaign" value = "{{$data->maxofbatch_campaign }}" data-id = {{ $data->id }}>
+                        <input type= "{{$typeInput}}" class="time" name="maxofbatch_campaign" value = "{{$data->maxofbatch_campaign }}" data-id = {{ $data->id }} {{ $auth_update }}>
                       </td>
                       <td> 
-                        <input type= "{{$typeInput}}" class="time" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}>
+                        <input type= "{{$typeInput}}" class="time" name="note" value = "{{$data->note }}" data-id = {{ $data->id }} {{ $auth_update }}>
                       </td>
                       
                       <td>
@@ -192,30 +193,7 @@
                           </button>
                       </td>
 
-                      {{-- <td class="text-center align-middle">
-                          <button type="button" class="btn btn-warning btn-edit" {{$data->room_name?'':'disabled'}}
-                             {{ $auth_update }}  
-                              data-id="{{ $data->id }}"
-                              data-product_name="{{ $data->product_name }}"
-                              data-intermediate_code="{{ $data->intermediate_code }}"
-                              data-finished_product_code="{{ $data->finished_product_code }}"
-                              data-stage_code="{{ $stage_code }}"
-                              data-room_id="{{ $data->room_id?? ''}}"
-                              data-room_name="{{ $data->room_name?? ''}}"
-                              data-room_code="{{ $data->room_code?? ''}}"
-                              data-p_time="{{ $data->p_time?? ''}}"
-                              data-m_time="{{ $data->m_time?? ''}}"
-                              data-c1_time="{{$data->C1_time?? ''}}"
-                              data-c2_time="{{$data->C2_time?? ''}}"
-                              data-maxofbatch_campaign="{{ $data->maxofbatch_campaign??''}}"
-                              data-note="{{ $data->note??''}}"
-                             
-                              data-toggle="modal"
-                              data-target="#update_modal">
-                              <i class="fas fa-edit"></i>
-                          </button>
-                      </td> --}}
-
+    
 
                       <td class="text-center align-middle">  
 
@@ -307,34 +285,34 @@
 
 
 
-      $('.btn-edit').click(function () {
-          const button = $(this);
-          const modal = $('#update_modal');
-          console.log (button.data('room_id'),button.data('p_time'), button.data('C1_time'),button.data('C2_time'))
-          // Gán dữ liệu vào input
-          modal.find('input[name="id"]').val(button.data('id'));
-          modal.find('input[name="product_name"]').val(button.data('product_name'));
-          modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-          modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-          modal.find('input[name="room_id"]').val(button.data('room_name') +" - "+ button.data('room_code'));
-          modal.find('input[name="p_time"]').val(button.data('p_time'));
-          modal.find('input[name="m_time"]').val(button.data('m_time'));
-          modal.find('input[name="C1_time"]').val(button.data('c1_time'));
-          modal.find('input[name="C2_time"]').val(button.data('c2_time'));
-          modal.find('input[name="maxofbatch_campaign"]').val(button.data('maxofbatch_campaign'));
-          modal.find('input[name="note"]').val(button.data('note'));
+      // $('.btn-edit').click(function () {
+      //     const button = $(this);
+      //     const modal = $('#update_modal');
+      //     console.log (button.data('room_id'),button.data('p_time'), button.data('C1_time'),button.data('C2_time'))
+      //     // Gán dữ liệu vào input
+      //     modal.find('input[name="id"]').val(button.data('id'));
+      //     modal.find('input[name="product_name"]').val(button.data('product_name'));
+      //     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+      //     modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
+      //     modal.find('input[name="room_id"]').val(button.data('room_name') +" - "+ button.data('room_code'));
+      //     modal.find('input[name="p_time"]').val(button.data('p_time'));
+      //     modal.find('input[name="m_time"]').val(button.data('m_time'));
+      //     modal.find('input[name="C1_time"]').val(button.data('c1_time'));
+      //     modal.find('input[name="C2_time"]').val(button.data('c2_time'));
+      //     modal.find('input[name="maxofbatch_campaign"]').val(button.data('maxofbatch_campaign'));
+      //     modal.find('input[name="note"]').val(button.data('note'));
                               
 
-          if (button.data('stage_code') <= 6) {
-            modal.find('input[name="intermediate_code"]').show();
-            modal.find('input[name="finished_product_code"]').hide();
+      //     if (button.data('stage_code') <= 6) {
+      //       modal.find('input[name="intermediate_code"]').show();
+      //       modal.find('input[name="finished_product_code"]').hide();
            
-          } else if (button.data('stage_code') === 7) {
-              modal.find('input[name="intermediate_code"]').hide();
-              modal.find('input[name="finished_product_code"]').show();
-          }
+      //     } else if (button.data('stage_code') === 7) {
+      //         modal.find('input[name="intermediate_code"]').hide();
+      //         modal.find('input[name="finished_product_code"]').show();
+      //     }
 
-        });
+      //   });
 
      
 
@@ -438,7 +416,7 @@
       $(this).data('old-value', $(this).val());
   });
 
-   $(document).on('blur', '.time', function () {
+  $(document).on('blur', '.time', function () {
    
       let id = $(this).data('id');
       let name = $(this).attr('name');

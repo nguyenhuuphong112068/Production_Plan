@@ -123,14 +123,14 @@
                                 <div> {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}}</div>
                             </td>
                             <td>
-                                <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }}>
+                                <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }}>
                             </td>
                             <td>
                                 <div> {{ $data->market }} </div>
                                 <div> {{ $data->specification }} </div>
                             </td>
                             <td>
-                                <input type= "date" class="updateInput" name="expected_date"  value="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                <input type= "date" class="updateInput" name="expected_date"  value="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }} {{ $auth_update }}>
                             </td>
                             
                             @php
@@ -145,7 +145,7 @@
                             <td class="text-center "> 
                                 <span
                                     style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
-                                    <input type= "text" class="updateInput" name="level" value = "{{$data->level}}" data-id = {{$data->id}}>
+                                    <input type= "text" class="updateInput" name="level" value = "{{$data->level}}" data-id = {{$data->id}} {{ $auth_update }}>
                                 </span>
                             </td>
 
@@ -154,6 +154,7 @@
                                       type="checkbox" role="switch"
                                       data-id="{{ $data->id }}"
                                       id="{{ $data->id }}"
+                                      {{ $auth_update != ''?'readOnly':''}}
                                       {{ $data->is_val ? 'checked' : '' }}
                                       >
                                       <br>
@@ -165,16 +166,16 @@
                             <td>{{ $data->source_material_name }}</td>
 
                             <td>
-                                <input type= "date" class="updateInput" name="after_weigth_date" value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
-                                <input type= "date" class="updateInput" name="before_weigth_date" value="{{ $data->before_weigth_date ? \Carbon\Carbon::parse($data->before_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                <input {{ $auth_update }} type= "date" class="updateInput" name="after_weigth_date" value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                <input {{ $auth_update }} type= "date" class="updateInput" name="before_weigth_date" value="{{ $data->before_weigth_date ? \Carbon\Carbon::parse($data->before_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
                                 
                             </td>
                             <td>
-                                <input type= "date" class="updateInput" name="after_parkaging_date" value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
-                                <input type= "date" class="updateInput" name="before_parkaging_date" value="{{ $data->before_parkaging_date ? \Carbon\Carbon::parse($data->before_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                <input {{ $auth_update }} type= "date" class="updateInput" name="after_parkaging_date" value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                <input {{ $auth_update }} type= "date" class="updateInput" name="before_parkaging_date" value="{{ $data->before_parkaging_date ? \Carbon\Carbon::parse($data->before_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
                             </td>
                             <td> 
-                                <input type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}>
+                                <input {{ $auth_update }} type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}>
                             </td>
 
                             <td>
