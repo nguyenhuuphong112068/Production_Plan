@@ -167,6 +167,7 @@ class ProductionPlanController extends Controller
                         'material_source_id' => 'required',
                         'percent_packaging' => 'required',
                         'number_of_batch' => 'required',
+                       
                 ], [
                         'product_caterogy_id' => 'Vui lòng chọn lại sản phẩm.',
                         'plan_list_id'   => 'Vui lòng chọn lại sản phẩm',
@@ -251,6 +252,11 @@ class ProductionPlanController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                         ]);
+
+                        // Cập nhật lại chính bản ghi đó
+                        DB::table('plan_master')
+                        ->where('id', $planMasterId)
+                        ->update(['main_parkaging_id' => $planMasterId]);
 
                         // Insert vào plan_master_history
                         DB::table('plan_master_history')->insert([
@@ -676,7 +682,7 @@ class ProductionPlanController extends Controller
                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id') 
                 ->where('plan_master.active',1)
                 ->where ('is_val',1)
-                ->whereRaw("SUBSTRING_INDEX(plan_master.code_val, '_', -1) = '1'") 
+                //->whereRaw("SUBSTRING_INDEX(plan_master.code_val, '_', -1) = '1'") 
                 ->where ('finished_product_category.intermediate_code',$request->intermediate_code)
                 ->orderBy('id','desc')
                 ->get();
