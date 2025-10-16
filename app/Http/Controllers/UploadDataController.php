@@ -222,6 +222,13 @@ class UploadDataController extends Controller
                 ],
                 'extra' => [],
             ],
+            'user_role' => [
+                'columns' => [
+                    'user_id',
+                    'role_id',
+                ],
+                'extra' => [],
+            ],
         ];
 
         $table = $request->table;
