@@ -131,6 +131,7 @@ class UploadDataController extends Controller
                     'batch',
                     'expected_date',
                     'is_val',
+                    'code_val',
                     'after_weigth_date',
                     'before_weigth_date',
                     'after_parkaging_date',
