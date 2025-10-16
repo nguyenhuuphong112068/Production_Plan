@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Log;
 class ProductionQuotaController extends Controller
 {
         public function index(Request $request){
+                Log::info('request', [
+                        'request' => $request->all()
+                ]);
                 $stage_code = $request->stage_code ?? 1;
                 $production = session('user')['production_code'];
 
@@ -124,7 +127,11 @@ class ProductionQuotaController extends Controller
                 }
 
                 session()->put(['title' => 'Định Mức Sản Xuất']);
-              
+
+                Log::info('datas', [
+                        'datas' => $datas
+                ]);
+                
                 return view('pages.quota.production.list', [
                         'datas' => $datas,
                         'stage_code' => $stage_code,

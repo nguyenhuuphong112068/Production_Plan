@@ -442,6 +442,7 @@ class SchedualController extends Controller
                                 'sumBatchByStage' => $sumBatchByStage ?? [],
                                 'type' => $type,
                                 'authorization' => $authorization,
+                                'production' => $production,
                         ]);
 
                 } catch (\Throwable $e) {

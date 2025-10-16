@@ -402,7 +402,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   };
 
   const handleCreateManualCampain = (e) => {
-      const filteredRows = selectedRows.map(row => ({
+    if (isSaving) return;
+    setIsSaving(true);  
+    const filteredRows = selectedRows.map(row => ({
         id: row.id,
         plan_master_id: row.plan_master_id,
         product_caterogy_id: row.product_caterogy_id,
@@ -430,13 +432,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 }
       );
 
-
+      setIsSaving(false);  
       setSelectedRows ([]);
       return;
   }
 
   const handleCreateAutoCampain = () => {
-
+    if (isSaving) return;
+    setIsSaving(true);
      Swal.fire({
               title: "Đang thực thi, vui lòng đợi giây lát..",
               allowOutsideClick: false,
@@ -482,6 +485,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     console.error("API error:", err.response?.data || err.message);
                 }
       );
+
+    setIsSaving(false);
 
   }
 
@@ -661,6 +666,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   }
 
   const handleFinished = () => {
+    if (isSaving) return;
+    setIsSaving(true);
+
     const ids = selectedRows.map(row => row.plan_master_id);
     const stageCode = selectedRows[0].stage_code
 
@@ -690,7 +698,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
             });
             console.error("Finished error:", err.response?.data || err.message);
         });
-    };
+    setIsSaving(false);
+  };
    
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
@@ -738,17 +747,17 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
               <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
               onClick={handleCreateManualCampain}>
-              <i className="fas fa-flag"></i> ({selectedRows.length})
+                 {isSaving === false ?<i className="fas fa-flag"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
               </div>
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
               onClick={handleCreateAutoCampain}>
-                <i className="fas fa-flag-checkered"></i>
+                {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div> 
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
                 onClick={handleFinished}>
-                <i className="fas fa-check"></i>
+                {isSaving === false ? <i className="fas fa-check"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
 
 
