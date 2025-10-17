@@ -66,7 +66,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
   useEffect(() => {
     if (waitPlan && waitPlan.length > 0) {
-      setTableData(waitPlan.filter(event => Number(event.stage_code) === 1));
+      setTableData(waitPlan.filter(event => Number(event.stage_code) === stageFilter));
       setUnQuota (tableData.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
     }
   }, [waitPlan]);
