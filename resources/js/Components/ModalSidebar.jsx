@@ -716,6 +716,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
+      { field: "month", header: "tháng", sortable: true,  filter: false, filterField: "month" },
       { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" , style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
       { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "permisson_room", style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
       { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false, filterField: "name" , style: { width: '20%', maxWidth: '20%', ...longTextStyle }},

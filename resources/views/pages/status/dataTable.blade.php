@@ -1,147 +1,124 @@
-<div class="content-wrapper">
-    <div class="card">
-        <div class="card-header mt-4">
-            {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-        </div>
-        <!-- /.card-Body -->
-        <div class="card-body">
-            <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#Modal" style="width: 155px">
-                <i class="fas fa-plus"></i> Thêm
-            </button>
-            <table id="data_tabale_group" class="table table-bordered table-striped">
-                <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
-                    <tr>
-                        <th>STT</th>
-                        <th>Tên Tổ</th>
-                        <th>Tên Viết Tắt</th>
-                        <th>Người Tạo</th>
-                        <th>Ngày Tạo</th>
-                        <th>Edit</th>
-                        <th>DeActive</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($datas as $data)
-                        <tr>
-                            <td>{{ $loop->iteration }} </td>
-                            <td>{{ $data->name }}</td>
-                            <td>{{ $data->shortName }}</td>
-                            <td>{{ $data->prepareBy }}</td>
-                            <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</td>
+{{-- <div class="content-wrapper"> --}}
+<div class="card">
 
-                            <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
-                                    data-name="{{ $data->name }}" data-shortname="{{ $data->shortName }}"
-                                    data-toggle="modal" data-target="#UpdateModal">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </td>
-                            {{-- <td class="text-center align-middle">
-                                <form class="form-deActive"
-                                    action="{{ route('pages.materData.Groups.deActive', ['id' => $data->id]) }}"
-                                    method="post">
-                                    @csrf
-                                    <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td> --}}
-                        </tr>
-                    @endforeach
-
-                </tbody>
-            </table>
-        </div>
-        <!-- /.card-body -->
+  <!-- ====== HEADER ====== -->
+  <div class="card-header">
+    <div class="row align-items-center">
+      <div class="mx-auto text-center" style="color: #CDC717">
+        <h4>{{ session('title') }}</h4>
+      </div>
+      <a href="{{ route('logout') }}" class="nav-link text-primary" style="font-size: 20px">
+        <i class="fas fa-sign-out-alt"></i>
+      </a>
     </div>
-    <!-- /.card -->
+  </div>
+
+  <!-- ====== BODY ====== -->
+  <div class="card-body">
+        <div class="table-responsive scroll-container">
+            <div class="scroll-content">
+                <table class="table table-bordered">
+                    <thead >
+                        <tr>
+                        <th style="width: 10%">Phòng Sản Xuất</th>
+                        <th style="width: 20%">Sản Phẩm Theo Lịch Sản Xuất</th>
+                        <th style="width: 20%">Sản Phẩm Đang Sản Xuất</th>
+                        <th style="width: 45%" class="text-center">Thông Báo</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-lg">
+                        @foreach ($datas as $data)
+                        <tr>
+                            <td>{{ $data->code . " - " . $data->name }}</td>
+                            <td>{{ $data->code . " - " . $data->name }}</td>
+                            <td>{{ $data->code . " - " . $data->name }}</td>
+                            <td class="relative overflow-hidden whitespace-nowrap" style="max-width: 100%;">
+                                <div class="animate-scroll inline-block">
+                                    {{ $data->code . " - " . $data->name }}
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+  </div>
+
+  <!-- ====== FOOTER ====== -->
+
 </div>
+  <div class="card-footer text-white w-100 " style="background-color: #CDC717">
+    <div class="animate-scroll inline-block text-xl">
+      Thông Báo Chung Cho Toàn Thể Nhân Viên Xưởng
+    </div>
+  </div>
 
+{{-- </div> --}}
 
+<!-- ====== SCRIPT ====== -->
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
-@if (session('success'))
-    <script>
-        Swal.fire({
-            title: 'Thành công!',
-            text: '{{ session('success') }}',
-            icon: 'success',
-            timer: 2000, // tự đóng sau 2 giây
-            showConfirmButton: false
-        });
-    </script>
-@endif
-
 <script>
-    $(document).ready(function() {
-        document.body.style.overflowY = "auto";
-        $('.btn-edit').click(function() {
-            const button = $(this);
-            const modal = $('#UpdateModal');
-
-            console.log(button.data('code'))
-
-            // Gán dữ liệu vào input
-            modal.find('input[name="code"]').val(button.data('code'));
-            modal.find('input[name="name"]').val(button.data('name'));
-            modal.find('input[name="shortName"]').val(button.data('shortname'));
-            modal.find('input[name="productType"]').val(button.data('producttype'));
-            modal.find('input[name="id"]').val(button.data('id'));
-            const id = button.data('id');
-
-        });
-
-        $('.btn-create').click(function() {
-            const modal = $('#Modal');
-        });
-
-        $('.form-deActive').on('submit', function(e) {
-            e.preventDefault(); // chặn submit mặc định
-            const form = this;
-            const productName = $(form).find('button[type="submit"]').data('name');
-
-
-            Swal.fire({
-                title: 'Bạn chắc chắn muốn vô hiệu hóa?',
-                text: `Tổ: ${productName}`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Đồng ý',
-                cancelButtonText: 'Hủy'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit(); // chỉ submit sau khi xác nhận
-                }
-            });
-        });
-
-        $('#data_tabale_group').DataTable({
-            paging: true,
-            lengthChange: true,
-            searching: true,
-            ordering: true,
-            info: true,
-            autoWidth: false,
-            pageLength: 10,
-            lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "Tất cả"]
-            ],
-            language: {
-                search: "Tìm kiếm:",
-                lengthMenu: "Hiển thị _MENU_ dòng",
-                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-                paginate: {
-                    previous: "Trước",
-                    next: "Sau"
-                }
-            }
-        });
-
-    });
+  $(document).ready(function() {
+    document.body.style.overflowY = "auto";
+  });
 </script>
+
+<!-- ====== STYLE ====== -->
+<style>
+  /* ===== Hiệu ứng chạy ngang (cho thông báo hoặc cột text) ===== */
+  @keyframes scrollText {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+
+  .animate-scroll {
+    animation: scrollText 30s linear infinite;
+    white-space: nowrap;
+  }
+
+  .animate-scroll:hover {
+    animation-play-state: paused;
+  }
+
+  /* ===== Hiệu ứng cuộn dọc tự động (cho bảng) ===== */
+  @keyframes scrollTable {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); } /* cuộn nửa bảng, bạn có thể chỉnh */
+  }
+
+  .scroll-container {
+    max-height: 90vh; /* chiều cao vùng hiển thị bảng */
+    overflow: hidden;
+    position: relative;
+  }
+
+  .scroll-content {
+    animation: scrollTable 60s linear infinite;
+  }
+
+  .scroll-content:hover {
+    animation-play-state: paused;
+  }
+
+  /* Giữ footer không che nội dung bảng */
+  /* .card-body {
+    padding-bottom: 60px !important;
+  } */
+
+  /* Làm footer dính ở cuối màn hình */
+  .card-footer {
+    z-index: 999;
+  }
+
+  table thead th {
+    position: sticky;
+    top: 50px;
+    z-index: 2;
+    background-color: #f8f9fa;
+    }
+</style>
