@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
-use Illuminate\Support\Facades\Log;
+
 
 class ProductionQuotaController extends Controller
 {
@@ -126,9 +126,6 @@ class ProductionQuotaController extends Controller
 
                 session()->put(['title' => 'Định Mức Sản Xuất']);
 
-                Log::info('datas', [
-                        'datas' => $datas
-                ]);
                 
                 return view('pages.quota.production.list', [
                         'datas' => $datas,
