@@ -8,8 +8,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import { Calendar } from 'primereact/calendar';
-
-
+import { Stepper } from 'primereact/stepper';
+import { StepperPanel } from 'primereact/stepperpanel';
+import { createRoot } from 'react-dom/client'; 
 import axios from "axios";
 import 'moment/locale/vi';
 
@@ -18,6 +19,7 @@ import Selecto from "react-selecto";
 import Swal from 'sweetalert2';
 
 import './calendar.css';
+
 import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
@@ -25,6 +27,7 @@ import NoteModal from '../Components/NoteModal';
 import History from '../Components/History';
 import {CheckAuthorization} from '../Components/CheckAuthorization';
 import dayjs from 'dayjs';
+import { Button } from "primereact/button";
 
   const ScheduleTest = () => {
 
@@ -755,6 +758,12 @@ import dayjs from 'dayjs';
               </div>
 
               <div class="cfg-row">
+              <!-- ✅ Vùng để gắn stepper -->
+              <label class="cfg-label" for="stepper-container">Sắp Lịch Theo Công Đoạn:</label> 
+              <div id="stepper-container" style="margin-top: 15px;"></div>
+              </div>
+
+              <div class="cfg-row">
                 <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
                 <label class="switch">
                   <input id="work-sunday" type="checkbox" checked>
@@ -768,9 +777,11 @@ import dayjs from 'dayjs';
 
               <div class="cfg-row">
               <!-- ✅ Vùng để gắn Calendar -->
-              <label class="cfg-label" for="work-sunday">Ngày Không Sắp Lịch:</label> 
+              <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label> 
               <div id="calendar-container" style="margin-top: 15px;"></div>
               </div>
+
+
               ${
                 hasEmptyPermission
                   ? `<p style="color:red;font-weight:600;margin-top:10px;">
@@ -789,58 +800,159 @@ import dayjs from 'dayjs';
         cancelButtonText: 'Hủy',
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
-        didOpen: () => {
-          const container = document.getElementById("calendar-container");
-          // ✅ Tạo root riêng cho Calendar
-          const root = ReactDOM.createRoot(container);
-         
+      // didOpen: () => {
+      //     const container = document.getElementById("calendar-container");
+      //     const root = ReactDOM.createRoot(container);
 
-          // ✅ Dùng state nội bộ để update Calendar ngay khi click
-          const CalendarPopup = () => {
-            const [localDates, setLocalDates] = React.useState([]);
+      //     // ✅ Dùng state nội bộ để update Calendar ngay khi click
+      //     const CalendarPopup = () => {
+      //       const [localDates, setLocalDates] = React.useState([]);
 
-            const handleChange = (e) => {
-              const selected = e.value.map(d => {
-                const date = new Date(d);
+      //       const handleChange = (e) => {
+      //         const selected = e.value.map(d => {
+      //           const date = new Date(d);
 
-                // Lấy ngày, tháng, năm theo múi giờ local (VN)
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, "0");
-                const day = String(date.getDate()).padStart(2, "0");
+      //           // Lấy ngày, tháng, năm theo múi giờ local (VN)
+      //           const year = date.getFullYear();
+      //           const month = String(date.getMonth() + 1).padStart(2, "0");
+      //           const day = String(date.getDate()).padStart(2, "0");
 
-                return `${year}-${month}-${day}`; // không dùng toISOString()
-              });
+      //           return `${year}-${month}-${day}`; // không dùng toISOString()
+      //         });
 
-              setLocalDates(e.value);
-              selectedDates = selected;
+      //         setLocalDates(e.value);
+      //         selectedDates = selected;
+      //       };
+
+      //       return (
+      //         <div className="card flex justify-content-center">
+      //           <Calendar
+      //             value={localDates}
+      //             onChange={handleChange}
+      //             selectionMode="multiple"
+      //             inline
+      //             readOnlyInput
+      //           />
+      //         </div>
+      //       );
+      //     };
+      //     root.render(<CalendarPopup />);
+      //     ///
+          
+
+
+      //     // disable nút Chạy nếu thiếu permission
+      //     if (hasEmptyPermission) {
+      //       const confirmBtn = Swal.getConfirmButton();
+      //       confirmBtn.disabled = true;
+      //       confirmBtn.style.opacity = "0.5";
+      //       confirmBtn.style.cursor = "not-allowed";
+      //     }
+      //   }
+  didOpen: () => {
+  // ------------------ Calendar ------------------
+  const calendarContainer = document.getElementById("calendar-container");
+  const calendarRoot = ReactDOM.createRoot(calendarContainer);
+
+  const CalendarPopup = () => {
+    const [localDates, setLocalDates] = React.useState([]);
+
+    const handleChange = (e) => {
+      const selected = e.value.map(d => {
+        const date = new Date(d);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      });
+
+      setLocalDates(e.value);
+      selectedDates = selected;
+    };
+
+    return (
+      <div className="card flex justify-content-center">
+        <Calendar
+          value={localDates}
+          onChange={handleChange}
+          selectionMode="multiple"
+          inline
+          readOnlyInput
+        />
+      </div>
+    );
+  };
+
+  calendarRoot.render(<CalendarPopup />);
+
+  // ------------------ Stepper ------------------
+  const stepperContainer = document.getElementById("stepper-container");
+
+          if (stepperContainer) {
+            const stepperRoot = createRoot(stepperContainer);
+
+              const StepperPopup = () => {
+              const stepperRef = React.useRef(null);
+              return (
+                <Stepper ref={stepperRef} style={{ width: '100%' }}>
+                  <StepperPanel header="PC">
+                    <div className="flex flex-column h-12rem">
+                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
+                        Pha Chế
+                      </div>
+                    </div>
+                  </StepperPanel>
+
+                  <StepperPanel header="THT">
+                    <div className="flex flex-column h-12rem">
+                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
+                          Pha Chế ➡ Trộn Hoàn Tất
+                      </div>
+                    </div>
+                  </StepperPanel>
+
+                  <StepperPanel header="ĐH">
+                    <div className="flex flex-column h-12rem">
+                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
+                       Pha Chế ➡ Định Hình
+                      </div>
+                    </div>
+                  </StepperPanel>
+                  
+                  <StepperPanel header="BP">
+                    <div className="flex flex-column h-12rem">
+                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
+                       Pha Chế ➡ Bao Phim
+                      </div>
+                    </div>
+                  </StepperPanel>
+
+                  <StepperPanel header="ĐG">
+                    <div className="flex flex-column h-12rem">
+                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
+                        Pha Chế ➡ Đóng Gói
+                      </div>
+                    </div>
+                  </StepperPanel>
+                  
+                </Stepper>
+              );
             };
 
-            return (
-              <div className="card flex justify-content-center">
-                <Calendar
-                  value={localDates}
-                  onChange={handleChange}
-                  selectionMode="multiple"
-                  inline
-                  readOnlyInput
-                />
-              </div>
-            );
-          };
+            stepperRoot.render(<StepperPopup />);
 
-
-
-
-          root.render(<CalendarPopup />);
-
-          // disable nút Chạy nếu thiếu permission
+          }
+          // ------------------ Disable Confirm if missing permission ------------------
           if (hasEmptyPermission) {
             const confirmBtn = Swal.getConfirmButton();
             confirmBtn.disabled = true;
             confirmBtn.style.opacity = "0.5";
             confirmBtn.style.cursor = "not-allowed";
           }
-        },
+        }
+
+        
+        ,
         preConfirm: () => {
           const formValues = {};
           document.querySelectorAll('.swal2-input').forEach(input => {
@@ -909,6 +1021,7 @@ import dayjs from 'dayjs';
       });
     };
 
+  
     /// Xử lý Xóa Toàn Bộ Lịch
     const handleDeleteAllScheduale = () => {
 
@@ -976,6 +1089,7 @@ import dayjs from 'dayjs';
         });
     };
 
+  
     /// Xử lý xoa các lịch được chọn
     const handleDeleteScheduale = (e) => {
         if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return};
@@ -1682,7 +1796,7 @@ import dayjs from 'dayjs';
           },
           autoSchedualer: {
             text: '🤖',
-            click: handleAutoSchedualer,
+            click:  handleAutoSchedualer,
 
           },
           deleteAllScheduale: {
@@ -1772,6 +1886,11 @@ import dayjs from 'dayjs';
 
         />
       {/* </div> */}
+            {/* <AutoSchedulerPopup
+              visible={showPopup}
+              onHide={() => setShowPopup(false)}
+              onSubmit={handleSubmit}
+            /> */}
 
 
         <NoteModal show={showNoteModal} setShow={setShowNoteModal} />

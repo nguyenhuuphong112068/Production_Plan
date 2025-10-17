@@ -207,7 +207,7 @@ class ProductionQuotaController extends Controller
                                 'C2_time'=> $request->C2_time,
                                 'stage_code'=> $request->stage_code,
                                 'maxofbatch_campaign'=> $request->maxofbatch_campaign,
-                                'note'=> $request->note,
+                                'note'=> $request->note??"NA",
                                 'deparment_code'=>  session('user')['production_code'],
                                 'prepared_by' => session('user')['fullName'],
                                 'created_at' => now(),
