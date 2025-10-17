@@ -80,7 +80,7 @@
                           <th rowspan="2">Mã Sản Phẩm</th>
                           <th rowspan="2">Tên Sản Phẩm</th>
                           <th rowspan="2">Cở Lô</th>
-                          @if ($stage_code == 3)
+                          @if ($stage_code == 3 || $stage_code == 4)
                             <th rowspan="2" style="width:1%">Bồn LP</th>
                           @endif
                           @if ($stage_code == 7)
@@ -122,7 +122,7 @@
                       <td>{{ $data->batch_qty . " " .  $data->unit_batch_qty}}</td>
 
                       @php
-                          $field = $stage_code == 3 ? 'tank' : ($stage_code == 7 ? 'keep_dry' : null);
+                          $field = $stage_code == 3 ||  $stage_code == 4 ? 'tank' : ($stage_code == 7 ? 'keep_dry' : null);
                       @endphp
 
                       @if ($field)
@@ -417,7 +417,7 @@
   });
 
   $(document).on('blur', '.time', function () {
-   
+      
       let id = $(this).data('id');
       let name = $(this).attr('name');
       let time = $(this).val();
@@ -470,7 +470,6 @@
             $(this).css('border', '');
         }
       }
-
 
       $.ajax({
         url: "{{ route('pages.quota.production.updateTime') }}",
