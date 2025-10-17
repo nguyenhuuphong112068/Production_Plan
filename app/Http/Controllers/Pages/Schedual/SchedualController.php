@@ -295,6 +295,7 @@ class SchedualController extends Controller
                         'plan_master.material_source_id',
                         'plan_master.only_parkaging',
                         'plan_master.percent_parkaging',
+                        DB::raw('plan_master.plan_list_id + 4 as month'),
                         'market.code as market',
                         'source_material.name as source_material_name',
                         'finished_product_category.intermediate_code',

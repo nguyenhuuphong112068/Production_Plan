@@ -1,19 +1,19 @@
 
 @extends ('layout.master')
 
-@section('topNAV')
+{{-- @section('topNAV')
     @include('layout.topNAV')
-@endsection
+@endsection --}}
 
-@section('leftNAV')
+{{-- @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
- 
+  --}}
 @section('mainContent')
-  @include('pages.materData.Groups.dataTable')
+  @include('pages.status.dataTable')
 @endsection
 
-@section('model')
+{{-- @section('model')
   @include('pages.materData.Groups.create')
   @include('pages.materData.Groups.update') 
-@endsection
+@endsection --}}
