@@ -105,11 +105,6 @@
     animation-play-state: paused;
   }
 
-  /* Giữ footer không che nội dung bảng */
-  /* .card-body {
-    padding-bottom: 60px !important;
-  } */
-
   /* Làm footer dính ở cuối màn hình */
   .card-footer {
     z-index: 999;
