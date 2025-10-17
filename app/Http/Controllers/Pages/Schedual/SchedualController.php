@@ -3341,7 +3341,7 @@ class SchedualController extends Controller
                                         $overlapTankCount = DB::table('stage_plan')
                                                 ->whereNotNull('start')
                                                 ->where('tank', 1)
-                                                ->where('stage_code', 3)
+                                                ->whereIn('stage_code', [3, 4])
                                                 ->where('start', '<', $bestEnd)
                                                 ->where('end', '>', $bestStart)
                                                 ->count();

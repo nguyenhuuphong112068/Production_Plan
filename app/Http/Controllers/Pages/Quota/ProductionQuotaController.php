@@ -278,11 +278,14 @@ class ProductionQuotaController extends Controller
 
 
         public function tank_keepDry(Request $request){
-
+                
+                // Log::info ('request',[
+                //         $request->all()   
+                // ]);
 
                 DB::table('quota')
                         ->where('id', $request->id)
-                        ->when($request->stage_code == 3, function ($query) use ($request) {
+                        ->when($request->stage_code == 3 || $request->stage_code == 4, function ($query) use ($request) {
                         $query->update(['tank' => $request->checked == "false" ? 0 : 1]);
                         })
                         ->when($request->stage_code == 7, function ($query) use ($request) {
@@ -294,7 +297,7 @@ class ProductionQuotaController extends Controller
 
         public function updateTime(Request $request){
 
-
+               
                 DB::table('quota')
                         ->where('id', $request->id)
                         ->update([
