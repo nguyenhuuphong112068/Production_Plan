@@ -17,7 +17,9 @@ class LoginController extends Controller
     {
 
         session()->put(['title' => 'KÊ HOẠCH SẢN XUẤT']);
-        return view('login');
+        return view('login', [
+
+        ]);
     }
 
 
@@ -30,7 +32,7 @@ class LoginController extends Controller
         if (is_null($getUser)) {
             return redirect()->route('login')->with('error', 'User Không Tồn Tại, Vui Lòng Đăng Nhập Lại!')->with('activeForm', 'login');
         }
-       
+        //dd (Hash::check($request->passWord, $getUser->passWord));
         if (!Hash::check($request->passWord, $getUser->passWord)) {
              
             return redirect()->route('login')->with('error', 'PassWord Không Chính Xác, Vui Lòng Đăng Nhập Lại!')->with('activeForm', 'login');
@@ -93,34 +95,63 @@ class LoginController extends Controller
         ]);
 
         if ($validator->fails()) {
-              
                 return redirect()->back()->withErrors($validator, 'changePasswordErrors')->with('activeForm', 'changePass');
         }
+        
+        
 
-        $user = session('user');
-
-        if (!$user) {
-            return redirect()->route('login')->with('error', 'Phiên đăng nhập đã hết hạn.')->with('activeForm', 'changePass');;
+        if ($request->oldPassword == $request->newPassword) {
+            return redirect()->route('login')->with('error', 'PassWord mới trung PassWord hiện tại!')->with('activeForm', 'changePass');;
         }
 
         // 2️⃣ Lấy thông tin người dùng trong DB
-        $dbUser = DB::table('user_management')->where('userName', '=', $request->username)->first();
+        $getUser = DB::table('user_management')->where('userName', '=', $request->username)->first();
 
-        if (!$dbUser) {
+        if (!$getUser) {
             return back()->with('error', 'User Không tồn tại');
         }
 
+        
         // 3️⃣ Xác thực mật khẩu cũ
-        if (!Hash::check($request->current_password, $dbUser->passWord)) {
+        if (!Hash::check($request->oldPassword, $getUser->passWord)) {
             return back()->with('error', 'Mật khẩu hiện tại không đúng.')->with('activeForm', 'changePass');;
         }
 
         // 4️⃣ Cập nhật mật khẩu mới (hash)
-        $newHash = Hash::make($request->passWord);
+        $newHash = Hash::make($request->newPassword);
 
         DB::table('user_management')
-            ->where('id', $user['userId'])
+            ->where('id', $getUser->id)
             ->update(['passWord' => $newHash]);
+
+
+        
+        $production = DB::table('production')
+            ->where('code', $getUser->deparment)
+            ->first();
+
+        if ($production) {
+            $production_code = $production->code;
+            $production_name = $production->name;
+        } else {
+            $production_code = "PXV1";
+            $production_name = "PX Viên 1";
+        }
+
+        session()->put('fullCalender', [
+                'mode' => "offical",
+                'stage_plan_temp_list_id' => null
+        ]);
+        
+        $request->session()->put('user', [
+            'userId' => $getUser->id,
+            'userName' => $getUser->userName,
+            'fullName' => $getUser->fullName,
+            'userGroup' => $getUser->userGroup,
+            'department' => $getUser->deparment,
+            'production_code' => $production_code,
+            'production_name' => $production_name,
+        ]);
 
         // 5️⃣ Ghi log và thông báo
         AuditTrialController::log('ChangePassword', "NA", 0, 'NA', 'Đổi mật khẩu thành công');
