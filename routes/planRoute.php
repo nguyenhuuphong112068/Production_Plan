@@ -26,6 +26,8 @@ Route::prefix('/plan')
             Route::get('open','open')->name('open');
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
+            Route::post('splitting', 'splitting')->name('splitting');
+            Route::post('splittingUpdate', 'splittingUpdate')->name('splittingUpdate');
             Route::post('deActive','deActive')->name('deActive');
             Route::post('send','send')->name('send');
             Route::post('history','history')->name('history');

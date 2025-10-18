@@ -1,6 +1,6 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <style>
-    .updateModal-modal-size {
+    .splittingModal-modal-size {
         max-width: 50% !important;
         width: 50% !important;
     }
@@ -14,10 +14,10 @@
 </style>
 
 <!-- Modal -->
-<div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
-    <div class="modal-dialog updateModal-modal-size" role="document">
+<div class="modal fade" id="splittingModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
+    <div class="modal-dialog splittingModal-modal-size" role="document">
 
-        <form class="form-update" action="{{ route('pages.plan.production.update') }}" method="POST">
+        <form class="form-splitting" action="{{ route('pages.plan.production.splitting') }}" method="POST">
             @csrf
 
             <div class="modal-content">
@@ -26,8 +26,8 @@
                         <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
                     </a>
 
-                    <h4 class="modal-title w-100 text-center" id="updateModalLabel" style="color: #CDC717">
-                        {{ 'Cập Nhật Lô' }}
+                    <h4 class="modal-title w-100 text-center" id="splittingModalLabel" style="color: #CDC717">
+                        Chia Lô Đóng Gói
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -88,59 +88,40 @@
                             <label>Số lô</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" name="batch"
-                                    value="{{ old('batch') }}" />
+                                    value="{{ old('batch') }}"/>
                                 <input type="number" min="1" step="1" class="form-control"
                                     name="number_of_batch" value="{{ old('number_of_batch', 1) }}"
-                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')" readonly>
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')" readonly >
                                 <span class="input-group-text p-0" style="width: 105px">
                                     <input type="checkbox" name="format_batch_no" checked data-bootstrap-switch>
                                 </span>
                             </div>
 
-
-                            <label class = "mt-2">Nguồn</label>
+                            <label class="mt-2">% Đóng gói</label>
                             <div class="input-group">
-                                <textarea class="form-control" name="source_material_name" rows="3" value="{{ old('source_material_name') }}"></textarea>
-                                <button type="button" class = "btn btn-success"  data-toggle="modal" data-target="#selectSourceModal"> 
+                                <!-- number_of_unit -->
+                                <input type="hidden" name="max_number_of_unit" id ="splitting_max_number_of_unit">
+
+                                <input type="number" class="form-control" name="number_of_unit" id="number_of_unit"
+                                    placeholder="số lượng đóng gói" min="1" value="{{ old('number_of_unit')}}">
+
+                                <!-- percent_packaging -->
+                                <input type="number" step="0.01" min="0" max="1"
+                                    placeholder="phần trăm đóng gói" readonly class="form-control"
+                                    name="percent_packaging" id="percent_packaging"
+                                    value="{{ old('percent_packaging', 1) }}">
+                            </div>
+
+
+                            <label>Nguồn</label>
+                            <div class="input-group">
+                                <textarea class="form-control" name="source_material_name" rows="6" value="{{ old('source_material_name') }}" readonly></textarea>
+                                {{-- <button type="button" class = "btn btn-success"  data-toggle="modal" data-target="#selectSourceModal"> 
                                     <i class="fas fa-plus"></i>
-                                </button>
+                                </button> --}}
                                 <input type="hidden" class="form-control" name="material_source_id" value="{{ old('material_source_id') }}" />
                             </div>
                             {{-- Lô thẩm định --}}
-                            <label class ="mt-3">Lô Thẩm Định</label>
-                            <div class="card ">
-                                <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-4">        
-                                        <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox1" 
-                                                name = "first_val_batch">
-                                            <label for="checkbox1">Lô thứ nhất</label>
-                                            <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}"  readonly/>
-                                            <input type="hidden" name="code_val_first" value="{{ old('code_val_first') }}"/>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4"> 
-                                        <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox2" 
-                                                name = "second_val_batch">
-                                            <label for="checkbox2">Lô thứ hai</label>
-                                            <span  class = "batchNo batchNo2" ></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4"> 
-                                        <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox3" 
-                                                name = "third_val_batch">
-                                            <label for="checkbox3">Lô thứ ba</label>
-                                            <span class = "batchNo batchNo3"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                </div>
-                            </div>
-
-
                         </div>
 
                         <div class="col-md-6">
@@ -162,8 +143,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-danger d-inline">
-                                                    <input type="radio" id="update_level_1" name="level" value = "1" {{ old('level') == 1 ||  old('level') === null ? 'checked':'' }}>
-                                                    <label for="update_level_1">
+                                                    <input type="radio" id="splitting_level_1" name="level" value = "1" {{ old('level') == 1 ||  old('level') === null ? 'checked':'' }}>
+                                                    <label for="splitting_level_1">
                                                         1: Hàng Gấp, Hàng Thầu
                                                     </label>
                                                 </div>
@@ -173,8 +154,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-warning d-inline">
-                                                    <input type="radio" id="update_level_2" name="level" value = "2" {{ old('level') == 2 ? 'checked':'' }}>
-                                                    <label for="update_level_2">
+                                                    <input type="radio" id="splitting_level_2" name="level" value = "2" {{ old('level') == 2 ? 'checked':'' }}>
+                                                    <label for="splitting_level_2">
                                                         2: Hàng Gấp, Hàng sắp hết số đăng ký
                                                     </label>
                                                 </div>
@@ -184,8 +165,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-primary d-inline">
-                                                    <input type="radio" id="update_level_3" name="level" value = "3" {{ old('level') == 3 ? 'checked':'' }}>
-                                                    <label for="update_level_3">
+                                                    <input type="radio" id="splitting_level_3" name="level" value = "3" {{ old('level') == 3 ? 'checked':'' }}>
+                                                    <label for="splitting_level_3">
                                                         3: Hàng SX dự trù theo kế hoạch bán hàng, đăng ký thuốc
                                                     </label>
                                                 </div>
@@ -195,8 +176,8 @@
                                         <div class="col-sm-12">
                                             <div class="form-group clearfix">
                                                 <div class="icheck-success d-inline">
-                                                    <input type="radio" id="update_level_4" name="level" value = "4" {{ old('level') == 4 ? 'checked':'' }}>
-                                                    <label for="update_level_4">
+                                                    <input type="radio" id="splitting_level_4" name="level" value = "4" {{ old('level') == 4 ? 'checked':'' }}>
+                                                    <label for="splitting_level_4">
                                                         4: Hàng không cần gấp
                                                     </label>
                                                 </div>
@@ -213,7 +194,7 @@
                             <label>Có thể cân từ ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_weigth_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_weigth_date', date('Y-m-d')) }}"> 
+                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_weigth_date', date('Y-m-d')) }}" readonly> 
                                 </div>
                         </div>
                         
@@ -221,21 +202,21 @@
                             <label>Cân Trước ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_weigth_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
+                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}" readonly>
                                 </div>
                         </div>
                         <div class="col-md-3">
                             <label>Có thể ĐG từ ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_parkaging_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_parkaging_date', date('Y-m-d')) }}" readonly>
                                 </div>
                         </div>
                         <div class="col-md-3">
                             <label>Đóng gói trước ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_parkaging_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
+                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}" readonly>
                                 </div>
                         </div>
                     </div>
@@ -247,18 +228,11 @@
                             </div>
                     </div>
 
-                    {{-- Lý do --}}
-                    <div class="row mt-3" style="display: {{ $send == 1 ?'block':'none' }}">
-                        <div class="col-md-12">
-                                <label >Lý Do Cập Nhật</label>
-                                <textarea class="form-control" name="reason" rows="2"></textarea>
-                        </div>
-                    </div>
 
                     <div class="modal-footer" >
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-primary" id="update_btnSave">
-                            Cập Nhật
+                        <button type="submit" class="btn btn-primary" id="splitting_btnSave">
+                            Lưu
                         </button>
 
                     </div>
@@ -275,10 +249,10 @@
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
-@if ($errors->update_finished_Errors->any())
+@if ($errors->splitting_finished_Errors->any())
     <script>
         $(document).ready(function() {
-            $('#updateModal').modal('show');
+            $('#splittingModal').modal('show');
         });
     </script>
 @endif
@@ -298,7 +272,7 @@
         });
 
         // Nếu muốn khi modal mở mới khởi tạo
-        $('#updateModal').on('shown.bs.modal', function() {
+        $('#splittingModal').on('shown.bs.modal', function() {
             $("input[data-bootstrap-switch]").each(function() {
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
@@ -306,11 +280,11 @@
 
 
 
-        $("#update_number_of_unit").on('input', function() {
+        $("#splitting_number_of_unit").on('input', function() {
             let numberOfUnit = parseInt($(this).val()) || 0;
 
             // Lấy batch_qty và lọc chỉ lấy số
-            let batchQtyStr = $("#update_max_number_of_unit").val();
+            let batchQtyStr = $("#splitting_max_number_of_unit").val();
 
             let batchQty = parseInt(batchQtyStr.replace(/[^0-9]/g, '')) || 0;
 
@@ -325,19 +299,13 @@
                 });
             } else {
 
-                $("#update_update_percent_packaging").val((numberOfUnit / batchQty).toFixed(4))
+                $("#splitting_splitting_percent_packaging").val((numberOfUnit / batchQty).toFixed(4))
             }
         });
         
-        $('#selectSourceModal').on('show.bs.modal', function (e) {
-            const button = $(e.relatedTarget);
-            const modal = $('#updateModal');
-            const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
-            $('#source_material_list').DataTable().search(intermediateCode).draw();
-        })
+       
 
-
-         preventDoubleSubmit("#updateModal", "#update_btnSave");
+         preventDoubleSubmit("#splittingModal", "#splitting_btnSave");
          
     });
     

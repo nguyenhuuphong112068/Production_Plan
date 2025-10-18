@@ -30,6 +30,8 @@ return new class extends Migration
             $table->unsignedInteger ('material_source_id')->nullable();
             $table->boolean ('only_parkaging');
             $table->float ('percent_parkaging');
+            $table->unsignedInteger ('main_parkaging_id')->nullable();
+            $table->unsignedInteger ('number_parkaging');
             $table->text ('note');
             $table->string ('reason',255);
             $table->string('deparment_code',5);

@@ -19,7 +19,6 @@ import Selecto from "react-selecto";
 import Swal from 'sweetalert2';
 
 import './calendar.css';
-
 import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
@@ -27,7 +26,7 @@ import NoteModal from '../Components/NoteModal';
 import History from '../Components/History';
 import {CheckAuthorization} from '../Components/CheckAuthorization';
 import dayjs from 'dayjs';
-import { Button } from "primereact/button";
+
 
   const ScheduleTest = () => {
 
@@ -65,6 +64,8 @@ import { Button } from "primereact/button";
     const [authorization, setAuthorization] = useState(false);
     const [heightResource, setHeightResource] = useState("1px");
     const [production, setProduction] = useState("PXV1");
+    //const [stageAutoSchedualer, setStageAutoSchedualer] = useState(3);
+
     /// Get dữ liệu ban đầu
     useEffect(() => {
       Swal.fire({
@@ -700,14 +701,14 @@ import { Button } from "primereact/button";
     };
 
     /// Xử lý Chạy Lịch Tư Động
-
+    let selectedStep = 3;
     const handleAutoSchedualer = () => {
         if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
 
         const hasEmptyPermission = plan.some(item => {
         const perm = item.permisson_room
         const isEmptyArray = Array.isArray(perm) && perm.length === 0;
-
+      
         return (
           item.stage_code >= 3 &&
           item.stage_code <= 7 &&
@@ -800,148 +801,125 @@ import { Button } from "primereact/button";
         cancelButtonText: 'Hủy',
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
-      // didOpen: () => {
-      //     const container = document.getElementById("calendar-container");
-      //     const root = ReactDOM.createRoot(container);
 
-      //     // ✅ Dùng state nội bộ để update Calendar ngay khi click
-      //     const CalendarPopup = () => {
-      //       const [localDates, setLocalDates] = React.useState([]);
+      didOpen: () => {
+      // ------------------ Calendar ------------------
+      const calendarContainer = document.getElementById("calendar-container");
+      const calendarRoot = ReactDOM.createRoot(calendarContainer);
 
-      //       const handleChange = (e) => {
-      //         const selected = e.value.map(d => {
-      //           const date = new Date(d);
+      const CalendarPopup = () => {
+        const [localDates, setLocalDates] = React.useState([]);
 
-      //           // Lấy ngày, tháng, năm theo múi giờ local (VN)
-      //           const year = date.getFullYear();
-      //           const month = String(date.getMonth() + 1).padStart(2, "0");
-      //           const day = String(date.getDate()).padStart(2, "0");
+        const handleChange = (e) => {
+          const selected = e.value.map(d => {
+            const date = new Date(d);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+          });
 
-      //           return `${year}-${month}-${day}`; // không dùng toISOString()
-      //         });
+          setLocalDates(e.value);
+          selectedDates = selected;
+        };
 
-      //         setLocalDates(e.value);
-      //         selectedDates = selected;
-      //       };
+        return (
+          <div className="card flex justify-content-center">
+            <Calendar
+              value={localDates}
+              onChange={handleChange}
+              selectionMode="multiple"
+              inline
+              readOnlyInput
+            />
+          </div>
+        );
+      };
 
-      //       return (
-      //         <div className="card flex justify-content-center">
-      //           <Calendar
-      //             value={localDates}
-      //             onChange={handleChange}
-      //             selectionMode="multiple"
-      //             inline
-      //             readOnlyInput
-      //           />
-      //         </div>
-      //       );
-      //     };
-      //     root.render(<CalendarPopup />);
-      //     ///
-          
-
-
-      //     // disable nút Chạy nếu thiếu permission
-      //     if (hasEmptyPermission) {
-      //       const confirmBtn = Swal.getConfirmButton();
-      //       confirmBtn.disabled = true;
-      //       confirmBtn.style.opacity = "0.5";
-      //       confirmBtn.style.cursor = "not-allowed";
-      //     }
-      //   }
-  didOpen: () => {
-  // ------------------ Calendar ------------------
-  const calendarContainer = document.getElementById("calendar-container");
-  const calendarRoot = ReactDOM.createRoot(calendarContainer);
-
-  const CalendarPopup = () => {
-    const [localDates, setLocalDates] = React.useState([]);
-
-    const handleChange = (e) => {
-      const selected = e.value.map(d => {
-        const date = new Date(d);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      });
-
-      setLocalDates(e.value);
-      selectedDates = selected;
-    };
-
-    return (
-      <div className="card flex justify-content-center">
-        <Calendar
-          value={localDates}
-          onChange={handleChange}
-          selectionMode="multiple"
-          inline
-          readOnlyInput
-        />
-      </div>
-    );
-  };
-
-  calendarRoot.render(<CalendarPopup />);
+      calendarRoot.render(<CalendarPopup />);
 
   // ------------------ Stepper ------------------
-  const stepperContainer = document.getElementById("stepper-container");
+      const stepperContainer = document.getElementById("stepper-container");
 
+          
           if (stepperContainer) {
             const stepperRoot = createRoot(stepperContainer);
 
-              const StepperPopup = () => {
-              const stepperRef = React.useRef(null);
+            const StepperPopup = () => {
+
+              const [selected, setSelected] = React.useState(null);
+              const handleSelect = (value) => {
+                console.log("Selected step:", 1); 
+                setSelected(value);
+                selectedStep = value; 
+              };
+              const getClass = (value) =>
+                `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${
+                  selected === value ? "bg-primary text-white" : ""
+                }`;
+
               return (
-                <Stepper ref={stepperRef} style={{ width: '100%' }}>
+                <Stepper style={{ width: "100%" }}>
+
                   <StepperPanel header="PC">
                     <div className="flex flex-column h-12rem">
-                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
+                      <div
+                        className={getClass("Pha Chế")}>
                         Pha Chế
                       </div>
                     </div>
                   </StepperPanel>
-
+                
                   <StepperPanel header="THT">
                     <div className="flex flex-column h-12rem">
-                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
-                          Pha Chế ➡ Trộn Hoàn Tất
+                      <div
+                        className={getClass("THT")}
+                        //onClick={() => handleSelect(4)}
+                      >
+                        Pha Chế ➡ Trộn Hoàn Tất
                       </div>
                     </div>
                   </StepperPanel>
 
                   <StepperPanel header="ĐH">
                     <div className="flex flex-column h-12rem">
-                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
-                       Pha Chế ➡ Định Hình
+                      <div
+                        className={getClass("ĐH")}
+                        //onClick={() => handleSelect(5)}
+                      >
+                        Pha Chế ➡ Định Hình
                       </div>
                     </div>
                   </StepperPanel>
-                  
+
                   <StepperPanel header="BP">
                     <div className="flex flex-column h-12rem">
-                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
-                       Pha Chế ➡ Bao Phim
+                      <div
+                        className={getClass("BP")}
+                        //onClick={() => handleSelect(6)}
+                      >
+                        Pha Chế ➡ Bao Phim
                       </div>
                     </div>
                   </StepperPanel>
 
                   <StepperPanel header="ĐG">
                     <div className="flex flex-column h-12rem">
-                      <div className="border-2 border-dashed surface-border border-round surface-ground flex-auto flex justify-content-center align-items-center font-medium">
+                      <div
+                        className={getClass("ĐG")}
+                        //onClick={() => handleSelect(7)}
+                        >
                         Pha Chế ➡ Đóng Gói
                       </div>
                     </div>
                   </StepperPanel>
-                  
                 </Stepper>
               );
             };
 
             stepperRoot.render(<StepperPopup />);
-
           }
+
           // ------------------ Disable Confirm if missing permission ------------------
           if (hasEmptyPermission) {
             const confirmBtn = Swal.getConfirmButton();
@@ -950,8 +928,6 @@ import { Button } from "primereact/button";
             confirmBtn.style.cursor = "not-allowed";
           }
         }
-
-        
         ,
         preConfirm: () => {
           const formValues = {};
@@ -959,10 +935,15 @@ import { Button } from "primereact/button";
             formValues[input.name] = input.value;
           });
 
+          const activeStep = document.querySelector('li[data-p-active="true"]');
+          const activeStepText = activeStep? activeStep.querySelector('span.p-stepper-title')?.textContent: null;
+
+        
           const workSunday = document.getElementById('work-sunday');
           formValues.work_sunday = workSunday.checked;
 
           formValues.selectedDates = selectedDates;
+          formValues.selectedStep = activeStepText??"PC";
 
           if (!formValues.start_date) {
             Swal.showValidationMessage('Vui lòng chọn ngày!');
@@ -1023,6 +1004,7 @@ import { Button } from "primereact/button";
 
   
     /// Xử lý Xóa Toàn Bộ Lịch
+    
     const handleDeleteAllScheduale = () => {
 
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
@@ -1885,12 +1867,7 @@ import { Button } from "primereact/button";
             type = {type}
 
         />
-      {/* </div> */}
-            {/* <AutoSchedulerPopup
-              visible={showPopup}
-              onHide={() => setShowPopup(false)}
-              onSubmit={handleSubmit}
-            /> */}
+
 
 
         <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
@@ -1918,7 +1895,7 @@ import { Button } from "primereact/button";
                 return { id, stage_code: stageCode };
               });
               setSelectedEvents(selected);
-              //console.log (selectedEvents);
+              
             }}
         />
 

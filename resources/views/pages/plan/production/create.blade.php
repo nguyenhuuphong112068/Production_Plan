@@ -118,27 +118,11 @@
                                     <input type="checkbox" name="format_batch_no" checked data-bootstrap-switch>
                                 </span>
                             </div>
-
-                            <label class ="mt-1">% Đóng gói</label>
+                            <input type="hidden" name="max_number_of_unit" id ="max_number_of_unit" >
+                            
+                            <label class ="mt-2">Nguồn</label>
                             <div class="input-group">
-                                <!-- number_of_unit -->
-                                <input type="hidden" name="max_number_of_unit" id ="max_number_of_unit">
-
-                                <input type="number" class="form-control" name="number_of_unit" id="number_of_unit"
-                                    placeholder="số lượng đóng gói" min="1" value="{{ old('number_of_unit') }}">
-
-                                <!-- percent_packaging -->
-                                <input type="number" step="0.01" min="0" max="1"
-                                    placeholder="phần trăm đóng gói" readonly class="form-control"
-                                    name="percent_packaging" id="percent_packaging"
-                                    value="{{ old('percent_packaging', 1) }}">
-                            </div>
-
-
-
-                            <label class ="mt-1">Nguồn</label>
-                            <div class="input-group">
-                                <textarea class="form-control" name="source_material_name" rows="2"
+                                <textarea class="form-control" name="source_material_name" rows="4"
                                     value="{{ old('source_material_name') }}"></textarea>
                                 <button type="button" class = "btn btn-success" id = "add_source_material"
                                     data-toggle="modal" data-target="#selectSourceModal">
@@ -148,7 +132,7 @@
                                     value="{{ old('material_source_id') }}" />
                             </div>
 
-                            <label class ="mt-1">Lô Thẩm Định</label>
+                            <label class ="mt-3">Lô Thẩm Định</label>
                             <div class="card ">
                                 <div class="card-body">
                                 <div class="row">
@@ -179,7 +163,6 @@
                                     </div>
                                 </div>
                                 </div>
-                                
                             </div>
 
                         </div>
