@@ -17,7 +17,7 @@ class StatusController extends Controller
                 ->get();
         
                 session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT"]);
-        
+              
                 return view('pages.status.list',[
                         'datas' =>  $datas 
                         

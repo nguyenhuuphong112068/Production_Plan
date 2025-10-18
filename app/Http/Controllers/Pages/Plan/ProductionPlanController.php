@@ -153,7 +153,7 @@ class ProductionPlanController extends Controller
         }
 
        public function store(Request $request){
-                
+               //dd ($request->all());
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
                         'plan_list_id'   => 'required',
@@ -165,8 +165,6 @@ class ProductionPlanController extends Controller
                         'after_parkaging_date' => 'required',
                         'before_parkaging_date' => 'required',
                         'material_source_id' => 'required',
-                        'percent_packaging' => 'required',
-                        'number_of_batch' => 'required',
                        
                 ], [
                         'product_caterogy_id' => 'Vui lòng chọn lại sản phẩm.',
@@ -179,8 +177,6 @@ class ProductionPlanController extends Controller
                         'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
                         'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
                         'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
-                        'percent_packaging' => 'vui lòng nhập số lượng đơn vị liều đóng gói',
-                        'number_of_batch' => 'vui lòng chọn số lượng lô',
                 ]);
 
                 if ($validator->fails()) {
@@ -188,13 +184,20 @@ class ProductionPlanController extends Controller
                         ->withErrors($validator, 'create_Errors')
                         ->withInput();
                 }
-
+               
                 $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
                 $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
                 $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
                 $total =  $first_val_batch +  $second_val_batch + $third_val_batch;
 
-                $current_val_batch = 4 - $total;
+                if ($first_val_batch == 1){
+                        $current_val_batch = 1;
+                }else if ($second_val_batch == 1){
+                        $current_val_batch = 2;
+                }else if ($third_val_batch == 1){
+                         $current_val_batch = 3;                       
+                }
+                
                 $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
 
                 // // Tạo số lô
@@ -230,27 +233,28 @@ class ProductionPlanController extends Controller
                                 $code_val_part_1 = $current_val_batch - 1 + $i;
                         }
                         
- 
+                        //dd ($total, $current_val_batch, $code_val_part_1);
                         // Insert vào plan_master
                         $planMasterId = DB::table('plan_master')->insertGetId([
-                        "product_caterogy_id" => $request->product_caterogy_id,
-                        "plan_list_id" => $request->plan_list_id,
-                        "batch" => $batch,
-                        "expected_date" => $request->expected_date,
-                        "level" => $request->level,
-                        "is_val" => ($i <= $total) ? 1 : 0,
-                        "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
-                        "after_weigth_date" => $request->after_weigth_date,
-                        "before_weigth_date" => $request->before_weigth_date,
-                        "after_parkaging_date" => $request->after_parkaging_date,
-                        "before_parkaging_date" => $request->before_parkaging_date,
-                        "material_source_id" => $request->material_source_id,
-                        "percent_parkaging" => $request->percent_packaging,
-                        "only_parkaging" => $request->only_parkaging ?? 0,
-                        "note" => $request->note ?? "NA",
-                        'deparment_code'=> session('user')['production_code'],
-                        'prepared_by' => session('user')['fullName'],
-                        'created_at' => now(),
+                                "product_caterogy_id" => $request->product_caterogy_id,
+                                "plan_list_id" => $request->plan_list_id,
+                                "batch" => $batch,
+                                "expected_date" => $request->expected_date,
+                                "level" => $request->level,
+                                "is_val" => ($i <= $total) ? 1 : 0,
+                                "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
+                                "after_weigth_date" => $request->after_weigth_date,
+                                "before_weigth_date" => $request->before_weigth_date,
+                                "after_parkaging_date" => $request->after_parkaging_date,
+                                "before_parkaging_date" => $request->before_parkaging_date,
+                                "material_source_id" => $request->material_source_id,
+                                "percent_parkaging" => 1,
+                                "number_parkaging" => $request->max_number_of_unit,
+                                "only_parkaging" => 0,
+                                "note" => $request->note ?? "NA",
+                                'deparment_code'=> session('user')['production_code'],
+                                'prepared_by' => session('user')['fullName'],
+                                'created_at' => now(),
                         ]);
 
                         // Cập nhật lại chính bản ghi đó
@@ -260,28 +264,28 @@ class ProductionPlanController extends Controller
 
                         // Insert vào plan_master_history
                         DB::table('plan_master_history')->insert([
-                        "plan_master_id" => $planMasterId,
-                        "plan_list_id" => $request->plan_list_id,
-                        "product_caterogy_id" => $request->product_caterogy_id,
-                        "batch" => $batch,
-                        "expected_date" => $request->expected_date,
-                        "level" => $request->level,
-                        "is_val" => ($i <= $total) ? 1 : 0,
-                        //"code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
-                        "after_weigth_date" => $request->after_weigth_date,
-                        "before_weigth_date" => $request->before_weigth_date,
-                        "after_parkaging_date" => $request->after_parkaging_date,
-                        "before_parkaging_date" => $request->before_parkaging_date,
-                        "material_source_id" => $request->material_source_id,
-                        "percent_parkaging" => $request->percent_packaging,
-                        "only_parkaging" => $request->only_parkaging ?? 0,
-                        "note" => $request->note ?? "NA",
-                        'deparment_code'=> session('user')['production_code'],
-                        'prepared_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                        "version" => 1,
-                        "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
+                                "plan_master_id" => $planMasterId,
+                                "plan_list_id" => $request->plan_list_id,
+                                "product_caterogy_id" => $request->product_caterogy_id,
+                                "batch" => $batch,
+                                "expected_date" => $request->expected_date,
+                                "level" => $request->level,
+                                "is_val" => ($i <= $total) ? 1 : 0,
+                                "after_weigth_date" => $request->after_weigth_date,
+                                "before_weigth_date" => $request->before_weigth_date,
+                                "after_parkaging_date" => $request->after_parkaging_date,
+                                "before_parkaging_date" => $request->before_parkaging_date,
+                                "material_source_id" => $request->material_source_id,
+                                "percent_parkaging" => 1,
+                                "number_parkaging" => $request->max_number_of_unit,
+                                "only_parkaging" => 0,
+                                "note" => $request->note ?? "NA",
+                                'deparment_code'=> session('user')['production_code'],
+                                'prepared_by' => session('user')['fullName'],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                                "version" => 1,
+                                "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
                         ]);
                         $i++;
                 }
@@ -399,6 +403,165 @@ class ProductionPlanController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                         ]);
+
+                return redirect()->back()->with('success', 'Đã cập nhật thành công!');
+
+        }
+
+        public function splitting(Request $request){
+                //dd ($request->all());
+                $validator = Validator::make($request->all(), [
+                        'batch' => 'required',
+                        'expected_date' => 'required',
+                        'level' => 'required',
+                        'percent_packaging' => 'required',
+                        'number_of_batch' => 'required',
+                ], [
+                        'batch.required' => 'Vui lòng nhập số lô',
+                        'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
+                        'level.required' => 'Vui lòng chọn mức độ ưu tiên',
+                        'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
+                        'number_of_batch.required' => 'Vui lòng chọn số lượng lô',
+                ]);
+
+                if ($validator->fails()) {
+                        return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
+                }
+
+                $mainPlanMaster = DB::table('plan_master')->where ('id', $request->id)->first();
+
+                $planMasterId = DB::table('plan_master')->insertGetId([
+                        "product_caterogy_id" => $mainPlanMaster->product_caterogy_id,
+                        "plan_list_id" => $mainPlanMaster->plan_list_id,
+                        "batch" => $mainPlanMaster->batch,
+                        "expected_date" => $request->expected_date,
+                        "level" => $request->level,
+                        "is_val" => $mainPlanMaster->is_val,
+                        "code_val" => $mainPlanMaster->code_val,
+                        "after_weigth_date" => $mainPlanMaster->after_weigth_date,
+                        "before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                        "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
+                        "before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                        "material_source_id" => $mainPlanMaster->material_source_id,
+                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,4),
+                        "number_parkaging" => $request->number_of_unit,
+                        "only_parkaging" => 1,
+                        "note" => $request->note ?? "NA",
+                        'deparment_code'=> session('user')['production_code'],
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                ]);
+
+                DB::table('plan_master')
+                        ->where('id', $planMasterId)
+                        ->update(['main_parkaging_id' => $request->id]);
+
+                DB::table('plan_master')
+                        ->where('id', $request->id)
+                        ->update([
+                                'number_parkaging' => $mainPlanMaster->number_parkaging - $request->number_of_unit,
+                                "percent_parkaging" => round(($mainPlanMaster->number_parkaging - $request->number_of_unit)/$request->max_number_of_unit,4),
+                        ]);
+
+                        // Insert vào plan_master_history
+                DB::table('plan_master_history')->insert([
+                        "plan_master_id" => $planMasterId,
+                        "plan_list_id" => $mainPlanMaster->plan_list_id,
+                        "product_caterogy_id" => $mainPlanMaster->product_caterogy_id,
+                        "batch" => $mainPlanMaster->batch,
+                        "expected_date" => $request->expected_date,
+                        "level" => $request->level,
+                        "is_val" => $mainPlanMaster->is_val,
+                        "after_weigth_date" => $mainPlanMaster->after_weigth_date,
+                        "before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                        "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
+                        "before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                        "material_source_id" => $mainPlanMaster->material_source_id,
+                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,2),
+                        "number_parkaging" =>  $request->number_of_unit,
+                        "only_parkaging" => 1,
+                        "note" => $request->note ?? "NA",
+                        'deparment_code'=> session('user')['production_code'],
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        "version" => 1,
+                        "reason" => "Chia Lô Đóng Gói", // lần đầu tạo thì version = 1
+                ]);
+
+                return redirect()->back()->with('success', 'Đã cập nhật thành công!');
+
+        }
+
+        public function splittingUpdate(Request $request){
+                //dd ($request->all());
+                $validator = Validator::make($request->all(), [
+                        'batch' => 'required',
+                        'expected_date' => 'required',
+                        'level' => 'required',
+                        'percent_packaging' => 'required',
+                        'number_of_batch' => 'required',
+                ], [
+                        'batch.required' => 'Vui lòng nhập số lô',
+                        'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
+                        'level.required' => 'Vui lòng chọn mức độ ưu tiên',
+                        'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
+                        'number_of_batch.required' => 'Vui lòng chọn số lượng lô',
+                ]);
+
+                if ($validator->fails()) {
+                        return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
+                }
+
+                $mainPlanMaster = DB::table('plan_master')->where ('id', $request->id)->first();
+
+                $planMasterId = DB::table('plan_master')->where ('id',$request->id )->update([
+                        "batch" => $mainPlanMaster->batch,
+                        "expected_date" => $request->expected_date,
+                        "level" => $request->level,
+                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,4),
+                        "number_parkaging" => $request->number_of_unit,
+                        "note" => $request->note ?? "NA",
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                ]);
+
+                // DB::table('plan_master')
+                //         ->where('id', $planMasterId)
+                //         ->update(['main_parkaging_id' => $request->id]);
+
+                DB::table('plan_master')
+                        ->where('id', $request->id)
+                        ->update([
+                                'number_parkaging' => $mainPlanMaster->number_parkaging - $request->number_of_unit,
+                                "percent_parkaging" => round(($mainPlanMaster->number_parkaging - $request->number_of_unit)/$request->max_number_of_unit,4),
+                        ]);
+
+                        // Insert vào plan_master_history
+                DB::table('plan_master_history')->insert([
+                        "plan_master_id" => $mainPlanMaster->id,
+                        "plan_list_id" => $mainPlanMaster->plan_list_id,
+                        "product_caterogy_id" => $mainPlanMaster->product_caterogy_id,
+                        "batch" => $mainPlanMaster->batch,
+                        "expected_date" => $request->expected_date,
+                        "level" => $request->level,
+                        "is_val" => $mainPlanMaster->is_val,
+                        "after_weigth_date" => $mainPlanMaster->after_weigth_date,
+                        "before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                        "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
+                        "before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                        "material_source_id" => $mainPlanMaster->material_source_id,
+                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,2),
+                        "number_parkaging" =>  $request->number_of_unit,
+                        "only_parkaging" => 1,
+                        "note" => $request->note ?? "NA",
+                        'deparment_code'=> session('user')['production_code'],
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        "version" => 1,
+                        "reason" => "Cập Nhật Chia Lô Đóng Gói", // lần đầu tạo thì version = 1
+                ]);
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
 

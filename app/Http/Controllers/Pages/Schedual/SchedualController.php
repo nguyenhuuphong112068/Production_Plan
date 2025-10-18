@@ -1517,11 +1517,15 @@ class SchedualController extends Controller
 
                 $this->selectedDates = $request->selectedDates;
                 $this->work_sunday = $request->work_sunday;
+                $Step = [
+                        "PC" => 3,
+                        "THT" => 4,
+                        "ĐH" => 5,
+                        "BP" => 6,
+                        "ĐG" => 7,
+                ];
+                $selectedStep = $Step[$request->selectedStep];
 
-                // Log::info('selectedDates', [
-                //         'selectedDates' =>$this->selectedDates
-                // ]);
-               
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $today = Carbon::now()->toDateString();
                 $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? $today)->setTime(6, 0, 0);
@@ -1530,14 +1534,13 @@ class SchedualController extends Controller
                 $stageCodes = DB::table($stage_plan_table)
                         ->distinct()
                         ->where('stage_code',">=",3)
+                        ->where('stage_code',"<=",$selectedStep)
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->orderBy('stage_code')
-                        ->pluck('stage_code');
+                ->pluck('stage_code');
+
                 $waite_time = [];
-
-
-
                 foreach ($stageCodes as $stageCode) {
                         $waite_time_nomal_batch = 0;
                         $waite_time_val_batch   = 0;

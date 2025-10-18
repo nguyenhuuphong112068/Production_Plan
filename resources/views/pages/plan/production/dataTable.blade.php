@@ -82,9 +82,9 @@
 
                     <tr>
                         <th>STT</th>
-                        <th>Mã Sản Phẩm</th>
-                        <th>Sản Phẩm</th>
-                        <th>Số Lô</th>
+                        <th >Mã Sản Phẩm</th>
+                        <th style="width:10%" >Sản Phẩm</th>
+                        <th>Số Lô/Số lượng ĐG</th>
                         <th>Thị Trường/ Qui Cách</th>
                         <th>Ngày dự kiến KCS</th>
                         <th>Ưu Tiên</th>
@@ -120,11 +120,33 @@
 
                             <td>
                                 <div> {{ $data->name }} </div>
-                                <div> {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}}</div>
+                                <div>  {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
                             </td>
-                            <td>
-                                <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }}>
-                            </td>
+                            <td style="text-align: center;" >
+                                <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }} style="font-weight: bold;" >                              
+                                {{ $splittingModal = "" }}
+                                <div class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#splittingModal':'#splittingUpdateModal'}}"
+                                    
+                                    {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
+                                    data-name="{{ $data->name }}"
+                                    data-intermediate_code="{{ $data->intermediate_code }}"
+                                    data-finished_product_code="{{ $data->finished_product_code }}"
+                                    data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
+                                    data-specification="{{ $data->specification }}" data-level="{{ $data->level }}"
+                                    data-expected_date="{{ $data->expected_date }}" data-is_val="{{ $data->is_val }}"
+                                    data-source_material_name="{{ $data->source_material_name }}"
+                                    data-after_weigth_date="{{ $data->after_weigth_date}}"
+                                    data-before_weigth_date="{{ $data->before_weigth_date}}"
+                                    data-after_parkaging_date="{{ $data->after_parkaging_date }}"
+                                    data-before_parkaging_date="{{ $data->before_parkaging_date }}"
+                                    data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
+                                    data-unit_batch_qty="{{ $data->unit_batch_qty}}"
+                                    data-material_source_id="{{ $data->material_source_id}}"
+                                    data-number_parkaging="{{ $data->number_parkaging}}"
+                                
+                                > 
+                                    {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div>
+                                </td>
                             <td>
                                 <div> {{ $data->market }} </div>
                                 <div> {{ $data->specification }} </div>
@@ -183,10 +205,9 @@
                                 <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
                             </td>
 
-
-
                             <td class="text-center align-middle">
-                                <button type="button"  class="btn btn-warning btn-edit" {{ $auth_update }}
+                                <button type="button"  class="btn btn-warning btn-edit" 
+                                    {{ $auth_update }}
                                     {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                     data-name="{{ $data->name }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"
@@ -201,7 +222,9 @@
                                     data-before_parkaging_date="{{ $data->before_parkaging_date }}"
                                     data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
                                     data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                    data-material_source_id="{{ $data->material_source_id }}" data-toggle="modal"
+                                    data-material_source_id="{{ $data->material_source_id }}"
+                                    data-number_parkaging="{{ $data->number_parkaging}}"
+                                    data-toggle="modal"
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -304,13 +327,45 @@
                     'specification'));
                 modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
                 modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
-                modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
+                modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
                 modal.find('input[name="expected_date"]').val(button.data('expected_date'));
                 modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data(
                     'is_val'));
 
                 modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',
                     true);
+
+            });
+
+            $('.btn-splitting').click(function() {
+                const button = $(this);
+                
+                const modal = $(button.data('target'));
+
+                // Gán dữ liệu vào input
+                modal.find('input[name="id"]').val(button.data('id'));
+                modal.find('input[name="name"]').val(button.data('name'));
+                modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+                modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
+                modal.find('input[name="batch"]').val(button.data('batch'));
+                modal.find('input[name="material_source_id"]').val(button.data('material_source_id'));
+
+                modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
+                modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
+                modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
+                modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
+                modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
+                modal.find('textarea[name="note"]').val(button.data('note'));
+
+                modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
+                modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
+                modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
+                modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
+                modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
+                modal.find('input[name="expected_date"]').val(button.data('expected_date'));
+                modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data('is_val'));
+
+                modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
 
             });
 
