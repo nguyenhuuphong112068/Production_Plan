@@ -14,9 +14,7 @@
   @include('pages.plan.production.dataTable')
 @endsection
 @section('model')
-  @php 
-    $selecedModal = null; 
-  @endphp
+
   @include('pages.plan.production.update')
   @include('pages.plan.production.create')
   @include('pages.plan.production.batch_splitting')

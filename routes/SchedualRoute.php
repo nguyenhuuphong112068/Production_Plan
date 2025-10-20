@@ -43,6 +43,8 @@ use Illuminate\Support\Facades\Route;
 
                 Route::put('history','history')->name('history');
 
+                Route::put('Sorted','Sorted')->name('Sorted');
+
                 Route::get('test','test')->name('test');
 
                 

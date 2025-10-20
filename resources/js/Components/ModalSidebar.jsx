@@ -697,6 +697,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
             });
             console.error("Finished error:", err.response?.data || err.message);
         });
+
     setIsSaving(false);
   };
 
@@ -710,6 +711,51 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     setSelectedRows([]);
     setIsSaving(false);
   
+  }
+
+  const handleSorted = () => {
+    Swal.fire({
+                title: "Đang Sắp Xếp Lại, vui lòng đợi giây lát..",
+                allowOutsideClick: false,
+                didOpen: () => {
+                  Swal.showLoading();
+                },
+    });  
+
+  if (isSaving) return;
+    setIsSaving(true);
+      axios.put('/Schedual/Sorted' )
+        .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+           
+            setPlan(data.plan_waiting)
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành',
+              timer: 500,
+              showConfirmButton: false,
+            });
+          })
+        .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              timer: 500,
+              showConfirmButton: false,
+            });
+            console.error("Finished error:", err.response?.data || err.message);
+        });
+        
+        setTimeout(() => {
+                      Swal.close();
+                    }, 1500);
+        
+    setIsSaving(false);
+
   }
 
    
@@ -774,6 +820,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 {isSaving === false ? <i className="fas fa-check"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
 
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
+                onClick={handleSorted}>
+                {isSaving === false ? <i className="fas fa-sort"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
+              </div>
+
 
 
               </>):<></>}
@@ -786,7 +837,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
                   <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Sự Kiện Khác"
                     onClick={handleDeActiveOrderPlan}>
-                    <i className="fas fa-trash"></i>
+                    <i className="fas fa-trash"></i> 
                   </div> 
                 </>
               ):<></>}

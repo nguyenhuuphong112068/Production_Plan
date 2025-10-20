@@ -134,9 +134,7 @@ class SchedualController extends Controller
                         }
 
                         // ✅ Nếu hoàn thành
-                        if ($plan->finished == 1) {
-                                $color_event = '#002af9ff';
-                        } elseif ($plan->is_val == 1) {
+                        if ($plan->is_val == 1) {
                                 $color_event = '#40E0D0';
                         }
 
@@ -171,6 +169,9 @@ class SchedualController extends Controller
                                 $subtitle = $plan->stage_code == 8
                                 ? "Không Đáp Ứng Hạn Bảo Trì: {$plan->expected_date}"
                                 : "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
+                        }
+                        if ($plan->finished == 1) {
+                                $color_event = '#002af9ff';
                         }
 
                         // 🔗 Kiểm tra predecessor / successor
@@ -305,9 +306,6 @@ class SchedualController extends Controller
                         DB::raw("CASE WHEN sp.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
                         )
                         ->orderBy('sp.order_by', 'asc')
-                        // ->orderBy('plan_master.expected_date', 'asc')
-                        // ->orderBy('plan_master.level', 'asc')
-                        // ->orderBy('plan_master.batch', 'asc')
                         ->get();
 
                 if ($plan_waiting->isEmpty()) {
@@ -974,6 +972,7 @@ class SchedualController extends Controller
 
         public function deActiveAll(Request $request){
 
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
 
                 try {
@@ -1378,6 +1377,29 @@ class SchedualController extends Controller
 
         }
 
+        public function Sorted () {
+                $planMasters = DB::table('plan_master')
+                        ->orderBy('expected_date', 'asc')
+                        ->orderBy('level', 'asc')
+                        ->orderBy('batch', 'asc')
+                        ->pluck('id');
+
+                $order = 1;
+
+                foreach ($planMasters as $planMasterId) {
+                        DB::table('stage_plan')
+                                ->where('plan_master_id', $planMasterId)
+                                ->where('finished', 0)
+                                ->where('active', 1)
+                        ->update(['order_by' => $order++]);
+                }
+
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
+        }
+
+
         ///////// Các hàm liên Auto Schedualer
         protected $roomAvailability = [];
         protected $order_by = 1;
@@ -1453,9 +1475,9 @@ class SchedualController extends Controller
         }
 
         /** Ghi kết quả vào stage_plan + log vào room_status*/
-        protected function saveSchedule($title, $stageId, $roomId,  $start,  $end,  $endCleaning, string $cleaningType, bool $direction, int $order_by) {
+        protected function saveSchedule($title, $stageId, $roomId,  $start,  $end,  $endCleaning, string $cleaningType, bool $direction) {
 
-                DB::transaction(function() use ($title, $stageId, $roomId, $start, $end,  $endCleaning, $cleaningType, $direction, $order_by) {
+                DB::transaction(function() use ($title, $stageId, $roomId, $start, $end,  $endCleaning, $cleaningType, $direction) {
                         if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                         if ($cleaningType == 2){$titleCleaning = "VS-II";} else {$titleCleaning = "VS-I";}
                         $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group')?? 0;
@@ -1467,7 +1489,6 @@ class SchedualController extends Controller
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 ->update([
                                 'title'           => $title,
-                                //'order_by'        => $order_by,
                                 'resourceId'      => $roomId,
                                 'start'           => $start,
                                 'end'             => $end,
@@ -1515,8 +1536,8 @@ class SchedualController extends Controller
         /** Scheduler cho tất cả stage Request */
         public function scheduleAll(Request $request) {
 
-                $this->selectedDates = $request->selectedDates;
-                $this->work_sunday = $request->work_sunday;
+                $this->selectedDates = $request->selectedDates??[];
+                $this->work_sunday = $request->work_sunday??false;
                 $Step = [
                         "PC" => 3,
                         "THT" => 4,
@@ -1524,7 +1545,7 @@ class SchedualController extends Controller
                         "BP" => 6,
                         "ĐG" => 7,
                 ];
-                $selectedStep = $Step[$request->selectedStep];
+                $selectedStep = $Step[$request->selectedStep??"PC"];
 
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $today = Carbon::now()->toDateString();
@@ -1652,13 +1673,15 @@ class SchedualController extends Controller
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->where('stage_code', $stageCode)
-                ->whereNull('start')
+                ->where('sp.stage_code', $stageCode)
+                ->where('sp.finished',0)
+                ->where('sp.active',1)
+                ->whereNull('sp.start')
                 ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                 ->orderBy('order_by','asc')
                 ->get();
-
+               
                 $processedCampaigns = []; // campaign đã xử lý
 
                 foreach ($tasks as $task) {
@@ -1887,7 +1910,7 @@ class SchedualController extends Controller
                                         $endCleaning,
                                         2,
                                         1,
-                                        $this->order_by
+                                        //$this->order_by
                         );
         }
 
@@ -2154,7 +2177,7 @@ class SchedualController extends Controller
                                 $bestEndCleaning,
                                 $clearningType,
                                 1,
-                                $this->order_by
+                               
                         );
 
                         $counter++;
@@ -2732,8 +2755,8 @@ class SchedualController extends Controller
                                                 $bestEnd,
                                                 $bestEndClearning,
                                                 $clearningType,
-                                                0,
-                                                $this->order_by
+                                                0
+                                               
                                         );
                                         $current_end_clearning = $bestStart ;
                                         $stage_plan_ids [] = $campaign_task->id;
@@ -2751,8 +2774,8 @@ class SchedualController extends Controller
                                         $bestEnd,
                                         $bestEndCleaning,
                                         2,
-                                        0,
-                                        $this->order_by
+                                        0
+                                        
                                 );
                                 $stage_plan_ids [] = $task->id;
                         }
@@ -3109,8 +3132,7 @@ class SchedualController extends Controller
                                                 $bestEnd,
                                                 $bestEndCleaning,
                                                 $clearningType,
-                                                1,
-                                                $this->order_by
+                                                1
                                         );
                                         $bestStart = $bestEndCleaning;
                                         $campaign_counter++;
@@ -3126,8 +3148,7 @@ class SchedualController extends Controller
                                         $bestEnd,
                                         $bestEndCleaning,
                                         2,
-                                        1,
-                                        $this->order_by
+                                        1
                                 );
                         }
                 }
