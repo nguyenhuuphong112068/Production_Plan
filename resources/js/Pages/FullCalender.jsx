@@ -802,6 +802,7 @@ import dayjs from 'dayjs';
                     </p>`
                   : ''
               }
+
             </div>
           </div>
         `,
@@ -930,10 +931,11 @@ import dayjs from 'dayjs';
           // ------------------ Disable Confirm if missing permission ------------------
           if (hasEmptyPermission) {
             const confirmBtn = Swal.getConfirmButton();
-            confirmBtn.disabled = true;
-            confirmBtn.style.opacity = "0.5";
-            confirmBtn.style.cursor = "not-allowed";
+            confirmBtn.disabled = false;
+            //confirmBtn.style.opacity = "0.5";
+            //confirmBtn.style.cursor = "not-allowed";
           }
+
         }
         ,
         preConfirm: () => {
