@@ -1,40 +1,48 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <style>
-.step-checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #007bff; /* màu xanh bootstrap */
-}
+    .step-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #007bff; /* màu xanh bootstrap */
+    }
 
-.step-checkbox:checked {
-    box-shadow: 0 0 5px #007bff;
-}
-.updateInput {
-    width: 100%;
-    border: none;
-    outline: none;
-    background: transparent;
-    text-align: center;
-    height: 100%;
-    padding: 2px 4px;
-    box-sizing: border-box;
-  }
+    .step-checkbox2 {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #007bff; /* màu xanh bootstrap */
+    }
+
+    .step-checkbox:checked {
+        box-shadow: 0 0 5px #007bff;
+    }
+    .updateInput {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        text-align: center;
+        height: 100%;
+        padding: 2px 4px;
+        box-sizing: border-box;
+    }
 
   /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
-  .updateInput:focus {
-    border: 1px solid #007bff;
-    border-radius: 2px;
-    background-color: #fff;
-  }
+    .updateInput:focus {
+        border: 1px solid #007bff;
+        border-radius: 2px;
+        background-color: #fff;
+    }
 
   /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
-  td input.updateInput {
-    display: block;
-    margin: auto;
-  }
+    td input.updateInput {
+        display: block;
+        margin: auto;
+    }
 </style>
+
 <div class="content-wrapper">
     <div class="card" style="min-height: 100vh">
 
@@ -51,7 +59,7 @@
                 <div class="row">
                     <div class="col-md-2">
                         @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                            <button class="btn btn-success btn-create mb-2" data-toggle="modal"
+                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
                                 data-target="#selectProductModal" style="width: 155px;">
                                 <i class="fas fa-plus"></i> Thêm
                             </button>
@@ -68,7 +76,7 @@
                             <input type="hidden" name="month" value="{{ $month }}">
                             <input type="hidden" name="production" value="{{ $production }}">
                             @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean'))
-                            <button class="btn btn-success btn-create mb-2 " style="width: 177px;">
+                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;">
                                 <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
                             </button>
                             @endif
@@ -125,7 +133,7 @@
                             <td style="text-align: center;" >
                                 <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }} style="font-weight: bold;" >                              
                                 {{ $splittingModal = "" }}
-                                <div class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#splittingModal':'#splittingUpdateModal'}}"
+                                <div class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
                                     
                                     {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                     data-name="{{ $data->name }}"
@@ -172,12 +180,13 @@
                             </td>
 
                             <td class="text-center ">
-                                  <input class="form-check-input step-checkbox"
+                                  <input class="form-check-input step-checkbox2"
                                       type="checkbox" role="switch"
                                       data-id="{{ $data->id }}"
                                       id="{{ $data->id }}"
                                       {{ $auth_update != ''?'readOnly':''}}
                                       {{ $data->is_val ? 'checked' : '' }}
+                                      readonly
                                       >
                                       <br>
                                     @if ($data->is_val)
@@ -204,6 +213,7 @@
                                 <div> {{ $data->prepared_by }} </div>
                                 <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
                             </td>
+ 
 
                             <td class="text-center align-middle">
                                 <button type="button"  class="btn btn-warning btn-edit" 
@@ -212,18 +222,24 @@
                                     data-name="{{ $data->name }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"
                                     data-finished_product_code="{{ $data->finished_product_code }}"
-                                    data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
-                                    data-specification="{{ $data->specification }}" data-level="{{ $data->level }}"
-                                    data-expected_date="{{ $data->expected_date }}" data-is_val="{{ $data->is_val }}"
+                                    data-batch="{{ $data->batch }}" 
+                                    data-market="{{ $data->market }}"
+                                    data-specification="{{ $data->specification }}" 
+                                    data-level="{{ $data->level }}"
+                                    data-expected_date="{{ $data->expected_date }}" 
+                                    data-is_val="{{ $data->is_val }}"
+                                    data-code_val="{{ $data->code_val}}"
                                     data-source_material_name="{{ $data->source_material_name }}"
                                     data-after_weigth_date="{{ $data->after_weigth_date }}"
                                     data-before_weigth_date="{{ $data->before_weigth_date }}"
                                     data-after_parkaging_date="{{ $data->after_parkaging_date }}"
                                     data-before_parkaging_date="{{ $data->before_parkaging_date }}"
-                                    data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
+                                    data-note="{{ $data->note }}" 
+                                    data-batch_qty="{{ $data->batch_qty }}"
                                     data-unit_batch_qty="{{ $data->unit_batch_qty }}"
                                     data-material_source_id="{{ $data->material_source_id }}"
                                     data-number_parkaging="{{ $data->number_parkaging}}"
+                                   
                                     data-toggle="modal"
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
@@ -297,6 +313,7 @@
     @endif
 
     <script>
+
         $(document).ready(function() {
             document.body.style.overflowY = "auto";
             preventDoubleSubmit("#send_form", "#send_btn");
@@ -304,43 +321,6 @@
             $('.btn-edit').click(function() {
                 const button = $(this);
                 const modal = $('#updateModal');
-
-                // Gán dữ liệu vào input
-                modal.find('input[name="id"]').val(button.data('id'));
-                modal.find('input[name="name"]').val(button.data('name'));
-                modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-                modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-                modal.find('input[name="batch"]').val(button.data('batch'));
-                modal.find('input[name="material_source_id"]').val(button.data('material_source_id'));
-
-                modal.find('textarea[name="source_material_name"]').val(button.data(
-                    'source_material_name'));
-                modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
-                modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
-                modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
-                modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
-                modal.find('textarea[name="note"]').val(button.data('note'));
-
-                modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data(
-                    'unit_batch_qty'));
-                modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data(
-                    'specification'));
-                modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
-                modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
-                modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
-                modal.find('input[name="expected_date"]').val(button.data('expected_date'));
-                modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data(
-                    'is_val'));
-
-                modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',
-                    true);
-
-            });
-
-            $('.btn-splitting').click(function() {
-                const button = $(this);
-                
-                const modal = $(button.data('target'));
 
                 // Gán dữ liệu vào input
                 modal.find('input[name="id"]').val(button.data('id'));
@@ -363,14 +343,69 @@
                 modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
                 modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
                 modal.find('input[name="expected_date"]').val(button.data('expected_date'));
-                modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data('is_val'));
-
                 modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
 
+                modal.find('input[name="code_val_first"]').val(button.data('code_val'));
+
+                if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "1"){
+                    modal.find('#update_checkbox1').prop('checked', true).val(true);
+                }else if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "2"){
+                    modal.find('#update_checkbox2').prop('checked', true).val(true);
+                }else if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "3"){
+                    modal.find('#update_checkbox3').prop('checked', true).val(true);
+                }
+                
+                const create_soure_modal = $('#create_soure_modal');
+                create_soure_modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+                create_soure_modal.find('input[name="product_name"]').val(button.data('name'));
+                create_soure_modal.find('input[name="mode"]').val("update");
             });
 
-            $('.btn-create').click(function() {
-                const modal = $('#productNameModal');
+            $('.btn-splitting').click(function() {
+                const button = $(this);
+                const targetModal = button.data('target');
+                
+                if (targetModal == "#splittingUpdateModal"){
+                    const modal = $(targetModal);
+                    // Gán dữ liệu vào input
+                    modal.find('input[name="id"]').val(button.data('id'));
+                    modal.find('input[name="name"]').val(button.data('name'));
+                    modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+                    modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
+                    modal.find('input[name="batch"]').val(button.data('batch'));
+                    modal.find('input[name="material_source_id"]').val(button.data('material_source_id'));
+
+                    modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
+                    modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
+                    modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
+                    modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
+                    modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
+                    modal.find('textarea[name="note"]').val(button.data('note'));
+
+                    modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
+                    modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
+                    modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
+                    modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
+                    modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
+                    modal.find('input[name="expected_date"]').val(button.data('expected_date'));
+                    modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data('is_val'));
+
+                    modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
+                }else {
+                    const modal_splitting = $('#splittingModal');
+                    modal_splitting.find('input[name="id"]').val(button.data('id'));
+                    modal_splitting.find('input[name="batch"]').val(button.data('batch'));
+                    modal_splitting.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
+                    modal_splitting.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
+                    $('#selectedModalId').val('#splittingModal');
+     
+                }
+
+                 
+            });
+
+            $('.btn-add').click(function() {
+                $('#selectedModalId').val("#createModal");
             });
 
             $('.form-deActive').on('submit', function(e) {

@@ -321,7 +321,9 @@ class ProductionPlanController extends Controller
 
  
         public function update(Request $request){
+                //dd ($request->all());
                 $validator = Validator::make($request->all(), [
+                       
                         'batch' => 'required',
                         'expected_date' => 'required',
                         'level' => 'required',
@@ -330,19 +332,17 @@ class ProductionPlanController extends Controller
                         'after_parkaging_date' => 'required',
                         'before_parkaging_date' => 'required',
                         'material_source_id' => 'required',
-                        'percent_packaging' => 'required',
-                        'number_of_batch' => 'required',
+                       
                 ], [
-                        'batch.required' => 'Vui lòng nhập số lô',
-                        'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
-                        'level.required' => 'Vui lòng chọn mức độ ưu tiên',
-                        'after_weigth_date.required' => 'Vui lòng chọn ngày có thể cân',
-                        'before_weigth_date.required' => 'Vui lòng chọn ngày cân trước',
-                        'after_parkaging_date.required' => 'Vui lòng chọn ngày có thể đóng gói',
-                        'before_parkaging_date.required' => 'Vui lòng chọn ngày có đóng gói trước',
-                        'material_source_id.required' => 'Vui lòng chọn nguồn nguyên liệu',
-                        'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
-                        'number_of_batch.required' => 'Vui lòng chọn số lượng lô',
+                        
+                        'batch' => 'Vui lòng nhập số lô',
+                        'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
+                        'level' => 'vui lòng chọn mức độ ưu tiên',
+                        'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
+                        'before_weigth_date' => 'vui lòng chọn ngày cân trước',
+                        'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
+                        'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
+                        'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
 
                 if ($validator->fails()) {
@@ -360,8 +360,6 @@ class ProductionPlanController extends Controller
                         "after_parkaging_date" => $request->after_parkaging_date,
                         "before_parkaging_date" => $request->before_parkaging_date,
                         "material_source_id" => $request->material_source_id,
-                        "percent_parkaging" => $request->percent_packaging,
-                        "only_parkaging" => $request->only_parkaging ?? 0,
                         "note" => $request->note ?? "NA",
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
@@ -376,7 +374,7 @@ class ProductionPlanController extends Controller
                         ->max('version');
 
                 $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-
+                //dd ($plan);
                 // Insert lịch sử
                         DB::table('plan_master_history')->insert([
                         'plan_master_id' => $plan->id,
@@ -393,8 +391,9 @@ class ProductionPlanController extends Controller
                         'after_parkaging_date' => $request->after_parkaging_date,
                         'before_parkaging_date' => $request->before_parkaging_date,
                         'material_source_id' => $request->material_source_id,
-                        'percent_parkaging' => $request->percent_packaging,
-                        'only_parkaging' => $request->only_parkaging ?? 0,
+                        'percent_parkaging' => $plan->percent_parkaging,
+                        'only_parkaging' => $plan->only_parkaging,
+                        "number_parkaging" => $plan->number_parkaging,
                         'note' => $request->note ?? "NA",
                         'reason' => $request->reason ?? "NA",
                         'deparment_code' => $plan->deparment_code,
@@ -515,7 +514,7 @@ class ProductionPlanController extends Controller
 
                 $mainPlanMaster = DB::table('plan_master')->where ('id', $request->id)->first();
 
-                $planMasterId = DB::table('plan_master')->where ('id',$request->id )->update([
+                DB::table('plan_master')->where ('id',$request->id )->update([
                         "batch" => $mainPlanMaster->batch,
                         "expected_date" => $request->expected_date,
                         "level" => $request->level,
@@ -526,15 +525,13 @@ class ProductionPlanController extends Controller
                         'created_at' => now(),
                 ]);
 
-                // DB::table('plan_master')
-                //         ->where('id', $planMasterId)
-                //         ->update(['main_parkaging_id' => $request->id]);
-
+                $sum_number_parkaging =  DB::table('plan_master')->where('main_parkaging_id', $mainPlanMaster->main_parkaging_id)->where('only_parkaging',1)->sum('number_parkaging');
+                //dd ($request->all());
                 DB::table('plan_master')
-                        ->where('id', $request->id)
+                        ->where('id', $mainPlanMaster->main_parkaging_id)
                         ->update([
-                                'number_parkaging' => $mainPlanMaster->number_parkaging - $request->number_of_unit,
-                                "percent_parkaging" => round(($mainPlanMaster->number_parkaging - $request->number_of_unit)/$request->max_number_of_unit,4),
+                                'number_parkaging' => $request->max_number_of_unit - $sum_number_parkaging,
+                                "percent_parkaging" => round(($request->max_number_of_unit - $sum_number_parkaging)/$request->max_number_of_unit,4),
                         ]);
 
                         // Insert vào plan_master_history

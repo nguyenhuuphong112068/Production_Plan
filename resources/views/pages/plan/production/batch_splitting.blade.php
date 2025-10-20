@@ -102,7 +102,7 @@
                                 <!-- number_of_unit -->
                                 <input type="hidden" name="max_number_of_unit" id ="splitting_max_number_of_unit">
 
-                                <input type="number" class="form-control" name="number_of_unit" id="number_of_unit"
+                                <input type="number" class="form-control" name="number_of_unit" id="splitting_number_of_unit"
                                     placeholder="số lượng đóng gói" min="1" value="{{ old('number_of_unit')}}">
 
                                 <!-- percent_packaging -->
@@ -281,6 +281,7 @@
 
 
         $("#splitting_number_of_unit").on('input', function() {
+            //alert ("sa")
             let numberOfUnit = parseInt($(this).val()) || 0;
 
             // Lấy batch_qty và lọc chỉ lấy số

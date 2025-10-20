@@ -102,7 +102,7 @@
                                 <!-- number_of_unit -->
                                 <input type="hidden" name="max_number_of_unit" id ="splittingUpdate_max_number_of_unit">
 
-                                <input type="number" class="form-control" name="number_of_unit" id="number_of_unit"
+                                <input type="number" class="form-control" name="number_of_unit" id="splittingUpdate_number_of_unit"
                                     placeholder="số lượng đóng gói" min="1" value="{{ old('number_of_unit')}}">
 
                                 <!-- percent_packaging -->
