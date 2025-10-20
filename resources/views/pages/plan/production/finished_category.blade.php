@@ -24,12 +24,15 @@
         </button>
 
       </div>
+      <input type="hidden" name="selectedModalId" id="selectedModalId" value="{{ old('selectedModalId') }}"/>
 
       <div class="modal-body" style="max-height: 100%; overflow-x: auto;">
         <div class="card">
           {{-- <div class="card-header mt-4">
             Có thể thêm nội dung tại đây 
           </div> --}}
+          
+
           <div class="card-body">
             <div class="table-responsive">
               <table id="finished_category" class="table table-bordered table-striped w-100">
@@ -59,7 +62,7 @@
                       <td> {{$data->specification}}</td>
                       
                       <td class="text-center align-middle">
-
+                          
 
                         <button type="summit" class="btn btn-success btn-plus" 
                           data-id="{{ $data->id }}"
@@ -70,7 +73,7 @@
                           data-unit_batch_qty="{{ $data->unit_batch_qty }}"
                           data-market="{{ $data->market }}"
                           data-specification="{{ $data->specification }}"
-                          data-plan_list_id="{{ $plan_list_id }}" 
+                          data-plan_list_id="{{ $plan_list_id }}"
                         
                           data-dismiss="modal"
                           >
@@ -120,10 +123,14 @@
       // Click nút +
         $('#finished_category').on('click', '.btn-plus', function () {
           const button = $(this);
-          const modal = $('#createModal');
-          const modal_source = $('#create_soure_modal');
           
+          let target_modal = $('#selectedModalId').val() ?? '#createModal';
 
+          console.log (target_modal);
+          const modal = $(target_modal);
+
+          const modal_source = $('#create_soure_modal');
+        
           modal.find('input[name="product_caterogy_id"]').val(button.data('id'));
           modal.find('input[name="plan_list_id"]').val(button.data('plan_list_id'));
           modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
@@ -133,17 +140,17 @@
           modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
           modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
           modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
-          modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
+
+          if (target_modal == "#target_modal"){
+            modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));
+          }
           
           modal.find("#add_source_material").data("intermediate_code", button.data('intermediate_code'));
+
           modal.modal('show');
 
           modal_source.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
           modal_source.find('input[name="product_name"]').val(button.data('name'));
-
-
-
-          
 
 
       });

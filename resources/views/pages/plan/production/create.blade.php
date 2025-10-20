@@ -84,7 +84,6 @@
                         <input type="hidden" name="product_caterogy_id" readonly
                             value="{{ old('product_caterogy_id') }}" />
                         <input type="hidden" name="plan_list_id" readonly value="{{ old('plan_list_id') }}" />
-
                     </div>
 
                     <div class="row">

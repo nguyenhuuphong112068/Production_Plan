@@ -701,20 +701,31 @@ import dayjs from 'dayjs';
     };
 
     /// Xử lý Chạy Lịch Tư Động
-    let selectedStep = 3;
+    let emptyPermission  = null;
     const handleAutoSchedualer = () => {
         if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+          let plansort = plan.sort((a, b) => a.stage_code - b.stage_code);
 
-        const hasEmptyPermission = plan.some(item => {
-        const perm = item.permisson_room
-        const isEmptyArray = Array.isArray(perm) && perm.length === 0;
+          const hasEmptyPermission = plansort.some(item => {
+              const perm = item.permisson_room
+              const isEmptyArray = Array.isArray(perm) && perm.length === 0;
+            
+              const matched = (
+                  item.stage_code >= 3 &&
+                  item.stage_code <= 7 &&
+                  isEmptyArray
+                );
+             
+                if (matched) {
+                  emptyPermission = item; // 🔹 Ghi ra biến bên ngoài
+                }
+
+                return matched; // some() sẽ dừng ngay khi true
+            });
+
+        // true hoặc false
       
-        return (
-          item.stage_code >= 3 &&
-          item.stage_code <= 7 &&
-          (isEmptyArray)
-        );
-      });
+      
 
       let selectedDates = [];
       Swal.fire({
@@ -841,78 +852,74 @@ import dayjs from 'dayjs';
   // ------------------ Stepper ------------------
       const stepperContainer = document.getElementById("stepper-container");
 
-          
           if (stepperContainer) {
             const stepperRoot = createRoot(stepperContainer);
 
             const StepperPopup = () => {
+            const [selected, setSelected] = React.useState(null);
 
-              const [selected, setSelected] = React.useState(null);
-              const handleSelect = (value) => {
-                console.log("Selected step:", 1); 
-                setSelected(value);
-                selectedStep = value; 
-              };
               const getClass = (value) =>
                 `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${
                   selected === value ? "bg-primary text-white" : ""
-                }`;
-
+              }`;
+              console.log ()
+           
               return (
                 <Stepper style={{ width: "100%" }}>
-
-                  <StepperPanel header="PC">
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("Pha Chế")}>
-                        Pha Chế
+                  {(emptyPermission == null || emptyPermission.stage_code >= 4) &&  (
+                    <StepperPanel header="PC" >
+                      <div className="flex flex-column h-12rem" >
+                        <div
+                          className={getClass("Pha Chế") }>
+                          Pha Chế
+                        </div>
                       </div>
-                    </div>
-                  </StepperPanel>
-                
-                  <StepperPanel header="THT">
+                    </StepperPanel>)}
+                  
+                  {(emptyPermission == null || emptyPermission.stage_code >= 5) && (
+                  <StepperPanel header="THT" readOnlyInput>
                     <div className="flex flex-column h-12rem">
                       <div
                         className={getClass("THT")}
-                        //onClick={() => handleSelect(4)}
                       >
                         Pha Chế ➡ Trộn Hoàn Tất
                       </div>
                     </div>
-                  </StepperPanel>
-
+                  </StepperPanel>)}
+                  {(emptyPermission == null || emptyPermission.stage_code >= 6) && (
                   <StepperPanel header="ĐH">
                     <div className="flex flex-column h-12rem">
                       <div
                         className={getClass("ĐH")}
-                        //onClick={() => handleSelect(5)}
+                        
                       >
                         Pha Chế ➡ Định Hình
                       </div>
                     </div>
-                  </StepperPanel>
-
-                  <StepperPanel header="BP">
+                  </StepperPanel>)}
+                 {(emptyPermission == null || emptyPermission.stage_code >= 7 ) && ( 
+                  <StepperPanel header="BP" disabled={true}>
                     <div className="flex flex-column h-12rem">
                       <div
                         className={getClass("BP")}
-                        //onClick={() => handleSelect(6)}
+                        
                       >
                         Pha Chế ➡ Bao Phim
                       </div>
                     </div>
-                  </StepperPanel>
-
+                  </StepperPanel>)}
+                   {(emptyPermission == null || emptyPermission.stage_code >= 8 ) && (
                   <StepperPanel header="ĐG">
                     <div className="flex flex-column h-12rem">
                       <div
                         className={getClass("ĐG")}
-                        //onClick={() => handleSelect(7)}
+                        
                         >
                         Pha Chế ➡ Đóng Gói
                       </div>
                     </div>
-                  </StepperPanel>
+                  </StepperPanel>)}
+
                 </Stepper>
               );
             };

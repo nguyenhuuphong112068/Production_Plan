@@ -101,11 +101,12 @@
                             <label class = "mt-2">Nguồn</label>
                             <div class="input-group">
                                 <textarea class="form-control" name="source_material_name" rows="3" value="{{ old('source_material_name') }}"></textarea>
-                                <button type="button" class = "btn btn-success"  data-toggle="modal" data-target="#selectSourceModal"> 
+                                <button type="button" class = "btn btn-success" data-toggle="modal" data-target="#selectSourceModal"> 
                                     <i class="fas fa-plus"></i>
                                 </button>
                                 <input type="hidden" class="form-control" name="material_source_id" value="{{ old('material_source_id') }}" />
                             </div>
+
                             {{-- Lô thẩm định --}}
                             <label class ="mt-3">Lô Thẩm Định</label>
                             <div class="card ">
@@ -113,26 +114,26 @@
                                 <div class="row">
                                     <div class="col-md-4">        
                                         <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox1" 
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox1" 
                                                 name = "first_val_batch">
-                                            <label for="checkbox1">Lô thứ nhất</label>
+                                            <label for="update_checkbox1">Lô thứ nhất</label>
                                             <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}"  readonly/>
                                             <input type="hidden" name="code_val_first" value="{{ old('code_val_first') }}"/>
                                         </div>
                                     </div>
                                     <div class="col-md-4"> 
                                         <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox2" 
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox2" 
                                                 name = "second_val_batch">
-                                            <label for="checkbox2">Lô thứ hai</label>
+                                            <label for="update_checkbox2">Lô thứ hai</label>
                                             <span  class = "batchNo batchNo2" ></span>
                                         </div>
                                     </div>
                                     <div class="col-md-4"> 
                                         <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox3" 
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox3" 
                                                 name = "third_val_batch">
-                                            <label for="checkbox3">Lô thứ ba</label>
+                                            <label for="update_checkbox3">Lô thứ ba</label>
                                             <span class = "batchNo batchNo3"></span>
                                         </div>
                                     </div>
@@ -335,7 +336,6 @@
             const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
-
 
          preventDoubleSubmit("#updateModal", "#update_btnSave");
          
