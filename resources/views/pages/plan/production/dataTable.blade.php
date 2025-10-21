@@ -208,7 +208,9 @@
                                 {{-- <input {{ $auth_update }} type= "date" class="updateInput" name="before_parkaging_date" value="{{ $data->before_parkaging_date ? \Carbon\Carbon::parse($data->before_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}> --}}
                             </td>
                             <td> 
-                                <input {{ $auth_update }} type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}>
+                                {{ $data->note }}
+                                {{-- <input {{ $auth_update }} type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}> --}}
+                                {{-- <textarea {{ $auth_update }} type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}> </textarea> --}}
                             </td>
 
                             <td>
