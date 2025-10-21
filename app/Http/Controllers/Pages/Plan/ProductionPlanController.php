@@ -161,9 +161,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => 'required',
                         'level' => 'required',
                         'after_weigth_date' => 'required',
-                        'before_weigth_date' => 'required',
+                        //'before_weigth_date' => 'required',
                         'after_parkaging_date' => 'required',
-                        'before_parkaging_date' => 'required',
+                        //'before_parkaging_date' => 'required',
                         'material_source_id' => 'required',
                        
                 ], [
@@ -173,9 +173,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level' => 'vui lòng chọn mức độ ưu tiên',
                         'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
-                        'before_weigth_date' => 'vui lòng chọn ngày cân trước',
+                        //'before_weigth_date' => 'vui lòng chọn ngày cân trước',
                         'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
-                        'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
+                        //'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
                         'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
 
@@ -207,7 +207,7 @@ class ProductionPlanController extends Controller
                         $prefix = Str::substr($request->batch, -4);
                         $aa     = intval(Str::substr($request->batch, 0, Str::length($request->batch) - 4));
                         for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                                $charater_val = ($i <= $total) ? "V" : "";
+                                $charater_val = ""; //($i <= $total) ? "V" : "";
                                 $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
                                 $aa++;
                         }
@@ -244,9 +244,9 @@ class ProductionPlanController extends Controller
                                 "is_val" => ($i <= $total) ? 1 : 0,
                                 "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
                                 "after_weigth_date" => $request->after_weigth_date,
-                                "before_weigth_date" => $request->before_weigth_date,
+                                //"before_weigth_date" => $request->before_weigth_date,
                                 "after_parkaging_date" => $request->after_parkaging_date,
-                                "before_parkaging_date" => $request->before_parkaging_date,
+                               // "before_parkaging_date" => $request->before_parkaging_date,
                                 "material_source_id" => $request->material_source_id,
                                 "percent_parkaging" => 1,
                                 "number_parkaging" => $request->max_number_of_unit,
@@ -272,9 +272,9 @@ class ProductionPlanController extends Controller
                                 "level" => $request->level,
                                 "is_val" => ($i <= $total) ? 1 : 0,
                                 "after_weigth_date" => $request->after_weigth_date,
-                                "before_weigth_date" => $request->before_weigth_date,
+                                //"before_weigth_date" => $request->before_weigth_date,
                                 "after_parkaging_date" => $request->after_parkaging_date,
-                                "before_parkaging_date" => $request->before_parkaging_date,
+                                //"before_parkaging_date" => $request->before_parkaging_date,
                                 "material_source_id" => $request->material_source_id,
                                 "percent_parkaging" => 1,
                                 "number_parkaging" => $request->max_number_of_unit,
@@ -328,9 +328,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => 'required',
                         'level' => 'required',
                         'after_weigth_date' => 'required',
-                        'before_weigth_date' => 'required',
+                        //'before_weigth_date' => 'required',
                         'after_parkaging_date' => 'required',
-                        'before_parkaging_date' => 'required',
+                        //'before_parkaging_date' => 'required',
                         'material_source_id' => 'required',
                        
                 ], [
@@ -339,9 +339,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level' => 'vui lòng chọn mức độ ưu tiên',
                         'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
-                        'before_weigth_date' => 'vui lòng chọn ngày cân trước',
+                        //'before_weigth_date' => 'vui lòng chọn ngày cân trước',
                         'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
-                        'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
+                        //'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
                         'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
 
@@ -377,9 +377,9 @@ class ProductionPlanController extends Controller
                         "is_val" => $is_val,
                         "code_val" => $code_val,
                         "after_weigth_date" => $request->after_weigth_date,
-                        "before_weigth_date" => $request->before_weigth_date,
+                        //"before_weigth_date" => $request->before_weigth_date,
                         "after_parkaging_date" => $request->after_parkaging_date,
-                        "before_parkaging_date" => $request->before_parkaging_date,
+                        //"before_parkaging_date" => $request->before_parkaging_date,
                         "material_source_id" => $request->material_source_id,
                         "note" => $request->note ?? "NA",
                         'prepared_by' => session('user')['fullName'],
@@ -408,9 +408,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => $request->expected_date,
                         'is_val' => $request->is_val == null ? 0 : 1,
                         'after_weigth_date' => $request->after_weigth_date,
-                        'before_weigth_date' => $request->before_weigth_date,
+                        //'before_weigth_date' => $request->before_weigth_date,
                         'after_parkaging_date' => $request->after_parkaging_date,
-                        'before_parkaging_date' => $request->before_parkaging_date,
+                        //'before_parkaging_date' => $request->before_parkaging_date,
                         'material_source_id' => $request->material_source_id,
                         'percent_parkaging' => $plan->percent_parkaging,
                         'only_parkaging' => $plan->only_parkaging,

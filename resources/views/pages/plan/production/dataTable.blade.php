@@ -98,8 +98,8 @@
                         <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
                         <th>Nguồn</th>
-                        <th>Nguyên Liệu</th>
-                        <th>Bao Bì</th>
+                        <th>Ngày có đủ NL/BB</th>
+                        {{-- <th>Bao Bì</th> --}}
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th style="width:1%">Cập Nhật</th>
@@ -198,12 +198,10 @@
 
                             <td>
                                 <input {{ $auth_update }} type= "date" class="updateInput" name="after_weigth_date" value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
-                                <input {{ $auth_update }} type= "date" class="updateInput" name="before_weigth_date" value="{{ $data->before_weigth_date ? \Carbon\Carbon::parse($data->before_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
-                                
-                            </td>
-                            <td>
+                                {{-- <input {{ $auth_update }} type= "date" class="updateInput" name="before_weigth_date" value="{{ $data->before_weigth_date ? \Carbon\Carbon::parse($data->before_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}> --}}
+                            
                                 <input {{ $auth_update }} type= "date" class="updateInput" name="after_parkaging_date" value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
-                                <input {{ $auth_update }} type= "date" class="updateInput" name="before_parkaging_date" value="{{ $data->before_parkaging_date ? \Carbon\Carbon::parse($data->before_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
+                                {{-- <input {{ $auth_update }} type= "date" class="updateInput" name="before_parkaging_date" value="{{ $data->before_parkaging_date ? \Carbon\Carbon::parse($data->before_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}> --}}
                             </td>
                             <td> 
                                 <input {{ $auth_update }} type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}>
@@ -534,11 +532,7 @@
 
                                   <td>
                                       <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.before_weigth_date ? moment(item.before_weigth_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
-                                  <td>
                                       <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.before_parkaging_date ? moment(item.before_parkaging_date).format('DD/MM/YYYY') : ''}</div>
                                   </td>
 
                                   <td>${item.note ?? ''}</td>
