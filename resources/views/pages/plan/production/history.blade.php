@@ -39,8 +39,7 @@
                     <th>Ngày dự kiến KCS</th>
                     <th>Lô Thẩm định</th>
                     <th>Nguồn</th>
-                    <th>Nguyên Liệu</th>
-                    <th>Bao Bì</th>
+                    <th>Ngày có đủ NL/BB</th>
                     <th>Ghi Chú</th>
                     <th>Version</th>
                     <th style="width: 100px" >Lý Do</th>
