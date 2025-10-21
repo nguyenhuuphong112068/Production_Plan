@@ -61,7 +61,8 @@
                             </div>
                         </div>
                         <input type="hidden" name="id" value="{{ old('id') }}" />
-                        
+                        <input type="hidden" name="product_caterogy_id" 
+                            value="{{ old('product_caterogy_id') }}" />
 
                     </div>
 

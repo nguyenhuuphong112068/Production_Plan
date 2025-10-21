@@ -450,7 +450,7 @@ class ProductionPlanController extends Controller
                 $mainPlanMaster = DB::table('plan_master')->where ('id', $request->id)->first();
 
                 $planMasterId = DB::table('plan_master')->insertGetId([
-                        "product_caterogy_id" => $mainPlanMaster->product_caterogy_id,
+                        "product_caterogy_id" => $request->product_caterogy_id,
                         "plan_list_id" => $mainPlanMaster->plan_list_id,
                         "batch" => $mainPlanMaster->batch,
                         "expected_date" => $request->expected_date,
