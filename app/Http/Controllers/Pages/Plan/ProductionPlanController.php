@@ -207,7 +207,7 @@ class ProductionPlanController extends Controller
                         $prefix = Str::substr($request->batch, -4);
                         $aa     = intval(Str::substr($request->batch, 0, Str::length($request->batch) - 4));
                         for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                                $charater_val = ""; //($i <= $total) ? "V" : "";
+                                $charater_val = "";//($i <= $total) ? "V" : "";
                                 $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
                                 $aa++;
                         }
@@ -318,7 +318,6 @@ class ProductionPlanController extends Controller
                 ]);
 
         }
-
  
         public function update(Request $request){
                 //dd ($request->all());
@@ -587,9 +586,8 @@ class ProductionPlanController extends Controller
 
 
         public function deActive(Request $request){
-                //dd ($request->all());
+               
                 $reason = $request->deactive_reason;
-
                 $updatesql = [
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
@@ -605,8 +603,22 @@ class ProductionPlanController extends Controller
                         $updatesql['cancel'] = 0;
                         $active_stage_plan = 1;
                 }
+                if ($request->only_parkaging == 1){
 
-                DB::table('plan_master')->where('main_parkaging_id', $request->id)->update($updatesql);
+                        $main_parkaging_id =  DB::table('plan_master')->where('id', $request->id)->value('main_parkaging_id');
+                        $max_number_parkaging =  DB::table('plan_master')->where('main_parkaging_id', $main_parkaging_id)->sum('number_parkaging');
+                        DB::table('plan_master')->where('id', $request->id)->update($updatesql);
+                        $sum_number_parkaging =  DB::table('plan_master')->where('main_parkaging_id', $request->id)->where('only_parkaging',1)->sum('number_parkaging');
+                        DB::table('plan_master')
+                        ->where('id', $main_parkaging_id)
+                        ->update([
+                                'number_parkaging' => $max_number_parkaging - $sum_number_parkaging,
+                                "percent_parkaging" => round(($max_number_parkaging - $sum_number_parkaging)/$max_number_parkaging,4),
+                        ]);
+
+                }else{
+                        DB::table('plan_master')->where('main_parkaging_id', $request->id)->update($updatesql);
+                }
 
                 $latest = DB::table('plan_master_history')
                 ->where('plan_master_id', $request->id)
@@ -619,7 +631,6 @@ class ProductionPlanController extends Controller
                         ->update(['reason' => $reason]);
                 }
 
-
                 DB::table('stage_plan')->where('plan_master_id', $request->id)->update([
                         'active' => $active_stage_plan
                 ]);
@@ -629,7 +640,11 @@ class ProductionPlanController extends Controller
 
         
         public function send(Request $request){
-               
+                
+                $exists = DB::table('plan_master')->where('plan_master.plan_list_id', $request->plan_list_id)->exists();
+
+                if ($exists){return;}
+
                 // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
                 $plans_main = DB::table('plan_master')
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
@@ -712,7 +727,6 @@ class ProductionPlanController extends Controller
                         'primary_parkaging'=> 7,
                 ];
                 
-
                 $dataToInsert = [];
 
                 foreach ($plans_main as $plan) {

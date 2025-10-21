@@ -133,28 +133,32 @@
                             <td style="text-align: center;" >
                                 <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }} style="font-weight: bold;" >                              
                                 {{ $splittingModal = "" }}
-                                <div class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
-                                    
-                                    {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
-                                    data-name="{{ $data->name }}"
-                                    data-intermediate_code="{{ $data->intermediate_code }}"
-                                    data-finished_product_code="{{ $data->finished_product_code }}"
-                                    data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
-                                    data-specification="{{ $data->specification }}" data-level="{{ $data->level }}"
-                                    data-expected_date="{{ $data->expected_date }}" data-is_val="{{ $data->is_val }}"
-                                    data-source_material_name="{{ $data->source_material_name }}"
-                                    data-after_weigth_date="{{ $data->after_weigth_date}}"
-                                    data-before_weigth_date="{{ $data->before_weigth_date}}"
-                                    data-after_parkaging_date="{{ $data->after_parkaging_date }}"
-                                    data-before_parkaging_date="{{ $data->before_parkaging_date }}"
-                                    data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
-                                    data-unit_batch_qty="{{ $data->unit_batch_qty}}"
-                                    data-material_source_id="{{ $data->material_source_id}}"
-                                    data-number_parkaging="{{ $data->number_parkaging}}"
-                                
-                                > 
-                                    {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div>
+
+                                @if ($data->number_parkaging > 0)
+
+                                    <div class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
+                                        {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
+                                        data-name="{{ $data->name }}"
+                                        data-intermediate_code="{{ $data->intermediate_code }}"
+                                        data-finished_product_code="{{ $data->finished_product_code }}"
+                                        data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
+                                        data-specification="{{ $data->specification }}" data-level="{{ $data->level }}"
+                                        data-expected_date="{{ $data->expected_date }}" data-is_val="{{ $data->is_val }}"
+                                        data-source_material_name="{{ $data->source_material_name }}"
+                                        data-after_weigth_date="{{ $data->after_weigth_date}}"
+                                        data-before_weigth_date="{{ $data->before_weigth_date}}"
+                                        data-after_parkaging_date="{{ $data->after_parkaging_date }}"
+                                        data-before_parkaging_date="{{ $data->before_parkaging_date }}"
+                                        data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
+                                        data-unit_batch_qty="{{ $data->unit_batch_qty}}"
+                                        data-material_source_id="{{ $data->material_source_id}}"
+                                        data-number_parkaging="{{ $data->number_parkaging}}"
+                                    >
+                                    {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
+
+                                @endif
                                 </td>
+
                             <td>
                                 <div> {{ $data->market }} </div>
                                 <div> {{ $data->specification }} </div>
@@ -251,26 +255,28 @@
                                     @csrf
                                     <input type="hidden" name="id" value = "{{ $data->id }}">
                                     <input type="hidden" name="active" value="{{ $data->active }}">
+                                    <input type="hidden" name="only_parkaging" value="{{ $data->only_parkaging }}">
 
                                     @if ($data->active == true && $send == false)
-                                        <button type="submit" class="btn btn-danger" data-type="delete"
+                                        <button type="submit" class="btn btn-danger" data-type="delete" 
                                             {{ $auth_deActive }}
                                             data-name="{{ $data->name . ' - ' . $data->batch }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     @elseif ($data->cancel == false && $send == true)
-                                        <button type="submit" class="btn btn-danger" data-type="cancel"
+                                        <button type="submit" class="btn btn-danger" data-type="cancel" 
                                             {{ $auth_deActive }}
                                             data-name="{{ $data->name . ' - ' . $data->batch }}">
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @elseif ($data->cancel == true && $send == true)
-                                        <button type="submit" class="btn btn-success" data-type="restore"
+                                        <button type="submit" class="btn btn-success" data-type="restore" 
                                             {{ $auth_deActive }}
                                             data-name="{{ $data->name . ' - ' . $data->batch }}">
                                             <i class="fas fa-unlock"></i>
                                         </button>
                                     @endif
+
                                 </form>
 
                             </td>
