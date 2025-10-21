@@ -703,6 +703,7 @@ import dayjs from 'dayjs';
     /// Xử lý Chạy Lịch Tư Động
     let emptyPermission  = null;
     const handleAutoSchedualer = () => {
+      
         if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
           let plansort = plan.sort((a, b) => a.stage_code - b.stage_code);
 

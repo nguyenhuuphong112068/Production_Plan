@@ -23,7 +23,7 @@
                 </div>
 
                 <div class="modal-body">
-                    <input type="text" class="form-control" name="mode" id = "create_soure_modal_mode" value="{{ old('mode') }}" readonly>
+                    <input type="hidden" class="form-control" name="mode" id = "create_soure_modal_mode" value="{{ old('mode') }}" readonly>
                     {{-- intermadiat_Code --}}
                     <div class="form-group">
                         <label for="intermediate_code">Mã Bán Thành Phẩm</label>
@@ -76,15 +76,14 @@
             type: 'POST',
             data: $(this).serialize(),
             success: function (res) {
-                // res.id = material_source_id vừa insert
-                alert ()
+
                 if ( $('#create_soure_modal_mode').val() == "update"){
+                  
                     $('#updateModal').find('input[name="material_source_id"]').val(res.id);
-                    $('#createModal').find('textarea[name="source_material_name"]').val(res.name);
+                    $('#updateModal').find('textarea[name="source_material_name"]').val(res.name);
                 }else {
                     $('#createModal').find('input[name="material_source_id"]').val(res.id);
                     $('#createModal').find('textarea[name="source_material_name"]').val(res.name);
-                    
                 }
                 $('#create_soure_modal').modal('hide');
             },

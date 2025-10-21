@@ -1388,6 +1388,7 @@ class SchedualController extends Controller
 
                 foreach ($planMasters as $planMasterId) {
                         DB::table('stage_plan')
+                                ->whereNull('start')
                                 ->where('plan_master_id', $planMasterId)
                                 ->where('finished', 0)
                                 ->where('active', 1)
@@ -1781,6 +1782,7 @@ class SchedualController extends Controller
                                         }, function ($query) use ($task) {
                                                 return $query->where('finished_product_code', $task->finished_product_code);
                                         })
+                                        ->where('active', 1)
                                         ->where('room_id', $room_id_first->resourceId)
                                         ->get();
 
@@ -1797,6 +1799,7 @@ class SchedualController extends Controller
                                         }, function ($query) use ($task) {
                                                 return $query->where('finished_product_code', $task->finished_product_code);
                                         })
+                                        ->where('active', 1)
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
 
@@ -1827,6 +1830,7 @@ class SchedualController extends Controller
                                                 }, function ($query) use ($task) {
                                                 return $query->where('finished_product_code', $task->finished_product_code);
                                                 })
+                                        ->where('active', 1)
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
 
@@ -1849,6 +1853,7 @@ class SchedualController extends Controller
                                         }, function ($query) use ($task) {
                                                 return $query->where('finished_product_code', $task->finished_product_code);
                                         })
+                                        ->where('active', 1)
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
                                 }
@@ -1865,6 +1870,7 @@ class SchedualController extends Controller
                                 }, function ($query) use ($task) {
                                         return $query->where('finished_product_code', $task->finished_product_code);
                                 })
+                                ->where('active', 1)
                                 ->where('stage_code', $task->stage_code)
                                 ->get();
                         }
@@ -1981,6 +1987,7 @@ class SchedualController extends Controller
                                 }, function ($query) use ($firstTask) {
                                         return $query->where('finished_product_code', $firstTask->finished_product_code);
                                 })
+                                ->where('active', 1)
                                 ->where('room_id', $room_id_first->resourceId)
                                 ->get();
 
@@ -1997,6 +2004,7 @@ class SchedualController extends Controller
                                 }, function ($query) use ($firstTask) {
                                         return $query->where('finished_product_code', $firstTask->finished_product_code);
                                 })
+                                ->where('active', 1)
                                 ->where('stage_code', $firstTask->stage_code)
                                 ->get();
 
@@ -2027,6 +2035,7 @@ class SchedualController extends Controller
                                                 }, function ($query) use ($firstTask) {
                                                 return $query->where('finished_product_code', $firstTask->finished_product_code);
                                                 })
+                                        ->where('active', 1)
                                         ->where('stage_code', $firstTask->stage_code)
                                         ->get();
 
@@ -2049,6 +2058,7 @@ class SchedualController extends Controller
                                         }, function ($query) use ($firstTask) {
                                                 return $query->where('finished_product_code', $firstTask->finished_product_code);
                                         })
+                                        ->where('active', 1)
                                         ->where('stage_code', $firstTask->stage_code)
                                         ->get();
                                 }
@@ -2065,6 +2075,7 @@ class SchedualController extends Controller
                                 }, function ($query) use ($firstTask) {
                                         return $query->where('finished_product_code', $firstTask->finished_product_code);
                                 })
+                                ->where('active', 1)
                                 ->where('stage_code', $firstTask->stage_code)
                         ->get();
                 }

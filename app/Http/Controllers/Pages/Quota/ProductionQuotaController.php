@@ -262,12 +262,23 @@ class ProductionQuotaController extends Controller
         }
 
         public function deActive(Request $request){
-              //dd ($request->all());
-               DB::table('quota')->where('id', $request->id)->update([
+              
+                $quota = DB::table('quota')->where('id', $request->id)->first ();
+                if ( $quota->stage_code == 7) {
+                        $quota_count = DB::table('quota')->where('finished_product_code', $quota->finished_product_code)->where('stage_code', $quota->stage_code)->count();  
+                }else {
+                        $quota_count = DB::table('quota')->where('intermediate_code', $quota->intermediate_code)->where('stage_code', $quota->stage_code)->count();  
+                }
+                
+                if ($quota_count == 1){
+                        return redirect()->back()->with('success', 'Hiện tại chỉ còn một định mức cho sản phẩm này, không đươc vô hiệu hóa!');
+                }else {
+                        DB::table('quota')->where('id', $request->id)->update([
                         'active' => !$request->active,
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(), 
-                ]);
+                        ]);
+                }
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
         public function tank_keepDry(Request $request){
