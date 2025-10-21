@@ -322,6 +322,12 @@
                 const button = $(this);
                 const modal = $('#updateModal');
 
+                //bỏ tick thẩm định
+                modal.find('#update_checkbox1').prop('checked', false).val(false);
+                modal.find('#update_checkbox2').prop('checked', false).val(false);
+                modal.find('#update_checkbox3').prop('checked', false).val(false);
+
+
                 // Gán dữ liệu vào input
                 modal.find('input[name="id"]').val(button.data('id'));
                 modal.find('input[name="name"]').val(button.data('name'));
@@ -345,14 +351,19 @@
                 modal.find('input[name="expected_date"]').val(button.data('expected_date'));
                 modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
 
-                modal.find('input[name="code_val_first"]').val(button.data('code_val'));
 
                 if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "1"){
+                    modal.find('input[name="batchNo1"]').val(button.data('batch'));
                     modal.find('#update_checkbox1').prop('checked', true).val(true);
+                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] + "_1");
                 }else if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "2"){
+                    modal.find('input[name="batchNo1"]').val(button.data('batch'));
                     modal.find('#update_checkbox2').prop('checked', true).val(true);
+                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] + "_1");
                 }else if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "3"){
+                    modal.find('input[name="batchNo1"]').val(button.data('batch'));
                     modal.find('#update_checkbox3').prop('checked', true).val(true);
+                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] + "_1");
                 }
                 
                 const create_soure_modal = $('#create_soure_modal');

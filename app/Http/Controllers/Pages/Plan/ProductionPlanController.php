@@ -843,7 +843,7 @@ class ProductionPlanController extends Controller
         }
 
         public function first_batch(Request $request) {
-                 ob_clean();
+                ob_clean();
                 $datas = DB::table('plan_master')
                 ->select('plan_master.*', 
                         'finished_product_category.intermediate_code', 
@@ -863,12 +863,15 @@ class ProductionPlanController extends Controller
                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id') 
                 ->where('plan_master.active',1)
                 ->where ('is_val',1)
+                ->where ('plan_master.active',1)
                 //->whereRaw("SUBSTRING_INDEX(plan_master.code_val, '_', -1) = '1'") 
                 ->where ('finished_product_category.intermediate_code',$request->intermediate_code)
                 ->orderBy('id','desc')
                 ->get();
 
-
+                Log::info('first_batch', [
+                        'datas' => $datas
+                ]);
                  return response()->json($datas);    
         }
 

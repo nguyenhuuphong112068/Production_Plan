@@ -76,7 +76,7 @@ $(document).ready(function () {
         createModal.find('input[name="batchNo1"]').val(batch);
         createModal.find('input[name="code_val_first"]').val(code_val);
 
-       
+        $('#fist_batch_modal').modal('hidden');
     });
 
 })

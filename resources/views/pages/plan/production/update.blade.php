@@ -118,7 +118,7 @@
                                                 name = "first_val_batch">
                                             <label for="update_checkbox1">Lô thứ nhất</label>
                                             <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}"  readonly/>
-                                            <input type="hidden" name="code_val_first" value="{{ old('code_val_first') }}"/>
+                                            <input type="text" name="code_val_first" value="{{ old('code_val_first') }}"/>
                                         </div>
                                     </div>
                                     <div class="col-md-4"> 
@@ -340,10 +340,10 @@
         $("#updateModal .step-checkbox").on("change", function() {
 
             let batch = $('#updateModal input[name="batch"]').val();
-           
             let checkbox1 = $("#update_checkbox1").is(":checked") ? 1 : 0;
-            let checkbox2 = $("#update_checkbox1").is(":checked") ? 1 : 0;
+            let checkbox2 = $("#update_checkbox2").is(":checked") ? 1 : 0;
             let checkbox3 = $("#update_checkbox3").is(":checked") ? 1 : 0;
+
             let code_val = $('#updateModal input[name="code_val_first"]').val()|| null;
             let intermediate_code = $('#updateModal input[name="intermediate_code"]').val()|| "" ;
             let first_batch_modal =  $('#tbody_first_val_batch')
@@ -377,112 +377,110 @@
 
             if (total == 0){
                 $('input[name="batchNo1"]').val('');
-                $('input[name="code_val_first"]').val('');
+                $('input[name="code_val_first"]').val(null);
             }
-                        
-        
+            
+            // if ((checkbox1 == 0 && checkbox2 == 1 && code_val == null) || (checkbox1 == 0 && checkbox2 == 0 && checkbox3 == 1 && code_val == null)){
+               
+            //     first_batch_modal.empty();
+            //     $.ajax({
+            //         url: "{{ route('pages.plan.production.first_batch') }}",
+            //         type: 'post',
+            //         data: {
+            //             intermediate_code: intermediate_code,
+            //             _token: "{{ csrf_token() }}"
+            //         },
+            //         success: function(res) {
 
-            if ((checkbox1 == 0 && checkbox2 == 1 && code_val == null) || (checkbox1 == 0 && checkbox2 == 0 && checkbox3 == 1 && code_val == null)){
-                first_batch_modal.empty();
-                $.ajax({
-                    url: "{{ route('pages.plan.production.first_batch') }}",
-                    type: 'post',
-                    data: {
-                        intermediate_code: intermediate_code,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(res) {
+            //             if (res.length === 0) {
+            //                 first_batch_modal.append(
+            //                     `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
+            //                 );
+            //             } else {
+            //                 res.forEach((item, index) => {
+            //                     // map màu level
+            //                     const colors = {
+            //                         1: 'background-color: #f44336; color: white;', // đỏ
+            //                         2: 'background-color: #ff9800; color: white;', // cam
+            //                         3: 'background-color: blue; color: white;', // xanh dương
+            //                         4: 'background-color: #4caf50; color: white;', // xanh lá
+            //                     };
+            //                     first_batch_modal.append(`
+            //                   <tr>
+            //                       <td>${index + 1}</td>
+            //                       <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
+            //                           <div>${item.intermediate_code ?? ''}</div>
+            //                           <div>${item.finished_product_code ?? ''}</div>
+            //                       </td>
 
-                        if (res.length === 0) {
-                            first_batch_modal.append(
-                                `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
-                            );
-                        } else {
-                            res.forEach((item, index) => {
-                                // map màu level
-                                const colors = {
-                                    1: 'background-color: #f44336; color: white;', // đỏ
-                                    2: 'background-color: #ff9800; color: white;', // cam
-                                    3: 'background-color: blue; color: white;', // xanh dương
-                                    4: 'background-color: #4caf50; color: white;', // xanh lá
-                                };
-                                first_batch_modal.append(`
-                              <tr>
-                                  <td>${index + 1}</td>
-                                  <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
-                                      <div>${item.intermediate_code ?? ''}</div>
-                                      <div>${item.finished_product_code ?? ''}</div>
-                                  </td>
+            //                       <td>${item.name ?? ''} (${item.batch_qty ?? ''} ${item.unit_batch_qty ?? ''})</td>
+            //                       <td>${item.batch ?? ''}</td>
+            //                       <td>
+            //                           <div>${item.market ?? ''}</div>
+            //                           <div>${item.specification ?? ''}</div>
+            //                       </td>
 
-                                  <td>${item.name ?? ''} (${item.batch_qty ?? ''} ${item.unit_batch_qty ?? ''})</td>
-                                  <td>${item.batch ?? ''}</td>
-                                  <td>
-                                      <div>${item.market ?? ''}</div>
-                                      <div>${item.specification ?? ''}</div>
-                                  </td>
+            //                         <td>
+            //                           <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
+            //                       </td>
 
-                                    <td>
-                                      <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
+            //                       <td style="text-align: center; vertical-align: middle;">
+            //                           <span style="display: inline-block; padding: 6px 10px; width: 50px; border-radius: 40px; ${colors[item.level] ?? ''}">
+            //                               <b>${item.level ?? ''}</b>
+            //                           </span>
 
-                                  <td style="text-align: center; vertical-align: middle;">
-                                      <span style="display: inline-block; padding: 6px 10px; width: 50px; border-radius: 40px; ${colors[item.level] ?? ''}">
-                                          <b>${item.level ?? ''}</b>
-                                      </span>
+            //                       </td>
 
-                                  </td>
+            //                       <td class="text-center align-middle">
+            //                           ${item.is_val ? '<i class="fas fa-check text-primary fs-4"></i>' : ''}
+            //                           <br>
+            //                            <span class="fw-bold text-success">Lô thứ ${item.code_val ? item.code_val.split('_')[1] ?? '' : ''}</span>
+            //                       </td>
 
-                                  <td class="text-center align-middle">
-                                      ${item.is_val ? '<i class="fas fa-check text-primary fs-4"></i>' : ''}
-                                      <br>
-                                       <span class="fw-bold text-success">Lô thứ ${item.code_val ? item.code_val.split('_')[1] ?? '' : ''}</span>
-                                  </td>
+            //                       <td>${item.source_material_name ?? ''}</td>
 
-                                  <td>${item.source_material_name ?? ''}</td>
+            //                       <td>
+            //                           <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
+            //                           <div>${item.before_weigth_date ? moment(item.before_weigth_date).format('DD/MM/YYYY') : ''}</div>
+            //                       </td>
+            //                       <td>
+            //                           <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
+            //                           <div>${item.before_parkaging_date ? moment(item.before_parkaging_date).format('DD/MM/YYYY') : ''}</div>
+            //                       </td>
 
-                                  <td>
-                                      <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.before_weigth_date ? moment(item.before_weigth_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
-                                  <td>
-                                      <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.before_parkaging_date ? moment(item.before_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
+            //                       <td>${item.note ?? ''}</td>
+            //                     <td>
+            //                         <button type="button" class="btn btn-success btn-confirm-first-batch" 
+            //                         data-id="${item.id}"
+            //                         data-code_val="${item.code_val}"
+            //                         data-batch="${item.batch}"
 
-                                  <td>${item.note ?? ''}</td>
-                                <td>
-                                    <button type="button" class="btn btn-success btn-confirm-first-batch" 
-                                    data-id="${item.id}"
-                                    data-code_val="${item.code_val}"
-                                    data-batch="${item.batch}"
-
-                                    data-dismiss="modal">
-                                    <i class="fas fa-plus"></i>
-                                    </button>
-                                </td>
+            //                         data-dismiss="modal">
+            //                         <i class="fas fa-plus"></i>
+            //                         </button>
+            //                     </td>
                             
-                              </tr>
-                          `);
-                            });
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                            console.error("❌ Lỗi Ajax:", {
-                                status: status,
-                                error: error,
-                                responseText: xhr.responseText
-                            });
-                            first_batch_modal.empty().append(
-                                `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-                            );
-                        }
-                });
+            //                   </tr>
+            //               `);
+            //                 });
+            //             }
+            //         },
+            //         error: function(xhr, status, error) {
+            //                 console.error("❌ Lỗi Ajax:", {
+            //                     status: status,
+            //                     error: error,
+            //                     responseText: xhr.responseText
+            //                 });
+            //                 first_batch_modal.empty().append(
+            //                     `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+            //                 );
+            //             }
+            //     });
 
-                $('#fist_batch_modal').modal('show');
-            }
-
+            //     $('#fist_batch_modal').modal('show');
+            // }
+            return
         });
-
 
          preventDoubleSubmit("#updateModal", "#update_btnSave");
          
