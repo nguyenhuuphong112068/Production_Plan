@@ -355,12 +355,12 @@
         })
 
 
-        $(".step-checkbox").on("change", function() {
-
+        $("#createModal .step-checkbox").on("change", function() {
+          
             let batch = $('#createModal input[name="batch"]').val();
-            let checkbox1 = $("#checkbox1").is(":checked") ? 1 : 0;
-            let checkbox2 = $("#checkbox2").is(":checked") ? 1 : 0;
-            let checkbox3 = $("#checkbox3").is(":checked") ? 1 : 0;
+            let checkbox1 = $("#createModal #checkbox1").is(":checked") ? 1 : 0;
+            let checkbox2 = $("#createModal #checkbox2").is(":checked") ? 1 : 0;
+            let checkbox3 = $("#createModal #checkbox3").is(":checked") ? 1 : 0;
             let code_val = $('input[name="code_val_first"]').val()|| null;
             let intermediate_code = $('input[name="intermediate_code"]').val()|| "" ;
             let first_batch_modal =  $('#tbody_first_val_batch')
@@ -374,9 +374,9 @@
                 });
                 $('input[name="batchNo1"]').val('');
                 $('input[name="code_val_first"]').val('');
-                $("#checkbox1").prop("checked", false);
-                $("#checkbox2").prop("checked", false);
-                $("#checkbox3").prop("checked", false);
+                $("#createModal #checkbox1").prop("checked", false);
+                $("#createModal #checkbox2").prop("checked", false);
+                $("#createModal #checkbox3").prop("checked", false);
                 return;
             }
 

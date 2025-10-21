@@ -154,7 +154,7 @@ class ProductionPlanController extends Controller
 
        public function store(Request $request){
                //dd ($request->all());
-                $validator = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
                         'plan_list_id'   => 'required',
                         'batch' => 'required',
@@ -349,12 +349,33 @@ class ProductionPlanController extends Controller
                         return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
                 }
 
+                $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
+                $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
+                $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
+
+                $is_val = 0;
+                $code_val = null;
+                if ($first_val_batch == 1){
+                        $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
+                        $is_val = 1;
+                        $code_val =  $code_val_part_0."_1";
+                }else if ($second_val_batch == 1){
+                        $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
+                        $is_val = 1;
+                        $code_val =  $code_val_part_0."_2";
+                }else if ($third_val_batch == 1){
+                        $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
+                        $is_val = 1;    
+                        $code_val =  $code_val_part_0."_3";         
+                }
+
                 // Update dữ liệu chính
-                DB::table('plan_master')->where('id', $request->id)->update([
+                DB::table('plan_master')->where('main_parkaging_id', $request->id)->update([
                         "batch" => $request->batch,
                         "expected_date" => $request->expected_date,
                         "level" => $request->level,
-                        "is_val" => $request->is_val == null ? 0 : 1,
+                        "is_val" => $is_val,
+                        "code_val" => $code_val,
                         "after_weigth_date" => $request->after_weigth_date,
                         "before_weigth_date" => $request->before_weigth_date,
                         "after_parkaging_date" => $request->after_parkaging_date,
@@ -585,7 +606,7 @@ class ProductionPlanController extends Controller
                         $active_stage_plan = 1;
                 }
 
-                DB::table('plan_master')->where('id', $request->id)->update($updatesql);
+                DB::table('plan_master')->where('main_parkaging_id', $request->id)->update($updatesql);
 
                 $latest = DB::table('plan_master_history')
                 ->where('plan_master_id', $request->id)
