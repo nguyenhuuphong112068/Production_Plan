@@ -1946,15 +1946,36 @@ class SchedualController extends Controller
                 }
 
                 // Gom dependency
-                foreach ($campaignTasks as $campaignTask) {
-
+                foreach ($campaignTasks as $index => $campaignTask) {
                         $pred = DB::table($stage_plan_table)
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->where('code', $campaignTask->predecessor_code)->first();
-                        ;
+                        
                         if ($pred && $pred->end) {
-                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
+                                $prevCycle = abs(Carbon::parse($pred->end)->diffInMinutes(Carbon::parse($pred->start)));
+
+                               
+                                $currCycle = DB::table('quota')
+                                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
+                                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+                                                return $query->where('intermediate_code', $firstTask->intermediate_code);
+                                        }, function ($query) use ($firstTask) {
+                                                return $query->where('finished_product_code', $firstTask->finished_product_code);
+                                        })
+                                        ->where('active', 1)
+                                        ->where('stage_code', $firstTask->stage_code)
+                                        ->value('avg_m_time_minutes');
+                                
+
+                                if ($currCycle && $prevCycle <= $currCycle){
+                                        $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
+                                        break;
+                                }else {
+                                        // $delay_time = ($pre_room->m_time_hours*($campaignTasks->count() - 1) + $pre_room->C1_time_hours*($campaignTasks->count() - 2)) -
+                                        //          (($bestQuota->m_time_hours + $bestQuota->C1_time_hours )* ($campaignTasks->count() - 1));
+                                        $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);                                    
+                                }    
                         }
                 }
 
@@ -2082,7 +2103,7 @@ class SchedualController extends Controller
 
                 $bestRoom = null;
                 $bestStart = null;
-                $endCleaning = null;
+                // $endCleaning = null;
 
                 //Tim phòng tối ưu
                 foreach ($rooms as $room) {
@@ -2163,8 +2184,6 @@ class SchedualController extends Controller
                         // }
 
                         // kiêm tra ngay chủ nhật
-    
-
                         if ($counter == 0) {
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->p_time_minutes + $bestRoom->m_time_minutes);
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô đâu tiên chiến dịch
@@ -2178,7 +2197,6 @@ class SchedualController extends Controller
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô giữa chiến dịch
                                 $clearningType = 1;
                         }
-
                         $this->saveSchedule(
                                 $task->name."-".$task->batch ."-".$task->market,
                                 $task->id,
@@ -2190,7 +2208,6 @@ class SchedualController extends Controller
                                 1,
                                
                         );
-
                         $counter++;
                         $bestStart = $bestEndCleaning->copy();
                 }
