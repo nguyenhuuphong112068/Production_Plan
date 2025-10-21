@@ -1464,16 +1464,16 @@ import dayjs from 'dayjs';
               {isSelected ? '✓' : '+'}
             </button>
 
-            {/* Nút Xem Lịch Sử */}
-            {type && isWeekView && (
+            {/* Nút Xem Lịch Sử && isWeekView  */}
+            {/* {type && ( */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleShowHistory(event); }}
-                className="absolute top-[-15px] left-2 text-xs px-1 rounded shadow bg-red-500 text-white"
+                className="absolute top-[-15px] left-[100px] text-xs px-1 rounded shadow bg-red-500 text-white"
                 title="Xem Lịch Sử Thay Đổi"
               >
                 {props.number_of_history}
               </button>
-            )}
+            {/* )} */}
 
             {/* Badge Ngày cần hàng */}
             {props.expected_date && renderBadge(
