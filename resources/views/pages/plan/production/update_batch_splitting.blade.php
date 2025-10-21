@@ -190,7 +190,7 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-6">
                             <label>Có thể cân từ ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_weigth_date"
@@ -198,27 +198,27 @@
                                 </div>
                         </div>
                         
-                        <div class="col-md-3">
+                        {{-- <div class="col-md-3">
                             <label>Cân Trước ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_weigth_date"
                                         data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}" readonly>
                                 </div>
-                        </div>
-                        <div class="col-md-3">
+                        </div> --}}
+                        <div class="col-md-6">
                             <label>Có thể ĐG từ ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_parkaging_date"
                                         data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_parkaging_date', date('Y-m-d')) }}" readonly>
                                 </div>
                         </div>
-                        <div class="col-md-3">
+                        {{-- <div class="col-md-3">
                             <label>Đóng gói trước ngày</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_parkaging_date"
                                         data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}" readonly>
                                 </div>
-                        </div>
+                        </div> --}}
                     </div>
                     {{-- Ghi chú --}}
                     <div class="row mt-3" >
