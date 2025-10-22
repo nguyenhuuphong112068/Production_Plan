@@ -1535,7 +1535,7 @@ class SchedualController extends Controller
         }// đã có temp
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll( $request) {
+        public function scheduleAll(Request $request) {
 
                 $this->selectedDates = $request->selectedDates??[];
                 $this->work_sunday = $request->work_sunday??false;
@@ -2310,7 +2310,7 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function test(){
-              $this->scheduleAll (null);
+              //$this->scheduleAll (null);
               //$this->createAutoCampain();
               //$this->view (null);
         }
