@@ -750,23 +750,23 @@ import dayjs from 'dayjs';
               <div class="cfg-row cfg-grid-2">
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding">Trộn Hoàn Tất Lô Thẩm Định</label>
-                  <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_bleding_val">
+                  <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_bleding_val">
                   <label class="cfg-label" for="wt_forming">Định Hình Lô Thẩm Định</label>
                   <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_forming_val">
                   <label class="cfg-label" for="wt_coating">Bao Phim Lô Thẩm Định</label>
                   <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_coating_val">
                   <label class="cfg-label" for="wt_blitering">Đóng Gói Lô Thẩm Định</label>
-                  <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="10" name="wt_blitering_val">
+                  <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_blitering_val">
                 </div>
                 <div class="cfg-col">
                   <label class="cfg-label" for="wt_bleding_val">Trộn Hoàn Tất Lô Thương Mại</label>
-                  <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_bledingl">
+                  <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_bledingl">
                   <label class="cfg-label" for="wt_forming_val">Định Hình Lô Thương Mại</label>
-                  <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_forming">
+                  <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_forming">
                   <label class="cfg-label" for="wt_coating_val">Bao Phim Lô Thương Mại</label>
-                  <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_coating">
+                  <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_coating">
                   <label class="cfg-label" for="wt_blitering_val">Đóng Gói Lô Thương Mại</label>
-                  <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="3" name="wt_blitering">
+                  <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_blitering">
                 </div>
               </div>
 
