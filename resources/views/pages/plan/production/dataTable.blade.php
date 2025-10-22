@@ -112,7 +112,10 @@
 
                     @foreach ($datas as $data)
                         <tr>
-                            <td>{{ $loop->iteration }} </td>
+                            <td>
+                                <div> {{ $loop->iteration }} </div>
+                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                            </td>
 
                             @if (!$data->cancel)
                                 <td class="text-success">
