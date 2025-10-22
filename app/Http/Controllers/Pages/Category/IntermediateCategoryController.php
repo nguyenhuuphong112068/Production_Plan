@@ -12,7 +12,7 @@ class IntermediateCategoryController extends Controller
         
         public function index(){
 
-                $productNames = DB::table('product_name')->where('active', true)->get();
+                $productNames = DB::table('product_name')->where('active', true)->orderBy('name','asc')->get();
                 $dosages = DB::table('dosage')->where('active', true)->get();
                 $units = DB::table('unit')->where('active', true)->get();
 
