@@ -268,6 +268,7 @@ class SchedualController extends Controller
                         return $query->where('sp.stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
                         })
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+                        ->leftJoin('plan_list', 'sp.plan_list_id', '=', 'plan_list.id')
                         ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
                         ->leftJoin('finished_product_category', function ($join) {
                         $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
@@ -296,7 +297,7 @@ class SchedualController extends Controller
                         'plan_master.material_source_id',
                         'plan_master.only_parkaging',
                         'plan_master.percent_parkaging',
-                        DB::raw('plan_master.plan_list_id + 4 as month'),
+                        'plan_list.month',
                         'market.code as market',
                         'source_material.name as source_material_name',
                         'finished_product_category.intermediate_code',
@@ -1946,24 +1947,37 @@ class SchedualController extends Controller
                         if ($firstTask->after_parkaging_date) {$candidates[] = Carbon::parse($firstTask->after_parkaging_date);}
                 }
 
+                //$pre_campaign_first_batch_end = [];
                 $pre_campaign_codes = [];
 
                 foreach ($campaignTasks as $campaignTask) {
+
+
+
                         $pred = DB::table($stage_plan_table)
                                 ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
                                 return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
                                 })
                                 ->where('code', $campaignTask->predecessor_code)
-                                ->orderBy('start', 'asc')
                                 ->first();
 
                         if ($pred) {
                                 $code = $pred->campaign_code;
                                 if (!in_array($pred->campaign_code, $pre_campaign_codes) && $code != null) {
-                                        $pre_campaign_codes[] = $campaignTask;
+
+                                        $pre_campaign_first_batch = DB::table($stage_plan_table)
+                                        ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
+                                                return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
+                                        })
+                                        ->where('campaign_code', $code)
+                                        ->orderBy('start', 'asc')
+                                        ->first();
+
+                                        $candidates [] = $pre_campaign_first_batch->end;
                                 }
+
                                 if ($code == null){
-                                        $pre_campaign_codes[] = $campaignTask;
+                                        $candidates [] = $pred->end;
                                 }
                         }
                 }
@@ -2314,7 +2328,7 @@ class SchedualController extends Controller
               //$this->createAutoCampain();
               //$this->view (null);
         }
-        
+
 
         ///////// Sắp Lịch Ngược ////////
         public function scheduleStartBackward($work_sunday, int $bufferDate, $start_date, $waite_time) {

@@ -119,7 +119,7 @@
                                     @foreach ($markets as $market)
                                         <option value="{{ $market->id }}"
                                             {{ old('market_id') == $market->id ? 'selected' : '' }}>
-                                            {{ $market->code}}
+                                            {{ $market->code ." - ". $market->name}}
                                         </option>
                                     @endforeach
                                 </select>

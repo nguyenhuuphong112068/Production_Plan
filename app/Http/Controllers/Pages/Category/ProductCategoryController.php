@@ -12,10 +12,10 @@ class ProductCategoryController extends Controller
         
         public function index(){
 
-                $markets = DB::table('market')->where('active', true)->orderBy('name','asc')->get();
+                $markets = DB::table('market')->where('active', true)->orderBy('code','asc')->get();
                 $specifications = DB::table('specification')->orderBy('name','asc')->get();
                 $productNames = DB::table('product_name')->where('active', true)->orderBy('name','asc')->get();
-
+          
                 $intermediate_category = DB::table('intermediate_category')->select('intermediate_category.*','dosage.name as dosage_name' , 'product_name.name as product_name')
                 ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
                 ->leftJoin('dosage','intermediate_category.dosage_id','dosage.id')
