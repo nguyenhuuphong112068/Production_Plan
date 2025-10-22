@@ -725,8 +725,6 @@ import dayjs from 'dayjs';
             });
 
         // true hoặc false
-      
-      
 
       let selectedDates = [];
       Swal.fire({
@@ -930,12 +928,21 @@ import dayjs from 'dayjs';
           }
 
           // ------------------ Disable Confirm if missing permission ------------------
-          if (hasEmptyPermission) {
+          // if (hasEmptyPermission) {
+          //   const confirmBtn = Swal.getConfirmButton();
+          //   confirmBtn.disabled = false;
+          //   //confirmBtn.style.opacity = "0.5";
+          //   //confirmBtn.style.cursor = "not-allowed";
+          // }
+
+          if (emptyPermission.stage_code < 4) {
             const confirmBtn = Swal.getConfirmButton();
             confirmBtn.disabled = false;
-            //confirmBtn.style.opacity = "0.5";
-            //confirmBtn.style.cursor = "not-allowed";
+            confirmBtn.style.opacity = "0.5";
+            confirmBtn.style.cursor = "not-allowed";
           }
+
+
 
         }
         ,
