@@ -132,7 +132,6 @@ import dayjs from 'dayjs';
 
     }, [loading]);
 
-
    /// Get dư liệu row được chọn
     useEffect(() => {
 
@@ -385,10 +384,8 @@ import dayjs from 'dayjs';
     };
 
     /// Bỏ tô màu các event trùng khớp
-    const handleEventUnHightLine = async (info) => {
-        document.querySelectorAll('.fc-event').forEach(el => {
-        el.classList.remove('highlight-event');
-      });
+    const handleEventUnHightLine = () => {
+      document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
     };
 
     // Nhân Dữ liệu để tạo mới event
@@ -696,8 +693,10 @@ import dayjs from 'dayjs';
 
     /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
     const handleClear = () => {
+      
       setSelectedEvents([]);
-      handleEventUnHightLine 
+      
+      handleEventUnHightLine ();
     };
 
     /// Xử lý Chạy Lịch Tư Động
@@ -1568,7 +1567,7 @@ import dayjs from 'dayjs';
         eventResize={handleEventChange}
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
-        dateClick ={ handleEventUnHightLine}
+        dateClick ={() => handleEventUnHightLine ()}
         eventAllow = {finisedEvent}
 
         resourceGroupField="stage"

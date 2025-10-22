@@ -1577,7 +1577,7 @@ class SchedualController extends Controller
                                         ];
                                         break;
                                 case 4:
-                                        $waite_time_nomal_batch = ($request->wt_bleding ?? 1)  * 24 * 60 ;
+                                        $waite_time_nomal_batch = ($request->wt_bleding ?? 0)  * 24 * 60 ;
                                         $waite_time_val_batch   = ($request->wt_bleding_val ?? 1) * 24 * 60;
                                         $waite_time[$stageCode] = [
                                                 'waite_time_nomal_batch' => (($request->wt_bleding ?? 1) * 24 * 60),
@@ -1586,8 +1586,8 @@ class SchedualController extends Controller
                                         break;
 
                                 case 5:
-                                        $waite_time_nomal_batch = ($request->wt_forming?? 1) * 24 * 60;
-                                        $waite_time_val_batch   = ($request->wt_forming_val ?? 1) * 24 * 60;
+                                        $waite_time_nomal_batch = ($request->wt_forming?? 0) * 24 * 60;
+                                        $waite_time_val_batch   = ($request->wt_forming_val ?? 5) * 24 * 60;
                                         $waite_time[$stageCode] = [
                                                 'waite_time_nomal_batch' => (($request->wt_forming ?? 1) * 24 * 60) ,
                                                 'waite_time_val_batch'   => (($request->wt_forming_val ?? 5) * 24 * 60) ,
@@ -1595,8 +1595,8 @@ class SchedualController extends Controller
                                         break;
 
                                 case 6:
-                                        $waite_time_nomal_batch = ($request->wt_coating?? 1) * 24 * 60;
-                                        $waite_time_val_batch   = ($request->wt_coating_val ?? 1) * 24 * 60;
+                                        $waite_time_nomal_batch = ($request->wt_coating?? 0) * 24 * 60;
+                                        $waite_time_val_batch   = ($request->wt_coating_val ?? 5) * 24 * 60;
                                         $waite_time[$stageCode] = [
                                                 'waite_time_nomal_batch' => (($request->wt_coating ?? 1) * 24 * 60)  ,
                                                 'waite_time_val_batch'   => (($request->wt_coating_val ?? 5) * 24 * 60) ,
@@ -1604,7 +1604,7 @@ class SchedualController extends Controller
                                         break;
 
                                 case 7: // Đóng gói
-                                        $waite_time_nomal_batch = ($request->wt_blitering ?? 5) * 24 * 60;
+                                        $waite_time_nomal_batch = ($request->wt_blitering ?? 0) * 24 * 60;
                                         $waite_time_val_batch   = ($request->wt_blitering_val ?? 5) * 24 * 60;
                                         $waite_time[$stageCode] = [
                                                 'waite_time_nomal_batch' => (($request->wt_blitering ?? 3) * 24 * 60) ,
@@ -1952,19 +1952,17 @@ class SchedualController extends Controller
 
                 foreach ($campaignTasks as $campaignTask) {
 
-
-
                         $pred = DB::table($stage_plan_table)
                                 ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
                                 return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
                                 })
                                 ->where('code', $campaignTask->predecessor_code)
-                                ->first();
+                        ->first();
 
                         if ($pred) {
                                 $code = $pred->campaign_code;
-                                if (!in_array($pred->campaign_code, $pre_campaign_codes) && $code != null) {
-
+                                if (!in_array($code, $pre_campaign_codes) && $code != null) {
+                                        $pre_campaign_codes [] = $code ;
                                         $pre_campaign_first_batch = DB::table($stage_plan_table)
                                         ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
                                                 return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
@@ -1973,65 +1971,42 @@ class SchedualController extends Controller
                                         ->orderBy('start', 'asc')
                                         ->first();
 
-                                        $candidates [] = $pre_campaign_first_batch->end;
+                                        $prevCycle = DB::table('quota')
+                                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
+                                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+                                                return $query->where('intermediate_code', $firstTask->intermediate_code);
+                                        }, function ($query) use ($firstTask) {
+                                                return $query->where('finished_product_code', $firstTask->finished_product_code);
+                                        })
+                                        ->where('active', 1)
+                                        ->where('stage_code', $pre_campaign_first_batch->stage_code)
+                                        ->value('avg_m_time_minutes');
+                                        
+                                        $currCycle = DB::table('quota')
+                                                ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
+                                                ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+                                                        return $query->where('intermediate_code', $firstTask->intermediate_code);
+                                                }, function ($query) use ($firstTask) {
+                                                        return $query->where('finished_product_code', $firstTask->finished_product_code);
+                                                })
+                                                ->where('active', 1)
+                                                ->where('stage_code', $campaignTask->stage_code)
+                                        ->value('avg_m_time_minutes');
+
+                                        if ($currCycle && $currCycle >= $prevCycle){
+                                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);             
+                                        }else {
+                                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $campaignTasks->count() * ($prevCycle - $currCycle));                             
+                                        }    
                                 }
 
                                 if ($code == null){
-                                        $candidates [] = $pred->end;
+                                        $candidates [] =  Carbon::parse($pred->end);
                                 }
                         }
                 }
-
-               
-                foreach ($campaignTasks as $campaignTask) {
-
-                        $pred = DB::table($stage_plan_table)
-                        ->when(session('fullCalender')['mode'] === 'temp',function ($query)
-                                {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
-                        ->where('code', $campaignTask->predecessor_code)->first();
-                        
-                        if ($pred && $pred->end) {
-                               
-                                $prevCycle = DB::table('quota')
-                                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
-                                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
-                                                return $query->where('intermediate_code', $firstTask->intermediate_code);
-                                        }, function ($query) use ($firstTask) {
-                                                return $query->where('finished_product_code', $firstTask->finished_product_code);
-                                        })
-                                        ->where('active', 1)
-                                        ->where('stage_code', $pred->stage_code)
-                                ->value('avg_m_time_minutes');
-                                 
-                                $currCycle = DB::table('quota')
-                                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
-                                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
-                                                return $query->where('intermediate_code', $firstTask->intermediate_code);
-                                        }, function ($query) use ($firstTask) {
-                                                return $query->where('finished_product_code', $firstTask->finished_product_code);
-                                        })
-                                        ->where('active', 1)
-                                        ->where('stage_code', $campaignTask->stage_code)
-                                ->value('avg_m_time_minutes');
-                                
-                                if ($currCycle && $currCycle >= $prevCycle){
-                                        $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
-                                        if (count($pre_campaign_codes) == 1){
-                                                break;
-                                        }  
-                                        
-                                }else {
-                                        $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $campaignTasks->count() * ($prevCycle - $currCycle));
-                                        if (count($pre_campaign_codes) == 1){
-                                                break;
-                                        }                                   
-                                }    
-                        }
-                }
-
                 // Lấy max
                 $earliestStart = collect($candidates)->max();
-
 
                 // phòng phù hợp (quota)
 
@@ -2324,7 +2299,7 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function test(){
-              //$this->scheduleAll (null);
+              $this->scheduleAll (null);
               //$this->createAutoCampain();
               //$this->view (null);
         }
