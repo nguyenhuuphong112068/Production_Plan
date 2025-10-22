@@ -928,12 +928,7 @@ import dayjs from 'dayjs';
           }
 
           // ------------------ Disable Confirm if missing permission ------------------
-          // if (hasEmptyPermission) {
-          //   const confirmBtn = Swal.getConfirmButton();
-          //   confirmBtn.disabled = false;
-          //   //confirmBtn.style.opacity = "0.5";
-          //   //confirmBtn.style.cursor = "not-allowed";
-          // }
+
 
           if (emptyPermission.stage_code < 4) {
             const confirmBtn = Swal.getConfirmButton();
@@ -947,6 +942,12 @@ import dayjs from 'dayjs';
         }
         ,
         preConfirm: () => {
+          
+          if (emptyPermission.stage_code < 4) {
+            Swal.showValidationMessage('Vui lòng định mức đầy đủ ít nhất một công đoạn trước khi sắp lịch tự động!');
+            return false;
+          }
+
           const formValues = {};
           document.querySelectorAll('.swal2-input').forEach(input => {
             formValues[input.name] = input.value;
