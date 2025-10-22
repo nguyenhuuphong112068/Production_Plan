@@ -417,8 +417,14 @@ class SchedualController extends Controller
                        
                         $resources = $this->getResources($production, $startDate, $endDate);
       
-
-                       
+                        $quarantine_room = DB::table('quarantine_room')
+                        ->where(function ($query) use ($production) {
+                                $query->where('deparment_code', $production)
+                                ->orWhere('deparment_code', 'NA');
+                        })
+                        ->where('active', true)
+                        ->get();
+                        
 
                         if (session('fullCalender')['mode'] === 'offical') {
                                 $title = 'LỊCH SẢN XUẤT';
@@ -441,6 +447,7 @@ class SchedualController extends Controller
                                 'type' => $type,
                                 'authorization' => $authorization,
                                 'production' => $production,
+                                'quarantineRoom' => $quarantine_room ?? []
                         ]);
 
                 } catch (\Throwable $e) {
@@ -1045,6 +1052,7 @@ class SchedualController extends Controller
                                 DB::table('stage_plan')
                                         ->where('id', $ids)
                                         ->update([
+                                        'quarantine_room_code' => $request->room,
                                         'yields' => $request->input('yields'),
                                         'finished' => 1
                                         ]);

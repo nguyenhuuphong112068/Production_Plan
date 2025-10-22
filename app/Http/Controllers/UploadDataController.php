@@ -230,6 +230,19 @@ class UploadDataController extends Controller
                 ],
                 'extra' => [],
             ],
+
+            'quarantine_room' => [
+                'columns' => [
+                   'id',
+                    'code',
+                    'name',
+                    'deparment_code',
+                ],
+                'extra' => [
+                    'active' => 1,
+                    'created_by' => 'Auto-generate'
+                ],
+            ],
         ];
 
         $table = $request->table;
