@@ -13,5 +13,7 @@
     require_once (__DIR__.'/planRoute.php');
     require_once (__DIR__.'/quotaRoute.php');
     require_once (__DIR__.'/statusRoute.php');
+    require_once (__DIR__.'/quarantineRoute.php');
+    
 ?>
 

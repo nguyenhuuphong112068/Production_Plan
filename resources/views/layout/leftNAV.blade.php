@@ -304,6 +304,35 @@
             </ul>
           </li>
 
+          <!-- Droplist Menu Biệt Trữ -->
+          <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
+              <i class="nav-icon fas fa-pallet"></i>
+              <p>
+                Tồn BTP
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            
+            <ul class="nav nav-treeview">
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Theo Phòng Biệt Trữ </p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Theo Công Đoạn </p>
+                </a>
+              </li>
+            
+            </ul>
+          </li>
+
           <!-- Droplist Thống Kê -->
           @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
           <li class="nav-item has-treeview">

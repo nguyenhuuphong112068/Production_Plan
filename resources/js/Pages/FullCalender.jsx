@@ -64,7 +64,7 @@ import dayjs from 'dayjs';
     const [authorization, setAuthorization] = useState(false);
     const [heightResource, setHeightResource] = useState("1px");
     const [production, setProduction] = useState("PXV1");
-    //const [stageAutoSchedualer, setStageAutoSchedualer] = useState(3);
+    const [quarantineRoom, setQuarantineRoom] = useState([]);
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
@@ -99,6 +99,7 @@ import dayjs from 'dayjs';
           setStageMap(data.stageMap);
           setSumBatchByStage(data.sumBatchByStage);
           setProduction (data.production)
+          setQuarantineRoom (data.quarantineRoom)
 
           switch (data.production) {
             case "PXV1":
@@ -1177,91 +1178,213 @@ import dayjs from 'dayjs';
     }
 
     /// Xử lý hoản thành lô
+    // const handleFinished = (event) => {
+
+    //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return};
+    //   let unit = event._def.extendedProps.stage_code <= 4 ? "Kg": "ĐVL"
+    //   let id = event._def.publicId
+
+    //   Swal.fire({
+
+    //     title: 'Hoàn Thành Sản Xuất',
+    //     html: `
+    //       <div class="cfg-wrapper">
+    //         <div class="cfg-card">
+    //           <!-- Hàng 2 cột -->
+    //           <div class="cfg-row cfg-grid-2">
+    //             <div class="cfg-col">
+    //               <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
+    //               <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min = "0"  name = "wt_bleding">
+    //             </div>
+    //             <div class="cfg-col">
+    //               <label class="cfg-label" for="wt_bleding_val">Đơn Vị</label>
+    //               <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full"  readonly >
+    //               <input id="stag_plan_id" type="hidden" >
+    //             </div>
+    //           </div>
+
+    //            <!-- Thêm select Quarantine Room -->
+    //             <div class="cfg-row mt-3">
+    //               <label class="cfg-label" for="quarantineRoomSelect">Phòng Cách Ly</label>
+    //               <select id="quarantineRoomSelect" class="swal2-input cfg-input cfg-input--full">
+    //                 <option value="">-- Chọn phòng --</option>
+    //               </select>
+    //             </div>
+
+    //         </div>
+    //       </div>
+    //     `,
+    //     didOpen: () => {
+    //         document.getElementById('unit').value = unit;
+    //         document.getElementById('stag_plan_id').value = id; // set value thủ công
+    //     },
+    //     width: 700,
+    //     customClass: { htmlContainer: 'cfg-html-left' , title: 'my-swal-title'},
+    //     showCancelButton: true,
+    //     confirmButtonText: 'Lưu',
+    //     cancelButtonText: 'Hủy',
+    //     confirmButtonColor: '#3085d6',
+    //     cancelButtonColor: '#d33'
+    //     ,
+    //     preConfirm: () => {
+    //       const yields_input = document.getElementById('yields');
+    //       const stag_plan_id = document.getElementById('stag_plan_id').value;
+    //       const yields = yields_input ? yields_input.value.trim() : "";
+
+    //       if (!yields) {
+    //         Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
+    //         return false;
+    //       }
+
+    //     return { yields, id: stag_plan_id };
+    //     }
+    //   }).then((result) => {
+    //     if (result.isConfirmed) {
+
+
+    //       // Gọi API với ngày
+    //     axios.put('/Schedual/finished', result.value)
+    //     .then(res => {
+    //         let data = res.data;
+    //         if (typeof data === "string") {
+    //           data = data.replace(/^<!--.*?-->/, "").trim();
+    //           data = JSON.parse(data);
+    //         }
+    //         setEvents(data.events);
+
+    //         Swal.fire({
+    //           icon: 'success',
+    //           title: 'Hoàn Thành',
+    //           timer: 500,
+    //           showConfirmButton: false,
+    //         });
+    //       })
+    //     .catch(err => {
+    //         Swal.fire({
+    //           icon: 'error',
+    //           title: 'Lỗi',
+    //           timer: 500,
+    //           showConfirmButton: false,
+    //         });
+    //         console.error("Finished error:", err.response?.data || err.message);
+    //     });
+
+    //   }
+    //   });
+    // };
+
     const handleFinished = (event) => {
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return};
-      let unit = event._def.extendedProps.stage_code <= 4 ? "Kg": "ĐVL"
-      let id = event._def.publicId
 
-      Swal.fire({
+        if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
 
-        title: 'Hoàn Thành Sản Xuất',
-        html: `
-          <div class="cfg-wrapper">
-            <div class="cfg-card">
-              <!-- Hàng 2 cột -->
-              <div class="cfg-row cfg-grid-2">
-                <div class="cfg-col">
-                  <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
-                  <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min = "0"  name = "wt_bleding">
+        let unit = event._def.extendedProps.stage_code <= 4 ? "Kg" : "ĐVL";
+        let id = event._def.publicId;
+
+        Swal.fire({
+          title: 'Hoàn Thành Sản Xuất',
+          html: `
+            <div class="cfg-wrapper">
+              <div class="cfg-card">
+                <!-- Hàng 2 cột -->
+                <div class="cfg-row cfg-grid-2">
+                  <div class="cfg-col">
+                    <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
+                    <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min="0" name="wt_bleding">
+                  </div>
+                  <div class="cfg-col">
+                    <label class="cfg-label" for="unit">Đơn Vị</label>
+                    <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full" readonly>
+                    <input id="stag_plan_id" type="hidden">
+                  </div>
                 </div>
-                <div class="cfg-col">
-                  <label class="cfg-label" for="wt_bleding_val">Đơn Vị</label>
-                  <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full"  readonly >
-                  <input id="stag_plan_id" type="hidden" >
+
+                <!-- Thêm select Quarantine Room -->
+                <div class="cfg-row mt-3" style="text-align:center;">
+                  <label class="cfg-label" for="quarantineRoomSelect">Phòng Biệt Trữ</label>
+                  <select
+                    id="quarantineRoomSelect"
+                    class="swal2-input cfg-input cfg-input--full"
+                    style="display:inline-block; text-align:center; border:1px solid #ccc; border-radius:8px; padding:6px; width:80%;"
+                  >
+                    <option value="">-- Chọn phòng --</option>
+                  </select>
                 </div>
+
+
               </div>
-
             </div>
-          </div>
-        `,
-        didOpen: () => {
+          `,
+          didOpen: () => {
             document.getElementById('unit').value = unit;
-            document.getElementById('stag_plan_id').value = id; // set value thủ công
-        },
-        width: 700,
-        customClass: { htmlContainer: 'cfg-html-left' , title: 'my-swal-title'},
-        showCancelButton: true,
-        confirmButtonText: 'Lưu',
-        cancelButtonText: 'Hủy',
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33'
-        ,
-        preConfirm: () => {
-          const yields_input = document.getElementById('yields');
-          const stag_plan_id = document.getElementById('stag_plan_id').value;
-          const yields = yields_input ? yields_input.value.trim() : "";
+            document.getElementById('stag_plan_id').value = id;
 
-          if (!yields) {
-            Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
-            return false;
-          }
-
-        return { yields, id: stag_plan_id };
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-
-
-          // Gọi API với ngày
-        axios.put('/Schedual/finished', result.value)
-        .then(res => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
+            // 🔽 Gắn dữ liệu cho select từ biến quarantineRoom
+            const select = document.getElementById('quarantineRoomSelect');
+            if (Array.isArray(quarantineRoom)) {
+              quarantineRoom.forEach(room => {
+                const opt = document.createElement('option');
+                opt.value = room.code;
+                opt.textContent = room.code + " - " + room.name;
+                select.appendChild(opt);
+              });
             }
-            setEvents(data.events);
+          },
+          width: 700,
+          customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+          showCancelButton: true,
+          confirmButtonText: 'Lưu',
+          cancelButtonText: 'Hủy',
+          confirmButtonColor: '#3085d6',
+          cancelButtonColor: '#d33',
+          preConfirm: () => {
+            const yields_input = document.getElementById('yields');
+            const stag_plan_id = document.getElementById('stag_plan_id').value;
+            const yields = yields_input ? yields_input.value.trim() : "";
+            const room = document.getElementById('quarantineRoomSelect').value;
 
-            Swal.fire({
-              icon: 'success',
-              title: 'Hoàn Thành',
-              timer: 500,
-              showConfirmButton: false,
-            });
-          })
-        .catch(err => {
-            Swal.fire({
-              icon: 'error',
-              title: 'Lỗi',
-              timer: 500,
-              showConfirmButton: false,
-            });
-            console.error("Finished error:", err.response?.data || err.message);
+            if (!yields) {
+              Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
+              return false;
+            }
+
+            if (!room) {
+              Swal.showValidationMessage('Vui lòng chọn phòng cách ly');
+              return false;
+            }
+
+            return { yields, id: stag_plan_id, room };
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+             axios.put('/Schedual/finished', result.value)
+              .then(res => {
+                let data = res.data;
+                if (typeof data === "string") {
+                  data = data.replace(/^<!--.*?-->/, "").trim();
+                  data = JSON.parse(data);
+                }
+                setEvents(data.events);
+
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Hoàn Thành',
+                  timer: 500,
+                  showConfirmButton: false,
+                });
+              })
+              .catch(err => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Lỗi',
+                  timer: 500,
+                  showConfirmButton: false,
+                });
+                console.error("Finished error:", err.response?.data || err.message);
+              });
+          }
         });
+      };
 
-      }
-      });
-    };
 
     /// Ngăn xụ thay đổi lô Sau khi hoàn thành
     const finisedEvent = (dropInfo, draggedEvent) =>{

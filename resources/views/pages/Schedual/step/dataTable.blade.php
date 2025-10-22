@@ -115,11 +115,14 @@
                 </thead>
                 <tbody>
                   @foreach($datas as $plan_master_id => $stages)
+                  
                     @php
+                    
                       $plan = $stages->first();
                       $lastFinished = collect($stages)->where('finished', '1')->sortByDesc('stage_code')->first();
                       $sortedStages = $stages->sortBy('stage_code')->values();
-
+                      $firstStage = null;
+                      $lastStage = null;
                       foreach ( $sortedStages as $sortedStage){
                         if ($sortedStage->start != null){
                             $firstStage = $sortedStage;
@@ -132,7 +135,13 @@
                             break;
                         }
                       }
-                      
+
+                      if ($firstStage == null && $lastStage == null){
+                         continue;
+                      }
+                        
+                  
+      
                       $start = Carbon::parse($firstStage->start);
                       $end   = Carbon::parse($lastStage->end);
 
