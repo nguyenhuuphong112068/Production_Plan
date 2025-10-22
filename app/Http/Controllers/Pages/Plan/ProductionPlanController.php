@@ -641,9 +641,18 @@ class ProductionPlanController extends Controller
         
         public function send(Request $request){
                 
-                $exists = DB::table('plan_master')->where('plan_master.plan_list_id', $request->plan_list_id)->exists();
+                $exists = DB::table('stage_plan')->where('plan_list_id', $request->plan_list_id)->exists();
+                if ($exists){
 
-                if ($exists){return;}
+                        $datas = DB::table('plan_list')
+                        ->where ('active',1)
+                        ->where ('type',1)
+                        ->where ('deparment_code',session('user')['production_code'])
+                        ->orderBy('created_at','desc')->get();
+
+                        session()->put(['title'=> 'Kế Hoạch Sản Xuất Tháng']);
+                        return view('pages.plan.production.plan_list',['datas' => $datas ]);
+                }
 
                 // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
                 $plans_main = DB::table('plan_master')
