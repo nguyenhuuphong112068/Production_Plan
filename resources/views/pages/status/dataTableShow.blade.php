@@ -1,9 +1,9 @@
 {{-- <div class="content-wrapper"> --}}
+@extends ('layout.master')
 
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+@section('mainContent')
     <!-- ====== HEADER ====== -->
-<div class="content-wrapper">
-  <div class="card">
+    <div>
         <div class="row align-items-center">
 
             <a href="{{ route('pages.status.next', ['production' => $production]) }}" class=" mx-5">
@@ -21,15 +21,12 @@
             </a>
         </div>
 
-        <div class="text-white w-100" style="background-color: #CDC717; padding: 6px 10px;">
-          <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
-            <button class="btn btn-success btn-sm d-flex align-items-center justify-content-center"
-                    style="width: 35px; height: 35px; padding: 0; font-weight: bold;">+</button>
-            <div class="animate-scroll text-xl text-red" style="overflow: hidden;">
-              Thông Báo Chung: Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex, autem? Veniam quasi modi
-              soluta expedita a maxime commodi eius error fugit. Dicta laborum ea quae vero fugit, excepturi exercitationem id.
+        <div class="text-white w-100 " style="background-color: #CDC717">
+            <div class="animate-scroll inline-block text-xl text-red">
+                Thông Báo Chung: Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex, autem? Veniam quasi modi
+                soluta expedita a maxime commodi eius error fugit. Dicta laborum ea quae vero fugit, excepturi
+                exercitationem id.
             </div>
-          </div>
         </div>
 
     </div>
@@ -142,19 +139,7 @@
                       }
                   @endphp
                   <tr>
-                    {{-- Phòng SX 1--}}
-                    <td style="background-color: {{ $color }};">
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <button class="btn btn-success btn-sm " 
-                                style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                data-room_name ="{{ $data->room_name }}"
-                                data-toggle="modal"
-                                data-target="#Modal"
-                                
-                                >+</button>
-                        <span>{{ $data->room_name }}</span>
-                        </div>
-                    </td>
+                    <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
 
                     {{-- sp theo lịch 1--}}
                     <td style="max-width: 250px; overflow: hidden;">
@@ -213,14 +198,7 @@
                   @endif
                   @php $current_stage = $data->stage_code; @endphp
                 <tr>
-
-                    <td style="background-color: {{ $color }};">
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <button class="btn btn-success btn-sm " 
-                                style="width: 20px; height: 20px; padding: 0; line-height: 0;">+</button>
-                        <span>{{ $data->room_name }}</span>
-                        </div>
-                    </td>
+                    <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
 
                     {{-- sp theo lịch 2--}}
                     <td style="max-width: 250px; overflow: hidden;">
@@ -257,17 +235,14 @@
           </div>
         </div>
       @endif
-
-
-  </div>
-</div>
+    </div>
+    @endsection
 
     <!-- ====== SCRIPT ====== -->
     <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
     <script src="{{ asset('js/popper.min.js') }}"></script>
     <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-    <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
-
+  
     <script>
       $(document).ready(function() {
         // Cho phép cuộn trang
@@ -402,3 +377,4 @@
 
 
     </style>
+

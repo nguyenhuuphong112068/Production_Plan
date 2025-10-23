@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class StatusController extends Controller
 {
-        public function index(){
+        public function show(){
                 $production =  session('user')['production_code']??"PXV1";
 
                 $now = Carbon::now();
@@ -53,7 +53,7 @@ class StatusController extends Controller
 
                 session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
               
-                return view('pages.status.list',[
+                return view('pages.status.dataTableShow',[
                         'datas' =>  $datas,
                         'production' =>  $production 
                         
@@ -81,5 +81,90 @@ class StatusController extends Controller
                 session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production_code"]);
                 // Nếu có redirect URL thì quay lại đó
                 return redirect()->back();
-         }
+        }
+
+        public function index(){
+               
+                $production =  session('user')['production_code']??"PXV1";
+                $now = Carbon::now();
+
+                //dd ($datas);
+                $datas = DB::table('room')
+                        ->leftJoin('stage_plan', function ($join) use ($now) {
+                                $join->on('room.id', '=', 'stage_plan.resourceId')
+                                ->where('stage_plan.active', true)
+                                ->where('stage_plan.finished', false)
+                                ->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now]);
+                        })
+                        ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+                        ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                        // ✅ Lấy dòng room_status mới nhất theo room_id
+                        ->leftJoinSub(
+                                DB::table('room_status as rs1')
+                                ->select('rs1.room_id', 'rs1.status', 'rs1.in_production', 'rs1.notification')
+                                ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)')
+                                , 'rs', function ($join) {
+                                        $join->on('room.id', '=', 'rs.room_id');
+                                }
+                        )
+                        ->where('room.deparment_code', $production)
+                        ->select(
+                                'room.stage_code',
+                                'room.stage',
+                                DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
+                                DB::raw("COALESCE(product_name.name, 'Không có lịch sản xuất') as product_name"),
+                                'plan_master.batch',
+                                // ✅ Giá trị mặc định khi không có room_status
+                                DB::raw("COALESCE(rs.status, 0) as status"),
+                                DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
+                                DB::raw("COALESCE(rs.notification, 'NA') as notification")
+                        )
+                        ->orderBy('room.order_by')
+                ->get();
+
+                $planWaiting = $this->getPlanWaiting ($production, 5);
+                
+                //dd ($planWaiting);
+
+                session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
+              
+                return view('pages.status.list',[
+                        'datas' =>  $datas,
+                        'production' =>  $production 
+                        
+                ]);
+        }
+
+
+        public function getPlanWaiting($production, $stage_code){
+                // 1️⃣ Xác định bảng stage_plan hoặc stage_plan_temp
+                $stage_plan_table = session('fullCalender')['mode'] === 'offical'
+                        ? 'stage_plan'
+                        : 'stage_plan_temp';
+
+                // 2️⃣ Lấy danh sách plan_waiting (chỉ 1 query)
+                $plan_waiting = DB::table("$stage_plan_table as sp")
+                        ->whereNotNull('sp.start')
+                        ->where('sp.active', 1)
+                        ->where('sp.finished', 0)
+                        ->where('sp.stage_code', $stage_code)
+                        ->where('sp.deparment_code', $production)
+                        ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
+                        return $query->where('sp.stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
+                        })
+                        ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+                        ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                        ->select(
+                        'sp.stage_code',                
+                        'plan_master.batch',
+                        'product_name.name'
+                        )
+                        ->orderBy('sp.order_by', 'asc')
+                        ->get();
+                      
+                return $plan_waiting;
+        }// đã có temp
+
 }
