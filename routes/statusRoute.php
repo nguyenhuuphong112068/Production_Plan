@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
     ->group(function(){
         
             Route::get('','index')->name('list');
+            Route::get('/next','next')->name('next');
     });
     
 
