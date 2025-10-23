@@ -50,12 +50,36 @@ class StatusController extends Controller
                 ->orderBy('room.order_by')
                 ->get();
                 //dd ($datas);
-                
-                session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT"]);
+
+                session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
               
                 return view('pages.status.list',[
-                        'datas' =>  $datas 
+                        'datas' =>  $datas,
+                        'production' =>  $production 
                         
                 ]);
         }
+
+        public function next(Request $request){
+              
+                if ($request->production == "PXV1"){
+                     $production_code = "PXV2";
+                }elseif ($request->production == "PXV2"){
+                     $production_code = "PXVH";
+                }elseif ($request->production == "PXVH"){
+                     $production_code = "PXTN";
+                }elseif ($request->production == "PXTN"){
+                     $production_code = "PXDN";
+                }else {
+                        $production_code = "PXV1";
+                }
+
+                $request->session()->put('user', [
+                        'production_code' => $production_code
+                ]);
+                                
+                session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production_code"]);
+                // Nếu có redirect URL thì quay lại đó
+                return redirect()->back();
+         }
 }
