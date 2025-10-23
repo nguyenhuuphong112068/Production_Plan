@@ -12,10 +12,11 @@
             <div class="mx-auto text-center" style="color: #CDC717;  font-weight: bold; line-height: 0.8; text-shadow: 8px 8px 20px rgba(0,0,0,0.4);">
               <h1>{{ session('title') }} </h1>
             </div>
-            <a href="{{ route('logout') }}" class="nav-link text-primary" style="font-size: 20px">
+            <a href="{{ route('logout') }}" class="nav-link text-primary mx-4" style="font-size: 20px">
                 <i class="fas fa-sign-out-alt"></i>
             </a>
         </div>
+
         <div class="text-white w-100 " style="background-color: #CDC717">
             <div class="animate-scroll inline-block text-xl text-red">
                 Thông Báo Chung: Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex, autem? Veniam quasi modi
@@ -34,7 +35,7 @@
         $rightData = $datas->slice($half);
     @endphp
 
-    <div class="row">
+    <div class="row mt-1">
       {{-- BẢNG TRÁI --}}
       <div class="col-md-6">
         <div class="card">
