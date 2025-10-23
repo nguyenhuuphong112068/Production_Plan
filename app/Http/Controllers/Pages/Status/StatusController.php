@@ -15,29 +15,7 @@ class StatusController extends Controller
                 $now = Carbon::now();
                 $now = Carbon::now();
 
-                // $datas = DB::table('room')
-                // ->leftJoin('stage_plan', function ($join) use ($now) {
-                //         $join->on('room.id', '=', 'stage_plan.resourceId')
-                //         ->where('stage_plan.active', true)
-                //         ->where('stage_plan.finished', false)
-                //         ->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now]);
-                // })
-                // ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-                // ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-                // ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                // ->where('room.deparment_code', $production)
-                // ->select(
-                //         'room.stage_code',
-                //         'room.stage',
-                //         DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
-                //         DB::raw("COALESCE(product_name.name, 'Không có lịch sản xuất') as product_name"),
-                //         'plan_master.batch'
-                // )
-                // ->orderBy('room.order_by')
-                // ->get();
-                
-
-                        //dd ($datas);
+                //dd ($datas);
                 $datas = DB::table('room')
                 ->leftJoin('stage_plan', function ($join) use ($now) {
                         $join->on('room.id', '=', 'stage_plan.resourceId')
@@ -71,10 +49,8 @@ class StatusController extends Controller
                 )
                 ->orderBy('room.order_by')
                 ->get();
-
                 //dd ($datas);
-
-        
+                
                 session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT"]);
               
                 return view('pages.status.list',[
