@@ -196,6 +196,27 @@
             el.classList.add("animate");
           }
         });
+        
+        const adjustRowHeight = () => {
+          
+            // Lấy chiều cao khả dụng (trừ đi phần header)
+            const totalHeight = window.innerHeight - 180; // 180px = ước lượng header
+            const allRows = document.querySelectorAll("tbody tr");
+            const rowCount = allRows.length/2;
+          
+            if (rowCount > 0) {
+              const rowHeight = Math.floor(totalHeight / rowCount);
+
+              allRows.forEach(row => {
+                row.style.height = `${rowHeight}px`;
+              });
+              
+            }
+          };
+
+          // Gọi khi tải trang và khi thay đổi kích thước
+          adjustRowHeight();
+          window.addEventListener('resize', adjustRowHeight);
 
       });
     </script>
@@ -262,6 +283,13 @@
           90%, 100% { transform: translateX(0%); }
         }
 
+      /* 
+        .table td, .table th {
+          padding: 0 8px !important;
+          text-align: center;
+          vertical-align: middle;
+          line-height: 1.1;
+        } */
 
 
     </style>
