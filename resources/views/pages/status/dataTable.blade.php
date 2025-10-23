@@ -183,7 +183,7 @@
           const el = this;
           // Nếu nội dung dài hơn khung chứa thì thêm class animate
           
-          if ( el.innerText.length > 36) {
+          if ( el.innerText.length > 27) {
             el.classList.add("animate");
           }
         });
@@ -192,7 +192,7 @@
           const el = this;
           // Nếu nội dung dài hơn khung chứa thì thêm class animate
           
-          if ( el.innerText.length > 86) {
+          if ( el.innerText.length > 46) {
             el.classList.add("animate");
           }
         });
@@ -200,10 +200,11 @@
         const adjustRowHeight = () => {
           
             // Lấy chiều cao khả dụng (trừ đi phần header)
-            const totalHeight = window.innerHeight - 180; // 180px = ước lượng header
+            
+            const totalHeight = window.innerHeight - 180;
             const allRows = document.querySelectorAll("tbody tr");
             const rowCount = allRows.length/2;
-          
+            alert (totalHeight)
             if (rowCount > 0) {
               const rowHeight = Math.floor(totalHeight / rowCount);
 
