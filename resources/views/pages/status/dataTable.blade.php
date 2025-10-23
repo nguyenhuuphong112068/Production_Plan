@@ -182,8 +182,13 @@
         $(".unnote").each(function() {
           const el = this;
           // Nếu nội dung dài hơn khung chứa thì thêm class animate
-          
-          if ( el.innerText.length > 27) {
+          if (window.innerHeight > 2000){
+            max_charater = 45;
+          }else{
+            max_charater = 27;
+          }
+
+          if ( el.innerText.length > max_charater) {
             el.classList.add("animate");
           }
         });
@@ -191,7 +196,12 @@
         $(".note").each(function() {
           const el = this;
           // Nếu nội dung dài hơn khung chứa thì thêm class animate
-          
+          if (window.innerHeight > 2000){
+            max_charater = 85;
+          }else{
+            max_charater = 45;
+          }
+
           if ( el.innerText.length > 46) {
             el.classList.add("animate");
           }
@@ -204,7 +214,7 @@
             const totalHeight = window.innerHeight - 180;
             const allRows = document.querySelectorAll("tbody tr");
             const rowCount = allRows.length/2;
-            alert (totalHeight)
+            //alert (totalHeight)
             if (rowCount > 0) {
               const rowHeight = Math.floor(totalHeight / rowCount);
 
