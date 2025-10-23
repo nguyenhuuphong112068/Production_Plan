@@ -210,7 +210,7 @@
               allRows.forEach(row => {
                 row.style.height = `${rowHeight}px`;
               });
-              
+
             }
           };
 
@@ -283,13 +283,13 @@
           90%, 100% { transform: translateX(0%); }
         }
 
-      /* 
+      
         .table td, .table th {
           padding: 0 8px !important;
           text-align: center;
           vertical-align: middle;
           line-height: 1.1;
-        } */
+        }
 
 
     </style>
