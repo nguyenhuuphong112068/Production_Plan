@@ -1,134 +1,267 @@
 {{-- <div class="content-wrapper"> --}}
-<div class="card">
-
-  <!-- ====== HEADER ====== -->
-  <div >
 
 
-    <div class="row align-items-center">
+    <!-- ====== HEADER ====== -->
+    <div>
+        <div class="row align-items-center">
 
-      <a href="{{ route ('pages.general.home') }}" class=" mx-5">
-        <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:35px;">
-      </a>
+            <a href="{{ route('pages.general.home') }}" class=" mx-5">
+                <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:35px;">
+            </a>
 
-      <div class="mx-auto text-center" style="color: #CDC717">
-        <h4>{{ session('title') }}</h4>
-      </div>
-      <a href="{{ route('logout') }}" class="nav-link text-primary" style="font-size: 20px">
-        <i class="fas fa-sign-out-alt"></i>
-      </a>
-    </div>
-      <div class="text-white w-100 " style="background-color: #CDC717">
-      <div class="animate-scroll inline-block text-xl">
-        Thông Báo Chung: Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex, autem? Veniam quasi modi soluta expedita a maxime commodi eius error fugit. Dicta laborum ea quae vero fugit, excepturi exercitationem id.
-      </div>
-  </div>
-
-  </div>
-
-  <!-- ====== BODY ====== -->
-  {{-- <div class="card-body"> --}}
-        <div class="table-responsive scroll-container">
-            <div class="scroll-content">
-                <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-                    <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
-                        <tr>
-                          <th style="width: 10%">Phòng Sản Xuất</th>
-                          <th style="width: 20%">Sản Phẩm Theo Lịch Sản Xuất</th>
-                          <th style="width: 20%">Sản Phẩm Đang Sản Xuất</th>
-                          <th style="width: 45%" class="text-center">Thông Báo</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-lg font-bold ">
-                      @php $current_stage = 0 @endphp
-                      @foreach ($datas as $index => $data)
-                          @if ($data->stage_code != $current_stage) <!-- ví dụ khi đến S16 thì chèn hàng ngang -->
-                              <tr class=" text-center" style="background-color: #CDC717; color:#f8f9fa; font-size: 30px;">
-                                  <td colspan="4"> Công Đoạn {{$data->stage}} </td> <!-- colspan = số cột của table -->
-                              </tr>
-                          @endif
-                           @php $current_stage = $data->stage_code @endphp
-                          <tr>
-                              <td>{{ $data->code . " - " . $data->name }}</td>
-                              <td>{{ $data->code . " - " . $data->name }}</td>
-                              <td>{{ $data->code . " - " . $data->name }}</td>
-                              <td class="relative overflow-hidden whitespace-nowrap" style="max-width: 100%;">
-                                  <div class="animate-scroll inline-block">
-                                      {{ $data->code . " - " . $data->name }}
-                                  </div>
-                              </td>
-                          </tr>
-                      @endforeach
-                  </tbody>
-                </table>
+            <div class="mx-auto text-center" style="color: #CDC717;  font-weight: bold; line-height: 0.8; text-shadow: 8px 8px 20px rgba(0,0,0,0.4);">
+              <h1>{{ session('title') }} </h1>
+            </div>
+            <a href="{{ route('logout') }}" class="nav-link text-primary" style="font-size: 20px">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+        <div class="text-white w-100 " style="background-color: #CDC717">
+            <div class="animate-scroll inline-block text-xl text-red">
+                Thông Báo Chung: Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex, autem? Veniam quasi modi
+                soluta expedita a maxime commodi eius error fugit. Dicta laborum ea quae vero fugit, excepturi
+                exercitationem id.
             </div>
         </div>
-  {{-- </div> --}}
+
+    </div>
+    
+    @php
+        // Chia dữ liệu thành 2 phần đều nhau
+        $half = ceil(count($datas) / 2) - 1;
+        //dd (count($datas),$half);
+        $leftData = $datas->slice(0, $half);
+        $rightData = $datas->slice($half);
+    @endphp
+
+    <div class="row">
+      {{-- BẢNG TRÁI --}}
+      <div class="col-md-6">
+        <div class="card">
+          <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
+            <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
+              <tr>
+                <th style="width: 13%">Phòng SX</th>
+                <th style="width: 20%">Sản Phẩm Theo Lịch SX</th>
+                <th style="width: 20%">Sản Phẩm Đang SX</th>
+                <th style="width: 42%" class="text-center">Thông Báo</th>
+              </tr>
+            </thead>
+            <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
+              @php $current_stage = 0; @endphp
+              @foreach ($leftData as $data)
+                @if ($data->stage_code != $current_stage)
+                  <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                    <td colspan="4">Công Đoạn {{ $data->stage }}</td>
+                  </tr>
+                @endif
+                @php 
+                    $current_stage = $data->stage_code; 
+                    switch ($data->status) {
+                        case 0: $color = "#6c757d"; break; // xám - chưa sản xuất
+                        case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
+                        case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
+                        case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
+                        default: $color = "#CDC717"; break; // mặc định
+                    }
+                @endphp
+                <tr>
+                  <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
+
+                  {{-- sp theo lịch 1--}}
+                  <td style="max-width: 250px; overflow: hidden;">
+                    <div class="scroll-text-wrapper">
+                      <div class="scroll-text unnote">
+                        {{ $data->product_name . "_" . $data->batch }}
+                      </div>
+                    </div>
+                  </td>
 
 
-<!-- ====== SCRIPT ====== -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+                  {{-- sp đang sx 1 --}}
+                  <td style="max-width: 250px; overflow: hidden;">
+                    <div class="scroll-text-wrapper">
+                      <div class="scroll-text unnote">
+                        {{ $data->in_production}}
+                      </div>
+                    </div>
+                  </td>
 
-<script>
-  $(document).ready(function() {
-    document.body.style.overflowY = "auto";
-  });
-</script>
 
-<!-- ====== STYLE ====== -->
-<style>
-  /* ===== Hiệu ứng chạy ngang (cho thông báo hoặc cột text) ===== */
-  @keyframes scrollText {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
-  }
+                  {{-- thông báo 1 --}}
+                  <td style="max-width: 250px; overflow: hidden;">
+                    <div class="scroll-text-wrapper">
+                      <div class="scroll-text note">
+                        {{ $data->notification}}
+                      </div>
+                    </div>
+                  </td>
 
-  .animate-scroll {
-    animation: scrollText 60s linear infinite;
-    white-space: nowrap;
-  }
 
-  .animate-scroll:hover {
-    animation-play-state: paused;
-  }
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-  /* ===== Hiệu ứng cuộn dọc tự động (cho bảng) ===== */
-  @keyframes scrollTable {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-50%); } /* cuộn nửa bảng, bạn có thể chỉnh */
-  }
+      {{-- BẢNG PHẢI --}}
+      <div class="col-md-6">
+        <div class="card">
+          <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
+            <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
+              <tr>
+                <th style="width: 12%">Phòng SX</th>
+                <th style="width: 20%">Sản Phẩm Theo Lịch SX</th>
+                <th style="width: 20%">Sản Phẩm Đang SX</th>
+                <th style="width: 43%" class="text-center">Thông Báo</th>
+              </tr>
+            </thead>
+            <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
+              @php $current_stage = 0; @endphp
+              @foreach ($rightData as $data)
+                @if ($data->stage_code != $current_stage)
+                  <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                    <td colspan="4">Công Đoạn {{ $data->stage }}</td>
+                  </tr>
+                @endif
+                @php $current_stage = $data->stage_code; @endphp
+               <tr>
+                  <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
 
-  .scroll-container {
-    max-height: 100vh; /* chiều cao vùng hiển thị bảng */
-    overflow: hidden;
-    position: relative;
-  }
+                  {{-- sp theo lịch 2--}}
+                  <td style="max-width: 250px; overflow: hidden;">
+                    <div class="scroll-text-wrapper">
+                      <div class="scroll-text unnote">
+                        {{ $data->product_name . "_" . $data->batch }}
+                      </div>
+                    </div>
+                  </td>
 
-  .scroll-content {
-    animation: scrollTable 30s linear infinite;
-  }
 
-  .scroll-content:hover {
-    animation-play-state: paused;
-  }
+                  {{-- sp đang sx 2 --}}
+                  <td style="max-width: 250px; overflow: hidden;">
+                    <div class="scroll-text-wrapper">
+                      <div class="scroll-text unnote">
+                        {{ $data->in_production}}
+                      </div>
+                    </div>
+                  </td>
 
-  /* Làm footer dính ở cuối màn hình */
-  .card-footer {
-    z-index: 999;
-  }
 
-  table thead th {
-    position: sticky;
-    top: 50px;
-    z-index: 2;
-    background-color: #f8f9fa;
-  }
+                  {{-- thông báo 2 --}}
+                  <td style="max-width: 250px; overflow: hidden;">
+                    <div class="scroll-text-wrapper">
+                      <div class="scroll-text note">
+                         {{ $data->notification}}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
-  .table.table-bordered td,
-  .table.table-bordered th {
-      border: 3px solid #003A4F; /* tăng độ dày viền ô */
-  }
-</style>
+
+
+    <!-- ====== SCRIPT ====== -->
+    <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
+    <script src="{{ asset('js/popper.min.js') }}"></script>
+    <script src="{{ asset('js/bootstrap.min.js') }}"></script>
+    <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+
+    <script>
+      $(document).ready(function() {
+        // Cho phép cuộn trang
+        document.body.style.overflowY = "auto";
+
+        // Kiểm tra từng dòng .scroll-text trong bảng
+        $(".unnote").each(function() {
+          const el = this;
+          // Nếu nội dung dài hơn khung chứa thì thêm class animate
+          
+          if ( el.innerText.length > 36) {
+            el.classList.add("animate");
+          }
+        });
+
+        $(".note").each(function() {
+          const el = this;
+          // Nếu nội dung dài hơn khung chứa thì thêm class animate
+          
+          if ( el.innerText.length > 86) {
+            el.classList.add("animate");
+          }
+        });
+
+      });
+    </script>
+
+    <!-- ====== STYLE ====== -->
+    <style>
+        /* ===== Hiệu ứng chạy ngang (cho thông báo hoặc cột text) ===== */
+        @keyframes scrollText {
+            0% {
+                transform: translateX(100%);
+            }
+            100% {
+                transform: translateX(0%);
+            }
+        }
+
+        .animate-scroll {
+            animation: scrollText 30s linear infinite;
+            white-space: nowrap;
+        }
+
+        .animate-scroll:hover {
+            animation-play-state: paused;
+        }
+
+    
+
+        .table.table-bordered td,
+        .table.table-bordered th {
+            border: 3px solid #003A4F;
+            /* tăng độ dày viền ô */
+        }
+
+        /* Giới hạn vùng hiển thị trong ô bảng */
+        td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+
+        /* Chạy chữ trong ô */
+
+       .scroll-text {
+          display: inline-block;
+          white-space: nowrap;
+        }
+
+        .scroll-text-wrapper {
+          position: relative;
+          overflow: hidden;
+          white-space: nowrap;
+          width: 100%;
+        }
+
+        .scroll-text.animate {
+          animation: scrollTextLoop 20s linear infinite;
+          padding-right: 50px;
+        }
+
+        @keyframes scrollTextLoop {
+          0% , 10% { transform: translateX(0%); }
+          50% { transform: translateX(-50%); }
+          90%, 100% { transform: translateX(0%); }
+        }
+
+
+
+    </style>

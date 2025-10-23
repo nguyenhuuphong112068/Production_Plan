@@ -303,7 +303,7 @@
             
             </ul>
           </li>
-
+          @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
           <!-- Droplist Menu Biệt Trữ -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
@@ -332,6 +332,7 @@
             
             </ul>
           </li>
+          @endif
 
           <!-- Droplist Thống Kê -->
           @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
