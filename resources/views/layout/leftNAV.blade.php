@@ -303,6 +303,18 @@
             
             </ul>
           </li>
+
+          
+          <!-- roplist Trang Thái Sản Xuất-->
+          <li class="nav-item">
+            <a href="{{ route ('pages.status.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-th"></i>
+              <p>
+                Trang Thái Sản Xuất
+              </p>
+            </a>
+          </li>
+
           @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
           <!-- Droplist Menu Biệt Trữ -->
           <li class="nav-item has-treeview">

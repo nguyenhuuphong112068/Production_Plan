@@ -285,37 +285,6 @@
 
 
 
-      // $('.btn-edit').click(function () {
-      //     const button = $(this);
-      //     const modal = $('#update_modal');
-      //     console.log (button.data('room_id'),button.data('p_time'), button.data('C1_time'),button.data('C2_time'))
-      //     // Gán dữ liệu vào input
-      //     modal.find('input[name="id"]').val(button.data('id'));
-      //     modal.find('input[name="product_name"]').val(button.data('product_name'));
-      //     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-      //     modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-      //     modal.find('input[name="room_id"]').val(button.data('room_name') +" - "+ button.data('room_code'));
-      //     modal.find('input[name="p_time"]').val(button.data('p_time'));
-      //     modal.find('input[name="m_time"]').val(button.data('m_time'));
-      //     modal.find('input[name="C1_time"]').val(button.data('c1_time'));
-      //     modal.find('input[name="C2_time"]').val(button.data('c2_time'));
-      //     modal.find('input[name="maxofbatch_campaign"]').val(button.data('maxofbatch_campaign'));
-      //     modal.find('input[name="note"]').val(button.data('note'));
-                              
-
-      //     if (button.data('stage_code') <= 6) {
-      //       modal.find('input[name="intermediate_code"]').show();
-      //       modal.find('input[name="finished_product_code"]').hide();
-           
-      //     } else if (button.data('stage_code') === 7) {
-      //         modal.find('input[name="intermediate_code"]').hide();
-      //         modal.find('input[name="finished_product_code"]').show();
-      //     }
-
-      //   });
-
-     
-
        $('.form-deActive').on('submit', function (e) {
           e.preventDefault(); // chặn submit mặc định
           const form = this;

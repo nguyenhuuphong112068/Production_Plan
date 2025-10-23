@@ -9,8 +9,10 @@ use Illuminate\Support\Facades\Route;
     ->name('pages.status.')
     ->group(function(){
         
-            Route::get('','index')->name('list');
+            Route::get('','show');
             Route::get('/next','next')->name('next');
+            Route::get('index','index')->name('index');
+            Route::get('store','store')->name('store');
     });
     
 

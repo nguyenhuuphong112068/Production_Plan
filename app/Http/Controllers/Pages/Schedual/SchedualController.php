@@ -1536,15 +1536,15 @@ class SchedualController extends Controller
                 });
 
                 // cập nhật cache roomAvailability
-                $this->roomAvailability[$roomId][] = ['start'=>$start,'end'=>$endCleaning];
+                //$this->roomAvailability[$roomId][] = ['start'=>$start,'end'=>$endCleaning];
 
-                if ($start && $endCleaning) {$this->roomAvailability[$roomId][] = ['start'=>$start,'end'=>$endCleaning];}
+                //if ($start && $endCleaning) {$this->roomAvailability[$roomId][] = ['start'=>$start,'end'=>$endCleaning];}
 
-                usort($this->roomAvailability[$roomId], fn($a,$b)=>$a['start']->lt($b['start']) ? -1 : 1);
+                //usort($this->roomAvailability[$roomId], fn($a,$b)=>$a['start']->lt($b['start']) ? -1 : 1);
         }// đã có temp
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll(Request $request) {
+        public function scheduleAll( $request) {
 
                 $this->selectedDates = $request->selectedDates??[];
                 $this->work_sunday = $request->work_sunday??false;
@@ -1745,22 +1745,10 @@ class SchedualController extends Controller
                                 ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                 {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                                 ->where('code', $task->predecessor_code)->first();
-                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
-                        
-                           
-                                // if  ($waite_time > 0 && $pred->end){
-                                //         $predEnd = Carbon::parse($pred->end);
-                                //         // Giờ bắt đầu ban đêm
-                                //         $nightStart = $predEnd->copy()->setTime(18, 0, 0);
-                                //         // Giờ kết thúc ban đêm (6h sáng hôm sau)
-                                //         $nightEnd = $predEnd->copy()->addDay()->setTime(6, 0, 0);
-
-                                //         // Nếu predEnd nằm trong khoảng 18h - 6h hôm sau
-                                //         if ($predEnd->between($nightStart, $nightEnd)) {
-                                //                 $extraHours = $predEnd->diffInHours($nightEnd);
-                                //                 $waite_time += $extraHours;
-                                //         }
-                                // }
+                                if ($pred){
+                                         $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
+                                }
+                               
                                 
                         }
                         
