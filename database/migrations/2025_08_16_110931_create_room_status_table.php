@@ -14,9 +14,10 @@ return new class extends Migration
         Schema::create('room_status', function (Blueprint $table) {
             $table->id(); 
             $table->unsignedBigInteger('room_id'); 
-            $table->unsignedBigInteger('stage_plan_id');
-            $table->dateTime('start'); 
-            $table->dateTime('end'); 
+            $table->unsignedTinyInteger('status')->nullable();
+            $table->string('in_production',255)->nullable(); 
+            $table->string('notification',255)->nullable();
+            $table->string('created_by',100)->nullable();
             $table->timestamps(); // created_at + updated_at
         });
     }
