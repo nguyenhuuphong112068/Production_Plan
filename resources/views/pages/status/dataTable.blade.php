@@ -177,18 +177,39 @@
       $(document).ready(function() {
         // Cho phép cuộn trang
         document.body.style.overflowY = "auto";
+        max_charater_unnote = 27;
+        max_charater = 45;
 
+        const adjustRowHeight = () => {
+          const totalHeight = window.innerHeight - 180;
+          const allRows = document.querySelectorAll("tbody tr");
+          const rowCount = allRows.length/2;
+              //alert (totalHeight)
+          if (rowCount > 0) {
+                const rowHeight = Math.floor(totalHeight / rowCount);
+                allRows.forEach(row => {
+                  row.style.height = `${rowHeight}px`;
+          });
+
+          max_charater_unnote = 27;
+          max_charater = 45;
+          
+          if (totalHeight > 1500){
+            max_charater_unnote = 45;
+          }
+
+          if (totalHeight > 1500){
+            max_charater = 85;
+          }
+          //alert (totalHeight)
+        }};
+        
         // Kiểm tra từng dòng .scroll-text trong bảng
         $(".unnote").each(function() {
           const el = this;
           // Nếu nội dung dài hơn khung chứa thì thêm class animate
-          if (window.innerHeight > 2000){
-            max_charater = 45;
-          }else{
-            max_charater = 27;
-          }
-
-          if ( el.innerText.length > max_charater) {
+         
+          if ( el.innerText.length > max_charater_unnote) {
             el.classList.add("animate");
           }
         });
@@ -196,35 +217,11 @@
         $(".note").each(function() {
           const el = this;
           // Nếu nội dung dài hơn khung chứa thì thêm class animate
-          if (window.innerHeight > 2000){
-            max_charater = 85;
-          }else{
-            max_charater = 45;
-          }
-
-          if ( el.innerText.length > 46) {
+          if ( el.innerText.length > max_charater) {
             el.classList.add("animate");
           }
         });
-        
-        const adjustRowHeight = () => {
-          
-            // Lấy chiều cao khả dụng (trừ đi phần header)
-            
-            const totalHeight = window.innerHeight - 180;
-            const allRows = document.querySelectorAll("tbody tr");
-            const rowCount = allRows.length/2;
-            //alert (totalHeight)
-            if (rowCount > 0) {
-              const rowHeight = Math.floor(totalHeight / rowCount);
-
-              allRows.forEach(row => {
-                row.style.height = `${rowHeight}px`;
-              });
-
-            }
-          };
-
+      
           // Gọi khi tải trang và khi thay đổi kích thước
           adjustRowHeight();
           window.addEventListener('resize', adjustRowHeight);
