@@ -365,13 +365,25 @@ class SchedualController extends Controller
                 $statsMap = $roomStatus->keyBy('resourceId');
                 $yieldMap = $sumBatchQtyResourceId->keyBy('resourceId');
 
-
-
                 $result = DB::table('room')
-                ->select('id', 'code',  DB::raw("CONCAT(code,'-', name) as title"), 'main_equiment_name', 'stage','stage_code', 'production_group')
+                ->select(
+                        'id', 
+                        'code',  
+                        DB::raw("CONCAT(code,'-', name) as title"), 
+                        'main_equiment_name', 
+                        //'stage',
+                        'stage_code', 
+                        'production_group',
+                        DB::raw("
+                                CASE 
+                                WHEN stage_code IN (3, 4) THEN 'Pha chế'
+                                ELSE stage
+                                END AS stage_name
+                        ")
+                        )
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
-                ->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')
+                //->orderBy('order_by', 'asc')
                 ->get()
                 ->map(function ($room) use ($statsMap, $yieldMap) {
                         $stat = $statsMap->get($room->id);
