@@ -1599,7 +1599,8 @@ import dayjs from 'dayjs';
         dateClick ={() => handleEventUnHightLine ()}
         eventAllow = {finisedEvent}
 
-        resourceGroupField="stage"
+        resourceGroupField="stage_name"
+        resourceOrder= 'order_by' 
 
         // stage
         resourceGroupLabelContent={(arg) => {
