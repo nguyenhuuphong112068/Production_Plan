@@ -71,6 +71,7 @@ class SchedualController extends Controller
                         'plan_master.before_parkaging_date',
                         'plan_master.is_val',
                         'plan_master.level',
+                        'intermediate_category.quarantine_total',
                         DB::raw("
                                 CASE
                                 WHEN sp.stage_code IN (1,2) THEN
@@ -140,18 +141,21 @@ class SchedualController extends Controller
 
                         // ⏱ Kiểm tra biệt trữ giữa các công đoạn
                         $storage_capacity = 0;
-                        if ($i > 0) {  
+                        if ($i > 0) { 
+                                if ($plan->quarantine_total == 0) {
                                 $prev = $plans[$i - 1];
-                                if ($plan->stage_code > 2 && $plan->stage_code < 7) {
-                                        $diff = (strtotime($plan->start) - strtotime($prev->end)) / 3600;
-                                        if ($prev->quarantine_time_limit > 0){
-                                                $storage_capacity =  round($diff/$prev->quarantine_time_limit, 2);
-                                        }
-                                        if ($diff > $prev->quarantine_time_limit) {
-                                                $color_event = '#bda124ff';
-                                                $subtitle = "Quá Hạn Biệt Trữ: {$diff}h / {$prev->quarantine_time_limit}h";
+                                        if ($plan->stage_code > 2 && $plan->stage_code < 7) {
+                                                $diff = round((strtotime($plan->start) - strtotime($prev->end)) / 3600,1);
+                                                if ($prev->quarantine_time_limit > 0){
+                                                        $storage_capacity =  round($diff/$prev->quarantine_time_limit, 2);
+                                                }
+                                                if ($diff > $prev->quarantine_time_limit) {
+                                                        $color_event = '#bda124ff';
+                                                        $subtitle = "Quá Hạn Biệt Trữ: {$diff}h / {$prev->quarantine_time_limit}h";
+                                                }
                                         }
                                 }
+            
                         }
                        
                         // ⚠️ Kiểm tra nguyên liệu / bao bì
@@ -168,12 +172,13 @@ class SchedualController extends Controller
                         }
 
                         // ⏰ Hạn cần hàng / bảo trì
-                        if ($plan->expected_date < $plan->end && $plan->stage_code < 9) {
+                        if ($plan->expected_date < $plan->end && $plan->stage_code < 9 && $color_event != '#bda124ff') {
                                 $color_event = '#f90202ff';
                                 $subtitle = $plan->stage_code == 8
                                 ? "Không Đáp Ứng Hạn Bảo Trì: {$plan->expected_date}"
                                 : "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
                         }
+                        
                         if ($plan->finished == 1) {
                                 $color_event = '#002af9ff';
                         }
@@ -1589,6 +1594,7 @@ class SchedualController extends Controller
                 ->pluck('stage_code');
 
                 $waite_time = [];
+
                 foreach ($stageCodes as $stageCode) {
                         $waite_time_nomal_batch = 0;
                         $waite_time_val_batch   = 0;
@@ -1639,21 +1645,18 @@ class SchedualController extends Controller
 
 
                         }
-                        // Log::info ("waite_time. $stageCode ",[
-                        //         $waite_time_nomal_batch , $waite_time_val_batch
-                        // ]);
+
                         $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday?? true);
                 }
-                        //dd ($waite_time);
-
-
-                //$this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
+                
+                $this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
         
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate ?? '2025-09-28T17:00:00.000Z', $request->endDate ??'2025-10-05T17:00:00.000Z' , true);
+                $events = $this->getEvents($production, $request->startDate , $request->endDate  , true);
                 $plan_waiting = $this->getPlanWaiting($production);
-                $sumBatchByStage = $this->yield($request->start ?? '2025-09-28T17:00:00.000Z', $request->end ??'2025-10-05T17:00:00.000Z', "stage_code");
+                $sumBatchByStage = $this->yield($request->start, $request->end , "stage_code");
+
                 return response()->json([
                         'events' => $events,
                         'plan' => $plan_waiting,
@@ -2315,7 +2318,7 @@ class SchedualController extends Controller
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
-              $this->view (null);
+              //$this->view (null);
         }
 
 
