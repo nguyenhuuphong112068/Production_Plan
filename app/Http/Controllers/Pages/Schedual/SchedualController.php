@@ -986,6 +986,8 @@ class SchedualController extends Controller
                         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
                 }
 
+
+
                 $production = session('user')['production_code'];
                 $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
                 $plan_waiting = $this->getPlanWaiting($production);
@@ -1651,11 +1653,19 @@ class SchedualController extends Controller
                 
                 $this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
         
+                
+                $startDate = $request->startDate
+                ? Carbon::parse($request->startDate)
+                : Carbon::now()->startOfWeek();
 
+                $endDate = $request->endDate
+                ? Carbon::parse($request->endDate)
+                : Carbon::now()->endOfWeek();
+                
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate , $request->endDate  , true);
+                $events = $this->getEvents($production, $startDate , $endDate  , true);
                 $plan_waiting = $this->getPlanWaiting($production);
-                $sumBatchByStage = $this->yield($request->start, $request->end , "stage_code");
+                $sumBatchByStage = $this->yield($startDate, $endDate , "stage_code");
 
                 return response()->json([
                         'events' => $events,
