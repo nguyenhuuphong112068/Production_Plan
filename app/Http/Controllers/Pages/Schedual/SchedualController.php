@@ -1942,11 +1942,25 @@ class SchedualController extends Controller
                                 if ($bestStart === null || $candidateStart->lt($bestStart)) {
                                         $bestRoom = $room->room_id;
                                         $bestStart = $candidateStart;
-                                        $bestEnd = $candidateStart->copy()->addMinutes($intervalTimeMinutes);
+                                        $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
                                         $endCleaning = $bestEnd->copy()->addMinutes( $C2_time_minutes);
                                 }
 
                         }
+
+
+                        // if ($this->work_sunday == false) {
+                        //         //Giả sử $bestStart là Carbon instance
+                        //         $startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(6, 0, 0); // CN 6h sáng
+                        //         $endOfPeriod   = (clone $startOfSunday)->addWeek()->addDay()->setTime(6, 0, 0);   // T2 tuần kế tiếp 6h sáng
+
+                        //         if ($bestStart->between($startOfSunday, $endOfPeriod)) {
+                        //                 //Nếu rơi vào khoảng nghỉ (CN 6h -> T2 6h), dời về 6h sáng Thứ 2 kế tiếp
+                        //                 $bestStart = (clone $startOfSunday)->addWeek()->addDay()->setTime(6, 0, 0);
+                        //                 $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
+                        //                 $endCleaning = $bestEnd->copy()->addMinutes( $C2_time_minutes);
+                        //         }
+                        // }
 
                         $this->saveSchedule(
                                         $title,
@@ -2196,8 +2210,17 @@ class SchedualController extends Controller
 
                 // Lưu từng batch
                 $counter = 0;
+                // $startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(6, 0, 0); // CN 6h sáng
+                // $endOfPeriod   = (clone $startOfSunday)->addWeek()->addDay()->setTime(6, 0, 0);  
+
                 foreach ($campaignTasks as  $task) {
                         // kiêm tra ngay chủ nhật
+                        // if ($this->work_sunday == false) {
+                        //         if ($bestStart->between($startOfSunday, $endOfPeriod)) {
+                        //                 $bestStart = $endOfPeriod;
+                        //         }
+                        // }
+
                         if ($counter == 0) {
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->p_time_minutes + $bestRoom->m_time_minutes);
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô đâu tiên chiến dịch
@@ -2211,6 +2234,9 @@ class SchedualController extends Controller
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô giữa chiến dịch
                                 $clearningType = 1;
                         }
+
+
+
                         $this->saveSchedule(
                                 $task->name."-".$task->batch ."-".$task->market,
                                 $task->id,
@@ -3326,6 +3352,7 @@ class SchedualController extends Controller
 
                 $this->loadRoomAvailability('asc', $roomId );
 
+                
 
                 if (!isset($this->roomAvailability[$roomId])) {
                         $this->roomAvailability[$roomId] = [];
@@ -3343,8 +3370,21 @@ class SchedualController extends Controller
                                 if ($current_start->lt($busy['start'])) {
                                         
                                         $gap = abs($current_start->diffInMinutes($busy['start']));
+
+                                        $hasSunday = null;
+                                        if ($this->work_sunday == false){
+                                                $current_end = $current_start->copy()->addMinutes($intervalTime + $C2_time_minutes);
+
+                                                $diffDays = $current_start->diffInDays($current_end);
+                                                $startDayOfWeek = $current_start->dayOfWeek; // 0 = CN, 1 = T2, ...
+                                                $endDayOfWeek = ($startDayOfWeek + $diffDays) % 7;
+                                                $hasSunday = $startDayOfWeek == 0 || $endDayOfWeek < $startDayOfWeek;                                     
+                                        }
+
+                                        $work_sunday_time = 0;
+                                        if ($hasSunday){$work_sunday_time = 1440;}
                                        
-                                        if ($gap >= $intervalTime + $C2_time_minutes) {  
+                                        if ($gap >= $intervalTime + $C2_time_minutes + $work_sunday_time) {  
                                                 // --- kiểm tra tank ---
                                                 if ($requireTank == true){
                                                         $bestEnd   = $current_start->copy()->addMinutes($intervalTime);
