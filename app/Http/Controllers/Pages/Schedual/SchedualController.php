@@ -1651,16 +1651,16 @@ class SchedualController extends Controller
                         $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date, $request->work_sunday?? true);
                 }
                 
-                $this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
+                //$this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
         
                 
                 $startDate = $request->startDate
-                ? Carbon::parse($request->startDate)
-                : Carbon::now()->startOfWeek();
+                        ? Carbon::parse($request->startDate)
+                        : Carbon::now()->startOfWeek();
 
                 $endDate = $request->endDate
-                ? Carbon::parse($request->endDate)
-                : Carbon::now()->endOfWeek();
+                        ? Carbon::parse($request->endDate)
+                        : Carbon::now()->endOfWeek();
                 
                 $production = session('user')['production_code'];
                 $events = $this->getEvents($production, $startDate , $endDate  , true);
