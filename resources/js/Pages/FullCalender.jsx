@@ -1464,8 +1464,6 @@ import dayjs from 'dayjs';
             {text}
           </div>
         );
-       
-      
 
         return (
           <div className="relative group custom-event-content" data-event-id={event.id}>
@@ -1510,6 +1508,7 @@ import dayjs from 'dayjs';
                 title="Xem Lịch Sử Thay Đổi"
               >
                 {props.number_of_history}
+              
               </button>
             {/* )} */}
 
@@ -1525,6 +1524,9 @@ import dayjs from 'dayjs';
             )}
 
             {/* Icon đặc biệt */}
+       
+
+
             {isWeekView && props.tank? renderBadge('⚗️', 'bg-red-500', 170):''}
             {isWeekView && props.keep_dry ? renderBadge('🌡', 'bg-red-500', 200):''}
 
@@ -1536,7 +1538,7 @@ import dayjs from 'dayjs';
                 className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
                 title="Thứ tự công đoạn"
               >
-                 <b>{props.order_by}</b> {/*  {props.direction ? '➡' : '⬅'} */}
+                 <b>{props.storage_capacity}</b> 
               </button>
             )}
 

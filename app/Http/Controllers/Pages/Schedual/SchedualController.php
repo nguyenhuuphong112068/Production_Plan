@@ -139,17 +139,21 @@ class SchedualController extends Controller
                         }
 
                         // ⏱ Kiểm tra biệt trữ giữa các công đoạn
-                        if ($i > 0) {
+                        $storage_capacity = 0;
+                        if ($i > 0) {  
                                 $prev = $plans[$i - 1];
                                 if ($plan->stage_code > 2 && $plan->stage_code < 7) {
-                                $diff = (strtotime($plan->start) - strtotime($prev->end)) / 3600;
-                                if ($diff > $prev->quarantine_time_limit) {
-                                        $color_event = '#bda124ff';
-                                        $subtitle = "Quá Hạn Biệt Trữ: {$diff}h / {$prev->quarantine_time_limit}h";
-                                }
+                                        $diff = (strtotime($plan->start) - strtotime($prev->end)) / 3600;
+                                        if ($prev->quarantine_time_limit > 0){
+                                                $storage_capacity =  round($diff/$prev->quarantine_time_limit, 2);
+                                        }
+                                        if ($diff > $prev->quarantine_time_limit) {
+                                                $color_event = '#bda124ff';
+                                                $subtitle = "Quá Hạn Biệt Trữ: {$diff}h / {$prev->quarantine_time_limit}h";
+                                        }
                                 }
                         }
-
+                       
                         // ⚠️ Kiểm tra nguyên liệu / bao bì
                         if ($plan->stage_code === 1 &&
                                 $plan->after_weigth_date > $plan->start &&
@@ -211,7 +215,8 @@ class SchedualController extends Controller
                                 'tank' => $plan->tank,
                                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
                                 'number_of_history' => $historyCounts[$plan->id] ?? 0,
-                                'order_by' => $plan->order_by
+                                'order_by' => $plan->order_by,
+                                'storage_capacity' => $storage_capacity
                                 ]);
                         }
 
@@ -403,9 +408,9 @@ class SchedualController extends Controller
         // Hàm view gọn hơn Request
         public function view(Request $request){
                
-                $startDate = $request->startDate ;
-                $endDate = $request->endDate;
-                $viewtype = $request->viewtype;
+                $startDate = $request->startDate ?? Carbon::now();
+                $endDate = $request->endDate ?? Carbon::now()->addDays(7);
+                $viewtype = $request->viewtype ?? "resourceTimelineWeek";
 
                 try {
                         $production = session('user')['production_code'];
@@ -2310,7 +2315,7 @@ class SchedualController extends Controller
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
-              //$this->view (null);
+              $this->view (null);
         }
 
 
