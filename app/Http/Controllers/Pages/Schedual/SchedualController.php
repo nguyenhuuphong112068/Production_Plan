@@ -913,6 +913,8 @@ class SchedualController extends Controller
         } // đã có temp
 
         public function deActive(Request $request){
+                Log::info($request->all());
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
                 $items = collect($request->input('ids'));
                 try {
@@ -966,19 +968,19 @@ class SchedualController extends Controller
                                                 'schedualed_at'    => now(),
                                         ]);
 
-                                        if (session('fullCalender')['mode'] === 'offical'){
-                                                // Xóa room_status theo các row này
-                                                $affectedIds = DB::table('stage_plan')
-                                                ->where('plan_master_id', $plan->plan_master_id)
-                                                ->where('stage_code', '>=', $stageCode)
-                                                ->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id'])
-                                                ->pluck('id')
-                                                ->toArray();
+                                        // if (session('fullCalender')['mode'] === 'offical'){
+                                        //         // Xóa room_status theo các row này
+                                        //         // $affectedIds = DB::table('stage_plan')
+                                        //         // ->where('plan_master_id', $plan->plan_master_id)
+                                        //         // ->where('stage_code', '>=', $stageCode)
+                                        //         // ->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id'])
+                                        //         // ->pluck('id')
+                                        //         // ->toArray();
 
-                                                // DB::table('stage_plan_temp') ->where('plan_master_id', $plan->plan_master_id)
-                                                // ->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id'])
-                                                // ->where('stage_code', '>=', $stageCode)->update(['active' => 1]);
-                                        }
+                                        //         // DB::table('stage_plan_temp') ->where('plan_master_id', $plan->plan_master_id)
+                                        //         // ->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id'])
+                                        //         // ->where('stage_code', '>=', $stageCode)->update(['active' => 1]);
+                                        // }
                         }
                         }
                 } catch (\Exception $e) {
