@@ -1003,7 +1003,17 @@ class SchedualController extends Controller
         }// đã có temp
 
         public function deActiveAll(Request $request){
+              
 
+                $Step = [
+                        "PC" => 3,
+                        "THT" => 4,
+                        "ĐH" => 5,
+                        "BP" => 6,
+                        "ĐG" => 7,
+                ];
+
+                $stage_code = $Step[$request->selectedStep];
 
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
 
@@ -1012,6 +1022,7 @@ class SchedualController extends Controller
                         ->whereNotNull('start')
                         ->where('active', 1)
                         ->where('finished', 0)
+                        ->where('stage_code', ">=", $stage_code)
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->pluck('id');

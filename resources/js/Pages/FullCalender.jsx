@@ -817,7 +817,7 @@ import dayjs from 'dayjs';
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
 
-      didOpen: () => {
+        didOpen: () => {
       // ------------------ Calendar ------------------
       const calendarContainer = document.getElementById("calendar-container");
       const calendarRoot = ReactDOM.createRoot(calendarContainer);
@@ -974,7 +974,9 @@ import dayjs from 'dayjs';
 
           return formValues;
         }
+
       }).then((result) => {
+
         if (result.isConfirmed) {
           Swal.fire({
             title: 'Đang chạy Auto Scheduler...',
@@ -1032,14 +1034,117 @@ import dayjs from 'dayjs';
 
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       Swal.fire({
+
         title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
+        html: `
+          <div class="cfg-wrapper">
+            <div class="cfg-card">
+              <div class="cfg-row">
+              <!-- ✅ Vùng để gắn stepper -->
+              <label class="cfg-label" for="stepper-container">Xóa Lịch Theo Công Đoạn:</label> 
+              <div id="stepper-container" style="margin-top: 15px;"></div>
+              </div>
+
+            </div>
+          </div>
+        `,
         text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Xóa',
         cancelButtonText: 'Hủy',
         confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6'
+        cancelButtonColor: '#3085d6',
+      didOpen: () => {
+  // ------------------ Stepper ------------------
+      const stepperContainer = document.getElementById("stepper-container");
+
+          if (stepperContainer) {
+            const stepperRoot = createRoot(stepperContainer);
+
+            const StepperPopup = () => {
+            const [selected, setSelected] = React.useState(null);
+
+              const getClass = (value) =>
+                `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${
+                  selected === value ? "bg-primary text-white" : ""
+              }`;
+           
+           
+              return (
+                <Stepper style={{ width: "100%" }}>
+                 
+                    <StepperPanel header="PC" >
+                      <div className="flex flex-column h-12rem" >
+                        <div
+                          className={getClass("Pha Chế") }>
+                          Pha Chế ➡ Đóng Gói
+                        </div>
+                      </div>
+                    </StepperPanel>
+                  
+                 
+                  <StepperPanel header="THT" readOnlyInput>
+                    <div className="flex flex-column h-12rem">
+                      <div
+                        className={getClass("THT")}
+                      >
+                        Trộn Hoàn Tất ➡ Đóng Gói
+                      </div>
+                    </div>
+                  </StepperPanel>
+                  
+                  <StepperPanel header="ĐH">
+                    <div className="flex flex-column h-12rem">
+                      <div
+                        className={getClass("ĐH")}
+                        
+                      >
+                        Định Hình ➡ Đóng Gói
+                      </div>
+                    </div>
+                  </StepperPanel>
+                
+                  <StepperPanel header="BP" disabled={true}>
+                    <div className="flex flex-column h-12rem">
+                      <div
+                        className={getClass("BP")}
+                        
+                      >
+                        Bao Phim ➡ Đóng Gói
+                      </div>
+                    </div>
+                  </StepperPanel>
+                  
+                  <StepperPanel header="ĐG">
+                    <div className="flex flex-column h-12rem">
+                      <div
+                        className={getClass("ĐG")}
+                        
+                        >
+                        Đóng Gói 
+                      </div>
+                    </div>
+                  </StepperPanel>
+
+                </Stepper>
+              );
+            };
+            stepperRoot.render(<StepperPopup />);
+          }
+
+        }
+        ,
+        preConfirm: () => {
+          const formValues = {};
+          const activeStep = document.querySelector('li[data-p-active="true"]');
+          const activeStepText = activeStep? activeStep.querySelector('span.p-stepper-title')?.textContent: null;
+          formValues.selectedStep = activeStepText??"PC";
+
+          return formValues;
+        }
+
+
       }).then((result) => {
         Swal.fire({
           title: "Đang tải...",
@@ -1050,7 +1155,7 @@ import dayjs from 'dayjs';
         });
 
         if (result.isConfirmed) {
-          axios.put('/Schedual/deActiveAll',  { startDate: activeStart.toISOString(), endDate: activeEnd.toISOString()})
+          axios.put('/Schedual/deActiveAll',  { ...result.value, startDate: activeStart.toISOString(), endDate: activeEnd.toISOString()})
             .then(res => {
               let data = res.data;
               if (typeof data === "string") {
