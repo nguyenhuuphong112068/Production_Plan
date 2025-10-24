@@ -3,24 +3,19 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
     <!-- ====== HEADER ====== -->
 <div class="content-wrapper">
+
   <div class="card">
         <div class="row align-items-center">
-
             <a href="{{ route('pages.status.next', ['production' => $production]) }}" class=" mx-5">
                 <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:35px;">
             </a>
-
-           
             <div class="mx-auto text-center" style="color: #CDC717;  font-weight: bold; line-height: 0.8; rgba(0,0,0,0.4);">
               <h1>{{ session('title') }} </h1>
             </div>
-           
-
             <a href="{{ route('logout') }}" class="nav-link text-primary mx-4" style="font-size: 20px">
                 <i class="fas fa-sign-out-alt"></i>
             </a>
         </div>
-
         <div class="text-white w-100" style="background-color: #CDC717; padding: 6px 10px;">
           <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
             <button class="btn btn-success btn-sm d-flex align-items-center justify-content-center"
@@ -31,7 +26,6 @@
             </div>
           </div>
         </div>
-
     </div>
     
     <div class="row mt-1">
@@ -59,16 +53,15 @@
                   @php 
                       $current_stage = $data->stage_code; 
                       switch ($data->status) {
-                          case 0: $color = "#6c757d"; break; // xám - chưa sản xuất
+                          case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
                           case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                          default: $color = "#CDC717"; break; // mặc định
+                          
                       }
                   @endphp
                   <tr>
                     <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
-
                     {{-- sp theo lịch 1--}}
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
@@ -78,7 +71,6 @@
                       </div>
                     </td>
 
-
                     {{-- sp đang sx 1 --}}
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
@@ -87,7 +79,6 @@
                         </div>
                       </div>
                     </td>
-
 
                     {{-- thông báo 1 --}}
                     <td style="max-width: 250px; overflow: hidden;">
@@ -107,7 +98,6 @@
           @php
               // Chia dữ liệu thành 2 phần đều nhau
               $half = ceil(count($datas) / 2) - 1;
-              //dd (count($datas),$half);
               $leftData = $datas->slice(0, $half);
               $rightData = $datas->slice($half);
           @endphp
@@ -131,23 +121,24 @@
                       <td colspan="4">Công Đoạn {{ $data->stage }}</td>
                     </tr>
                   @endif
-                  @php 
+                  @php
                       $current_stage = $data->stage_code; 
                       switch ($data->status) {
-                          case 0: $color = "#6c757d"; break; // xám - chưa sản xuất
+                          case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
                           case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                          default: $color = "#CDC717"; break; // mặc định
+                          
                       }
                   @endphp
                   <tr>
                     {{-- Phòng SX 1--}}
                     <td style="background-color: {{ $color }};">
                       <div style="display: flex; align-items: center; gap: 6px;">
-                        <button class="btn btn-success btn-sm " 
+                        <button class="btn btn-success btn-sm btn-plus" 
                                 style="width: 20px; height: 20px; padding: 0; line-height: 0;"
                                 data-room_name ="{{ $data->room_name }}"
+                                data-in_production = "{{ $data->product_name . "_" . $data->batch }}"
                                 data-toggle="modal"
                                 data-target="#Modal"
                                 
@@ -164,7 +155,6 @@
                         </div>
                       </div>
                     </td>
-
 
                     {{-- sp đang sx 1 --}}
                     <td style="max-width: 250px; overflow: hidden;">
@@ -213,10 +203,9 @@
                   @endif
                   @php $current_stage = $data->stage_code; @endphp
                 <tr>
-
                     <td style="background-color: {{ $color }};">
                       <div style="display: flex; align-items: center; gap: 6px;">
-                        <button class="btn btn-success btn-sm " 
+                        <button class="btn btn-success btn-sm btn-plus" 
                                 style="width: 20px; height: 20px; padding: 0; line-height: 0;">+</button>
                         <span>{{ $data->room_name }}</span>
                         </div>
@@ -257,8 +246,6 @@
           </div>
         </div>
       @endif
-
-
   </div>
 </div>
 
@@ -268,7 +255,7 @@
     <script src="{{ asset('js/bootstrap.min.js') }}"></script>
     <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
-    <script>
+  <script>
       $(document).ready(function() {
         // Cho phép cuộn trang
         document.body.style.overflowY = "auto";
@@ -286,9 +273,7 @@
           }          
       
           if (rowCount > 0) {
-            
                 const rowHeight = Math.floor(totalHeight/rowCount);
-               
                 allRows.forEach(row => {
                 row.style.height = `${rowHeight/tem}px`;
           });
@@ -327,6 +312,18 @@
           // Gọi khi tải trang và khi thay đổi kích thước
           adjustRowHeight();
           window.addEventListener('resize', adjustRowHeight);
+
+
+
+        $('.btn-plus').click(function () {
+
+          const button = $(this);
+          const modal = $('#Modal');
+          //alert (button.data('in_production'))
+          modal.find('input[name="room_name"]').val(button.data('room_name'));
+          modal.find('select [name="in_production"]').val(button.data('in_production'));
+
+      });
 
       });
     </script>

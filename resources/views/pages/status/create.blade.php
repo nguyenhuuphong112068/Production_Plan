@@ -32,25 +32,25 @@
               value="{{ old('room_name') }}">
           </div>
 
-          {{-- NAME --}}
           <div class="form-group">
-            <label for="name">Tên Sản Phẩm</label>
-            <input type="text" class="form-control" name="name" 
-              value="{{ old('name') }}">
-          </div>
-          @error('name', 'createErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
+                <label for="belongGroup_id">Sản Phẩm Đang Sản Xuất</label>
+                <select class="form-control" name="in_production" >
+                    <option value="">-- Chọn Lô Sản Phẩm --</option>
+                    <option value="Không Sản Xuất">Không Sản Xuất</option>
+                    <option value="Đang Vệ Sinh">Đang Vệ Sinh</option>
+                    <option value="Bảo Trì">Bảo Trì</option>
+                    @foreach ($planWaitings as $plan)
+                        <option value="{{ $plan->name ."_".  $plan->batch }}" 
+                            {{ old('in_production') == $plan->name ."_".  $plan->batch ? 'selected' : '' }}>
+                            {{ $plan->name ."_".  $plan->batch }}
+                        </option>
+                    @endforeach
 
-          {{-- SHORT NAME --}}
-          <div class="form-group">
-            <label for="batch">Số Lô</label>
-            <input type="text" class="form-control" name="batch" 
-              value="{{ old('batch') }}">
+                </select>
+                @error('in_production', 'createErrors')
+                    <div class="alert alert-danger mt-1">{{ $message }}</div>
+                @enderror
           </div>
-          @error('batch', 'createErrors')
-              <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
 
           <div class="card card-success">
               <div class="card-header">
@@ -64,7 +64,7 @@
                   <div class="col-sm-6">
                     <div class="form-group clearfix">
                       <div class="icheck-success d-inline">
-                        <input type="radio" name="status" checked id="status1">
+                        <input type="radio" name="status" checked id="status1" value = "1">
                         <label for="status1">
                           Đang Sản Xuất
                         </label>
@@ -72,7 +72,7 @@
                     </div>
                     <div class="form-group clearfix">
                       <div class="icheck-success d-inline">
-                        <input type="radio" name="status" checked id="status2">
+                        <input type="radio" name="status" checked id="status2" value = "2">
                         <label for="status2">
                           Đang Vệ Sinh
                         </label>
@@ -83,7 +83,7 @@
                 <div class="col-sm-6">
                     <div class="form-group clearfix">
                       <div class="icheck-success d-inline">
-                        <input type="radio" name="status" checked id="status3">
+                        <input type="radio" name="status" checked id="status3" value = "3">
                         <label for="status3">
                           Bảo Trì
                         </label>
@@ -92,7 +92,7 @@
                 
                     <div class="form-group clearfix">
                       <div class="icheck-success d-inline">
-                        <input type="radio" name="status" checked id="status4">
+                        <input type="radio" name="status" checked id="status4" value = "0">
                         <label for="status4">
                           Không Sản Xuất
                         </label>
