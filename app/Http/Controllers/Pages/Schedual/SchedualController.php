@@ -2010,7 +2010,7 @@ class SchedualController extends Controller
                                         if ($currCycle && $currCycle >= $prevCycle){
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);             
                                         }else {
-                                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $campaignTasks->count() * ($prevCycle - $currCycle));                             
+                                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $campaignTasks->count() *  1.1 * ($prevCycle - $currCycle));                             
                                         }    
                                 }
 
