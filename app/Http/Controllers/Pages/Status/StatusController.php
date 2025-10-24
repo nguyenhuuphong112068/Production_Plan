@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class StatusController extends Controller
 {
@@ -123,7 +124,7 @@ class StatusController extends Controller
                         ->orderBy('room.order_by')
                 ->get();
 
-                $planWaiting = $this->getPlanWaiting ($production, 5);
+                $planWaitings = $this->getPlanWaiting ($production, 5);
                 
                 //dd ($planWaiting);
 
@@ -131,7 +132,8 @@ class StatusController extends Controller
               
                 return view('pages.status.list',[
                         'datas' =>  $datas,
-                        'production' =>  $production 
+                        'production' =>  $production,
+                        'planWaitings' =>  $planWaitings,
                         
                 ]);
         }
@@ -156,15 +158,49 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                        ->select(
-                        'sp.stage_code',                
+                        ->select(          
                         'plan_master.batch',
                         'product_name.name'
                         )
+                        ->distinct()
                         ->orderBy('sp.order_by', 'asc')
                         ->get();
                       
                 return $plan_waiting;
         }// đã có temp
+
+        public function store (Request $request) {
+               
+                $validator = Validator::make($request->all(), [
+                    'room_name' => 'required',
+                    'in_production' => 'required',
+                    'status' => 'required',
+                    'notification'=> 'required',
+                ],[
+                    'room_name.required' => 'Chọn phòng sản xuất', 
+                    'in_production.required' => 'Chọn sản phẩm đang sản xuất', 
+                    'status.required' => 'Chọn trạng thái phòng sản xuất hiện tại.',  
+                    'notification.required'=> 'Vui lòng nhập thông báo, Nếu không có nhập NA',   
+                ]);
+
+                if ($validator->fails()) {
+                    return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
+                }
+
+                $room_code = explode ("-", $request->room_name)[0];
+                $room_id =  DB::table('room')->where ('code', $room_code)->value ('id');
+
+                
+                DB::table('room_status')->insert([
+                        'room_id' => $room_id,
+                        'status' => $request->status,
+                        'in_production' => $request->in_production,
+                        'notification' => $request->notification,
+                        'created_by' => session('user')['fullName'] ?? 'Admin',
+                        'created_at' => now(),
+                ]);
+                return redirect()->back()->with('success', 'Đã thêm thành công!');    
+        }
+
 
 }

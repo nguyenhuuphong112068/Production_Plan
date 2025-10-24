@@ -45,22 +45,22 @@
                   <th style="width: 42%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
-              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
+              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
                 @php $current_stage = 0; @endphp
                 @foreach ($datas as $data)
                   @if ($data->stage_code != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                    <tbody class="font-bold"  style=" color:#003A4F; font-size: 20px;  padding: 0px; font-weight: bold">
                       <td colspan="4">Công Đoạn {{ $data->stage }}</td>
                     </tr>
                   @endif
                   @php 
                       $current_stage = $data->stage_code; 
                       switch ($data->status) {
-                          case 0: $color = "#6c757d"; break; // xám - chưa sản xuất
+                          case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
                           case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                          default: $color = "#CDC717"; break; // mặc định
+                         
                       }
                   @endphp
                   <tr>
@@ -70,7 +70,13 @@
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
                         <div class="scroll-text unnote">
+
+                          @if ($data->batch)
                           {{ $data->product_name . "_" . $data->batch }}
+                          @else
+                          {{ $data->product_name }}
+                          @endif
+
                         </div>
                       </div>
                     </td>
@@ -120,7 +126,7 @@
                   <th style="width: 42%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
-              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
+              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
                 @php $current_stage = 0; @endphp
                 @foreach ($leftData as $data)
                   @if ($data->stage_code != $current_stage)
@@ -131,11 +137,11 @@
                   @php 
                       $current_stage = $data->stage_code; 
                       switch ($data->status) {
-                          case 0: $color = "#6c757d"; break; // xám - chưa sản xuất
+                          case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
                           case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                          default: $color = "#CDC717"; break; // mặc định
+                         
                       }
                   @endphp
                   <tr>
@@ -145,7 +151,11 @@
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
                         <div class="scroll-text unnote">
-                          {{ $data->product_name . "_" . $data->batch }}
+                          @if ($data->batch != null)
+                            {{ $data->product_name . "_" . $data->batch }}
+                          @else
+                            {{ $data->product_name }}
+                          @endif
                         </div>
                       </div>
                     </td>
@@ -155,7 +165,8 @@
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
                         <div class="scroll-text unnote">
-                          {{ $data->in_production}}
+                            {{ $data->in_production }}
+                          
                         </div>
                       </div>
                     </td>
@@ -204,7 +215,11 @@
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
                         <div class="scroll-text unnote">
-                          {{ $data->product_name . "_" . $data->batch }}
+                          @if ($data->batch != null)
+                            {{ $data->product_name . "_" . $data->batch }}
+                          @else
+                            {{ $data->product_name }}
+                          @endif
                         </div>
                       </div>
                     </td>
@@ -304,7 +319,11 @@
           window.addEventListener('resize', adjustRowHeight);
 
       });
-    </script>
+
+
+      setTimeout(() => location.reload(), 60000);
+
+</script>
 
     <!-- ====== STYLE ====== -->
     <style>
@@ -369,7 +388,7 @@
           line-height: 1.1;
         }
         .table td {
-          padding: 0 8px !important;
+          padding: 8 0px !important;
           text-align: center;
           vertical-align: middle;
           line-height: 1.1;

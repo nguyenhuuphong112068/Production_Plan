@@ -1956,6 +1956,7 @@ class SchedualController extends Controller
                         ->first();
 
                         if ($pred) {
+
                                 $code = $pred->campaign_code;
                                 if (!in_array($code, $pre_campaign_codes) && $code != null) {
                                         $pre_campaign_codes [] = $code ;
@@ -1992,7 +1993,7 @@ class SchedualController extends Controller
                                         if ($currCycle && $currCycle >= $prevCycle){
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);             
                                         }else {
-                                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $campaignTasks->count() * 1.1 * ($prevCycle - $currCycle));                             
+                                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $campaignTasks->count() * ($prevCycle - $currCycle));                             
                                         }    
                                 }
 

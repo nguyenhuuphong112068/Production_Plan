@@ -68,6 +68,7 @@ import dayjs from 'dayjs';
 
     /// Get dữ liệu ban đầu
     useEffect(() => {
+    
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
@@ -100,6 +101,8 @@ import dayjs from 'dayjs';
           setSumBatchByStage(data.sumBatchByStage);
           setProduction (data.production)
           setQuarantineRoom (data.quarantineRoom)
+
+         
 
           switch (data.production) {
             case "PXV1":
@@ -291,6 +294,7 @@ import dayjs from 'dayjs';
 
 
     const handleShowList = () => {
+  
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
       setShowSidebar(true);
     }
@@ -537,12 +541,12 @@ import dayjs from 'dayjs';
         setCleaningHidden(!cleaningHidden);
 
         Swal.close();
-      }, 300); // delay 300ms để thấy loading
+        }, 300); // delay 300ms để thấy loading
     };
 
     /// 3 Ham sử lý thay đôi sự kiện
     const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
-
+    
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
         info.revert();
         return false
@@ -616,7 +620,7 @@ import dayjs from 'dayjs';
     };
     ///
     const handleSaveChanges = async () => {
-
+     
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
         info.revert();
         return false
@@ -1022,7 +1026,6 @@ import dayjs from 'dayjs';
 
   
     /// Xử lý Xóa Toàn Bộ Lịch
-    
     const handleDeleteAllScheduale = () => {
 
       if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
@@ -1178,100 +1181,6 @@ import dayjs from 'dayjs';
     }
 
     /// Xử lý hoản thành lô
-    // const handleFinished = (event) => {
-
-    //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return};
-    //   let unit = event._def.extendedProps.stage_code <= 4 ? "Kg": "ĐVL"
-    //   let id = event._def.publicId
-
-    //   Swal.fire({
-
-    //     title: 'Hoàn Thành Sản Xuất',
-    //     html: `
-    //       <div class="cfg-wrapper">
-    //         <div class="cfg-card">
-    //           <!-- Hàng 2 cột -->
-    //           <div class="cfg-row cfg-grid-2">
-    //             <div class="cfg-col">
-    //               <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
-    //               <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min = "0"  name = "wt_bleding">
-    //             </div>
-    //             <div class="cfg-col">
-    //               <label class="cfg-label" for="wt_bleding_val">Đơn Vị</label>
-    //               <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full"  readonly >
-    //               <input id="stag_plan_id" type="hidden" >
-    //             </div>
-    //           </div>
-
-    //            <!-- Thêm select Quarantine Room -->
-    //             <div class="cfg-row mt-3">
-    //               <label class="cfg-label" for="quarantineRoomSelect">Phòng Cách Ly</label>
-    //               <select id="quarantineRoomSelect" class="swal2-input cfg-input cfg-input--full">
-    //                 <option value="">-- Chọn phòng --</option>
-    //               </select>
-    //             </div>
-
-    //         </div>
-    //       </div>
-    //     `,
-    //     didOpen: () => {
-    //         document.getElementById('unit').value = unit;
-    //         document.getElementById('stag_plan_id').value = id; // set value thủ công
-    //     },
-    //     width: 700,
-    //     customClass: { htmlContainer: 'cfg-html-left' , title: 'my-swal-title'},
-    //     showCancelButton: true,
-    //     confirmButtonText: 'Lưu',
-    //     cancelButtonText: 'Hủy',
-    //     confirmButtonColor: '#3085d6',
-    //     cancelButtonColor: '#d33'
-    //     ,
-    //     preConfirm: () => {
-    //       const yields_input = document.getElementById('yields');
-    //       const stag_plan_id = document.getElementById('stag_plan_id').value;
-    //       const yields = yields_input ? yields_input.value.trim() : "";
-
-    //       if (!yields) {
-    //         Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
-    //         return false;
-    //       }
-
-    //     return { yields, id: stag_plan_id };
-    //     }
-    //   }).then((result) => {
-    //     if (result.isConfirmed) {
-
-
-    //       // Gọi API với ngày
-    //     axios.put('/Schedual/finished', result.value)
-    //     .then(res => {
-    //         let data = res.data;
-    //         if (typeof data === "string") {
-    //           data = data.replace(/^<!--.*?-->/, "").trim();
-    //           data = JSON.parse(data);
-    //         }
-    //         setEvents(data.events);
-
-    //         Swal.fire({
-    //           icon: 'success',
-    //           title: 'Hoàn Thành',
-    //           timer: 500,
-    //           showConfirmButton: false,
-    //         });
-    //       })
-    //     .catch(err => {
-    //         Swal.fire({
-    //           icon: 'error',
-    //           title: 'Lỗi',
-    //           timer: 500,
-    //           showConfirmButton: false,
-    //         });
-    //         console.error("Finished error:", err.response?.data || err.message);
-    //     });
-
-    //   }
-    //   });
-    // };
 
     const handleFinished = (event) => {
 
@@ -1383,8 +1292,7 @@ import dayjs from 'dayjs';
               });
           }
         });
-      };
-
+    };
 
     /// Ngăn xụ thay đổi lô Sau khi hoàn thành
     const finisedEvent = (dropInfo, draggedEvent) =>{
@@ -1540,7 +1448,7 @@ import dayjs from 'dayjs';
     }
 
     const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, handleConfirmSource, viewConfig, viewName, eventFontSize, type, authorization }) => {
-        const adminAutho = CheckAuthorization(authorization, ['Admin']);
+        //const adminAutho 
         const event = arg.event;
         const props = event._def.extendedProps;
         const isSelected = selectedEvents.some(ev => ev.id === event.id);
@@ -1623,7 +1531,7 @@ import dayjs from 'dayjs';
 
 
             {/* Hướng công đoạn */}
-            {!props.is_clearning && adminAutho && (
+            {!props.is_clearning && authorization == "Admin" && (
               <button
                 className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
                 title="Thứ tự công đoạn"
@@ -1656,8 +1564,6 @@ import dayjs from 'dayjs';
           </div>
         );
     };
-
-
 
   return (
 

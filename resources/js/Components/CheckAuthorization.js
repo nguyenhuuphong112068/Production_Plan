@@ -11,7 +11,7 @@ export function CheckAuthorization(authorization, allowedRoles = [], is_Swal = t
     if (is_Swal){
       Swal.fire({
         icon: 'error',
-        title: 'Bạn không có quyền thực hiện chức năng này!',
+        title: 'Bạn không có quyền thực hiện chức năng này!' + is_function,
         allowOutsideClick: false,
         showConfirmButton: false,
         timer: 1000
