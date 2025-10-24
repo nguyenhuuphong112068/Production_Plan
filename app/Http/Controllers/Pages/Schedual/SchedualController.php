@@ -1665,23 +1665,23 @@ class SchedualController extends Controller
                 //$this->scheduleStartBackward($request->work_sunday?? true, $request->buffer_date ?? 1, $start_date, $waite_time);
         
                 
-                $startDate = $request->startDate
-                        ? Carbon::parse($request->startDate)
-                        : Carbon::now()->startOfWeek();
+                // $startDate = $request->startDate
+                //         ? Carbon::parse($request->startDate)
+                //         : Carbon::now()->startOfWeek();
 
-                $endDate = $request->endDate
-                        ? Carbon::parse($request->endDate)
-                        : Carbon::now()->endOfWeek();
+                // $endDate = $request->endDate
+                //         ? Carbon::parse($request->endDate)
+                //         : Carbon::now()->endOfWeek();
                 
-                $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $startDate , $endDate  , true);
-                $plan_waiting = $this->getPlanWaiting($production);
-                $sumBatchByStage = $this->yield($startDate, $endDate , "stage_code");
+                // $production = session('user')['production_code'];
+                // $events = $this->getEvents($production, $startDate , $endDate  , true);
+                // $plan_waiting = $this->getPlanWaiting($production);
+                // $sumBatchByStage = $this->yield($startDate, $endDate , "stage_code");
 
                 return response()->json([
-                        'events' => $events,
-                        'plan' => $plan_waiting,
-                        'sumBatchByStage' => $sumBatchByStage,
+                        // 'events' => [] $events,
+                        // 'plan' => $plan_waiting,
+                        // 'sumBatchByStage' => $sumBatchByStage,
                 ]);
 
         }// đã có temp

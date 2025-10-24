@@ -1009,9 +1009,12 @@ import dayjs from 'dayjs';
                 showConfirmButton: false,
               });
 
-              setEvents(data.events);
-              setSumBatchByStage(data.sumBatchByStage);
-              setPlan(data.plan);
+              // setEvents(data.events);
+              // setSumBatchByStage(data.sumBatchByStage);
+              // setPlan(data.plan);
+
+              setLoading (!loading)
+              
             })
           .catch(err => {
               Swal.fire({
