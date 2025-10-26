@@ -10,7 +10,7 @@ import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import { Calendar } from 'primereact/calendar';
 import { Stepper } from 'primereact/stepper';
 import { StepperPanel } from 'primereact/stepperpanel';
-import { createRoot } from 'react-dom/client'; 
+import { createRoot } from 'react-dom/client';
 import axios from "axios";
 import 'moment/locale/vi';
 
@@ -24,716 +24,717 @@ import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
 import NoteModal from '../Components/NoteModal';
 import History from '../Components/History';
-import {CheckAuthorization} from '../Components/CheckAuthorization';
+import { CheckAuthorization } from '../Components/CheckAuthorization';
 import dayjs from 'dayjs';
 
 
-  const ScheduleTest = () => {
+const ScheduleTest = () => {
 
-    const calendarRef = useRef(null);
-    moment.locale('vi');
-    const [showSidebar, setShowSidebar] = useState(false);
-    const [viewConfig, setViewConfig] = useState({timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true});
-    const [cleaningHidden, setCleaningHidden] = useState(false);
-    const [pendingChanges, setPendingChanges] = useState([]);
-    const [saving, setSaving] = useState(false);
-    const [selectedEvents, setSelectedEvents] = useState([]);
-    const [percentShow, setPercentShow] = useState("100%");
-    const searchResultsRef = useRef([]);
-    const currentIndexRef = useRef(-1);
-    const lastQueryRef = useRef("");
-    const slotViewWeeks = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60','resourceTimelineWeek4h'];
-    const slotViewMonths = [ 'resourceTimelineMonth1d','resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
-    const [slotIndex, setSlotIndex] = useState(0);
-    const [eventFontSize, setEventFontSize] = useState(14); // default 14px
-    const [selectedRows, setSelectedRows] = useState([]);
-    const [showNoteModal, setShowNoteModal] = useState(false);
-    const [showHistoryModal, setShowHistoryModal] = useState(false);
-    const [viewName, setViewName] = useState("resourceTimelineWeek");
+  const calendarRef = useRef(null);
+  moment.locale('vi');
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
+  const [cleaningHidden, setCleaningHidden] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [selectedEvents, setSelectedEvents] = useState([]);
+  const [percentShow, setPercentShow] = useState("100%");
+  const searchResultsRef = useRef([]);
+  const currentIndexRef = useRef(-1);
+  const lastQueryRef = useRef("");
+  const slotViewWeeks = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60', 'resourceTimelineWeek4h'];
+  const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
+  const [slotIndex, setSlotIndex] = useState(0);
+  const [eventFontSize, setEventFontSize] = useState(22); // default 14px
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [viewName, setViewName] = useState("resourceTimelineWeek");
+  const [showRenderBadge, setShowRenderBadge] = useState(false);
 
 
-    const [events, setEvents] = useState([]);
-    const [resources, setResources] = useState([]);
-    const [sumBatchByStage, setSumBatchByStage] = useState([]);
-    const [plan, setPlan] = useState([]);
-    const [quota, setQuota] = useState([]);
-    const [stageMap, setStageMap] = useState({});
-    const [historyData, setHistoryData] = useState([]);
-    const [type, setType] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [authorization, setAuthorization] = useState(false);
-    const [heightResource, setHeightResource] = useState("1px");
-    const [production, setProduction] = useState("PXV1");
-    const [quarantineRoom, setQuarantineRoom] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [sumBatchByStage, setSumBatchByStage] = useState([]);
+  const [plan, setPlan] = useState([]);
+  const [quota, setQuota] = useState([]);
+  const [stageMap, setStageMap] = useState({});
+  const [historyData, setHistoryData] = useState([]);
+  const [type, setType] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [authorization, setAuthorization] = useState(false);
+  const [heightResource, setHeightResource] = useState("1px");
+  const [production, setProduction] = useState("PXV1");
+  const [quarantineRoom, setQuarantineRoom] = useState([]);
 
-    /// Get dữ liệu ban đầu
-    useEffect(() => {
-    
-      Swal.fire({
-        title: "Đang tải...",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
+  /// Get dữ liệu ban đầu
+  useEffect(() => {
 
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      axios.post("/Schedual/view", {
-          startDate: activeStart.toISOString(),
-          endDate: activeEnd.toISOString(),
-          viewtype: viewName,
+    Swal.fire({
+      title: "Đang tải...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    axios.post("/Schedual/view", {
+      startDate: activeStart.toISOString(),
+      endDate: activeEnd.toISOString(),
+      viewtype: viewName,
+    })
+      .then(res => {
+
+        let data = res.data;
+
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
+        setEvents(data.events);
+        setResources(data.resources);
+        setType(data.type)
+        setAuthorization(data.authorization)
+        setPlan(data.plan);
+        setQuota(data.quota);
+        setStageMap(data.stageMap);
+        setSumBatchByStage(data.sumBatchByStage);
+        setProduction(data.production)
+        setQuarantineRoom(data.quarantineRoom)
+
+
+
+        switch (data.production) {
+          case "PXV1":
+            setHeightResource('1px');
+            break;
+          case "PXV2":
+            setHeightResource('50px');
+            break;
+          case "PXVH":
+            setHeightResource('50px');
+            break;
+          case "PXTN":
+            setHeightResource('50px');
+            break;
+          case "PXDN":
+            setHeightResource('60px');
+            break;
+        }
+
+        setTimeout(() => {
+          Swal.close();
+
+        }, 100);
+
+
+
       })
-        .then(res => {
-
-          let data = res.data;
-
-          if (typeof data === "string") {
-            data = data.replace(/^<!--.*?-->/, "").trim();
-            data = JSON.parse(data);
-          }
-          setEvents(data.events);
-          setResources(data.resources);
-          setType (data.type)
-          setAuthorization (data.authorization)
-          setPlan(data.plan);
-          setQuota(data.quota);
-          setStageMap(data.stageMap);
-          setSumBatchByStage(data.sumBatchByStage);
-          setProduction (data.production)
-          setQuarantineRoom (data.quarantineRoom)
-
-         
-
-          switch (data.production) {
-            case "PXV1":
-              setHeightResource('1px');
-              break;
-            case "PXV2":
-              setHeightResource('50px');
-              break;
-            case "PXVH":
-              setHeightResource('50px');
-              break;
-            case "PXTN":
-              setHeightResource('50px');
-              break;
-            case "PXDN":
-              setHeightResource('60px');
-              break;
-          }
-
-          setTimeout(() => {
-            Swal.close();
-
-          }, 100);
-
-
-
-        })
-        .catch(err =>
-          console.error("API error:", err)
-        );
-
-    }, [loading]);
-
-   /// Get dư liệu row được chọn
-    useEffect(() => {
-
-      new Draggable(document.getElementById('external-events'), {
-
-        itemSelector: '.fc-event',
-        eventData: (eventEl) => {
-
-          // Lấy selectedRows mới nhất từ state
-          const draggedData = selectedRows.length ? selectedRows : [];
-          //console.log (draggedData);
-          return {
-            title: draggedData.length > 1 ? `(${draggedData.length}) sản phẩm` : draggedData[0]?.product_code || 'Trống',
-            extendedProps: { rows: draggedData },
-          };
-        },
-      });
-    }, []);
-
-    /// UseEffect cho render nut search
-    useEffect(() => {
-        // sau khi calendar render xong, inject vào toolbar
-        const calendarApi = calendarRef.current?.getApi();
-        if (!calendarApi) return;
-
-        const toolbarEl = document.querySelector(".fc-searchBox-button");
-
-        const container = document.createElement("div");
-        toolbarEl.appendChild(container);
-
-        const root = ReactDOM.createRoot(container);
-        root.render(
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CalendarSearchBox onSearch={handleSearch} />
-
-        </div>
-
-        );
-        return () => {
-          root.unmount();
-          if (toolbarEl.contains(container)) {
-            toolbarEl.removeChild(container);
-          }
-        };
-
-    }, []);
-
-    ///
-    useEffect(() => {
-      const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
-      if (!toolbarEl) return;
-
-      const container = document.createElement("div");
-      toolbarEl.appendChild(container);
-
-      const root = ReactDOM.createRoot(container);
-      root.render(<EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} />);
-
-      return () => {
-        root.unmount();
-        toolbarEl.removeChild(container);
-      };
-    }, [eventFontSize]); // chỉ chạy 1 lần
-
-    ///
-    const handleSearch = (query, direction = "next") => {
-      const calendarApi = calendarRef.current?.getApi();
-      if (!calendarApi) return;
-
-      const events = calendarApi.getEvents();
-
-      const matches = events.filter(ev =>
-
-        ev.title.toLowerCase().includes(query.toLowerCase())
-
-
+      .catch(err =>
+        console.error("API error:", err)
       );
 
+  }, [loading]);
 
-      // Nếu không tìm thấy
-      if (matches.length === 0) {
-        Swal.fire({
-          icon: "info",
-          title: "Không tìm thấy",
-          text: "Không có sự kiện nào khớp.",
-          confirmButtonText: "OK",
-        });
-        clearHighlights();
-        searchResultsRef.current = [];
-        currentIndexRef.current = -1;
-        lastQueryRef.current = "";
-        return;
+  /// Get dư liệu row được chọn
+  useEffect(() => {
+
+    new Draggable(document.getElementById('external-events'), {
+
+      itemSelector: '.fc-event',
+      eventData: (eventEl) => {
+
+        // Lấy selectedRows mới nhất từ state
+        const draggedData = selectedRows.length ? selectedRows : [];
+        //console.log (draggedData);
+        return {
+          title: draggedData.length > 1 ? `(${draggedData.length}) sản phẩm` : draggedData[0]?.product_code || 'Trống',
+          extendedProps: { rows: draggedData },
+        };
+      },
+    });
+  }, []);
+
+  /// UseEffect cho render nut search
+  useEffect(() => {
+    // sau khi calendar render xong, inject vào toolbar
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+
+    const toolbarEl = document.querySelector(".fc-searchBox-button");
+
+    const container = document.createElement("div");
+    toolbarEl.appendChild(container);
+
+    const root = ReactDOM.createRoot(container);
+    root.render(
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <CalendarSearchBox onSearch={handleSearch} />
+
+      </div>
+
+    );
+    return () => {
+      root.unmount();
+      if (toolbarEl.contains(container)) {
+        toolbarEl.removeChild(container);
       }
-
-      // Nếu query mới, reset
-      if (query !== lastQueryRef.current) {
-        searchResultsRef.current = matches;
-        currentIndexRef.current = 0;
-        lastQueryRef.current = query;
-      } else {
-        // Next hoặc Previous
-        if (direction === "next") {
-          currentIndexRef.current = (currentIndexRef.current + 1) % matches.length;
-        } else if (direction === "prev") {
-          currentIndexRef.current =
-            (currentIndexRef.current - 1 + matches.length) % matches.length;
-        }
-      }
-
-      highlightAllEvents();
     };
 
-    /// --- Highlight tất cả sự kiện ---
-    const highlightAllEvents = () => {
-      const matches = searchResultsRef.current;
-      if (!matches || matches.length === 0) return;
+  }, []);
 
-      // Xoá highlight cũ
+  ///
+  useEffect(() => {
+    const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
+    if (!toolbarEl) return;
+
+    const container = document.createElement("div");
+    toolbarEl.appendChild(container);
+
+    const root = ReactDOM.createRoot(container);
+    root.render(<EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} />);
+
+    return () => {
+      root.unmount();
+      toolbarEl.removeChild(container);
+    };
+  }, [eventFontSize]); // chỉ chạy 1 lần
+
+  ///
+  const handleSearch = (query, direction = "next") => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+
+    const events = calendarApi.getEvents();
+
+    const matches = events.filter(ev =>
+
+      ev.title.toLowerCase().includes(query.toLowerCase())
+
+
+    );
+
+
+    // Nếu không tìm thấy
+    if (matches.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "Không tìm thấy",
+        text: "Không có sự kiện nào khớp.",
+        confirmButtonText: "OK",
+      });
       clearHighlights();
-
-      matches.forEach((ev, index) => {
-        const el = document.querySelector(`[data-event-id="${ev.id}"]`);
-        if (el) {
-          if (index === currentIndexRef.current) {
-            el.classList.add("highlight-current-event"); // màu đậm
-            scrollToEvent(el);
-          } else {
-            el.classList.add("highlight-event"); // màu nhạt
-          }
-        }
-      });
-    };
-
-    /// --- Xoá highlight ---
-    const clearHighlights = () => {
-      document.querySelectorAll(".highlight-event, .highlight-current-event").forEach(el => {
-        el.classList.remove("highlight-event", "highlight-current-event");
-      });
-    };
-
-    // / --- Scroll sự kiện hiện tại vào view ---
-    const scrollToEvent = (el) => {
-      if (!el) return;
-
-      el.scrollIntoView({
-        behavior: "auto", // không smooth để tránh rung
-        block: "center",
-        inline: "center",
-      });
-
-      setTimeout(() => {
-        window.scrollBy({ top: -50, left: -500, behavior: "auto" });
-      }, 1);
-
-    };
-
-
-    const handleShowList = () => {
-  
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
-      setShowSidebar(true);
+      searchResultsRef.current = [];
+      currentIndexRef.current = -1;
+      lastQueryRef.current = "";
+      return;
     }
 
-    ///  Thay đôi khung thời gian
-    const handleViewChange = (view) => {
+    // Nếu query mới, reset
+    if (query !== lastQueryRef.current) {
+      searchResultsRef.current = matches;
+      currentIndexRef.current = 0;
+      lastQueryRef.current = query;
+    } else {
+      // Next hoặc Previous
+      if (direction === "next") {
+        currentIndexRef.current = (currentIndexRef.current + 1) % matches.length;
+      } else if (direction === "prev") {
+        currentIndexRef.current =
+          (currentIndexRef.current - 1 + matches.length) % matches.length;
+      }
+    }
 
+    highlightAllEvents();
+  };
+
+  /// --- Highlight tất cả sự kiện ---
+  const highlightAllEvents = () => {
+    const matches = searchResultsRef.current;
+    if (!matches || matches.length === 0) return;
+
+    // Xoá highlight cũ
+    clearHighlights();
+
+    matches.forEach((ev, index) => {
+      const el = document.querySelector(`[data-event-id="${ev.id}"]`);
+      if (el) {
+        if (index === currentIndexRef.current) {
+          el.classList.add("highlight-current-event"); // màu đậm
+          scrollToEvent(el);
+        } else {
+          el.classList.add("highlight-event"); // màu nhạt
+        }
+      }
+    });
+  };
+
+  /// --- Xoá highlight ---
+  const clearHighlights = () => {
+    document.querySelectorAll(".highlight-event, .highlight-current-event").forEach(el => {
+      el.classList.remove("highlight-event", "highlight-current-event");
+    });
+  };
+
+  // / --- Scroll sự kiện hiện tại vào view ---
+  const scrollToEvent = (el) => {
+    if (!el) return;
+
+    el.scrollIntoView({
+      behavior: "auto", // không smooth để tránh rung
+      block: "center",
+      inline: "center",
+    });
+
+    setTimeout(() => {
+      window.scrollBy({ top: -50, left: -500, behavior: "auto" });
+    }, 1);
+
+  };
+
+
+  const handleShowList = () => {
+
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+    setShowSidebar(true);
+  }
+
+  ///  Thay đôi khung thời gian
+  const handleViewChange = (view) => {
+
+    Swal.fire({
+      title: "Đang tải...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+
+    setViewConfig({ is_clearning: false, timeView: view });
+    calendarRef.current?.getApi()?.changeView(view)
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
+    setViewName(view)
+    axios.post(`/Schedual/view`, {
+      startDate: activeStart.toISOString(),
+      endDate: activeEnd.toISOString(),
+      viewtype: view
+    })
+      .then(res => {
+        let data = res.data;
+        // Trường hợp response trả về có HTML thừa (ví dụ: <!-- -->)
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
+        // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
+        setEvents(data.events);
+        setResources(data.resources);
+        setSumBatchByStage(data.sumBatchByStage)
+
+
+        setTimeout(() => {
+          Swal.close();
+        }, 500);
+
+      })
+      .catch(err => {
+        console.error("API error:", err.response?.data || err.message);
+        Swal.fire({
+          icon: 'error',
+          title: 'Có lỗi xảy ra',
+          text: 'Vui lòng thử lại sau.',
+        });
+      });
+  };
+
+  /// Tô màu các event trùng khớp
+  const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+
+    const pm = event.extendedProps.plan_master_id;
+
+    if (!isCtrlPressed) {
+      searchResultsRef.current = [];
+      currentIndexRef.current = -1;
+    }
+
+    // Lấy tất cả event có cùng plan_master_id
+    const matches = calendarApi.getEvents().filter(
+      ev => ev.extendedProps.plan_master_id === pm
+    );
+
+    // Gộp vào danh sách (tránh trùng nếu đã có)
+    matches.forEach(m => {
+      if (!searchResultsRef.current.some(ev => ev.id === m.id)) {
+        searchResultsRef.current.push(m);
+      }
+    });
+
+    // Sau khi có matches
+    setSelectedEvents(
+      matches.map(ev => ({
+        id: ev.id,
+        stage_code: ev.extendedProps.stage_code,
+        plan_master_id: ev.extendedProps.plan_master_id
+      }))
+    );
+
+    // Đặt index ở phần tử đầu tiên
+    currentIndexRef.current = searchResultsRef.current.length > 0 ? 0 : -1;
+
+    highlightAllEvents();
+  };
+
+  /// Bỏ tô màu các event trùng khớp
+  const handleEventUnHightLine = () => {
+    document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
+  };
+
+  // Nhân Dữ liệu để tạo mới event
+  const handleEventReceive = (info) => {
+    // chưa chọn row
+    const start = info.event.start;
+    const now = new Date();
+    const resourceId = info.event.getResources?.()[0]?.id ?? null;
+    info.event.remove();
+
+    if (selectedRows.length === 0) {
       Swal.fire({
-        title: "Đang tải...",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
+        icon: 'warning',
+        title: 'Vui Lòng Chọn Sản Phẩm Muốn Sắp Lịch',
+        timer: 1000,
+        showConfirmButton: false,
+      });
+      return false
+    }
+    // chưa định mức
+    if (selectedRows[0].permisson_room.length == 0 && selectedRows[0].stage_code !== 9) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Sản Phẩm Chưa Được Định Mức',
+        timer: 1000,
+        showConfirmButton: false,
+      });
+      return false;
+    }
+
+    // Phòng được chọn và định mực k giống
+    const hasPermission = selectedRows.some(row => {
+      if (!row.permisson_room) return false;
+
+      if (Array.isArray(row.permisson_room)) {
+        // Nếu backend trả mảng thì check trực tiếp
+        return row.permisson_room.includes(resourceId);
+      } else if (typeof row.permisson_room === "object") {
+        // Nếu backend trả object {id_room: code}
+        return Object.keys(row.permisson_room).includes(String(resourceId));
+      }
+      return false;
+    });
+
+    if (!hasPermission && selectedRows[0].stage_code < 8) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sản Phẩm Sắp Lịch Không Đúng Phòng Đã Định Mức",
+        timer: 1000,
+        showConfirmButton: false,
       });
 
+      return false;
+    }
 
-      setViewConfig({ is_clearning: false, timeView: view });
-      calendarRef.current?.getApi()?.changeView(view)
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    if (start <= now) {
+      Swal.fire({
+        icon: "warning",
+        title: "Thời gian bắt đầu nhỏ hơn thời gian hiện tại!",
+        timer: 1000,
+        showConfirmButton: false,
+      });
+      return false;
+    }
 
-      setViewName (view)
-      axios.post(`/Schedual/view`, {
-          startDate: activeStart.toISOString(),
-          endDate: activeEnd.toISOString() ,
-          viewtype: view
-        })
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
+    if (selectedRows[0].stage_code !== 8) {
+      axios.put('/Schedual/store', {
+        room_id: resourceId,
+        stage_code: selectedRows[0].stage_codes,
+        start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+        products: selectedRows,
+        startDate: activeStart.toISOString(),
+        endDate: activeEnd.toISOString()
+      })
         .then(res => {
           let data = res.data;
-          // Trường hợp response trả về có HTML thừa (ví dụ: <!-- -->)
           if (typeof data === "string") {
             data = data.replace(/^<!--.*?-->/, "").trim();
             data = JSON.parse(data);
           }
-          // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
+
           setEvents(data.events);
           setResources(data.resources);
-          setSumBatchByStage (data.sumBatchByStage)
-
-
-          setTimeout(() => {
-            Swal.close();
-          }, 500);
-
-        })
-        .catch(err => {
-          console.error("API error:", err.response?.data || err.message);
-          Swal.fire({
-            icon: 'error',
-            title: 'Có lỗi xảy ra',
-            text: 'Vui lòng thử lại sau.',
-          });
-        });
-    };
-
-    /// Tô màu các event trùng khớp
-    const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
-      const calendarApi = calendarRef.current?.getApi();
-      if (!calendarApi) return;
-     
-      const pm = event.extendedProps.plan_master_id;
-
-      if (!isCtrlPressed) {
-        searchResultsRef.current = [];
-        currentIndexRef.current = -1;
-      }
-
-      // Lấy tất cả event có cùng plan_master_id
-      const matches = calendarApi.getEvents().filter(
-        ev => ev.extendedProps.plan_master_id === pm
-      );
-
-      // Gộp vào danh sách (tránh trùng nếu đã có)
-      matches.forEach(m => {
-        if (!searchResultsRef.current.some(ev => ev.id === m.id)) {
-          searchResultsRef.current.push(m);
-        }
-      });
-
-      // Sau khi có matches
-      setSelectedEvents(
-        matches.map(ev => ({
-          id: ev.id,
-          stage_code: ev.extendedProps.stage_code,
-          plan_master_id: ev.extendedProps.plan_master_id
-        }))
-      );
-
-      // Đặt index ở phần tử đầu tiên
-      currentIndexRef.current = searchResultsRef.current.length > 0 ? 0 : -1;
-
-      highlightAllEvents();
-    };
-
-    /// Bỏ tô màu các event trùng khớp
-    const handleEventUnHightLine = () => {
-      document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
-    };
-
-    // Nhân Dữ liệu để tạo mới event
-    const handleEventReceive = (info) => {
-      // chưa chọn row
-      const start = info.event.start;
-      const now = new Date();
-      const resourceId = info.event.getResources?.()[0]?.id ?? null;
-      info.event.remove();
-
-      if (selectedRows.length === 0 ){
-          Swal.fire({
-            icon: 'warning',
-            title:'Vui Lòng Chọn Sản Phẩm Muốn Sắp Lịch',
-              timer: 1000,
-              showConfirmButton: false,
-            });
-          return false
-      }
-      // chưa định mức
-      if (selectedRows[0].permisson_room.length == 0 && selectedRows[0].stage_code !== 9){
-          Swal.fire({
-            icon: 'warning',
-            title:'Sản Phẩm Chưa Được Định Mức',
-              timer: 1000,
-              showConfirmButton: false,
-          });
-          return false;
-      }
-
-      // Phòng được chọn và định mực k giống
-      const hasPermission = selectedRows.some(row => {
-        if (!row.permisson_room) return false;
-
-        if (Array.isArray(row.permisson_room)) {
-          // Nếu backend trả mảng thì check trực tiếp
-          return row.permisson_room.includes(resourceId);
-        } else if (typeof row.permisson_room === "object") {
-          // Nếu backend trả object {id_room: code}
-          return Object.keys(row.permisson_room).includes(String(resourceId));
-        }
-        return false;
-      });
-
-      if (!hasPermission && selectedRows[0].stage_code < 8) {
-        Swal.fire({
-          icon: "warning",
-          title: "Sản Phẩm Sắp Lịch Không Đúng Phòng Đã Định Mức",
-          timer: 1000,
-          showConfirmButton: false,
-        });
-
-          return false;
-      }
-
-      if (start <= now){
-        Swal.fire({
-          icon: "warning",
-          title: "Thời gian bắt đầu nhỏ hơn thời gian hiện tại!",
-          timer: 1000,
-          showConfirmButton: false,
-        });
-          return false;
-      }
-
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
-      if (selectedRows[0].stage_code !== 8){
-          axios.put('/Schedual/store', {
-              room_id: resourceId,
-              stage_code: selectedRows[0].stage_codes,
-              start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
-              products: selectedRows,
-              startDate: activeStart.toISOString(),
-              endDate: activeEnd.toISOString()
-          })
-          .then(res => {
-              let data = res.data;
-              if (typeof data === "string") {
-                data = data.replace(/^<!--.*?-->/, "").trim();
-                data = JSON.parse(data);
-              }
-              
-              setEvents(data.events);
-              setResources(data.resources);
-              setSumBatchByStage(data.sumBatchByStage);
-              setPlan(data.plan);
-
-              setSelectedRows([]);
-          })
-          .catch(err => {
-              console.error("Lỗi tạo lịch:", err.response?.data || err.message);
-          });
-      }else if (selectedRows[0].stage_code == 8){
-
-            axios.put('/Schedual/store_maintenance', {
-                stage_code: 8,
-                start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
-                products: selectedRows,
-                is_HVAC: selectedRows[0]?.is_HVAC ?? false,
-                startDate: activeStart.toISOString(),
-                endDate: activeEnd.toISOString()
-            })
-            .then(res => {
-                let data = res.data;
-                if (typeof data === "string") {
-                  data = data.replace(/^<!--.*?-->/, "").trim();
-                  data = JSON.parse(data);
-                }
-                setEvents(data.events);
-                setResources(data.resources);
-                setSumBatchByStage(data.sumBatchByStage);
-                setPlan(data.plan);
-
-                setSelectedRows([]);
-            })
-            .catch(err => {
-                console.error("Lỗi tạo lịch bảo trì:", err.response?.data || err.message);
-            });
-      }
-    };
-
-    /// Ẩn hiện sự kiện vệ sinh
-    const toggleCleaningEvents = () => {
-      const calendarApi = calendarRef.current?.getApi();
-      if (!calendarApi) return;
-
-      Swal.fire({
-        title: cleaningHidden ? "Hiển thị sự kiện vệ sinh..." : "Ẩn sự kiện vệ sinh...",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      setTimeout(() => {
-        const view = calendarApi.view?.type;
-
-        calendarApi.getEvents().forEach(event => {
-          if (event.extendedProps.is_clearning) {
-            const els = document.querySelectorAll(`[data-event-id="${event.id}"]`);
-            els.forEach(el => {
-              el.style.display = cleaningHidden ? "" : "none";
-            });
-          }
-        });
-
-        setCleaningHidden(!cleaningHidden);
-
-        Swal.close();
-        }, 300); // delay 300ms để thấy loading
-    };
-
-    /// 3 Ham sử lý thay đôi sự kiện
-    const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
-    
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
-        info.revert();
-        return false
-      } ;
-
-      const draggedEvent = info.event;
-      const delta = info.delta;
-      const calendarApi = info.view.calendar;
-
-      // Nếu chưa được chọn thì tự động chọn
-      if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
-        toggleEventSelect(draggedEvent);
-      }
-
-      // Nếu đã chọn thì xử lý nhóm
-      if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
-        info.revert();
-
-        selectedEvents.forEach(sel => {
-          const event = calendarApi.getEventById(sel.id);
-          if (event) {
-
-
-            const newStart = new Date(
-                event.start.getTime() +
-                delta.milliseconds +
-                delta.days * 24 * 60 * 60 * 1000
-              );
-
-              const newEnd = new Date(
-                event.end.getTime() +
-                delta.milliseconds +
-                delta.days * 24 * 60 * 60 * 1000
-              );
-            event.setDates(newStart, newEnd);
-
-            handleEventChange({ event });
-          }
-        });
-      } else {
-        // Nếu không nằm trong selectedEvents thì xử lý đơn lẻ
-        handleEventChange(info);
-      }
-
-    };
-    ///
-    const handleEventChange = (changeInfo) => {
-      const changedEvent = changeInfo.event;
-      // Thêm hoặc cập nhật event vào pendingChanges
-      setPendingChanges(prev => {
-
-          const exists = prev.find(e => e.id === changedEvent.id);
-          const updated = {
-            id: changedEvent.id,
-            start: changedEvent.start.toISOString(),
-            end: changedEvent.end.toISOString(),
-            resourceId: changeInfo.event.getResources?.()[0]?.id ?? null,
-            title: changedEvent.title
-            // các dữ liệu khác nếu cần
-          };
-
-          if (exists) {
-            // Cập nhật lại nếu đã có
-            return prev.map(e => e.id === changedEvent.id ? updated : e);
-          } else {
-            // Thêm mới
-            return [...prev, updated];
-          }
-        });
-
-    };
-    ///
-    const handleSaveChanges = async () => {
-     
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
-        info.revert();
-        return false
-      } ;
-
-      if (pendingChanges.length === 0) {
-          Swal.fire({
-            icon: 'info',
-            title: 'Không có thay đổi',
-            text: 'Bạn chưa thay đổi sự kiện nào.',
-            timer: 2000,
-            showConfirmButton: false,
-          });
-        return;
-      }
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      setSaving(true);
-
-      axios.put('/Schedual/update', {
-          changes: pendingChanges.map(change => ({
-              id: change.id,
-              start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
-              end: dayjs(change.end).format('YYYY-MM-DD HH:mm:ss'),
-              resourceId: change.resourceId,
-              title: change.title,
-              C_end: change.C_end || false
-          })),
-          startDate: activeStart.toISOString(),
-          endDate: activeEnd.toISOString()
-      })
-      .then(res => {
-          let data = res.data;
-          if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-          }
-          setEvents(data.events);
           setSumBatchByStage(data.sumBatchByStage);
           setPlan(data.plan);
-          Swal.fire({
-              icon: 'success',
-              title: 'Thành công!',
-              text: 'Đã lưu tất cả thay đổi.',
-              timer: 1000,
-              showConfirmButton: false,
+
+          setSelectedRows([]);
+        })
+        .catch(err => {
+          console.error("Lỗi tạo lịch:", err.response?.data || err.message);
+        });
+    } else if (selectedRows[0].stage_code == 8) {
+
+      axios.put('/Schedual/store_maintenance', {
+        stage_code: 8,
+        start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+        products: selectedRows,
+        is_HVAC: selectedRows[0]?.is_HVAC ?? false,
+        startDate: activeStart.toISOString(),
+        endDate: activeEnd.toISOString()
+      })
+        .then(res => {
+          let data = res.data;
+          if (typeof data === "string") {
+            data = data.replace(/^<!--.*?-->/, "").trim();
+            data = JSON.parse(data);
+          }
+          setEvents(data.events);
+          setResources(data.resources);
+          setSumBatchByStage(data.sumBatchByStage);
+          setPlan(data.plan);
+
+          setSelectedRows([]);
+        })
+        .catch(err => {
+          console.error("Lỗi tạo lịch bảo trì:", err.response?.data || err.message);
+        });
+    }
+  };
+
+  /// Ẩn hiện sự kiện vệ sinh
+  const toggleCleaningEvents = () => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+
+    Swal.fire({
+      title: cleaningHidden ? "Hiển thị sự kiện vệ sinh..." : "Ẩn sự kiện vệ sinh...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    setTimeout(() => {
+      const view = calendarApi.view?.type;
+
+      calendarApi.getEvents().forEach(event => {
+        if (event.extendedProps.is_clearning) {
+          const els = document.querySelectorAll(`[data-event-id="${event.id}"]`);
+          els.forEach(el => {
+            el.style.display = cleaningHidden ? "" : "none";
           });
-          setSaving(false);
-          setPendingChanges([]);
+        }
+      });
+
+      setCleaningHidden(!cleaningHidden);
+
+      Swal.close();
+    }, 300); // delay 300ms để thấy loading
+  };
+
+  /// 3 Ham sử lý thay đôi sự kiện
+  const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
+      info.revert();
+      return false
+    };
+
+    const draggedEvent = info.event;
+    const delta = info.delta;
+    const calendarApi = info.view.calendar;
+
+    // Nếu chưa được chọn thì tự động chọn
+    if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+      toggleEventSelect(draggedEvent);
+    }
+
+    // Nếu đã chọn thì xử lý nhóm
+    if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+      info.revert();
+
+      selectedEvents.forEach(sel => {
+        const event = calendarApi.getEventById(sel.id);
+        if (event) {
+
+
+          const newStart = new Date(
+            event.start.getTime() +
+            delta.milliseconds +
+            delta.days * 24 * 60 * 60 * 1000
+          );
+
+          const newEnd = new Date(
+            event.end.getTime() +
+            delta.milliseconds +
+            delta.days * 24 * 60 * 60 * 1000
+          );
+          event.setDates(newStart, newEnd);
+
+          handleEventChange({ event });
+        }
+      });
+    } else {
+      // Nếu không nằm trong selectedEvents thì xử lý đơn lẻ
+      handleEventChange(info);
+    }
+
+  };
+  ///
+  const handleEventChange = (changeInfo) => {
+    const changedEvent = changeInfo.event;
+    // Thêm hoặc cập nhật event vào pendingChanges
+    setPendingChanges(prev => {
+
+      const exists = prev.find(e => e.id === changedEvent.id);
+      const updated = {
+        id: changedEvent.id,
+        start: changedEvent.start.toISOString(),
+        end: changedEvent.end.toISOString(),
+        resourceId: changeInfo.event.getResources?.()[0]?.id ?? null,
+        title: changedEvent.title
+        // các dữ liệu khác nếu cần
+      };
+
+      if (exists) {
+        // Cập nhật lại nếu đã có
+        return prev.map(e => e.id === changedEvent.id ? updated : e);
+      } else {
+        // Thêm mới
+        return [...prev, updated];
+      }
+    });
+
+  };
+  ///
+  const handleSaveChanges = async () => {
+
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
+      info.revert();
+      return false
+    };
+
+    if (pendingChanges.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Không có thay đổi',
+        text: 'Bạn chưa thay đổi sự kiện nào.',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    setSaving(true);
+
+    axios.put('/Schedual/update', {
+      changes: pendingChanges.map(change => ({
+        id: change.id,
+        start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
+        end: dayjs(change.end).format('YYYY-MM-DD HH:mm:ss'),
+        resourceId: change.resourceId,
+        title: change.title,
+        C_end: change.C_end || false
+      })),
+      startDate: activeStart.toISOString(),
+      endDate: activeEnd.toISOString()
+    })
+      .then(res => {
+        let data = res.data;
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
+        setEvents(data.events);
+        setSumBatchByStage(data.sumBatchByStage);
+        setPlan(data.plan);
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Đã lưu tất cả thay đổi.',
+          timer: 1000,
+          showConfirmButton: false,
+        });
+        setSaving(false);
+        setPendingChanges([]);
       })
       .catch(err => {
-       console.error("Lỗi khi lưu events:", err.response?.data || err.message);
+        console.error("Lỗi khi lưu events:", err.response?.data || err.message);
       });
-    };
+  };
 
-    /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
-    const toggleEventSelect = (event) => {
-      setSelectedEvents((prevSelected) => {
-        const exists = prevSelected.some(ev => ev.id === event.id);
-        return exists
-          ? prevSelected.filter(ev => ev.id !== event.id)
-          : [...prevSelected, { id: event.id, stage_code: event.extendedProps.stage_code }];
-      });
-    };
+  /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
+  const toggleEventSelect = (event) => {
+    setSelectedEvents((prevSelected) => {
+      const exists = prevSelected.some(ev => ev.id === event.id);
+      return exists
+        ? prevSelected.filter(ev => ev.id !== event.id)
+        : [...prevSelected, { id: event.id, stage_code: event.extendedProps.stage_code }];
+    });
+  };
 
-    /// Xử lý chọn 1 sự kiện -> selectedEvents
-    const handleEventClick = (clickInfo) => {
-      const event = clickInfo.event;
-      if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
-        setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
-      } else {
-        toggleEventSelect(event);
+  /// Xử lý chọn 1 sự kiện -> selectedEvents
+  const handleEventClick = (clickInfo) => {
+    const event = clickInfo.event;
+    if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
+      setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
+    } else {
+      toggleEventSelect(event);
+    }
+
+  };
+
+  /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
+  const handleClear = () => {
+
+    setSelectedEvents([]);
+
+    handleEventUnHightLine();
+  };
+
+  /// Xử lý Chạy Lịch Tư Động
+  let emptyPermission = null;
+  const handleAutoSchedualer = () => {
+
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+    let plansort = plan.sort((a, b) => a.stage_code - b.stage_code);
+
+    const hasEmptyPermission = plansort.some(item => {
+      const perm = item.permisson_room
+      const isEmptyArray = Array.isArray(perm) && perm.length === 0;
+
+      const matched = (
+        item.stage_code >= 3 &&
+        item.stage_code <= 7 &&
+        isEmptyArray
+      );
+
+      if (matched) {
+        emptyPermission = item; // 🔹 Ghi ra biến bên ngoài
       }
 
-    };
+      return matched; // some() sẽ dừng ngay khi true
+    });
 
-    /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
-    const handleClear = () => {
-      
-      setSelectedEvents([]);
-      
-      handleEventUnHightLine ();
-    };
+    // true hoặc false
 
-    /// Xử lý Chạy Lịch Tư Động
-    let emptyPermission  = null;
-    const handleAutoSchedualer = () => {
-      
-        if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
-          let plansort = plan.sort((a, b) => a.stage_code - b.stage_code);
-
-          const hasEmptyPermission = plansort.some(item => {
-              const perm = item.permisson_room
-              const isEmptyArray = Array.isArray(perm) && perm.length === 0;
-            
-              const matched = (
-                  item.stage_code >= 3 &&
-                  item.stage_code <= 7 &&
-                  isEmptyArray
-                );
-             
-                if (matched) {
-                  emptyPermission = item; // 🔹 Ghi ra biến bên ngoài
-                }
-
-                return matched; // some() sẽ dừng ngay khi true
-            });
-
-        // true hoặc false
-
-      let selectedDates = [];
-      Swal.fire({
-        title: 'Cấu Hình Chung Sắp Lịch',
-        html: `
+    let selectedDates = [];
+    Swal.fire({
+      title: 'Cấu Hình Chung Sắp Lịch',
+      html: `
           <div class="cfg-wrapper">
             <div class="cfg-card">
               <!-- Hàng Ngày chạy -->
@@ -797,90 +798,88 @@ import dayjs from 'dayjs';
               </div>
 
 
-              ${
-                hasEmptyPermission
-                  ? `<p style="color:red;font-weight:600;margin-top:10px;">
+              ${hasEmptyPermission
+          ? `<p style="color:red;font-weight:600;margin-top:10px;">
                       ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
                       Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
                     </p>`
-                  : ''
-              }
+          : ''
+        }
 
             </div>
           </div>
         `,
-        width: 700,
-        customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
-        showCancelButton: true,
-        confirmButtonText: 'Chạy',
-        cancelButtonText: 'Hủy',
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
+      width: 700,
+      customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+      showCancelButton: true,
+      confirmButtonText: 'Chạy',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
 
-        didOpen: () => {
-      // ------------------ Calendar ------------------
-      const calendarContainer = document.getElementById("calendar-container");
-      const calendarRoot = ReactDOM.createRoot(calendarContainer);
+      didOpen: () => {
+        // ------------------ Calendar ------------------
+        const calendarContainer = document.getElementById("calendar-container");
+        const calendarRoot = ReactDOM.createRoot(calendarContainer);
 
-      const CalendarPopup = () => {
-        const [localDates, setLocalDates] = React.useState([]);
+        const CalendarPopup = () => {
+          const [localDates, setLocalDates] = React.useState([]);
 
-        const handleChange = (e) => {
-          const selected = e.value.map(d => {
-            const date = new Date(d);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
-            return `${year}-${month}-${day}`;
-          });
+          const handleChange = (e) => {
+            const selected = e.value.map(d => {
+              const date = new Date(d);
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const day = String(date.getDate()).padStart(2, "0");
+              return `${year}-${month}-${day}`;
+            });
 
-          setLocalDates(e.value);
-          selectedDates = selected;
+            setLocalDates(e.value);
+            selectedDates = selected;
+          };
+
+          return (
+            <div className="card flex justify-content-center">
+              <Calendar
+                value={localDates}
+                onChange={handleChange}
+                selectionMode="multiple"
+                inline
+                readOnlyInput
+              />
+            </div>
+          );
         };
 
-        return (
-          <div className="card flex justify-content-center">
-            <Calendar
-              value={localDates}
-              onChange={handleChange}
-              selectionMode="multiple"
-              inline
-              readOnlyInput
-            />
-          </div>
-        );
-      };
+        calendarRoot.render(<CalendarPopup />);
 
-      calendarRoot.render(<CalendarPopup />);
+        // ------------------ Stepper ------------------
+        const stepperContainer = document.getElementById("stepper-container");
 
-  // ------------------ Stepper ------------------
-      const stepperContainer = document.getElementById("stepper-container");
+        if (stepperContainer) {
+          const stepperRoot = createRoot(stepperContainer);
 
-          if (stepperContainer) {
-            const stepperRoot = createRoot(stepperContainer);
-
-            const StepperPopup = () => {
+          const StepperPopup = () => {
             const [selected, setSelected] = React.useState(null);
 
-              const getClass = (value) =>
-                `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${
-                  selected === value ? "bg-primary text-white" : ""
+            const getClass = (value) =>
+              `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""
               }`;
-              console.log ()
-           
-              return (
-                <Stepper style={{ width: "100%" }}>
-                  {(emptyPermission == null || emptyPermission.stage_code >= 4) &&  (
-                    <StepperPanel header="PC" >
-                      <div className="flex flex-column h-12rem" >
-                        <div
-                          className={getClass("Pha Chế") }>
-                          Pha Chế
-                        </div>
+            console.log()
+
+            return (
+              <Stepper style={{ width: "100%" }}>
+                {(emptyPermission == null || emptyPermission.stage_code >= 4) && (
+                  <StepperPanel header="PC" >
+                    <div className="flex flex-column h-12rem" >
+                      <div
+                        className={getClass("Pha Chế")}>
+                        Pha Chế
                       </div>
-                    </StepperPanel>)}
-                  
-                  {(emptyPermission == null || emptyPermission.stage_code >= 5) && (
+                    </div>
+                  </StepperPanel>)}
+
+                {(emptyPermission == null || emptyPermission.stage_code >= 5) && (
                   <StepperPanel header="THT" readOnlyInput>
                     <div className="flex flex-column h-12rem">
                       <div
@@ -890,156 +889,155 @@ import dayjs from 'dayjs';
                       </div>
                     </div>
                   </StepperPanel>)}
-                  {(emptyPermission == null || emptyPermission.stage_code >= 6) && (
+                {(emptyPermission == null || emptyPermission.stage_code >= 6) && (
                   <StepperPanel header="ĐH">
                     <div className="flex flex-column h-12rem">
                       <div
                         className={getClass("ĐH")}
-                        
+
                       >
                         Pha Chế ➡ Định Hình
                       </div>
                     </div>
                   </StepperPanel>)}
-                 {(emptyPermission == null || emptyPermission.stage_code >= 7 ) && ( 
+                {(emptyPermission == null || emptyPermission.stage_code >= 7) && (
                   <StepperPanel header="BP" disabled={true}>
                     <div className="flex flex-column h-12rem">
                       <div
                         className={getClass("BP")}
-                        
+
                       >
                         Pha Chế ➡ Bao Phim
                       </div>
                     </div>
                   </StepperPanel>)}
-                   {(emptyPermission == null || emptyPermission.stage_code >= 8 ) && (
+                {(emptyPermission == null || emptyPermission.stage_code >= 8) && (
                   <StepperPanel header="ĐG">
                     <div className="flex flex-column h-12rem">
                       <div
                         className={getClass("ĐG")}
-                        
-                        >
+
+                      >
                         Pha Chế ➡ Đóng Gói
                       </div>
                     </div>
                   </StepperPanel>)}
 
-                </Stepper>
-              );
-            };
+              </Stepper>
+            );
+          };
 
-            stepperRoot.render(<StepperPopup />);
-          }
-
-          // ------------------ Disable Confirm if missing permission ------------------
-
-
-          if (emptyPermission.stage_code < 4) {
-            const confirmBtn = Swal.getConfirmButton();
-            confirmBtn.disabled = false;
-            confirmBtn.style.opacity = "0.5";
-            confirmBtn.style.cursor = "not-allowed";
-          }
-
-
-
-        }
-        ,
-        preConfirm: () => {
-          
-          if (emptyPermission.stage_code < 4) {
-            Swal.showValidationMessage('Vui lòng định mức đầy đủ ít nhất một công đoạn trước khi sắp lịch tự động!');
-            return false;
-          }
-
-          const formValues = {};
-          document.querySelectorAll('.swal2-input').forEach(input => {
-            formValues[input.name] = input.value;
-          });
-
-          const activeStep = document.querySelector('li[data-p-active="true"]');
-          const activeStepText = activeStep? activeStep.querySelector('span.p-stepper-title')?.textContent: null;
-
-        
-          const workSunday = document.getElementById('work-sunday');
-          formValues.work_sunday = workSunday.checked;
-
-          formValues.selectedDates = selectedDates;
-          formValues.selectedStep = activeStepText??"PC";
-
-          if (!formValues.start_date) {
-            Swal.showValidationMessage('Vui lòng chọn ngày!');
-            return false;
-          }
-
-          return formValues;
+          stepperRoot.render(<StepperPopup />);
         }
 
-      }).then((result) => {
+        // ------------------ Disable Confirm if missing permission ------------------
 
-        if (result.isConfirmed) {
-          Swal.fire({
-            title: 'Đang chạy Auto Scheduler...',
-            text: 'Vui lòng chờ trong giây lát',
-            allowOutsideClick: false,
-            didOpen: () => {
-              Swal.showLoading();
-            },
-          });
 
-          const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-          
-          axios.post('/Schedual/scheduleAll', {
-              ...result.value,
-              startDate: activeStart.toISOString(),
-              endDate: activeEnd.toISOString(),
-             
-            })
+        if (emptyPermission.stage_code < 4) {
+          const confirmBtn = Swal.getConfirmButton();
+          confirmBtn.disabled = false;
+          confirmBtn.style.opacity = "0.5";
+          confirmBtn.style.cursor = "not-allowed";
+        }
+
+
+
+      }
+      ,
+      preConfirm: () => {
+
+        if (emptyPermission.stage_code < 4) {
+          Swal.showValidationMessage('Vui lòng định mức đầy đủ ít nhất một công đoạn trước khi sắp lịch tự động!');
+          return false;
+        }
+
+        const formValues = {};
+        document.querySelectorAll('.swal2-input').forEach(input => {
+          formValues[input.name] = input.value;
+        });
+
+        const activeStep = document.querySelector('li[data-p-active="true"]');
+        const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
+
+
+        const workSunday = document.getElementById('work-sunday');
+        formValues.work_sunday = workSunday.checked;
+
+        formValues.selectedDates = selectedDates;
+        formValues.selectedStep = activeStepText ?? "PC";
+
+        if (!formValues.start_date) {
+          Swal.showValidationMessage('Vui lòng chọn ngày!');
+          return false;
+        }
+
+        return formValues;
+      }
+
+    }).then((result) => {
+
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Đang chạy Auto Scheduler...',
+          text: 'Vui lòng chờ trong giây lát',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
+        axios.post('/Schedual/scheduleAll', {
+          ...result.value,
+          startDate: activeStart.toISOString(),
+          endDate: activeEnd.toISOString(),
+
+        })
           .then(res => {
-              let data = res.data;
-              if (typeof data === "string") {
-                data = data.replace(/^<!--.*?-->/, "").trim();
-                data = JSON.parse(data);
-              }
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
 
-              Swal.fire({
-                icon: 'success',
-                title: 'Hoàn Thành Sắp Lịch',
-                timer: 1000,
-                showConfirmButton: false,
-              });
-
-              // setEvents(data.events);
-              // setSumBatchByStage(data.sumBatchByStage);
-              // setPlan(data.plan);
-
-              setLoading (!loading)
-              
-            })
-          .catch(err => {
-              Swal.fire({
-                icon: 'error',
-                title: 'Lỗi',
-                timer: 1000,
-                showConfirmButton: false,
-              });
-              console.error("ScheduleAll error:", err.response?.data || err.message);
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành Sắp Lịch',
+              timer: 1000,
+              showConfirmButton: false,
             });
-        }
-      });
-    };
 
-  
-    /// Xử lý Xóa Toàn Bộ Lịch
-    const handleDeleteAllScheduale = () => {
+            // setEvents(data.events);
+            // setSumBatchByStage(data.sumBatchByStage);
+            // setPlan(data.plan);
 
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+            setLoading(!loading)
 
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      Swal.fire({
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              timer: 1000,
+              showConfirmButton: false,
+            });
+            console.error("ScheduleAll error:", err.response?.data || err.message);
+          });
+      }
+    });
+  };
 
-        title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
-        html: `
+  /// Xử lý Xóa Toàn Bộ Lịch
+  const handleDeleteAllScheduale = () => {
+
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    Swal.fire({
+
+      title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
+      html: `
           <div class="cfg-wrapper">
             <div class="cfg-card">
               <div class="cfg-row">
@@ -1051,255 +1049,253 @@ import dayjs from 'dayjs';
             </div>
           </div>
         `,
-        text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Xóa',
-        cancelButtonText: 'Hủy',
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+      text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Xóa',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
       didOpen: () => {
-  // ------------------ Stepper ------------------
-      const stepperContainer = document.getElementById("stepper-container");
+        // ------------------ Stepper ------------------
+        const stepperContainer = document.getElementById("stepper-container");
 
-          if (stepperContainer) {
-            const stepperRoot = createRoot(stepperContainer);
+        if (stepperContainer) {
+          const stepperRoot = createRoot(stepperContainer);
 
-            const StepperPopup = () => {
+          const StepperPopup = () => {
             const [selected, setSelected] = React.useState(null);
 
-              const getClass = (value) =>
-                `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${
-                  selected === value ? "bg-primary text-white" : ""
+            const getClass = (value) =>
+              `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""
               }`;
-           
-           
-              return (
-                <Stepper style={{ width: "100%" }}>
-                 
-                    <StepperPanel header="PC" >
-                      <div className="flex flex-column h-12rem" >
-                        <div
-                          className={getClass("Pha Chế") }>
-                          Pha Chế ➡ Đóng Gói
-                        </div>
-                      </div>
-                    </StepperPanel>
-                  
-                 
-                  <StepperPanel header="THT" readOnlyInput>
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("THT")}
-                      >
-                        Trộn Hoàn Tất ➡ Đóng Gói
-                      </div>
-                    </div>
-                  </StepperPanel>
-                  
-                  <StepperPanel header="ĐH">
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("ĐH")}
-                        
-                      >
-                        Định Hình ➡ Đóng Gói
-                      </div>
-                    </div>
-                  </StepperPanel>
-                
-                  <StepperPanel header="BP" disabled={true}>
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("BP")}
-                        
-                      >
-                        Bao Phim ➡ Đóng Gói
-                      </div>
-                    </div>
-                  </StepperPanel>
-                  
-                  <StepperPanel header="ĐG">
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("ĐG")}
-                        
-                        >
-                        Đóng Gói 
-                      </div>
-                    </div>
-                  </StepperPanel>
 
-                </Stepper>
-              );
-            };
-            stepperRoot.render(<StepperPopup />);
-          }
 
-        }
-        ,
-        preConfirm: () => {
-          const formValues = {};
-          const activeStep = document.querySelector('li[data-p-active="true"]');
-          const activeStepText = activeStep? activeStep.querySelector('span.p-stepper-title')?.textContent: null;
-          formValues.selectedStep = activeStepText??"PC";
+            return (
+              <Stepper style={{ width: "100%" }}>
 
-          return formValues;
+                <StepperPanel header="PC" >
+                  <div className="flex flex-column h-12rem" >
+                    <div
+                      className={getClass("Pha Chế")}>
+                      Pha Chế ➡ Đóng Gói
+                    </div>
+                  </div>
+                </StepperPanel>
+
+
+                <StepperPanel header="THT" readOnlyInput>
+                  <div className="flex flex-column h-12rem">
+                    <div
+                      className={getClass("THT")}
+                    >
+                      Trộn Hoàn Tất ➡ Đóng Gói
+                    </div>
+                  </div>
+                </StepperPanel>
+
+                <StepperPanel header="ĐH">
+                  <div className="flex flex-column h-12rem">
+                    <div
+                      className={getClass("ĐH")}
+
+                    >
+                      Định Hình ➡ Đóng Gói
+                    </div>
+                  </div>
+                </StepperPanel>
+
+                <StepperPanel header="BP" disabled={true}>
+                  <div className="flex flex-column h-12rem">
+                    <div
+                      className={getClass("BP")}
+
+                    >
+                      Bao Phim ➡ Đóng Gói
+                    </div>
+                  </div>
+                </StepperPanel>
+
+                <StepperPanel header="ĐG">
+                  <div className="flex flex-column h-12rem">
+                    <div
+                      className={getClass("ĐG")}
+
+                    >
+                      Đóng Gói
+                    </div>
+                  </div>
+                </StepperPanel>
+
+              </Stepper>
+            );
+          };
+          stepperRoot.render(<StepperPopup />);
         }
 
+      }
+      ,
+      preConfirm: () => {
+        const formValues = {};
+        const activeStep = document.querySelector('li[data-p-active="true"]');
+        const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
+        formValues.selectedStep = activeStepText ?? "PC";
 
-      }).then((result) => {
-        Swal.fire({
-          title: "Đang tải...",
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          },
-        });
-
-        if (result.isConfirmed) {
-          axios.put('/Schedual/deActiveAll',  { ...result.value, startDate: activeStart.toISOString(), endDate: activeEnd.toISOString()})
-            .then(res => {
-              let data = res.data;
-              if (typeof data === "string") {
-                data = data.replace(/^<!--.*?-->/, "").trim();
-                data = JSON.parse(data);
-              }
-              // setEvents(data.events);
-              // setSumBatchByStage(data.sumBatchByStage);
-              // setPlan(data.plan);
-
-              setLoading (!loading)
-              setTimeout(() => {Swal.close();}, 100);
-
-              Swal.fire({
-                icon: 'success',
-                title: 'Đã xóa lịch thành công',
-                showConfirmButton: false,
-                timer: 1500
-              });
-
-            })
-
-            .catch(err => {
-              setTimeout(() => {Swal.close();}, 100);
-              Swal.fire({
-                icon: 'error',
-                title: 'Xóa lịch thất bại',
-                text: 'Vui lòng thử lại sau.',
-                timer: 1500
-              });
+        return formValues;
+      }
 
 
-
-              console.error("API error:", err.response?.data || err.message);
-          });
-        }
-        setTimeout(() => {Swal.close();}, 100);
-
-        });
-    };
-
-  
-    /// Xử lý xoa các lịch được chọn
-    const handleDeleteScheduale = (e) => {
-        if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return};
-        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-                if (!selectedEvents || selectedEvents.length === 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Chọn Lịch Cần Xóa',
-                        showConfirmButton: false,
-                        timer: 1000
-                    });
-                    return; // Dừng hàm ở đây
-                }
-                e.stopPropagation();
-                Swal.fire({
-                  title: 'Bạn có chắc muốn xóa lịch này?',
-                  icon: 'warning',
-                  showCancelButton: true,
-                  confirmButtonText: 'Xóa',
-                  cancelButtonText: 'Hủy',
-                  confirmButtonColor: '#d33',
-                  cancelButtonColor: '#3085d6',
-
-                }).then((result) => {
-                  if (result.isConfirmed) {
-                    axios.put('/Schedual/deActive', {
-                        ids: selectedEvents,
-                        startDate: activeStart.toISOString(),
-                        endDate: activeEnd.toISOString()
-                      })
-                      .then((res) => {
-                        let data = res.data;
-                        if (typeof data === "string") {
-                          data = data.replace(/^<!--.*?-->/, "").trim();
-                          data = JSON.parse(data);
-                        }
-                        setEvents(data.events);
-                        setSumBatchByStage(data.sumBatchByStage);
-                        setPlan(data.plan);
-
-                        Swal.fire({
-                          icon: 'success',
-                          title: 'Đã xóa lịch thành công',
-                          showConfirmButton: false,
-                          timer: 1500
-                        });
-                      })
-
-                      .catch((error) => {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Xóa lịch thất bại',
-                          text: 'Vui lòng thử lại sau.',
-                        });
-                        console.error("API error:", error.response?.data || error.message);
-                      });
-                  }
-                  setSelectedEvents([]);
-          });
-    }
-
-    /// Xử lý độ chia thời gian nhỏ nhất
-    const toggleSlotDuration = () => {
-      const calendarApi = calendarRef.current?.getApi();
-      var currentView = calendarApi.view.type;
-
-
-      setSlotIndex((prevIndex) => {
-        if (currentView.includes("Week")){
-         
-            const nextIndex = (prevIndex + 1) % slotViewWeeks.length;
-            calendarApi.changeView(slotViewWeeks[nextIndex]);
-             return nextIndex;
-        }else if (currentView.includes("Month")) {
-            const nextIndex = (prevIndex + 1) % slotViewMonths.length;
-            calendarApi.changeView(slotViewMonths[nextIndex]);
-             return nextIndex;
-        }
+    }).then((result) => {
+      Swal.fire({
+        title: "Đang tải...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
       });
-    };
 
-    /// Xử lý format số thập phân
-    const formatNumberWithComma = (x) => {
-      if (x == null) return "0";
-      return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      if (result.isConfirmed) {
+        axios.put('/Schedual/deActiveAll', { ...result.value, startDate: activeStart.toISOString(), endDate: activeEnd.toISOString() })
+          .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            // setEvents(data.events);
+            // setSumBatchByStage(data.sumBatchByStage);
+            // setPlan(data.plan);
+
+            setLoading(!loading)
+            setTimeout(() => { Swal.close(); }, 100);
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Đã xóa lịch thành công',
+              showConfirmButton: false,
+              timer: 1500
+            });
+
+          })
+
+          .catch(err => {
+            setTimeout(() => { Swal.close(); }, 100);
+            Swal.fire({
+              icon: 'error',
+              title: 'Xóa lịch thất bại',
+              text: 'Vui lòng thử lại sau.',
+              timer: 1500
+            });
+
+
+
+            console.error("API error:", err.response?.data || err.message);
+          });
+      }
+      setTimeout(() => { Swal.close(); }, 100);
+
+    });
+  };
+
+  /// Xử lý xoa các lịch được chọn
+  const handleDeleteScheduale = (e) => {
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) { return };
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    if (!selectedEvents || selectedEvents.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Chọn Lịch Cần Xóa',
+        showConfirmButton: false,
+        timer: 1000
+      });
+      return; // Dừng hàm ở đây
     }
+    e.stopPropagation();
+    Swal.fire({
+      title: 'Bạn có chắc muốn xóa lịch này?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Xóa',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
 
-    /// Xử lý hoản thành lô
+    }).then((result) => {
+      if (result.isConfirmed) {
+        axios.put('/Schedual/deActive', {
+          ids: selectedEvents,
+          startDate: activeStart.toISOString(),
+          endDate: activeEnd.toISOString()
+        })
+          .then((res) => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            setEvents(data.events);
+            setSumBatchByStage(data.sumBatchByStage);
+            setPlan(data.plan);
 
-    const handleFinished = (event) => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Đã xóa lịch thành công',
+              showConfirmButton: false,
+              timer: 1500
+            });
+          })
 
-        if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+          .catch((error) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Xóa lịch thất bại',
+              text: 'Vui lòng thử lại sau.',
+            });
+            console.error("API error:", error.response?.data || error.message);
+          });
+      }
+      setSelectedEvents([]);
+    });
+  }
 
-        let unit = event._def.extendedProps.stage_code <= 4 ? "Kg" : "ĐVL";
-        let id = event._def.publicId;
+  /// Xử lý độ chia thời gian nhỏ nhất
+  const toggleSlotDuration = () => {
+    const calendarApi = calendarRef.current?.getApi();
+    var currentView = calendarApi.view.type;
 
-        Swal.fire({
-          title: 'Hoàn Thành Sản Xuất',
-          html: `
+
+    setSlotIndex((prevIndex) => {
+      if (currentView.includes("Week")) {
+
+        const nextIndex = (prevIndex + 1) % slotViewWeeks.length;
+        calendarApi.changeView(slotViewWeeks[nextIndex]);
+        return nextIndex;
+      } else if (currentView.includes("Month")) {
+        const nextIndex = (prevIndex + 1) % slotViewMonths.length;
+        calendarApi.changeView(slotViewMonths[nextIndex]);
+        return nextIndex;
+      }
+    });
+  };
+
+  /// Xử lý format số thập phân
+  const formatNumberWithComma = (x) => {
+    if (x == null) return "0";
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  /// Xử lý hoản thành lô
+
+  const handleFinished = (event) => {
+
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+
+    let unit = event._def.extendedProps.stage_code <= 4 ? "Kg" : "ĐVL";
+    let id = event._def.publicId;
+
+    Swal.fire({
+      title: 'Hoàn Thành Sản Xuất',
+      html: `
             <div class="cfg-wrapper">
               <div class="cfg-card">
                 <!-- Hàng 2 cột -->
@@ -1331,96 +1327,96 @@ import dayjs from 'dayjs';
               </div>
             </div>
           `,
-          didOpen: () => {
-            document.getElementById('unit').value = unit;
-            document.getElementById('stag_plan_id').value = id;
+      didOpen: () => {
+        document.getElementById('unit').value = unit;
+        document.getElementById('stag_plan_id').value = id;
 
-            // 🔽 Gắn dữ liệu cho select từ biến quarantineRoom
-            const select = document.getElementById('quarantineRoomSelect');
-            if (Array.isArray(quarantineRoom)) {
-              quarantineRoom.forEach(room => {
-                const opt = document.createElement('option');
-                opt.value = room.code;
-                opt.textContent = room.code + " - " + room.name;
-                select.appendChild(opt);
-              });
+        // 🔽 Gắn dữ liệu cho select từ biến quarantineRoom
+        const select = document.getElementById('quarantineRoomSelect');
+        if (Array.isArray(quarantineRoom)) {
+          quarantineRoom.forEach(room => {
+            const opt = document.createElement('option');
+            opt.value = room.code;
+            opt.textContent = room.code + " - " + room.name;
+            select.appendChild(opt);
+          });
+        }
+      },
+      width: 700,
+      customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+      showCancelButton: true,
+      confirmButtonText: 'Lưu',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      preConfirm: () => {
+        const yields_input = document.getElementById('yields');
+        const stag_plan_id = document.getElementById('stag_plan_id').value;
+        const yields = yields_input ? yields_input.value.trim() : "";
+        const room = document.getElementById('quarantineRoomSelect').value;
+
+        if (!yields) {
+          Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
+          return false;
+        }
+
+        if (!room) {
+          Swal.showValidationMessage('Vui lòng chọn phòng cách ly');
+          return false;
+        }
+
+        return { yields, id: stag_plan_id, room };
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        axios.put('/Schedual/finished', result.value)
+          .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
             }
-          },
-          width: 700,
-          customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
-          showCancelButton: true,
-          confirmButtonText: 'Lưu',
-          cancelButtonText: 'Hủy',
-          confirmButtonColor: '#3085d6',
-          cancelButtonColor: '#d33',
-          preConfirm: () => {
-            const yields_input = document.getElementById('yields');
-            const stag_plan_id = document.getElementById('stag_plan_id').value;
-            const yields = yields_input ? yields_input.value.trim() : "";
-            const room = document.getElementById('quarantineRoomSelect').value;
+            setEvents(data.events);
 
-            if (!yields) {
-              Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
-              return false;
-            }
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành',
+              timer: 500,
+              showConfirmButton: false,
+            });
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              timer: 500,
+              showConfirmButton: false,
+            });
+            console.error("Finished error:", err.response?.data || err.message);
+          });
+      }
+    });
+  };
 
-            if (!room) {
-              Swal.showValidationMessage('Vui lòng chọn phòng cách ly');
-              return false;
-            }
+  /// Ngăn xụ thay đổi lô Sau khi hoàn thành
+  const finisedEvent = (dropInfo, draggedEvent) => {
+    if (draggedEvent.extendedProps.finished) { return false; }
+    return true;
+  };
 
-            return { yields, id: stag_plan_id, room };
-          }
-        }).then((result) => {
-          if (result.isConfirmed) {
-             axios.put('/Schedual/finished', result.value)
-              .then(res => {
-                let data = res.data;
-                if (typeof data === "string") {
-                  data = data.replace(/^<!--.*?-->/, "").trim();
-                  data = JSON.parse(data);
-                }
-                setEvents(data.events);
+  const handleConfirmSource = (event) => {
+    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) { return };
 
-                Swal.fire({
-                  icon: 'success',
-                  title: 'Hoàn Thành',
-                  timer: 500,
-                  showConfirmButton: false,
-                });
-              })
-              .catch(err => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Lỗi',
-                  timer: 500,
-                  showConfirmButton: false,
-                });
-                console.error("Finished error:", err.response?.data || err.message);
-              });
-          }
-        });
-    };
+    let room_id = event._def.resourceIds[0];
+    let plan_master_id = event._def.extendedProps.plan_master_id;
+    let resource = resources.filter(i => i.id == room_id)[0].title;
 
-    /// Ngăn xụ thay đổi lô Sau khi hoàn thành
-    const finisedEvent = (dropInfo, draggedEvent) =>{
-          if (draggedEvent.extendedProps.finished) {return false;}
-          return true;
-    };
-
-    const handleConfirmSource = (event) => {
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {return} ;
-
-      let room_id = event._def.resourceIds[0];
-      let plan_master_id = event._def.extendedProps.plan_master_id;
-      let resource = resources.filter (i => i.id == room_id)[0].title;
-
-      axios.put('/Schedual/getInforSoure', { plan_master_id })
-        .then(res => {
-          const source_infor = res.data.sourceInfo;
-          Swal.fire({
-            title: 'Xác Nhận Nguồn Nguyên Liệu Đã Thẩm Định Trên Thiết Bị',
-            html: `
+    axios.put('/Schedual/getInforSoure', { plan_master_id })
+      .then(res => {
+        const source_infor = res.data.sourceInfo;
+        Swal.fire({
+          title: 'Xác Nhận Nguồn Nguyên Liệu Đã Thẩm Định Trên Thiết Bị',
+          html: `
               <div class="cfg-wrapper">
                 <div class="cfg-card">
 
@@ -1449,38 +1445,38 @@ import dayjs from 'dayjs';
                 </div>
               </div>
             `,
-            didOpen: () => {
-              document.getElementById('intermediate_code').value = source_infor.intermediate_code ?? '';
-              document.getElementById('name').value = source_infor.product_name ?? '';
-              document.getElementById('room').value = resource ?? '';
-              document.getElementById('material_source_id').value = source_infor.name ?? '';
+          didOpen: () => {
+            document.getElementById('intermediate_code').value = source_infor.intermediate_code ?? '';
+            document.getElementById('name').value = source_infor.product_name ?? '';
+            document.getElementById('room').value = resource ?? '';
+            document.getElementById('material_source_id').value = source_infor.name ?? '';
 
 
-            },
-            width: 700,
-            customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
-            showCancelButton: true,
-            confirmButtonText: 'Xác Nhận',
-            cancelButtonText: 'Hủy',
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            preConfirm: () => {
-              const intermediate_code = document.getElementById('intermediate_code');
+          },
+          width: 700,
+          customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+          showCancelButton: true,
+          confirmButtonText: 'Xác Nhận',
+          cancelButtonText: 'Hủy',
+          confirmButtonColor: '#3085d6',
+          cancelButtonColor: '#d33',
+          preConfirm: () => {
+            const intermediate_code = document.getElementById('intermediate_code');
 
-              if (!intermediate_code) {
-                Swal.showValidationMessage('Lỗi: dữ liệu trống');
-                return false;
-              }
-
-              // Trả dữ liệu về để .then(result) nhận được
-              return {
-                source_id: source_infor.material_source_id,
-                room_id,
-                intermediate_code: source_infor.intermediate_code,
-              };
+            if (!intermediate_code) {
+              Swal.showValidationMessage('Lỗi: dữ liệu trống');
+              return false;
             }
-          }).then((result) => {
-            if (result.isConfirmed) {
+
+            // Trả dữ liệu về để .then(result) nhận được
+            return {
+              source_id: source_infor.material_source_id,
+              room_id,
+              intermediate_code: source_infor.intermediate_code,
+            };
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
             axios.put('/Schedual/confirm_source', result.value)
               .then(res => {
                 // Nếu Laravel trả về JSON
@@ -1499,7 +1495,7 @@ import dayjs from 'dayjs';
 
                 // Nếu có dữ liệu mới trả về thì cập nhật state
                 if (data.events) setEvents(data.events);
-                })
+              })
               .catch(err => {
                 Swal.fire({
                   icon: 'error',
@@ -1509,160 +1505,162 @@ import dayjs from 'dayjs';
                 });
                 console.error("Confirm_source error:", err.response?.data || err.message);
               });
-            }
-          });
-        })
-        .catch(() => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Lỗi tải dữ liệu',
-            timer: 500,
-            showConfirmButton: false
-          });
+          }
         });
-    };
+      })
+      .catch(() => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi tải dữ liệu',
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+  };
 
-    const toggleNoteModal = () => {
-          setShowNoteModal (!showNoteModal)
-    }
+  const toggleNoteModal = () => {
+    setShowNoteModal(!showNoteModal)
+  }
 
-    const handleShowHistory = (event) => {
-      let stage_code_id = event._def.extendedProps.plan_id;
+  const handleShowHistory = (event) => {
+    let stage_code_id = event._def.extendedProps.plan_id;
 
-      axios.put('/Schedual/history', {stage_code_id: stage_code_id})
-              .then(res => {
-                // Nếu Laravel trả về JSON
-                let data = res.data;
-                if (typeof data === "string") {
-                  data = data.replace(/^<!--.*?-->/, "").trim();
-                  data = JSON.parse(data);
-                }
-                setHistoryData (data.history_data);
+    axios.put('/Schedual/history', { stage_code_id: stage_code_id })
+      .then(res => {
+        // Nếu Laravel trả về JSON
+        let data = res.data;
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
+        setHistoryData(data.history_data);
 
 
-                })
-              .catch(err => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Lỗi',
-                  timer: 500,
-                  showConfirmButton: false,
-                });
-                console.error("Confirm_source error:", err.response?.data || err.message);
+      })
+      .catch(err => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          timer: 500,
+          showConfirmButton: false,
+        });
+        console.error("Confirm_source error:", err.response?.data || err.message);
       });
 
 
-      setShowHistoryModal (true)
-    }
+    setShowHistoryModal(true)
+  }
 
-    const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, handleConfirmSource, viewConfig, viewName, eventFontSize, type, authorization }) => {
-        //const adminAutho 
-        const event = arg.event;
-        const props = event._def.extendedProps;
-        const isSelected = selectedEvents.some(ev => ev.id === event.id);
-        const now = new Date();
+  const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, handleConfirmSource, viewConfig, viewName, eventFontSize, type, authorization }) => {
+    //const adminAutho 
+    const event = arg.event;
+    const props = event._def.extendedProps;
+    const isSelected = selectedEvents.some(ev => ev.id === event.id);
+    const now = new Date();
 
-        const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
-        const isWeekView = viewName === 'resourceTimelineWeek';
+    const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
+    const isWeekView = viewName === 'resourceTimelineWeek';
 
-        const renderBadge = (text, color, left) => (
-          <div
-            className={`absolute top-[-15px] left-[${left}px] text-xs px-1 rounded shadow text-white ${color}`}
-          >
-            {text}
-          </div>
-        );
+    const renderBadge = (text, color, left) => (
+      <div
+        className={`absolute top-[-15px] left-[${left}px] text-xs px-1 rounded shadow text-white ${color}`}
+      >
+        {text}
+      </div>
+    );
 
-        return (
-          <div className="relative group custom-event-content" data-event-id={event.id}>
-            {/* Tiêu đề + thời gian */}
-            <div style={{ fontSize: `${eventFontSize}px` }}>
-              <b>{event.title}</b>
-              {!isTimelineMonth && (
-                <>
-                  <br />
-                  <span>{moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}</span>
-                </>
+    return (
+      <div className="relative group custom-event-content" data-event-id={event.id}>
+        {/* Tiêu đề + thời gian */}
+        <div style={{ fontSize: `${eventFontSize}px` }}>
+          <b>{event.title}</b>
+          {!isTimelineMonth && (
+            <>
+              <br />
+              {viewName !== 'resourceTimelineQuarter' && (
+                <span>{moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}</span>
               )}
-            </div>
+            </>
+          )}
+        </div>
 
-            {/* Nút Xóa */}
-            {!props.finished && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
-                className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
-                title="Xóa lịch"
-              >
-                ×
-              </button>
-            )}
+        {/* Nút Xóa */}
+        {!props.finished && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
+            className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
+            title="Xóa lịch"
+          >
+            ×
+          </button>
+        )}
 
-            {/* Nút Chọn */}
-            <button
-              onClick={(e) => { e.stopPropagation(); toggleEventSelect(event); }}
-              className={`absolute top-0 left-0 text-xs px-1 rounded shadow
+        {/* Nút Chọn */}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleEventSelect(event); }}
+          className={`absolute top-0 left-0 text-xs px-1 rounded shadow
                 ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}
               `}
-              title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
-            >
-              {isSelected ? '✓' : '+'}
-            </button>
+          title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
+        >
+          {isSelected ? '✓' : '+'}
+        </button>
 
-            {/* Nút Xem Lịch Sử && isWeekView  */}
-            {/* {type && ( */}
-              <button
-                onClick={(e) => { e.stopPropagation(); handleShowHistory(event); }}
-                className="absolute top-[-15px] left-[100px] text-xs px-1 rounded shadow bg-red-500 text-white"
-                title="Xem Lịch Sử Thay Đổi"
-              >
-                {props.number_of_history}
-              
-              </button>
-            {/* )} */}
+        {/* 🎯 Hoàn thành */}
+        {props.finished === 0 && type && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleFinished(event); }}
+            className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+            title="Xác Nhận Hoàn Thành Lô Sản Xuất"
+          >
+            🎯
+          </button>
+        )}
 
-            {/* Badge Ngày cần hàng */}
-            {props.expected_date && renderBadge(
-              props.expected_date,
-              {
-                1: 'bg-red-500',
-                2: 'bg-orange-500',
-                3: 'bg-green-500'
-              }[props.level] || 'bg-blue-500',
-              50
-            )}
+        {/* Nút Xem Lịch Sử && isWeekView  */}
+        {showRenderBadge && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleShowHistory(event); }}
+            className="absolute top-[-15px] left-[100px] text-xs px-1 rounded shadow bg-red-500 text-white"
+            title="Xem Lịch Sử Thay Đổi"
+          >
+            {props.number_of_history}
 
-            {/* Icon đặc biệt */}
-       
+          </button>
+        )}
+
+        {/* Badge Ngày cần hàng */}
+        {props.expected_date && showRenderBadge && renderBadge(
+          props.expected_date,
+          {
+            1: 'bg-red-500',
+            2: 'bg-orange-500',
+            3: 'bg-green-500'
+          }[props.level] || 'bg-blue-500',
+          50
+        )}
+
+        {/* Icon đặc biệt */}
+
+        {isWeekView && props.tank && showRenderBadge ? renderBadge('⚗️', 'bg-red-500', 170) : ''}
+        {isWeekView && props.keep_dry && showRenderBadge ? renderBadge('🌡', 'bg-red-500', 200) : ''}
 
 
-            {isWeekView && props.tank? renderBadge('⚗️', 'bg-red-500', 170):''}
-            {isWeekView && props.keep_dry ? renderBadge('🌡', 'bg-red-500', 200):''}
+
+        {/* Hướng công đoạn */}
+        {!props.is_clearning && showRenderBadge && (
+          <button
+            className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
+            title="Thứ tự công đoạn"
+          >
+            <b>{props.storage_capacity}</b>
+          </button>
+        )}
 
 
 
-            {/* Hướng công đoạn */}
-            {!props.is_clearning && authorization == "Admin" && (
-              <button
-                className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
-                title="Thứ tự công đoạn"
-              >
-                 <b>{props.storage_capacity}</b> 
-              </button>
-            )}
-
-            {/* 🎯 Hoàn thành */}
-            {props.finished === 0 && type && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleFinished(event); }}
-                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-                title="Xác Nhận Hoàn Thành Lô Sản Xuất"
-              >
-                🎯
-              </button>
-            )}
-
-            {/* 📦 Nguồn nguyên liệu */}
-            {props.room_source === false && type && (
+        {/* 📦 Nguồn nguyên liệu */}
+        {/* {props.room_source === false && type && (
               <button
                 onClick={(e) => { e.stopPropagation(); handleConfirmSource(event); }}
                 className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
@@ -1670,14 +1668,15 @@ import dayjs from 'dayjs';
               >
                 📦
               </button>
-            )}
-          </div>
-        );
-    };
+            )} */}
+
+      </div>
+    );
+  };
 
   return (
 
-    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%"? 'w-[70%]':'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
+    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
@@ -1685,20 +1684,20 @@ import dayjs from 'dayjs';
         initialView="resourceTimelineWeek"
         firstDay={1}
         events={events}
-        eventResourceEditable ={true}
+        eventResourceEditable={true}
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
         locale="vi"
         resourceAreaWidth="250px"
-        expandRows = {false}
+        expandRows={false}
 
         editable={true}
         droppable={true}
         selectable={true}
         eventResizableFromStart={true}
 
-        slotDuration= "00:15:00"
+        slotDuration="00:15:00"
         eventDurationEditable={true}
         //eventStartEditable={true}
 
@@ -1706,11 +1705,11 @@ import dayjs from 'dayjs';
         eventResize={handleEventChange}
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
-        dateClick ={() => handleEventUnHightLine ()}
-        eventAllow = {finisedEvent}
+        dateClick={() => handleEventUnHightLine()}
+        eventAllow={finisedEvent}
 
         resourceGroupField="stage_name"
-        resourceOrder= 'order_by' 
+        resourceOrder='order_by'
 
         // stage
         resourceGroupLabelContent={(arg) => {
@@ -1736,10 +1735,10 @@ import dayjs from 'dayjs';
 
         // Phòng
         resourceLabelContent={(arg) => {
-           //console.log (arg.resource)
+          //console.log (arg.resource)
           const res = arg.resource.extendedProps;
           const busy = parseFloat(res.busy_hours) || 0;
-          const yields = parseFloat(res.yield)  || 0;
+          const yields = parseFloat(res.yield) || 0;
           const unit = res.unit || null;
           const total = parseFloat(res.total_hours) || 1;
           const efficiency = ((busy / total) * 100).toFixed(1);
@@ -1762,72 +1761,72 @@ import dayjs from 'dayjs';
 
           return (
             <div
+              style={{
+                backgroundColor: highlight ? "#c6f7d0" : "transparent",
+                padding: "0px",
+                borderRadius: "6px",
+                marginTop: "0px",
+                position: "relative",
+                height: heightResource // cần để con có thể dịch lên
+              }}
+            >
+              <div
                 style={{
-                  backgroundColor: highlight ? "#c6f7d0" : "transparent",
-                  padding: "0px",
-                  borderRadius: "6px",
-                  marginTop: "0px",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  marginBottom: "2px",
+                  width: "8%",
                   position: "relative",
-                  height: heightResource // cần để con có thể dịch lên
+                  top: "-26px", // dịch lên trên 6px
+                }}
+              >
+                {arg.resource.title}-{arg.resource.extendedProps.main_equiment_name}
+              </div>
+
+              <div
+                className="resource-bar"
+                style={{
+                  position: "relative",
+                  top: "-26px", // dịch luôn cả progress bar lên
+                  height: "15px",
+                  background: "#eeeeeeff",
+                  borderRadius: "20px",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
                 }}
               >
                 <div
+                  className="busy"
                   style={{
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    marginBottom: "2px",
-                    width: "8%",
-                    position: "relative",
-                    top: "-26px", // dịch lên trên 6px
-                  }}
-                >
-                  {arg.resource.title}-{arg.resource.extendedProps.main_equiment_name}
-                </div>
-
-                <div
-                  className="resource-bar"
-                  style={{
-                    position: "relative",
-                    top: "-26px", // dịch luôn cả progress bar lên
-                    height: "15px", 
-                    background: "#eeeeeeff",
-                    borderRadius: "20px",
-                    overflow: "hidden",
+                    width: `${(busy / total) * 100}%`,
+                    background: "red",
+                    height: "100%",
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                />
+                <b
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    fontSize: "70%",
+                    color: "#060606ff",
                   }}
                 >
-                  <div
-                    className="busy"
-                    style={{
-                      width: `${(busy / total) * 100}%`,
-                      background: "red",
-                      height: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  />
-                  <b
-                    style={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      fontSize: "70%",
-                      color: "#060606ff",
-                    }}
-                  >
-                    {efficiency}% - {formatNumberWithComma(yields)} {unit}
-                  </b>
-                </div>
+                  {efficiency}% - {formatNumberWithComma(yields)} {unit}
+                </b>
               </div>
+            </div>
 
           );
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge',
           center: 'title',
           right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -1855,11 +1854,11 @@ import dayjs from 'dayjs';
             titleFormat: { year: 'numeric', month: 'short' },
           },
           resourceTimelineQuarter: {
-              slotDuration: { days: 1 },
-              duration: { months: 3 },
-              buttonText: 'Quý',
-              titleFormat: { year: 'numeric', month: 'short' },
-              type: 'resourceTimeline',
+            slotDuration: { days: 1 },
+            duration: { months: 3 },
+            buttonText: 'Quý',
+            titleFormat: { year: 'numeric', month: 'short' },
+            type: 'resourceTimeline',
           },
           resourceTimelineYear: {
             slotDuration: { days: 1 },
@@ -1875,7 +1874,7 @@ import dayjs from 'dayjs';
 
           resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00' },
           resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00' },
-          resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 }},
+          resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
         }}
 
         customButtons={{
@@ -1884,7 +1883,7 @@ import dayjs from 'dayjs';
             click: () => {
               let api = calendarRef.current.getApi();
               api.next();  // gọi hành vi gốc
-              setLoading (!loading);
+              setLoading(!loading);
             }
           },
           customPre: {
@@ -1892,7 +1891,7 @@ import dayjs from 'dayjs';
             click: () => {
               let api = calendarRef.current.getApi();
               api.prev(); // gọi hành vi gốc
-              setLoading (!loading);
+              setLoading(!loading);
             }
           },
 
@@ -1917,10 +1916,7 @@ import dayjs from 'dayjs';
             text: '3 Tháng',
             click: () => handleViewChange('resourceTimelineQuarter')
           },
-          customYear: {
-            text: 'Năm',
-            click: () => handleViewChange('resourceTimelineYear')
-          },
+
           myToday: {
             text: 'Hiện Tại',
             click: () => calendarRef.current.getApi().today()
@@ -1935,13 +1931,14 @@ import dayjs from 'dayjs';
           },
           autoSchedualer: {
             text: '🤖',
-            click:  handleAutoSchedualer,
+            click: handleAutoSchedualer,
 
           },
           deleteAllScheduale: {
             text: '🗑️',
             click: handleDeleteAllScheduale
           },
+
           changeSchedualer: {
             text: '♻️',
             click: handleSaveChanges
@@ -1950,13 +1947,18 @@ import dayjs from 'dayjs';
             text: '🚫',
             click: handleClear
           },
-          dateRange : {text: ''},
-          searchBox: {text: ''},
-          fontSizeBox: {text: ''},
+          dateRange: { text: '' },
+          searchBox: { text: '' },
+          fontSizeBox: { text: '' },
 
           slotDuration: {
             text: 'Slot',
             click: toggleSlotDuration
+          },
+
+          ShowBadge: {
+            text: '👁️',
+            click: () => setShowRenderBadge(!showRenderBadge)
           },
 
         }}
@@ -1966,19 +1968,19 @@ import dayjs from 'dayjs';
         eventDidMount={(info) => {
 
           // gắn data-event-id để tìm kiếm
-            info.el.setAttribute("data-event-id", info.event.id);
-            info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
+          info.el.setAttribute("data-event-id", info.event.id);
+          info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
 
-            // cho select evetn => pendingChanges
-            const isPending = pendingChanges.some(e => e.id === info.event.id);
-            if (isPending) {
-              info.el.style.border = '2px dashed orange';
-            }
+          // cho select evetn => pendingChanges
+          const isPending = pendingChanges.some(e => e.id === info.event.id);
+          if (isPending) {
+            info.el.style.border = '2px dashed orange';
+          }
 
-            info.el.addEventListener("dblclick", (e) => {             
-                e.stopPropagation();
-                handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
-              });
+          info.el.addEventListener("dblclick", (e) => {
+            e.stopPropagation();
+            handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
+          });
 
         }}
 
@@ -1990,71 +1992,71 @@ import dayjs from 'dayjs';
         }}
 
         eventContent={(arg) => (
-            <EventContent
-              arg={arg}
-              selectedEvents={selectedEvents}
-              toggleEventSelect={toggleEventSelect}
-              handleDeleteScheduale={handleDeleteScheduale}
-              handleShowHistory={handleShowHistory}
-              handleFinished={handleFinished}
-              handleConfirmSource={handleConfirmSource}
-              viewConfig={viewConfig}
-              viewName={viewName}
-              eventFontSize={eventFontSize}
-              type={type}
-              authorization={authorization}
-            />
-          )}
+          <EventContent
+            arg={arg}
+            selectedEvents={selectedEvents}
+            toggleEventSelect={toggleEventSelect}
+            handleDeleteScheduale={handleDeleteScheduale}
+            handleShowHistory={handleShowHistory}
+            handleFinished={handleFinished}
+            handleConfirmSource={handleConfirmSource}
+            viewConfig={viewConfig}
+            viewName={viewName}
+            eventFontSize={eventFontSize}
+            type={type}
+            authorization={authorization}
+          />
+        )}
 
 
       />
       {/* <div className="modal-sidebar"> */}
-        <ModalSidebar
+      <ModalSidebar
 
-            visible={showSidebar}
-            onClose={setShowSidebar}
-            waitPlan={plan}
-            setPlan={setPlan}
-            percentShow = {percentShow}
-            setPercentShow={setPercentShow}
-            selectedRows = {selectedRows}
-            setSelectedRows = {setSelectedRows}
-            quota = {quota}
-            resources = {resources}
-            type = {type}
+        visible={showSidebar}
+        onClose={setShowSidebar}
+        waitPlan={plan}
+        setPlan={setPlan}
+        percentShow={percentShow}
+        setPercentShow={setPercentShow}
+        selectedRows={selectedRows}
+        setSelectedRows={setSelectedRows}
+        quota={quota}
+        resources={resources}
+        type={type}
 
-        />
+      />
 
 
 
-        <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
-        <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData}/>
+      <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
+      <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData} />
 
-        {/* Selecto cho phép quét chọn nhiều .fc-event */}
-        <Selecto
-          onDragStart={(e) => {
-              // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
-              if (!e.inputEvent.shiftKey) {
-                e.stop();
-              }
-            }}
-            container=".calendar-wrapper"
-            selectableTargets={[".fc-event"]}
-            hitRate={100}
-            selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
-            selectFromInside={true}
-            toggleContinueSelect={["shift"]}
+      {/* Selecto cho phép quét chọn nhiều .fc-event */}
+      <Selecto
+        onDragStart={(e) => {
+          // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
+          if (!e.inputEvent.shiftKey) {
+            e.stop();
+          }
+        }}
+        container=".calendar-wrapper"
+        selectableTargets={[".fc-event"]}
+        hitRate={100}
+        selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
+        selectFromInside={true}
+        toggleContinueSelect={["shift"]}
 
-            onSelectEnd={(e) => {
-              const selected = e.selected.map((el) => {
-                const id = el.getAttribute("data-event-id");
-                const stageCode = el.getAttribute("data-stage_code");
-                return { id, stage_code: stageCode };
-              });
-              setSelectedEvents(selected);
-              
-            }}
-        />
+        onSelectEnd={(e) => {
+          const selected = e.selected.map((el) => {
+            const id = el.getAttribute("data-event-id");
+            const stageCode = el.getAttribute("data-stage_code");
+            return { id, stage_code: stageCode };
+          });
+          setSelectedEvents(selected);
+
+        }}
+      />
 
 
 

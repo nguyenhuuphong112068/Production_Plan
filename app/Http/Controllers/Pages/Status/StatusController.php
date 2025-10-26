@@ -14,10 +14,9 @@ class StatusController extends Controller
                 $production =  session('user')['production_code']??"PXV1";
 
                 $now = Carbon::now();
-                $now = Carbon::now();
-
                 //dd ($datas);
                 $datas = DB::table('room')
+                
                 ->leftJoin('stage_plan', function ($join) use ($now) {
                         $join->on('room.id', '=', 'stage_plan.resourceId')
                         ->where('stage_plan.active', true)
@@ -48,6 +47,7 @@ class StatusController extends Controller
                         DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
                         DB::raw("COALESCE(rs.notification, 'NA') as notification")
                 )
+                ->orderBy('room.stage_code')
                 ->orderBy('room.order_by')
                 ->get();
                 //dd ($datas);
@@ -120,7 +120,8 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.status, 0) as status"),
                                 DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification")
-                        )
+                        )                
+                        ->orderBy('room.stage_code')
                         ->orderBy('room.order_by')
                 ->get();
 

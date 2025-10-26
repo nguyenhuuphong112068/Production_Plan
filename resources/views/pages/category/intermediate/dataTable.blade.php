@@ -80,11 +80,8 @@
                                     @if ($data->weight_1)
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
                                         <span>
-                                            @if ($data->quarantine_total == 0)
-                                                {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}
-                                            @else
-                                                {{ 'total:' . $data->quarantine_total . ' ' . $quarantine_time_unit }}
-                                            @endif
+                                            {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}
+                                            
                                         </span>
                                     @endif
                                 </div>

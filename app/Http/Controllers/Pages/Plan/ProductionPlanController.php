@@ -686,7 +686,7 @@ class ProductionPlanController extends Controller
                 )
                 ->orderBy('expected_date', 'asc')
                 ->orderBy('level', 'asc')
-                ->orderBy('batch', 'asc')
+                ->orderByRaw('batch + 0 ASC')
                 ->get();
                 
                 // Phần 2: Các plan chỉ đóng gói (only_parkaging = 1)
@@ -721,7 +721,7 @@ class ProductionPlanController extends Controller
                 )
                 ->orderBy('expected_date', 'asc')
                 ->orderBy('level', 'asc')
-                ->orderBy('batch', 'asc')
+                ->orderByRaw('batch + 0 ASC')
                 ->get();
 
 
