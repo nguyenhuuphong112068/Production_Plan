@@ -74,6 +74,7 @@ class StatusController extends Controller
                 $production =  session('user')['production_code']??"PXV1";
 
                 $now = Carbon::now();
+                
                 $datas = DB::table('room')
                 ->leftJoin('stage_plan', function ($join) use ($now) {
                         $join->on('room.id', '=', 'stage_plan.resourceId')
