@@ -32,7 +32,7 @@
     </div>
     
     <div class="row mt-1">
-      
+      @php $now = now();@endphp
       @if (count($datas) < 25)
         <div class="col-md-12">
           <div class="card">
@@ -40,17 +40,19 @@
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
                   <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 40%">Lịch SX</th>
-                  <th style="width: 30%">Đang SX</th>
-                  <th style="width: 17%" class="text-center">Thông Báo</th>
+                  <th style="width: 25%">Lịch SX</th>
+                  <th style="width: 5%">TG</th>
+                  <th style="width: 25%">Đang SX</th>
+                  <th style="width: 5%">TG</th>
+                  <th style="width: 27%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
                 @php $current_stage = 0; @endphp
                 @foreach ($datas as $data)
                   @if ($data->stage_code != $current_stage)
-                    <tbody class="font-bold"  style=" color:#003A4F; font-size: 20px;  padding: 0px; font-weight: bold">
-                      <td colspan="4">Công Đoạn {{ $data->stage }}</td>
+                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                      <td colspan="6">{{ $stage[$data->stage]  }}</td>
                     </tr>
                   @endif
                   @php 
@@ -64,31 +66,56 @@
                       }
                   @endphp
                   <tr>
-                    <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
+                    <td style="background-color: {{ $color }};" >
+                        <div>
+                          {{ $data->room_name }}
+                        </div>
+                        <div>
+                          {{ $data->sheet }}
+                        </div>
+                    </td>
 
                     {{-- sp theo lịch 1--}}
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-
-                          @if ($data->batch)
-                          {{ $data->product_name . "_" . $data->batch }}
+                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                          @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                                {{$data->title }}
+                          @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                {{$data->title_clearning}}
                           @else
-                          {{ $data->product_name }}
+                                <div>KSX</div>
                           @endif
-
-                        </div>
+                    </td>
+                    
+                    <td style="max-width: 250px; overflow: hidden;">
+                      <div class="scroll-text-wrapper" >
+                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @else
+                            <div>-</div>
+                        @endif
                       </div>
                     </td>
 
 
                     {{-- sp đang sx 1 --}}
+                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                            {{ $data->in_production ."-". $data->sheet}}
+                    </td>
+
                     <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->in_production}}
-                        </div>
-                      </div>
+                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @else
+                            <div>-</div>
+                        @endif
                     </td>
 
 
@@ -107,13 +134,13 @@
           </div>
         </div>
       @else
-          @php
-              // Chia dữ liệu thành 2 phần đều nhau
+      @php
+           // Chia dữ liệu thành 2 phần đều nhau
               $half = ceil(count($datas) / 2) - 1;
               //dd (count($datas),$half);
               $leftData = $datas->slice(0, $half);
               $rightData = $datas->slice($half);
-          @endphp
+        @endphp
         {{-- BẢNG TRÁI --}}
         <div class="col-md-6">
           <div class="card">
@@ -121,11 +148,11 @@
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
                   <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 35%">Lịch SX</th>
+                  <th style="width: 25%">Lịch SX</th>
                   <th style="width: 5%">TG</th>
-                  <th style="width: 30%">Đang SX</th>
+                  <th style="width: 25%">Đang SX</th>
                   <th style="width: 5%">TG</th>
-                  <th style="width: 17%" class="text-center">Thông Báo</th>
+                  <th style="width: 27%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
@@ -147,43 +174,56 @@
                       }
                   @endphp
                   <tr>
-                    <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
+                    <td style="background-color: {{ $color }};" >
+                        <div>
+                          {{ $data->room_name }}
+                        </div>
+                        <div>
+                          {{ $data->sheet }}
+                        </div>
+                    </td>
 
                     {{-- sp theo lịch 1--}}
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper" >
-                        <div class="scroll-text unnote">
-                          @if ($data->batch != null)
-                            {{ $data->product_name . "_" . $data->batch }}
+                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                          @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                                {{$data->title }}
+                          @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                {{$data->title_clearning}}
                           @else
-                            {{ $data->product_name }}
+                                <div>KSX</div>
                           @endif
-                        </div>
-                      </div>
                     </td>
                     
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper" >
-                          <div>12:54 27/10</div>
-                          <div>12:54 27/10</div>
+                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @else
+                            <div>-</div>
+                        @endif
                       </div>
                     </td>
 
 
                     {{-- sp đang sx 1 --}}
+                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                            {{ $data->in_production ."-". $data->sheet}}
+                    </td>
+
                     <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                            {{ $data->in_production }}
-                          
-                        </div>
-                      </div>
-                       <td style="max-width: 250px; overflow: hidden;">
-                        <div class="scroll-text-wrapper" >
-                            <div>12:54 27/10</div>
-                            <div>12:54 27/10</div>
-                        </div>
-                      </td>
+                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @else
+                            <div>-</div>
+                        @endif
                     </td>
 
 
@@ -209,11 +249,11 @@
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
                   <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 35%">Lịch SX</th>
+                  <th style="width: 25%">Lịch SX</th>
                   <th style="width: 5%">TG</th>
-                  <th style="width: 30%">Đang SX</th>
+                  <th style="width: 25%">Đang SX</th>
                   <th style="width: 5%">TG</th>
-                  <th style="width: 17%" class="text-center">Thông Báo</th>
+                  <th style="width: 27%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
@@ -223,7 +263,7 @@
                     <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
                       <td colspan="6">{{ $stage[$data->stage]  }}</td>
                     </tr>
-                  @endif
+                    @endif
                   @php 
                       $current_stage = $data->stage_code; 
                       switch ($data->status) {
@@ -235,43 +275,56 @@
                       }
                   @endphp
                   <tr>
-                    <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
+                    <td style="background-color: {{ $color }};" >
+                        <div>
+                          {{ $data->room_name }}
+                        </div>
+                        <div>
+                          {{ $data->sheet }}
+                        </div>
+                    </td>
 
                     {{-- sp theo lịch 1--}}
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper" >
-                        <div class="scroll-text unnote">
-                          @if ($data->batch != null)
-                            {{ $data->product_name . "_" . $data->batch }}
+                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                          @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                                {{$data->title }}
+                          @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                {{$data->title_clearning}}
                           @else
-                            {{ $data->product_name }}
+                                <div>KSX</div>
                           @endif
-                        </div>
-                      </div>
                     </td>
                     
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper" >
-                          <div>12:54 27/10</div>
-                          <div>12:54 27/10</div>
+                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @else
+                            <div>-</div>
+                        @endif
                       </div>
                     </td>
 
 
                     {{-- sp đang sx 1 --}}
+                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                            {{ $data->in_production ."-". $data->sheet}}
+                    </td>
+
                     <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                            {{ $data->in_production }}
-                          
-                        </div>
-                      </div>
-                       <td style="max-width: 250px; overflow: hidden;">
-                        <div class="scroll-text-wrapper" >
-                            <div>12:54 27/10</div>
-                            <div>12:54 27/10</div>
-                        </div>
-                      </td>
+                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @else
+                            <div>-</div>
+                        @endif
                     </td>
 
 
@@ -291,6 +344,7 @@
         </div>
       @endif
     </div>
+
     @endsection
 
     <!-- ====== SCRIPT ====== -->
@@ -427,11 +481,19 @@
           padding: 10px 8px !important;
           line-height: 1.1;
         }
+
         .table td {
-          padding: 8 2px !important;
-          text-align: left;
+          overflow: hidden;
+          text-overflow: clip;      /* hoặc bỏ luôn dòng này */
+          word-break: break-word;   /* Ngắt từ khi quá dài */
+          line-height: 1.2;
           vertical-align: middle;
-          line-height: 1.1;
+        }
+
+        .multi-line {
+          white-space: normal;
+          word-break: break-word;
+          overflow-wrap: anywhere;
         }
 
 

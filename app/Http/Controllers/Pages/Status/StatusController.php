@@ -18,101 +18,52 @@ class StatusController extends Controller
                         'Bao Phim' => 'BP',
                         'ĐGSC-ĐGTC' =>'ĐGSC-ĐGTC'
         ];
-        // public function show(){
-        //         $production =  session('user')['production_code']??"PXV1";
 
-        //         $now = Carbon::now();
-        //         $datas = DB::table('room')
-        //         ->leftJoin('stage_plan', function ($join) use ($now) {
-        //                 $join->on('room.id', '=', 'stage_plan.resourceId')
-        //                 ->where('stage_plan.active', true)
-        //                 ->where('stage_plan.finished', false)
-        //                 ->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now]);
-        //         })
-        //         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-        //         ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-        //         ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-        //         // ✅ Lấy dòng room_status mới nhất theo room_id
-        //         ->leftJoinSub(
-        //                 DB::table('room_status as rs1')
-        //                 ->select('rs1.room_id', 'rs1.status', 'rs1.in_production', 'rs1.notification')
-        //                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)')
-        //                 , 'rs', function ($join) {
-        //                         $join->on('room.id', '=', 'rs.room_id');
-        //                 }
-        //         )
-        //         ->where('room.deparment_code', $production)
-        //         ->select(
-        //                 'room.stage_code',
-        //                 'room.stage',
-        //                 'stage_plan.start',
-        //                 'stage_plan.end',
-        //                 DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
-        //                 DB::raw("COALESCE(product_name.name, 'Không có lịch sản xuất') as product_name"),
-        //                 'plan_master.batch',
-        //                 // ✅ Giá trị mặc định khi không có room_status
-        //                 DB::raw("COALESCE(rs.status, 0) as status"),
-        //                 DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
-        //                 DB::raw("COALESCE(rs.notification, 'NA') as notification")
-        //         )
-        //         ->orderBy('room.stage_code')
-        //         ->orderBy('room.order_by')
-        //         ->get();
-
-        //         //dd ($datas);
-
-        //         session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
-              
-        //         return view('pages.status.dataTableShow',[
-        //                 'datas' =>  $datas,
-        //                 'production' =>  $production,
-        //                 'stage' => $this->stage
-        //         ]);
-        // }
-
-       public function show(){
+        public function show(){
                 $production =  session('user')['production_code']??"PXV1";
 
                 $now = Carbon::now();
-                
                 $datas = DB::table('room')
-                ->leftJoin('stage_plan', function ($join) use ($now) {
-                        $join->on('room.id', '=', 'stage_plan.resourceId')
-                        ->where('stage_plan.active', true)
-                        ->where('stage_plan.finished', false)
-                        ->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now]);
-                })
-                ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                // ✅ Lấy dòng room_status mới nhất theo room_id
-                ->leftJoinSub(
-                        DB::table('room_status as rs1')
-                        ->select('rs1.room_id', 'rs1.status', 'rs1.in_production', 'rs1.notification')
-                        ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)')
-                        , 'rs', function ($join) {
+                        ->leftJoin('stage_plan', function ($join) use ($now) {
+                                $join->on('room.id', '=', 'stage_plan.resourceId')
+                                ->where('stage_plan.active', true)
+                                ->where('stage_plan.finished', false)
+                                ->where(function ($q) use ($now) {
+                                        $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
+                                        ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
+                                });
+                        })
+                        ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+                        ->leftJoinSub(
+                                DB::table('room_status as rs1')
+                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch',  'rs1.status', 'rs1.in_production', 'rs1.notification')
+                                ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
+                                'rs', function ($join) {
                                 $join->on('room.id', '=', 'rs.room_id');
-                        }
-                )
-                ->where('room.deparment_code', $production)
-                ->select(
-                        'room.stage_code',
-                        'room.stage',
-                        'stage_plan.start',
-                        'stage_plan.end',
-                        DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
-                        DB::raw("COALESCE(product_name.name, 'Không có lịch sản xuất') as product_name"),
-                        'plan_master.batch',
-                        // ✅ Giá trị mặc định khi không có room_status
-                        DB::raw("COALESCE(rs.status, 0) as status"),
-                        DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
-                        DB::raw("COALESCE(rs.notification, 'NA') as notification")
-                )
-                ->orderBy('room.stage_code')
-                ->orderBy('room.order_by')
+                                }
+                        )
+                        ->where('room.deparment_code', $production)
+                        ->select(
+                                'room.stage_code',
+                                'room.stage',
+                                'stage_plan.title',
+                                'stage_plan.start',
+                                'stage_plan.end',
+                                'stage_plan.end',	
+                                'stage_plan.title_clearning',
+                                'stage_plan.start_clearning',
+                                'stage_plan.end_clearning',
+                                DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
+                                DB::raw("COALESCE(rs.status, 0) as status"),
+                                DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
+                                DB::raw("COALESCE(rs.notification, 'NA') as notification"),
+                                DB::raw("COALESCE(rs.sheet, '') as sheet"),
+                                DB::raw("COALESCE(rs.step_batch, '') as step_batch")
+                        )
+                        ->orderBy('room.stage_code')
+                        ->orderBy('room.order_by')
                 ->get();
 
-                //dd ($datas);
 
                 session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
               
@@ -122,6 +73,7 @@ class StatusController extends Controller
                         'stage' => $this->stage
                 ]);
         }
+
 
 
         public function next(Request $request){
@@ -158,32 +110,39 @@ class StatusController extends Controller
                                 $join->on('room.id', '=', 'stage_plan.resourceId')
                                 ->where('stage_plan.active', true)
                                 ->where('stage_plan.finished', false)
-                                ->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now]);
+                                ->where(function ($q) use ($now) {
+                                        $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
+                                        ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
+                                });
                         })
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-                        ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
-                        ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                        // ✅ Lấy dòng room_status mới nhất theo room_id
                         ->leftJoinSub(
                                 DB::table('room_status as rs1')
-                                ->select('rs1.room_id', 'rs1.status', 'rs1.in_production', 'rs1.notification')
-                                ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)')
-                                , 'rs', function ($join) {
-                                        $join->on('room.id', '=', 'rs.room_id');
+                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch',  'rs1.status', 'rs1.in_production', 'rs1.notification')
+                                ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
+                                'rs', function ($join) {
+                                $join->on('room.id', '=', 'rs.room_id');
                                 }
                         )
                         ->where('room.deparment_code', $production)
                         ->select(
                                 'room.stage_code',
                                 'room.stage',
+                                'stage_plan.title',
+                                'stage_plan.start',
+                                'stage_plan.end',
+                                'stage_plan.end',	
+                                'stage_plan.title_clearning',
+                                'stage_plan.start_clearning',
+                                'stage_plan.end_clearning',
                                 DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
-                                DB::raw("COALESCE(product_name.name, 'Không có lịch sản xuất') as product_name"),
-                                'plan_master.batch',
-                                // ✅ Giá trị mặc định khi không có room_status
                                 DB::raw("COALESCE(rs.status, 0) as status"),
                                 DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
-                                DB::raw("COALESCE(rs.notification, 'NA') as notification")
-                        )                
+                                DB::raw("COALESCE(rs.notification, 'NA') as notification"),
+                                DB::raw("COALESCE(rs.sheet, '') as sheet"),
+                                DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
+                                DB::raw("COALESCE(rs.room_id, '') as room_id")
+                        )
                         ->orderBy('room.stage_code')
                         ->orderBy('room.order_by')
                 ->get();
@@ -198,6 +157,7 @@ class StatusController extends Controller
                         'datas' =>  $datas,
                         'production' =>  $production,
                         'planWaitings' =>  $planWaitings,
+                        'stage' => $this->stage
                         
                 ]);
         }
@@ -234,7 +194,21 @@ class StatusController extends Controller
         }// đã có temp
 
         public function store (Request $request) {
-               
+               //dd ($request->all());
+                $sheet = [
+                        '0' => 'NA',
+                        '1' => 'Đầu Ca',
+                        '2' => 'Giữa Ca',
+                        '3' => 'Cuối Ca',
+                ];
+
+                $step_batch = [
+                        '0' => 'NA',
+                        '1' => 'Đầu Lô',
+                        '2' => 'Giữa Lô',
+                        '3' => 'Cuối Lô',
+                ];
+
                 $validator = Validator::make($request->all(), [
                     'room_name' => 'required',
                     'in_production' => 'required',
@@ -258,12 +232,28 @@ class StatusController extends Controller
                 DB::table('room_status')->insert([
                         'room_id' => $room_id,
                         'status' => $request->status,
+                        'sheet' => $sheet[$request->status],
+                        'step_batch' => $step_batch[$request->status],
+                        'start' => $request->start,
+                        'end' => $request->end,
                         'in_production' => $request->in_production,
                         'notification' => $request->notification,
                         'created_by' => session('user')['fullName'] ?? 'Admin',
                         'created_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
+        }
+
+        public function getLastStatusRoom (Request $request){
+                ob_clean();
+                $result = DB::table('room_status')
+                ->where('room_id', $request->room_id)
+                ->orderByDesc('id')
+                ->first();
+
+                return response()->json([
+                        'last_row' => $result
+                ]);                
         }
 
 

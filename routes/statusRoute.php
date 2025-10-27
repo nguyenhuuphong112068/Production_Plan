@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
             Route::get('/next','next')->name('next');
             Route::get('index','index')->name('index');
             Route::post('store','store')->name('store');
+            Route::post('getLastStatusRoom','getLastStatusRoom')->name('getLastStatusRoom');
     });
     
 
