@@ -29,8 +29,9 @@ import dayjs from 'dayjs';
 
 
 const ScheduleTest = () => {
-
+  
   const calendarRef = useRef(null);
+  const selectoRef = useRef(null);
   moment.locale('vi');
   const [showSidebar, setShowSidebar] = useState(false);
   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
@@ -389,10 +390,6 @@ const ScheduleTest = () => {
     highlightAllEvents();
   };
 
-  /// Bỏ tô màu các event trùng khớp
-  const handleEventUnHightLine = () => {
-    document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
-  };
 
   // Nhân Dữ liệu để tạo mới event
   const handleEventReceive = (info) => {
@@ -546,12 +543,59 @@ const ScheduleTest = () => {
   };
 
   /// 3 Ham sử lý thay đôi sự kiện
-  const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+  // const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+    
+  //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
+  //     info.revert();
+  //     return false
+  //   };
+  //   console.log (info)
+  //   //return
+  //   const draggedEvent = info.event;
+  //   const delta = info.delta;
+  //   const calendarApi = info.view.calendar;
 
+  //   // Nếu chưa được chọn thì tự động chọn
+  //   if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+  //     toggleEventSelect(draggedEvent);
+  //   }
+
+  //   // Nếu đã chọn thì xử lý nhóm
+  //   if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+  //     info.revert();
+
+  //     selectedEvents.forEach(sel => {
+  //       const event = calendarApi.getEventById(sel.id);
+  //       if (event) {
+
+
+  //         const newStart = new Date(
+  //           event.start.getTime() +
+  //           delta.milliseconds +
+  //           delta.days * 24 * 60 * 60 * 1000
+  //         );
+
+  //         const newEnd = new Date(
+  //           event.end.getTime() +
+  //           delta.milliseconds +
+  //           delta.days * 24 * 60 * 60 * 1000
+  //         );
+  //         event.setDates(newStart, newEnd);
+
+  //         handleEventChange({ event });
+  //       }
+  //     });
+  //   } else {
+  //     // Nếu không nằm trong selectedEvents thì xử lý đơn lẻ
+  //     handleEventChange(info);
+  //   }
+
+  // };
+  const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
     if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
       info.revert();
-      return false
-    };
+      return false;
+    }
 
     const draggedEvent = info.event;
     const delta = info.delta;
@@ -566,33 +610,43 @@ const ScheduleTest = () => {
     if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
       info.revert();
 
+      // Gom thay đổi tạm
+      const batchUpdates = [];
+
       selectedEvents.forEach(sel => {
         const event = calendarApi.getEventById(sel.id);
         if (event) {
+          const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
+          const newStart = new Date(event.start.getTime() + offset);
+          const newEnd = new Date(event.end.getTime() + offset);
 
+          event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
 
-          const newStart = new Date(
-            event.start.getTime() +
-            delta.milliseconds +
-            delta.days * 24 * 60 * 60 * 1000
-          );
-
-          const newEnd = new Date(
-            event.end.getTime() +
-            delta.milliseconds +
-            delta.days * 24 * 60 * 60 * 1000
-          );
-          event.setDates(newStart, newEnd);
-
-          handleEventChange({ event });
+          batchUpdates.push({
+            id: event.id,
+            start: newStart.toISOString(),
+            end: newEnd.toISOString(),
+            resourceId: event.getResources?.()[0]?.id ?? null,
+            title: event.title
+          });
         }
       });
+
+      // Cập nhật pendingChanges 1 lần
+      setPendingChanges(prev => {
+        const ids = new Set(batchUpdates.map(e => e.id));
+        const filtered = prev.filter(e => !ids.has(e.id));
+        return [...filtered, ...batchUpdates];
+      });
+
+      // Gọi rerender một lần
+      calendarApi.render();
     } else {
       // Nếu không nằm trong selectedEvents thì xử lý đơn lẻ
       handleEventChange(info);
     }
-
   };
+
   ///
   const handleEventChange = (changeInfo) => {
     const changedEvent = changeInfo.event;
@@ -619,6 +673,7 @@ const ScheduleTest = () => {
     });
 
   };
+
   ///
   const handleSaveChanges = async () => {
 
@@ -678,6 +733,7 @@ const ScheduleTest = () => {
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
   const toggleEventSelect = (event) => {
+
     setSelectedEvents((prevSelected) => {
       const exists = prevSelected.some(ev => ev.id === event.id);
       return exists
@@ -689,20 +745,48 @@ const ScheduleTest = () => {
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
     const event = clickInfo.event;
-    if (clickInfo.jsEvent.shiftKey || clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
-      setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
-    } else {
-      toggleEventSelect(event);
-    }
+    toggleEventSelect(event);
+    
+    // if ( clickInfo.jsEvent.ctrlKey) {
+    //   setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
+    // } else {
+      
+    // }
 
   };
 
   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
   const handleClear = () => {
+      const sel = selectoRef.current;
 
-    setSelectedEvents([]);
+      // 1) Nếu thư viện expose clear trực tiếp
+      if (typeof sel?.clear === 'function') {
+        sel.clear();
+      }
+      // 2) Nếu wrapper chứa instance trong trường `selecto` hoặc `instance`
+      else if (typeof sel?.selecto?.clear === 'function') {
+        sel.selecto.clear();
+      } else if (typeof sel?.instance?.clear === 'function') {
+        sel.instance.clear();
+      }
+      // 3) Một phương án khác hay có: setSelectedTargets([])
+      else if (typeof sel?.setSelectedTargets === 'function') {
+        sel.setSelectedTargets([]);
+      }
+      // 4) Fallback: remove class selected trên DOM (giao diện) + reset state
+      else {
+        document.querySelectorAll('.fc-event.selected').forEach(el => el.classList.remove('selected'));
+      }
 
-    handleEventUnHightLine();
+      // Reset react state
+      setSelectedEvents([]);
+
+      // Tùy: gọi hàm un-highlight
+      handleEventUnHightLine?.();
+  };
+
+  const handleEventUnHightLine = () => {
+    document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
   };
 
   /// Xử lý Chạy Lịch Tư Động
@@ -782,7 +866,7 @@ const ScheduleTest = () => {
               <div class="cfg-row">
                 <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
                 <label class="switch">
-                  <input id="work-sunday" type="checkbox" checked>
+                  <input id="work-sunday" type="checkbox">
                   <span class="slider round"></span>
                   <span class="switch-labels">
                     <span class="off">No</span>
@@ -799,12 +883,12 @@ const ScheduleTest = () => {
 
 
               ${hasEmptyPermission
-          ? `<p style="color:red;font-weight:600;margin-top:10px;">
-                      ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
-                      Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
-                    </p>`
-          : ''
-        }
+              ? `<p style="color:red;font-weight:600;margin-top:10px;">
+                          ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
+                          Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
+                        </p>`
+              : ''
+            }
 
             </div>
           </div>
@@ -952,8 +1036,8 @@ const ScheduleTest = () => {
         }
 
         const formValues = {};
-        document.querySelectorAll('.swal2-input').forEach(input => {
-          formValues[input.name] = input.value;
+          document.querySelectorAll('.swal2-input').forEach(input => {
+            formValues[input.name] = input.value;
         });
 
         const activeStep = document.querySelector('li[data-p-active="true"]');
@@ -1029,171 +1113,186 @@ const ScheduleTest = () => {
   };
 
   /// Xử lý Xóa Toàn Bộ Lịch
-  const handleDeleteAllScheduale = () => {
 
+  const handleDeleteAllScheduale = () => {
     if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
 
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-    Swal.fire({
 
+    Swal.fire({
+      width: '700px',
       title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
       html: `
-          <div class="cfg-wrapper">
-            <div class="cfg-card">
-              <div class="cfg-row">
-              <!-- ✅ Vùng để gắn stepper -->
-              <label class="cfg-label" for="stepper-container">Xóa Lịch Theo Công Đoạn:</label> 
-              <div id="stepper-container" style="margin-top: 15px;"></div>
+        <div class="cfg-wrapper">
+          <div class="cfg-card">
+            <div class="cfg-row">
+              <!-- 🔘 Chọn chế độ xóa -->
+              <div style="margin-bottom: 15px;">
+                <label><b>Chọn chế độ xóa:</b></label><br>
+                <label><input type="radio" name="deleteMode" value="step" checked> Xóa theo công đoạn</label>
+                &nbsp;&nbsp;
+                <label><input type="radio" name="deleteMode" value="resource"> Xóa theo phòng SX</label>
               </div>
 
+              <!-- ✅ Stepper -->
+              <div id="stepper-container" style="margin-top: 15px;"></div>
+
+              <!-- ✅ Resource Dropdown -->
+              <div id="resource-container" style="margin-top:20px; display:none; text-align:center;">
+                <label for="resource-select" style="display:block; margin-bottom:5px;">Chọn Nguồn (Resource):</label>
+                <select 
+                  id="resource-select" 
+                  class="swal2-select" 
+                  style="width:80%; max-width:400px; padding:5px; margin:auto; display:block;">
+                  <option value="">-- Tất cả --</option>
+                </select>
+              </div>
             </div>
           </div>
-        `,
-      text: "Hành động này sẽ xóa toàn bộ lịch không thể phục hồi!",
+        </div>
+      `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Xóa',
       cancelButtonText: 'Hủy',
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
+
       didOpen: () => {
         // ------------------ Stepper ------------------
         const stepperContainer = document.getElementById("stepper-container");
 
         if (stepperContainer) {
           const stepperRoot = createRoot(stepperContainer);
-
           const StepperPopup = () => {
             const [selected, setSelected] = React.useState(null);
 
             const getClass = (value) =>
-              `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""
-              }`;
-
+              `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""}`;
 
             return (
               <Stepper style={{ width: "100%" }}>
-
-                <StepperPanel header="PC" >
-                  <div className="flex flex-column h-12rem" >
-                    <div
-                      className={getClass("Pha Chế")}>
-                      Pha Chế ➡ Đóng Gói
-                    </div>
-                  </div>
-                </StepperPanel>
-
-
-                <StepperPanel header="THT" readOnlyInput>
+                <StepperPanel header="PC">
                   <div className="flex flex-column h-12rem">
-                    <div
-                      className={getClass("THT")}
-                    >
-                      Trộn Hoàn Tất ➡ Đóng Gói
-                    </div>
+                    <div className={getClass("Pha Chế")}>Pha Chế ➡ Đóng Gói</div>
                   </div>
                 </StepperPanel>
-
+                <StepperPanel header="THT">
+                  <div className="flex flex-column h-12rem">
+                    <div className={getClass("THT")}>Trộn Hoàn Tất ➡ Đóng Gói</div>
+                  </div>
+                </StepperPanel>
                 <StepperPanel header="ĐH">
                   <div className="flex flex-column h-12rem">
-                    <div
-                      className={getClass("ĐH")}
-
-                    >
-                      Định Hình ➡ Đóng Gói
-                    </div>
+                    <div className={getClass("ĐH")}>Định Hình ➡ Đóng Gói</div>
                   </div>
                 </StepperPanel>
-
                 <StepperPanel header="BP" disabled={true}>
                   <div className="flex flex-column h-12rem">
-                    <div
-                      className={getClass("BP")}
-
-                    >
-                      Bao Phim ➡ Đóng Gói
-                    </div>
+                    <div className={getClass("BP")}>Bao Phim ➡ Đóng Gói</div>
                   </div>
                 </StepperPanel>
-
                 <StepperPanel header="ĐG">
                   <div className="flex flex-column h-12rem">
-                    <div
-                      className={getClass("ĐG")}
-
-                    >
-                      Đóng Gói
-                    </div>
+                    <div className={getClass("ĐG")}>Đóng Gói</div>
                   </div>
                 </StepperPanel>
-
               </Stepper>
             );
           };
+
           stepperRoot.render(<StepperPopup />);
         }
 
-      }
-      ,
+        // ✅ Thêm resource options
+        const resourceSelect = document.getElementById("resource-select");
+        if (resourceSelect && resources?.length) {
+          resources.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r.id;
+            opt.textContent = r.title ?? r.name ?? `Resource ${r.id}`;
+            resourceSelect.appendChild(opt);
+          });
+        }
+
+        // ✅ Toggle giữa 2 chế độ
+        const radios = document.querySelectorAll('input[name="deleteMode"]');
+        const stepperDiv = document.getElementById("stepper-container");
+        const resourceDiv = document.getElementById("resource-container");
+
+        radios.forEach(r => {
+          r.addEventListener("change", e => {
+            if (e.target.value === "step") {
+              stepperDiv.style.display = "block";
+              resourceDiv.style.display = "none";
+            } else {
+              stepperDiv.style.display = "none";
+              resourceDiv.style.display = "block";
+            }
+          });
+        });
+      },
+
       preConfirm: () => {
-        const formValues = {};
-        const activeStep = document.querySelector('li[data-p-active="true"]');
-        const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
-        formValues.selectedStep = activeStepText ?? "PC";
+        const deleteMode = document.querySelector('input[name="deleteMode"]:checked')?.value;
+
+        const formValues = { mode: deleteMode };
+
+        if (deleteMode === "step") {
+          const activeStep = document.querySelector('li[data-p-active="true"]');
+          const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
+          formValues.selectedStep = activeStepText ?? "PC";
+        }
+
+        if (deleteMode === "resource") {
+          const resourceSelect = document.getElementById("resource-select");
+          formValues.resourceId = resourceSelect?.value || null;
+        }
 
         return formValues;
       }
 
-
     }).then((result) => {
+      if (!result.isConfirmed) return;
+
       Swal.fire({
         title: "Đang tải...",
         allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
+        didOpen: () => Swal.showLoading(),
       });
 
-      if (result.isConfirmed) {
-        axios.put('/Schedual/deActiveAll', { ...result.value, startDate: activeStart.toISOString(), endDate: activeEnd.toISOString() })
-          .then(res => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-            }
-            // setEvents(data.events);
-            // setSumBatchByStage(data.sumBatchByStage);
-            // setPlan(data.plan);
+      axios.put('/Schedual/deActiveAll', {
+        ...result.value,
+        startDate: activeStart.toISOString(),
+        endDate: activeEnd.toISOString()
+      })
+        .then(res => {
+          let data = res.data;
+          if (typeof data === "string") {
+            data = data.replace(/^<!--.*?-->/, "").trim();
+            data = JSON.parse(data);
+          }
 
-            setLoading(!loading)
-            setTimeout(() => { Swal.close(); }, 100);
+          setLoading(!loading);
+          Swal.close();
 
-            Swal.fire({
-              icon: 'success',
-              title: 'Đã xóa lịch thành công',
-              showConfirmButton: false,
-              timer: 1500
-            });
-
-          })
-
-          .catch(err => {
-            setTimeout(() => { Swal.close(); }, 100);
-            Swal.fire({
-              icon: 'error',
-              title: 'Xóa lịch thất bại',
-              text: 'Vui lòng thử lại sau.',
-              timer: 1500
-            });
-
-
-
-            console.error("API error:", err.response?.data || err.message);
+          Swal.fire({
+            icon: 'success',
+            title: 'Đã xóa lịch thành công',
+            showConfirmButton: false,
+            timer: 1500
           });
-      }
-      setTimeout(() => { Swal.close(); }, 100);
-
+        })
+        .catch(err => {
+          Swal.close();
+          Swal.fire({
+            icon: 'error',
+            title: 'Xóa lịch thất bại',
+            text: 'Vui lòng thử lại sau.',
+            timer: 1500
+          });
+          console.error("API error:", err.response?.data || err.message);
+        });
     });
   };
 
@@ -1556,7 +1655,7 @@ const ScheduleTest = () => {
     const event = arg.event;
     const props = event._def.extendedProps;
     const isSelected = selectedEvents.some(ev => ev.id === event.id);
-    const now = new Date();
+    //const now = new Date();
 
     const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
     const isWeekView = viewName === 'resourceTimelineWeek';
@@ -1573,11 +1672,11 @@ const ScheduleTest = () => {
       <div className="relative group custom-event-content" data-event-id={event.id}>
         {/* Tiêu đề + thời gian */}
         <div style={{ fontSize: `${eventFontSize}px` }}>
-          <b>{event.title}</b>
+          <b>{props.is_clearning ? event.title.split("-")[1] : event.title}</b>
           {!isTimelineMonth && (
             <>
               <br />
-              {viewName !== 'resourceTimelineQuarter' && (
+              {viewName !== 'resourceTimelineQuarter' && !props.is_clearning && (
                 <span>{moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}</span>
               )}
             </>
@@ -1681,7 +1780,7 @@ const ScheduleTest = () => {
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
-        initialView="resourceTimelineWeek"
+        initialView="resourceTimelineMonth1h"
         firstDay={1}
         events={events}
         eventResourceEditable={true}
@@ -1697,7 +1796,7 @@ const ScheduleTest = () => {
         selectable={true}
         eventResizableFromStart={true}
 
-        slotDuration="00:15:00"
+        slotDuration="01:00:00"
         eventDurationEditable={true}
         //eventStartEditable={true}
 
@@ -1705,7 +1804,7 @@ const ScheduleTest = () => {
         eventResize={handleEventChange}
         eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
         eventReceive={handleEventReceive}
-        dateClick={() => handleEventUnHightLine()}
+        dateClick={handleClear}
         eventAllow={finisedEvent}
 
         resourceGroupField="stage_name"
@@ -1772,7 +1871,7 @@ const ScheduleTest = () => {
             >
               <div
                 style={{
-                  fontSize: "14px",
+                  fontSize: "22px",
                   fontWeight: "bold",
                   marginBottom: "2px",
                   width: "8%",
@@ -1993,6 +2092,7 @@ const ScheduleTest = () => {
 
         eventContent={(arg) => (
           <EventContent
+            
             arg={arg}
             selectedEvents={selectedEvents}
             toggleEventSelect={toggleEventSelect}
@@ -2040,14 +2140,17 @@ const ScheduleTest = () => {
             e.stop();
           }
         }}
+        
+
         container=".calendar-wrapper"
         selectableTargets={[".fc-event"]}
         hitRate={100}
         selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
         selectFromInside={true}
         toggleContinueSelect={["shift"]}
-
+        ref={selectoRef}
         onSelectEnd={(e) => {
+          console.log (e)
           const selected = e.selected.map((el) => {
             const id = el.getAttribute("data-event-id");
             const stageCode = el.getAttribute("data-stage_code");
