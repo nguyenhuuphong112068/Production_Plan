@@ -1517,7 +1517,7 @@ class SchedualController extends Controller
         }
 
         public function test(){
-              //$this->scheduleAll (null);
+              $this->scheduleAll (null);
               //$this->createAutoCampain();
               //$this->view (null);
               //$this->Sorted (null);
@@ -1791,7 +1791,7 @@ class SchedualController extends Controller
         }// đã có temp
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll(Request $request) {
+        public function scheduleAll( $request) {
 
                 $this->selectedDates = $request->selectedDates??[];
                 $this->work_sunday = $request->work_sunday??false;
@@ -2423,12 +2423,10 @@ class SchedualController extends Controller
                                 // return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
                                 // })
                                 ->where('code', $task->predecessor_code)->value('end');
-                        if ($bestStart == null){
-                              dd ($bestStart,$pred_end, $bestStart);
-                        }
 
-                        if (isset($pred_end) && $pred_end != null && $pred_end > $bestStart) {$bestStart = $pred_end; }
 
+
+                        if (isset($pred_end) && $pred_end != null && $pred_end > $bestStart) {$bestStart = Carbon::parse($pred_end);}
 
                         if ($counter == 0) {
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->p_time_minutes + $bestRoom->m_time_minutes);
@@ -2436,7 +2434,7 @@ class SchedualController extends Controller
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô đâu tiên chiến dịch
                                 $clearningType = 1;
                         }elseif ($counter == $campaignTasks->count()-1){
-                                
+                           
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
                                 $start_clearning = $bestEnd->copy();
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C2_time_minutes); //Lô cuối chiến dịch
@@ -2444,7 +2442,6 @@ class SchedualController extends Controller
                                         $start_clearning =  $endOfPeriod->copy();
                                         $bestEndCleaning =  $start_clearning->copy()->addMinutes((float)$bestRoom->C2_time_minutes);
                                 }
-
                                 $clearningType = 2;
                         }else {
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
