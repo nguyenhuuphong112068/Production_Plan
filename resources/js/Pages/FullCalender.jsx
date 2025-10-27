@@ -1076,8 +1076,7 @@ const ScheduleTest = () => {
           ...result.value,
           startDate: activeStart.toISOString(),
           endDate: activeEnd.toISOString(),
-
-        })
+        }, { timeout: 300000 })
           .then(res => {
             let data = res.data;
             if (typeof data === "string") {
