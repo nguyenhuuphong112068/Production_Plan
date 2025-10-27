@@ -1015,9 +1015,9 @@ const ScheduleTest = () => {
         }
 
         // ------------------ Disable Confirm if missing permission ------------------
+        
 
-
-        if (emptyPermission.stage_code < 4) {
+        if (emptyPermission != null && emptyPermission.stage_code < 4) {
           const confirmBtn = Swal.getConfirmButton();
           confirmBtn.disabled = false;
           confirmBtn.style.opacity = "0.5";
@@ -1030,7 +1030,7 @@ const ScheduleTest = () => {
       ,
       preConfirm: () => {
 
-        if (emptyPermission.stage_code < 4) {
+        if (emptyPermission != null && emptyPermission.stage_code < 4) {
           Swal.showValidationMessage('Vui lòng định mức đầy đủ ít nhất một công đoạn trước khi sắp lịch tự động!');
           return false;
         }
@@ -1099,12 +1099,13 @@ const ScheduleTest = () => {
 
           })
           .catch(err => {
-            Swal.fire({
-              icon: 'error',
-              title: 'Lỗi',
-              timer: 1000,
-              showConfirmButton: false,
-            });
+            // Swal.fire({
+            //   icon: 'error',
+            //   title: 'Lỗi',
+            //   timer: 1000,
+            //   showConfirmButton: false,
+            // });
+            setLoading(!loading)
             console.error("ScheduleAll error:", err.response?.data || err.message);
           });
       }
