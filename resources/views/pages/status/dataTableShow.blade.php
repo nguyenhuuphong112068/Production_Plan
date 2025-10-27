@@ -40,9 +40,9 @@
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
                   <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 20%">Lịch SX</th>
-                  <th style="width: 20%">Đang SX</th>
-                  <th style="width: 42%" class="text-center">Thông Báo</th>
+                  <th style="width: 40%">Lịch SX</th>
+                  <th style="width: 30%">Đang SX</th>
+                  <th style="width: 17%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
@@ -121,9 +121,11 @@
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
                   <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 20%">Lịch SX</th>
-                  <th style="width: 20%">Đang SX</th>
-                  <th style="width: 42%" class="text-center">Thông Báo</th>
+                  <th style="width: 35%">Lịch SX</th>
+                  <th style="width: 5%">TG</th>
+                  <th style="width: 30%">Đang SX</th>
+                  <th style="width: 5%">TG</th>
+                  <th style="width: 17%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
@@ -131,7 +133,7 @@
                 @foreach ($leftData as $data)
                   @if ($data->stage_code != $current_stage)
                     <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="4">Công Đoạn {{ $data->stage }}</td>
+                      <td colspan="6">{{ $stage[$data->stage]  }}</td>
                     </tr>
                   @endif
                   @php 
@@ -149,7 +151,7 @@
 
                     {{-- sp theo lịch 1--}}
                     <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
+                      <div class="scroll-text-wrapper" >
                         <div class="scroll-text unnote">
                           @if ($data->batch != null)
                             {{ $data->product_name . "_" . $data->batch }}
@@ -157,6 +159,13 @@
                             {{ $data->product_name }}
                           @endif
                         </div>
+                      </div>
+                    </td>
+                    
+                    <td style="max-width: 250px; overflow: hidden;">
+                      <div class="scroll-text-wrapper" >
+                          <div>12:54 27/10</div>
+                          <div>12:54 27/10</div>
                       </div>
                     </td>
 
@@ -169,6 +178,12 @@
                           
                         </div>
                       </div>
+                       <td style="max-width: 250px; overflow: hidden;">
+                        <div class="scroll-text-wrapper" >
+                            <div>12:54 27/10</div>
+                            <div>12:54 27/10</div>
+                        </div>
+                      </td>
                     </td>
 
 
@@ -191,29 +206,40 @@
         <div class="col-md-6">
           <div class="card">
             <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-              <thead style=" color:#003A4F; font-size: 30px;">
+              <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
-                  <th style="width: 12%">Phòng SX</th>
-                  <th style="width: 20%">Theo Lịch SX</th>
-                  <th style="width: 20%">Đang SX</th>
-                  <th style="width: 43%" class="text-center">Thông Báo</th>
+                  <th style="width: 13%">Phòng SX</th>
+                  <th style="width: 35%">Lịch SX</th>
+                  <th style="width: 5%">TG</th>
+                  <th style="width: 30%">Đang SX</th>
+                  <th style="width: 5%">TG</th>
+                  <th style="width: 17%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
-              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
+              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
                 @php $current_stage = 0; @endphp
                 @foreach ($rightData as $data)
                   @if ($data->stage_code != $current_stage)
                     <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="4">Công Đoạn {{ $data->stage }}</td>
+                      <td colspan="6">{{ $stage[$data->stage]  }}</td>
                     </tr>
                   @endif
-                  @php $current_stage = $data->stage_code; @endphp
-                <tr>
+                  @php 
+                      $current_stage = $data->stage_code; 
+                      switch ($data->status) {
+                          case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
+                          case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
+                          case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
+                          case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
+                         
+                      }
+                  @endphp
+                  <tr>
                     <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
 
-                    {{-- sp theo lịch 2--}}
+                    {{-- sp theo lịch 1--}}
                     <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
+                      <div class="scroll-text-wrapper" >
                         <div class="scroll-text unnote">
                           @if ($data->batch != null)
                             {{ $data->product_name . "_" . $data->batch }}
@@ -223,19 +249,33 @@
                         </div>
                       </div>
                     </td>
-
-
-                    {{-- sp đang sx 2 --}}
+                    
                     <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->in_production}}
-                        </div>
+                      <div class="scroll-text-wrapper" >
+                          <div>12:54 27/10</div>
+                          <div>12:54 27/10</div>
                       </div>
                     </td>
 
 
-                    {{-- thông báo 2 --}}
+                    {{-- sp đang sx 1 --}}
+                    <td style="max-width: 250px; overflow: hidden;">
+                      <div class="scroll-text-wrapper">
+                        <div class="scroll-text unnote">
+                            {{ $data->in_production }}
+                          
+                        </div>
+                      </div>
+                       <td style="max-width: 250px; overflow: hidden;">
+                        <div class="scroll-text-wrapper" >
+                            <div>12:54 27/10</div>
+                            <div>12:54 27/10</div>
+                        </div>
+                      </td>
+                    </td>
+
+
+                    {{-- thông báo 1 --}}
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
                         <div class="scroll-text note">
@@ -297,14 +337,14 @@
         }};
         
         // Kiểm tra từng dòng .scroll-text trong bảng
-        $(".unnote").each(function() {
-          const el = this;
-          // Nếu nội dung dài hơn khung chứa thì thêm class animate
+        // $(".unnote").each(function() {
+        //   const el = this;
+        //   // Nếu nội dung dài hơn khung chứa thì thêm class animate
          
-          if ( el.innerText.length > max_charater_unnote) {
-            el.classList.add("animate");
-          }
-        });
+        //   if ( el.innerText.length > max_charater_unnote) {
+        //     el.classList.add("animate");
+        //   }
+        // });
 
         $(".note").each(function() {
           const el = this;
@@ -388,8 +428,8 @@
           line-height: 1.1;
         }
         .table td {
-          padding: 8 0px !important;
-          text-align: center;
+          padding: 8 2px !important;
+          text-align: left;
           vertical-align: middle;
           line-height: 1.1;
         }
