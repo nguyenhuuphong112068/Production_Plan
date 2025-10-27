@@ -1520,7 +1520,7 @@ class SchedualController extends Controller
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
               //$this->view (null);
-              $this->Sorted (null);
+              //$this->Sorted (null);
         }
 
         ///////// Các hàm liên Auto Schedualer
@@ -1613,15 +1613,11 @@ class SchedualController extends Controller
                 // while (true) {
                 foreach ($busyList as $busy) {
 
-                        $startOfSunday = (clone $current_start)->startOfWeek()->addDays(6)->setTime(0, 0, 0); // CN 6h sáng
+                        $startOfSunday = (clone $current_start)->startOfWeek()->addDays(6)->setTime(0, 0, 0)->subMinutes(120); // CN 6h sáng
                         $endOfPeriod   = (clone $startOfSunday)->addDay()->setTime(6, 0, 0);   // T2 tuần kế tiếp 6h sáng
-                        if ($current_start->between($startOfSunday, $endOfPeriod)) {
+                        if ($current_start->between($startOfSunday, $endOfPeriod) && $this->work_sunday == false) {
                                 $current_start = $endOfPeriod;
                         }
-
-                        // $current_start = ($this->work_sunday == false &&($current_start->isSunday() || ($current_start->isMonday() && $current_start->hour < 6)))
-                        //         ? $current_start->next('monday')->setTime(6, 0)
-                        //         : $current_start;
                               
                         if ($current_start->lt($busy['start'])) {
                                         
@@ -1639,7 +1635,7 @@ class SchedualController extends Controller
                                 }
 
                                 if ($sundayCount > 0){
-                                        $work_sunday_time = 1440 * $sundayCount;
+                                        $work_sunday_time = 1800 * $sundayCount;
                                 }
 
                                 if ($gap >= $intervalTime + $C2_time_minutes + $work_sunday_time) {
@@ -2413,6 +2409,7 @@ class SchedualController extends Controller
                 foreach ($campaignTasks as  $task) {
                         // kiêm tra ngay chủ nhật
                         //dd ($bestStart);
+                        
                         if ($this->work_sunday == false) {
                                 $startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(0, 0, 0);
                                 $endOfPeriod   = (clone $startOfSunday)->addDay()->setTime(6, 0, 0);
@@ -2420,13 +2417,18 @@ class SchedualController extends Controller
                                         $bestStart = $endOfPeriod->copy();
                                 }
                         }
-
+                        
                         $pred_end = DB::table($stage_plan_table)
                                 // ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
                                 // return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
                                 // })
                                 ->where('code', $task->predecessor_code)->value('end');
-                        if ($pred_end && $pred_end > $bestStart) {$bestStart = $pred_end; }
+                        if ($bestStart == null){
+                              dd ($bestStart,$pred_end, $bestStart);
+                        }
+
+                        if (isset($pred_end) && $pred_end != null && $pred_end > $bestStart) {$bestStart = $pred_end; }
+
 
                         if ($counter == 0) {
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->p_time_minutes + $bestRoom->m_time_minutes);
@@ -2434,6 +2436,7 @@ class SchedualController extends Controller
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô đâu tiên chiến dịch
                                 $clearningType = 1;
                         }elseif ($counter == $campaignTasks->count()-1){
+                                
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
                                 $start_clearning = $bestEnd->copy();
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C2_time_minutes); //Lô cuối chiến dịch
@@ -2446,7 +2449,7 @@ class SchedualController extends Controller
                         }else {
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
                                 $start_clearning = $bestEnd->copy();
-                                $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô giữa chiến dịch
+                                $bestEndCleaning = $start_clearning->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô giữa chiến dịch
                                 $clearningType = 1;
                         }
 
@@ -3263,7 +3266,7 @@ class SchedualController extends Controller
                         $candidatesEarliest[] = $start_date;
                          
                         $startDateWeek = Carbon::parse($task->expected_date)->subDays(5+7);
-                        $candidatesEarliest[] = $startDateWeek->startOfWeek(Carbon::MONDAY)->setTime(0, 0, 0);
+                        $candidatesEarliest[] = $startDateWeek->startOfWeek(Carbon::MONDAY)->setTime(6, 0, 0);
 
                         if ($task->stage_code == 7){
                                 $candidatesEarliest[] = Carbon::parse($task->after_parkaging_date);
