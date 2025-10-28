@@ -2422,12 +2422,14 @@ class SchedualController extends Controller
                                 $start_clearning = $bestEnd->copy();
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô đâu tiên chiến dịch
                                 $clearningType = 1;
+
                         }elseif ($counter == $campaignTasks->count()){
                            
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
                                 $start_clearning = $bestEnd->copy();
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C2_time_minutes); //Lô cuối chiến dịch
-                                if ($start_clearning->between($startOfSunday, $endOfPeriod)) {
+                                if ($bestEnd->between($startOfSunday, $endOfPeriod)) {
+                                        $bestEnd = $bestEnd->addMinutes(1440);
                                         $start_clearning =  $endOfPeriod->copy();
                                         $bestEndCleaning =  $start_clearning->copy()->addMinutes((float)$bestRoom->C2_time_minutes);
                                 }else if ($bestEndCleaning->between($startOfSunday, $endOfPeriod)) {
