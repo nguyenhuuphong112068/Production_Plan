@@ -2430,7 +2430,7 @@ class SchedualController extends Controller
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C2_time_minutes); //Lô cuối chiến dịch
                                 if ($bestEnd->between($startOfSunday, $endOfPeriod)) {
                                         $bestEnd = $bestEnd->addMinutes(1440);
-                                        $start_clearning =  $endOfPeriod->copy();
+                                        $start_clearning =  $bestEnd->copy();
                                         $bestEndCleaning =  $start_clearning->copy()->addMinutes((float)$bestRoom->C2_time_minutes);
                                 }else if ($bestEndCleaning->between($startOfSunday, $endOfPeriod)) {
                                         $bestEndCleaning = $bestEndCleaning->addMinutes(1440);;
