@@ -18,12 +18,13 @@
         <div class="text-white w-100" style="background-color: #CDC717; padding: 6px 10px;">
             <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
                 <button class="btn btn-success btn-sm d-flex align-items-center justify-content-center"
-                    style="width: 35px; height: 35px; padding: 0; font-weight: bold;">+</button>
+                    style="width: 35px; height: 35px; padding: 0; font-weight: bold;"
+                    data-toggle="modal"
+                    data-target="#notification_Modal"
+                    >+</button>
+
                 <div class="animate-scroll text-xl text-red" style="overflow: hidden;">
-                    Thông Báo Chung: Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex, autem? Veniam quasi
-                    modi
-                    soluta expedita a maxime commodi eius error fugit. Dicta laborum ea quae vero fugit, excepturi
-                    exercitationem id.
+                    {{ $general_notication?->notification ?? 'Không có thông báo mới!' }}
                 </div>
             </div>
         </div>
@@ -170,16 +171,16 @@
                         </thead>
                         <tbody class="font-bold"
                             style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
-                            @php $current_stage = 0; @endphp
+                            @php $current_stage = null; @endphp
                             @foreach ($leftData as $data)
-                                @if ($data->stage_code != $current_stage)
-                                    <tr class="text-center"
-                                        style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                                        <td colspan="6">{{ $stage[$data->stage] }}</td>
+                                @if ($data->production_group != $current_stage)
+                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                                    <td colspan="6">{{$data->production_group }}</td>
                                     </tr>
                                 @endif
+
                                 @php
-                                    $current_stage = $data->stage_code;
+                                    $current_stage = $data->production_group;
                                     switch ($data->status) {
                                         case 0:
                                             $color = '#ffffff';
@@ -295,16 +296,16 @@
                         </thead>
                         <tbody class="font-bold"
                             style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
-                            @php $current_stage = 0; @endphp
+                            @php $current_stage = null; @endphp
                             @foreach ($rightData as $data)
-                                @if ($data->stage_code != $current_stage)
-                                    <tr class="text-center"
-                                        style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                                        <td colspan="6">{{ $stage[$data->stage] }}</td>
+                                @if ($data->production_group != $current_stage)
+                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                                    <td colspan="6">{{$data->production_group }}</td>
                                     </tr>
                                 @endif
+
                                 @php
-                                    $current_stage = $data->stage_code;
+                                    $current_stage = $data->production_group;
                                     switch ($data->status) {
                                         case 0:
                                             $color = '#ffffff';
@@ -322,8 +323,17 @@
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
-                                        <div>
-                                            {{ $data->room_name }}
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                          <button class="btn btn-success btn-sm btn-plus" 
+                                                  style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                  data-room_name ="{{ $data->room_name }}"
+                                                  data-room_id ="{{ $data->room_id }}"
+                                                  data-in_production = "{{ $data->title}}"
+                                                  data-toggle="modal"
+                                                  data-target="#Modal"
+                                                  
+                                                  >+</button>
+                                          <span>{{ $data->room_name }}</span>
                                         </div>
                                         <div>
                                             {{ $data->sheet }}

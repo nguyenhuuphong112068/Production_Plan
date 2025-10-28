@@ -23,6 +23,12 @@ class StatusController extends Controller
                 $production =  session('user')['production_code']??"PXV1";
 
                 $now = Carbon::now();
+
+                $general_notication = DB::table('room_status_notification')
+                        ->where ('deparment_code', $production)
+                        ->where ('durability', '>=' , $now)
+                        ->orderBy('id')->first();
+
                 $datas = DB::table('room')
                         ->leftJoin('stage_plan', function ($join) use ($now) {
                                 $join->on('room.id', '=', 'stage_plan.resourceId')
@@ -46,6 +52,7 @@ class StatusController extends Controller
                         ->select(
                                 'room.stage_code',
                                 'room.stage',
+                                'room.production_group',	
                                 'stage_plan.title',
                                 'stage_plan.start',
                                 'stage_plan.end',
@@ -60,7 +67,7 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.sheet, '') as sheet"),
                                 DB::raw("COALESCE(rs.step_batch, '') as step_batch")
                         )
-                        ->orderBy('room.stage_code')
+                        ->orderBy('room.group_code')
                         ->orderBy('room.order_by')
                 ->get();
 
@@ -70,11 +77,10 @@ class StatusController extends Controller
                 return view('pages.status.dataTableShow',[
                         'datas' =>  $datas,
                         'production' =>  $production,
-                        'stage' => $this->stage
+                        'stage' => $this->stage,
+                        'general_notication' =>  $general_notication
                 ]);
         }
-
-
 
         public function next(Request $request){
               
@@ -105,6 +111,11 @@ class StatusController extends Controller
                 $now = Carbon::now();
 
                 //dd ($datas);
+                $general_notication = DB::table('room_status_notification')
+                        ->where ('deparment_code', $production)
+                        ->where ('durability', '>=' , now())
+                        ->orderBy('id')->first();
+
                 $datas = DB::table('room')
                         ->leftJoin('stage_plan', function ($join) use ($now) {
                                 $join->on('room.id', '=', 'stage_plan.resourceId')
@@ -128,7 +139,9 @@ class StatusController extends Controller
                         ->select(
                                 'room.stage_code',
                                 'room.stage',
+                                'room.production_group',	
                                 'room.order_by',
+                                'room.group_code',
                                 'stage_plan.title',
                                 'stage_plan.start',
                                 'stage_plan.end',
@@ -144,7 +157,7 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
                                 DB::raw("COALESCE(rs.room_id, '') as room_id")
                         )
-                        ->orderBy('room.stage_code')
+                        ->orderBy('room.group_code')
                         ->orderBy('room.order_by')
                 ->get();
 
@@ -158,7 +171,8 @@ class StatusController extends Controller
                         'datas' =>  $datas,
                         'production' =>  $production,
                         'planWaitings' =>  $planWaitings,
-                        'stage' => $this->stage
+                        'stage' => $this->stage,
+                        'general_notication' =>  $general_notication
                         
                 ]);
         }
@@ -258,5 +272,17 @@ class StatusController extends Controller
                 ]);                
         }
 
+        public function store_general_notification (Request $request){
+                
+                DB::table('room_status_notification')->insert([
+                        'notification' => $request->notification,
+                        'group_code' => 0,
+                        'durability' => $request->durability??now(),
+                        'deparment_code' => session('user')['production_code'],
+                        'created_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                ]);
+                return redirect()->back()->with('success', 'Đã thêm thành công!');      
+        }
 
 }
