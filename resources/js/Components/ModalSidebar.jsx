@@ -667,9 +667,20 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const handleFinished = () => {
     if (isSaving) return;
     setIsSaving(true);
+    if (selectedRows.length ==0){
+       Swal.fire({
+              icon: 'warning',
+              title: 'Không có dòng được chọn',
+              timer: 500,
+              showConfirmButton: false,
+            });
 
+      setIsSaving(false);
+      return
+    }
     const ids = selectedRows.map(row => row.plan_master_id);
     const stageCode = selectedRows[0].stage_code
+    
 
       axios.put('/Schedual/finished',{id : ids, temp : true, stage_code: stageCode} )
 
@@ -815,10 +826,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div> 
 
-              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
-                onClick={handleFinished}>
-                {isSaving === false ? <i className="fas fa-check"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
-              </div>
+ 
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
                 onClick={handleSorted}>
@@ -861,6 +869,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
             </div>
           </Col>
           <Col md={3} className='d-flex justify-content-end'>
+              
+            <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
+                onClick={handleFinished}>
+                {isSaving === false ? <i className="fas fa-check"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
+            </div>
 
             {percentShow === "100%" ? (
               <InputText className='border mr-5'
@@ -869,6 +882,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 placeholder="Tìm kiếm..."
                 style={{ width: "50%" }}
               />):""}
+
+
           
             {percentShow != "close" ? (
             <div onClick={handleToggle} className='me-3' style={{ width: '30px', height: '30px' , marginRight: '1%' }} title="Điều Chỉnh Độ Rộng Side Bar">
