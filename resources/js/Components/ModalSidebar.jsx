@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -14,6 +14,7 @@ import axios from "axios";
 
 const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources, type }) => {
 
+   const wrapperRef = useRef(null);
 
   const [stageFilter, setStageFilter] = useState(1);
   const [visibleColumns, setVisibleColumns] = useState([]);
@@ -769,6 +770,18 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
   }
 
+  const handleDragOver = (e) => {
+    const wrapper = wrapperRef.current?.querySelector(".p-datatable-wrapper");
+    if (!wrapper) return;
+
+    const rect = wrapper.getBoundingClientRect();
+    const offset = 50; // vùng nhạy cảm cuộn
+    const speed = 50;  // tốc độ cuộn
+
+    if (e.clientY < rect.top + offset) wrapper.scrollTop -= speed;
+    else if (e.clientY > rect.bottom - offset) wrapper.scrollTop += speed;
+  };
+
    
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
@@ -790,6 +803,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   ];
     
   return (
+    <div
+      ref={wrapperRef}
+      onDragOver={handleDragOver}
+      style={{ height: "600px", overflow: "auto" }}
+    >
     <div
         id="external-events"
         className={`absolute right-0 h-100 z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
@@ -1172,7 +1190,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       </Modal>
 
     </div>
-    
+    </div>
   );
 };
 
