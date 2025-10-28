@@ -306,130 +306,132 @@
 
           
           <!-- roplist Trang Thái Sản Xuất-->
-          <li class="nav-item">
-            <a href="{{ route ('pages.status.index') }}" class="nav-link">
-              <i class="nav-icon fas fa-th"></i>
-              <p>
-                Trang Thái Sản Xuất
-              </p>
-            </a>
-          </li>
+          @if (user_has_permission(session('user')['userId'], 'layout_status', 'boolean'))
+            <li class="nav-item">
+              <a href="{{ route ('pages.status.index') }}" class="nav-link">
+                <i class="nav-icon fas fa-bars"></i>
+                <p>
+                  Trang Thái Sản Xuất
+                </p>
+              </a>
+            </li>
+          @endif
 
           @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
-          <!-- Droplist Menu Biệt Trữ -->
-          <li class="nav-item has-treeview">
-            <a href="#" class="nav-link">
-              <i class="nav-icon fas fa-pallet"></i>
-              <p>
-                Tồn BTP
-                <i class="right fas fa-angle-left"></i>
-              </p>
-            </a>
-            
-            <ul class="nav nav-treeview">
+            <!-- Droplist Menu Biệt Trữ -->
+            <li class="nav-item has-treeview">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-pallet"></i>
+                <p>
+                  Tồn BTP
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              
+              <ul class="nav nav-treeview">
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Theo Phòng Biệt Trữ </p>
-                </a>
-              </li>
+                <li class="nav-item">
+                  <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Theo Phòng Biệt Trữ </p>
+                  </a>
+                </li>
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Theo Công Đoạn </p>
-                </a>
-              </li>
-            
-            </ul>
-          </li>
+                <li class="nav-item">
+                  <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Theo Công Đoạn </p>
+                  </a>
+                </li>
+              
+              </ul>
+            </li>
           @endif
 
           <!-- Droplist Thống Kê -->
           @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
-          <li class="nav-item has-treeview">
-            <a href="#" class="nav-link">
-              <i class="nav-icon fas fa-chart-bar"></i>
-              <p>
-                Thống Kê
-                <i class="right fas fa-angle-left"></i>
-              </p>
-            </a>
-            
-            <ul class="nav nav-treeview">
+            <li class="nav-item has-treeview">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-chart-bar"></i>
+                <p>
+                  Thống Kê
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              
+              <ul class="nav nav-treeview">
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.statistics.product.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Sản Phẩm </p>
-                </a>
-              </li>
+                <li class="nav-item">
+                  <a href="{{ route ('pages.statistics.product.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Sản Phẩm </p>
+                  </a>
+                </li>
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.statistics.room.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Phòng Sản Xuất </p>
-                </a>
-              </li>
+                <li class="nav-item">
+                  <a href="{{ route ('pages.statistics.room.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Phòng Sản Xuất </p>
+                  </a>
+                </li>
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.statistics.stage.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Công Đoạn Sản Xuất  </p>
-                </a>
-              </li>
-            
-            </ul>
-          </li>
+                <li class="nav-item">
+                  <a href="{{ route ('pages.statistics.stage.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Công Đoạn Sản Xuất  </p>
+                  </a>
+                </li>
+              
+              </ul>
+            </li>
           @endif
 
           <!-- History-->
           @if (user_has_permission(session('user')['userId'], 'layout_history', 'boolean'))
-          <li class="nav-item">
-            <a href="{{ route ('pages.History.list') }}" class="nav-link">
-              <i class="nav-icon fas fa-history"></i>
-              <p>
-                Lịch Sử Sản Xuất
-              </p>
-            </a>
-          </li>
+            <li class="nav-item">
+              <a href="{{ route ('pages.History.list') }}" class="nav-link">
+                <i class="nav-icon fas fa-history"></i>
+                <p>
+                  Lịch Sử Sản Xuất
+                </p>
+              </a>
+            </li>
           @endif
 
             <!-- User-->
           @if (user_has_permission(session('user')['userId'], 'layout_User', 'boolean'))
-          <li class="nav-item has-treeview">
-            <a href="#" class="nav-link">
-              <i class="nav-icon fas fa-user"></i>
-              <p>
-                User Policy
-                <i class="right fas fa-angle-left"></i>
-              </p>
-            </a>
-            
-            <ul class="nav nav-treeview">
-              <li class="nav-item">
-                <a href="{{ route ('pages.User.user.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Danh Sách User </p>
-                </a>
-              </li>
+            <li class="nav-item has-treeview">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-user"></i>
+                <p>
+                  User Policy
+                  <i class="right fas fa-angle-left"></i>
+                </p>
+              </a>
+              
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ route ('pages.User.user.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Danh Sách User </p>
+                  </a>
+                </li>
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.User.role.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Nhóm Phân Quyền </p>
-                </a>
-              </li>
+                <li class="nav-item">
+                  <a href="{{ route ('pages.User.role.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Nhóm Phân Quyền </p>
+                  </a>
+                </li>
 
-              <li class="nav-item">
-                <a href="{{ route ('pages.User.permission.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Danh Sách Quyền </p>
-                </a>
-              </li>
-            </ul>
-          </li>
+                <li class="nav-item">
+                  <a href="{{ route ('pages.User.permission.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Danh Sách Quyền </p>
+                  </a>
+                </li>
+              </ul>
+            </li>
           @endif
 
           <!-- Audit Trial-->

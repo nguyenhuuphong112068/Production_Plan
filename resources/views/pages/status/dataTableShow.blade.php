@@ -23,7 +23,7 @@
 
         <div class="text-white w-100 " style="background-color: #CDC717">
             <div class="animate-scroll inline-block text-xl text-red">
-                {{ $general_notication?->notification ?? 'Không có thông báo mới!' }}
+                <i class="nav-icon fas fa-capsules"></i> <<--- {{ $general_notication?->notification ?? 'Không có thông báo mới!' }} --->> <i class="nav-icon fas fa-tablets"></i>
             </div>
         </div>
 
