@@ -775,8 +775,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     if (!wrapper) return;
 
     const rect = wrapper.getBoundingClientRect();
-    const offset = 50; // vùng nhạy cảm cuộn
-    const speed = 50;  // tốc độ cuộn
+    const offset = 100; // vùng nhạy cảm cuộn
+    const speed = 500;  // tốc độ cuộn
 
     if (e.clientY < rect.top + offset) wrapper.scrollTop -= speed;
     else if (e.clientY > rect.bottom - offset) wrapper.scrollTop += speed;
