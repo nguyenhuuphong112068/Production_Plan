@@ -1809,8 +1809,7 @@ class SchedualController extends Controller
 
                 $this->scheduleStartBackward($start_date, $waite_time);
 
-                dd ('sa');
-        
+               
                 foreach ($stageCodes as $stageCode) {
                         $waite_time_nomal_batch = 0;
                         $waite_time_val_batch   = 0;
