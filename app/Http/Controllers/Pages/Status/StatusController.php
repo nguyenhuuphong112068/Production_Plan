@@ -74,7 +74,7 @@ class StatusController extends Controller
                 ]);
         }
 
-
+        
 
         public function next(Request $request){
               
