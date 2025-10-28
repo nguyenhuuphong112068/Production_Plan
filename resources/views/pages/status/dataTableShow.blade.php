@@ -221,12 +221,9 @@
                     </td>
 
                     <td style="max-width: 250px; overflow: hidden;">
-                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
-                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
-                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @if ($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))
+                            <div>{{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}</div>
                         @else
                             <div>-</div>
                         @endif
@@ -324,12 +321,9 @@
                     </td>
 
                     <td style="max-width: 250px; overflow: hidden;">
-                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
-                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}</div>
-                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}</div>
+                        @if ($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))
+                            <div>{{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}</div>
+                            <div>{{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}</div>
                         @else
                             <div>-</div>
                         @endif
@@ -398,16 +392,6 @@
           //alert (totalHeight)
         }};
         
-        // Kiểm tra từng dòng .scroll-text trong bảng
-        // $(".unnote").each(function() {
-        //   const el = this;
-        //   // Nếu nội dung dài hơn khung chứa thì thêm class animate
-         
-        //   if ( el.innerText.length > max_charater_unnote) {
-        //     el.classList.add("animate");
-        //   }
-        // });
-
         $(".note").each(function() {
           const el = this;
           // Nếu nội dung dài hơn khung chứa thì thêm class animate
@@ -435,7 +419,7 @@
                 transform: translateX(100%);
             }
             100% {
-                transform: translateX(0%);
+                transform: translateX(-80%);
             }
         }
 

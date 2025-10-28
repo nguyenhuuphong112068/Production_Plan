@@ -42,7 +42,7 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status as rs1')
-                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch',  'rs1.status', 'rs1.in_production', 'rs1.notification')
+                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch', 'rs1.start as start_realtime', 'rs1.end as end_realtime',  'rs1.status', 'rs1.in_production', 'rs1.notification')
                                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
                                 'rs', function ($join) {
                                 $join->on('room.id', '=', 'rs.room_id');
@@ -65,7 +65,9 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
                                 DB::raw("COALESCE(rs.sheet, '') as sheet"),
-                                DB::raw("COALESCE(rs.step_batch, '') as step_batch")
+                                DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
+                                DB::raw("COALESCE(rs.start_realtime, '') as start_realtime"),
+                                DB::raw("COALESCE(rs.end_realtime, '') as end_realtime"),
                         )
                         ->orderBy('room.group_code')
                         ->orderBy('room.order_by')
@@ -183,7 +185,7 @@ class StatusController extends Controller
                 $stage_plan_table = session('fullCalender')['mode'] === 'offical'
                         ? 'stage_plan'
                         : 'stage_plan_temp';
-
+                
                 // 2️⃣ Lấy danh sách plan_waiting (chỉ 1 query)
                 $plan_waiting = DB::table("$stage_plan_table as sp")
                         ->whereNotNull('sp.start')
