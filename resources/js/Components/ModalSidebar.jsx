@@ -67,6 +67,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
   useEffect(() => {
     if (waitPlan && waitPlan.length > 0) {
+      
       setTableData(waitPlan.filter(event => Number(event.stage_code) === stageFilter));
       setUnQuota (tableData.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
     }
@@ -744,7 +745,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               data = JSON.parse(data);
             }
            
-            setPlan(data.plan_waiting)
+            setPlan(data.plan)
+            
             Swal.fire({
               icon: 'success',
               title: 'Hoàn Thành',
