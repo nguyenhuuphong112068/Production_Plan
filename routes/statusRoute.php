@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
             Route::get('index','index')->name('index');
             Route::post('store','store')->name('store');
             Route::post('getLastStatusRoom','getLastStatusRoom')->name('getLastStatusRoom');
+            Route::post('store_general_notification','store_general_notification')->name('store_general_notification');
     });
     
 

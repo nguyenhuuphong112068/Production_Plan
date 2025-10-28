@@ -382,7 +382,7 @@ class SchedualController extends Controller
                         'code',
                         DB::raw("CONCAT(code,'-', name) as title"),
                         'main_equiment_name',
-                        //'stage',
+                        'order_by',
                         'stage_code',
                         'production_group',
                         DB::raw("
@@ -395,7 +395,7 @@ class SchedualController extends Controller
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
                 //->where('room.stage_code', '<=', 4)
-                //->orderBy('order_by', 'asc')
+                ->orderBy('order_by', 'asc')
                 ->get()
                 ->map(function ($room) use ($statsMap, $yieldMap) {
                         $stat = $statsMap->get($room->id);

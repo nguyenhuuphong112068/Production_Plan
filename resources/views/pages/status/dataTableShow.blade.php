@@ -23,9 +23,7 @@
 
         <div class="text-white w-100 " style="background-color: #CDC717">
             <div class="animate-scroll inline-block text-xl text-red">
-                Thông Báo Chung: Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex, autem? Veniam quasi modi
-                soluta expedita a maxime commodi eius error fugit. Dicta laborum ea quae vero fugit, excepturi
-                exercitationem id.
+                {{ $general_notication?->notification ?? 'Không có thông báo mới!' }}
             </div>
         </div>
 
@@ -48,15 +46,22 @@
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
-                @php $current_stage = 0; @endphp
+                @php $current_stage = null; @endphp
                 @foreach ($datas as $data)
-                  @if ($data->stage_code != $current_stage)
+                  {{-- @if ($data->stage_code != $current_stage)
                     <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
                       <td colspan="6">{{ $stage[$data->stage]  }}</td>
                     </tr>
+                  @endif --}}
+
+                   @if ($data->production_group != $current_stage)
+                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                      <td colspan="6">{{$data->production_group }}</td>
+                    </tr>
                   @endif
+
                   @php 
-                      $current_stage = $data->stage_code; 
+                      $current_stage = $data->production_group; 
                       switch ($data->status) {
                           case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
@@ -156,15 +161,16 @@
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
-                @php $current_stage = 0; @endphp
+                @php $current_stage = null; @endphp
                 @foreach ($leftData as $data)
-                  @if ($data->stage_code != $current_stage)
+                  @if ($data->production_group != $current_stage)
                     <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="6">{{ $stage[$data->stage]  }}</td>
+                      <td colspan="6">{{$data->production_group }}</td>
                     </tr>
                   @endif
+
                   @php 
-                      $current_stage = $data->stage_code; 
+                      $current_stage = $data->production_group; 
                       switch ($data->status) {
                           case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
@@ -257,15 +263,17 @@
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
-                @php $current_stage = 0; @endphp
+                @php $current_stage = null; @endphp
                 @foreach ($rightData as $data)
-                  @if ($data->stage_code != $current_stage)
+
+                  @if ($data->production_group != $current_stage)
                     <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="6">{{ $stage[$data->stage]  }}</td>
+                      <td colspan="6">{{$data->production_group }}</td>
                     </tr>
-                    @endif
+                  @endif
+
                   @php 
-                      $current_stage = $data->stage_code; 
+                      $current_stage = $data->production_group; 
                       switch ($data->status) {
                           case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
