@@ -74,7 +74,7 @@ class StatusController extends Controller
                 ]);
         }
 
-        
+
 
         public function next(Request $request){
               
@@ -128,6 +128,7 @@ class StatusController extends Controller
                         ->select(
                                 'room.stage_code',
                                 'room.stage',
+                                'room.order_by',
                                 'stage_plan.title',
                                 'stage_plan.start',
                                 'stage_plan.end',
