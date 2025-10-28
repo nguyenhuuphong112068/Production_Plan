@@ -183,7 +183,8 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                        ->select(          
+                        ->select( 
+                        'sp.order_by',         
                         'plan_master.batch',
                         'product_name.name'
                         )
