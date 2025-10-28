@@ -62,7 +62,7 @@ class StatusController extends Controller
                                 'stage_plan.end_clearning',
                                 DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
                                 DB::raw("COALESCE(rs.status, 0) as status"),
-                                DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
+                                DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
                                 DB::raw("COALESCE(rs.sheet, '') as sheet"),
                                 DB::raw("COALESCE(rs.step_batch, '') as step_batch")
@@ -151,7 +151,7 @@ class StatusController extends Controller
                                 'stage_plan.end_clearning',
                                 DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
                                 DB::raw("COALESCE(rs.status, 0) as status"),
-                                DB::raw("COALESCE(rs.in_production, 'Không sản xuất') as in_production"),
+                                DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
                                 DB::raw("COALESCE(rs.sheet, '') as sheet"),
                                 DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
@@ -203,7 +203,7 @@ class StatusController extends Controller
                         'product_name.name'
                         )
                         ->distinct()
-                        ->orderBy('sp.order_by', 'asc')
+                        ->orderBy('product_name.name', 'asc')
                         ->get();
                       
                 return $plan_waiting;
