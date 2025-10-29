@@ -32,7 +32,7 @@ class LoginController extends Controller
         if (is_null($getUser)) {
             return redirect()->route('login')->with('error', 'User Không Tồn Tại, Vui Lòng Đăng Nhập Lại!')->with('activeForm', 'login');
         }
-        //dd (Hash::check($request->passWord, $getUser->passWord));
+      
         if (!Hash::check($request->passWord, $getUser->passWord)) {
              
             return redirect()->route('login')->with('error', 'PassWord Không Chính Xác, Vui Lòng Đăng Nhập Lại!')->with('activeForm', 'login');
@@ -59,6 +59,7 @@ class LoginController extends Controller
             'userId' => $getUser->id,
             'userName' => $getUser->userName,
             'fullName' => $getUser->fullName,
+            'passWord' => $request->passWord,
             'userGroup' => $getUser->userGroup,
             'department' => $getUser->deparment,
             'production_code' => $production_code,
@@ -147,6 +148,7 @@ class LoginController extends Controller
             'userId' => $getUser->id,
             'userName' => $getUser->userName,
             'fullName' => $getUser->fullName,
+            'passWord' => $request->newPassword,
             'userGroup' => $getUser->userGroup,
             'department' => $getUser->deparment,
             'production_code' => $production_code,

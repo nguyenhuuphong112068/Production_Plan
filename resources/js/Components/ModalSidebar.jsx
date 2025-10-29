@@ -12,7 +12,7 @@ import Swal from 'sweetalert2';
 import axios from "axios";
 
 
-const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources, type }) => {
+const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources, type, currentPassword }) => {
 
    const wrapperRef = useRef(null);
 
@@ -438,7 +438,39 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       return;
   }
 
-  const handleCreateAutoCampain = () => {
+  const handleCreateAutoCampain = async () => {
+
+     const { value: password } = await Swal.fire({
+        title: "Nhập Mật Khẩu",
+        width: "500px",
+        text: "Bạn Muốn Tạo Lại Toạn Bộ Mã Chiến Dich, Chiến Dịch Cũ Sẽ Mất",
+        input: "password",
+        inputPlaceholder: "Nhập mật khẩu...",
+        showCancelButton: true,
+        confirmButtonText: "Xác nhận",
+        cancelButtonText: "Hủy",
+        customClass: {
+          input: 'passWord-swal-input'
+        },
+        inputValidator: (value) => {
+          if (!value) return "Bạn phải nhập mật khẩu!";
+        },
+    });
+
+    if (!password) return;
+    
+    if (password !== currentPassword) {
+      Swal.fire({
+        icon: "error",
+        title: "Sai mật khẩu!",
+        text: "Vui lòng thử lại.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+
     if (isSaving) return;
     setIsSaving(true);
      Swal.fire({
@@ -449,7 +481,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               },
       });
 
-      axios.put('/Schedual/createAutoCampain')
+      axios.put('/Schedual/createAutoCampain', {stage_code: stageFilter})
       . then (res => {
                     let data = res.data;
                     if (typeof data === "string") {
@@ -699,49 +731,80 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   
   }
 
-  const handleSorted = () => {
+  const handleSorted = async  () => {
+
+    const { value: password } = await Swal.fire({
+        title: "Nhập Mật Khẩu",
+        width: "500px",
+        text: "Bạn Muốn Sắp Xếp Lại Toàn Bộ Kế Hoạch",
+        input: "password",
+        inputPlaceholder: "Nhập mật khẩu...",
+        showCancelButton: true,
+        confirmButtonText: "Xác nhận",
+        cancelButtonText: "Hủy",
+        customClass: {
+          input: 'passWord-swal-input'
+        },
+        inputValidator: (value) => {
+          if (!value) return "Bạn phải nhập mật khẩu!";
+        },
+    });
+
+    if (!password) return;
+    
+    if (password !== currentPassword) {
+      Swal.fire({
+        icon: "error",
+        title: "Sai mật khẩu!",
+        text: "Vui lòng thử lại.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
     Swal.fire({
-                title: "Đang Sắp Xếp Lại, vui lòng đợi giây lát..",
-                allowOutsideClick: false,
-                didOpen: () => {
-                  Swal.showLoading();
-                },
+            title: "Đang Sắp Xếp Lại, vui lòng đợi giây lát..",
+            allowOutsideClick: false,
+            didOpen: () => {
+            Swal.showLoading();
+            },
     });  
 
-  if (isSaving) return;
-    setIsSaving(true);
-      axios.put('/Schedual/Sorted' )
-        .then(res => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-            }
-           
-            setPlan(data.plan)
+    if (isSaving) return;
+      setIsSaving(true);
+        axios.put('/Schedual/Sorted', {stage_code: stageFilter})
+          .then(res => {
+              let data = res.data;
+              if (typeof data === "string") {
+                data = data.replace(/^<!--.*?-->/, "").trim();
+                data = JSON.parse(data);
+              }
             
-            Swal.fire({
-              icon: 'success',
-              title: 'Hoàn Thành',
-              timer: 500,
-              showConfirmButton: false,
-            });
-          })
-        .catch(err => {
-            Swal.fire({
-              icon: 'error',
-              title: 'Lỗi',
-              timer: 500,
-              showConfirmButton: false,
-            });
-            console.error("Finished error:", err.response?.data || err.message);
-        });
-        
-        setTimeout(() => {
-                      Swal.close();
-                    }, 1500);
-        
-    setIsSaving(false);
+              setPlan(data.plan)
+              
+              Swal.fire({
+                icon: 'success',
+                title: 'Hoàn Thành',
+                timer: 500,
+                showConfirmButton: false,
+              });
+            })
+          .catch(err => {
+              Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                timer: 500,
+                showConfirmButton: false,
+              });
+              console.error("Finished error:", err.response?.data || err.message);
+          });
+          
+          setTimeout(() => {
+                        Swal.close();
+                      }, 1500);
+          
+      setIsSaving(false);
 
   }
 
