@@ -97,6 +97,7 @@ return new class extends Migration {
             $table->dateTime('start')->nullable();
             $table->dateTime('end')->nullable();
             $table->unsignedInteger('resourceId')->nullable();
+            $table->string('required_room_code',20)->nullable();
             
             $table->string('title_clearning',512)->nullable();
             $table->dateTime('start_clearning')->nullable();
