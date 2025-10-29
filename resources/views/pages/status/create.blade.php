@@ -28,10 +28,7 @@
                             value="{{ old('room_name') }}">
                     </div>
 
-
-
-
-                    <div class="form-group">
+                    {{--<div class="form-group">
                         <label for="belongGroup_id">Sản Phẩm Đang Sản Xuất</label>
                         <select class="form-control" name="in_production">
                             <option value="">-- Chọn Lô Sản Phẩm --</option>
@@ -49,7 +46,21 @@
                         @error('in_production', 'createErrors')
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
+                    </div> --}}
+
+                     <div class="form-group">
+                       <label for="in_production">Sản Phẩm Đang Sản Xuất</label>
+                        <input class="form-control" list="in_production_list" name="in_production" id="in_production">
+                        <datalist id="in_production_list">
+                            <option value="Không Sản Xuất">
+                            <option value="Đang Vệ Sinh">
+                            <option value="Bảo Trì">
+                            @foreach ($planWaitings as $plan)
+                                <option value="{{ $plan->name . '_' . $plan->batch }}">
+                            @endforeach
+                        </datalist>
                     </div>
+
 
                     <div class="card card-success">
                         <div class="card-header">
@@ -58,10 +69,8 @@
                         <div class="card-body">
                             <!-- Minimal style -->
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <!-- radio -->
-                                   
-
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
                                             <input type="radio" id="Status2" name="status" value = "1" checked>
@@ -79,10 +88,12 @@
                                             </label>
                                         </div>
                                     </div>
+                                </div> 
+                                <div class="col-md-6">  
 
                                      <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status1" name="status" value = "3">
+                                            <input type="radio" id="Status1" name="status" value = "0">
                                             <label for="Status1">
                                                 Không Sản Xuất
                                             </label>
@@ -91,7 +102,7 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status4" name="status" value = "0">
+                                            <input type="radio" id="Status4" name="status" value = "3">
                                             <label for="Status4">
                                                 Đang Bảo Trì
                                             </label>
@@ -99,7 +110,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4">
+                                {{-- <div class="col-md-4">
                                     <!-- radio -->
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
@@ -176,7 +187,9 @@
                                         </div>
                                     </div>
 
-                                </div>
+                                </div> --}}
+
+
                             </div>
                         </div>
                     </div>
@@ -201,6 +214,9 @@
                             <label>Thông báo</label>
                             <textarea class="form-control" name="notification" rows="2"></textarea>
                         </div>
+                        @error('notification', 'createErrors')
+                            <div class="alert alert-danger mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
 
 
@@ -226,3 +242,11 @@
         });
     </script>
 @endif
+
+<script>
+    $('.select2').select2({
+    tags: true,
+    placeholder: "-- Chọn hoặc nhập --",
+    allowClear: true
+    });
+</script>

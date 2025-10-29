@@ -34,7 +34,6 @@
         </div>
 
         <div class="modal-body">
-
             <input type="hidden" name="stage_code" id="stage_code" value="{{ old('stage_code') }}">
             {{-- San Phẩm--}}
             <div class="row">
@@ -51,7 +50,6 @@
               <div class="col-md-3">
 
                 <label for="code">Mã Sản Phẩm</label>
-                
                 <input type="text" class="form-control" name="intermediate_code" id ="intermediate_code" readonly  value="{{ old('intermediate_code') }}"/>
                 <input type="text" class="form-control" name="finished_product_code" id ="finished_product_code" readonly  value="{{ old('finished_product_code') }}"/>
               </div>

@@ -27,7 +27,29 @@ class StatusController extends Controller
                 $general_notication = DB::table('room_status_notification')
                         ->where ('deparment_code', $production)
                         ->where ('durability', '>=' , $now)
-                        ->orderBy('id')->first();
+                        ->orderBy('id','desc')->first();
+
+                $latest = DB::table('room_status as rs2')
+                ->join('room as r2', 'rs2.room_id', '=', 'r2.id')
+                ->select('r2.production_group', DB::raw('MAX(rs2.created_at) as latest_created_at'))
+                ->groupBy('r2.production_group');
+
+                $lasestupdate = DB::table('room_status as rs')
+                ->join('room as r', 'rs.room_id', '=', 'r.id')
+                ->joinSub($latest, 'latest', function ($join) {
+                        $join->on('r.production_group', '=', 'latest.production_group')
+                        ->on('rs.created_at', '=', 'latest.latest_created_at');
+                })
+                ->select(
+                        'r.deparment_code',
+                        'r.production_group',
+                        DB::raw("CONCAT(rs.created_by, '_', DATE_FORMAT(rs.created_at, '%Y-%m-%d %H:%i:%s')) as info")
+                )
+                ->where('r.deparment_code', $production)
+                ->orderBy('r.production_group', 'asc')
+                ->pluck('info', 'r.production_group');
+
+
 
                 $datas = DB::table('room')
                         ->leftJoin('stage_plan', function ($join) use ($now) {
@@ -64,8 +86,8 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.status, 0) as status"),
                                 DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
-                                DB::raw("COALESCE(rs.sheet, '') as sheet"),
-                                DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
+                                //DB::raw("COALESCE(rs.sheet, '') as sheet"),
+                                //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
                                 DB::raw("COALESCE(rs.start_realtime, '') as start_realtime"),
                                 DB::raw("COALESCE(rs.end_realtime, '') as end_realtime"),
                         )
@@ -75,12 +97,13 @@ class StatusController extends Controller
 
 
                 session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
-              
+                //dd ($lasestupdate);
                 return view('pages.status.dataTableShow',[
                         'datas' =>  $datas,
                         'production' =>  $production,
                         'stage' => $this->stage,
-                        'general_notication' =>  $general_notication
+                        'general_notication' =>  $general_notication,
+                        'lasestupdate' => $lasestupdate
                 ]);
         }
 
@@ -111,12 +134,31 @@ class StatusController extends Controller
                
                 $production =  session('user')['production_code']??"PXV1";
                 $now = Carbon::now();
+                                $latest = DB::table('room_status as rs2')
+                ->join('room as r2', 'rs2.room_id', '=', 'r2.id')
+                ->select('r2.production_group', DB::raw('MAX(rs2.created_at) as latest_created_at'))
+                ->groupBy('r2.production_group');
+
+                $lasestupdate = DB::table('room_status as rs')
+                ->join('room as r', 'rs.room_id', '=', 'r.id')
+                ->joinSub($latest, 'latest', function ($join) {
+                        $join->on('r.production_group', '=', 'latest.production_group')
+                        ->on('rs.created_at', '=', 'latest.latest_created_at');
+                })
+                ->select(
+                        'r.deparment_code',
+                        'r.production_group',
+                        DB::raw("CONCAT(rs.created_by, '_', DATE_FORMAT(rs.created_at, '%Y-%m-%d %H:%i:%s')) as info")
+                )
+                ->where('r.deparment_code', $production)
+                ->orderBy('r.production_group', 'asc')
+                ->pluck('info', 'r.production_group');
 
                 //dd ($datas);
                 $general_notication = DB::table('room_status_notification')
                         ->where ('deparment_code', $production)
                         ->where ('durability', '>=' , now())
-                        ->orderBy('id')->first();
+                        ->orderBy('id', 'desc')->first();
 
                 $datas = DB::table('room')
                         ->leftJoin('stage_plan', function ($join) use ($now) {
@@ -155,8 +197,8 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.status, 0) as status"),
                                 DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
-                                DB::raw("COALESCE(rs.sheet, '') as sheet"),
-                                DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
+                                //DB::raw("COALESCE(rs.sheet, '') as sheet"),
+                                //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
                                 DB::raw("COALESCE(rs.room_id, '') as room_id")
                         )
                         ->orderBy('room.group_code')
@@ -174,7 +216,8 @@ class StatusController extends Controller
                         'production' =>  $production,
                         'planWaitings' =>  $planWaitings,
                         'stage' => $this->stage,
-                        'general_notication' =>  $general_notication
+                        'general_notication' =>  $general_notication,
+                        'lasestupdate' => $lasestupdate
                         
                 ]);
         }
@@ -213,19 +256,19 @@ class StatusController extends Controller
 
         public function store (Request $request) {
                //dd ($request->all());
-                $sheet = [
-                        '0' => 'NA',
-                        '1' => 'Đầu Ca',
-                        '2' => 'Giữa Ca',
-                        '3' => 'Cuối Ca',
-                ];
+                // $sheet = [
+                //         '0' => 'NA',
+                //         '1' => 'Đầu Ca',
+                //         '2' => 'Giữa Ca',
+                //         '3' => 'Cuối Ca',
+                // ];
 
-                $step_batch = [
-                        '0' => 'NA',
-                        '1' => 'Đầu Lô',
-                        '2' => 'Giữa Lô',
-                        '3' => 'Cuối Lô',
-                ];
+                // $step_batch = [
+                //         '0' => 'NA',
+                //         '1' => 'Đầu Lô',
+                //         '2' => 'Giữa Lô',
+                //         '3' => 'Cuối Lô',
+                // ];
 
                 $validator = Validator::make($request->all(), [
                     'room_name' => 'required',
@@ -250,8 +293,8 @@ class StatusController extends Controller
                 DB::table('room_status')->insert([
                         'room_id' => $room_id,
                         'status' => $request->status,
-                        'sheet' => $sheet[$request->status],
-                        'step_batch' => $step_batch[$request->status],
+                        //'sheet' => $sheet[$request->status],
+                        //'step_batch' => $step_batch[$request->status],
                         'start' => $request->start,
                         'end' => $request->end,
                         'in_production' => $request->in_production,
@@ -277,13 +320,14 @@ class StatusController extends Controller
         public function store_general_notification (Request $request){
                 
                 DB::table('room_status_notification')->insert([
-                        'notification' => $request->notification,
+                        'notification' => $request->notification??null,
                         'group_code' => 0,
                         'durability' => $request->durability??now(),
                         'deparment_code' => session('user')['production_code'],
                         'created_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
+                
                 return redirect()->back()->with('success', 'Đã thêm thành công!');      
         }
 

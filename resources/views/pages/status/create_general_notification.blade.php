@@ -52,7 +52,7 @@
 
 
 {{-- //Show modal nếu có lỗi validation --}}
-@if ($errors->createErrors->any())
+@if ($errors->notification_Errors->any())
     <script>
         $(document).ready(function() {
             $('#notification_Modal').modal('show');
