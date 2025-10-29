@@ -17,11 +17,14 @@
         </div>
         <div class="text-white w-100" style="background-color: #CDC717; padding: 6px 10px;">
             <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
+
+                @if (user_has_permission(session('user')['userId'], 'create_general_notification', 'boolean'))
                 <button class="btn btn-success btn-sm d-flex align-items-center justify-content-center"
                     style="width: 35px; height: 35px; padding: 0; font-weight: bold;"
                     data-toggle="modal"
                     data-target="#notification_Modal"
                     >+</button>
+                @endif
 
                 <div class="animate-scroll text-xl text-red" style="overflow: hidden;">
                     {{ $general_notication?->notification ?? 'Không có thông báo mới!' }}
@@ -38,12 +41,12 @@
                     <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
                         <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                             <tr>
-                                <th style="width: 13%">Phòng SX</th>
+                                <th style="width: 15%">Phòng SX</th>
                                 <th style="width: 25%">Lịch SX</th>
                                 <th style="width: 5%">TG</th>
                                 <th style="width: 25%">Đang SX</th>
                                 <th style="width: 5%">TG</th>
-                                <th style="width: 27%" class="text-center">Thông Báo</th>
+                                <th style="width: 25%" class="text-center">Thông Báo</th>
                             </tr>
                         </thead>
                         <tbody class="font-bold"
@@ -78,9 +81,9 @@
                                         <div>
                                             {{ $data->room_name }}
                                         </div>
-                                        <div>
+                                        {{-- <div>
                                             {{ $data->sheet }}
-                                        </div>
+                                        </div> --}}
                                     </td>
 
                                     {{-- sp theo lịch 1 --}}
@@ -115,7 +118,7 @@
 
                                     {{-- sp đang sx 1 --}}
                                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        {{ $data->in_production . '-' . $data->sheet }}
+                                        {{ $data->in_production }}
                                     </td>
 
                                     <td style="max-width: 250px; overflow: hidden;">
@@ -161,12 +164,12 @@
                     <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
                         <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                             <tr>
-                                <th style="width: 13%">Phòng SX</th>
-                                <th style="width: 25%">Lịch SX</th>
-                                <th style="width: 5%">TG</th>
-                                <th style="width: 25%">Đang SX</th>
-                                <th style="width: 5%">TG</th>
-                                <th style="width: 27%" class="text-center">Thông Báo</th>
+                               <th style="width: 15%">Phòng Sản xuất</th>
+                                <th style="width: 25%">Lịch Sản Xuất</th>
+                                <th style="width: 5%">T.Gian LT</th>
+                                <th style="width: 25%">Đang Sản Xuất</th>
+                                <th style="width: 5%">T.Gian TT</th>
+                                <th style="width: 25%" class="text-center">Thông Báo</th>
                             </tr>
                         </thead>
                         <tbody class="font-bold"
@@ -210,9 +213,9 @@
                                                   >+</button>
                                           <span>{{ $data->room_name }}</span>
                                         </div>
-                                        <div>
+                                        {{-- <div>
                                             {{ $data->sheet }}
-                                        </div>
+                                        </div> --}}
                                     </td>
 
                                     {{-- sp theo lịch 1 --}}
@@ -247,7 +250,7 @@
 
                                     {{-- sp đang sx 1 --}}
                                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        {{ $data->in_production . '-' . $data->sheet }}
+                                        {{ $data->in_production }}
                                     </td>
 
                                     <td style="max-width: 250px; overflow: hidden;">
@@ -286,12 +289,12 @@
                     <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
                         <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                             <tr>
-                                <th style="width: 13%">Phòng SX</th>
-                                <th style="width: 25%">Lịch SX</th>
-                                <th style="width: 5%">TG</th>
-                                <th style="width: 25%">Đang SX</th>
-                                <th style="width: 5%">TG</th>
-                                <th style="width: 27%" class="text-center">Thông Báo</th>
+                               <th style="width: 15%">Phòng Sản xuất</th>
+                                <th style="width: 25%">Lịch Sản Xuất</th>
+                                <th style="width: 5%">T.Gian LT</th>
+                                <th style="width: 25%">Đang Sản Xuất</th>
+                                <th style="width: 5%">T.Gian TT</th>
+                                <th style="width: 25%" class="text-center">Thông Báo</th>
                             </tr>
                         </thead>
                         <tbody class="font-bold"
@@ -335,9 +338,9 @@
                                                   >+</button>
                                           <span>{{ $data->room_name }}</span>
                                         </div>
-                                        <div>
+                                        {{-- <div>
                                             {{ $data->sheet }}
-                                        </div>
+                                        </div> --}}
                                     </td>
 
                                     {{-- sp theo lịch 1 --}}
@@ -372,7 +375,7 @@
 
                                     {{-- sp đang sx 1 --}}
                                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        {{ $data->in_production . '-' . $data->sheet }}
+                                        {{ $data->in_production }}
                                     </td>
 
                                     <td style="max-width: 250px; overflow: hidden;">
@@ -406,225 +409,7 @@
             </div>
         @endif
     </div>
-    {{-- <div class="row mt-1">
-      
-      @if (count($datas) < 25)
-        <div class="col-md-12">
-          <div class="card">
-            <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-              <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
-                <tr>
-                  <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 20%">Lịch SX</th>
-                  <th style="width: 20%">Đang SX</th>
-                  <th style="width: 42%" class="text-center">Thông Báo</th>
-                </tr>
-              </thead>
-              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
-                @php $current_stage = 0; @endphp
-                @foreach ($datas as $data)
-                  @if ($data->stage_code != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="4">Công Đoạn {{ $data->stage }}</td>
-                    </tr>
-                  @endif
-                  @php 
-                      $current_stage = $data->stage_code; 
-                      switch ($data->status) {
-                          case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
-                          case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
-                          case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
-                          case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                          
-                      }
-                  @endphp
-                  <tr>
-                    <td style="background-color: {{ $color }};" >{{ $data->room_name }}</td>
-     
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->product_name . "_" . $data->batch }}
-                        </div>
-                      </div>
-                    </td>
-
-
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->in_production}}
-                        </div>
-                      </div>
-                    </td>
-
     
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text note">
-                          {{ $data->notification}}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-        </div>
-      @else
-          @php
-              // Chia dữ liệu thành 2 phần đều nhau
-              $half = ceil(count($datas) / 2) - 1;
-              $leftData = $datas->slice(0, $half);
-              $rightData = $datas->slice($half);
-          @endphp
-
-        <div class="col-md-6">
-          <div class="card">
-            <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-              <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
-                <tr>
-                  <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 20%">Lịch SX</th>
-                  <th style="width: 20%">Đang SX</th>
-                  <th style="width: 42%" class="text-center">Thông Báo</th>
-                </tr>
-              </thead>
-              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
-                @php $current_stage = 0; @endphp
-                @foreach ($leftData as $data)
-                  @if ($data->stage_code != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="4">Công Đoạn {{ $data->stage }}</td>
-                    </tr>
-                  @endif
-                  @php
-                      $current_stage = $data->stage_code; 
-                      switch ($data->status) {
-                          case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
-                          case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
-                          case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
-                          case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                          
-                      }
-                  @endphp
-                  <tr>
-
-                    <td style="background-color: {{ $color }};">
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <button class="btn btn-success btn-sm btn-plus" 
-                                style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                data-room_name ="{{ $data->room_name }}"
-                                data-in_production = "{{ $data->product_name . "_" . $data->batch }}"
-                                data-toggle="modal"
-                                data-target="#Modal"
-                                
-                                >+</button>
-                        <span>{{ $data->room_name }}</span>
-                      </div>
-                    </td>
-
-
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->product_name . "_" . $data->batch }}
-                        </div>
-                      </div>
-                    </td>
-
-          
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->in_production}}
-                        </div>
-                      </div>
-                    </td>
-
-
-
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text note">
-                          {{ $data->notification}}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="col-md-6">
-          <div class="card">
-            <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-              <thead style=" color:#003A4F; font-size: 30px;">
-                <tr>
-                  <th style="width: 12%">Phòng SX</th>
-                  <th style="width: 20%">Theo Lịch SX</th>
-                  <th style="width: 20%">Đang SX</th>
-                  <th style="width: 43%" class="text-center">Thông Báo</th>
-                </tr>
-              </thead>
-              <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 0px; font-weight: bold">
-                @php $current_stage = 0; @endphp
-                @foreach ($rightData as $data)
-                  @if ($data->stage_code != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="4">Công Đoạn {{ $data->stage }}</td>
-                    </tr>
-                  @endif
-                  @php $current_stage = $data->stage_code; @endphp
-                <tr>
-                    <td style="background-color: {{ $color }};">
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <button class="btn btn-success btn-sm btn-plus" 
-                                style="width: 20px; height: 20px; padding: 0; line-height: 0;">+</button>
-                        <span>{{ $data->room_name }}</span>
-                        </div>
-                    </td>
-
-      
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->product_name . "_" . $data->batch }}
-                        </div>
-                      </div>
-                    </td>
-
-
-
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text unnote">
-                          {{ $data->in_production}}
-                        </div>
-                      </div>
-                    </td>
-
-
-
-                    <td style="max-width: 250px; overflow: hidden;">
-                      <div class="scroll-text-wrapper">
-                        <div class="scroll-text note">
-                          {{ $data->notification}}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-        </div>
-      @endif
-    </div> --}}
-
 </div>
 
 <!-- ====== SCRIPT ====== -->
@@ -719,34 +504,34 @@
                       modal.find(`input[name="status"][value="${lastStatusRoom.status}"]`).prop('checked', true);
 
                       // Nếu "sheet" là chuỗi như "Đầu Ca", "Giữa Ca", "Cuối Ca", "NA"
-                      switch (lastStatusRoom.sheet) {
-                          case "Đầu Ca":
-                              modal.find('input[name="sheet"][value="1"]').prop('checked', true);
-                              break;
-                          case "Giữa Ca":
-                              modal.find('input[name="sheet"][value="2"]').prop('checked', true);
-                              break;
-                          case "Cuối Ca":
-                              modal.find('input[name="sheet"][value="3"]').prop('checked', true);
-                              break;
-                          default:
-                              modal.find('input[name="sheet"][value="0"]').prop('checked', true);
-                      }
+                    //   switch (lastStatusRoom.sheet) {
+                    //       case "Đầu Ca":
+                    //           modal.find('input[name="sheet"][value="1"]').prop('checked', true);
+                    //           break;
+                    //       case "Giữa Ca":
+                    //           modal.find('input[name="sheet"][value="2"]').prop('checked', true);
+                    //           break;
+                    //       case "Cuối Ca":
+                    //           modal.find('input[name="sheet"][value="3"]').prop('checked', true);
+                    //           break;
+                    //       default:
+                    //           modal.find('input[name="sheet"][value="0"]').prop('checked', true);
+                    //   }
 
-                      // Nếu "step_batch" là chuỗi như "Đầu Lô", "Giữa Lô", "Cuối Lô", "NA"
-                      switch (lastStatusRoom.step_batch) {
-                          case "Đầu Lô":
-                              modal.find('input[name="step_batch"][value="1"]').prop('checked', true);
-                              break;
-                          case "Giữa Lô":
-                              modal.find('input[name="step_batch"][value="2"]').prop('checked', true);
-                              break;
-                          case "Cuối Lô":
-                              modal.find('input[name="step_batch"][value="3"]').prop('checked', true);
-                              break;
-                          default:
-                              modal.find('input[name="step_batch"][value="0"]').prop('checked', true);
-                      }
+                    //   // Nếu "step_batch" là chuỗi như "Đầu Lô", "Giữa Lô", "Cuối Lô", "NA"
+                    //   switch (lastStatusRoom.step_batch) {
+                    //       case "Đầu Lô":
+                    //           modal.find('input[name="step_batch"][value="1"]').prop('checked', true);
+                    //           break;
+                    //       case "Giữa Lô":
+                    //           modal.find('input[name="step_batch"][value="2"]').prop('checked', true);
+                    //           break;
+                    //       case "Cuối Lô":
+                    //           modal.find('input[name="step_batch"][value="3"]').prop('checked', true);
+                    //           break;
+                    //       default:
+                    //           modal.find('input[name="step_batch"][value="0"]').prop('checked', true);
+                    //   }
 
 
                     }

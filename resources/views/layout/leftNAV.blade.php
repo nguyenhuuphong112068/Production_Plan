@@ -16,11 +16,6 @@
       z-index: 999;
       transition: background-color 0.1s;
     }
-
-
-
-
-
   </style>
   
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>

@@ -34,32 +34,24 @@
       @if (count($datas) < 25)
         <div class="col-md-12">
           <div class="card">
+            <div class="d-flex justify-content-between w-100" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                Cập nhật: {{$lasestupdate[0] ?? '' }}  
+            </div>
             <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
                   <th style="width: 13%">Phòng SX</th>
                   <th style="width: 25%">Lịch SX</th>
-                  <th style="width: 5%">TG</th>
+                  <th style="width: 5%">TG theo Lịch</th>
                   <th style="width: 25%">Đang SX</th>
-                  <th style="width: 5%">TG</th>
+                  <th style="width: 5%">TG Thực tế</th>
                   <th style="width: 27%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
-                @php $current_stage = null; @endphp
+                
                 @foreach ($datas as $data)
-                  {{-- @if ($data->stage_code != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="6">{{ $stage[$data->stage]  }}</td>
-                    </tr>
-                  @endif --}}
-
-                   @if ($data->production_group != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="6">{{$data->production_group }}</td>
-                    </tr>
-                  @endif
-
+ 
                   @php 
                       $current_stage = $data->production_group; 
                       switch ($data->status) {
@@ -75,9 +67,9 @@
                         <div>
                           {{ $data->room_name }}
                         </div>
-                        <div>
+                        {{-- <div>
                           {{ $data->sheet }}
-                        </div>
+                        </div> --}}
                     </td>
 
                     {{-- sp theo lịch 1--}}
@@ -108,7 +100,7 @@
 
                     {{-- sp đang sx 1 --}}
                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                            {{ $data->in_production ."-". $data->sheet}}
+                            {{ $data->in_production}}
                     </td>
 
                     <td style="max-width: 250px; overflow: hidden;">
@@ -152,20 +144,37 @@
             <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
-                  <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 25%">Lịch SX</th>
-                  <th style="width: 5%">TG</th>
-                  <th style="width: 25%">Đang SX</th>
-                  <th style="width: 5%">TG</th>
-                  <th style="width: 27%" class="text-center">Thông Báo</th>
+                  <th style="width: 15%">Phòng Sản xuất</th>
+                  <th style="width: 25%">Lịch Sản Xuất</th>
+                  <th style="width: 5%">T.Gian LT</th>
+                  <th style="width: 25%">Đang Sản Xuất</th>
+                  <th style="width: 5%">T.Gian TT</th>
+                  <th style="width: 25%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
                 @php $current_stage = null; @endphp
                 @foreach ($leftData as $data)
+
                   @if ($data->production_group != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="6">{{$data->production_group }}</td>
+                    <tr style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                      <td colspan="6">
+                        <div class="d-flex justify-content-between w-100">
+                          <div class="text-left text-red text-xl">
+                            {{ $data->production_group }}
+                          </div>
+
+                          @php
+                                $info = $lasestupdate[$data->production_group] ?? '';
+                                [$user, $datetime] = explode('_', $info . '_'); // tránh lỗi nếu null
+                          @endphp
+
+                          <div class="text-right">
+                            Người cập nhật: {{ $user ?? '' }} <br>
+                            Thời gian cập nhật: {{ $datetime ? \Carbon\Carbon::parse($datetime)->format('H:i d/m/Y') : '' }}
+                          </div>
+                        </div>
+                      </td>
                     </tr>
                   @endif
 
@@ -180,13 +189,13 @@
                       }
                   @endphp
                   <tr>
-                    <td style="background-color: {{ $color }};" >
-                        <div>
-                          {{ $data->room_name }}
-                        </div>
-                        <div>
+                    <td style="background-color: {{ $color }};" class ="multi-line" >
+                       
+                        {{ $data->room_name }}
+                        
+                        {{-- <div>
                           {{ $data->sheet }}
-                        </div>
+                        </div> --}}
                     </td>
 
                     {{-- sp theo lịch 1--}}
@@ -213,11 +222,9 @@
                         @endif
                       </div>
                     </td>
-
-
                     {{-- sp đang sx 1 --}}
                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                            {{ $data->in_production ."-". $data->sheet}}
+                            {{ $data->in_production}}
                     </td>
 
                     <td style="max-width: 250px; overflow: hidden;">
@@ -228,8 +235,6 @@
                             <div>-</div>
                         @endif
                     </td>
-
-
                     {{-- thông báo 1 --}}
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
@@ -238,6 +243,8 @@
                         </div>
                       </div>
                     </td>
+
+
                   </tr>
                 @endforeach
               </tbody>
@@ -251,12 +258,12 @@
             <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
               <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
                 <tr>
-                  <th style="width: 13%">Phòng SX</th>
-                  <th style="width: 25%">Lịch SX</th>
-                  <th style="width: 5%">TG</th>
-                  <th style="width: 25%">Đang SX</th>
-                  <th style="width: 5%">TG</th>
-                  <th style="width: 27%" class="text-center">Thông Báo</th>
+                  <th style="width: 15%">Phòng Sản xuất</th>
+                  <th style="width: 25%">Lịch Sản Xuất</th>
+                  <th style="width: 5%">T.Gian LT</th>
+                  <th style="width: 25%">Đang Sản Xuất</th>
+                  <th style="width: 5%">T.Gian TT</th>
+                  <th style="width: 25%" class="text-center">Thông Báo</th>
                 </tr>
               </thead>
               <tbody class="font-bold"  style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
@@ -264,8 +271,24 @@
                 @foreach ($rightData as $data)
 
                   @if ($data->production_group != $current_stage)
-                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                      <td colspan="6">{{$data->production_group }}</td>
+                    <tr style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                      <td colspan="6">
+                        <div class="d-flex justify-content-between w-100">
+                          <div class="text-left text-red text-xl">
+                            {{ $data->production_group }}
+                          </div>
+
+                          @php
+                                $info = $lasestupdate[$data->production_group] ?? '';
+                                [$user, $datetime] = explode('_', $info . '_'); // tránh lỗi nếu null
+                          @endphp
+
+                          <div class="text-right">
+                            Người cập nhật: {{ $user ?? '' }} <br>
+                            Thời gian cập nhật: {{ $datetime ? \Carbon\Carbon::parse($datetime)->format('H:i d/m/Y') : '' }}
+                          </div>
+                        </div>
+                      </td>
                     </tr>
                   @endif
 
@@ -280,13 +303,13 @@
                       }
                   @endphp
                   <tr>
-                    <td style="background-color: {{ $color }};" >
-                        <div>
-                          {{ $data->room_name }}
-                        </div>
-                        <div>
+                    <td style="background-color: {{ $color }};" class ="multi-line" >
+                       
+                        {{ $data->room_name }}
+                        
+                        {{-- <div>
                           {{ $data->sheet }}
-                        </div>
+                        </div> --}}
                     </td>
 
                     {{-- sp theo lịch 1--}}
@@ -313,11 +336,9 @@
                         @endif
                       </div>
                     </td>
-
-
                     {{-- sp đang sx 1 --}}
                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                            {{ $data->in_production ."-". $data->sheet}}
+                            {{ $data->in_production}}
                     </td>
 
                     <td style="max-width: 250px; overflow: hidden;">
@@ -328,8 +349,6 @@
                             <div>-</div>
                         @endif
                     </td>
-
-
                     {{-- thông báo 1 --}}
                     <td style="max-width: 250px; overflow: hidden;">
                       <div class="scroll-text-wrapper">
@@ -338,6 +357,8 @@
                         </div>
                       </div>
                     </td>
+
+
                   </tr>
                 @endforeach
               </tbody>
@@ -407,7 +428,7 @@
       });
 
 
-      setTimeout(() => location.reload(), 60000);
+      //setTimeout(() => location.reload(), 60000);
 
 </script>
 
