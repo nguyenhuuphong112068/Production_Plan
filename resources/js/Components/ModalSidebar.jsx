@@ -587,33 +587,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       return rowData[field] ?? "NA";
   };
 
-  const roomBody = (rowData) => {
-     
-    if (!rowData.permisson_room ||  rowData.permisson_room.length === 0 ) {
-       
-      return (
-        <span
-          className='btn'
-          onClick={() => { if (rowData.stage_code !== 9){handleOpenQuota(rowData)}}}
-          style={{
-            backgroundColor: "#ffcccc", // đỏ nhạt
-            color: "#b00000",           // chữ đỏ đậm
-            padding: "2px 6px",
-            borderRadius: "6px",
-            display: "inline-block",
-            minWidth: "100%",           // fill cả ô
-            textAlign: "center"
-          }}
-        >
-          {`${rowData.stage_code !==9?"Thiếu Định Mức":"Không Định Mức"}`} 
-        </span>
-      );
-    }
-    
-    return Object.values(rowData.permisson_room).join(", ");
-
-  };
-
   const handleOpenQuota = (rowData) => {
     if (rowData.stage_code !== 9) {
       setModalQuotaData({
@@ -784,7 +757,73 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     else if (e.clientY > rect.bottom - offset) wrapper.scrollTop += speed;
   };
 
-   
+  const roomBody = (rowData) => {
+    //console.log (rowData)
+    if (!rowData.permisson_room ||  rowData.permisson_room.length === 0 ) {    
+        return (
+          <span
+            className='btn'
+            onClick={() => { if (rowData.stage_code !== 9){handleOpenQuota(rowData)}}}
+            style={{
+              backgroundColor: "#ffcccc", // đỏ nhạt
+              color: "#b00000",           // chữ đỏ đậm
+              padding: "2px 6px",
+              borderRadius: "6px",
+              display: "inline-block",
+              minWidth: "100%",           // fill cả ô
+              textAlign: "center"
+            }}
+          >
+            {`${rowData.stage_code !==9?"Thiếu Định Mức":"Không Định Mức"}`} 
+          </span>
+        );
+    }else{
+        
+        const permisson_room = Object.values(rowData.permisson_room || {});
+
+        if (permisson_room.length === 1) {
+          return Object.values(rowData.permisson_room).join(", ");
+        }
+
+        const handleRoomChange = (room, id , checked) => {
+          axios.put('/Schedual/required_room', {room_code: room, stage_plan_id: id, checked: checked})
+          . then (res => {
+              let data = res.data;
+              if (typeof data === "string") {
+                  data = data.replace(/^<!--.*?-->/, "").trim();
+                  data = JSON.parse(data);
+              }
+
+              setPlan(data.plan)
+
+          }).catch (err => {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Lỗi',
+                          timer: 1500
+                        });
+                        console.error("API error:", err.response?.data || err.message);
+                    }
+          ); 
+        };
+        
+        return (
+          <div className="flex flex-wrap gap-2">
+            {permisson_room.map((room) => (
+              <div key={room} className="flex align-items-center gap-1">
+                <Checkbox
+                  inputId={room + rowData.id}
+                  checked={rowData.required_room_code == room}
+                  onChange={(e) => handleRoomChange(room, rowData.id , e.checked)}
+                />
+                <label htmlFor={room + rowData.id}>{room}</label>
+              </div>
+            ))}
+          </div>
+        );
+      };
+  }
+
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
