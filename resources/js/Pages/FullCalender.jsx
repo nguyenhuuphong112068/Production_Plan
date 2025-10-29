@@ -67,6 +67,7 @@ const ScheduleTest = () => {
   const [heightResource, setHeightResource] = useState("1px");
   const [production, setProduction] = useState("PXV1");
   const [quarantineRoom, setQuarantineRoom] = useState([]);
+  const [currentPassword, setCurrentPassword] = useState(null);
 
   /// Get dữ liệu ban đầu
   useEffect(() => {
@@ -103,9 +104,8 @@ const ScheduleTest = () => {
         setSumBatchByStage(data.sumBatchByStage);
         setProduction(data.production)
         setQuarantineRoom(data.quarantineRoom)
-
-
-
+        setCurrentPassword (data.currentPassword)
+        
         switch (data.production) {
           case "PXV1":
             setHeightResource('1px');
@@ -2105,6 +2105,7 @@ const ScheduleTest = () => {
             eventFontSize={eventFontSize}
             type={type}
             authorization={authorization}
+            
           />
         )}
 
@@ -2124,7 +2125,7 @@ const ScheduleTest = () => {
         quota={quota}
         resources={resources}
         type={type}
-
+        currentPassword = {currentPassword}
       />
 
 

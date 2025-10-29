@@ -5,3 +5,11 @@
 .p-datatable-tbody > tr > td.hidden-column {
   display: none !important;
 } */
+
+.passWord-swal-input {
+  width: 80% !important;
+  max-width: 400px !important;
+  margin: 0 auto !important;
+  display: block !important;
+  text-align: center;
+}

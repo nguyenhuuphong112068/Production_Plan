@@ -471,7 +471,8 @@ class SchedualController extends Controller
                                 'type' => $type,
                                 'authorization' => $authorization,
                                 'production' => $production,
-                                'quarantineRoom' => $quarantine_room ?? []
+                                'quarantineRoom' => $quarantine_room ?? [],
+                                'currentPassword' => session('user')['passWord']
                         ]);
 
                 } catch (\Throwable $e) {
@@ -1219,7 +1220,8 @@ class SchedualController extends Controller
                 ]);
         } // đã có temp
 
-        public function createAutoCampain(){
+        public function createAutoCampain(Request $request){
+
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
 
                 try {
@@ -1228,7 +1230,7 @@ class SchedualController extends Controller
                         ->where('finished', 0)
                         ->where('start', null)
                         ->where('active', 1)
-                        ->where('stage_code',">=", 3)
+                        ->where('stage_code',"=", $request->stage_code)
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                 ->update(['campaign_code' => null]);
@@ -1251,7 +1253,7 @@ class SchedualController extends Controller
                         ->where('sp.finished', 0)
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
-                        ->where('sp.stage_code',">=", 3)
+                        ->where('sp.stage_code',"=", $request->stage_code)
                         ->when(session('fullCalender')['mode'] === 'temp',function ($query)
                                         {return $query->where('stage_plan_temp_list_id',session('fullCalender')['stage_plan_temp_list_id']);})
                         ->orderBy('order_by', 'asc')
@@ -1426,30 +1428,28 @@ class SchedualController extends Controller
 
         }
 
-        public function Sorted(){
-                // Danh sách các giai đoạn (stage_code) và cột sắp xếp tương ứng
+        public function Sorted(Request $request){
+                $stageCode = (int) $request->stage_code;
+
+                // Danh sách cấu hình sắp xếp
                 $stages = [
-                        // stage_code <= 3: dùng order mặc định
                         ['codes' => [1, 2, 3], 'orderBy' => [
                         ['expected_date', 'asc'],
                         ['level', 'asc'],
                         [DB::raw('batch + 0'), 'asc']
                         ]],
-                        // stage_code = 4
                         ['codes' => [4], 'orderBy' => [
                         ['intermediate_category.quarantine_blending', 'asc'],
                         ['expected_date', 'asc'],
                         ['level', 'asc'],
                         [DB::raw('batch + 0'), 'asc']
                         ]],
-                        // stage_code = 5
                         ['codes' => [5], 'orderBy' => [
                         ['intermediate_category.quarantine_forming', 'asc'],
                         ['expected_date', 'asc'],
                         ['level', 'asc'],
                         [DB::raw('batch + 0'), 'asc']
                         ]],
-                        // stage_code = 6
                         ['codes' => [6], 'orderBy' => [
                         ['intermediate_category.quarantine_coating', 'asc'],
                         ['expected_date', 'asc'],
@@ -1458,38 +1458,45 @@ class SchedualController extends Controller
                         ]],
                 ];
 
-                foreach ($stages as $stageGroup) {
+                // Tìm stage group tương ứng với stage_code được gửi lên
+                $stageGroup = collect($stages)->first(fn($group) => in_array($stageCode, $group['codes']));
 
-                        // Xây query cho plan_master
-                        $query = DB::table('plan_master')
+                if (!$stageGroup) {
+                        return response()->json(['error' => 'Stage code không hợp lệ!'], 400);
+                }
+
+                // Xây query cho plan_master
+                $query = DB::table('plan_master')
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code');
 
-                        // Thêm thứ tự sắp xếp tương ứng
-                        foreach ($stageGroup['orderBy'] as [$column, $direction]) {
+                // Thêm thứ tự sắp xếp tương ứng
+                foreach ($stageGroup['orderBy'] as [$column, $direction]) {
                         $query->orderBy($column, $direction);
-                        }
-
-                        // Lấy danh sách ID
-                        $planMasters = $query->pluck('plan_master.id');
-
-                        // Gán order_by cho từng stage_code tương ứng
-                        foreach ($stageGroup['codes'] as $stageCode) {
-                        $order = 1;
-
-                        DB::table('stage_plan')
-                                ->whereNull('start')
-                                ->where('stage_code', $stageCode)
-                                ->where('finished', 0)
-                                ->where('active', 1)
-                                ->whereIn('plan_master_id', $planMasters)
-                                ->orderByRaw("FIELD(plan_master_id, " . implode(',', $planMasters->toArray()) . ")")
-                                ->update(['order_by' => DB::raw("FIELD(plan_master_id, " . implode(',', $planMasters->toArray()) . ")")]);
-                        }
                 }
 
+                // Lấy danh sách ID
+                $planMasters = $query->pluck('plan_master.id');
+
+                if ($planMasters->isEmpty()) {
+                        return response()->json(['message' => 'Không có kế hoạch để sắp xếp.']);
+                }
+
+                // Cập nhật order_by cho stage được chọn
+                DB::table('stage_plan')
+                        ->whereNull('start')
+                        ->where('stage_code', $stageCode)
+                        ->where('finished', 0)
+                        ->where('active', 1)
+                        ->whereIn('plan_master_id', $planMasters)
+                        ->orderByRaw("FIELD(plan_master_id, " . implode(',', $planMasters->toArray()) . ")")
+                        ->update([
+                        'order_by' => DB::raw("FIELD(plan_master_id, " . implode(',', $planMasters->toArray()) . ")")
+                        ]);
+
                 return response()->json([
-                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                        'plan' => $this->getPlanWaiting(session('user')['production_code']),
+                        'message' => "Đã sắp xếp lại kế hoạch cho stage {$stageCode}."
                 ]);
         }
 
