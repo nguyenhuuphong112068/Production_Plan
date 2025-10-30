@@ -546,7 +546,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-                //Log::info('start');
+                Log::info('start');
 
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
@@ -592,7 +592,7 @@ class SchedualController extends Controller
                         }
                         $authorization = session('user')['userGroup'];
 
-                        //Log::info('end');
+                        Log::info('end');
 
                         return response()->json([
                                 'title' => $title,

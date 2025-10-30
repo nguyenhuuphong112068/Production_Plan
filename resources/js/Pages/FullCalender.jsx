@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 
 import '@fullcalendar/daygrid/index.js';
 import '@fullcalendar/resource-timeline/index.js';
@@ -14,7 +14,6 @@ import { createRoot } from 'react-dom/client';
 import axios from "axios";
 import 'moment/locale/vi';
 
-//import moment, { now } from 'moment';
 import Selecto from "react-selecto";
 import Swal from 'sweetalert2';
 
@@ -150,9 +149,6 @@ const ScheduleTest = () => {
 
   }, [loading]);
 
-  const memoizedEvents = useMemo(() => events, [events]);
-   
-
   /// Get dư liệu row được chọn
   useEffect(() => {
 
@@ -160,10 +156,8 @@ const ScheduleTest = () => {
 
       itemSelector: '.fc-event',
       eventData: (eventEl) => {
-
         // Lấy selectedRows mới nhất từ state
         const draggedData = selectedRows.length ? selectedRows : [];
-     
         return {
           title: draggedData.length > 1 ? `(${draggedData.length}) sản phẩm` : draggedData[0]?.product_code || 'Trống',
           extendedProps: { rows: draggedData },
@@ -317,54 +311,108 @@ const ScheduleTest = () => {
   }
 
   ///  Thay đôi khung thời gian
-  const handleViewChange = (view) => {
+  // const handleViewChange = (view) => {
     
-    Swal.fire({
-      title: "Đang tải...",
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
+  //   Swal.fire({
+  //     title: "Đang tải...",
+  //     allowOutsideClick: false,
+  //     didOpen: () => {
+  //       Swal.showLoading();
+  //     },
+  //   });
 
 
-    setViewConfig({ is_clearning: false, timeView: view });
-    calendarRef.current?.getApi()?.changeView(view)
-    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
-    setViewName(view)
-    axios.post(`/Schedual/view`, {
-      startDate: toLocalISOString(activeStart),
-      endDate: toLocalISOString(activeEnd),
-      viewtype: view
-    })
-      .then(res => {
-        let data = res.data;
-        // Trường hợp response trả về có HTML thừa (ví dụ: <!-- -->)
-        if (typeof data === "string") {
-          data = data.replace(/^<!--.*?-->/, "").trim();
-          data = JSON.parse(data);
-        }
-        // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
-        setEvents(data.events);
-        setResources(data.resources);
-        setSumBatchByStage(data.sumBatchByStage)
+  //   //setViewConfig({ is_clearning: false, timeView: view });
+  //   calendarRef.current?.getApi()?.changeView(view)
+  //   const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+  //   setViewName(view)
+    
+  //   axios.post(`/Schedual/view`, {
+  //     startDate: toLocalISOString(activeStart),
+  //     endDate: toLocalISOString(activeEnd),
+  //     viewtype: view
+  //   })
+  //     .then(res => {
+  //       let data = res.data;
+  //       // Trường hợp response trả về có HTML thừa (ví dụ: <!-- -->)
+  //       if (typeof data === "string") {
+  //         data = data.replace(/^<!--.*?-->/, "").trim();
+  //         data = JSON.parse(data);
+  //       }
+  //       // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
+  //       setEvents(data.events);
+  //       setResources(data.resources);
+  //       setSumBatchByStage(data.sumBatchByStage)
 
         
-        setTimeout(() => {
-          Swal.close();
-        }, 500);
+  //       setTimeout(() => {
+  //         Swal.close();
+  //       }, 500);
 
-      })
-      .catch(err => {
-        console.error("API error:", err.response?.data || err.message);
-        Swal.fire({
-          icon: 'error',
-          title: 'Có lỗi xảy ra',
-          text: 'Vui lòng thử lại sau.',
-        });
+  //     })
+  //     .catch(err => {
+  //       console.error("API error:", err.response?.data || err.message);
+  //       Swal.fire({
+  //         icon: 'error',
+  //         title: 'Có lỗi xảy ra',
+  //         text: 'Vui lòng thử lại sau.',
+  //       });
+  //     });
+  // };
+  const handleViewChange = useCallback(async (viewType = null, action = null) => {
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+
+    Swal.fire({
+      title: "Đang tải dữ liệu...",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      // 🔹 1. Nếu có truyền viewType mới → đổi view
+      if (viewType && api.view.type !== viewType) {
+        api.changeView(viewType);
+        setViewName(viewType);
+      }
+
+      // 🔹 2. Nếu là hành động chuyển ngày (Prev/Next/Today)
+      if (action === "prev") api.prev();
+      else if (action === "next") api.next();
+      else if (action === "today") api.today();
+
+      // 🔹 3. Sau khi thay đổi view hoặc ngày → lấy lại khoảng thời gian hiện tại
+      const { activeStart, activeEnd, type: currentView } = api.view;
+
+      // 🔹 4. Gọi API backend để lấy dữ liệu mới
+      const { data } = await axios.post(`/Schedual/view`, {
+        startDate: toLocalISOString(activeStart),
+        endDate: toLocalISOString(activeEnd),
+        viewtype: currentView
       });
-  };
+
+      let cleanData = data;
+      if (typeof cleanData === "string") {
+        cleanData = JSON.parse(cleanData.replace(/^<!--.*?-->/, "").trim());
+      }
+
+      // 🔹 5. Cập nhật dữ liệu
+      setEvents(cleanData.events);
+      setResources(cleanData.resources);
+      setSumBatchByStage(cleanData.sumBatchByStage);
+
+    } catch (err) {
+      console.error("API error:", err.response?.data || err.message);
+      Swal.fire({
+        icon: 'error',
+        title: 'Có lỗi xảy ra',
+        text: 'Vui lòng thử lại sau.'
+      });
+    } finally {
+      Swal.close();
+    }
+  }, []);
+
 
   /// Tô màu các event trùng khớp
   const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
@@ -1291,6 +1339,7 @@ const ScheduleTest = () => {
 
   /// Xử lý xoa các lịch được chọn
   const handleDeleteScheduale = (e) => {
+
     if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) { return };
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
     if (!selectedEvents || selectedEvents.length === 0) {
@@ -1643,15 +1692,16 @@ const ScheduleTest = () => {
     setShowHistoryModal(true)
   }
 
-  const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, handleConfirmSource, viewConfig, viewName, eventFontSize, type, authorization }) => {
+  const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, viewConfig, viewName, eventFontSize, type, authorization }) => {
     //const adminAutho 
     const event = arg.event;
     const props = event._def.extendedProps;
     const isSelected = selectedEvents.some(ev => ev.id === event.id);
-    //const now = new Date();
-
+    const now = new Date();
+    //console.log (event.end)
+    //console.log (now)
     const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
-    const isWeekView = viewName === 'resourceTimelineWeek';
+    //const isWeekView = viewName === 'resourceTimelineWeek';
 
     const renderBadge = (text, color, left) => (
       <div
@@ -1676,16 +1726,7 @@ const ScheduleTest = () => {
           )}
         </div>
 
-        {/* Nút Xóa */}
-        {!props.finished && (
-          <button
-            onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
-            className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
-            title="Xóa lịch"
-          >
-            ×
-          </button>
-        )}
+       
 
         {/* Nút Chọn */}
         <button
@@ -1699,7 +1740,7 @@ const ScheduleTest = () => {
         </button>
 
         {/* 🎯 Hoàn thành */}
-        {props.finished === 0 && type && (
+        {props.finished === 0 && type && event.end < now && (
           <button
             onClick={(e) => { e.stopPropagation(); handleFinished(event); }}
             className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
@@ -1732,24 +1773,30 @@ const ScheduleTest = () => {
           50
         )}
 
-        {/* Icon đặc biệt */}
-
-        {isWeekView && props.tank && showRenderBadge ? renderBadge('⚗️', 'bg-red-500', 170) : ''}
-        {isWeekView && props.keep_dry && showRenderBadge ? renderBadge('🌡', 'bg-red-500', 200) : ''}
-
-
 
         {/* Hướng công đoạn */}
         {!props.is_clearning && showRenderBadge && (
           <button
             className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
-            title="Thứ tự công đoạn"
+            title="% biệt trữ"
           >
             <b>{props.storage_capacity}</b>
           </button>
         )}
 
+         {/* Nút Xóa 
+        {!props.finished && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
+            className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
+            title="Xóa lịch"
+          >
+            ×
+          </button>
+        )}*/}
 
+        {/* {isWeekView && props.tank && showRenderBadge ? renderBadge('⚗️', 'bg-red-500', 170) : ''}
+        {isWeekView && props.keep_dry && showRenderBadge ? renderBadge('🌡', 'bg-red-500', 200) : ''} */}
 
         {/* 📦 Nguồn nguyên liệu */}
         {/* {props.room_source === false && type && (
@@ -1760,7 +1807,7 @@ const ScheduleTest = () => {
               >
                 📦
               </button>
-            )} */}
+          )} */}
 
       </div>
     );
@@ -1973,22 +2020,11 @@ const ScheduleTest = () => {
         customButtons={{
           customNext: {
             text: '⏵',
-            click: () => {
-             
-              let api = calendarRef.current.getApi();
-              api.next();  // gọi hành vi gốc
-              handleViewChange (viewName)
-           
-            }
+            click: () => handleViewChange(null, 'next'),
           },
           customPre: {
             text: '⏴',
-            click: () => {
-              let api = calendarRef.current.getApi();
-              api.prev(); // gọi hành vi gốc
-              handleViewChange (viewName)
-             
-            }
+            click: () => handleViewChange(null, 'prev'),
           },
 
           customList: {
