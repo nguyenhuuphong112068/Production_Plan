@@ -12,7 +12,7 @@ import Swal from 'sweetalert2';
 import axios from "axios";
 
 
-const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows,setSelectedRows, resources, type, currentPassword }) => {
+const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows, setSelectedRows, resources, type, currentPassword }) => {
 
    const wrapperRef = useRef(null);
 
@@ -30,6 +30,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const [isSaving, setIsSaving] = useState(false);
   const [optionRooms, setOptionRooms] = useState([]);
   const [unQuota, setUnQuota] = useState(0);
+ 
 
   const columnWidths100 = {
     code: '8%',                // Mã sản phẩm
@@ -66,9 +67,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   }, [resources, stageFilter]); 
 
   useEffect(() => {
+
     if (waitPlan && waitPlan.length > 0) {
-      
-      setTableData(waitPlan.filter(event => Number(event.stage_code) === stageFilter));
+
+      const filtered = waitPlan.filter(event => Number(event.stage_code) === stageFilter).map(event => ({...event,
+      permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+      setTableData(filtered);
       setUnQuota (tableData.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
     }
   }, [waitPlan]);
@@ -177,7 +181,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       </div>
     );
   };
-
+  
   const stringToColor = (str) => {
       let hash = 0;
       for (let i = 0; i < str.length; i++) {
@@ -278,8 +282,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
     setStageFilter((prev) => {
       const nextStage = prev === 1 ? 9 : prev - 1;
+
       let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
-      setTableData(stage_plan);
+      let stage_plan2 = stage_plan.map(event => ({...event,
+      permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+
+      setTableData(stage_plan2);
       setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
       return nextStage;
     });
@@ -293,8 +301,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
     setStageFilter((prev) => {
       const nextStage = prev === 9 ? 1 : prev + 1;
+
       let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
-      setTableData(stage_plan);
+      let stage_plan2 = stage_plan.map(event => ({...event,
+      permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+
+      setTableData(stage_plan2);
       setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
       return nextStage;
     });
@@ -890,10 +902,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
+     
       { field: "month", header: "tháng", sortable: true,  filter: false, filterField: "month" },
       { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" , style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
-      { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "permisson_room", style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
-      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false, filterField: "name" , style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
+      { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "permisson_room",style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
+      { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false,  filterField: "name" , style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
       { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" , style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
       { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle }},
       { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date", style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
@@ -948,14 +961,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div> 
 
- 
-
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
                 onClick={handleSorted}>
                 {isSaving === false ? <i className="fas fa-sort"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
-
-
 
               </>):<></>}
               {percentShow === "100%" && stageFilter === 9 && type ? (
@@ -1032,7 +1041,20 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
           columnResizeMode="expand" resizableColumns
           globalFilter={searchTerm} 
           reorderableColumns reorderableRows onRowReorder={handleRowReorder}
-          
+          globalFilterFields={[
+            "name",
+            "batch",
+            "permisson_room_filter",
+            "market",
+            "expected_date",
+            "level",
+            "note",
+            "code",
+            "source_material_name",
+            "instrument_code" , 
+            "finished_product_code",
+            "month"
+          ]}
         >
            {percentShow === "100%" ? (
             <Column
