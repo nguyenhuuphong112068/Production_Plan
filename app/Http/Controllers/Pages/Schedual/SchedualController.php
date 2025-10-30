@@ -556,7 +556,7 @@ class SchedualController extends Controller
                         $production = session('user')['production_code'];
                         Log::info(['request' => $request->clearning]);
 
-                        $clearing = $request->clearning;
+                        $clearing = $request->clearning??true;
                         if ( $viewtype == "resourceTimelineQuarter") {
                                 $clearing = false;
                         }
