@@ -1008,7 +1008,7 @@ class SchedualController extends Controller
         }// đã có temp
 
         public function deActiveAll(Request $request){
-                
+        
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}   
                 try {   
                        if ($request->mode == "step"){
@@ -1016,6 +1016,7 @@ class SchedualController extends Controller
                                 $stage_code = $Step[$request->selectedStep];
                                 $ids = DB::table($stage_plan_table)
                                 ->whereNotNull('start')
+                                ->where ('start', '>=', $request->start_date)
                                 ->where('active', 1)
                                 ->where('finished', 0)
                                 ->where('stage_code', ">=", $stage_code)
@@ -1025,6 +1026,7 @@ class SchedualController extends Controller
                         }else if ($request->mode == "resource"){
                                 $ids = DB::table($stage_plan_table)
                                 ->whereNotNull('start')
+                                ->where ('start', '>=', $request->start_date)
                                 ->where('active', 1)
                                 ->where('finished', 0)
                                 ->where('resourceId', "=", $request->resourceId)
