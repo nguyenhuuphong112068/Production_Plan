@@ -902,6 +902,7 @@ const ScheduleTest = () => {
       cancelButtonColor: '#d33',
 
       didOpen: () => {
+
         // ------------------ Calendar ------------------
         const calendarContainer = document.getElementById("calendar-container");
         const calendarRoot = ReactDOM.createRoot(calendarContainer);
@@ -1113,7 +1114,6 @@ const ScheduleTest = () => {
   };
 
   /// Xử lý Xóa Toàn Bộ Lịch
-
   const handleDeleteAllScheduale = () => {
     if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
 
@@ -1125,6 +1125,16 @@ const ScheduleTest = () => {
       html: `
         <div class="cfg-wrapper">
           <div class="cfg-card">
+
+            <div class="cfg-row">
+              <div class="cfg-col">
+                <label class="cfg-label" for="schedule-date">Xóa Lịch Từ Ngày:</label>
+                <input id="schedule-date" type="date"
+                        class="swal2-input cfg-input cfg-input--half" name="start_date"
+                        value="${new Date().toISOString().split('T')[0]}">
+              </div>
+            </div>
+
             <div class="cfg-row">
               <!-- 🔘 Chọn chế độ xóa -->
               <div style="margin-bottom: 15px;">
@@ -1159,6 +1169,7 @@ const ScheduleTest = () => {
       cancelButtonColor: '#3085d6',
 
       didOpen: () => {
+
         // ------------------ Stepper ------------------
         const stepperContainer = document.getElementById("stepper-container");
 
@@ -1233,24 +1244,36 @@ const ScheduleTest = () => {
         });
       },
 
-      preConfirm: () => {
+    preConfirm: () => {
+        // Lấy giá trị deleteMode trước
         const deleteMode = document.querySelector('input[name="deleteMode"]:checked')?.value;
 
+        // Tạo object formValues ban đầu
         const formValues = { mode: deleteMode };
 
+        // Lấy các input từ Swal (nếu có)
+        document.querySelectorAll('.swal2-input').forEach(input => {
+          formValues[input.name] = input.value;
+        });
+
+        // Nếu chọn xóa theo step
         if (deleteMode === "step") {
           const activeStep = document.querySelector('li[data-p-active="true"]');
-          const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
+          const activeStepText = activeStep
+            ? activeStep.querySelector('span.p-stepper-title')?.textContent
+            : null;
           formValues.selectedStep = activeStepText ?? "PC";
         }
 
+        // Nếu chọn xóa theo resource
         if (deleteMode === "resource") {
           const resourceSelect = document.getElementById("resource-select");
           formValues.resourceId = resourceSelect?.value || null;
         }
 
         return formValues;
-      }
+    }
+
 
     }).then((result) => {
       if (!result.isConfirmed) return;
