@@ -21,6 +21,131 @@ class SchedualController extends Controller
                 return view('app');
         }
 
+        //Thời gian của từng phòng
+        public function getRoomStatistics($startDate, $endDate){
+                // chuẩn hoá ngày giờ (chuỗi dạng MySQL)
+                $start = Carbon::parse($startDate)->format('Y-m-d H:i:s');
+                $end   = Carbon::parse($endDate)->format('Y-m-d H:i:s');
+
+                $totalSeconds = Carbon::parse($startDate)->diffInSeconds(Carbon::parse($endDate));
+
+                $stage_plan_table = session('fullCalender')['mode'] === 'offical'
+                        ? 'stage_plan'
+                        : 'stage_plan_temp';
+
+                // selectRaw với binding để tránh lỗi CHUỖI/SQL và để TIMESTAMPDIFF lấy tham số an toàn
+                $selectRaw = '
+                        sp.resourceId,
+                        ? / 3600 as total_hours,
+                        SUM(
+                        GREATEST(
+                                0,
+                                TIMESTAMPDIFF(
+                                SECOND,
+                                GREATEST(sp.start, ?),
+                                LEAST( COALESCE(sp.end_clearning, sp.end, sp.start), ? )
+                                )
+                        )
+                        ) / 3600 as busy_hours
+                ';
+
+                $query = DB::table("$stage_plan_table as sp")
+                        ->selectRaw($selectRaw, [$totalSeconds, $start, $end])
+                        ->when(session('fullCalender')['mode'] === 'temp', function ($q) {
+                        return $q->where('sp.stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
+                        })
+                        ->where('sp.deparment_code', session('user')['production_code'])
+                        // điều kiện overlap dựa trên phần giao nhau: GREATEST(start, rangeStart) < LEAST(end, rangeEnd)
+                        ->whereRaw('GREATEST(sp.start, ?) < LEAST(COALESCE(sp.end_clearning, sp.end, sp.start), ?)', [$start, $end])
+                        ->groupBy('sp.resourceId');
+
+                $data = $query->get();
+
+                // bảo đảm không null và tính free_hours
+                $result = $data->map(function ($item) {
+                        $item->busy_hours = $item->busy_hours ?? 0;
+                        $item->free_hours = ($item->total_hours ?? 0) - $item->busy_hours;
+                        return $item;
+                });
+
+                return $result;
+        }
+
+        // trả về tổngsản lượng lý thuyết
+        public function yield($startDate, $endDate, $group_By){
+                Log::info([
+                        'startDate' => $startDate, 
+                        'endDate' => $endDate,
+                        'group_By' => $group_By
+                ]);
+                       
+
+                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
+
+                $startDate = Carbon::parse($startDate);
+                $endDate = Carbon::parse($endDate);
+
+                $stage_plan_100 = DB::table("$stage_plan_table as sp")
+                ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [ $startDate, $endDate])
+                ->whereNotNull('sp.start')
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->select(
+                        "sp.$group_By",
+                        DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
+                        DB::raw('
+                        CASE
+                                WHEN sp.stage_code <= 4 THEN "Kg"
+                                ELSE "ĐVL"
+                        END as unit
+                        ')
+                )
+                ->groupBy("sp.$group_By", "unit")
+                ->get();
+
+                
+                $stage_plan_part = DB::table("$stage_plan_table as sp")
+                ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
+                ->whereNotNull('sp.start')
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->select(
+                        "sp.$group_By",
+                        DB::raw('
+                        SUM(
+                                sp.Theoretical_yields *
+                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
+                                TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
+                        ) as total_qty
+                        '),
+                        DB::raw('
+                        CASE
+                                WHEN sp.stage_code <= 4 THEN "Kg"
+                                ELSE "ĐVL"
+                        END as unit
+                        ')
+                )
+                ->groupBy("sp.$group_By", "unit")
+                ->get();
+
+                $merged = $stage_plan_100->merge($stage_plan_part)
+                        ->groupBy(function ($item) use ($group_By) {
+                        return $item->$group_By . '-' . $item->unit;
+                        })
+                        ->map(function ($items) use ($group_By) {
+                        return (object)[
+                                $group_By => $items->first()->$group_By,
+                                'unit' => $items->first()->unit,
+                                'total_qty' => round($items->sum('total_qty'), 2), // 👈 làm tròn 2 chữ số
+                        ];
+                        })
+                ->values();
+
+
+
+
+                return $merged;
+
+        } // đã có temp
+
         protected function getEvents($production, $startDate, $endDate, $clearning){
                 // 1️⃣ Chọn bảng dữ liệu chính
                 $stage_plan_table = session('fullCalender')['mode'] === 'offical'
@@ -41,7 +166,8 @@ class SchedualController extends Controller
                         })
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', $production)
-                        ->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))',
+                        ->whereRaw('(sp.start <= ? OR sp.end >= ? OR sp.start_clearning <= ? OR sp.end_clearning >= ?)',
+                        //->whereRaw('((sp.start <= ? AND sp.end >= ?) OR (sp.start_clearning <= ? AND sp.end_clearning >= ?))',
                         [$endDate, $startDate, $endDate, $startDate])
                         ->select(
                         'sp.id',
@@ -174,7 +300,7 @@ class SchedualController extends Controller
 
                         // ⏰ Hạn cần hàng / bảo trì
                         if ($plan->expected_date < $plan->end && $plan->stage_code < 9 && $color_event != '#bda124ff') {
-                                $color_event = '#f90202ff';
+                               // $color_event = '#f90202ff';
                                 //$subtitle = $plan->stage_code == 8
                                 //? "Không Đáp Ứng Hạn Bảo Trì: {$plan->expected_date}"
                                 //: "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
@@ -414,6 +540,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
+                //Log::info($request->all());
 
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
@@ -2544,89 +2671,7 @@ class SchedualController extends Controller
                 }
         }
 
-        //Thời gian của từng phòng
-        public function getRoomStatistics($startDate, $endDate){
-                // chuẩn hoá ngày giờ (chuỗi dạng MySQL)
-                $start = Carbon::parse($startDate)->format('Y-m-d H:i:s');
-                $end   = Carbon::parse($endDate)->format('Y-m-d H:i:s');
-
-                $totalSeconds = Carbon::parse($startDate)->diffInSeconds(Carbon::parse($endDate));
-
-                $stage_plan_table = session('fullCalender')['mode'] === 'offical'
-                        ? 'stage_plan'
-                        : 'stage_plan_temp';
-
-                // selectRaw với binding để tránh lỗi CHUỖI/SQL và để TIMESTAMPDIFF lấy tham số an toàn
-                $selectRaw = '
-                        sp.resourceId,
-                        ? / 3600 as total_hours,
-                        SUM(
-                        GREATEST(
-                                0,
-                                TIMESTAMPDIFF(
-                                SECOND,
-                                GREATEST(sp.start, ?),
-                                LEAST( COALESCE(sp.end_clearning, sp.end, sp.start), ? )
-                                )
-                        )
-                        ) / 3600 as busy_hours
-                ';
-
-                $query = DB::table("$stage_plan_table as sp")
-                        ->selectRaw($selectRaw, [$totalSeconds, $start, $end])
-                        ->when(session('fullCalender')['mode'] === 'temp', function ($q) {
-                        return $q->where('sp.stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
-                        })
-                        ->where('sp.deparment_code', session('user')['production_code'])
-                        // điều kiện overlap dựa trên phần giao nhau: GREATEST(start, rangeStart) < LEAST(end, rangeEnd)
-                        ->whereRaw('GREATEST(sp.start, ?) < LEAST(COALESCE(sp.end_clearning, sp.end, sp.start), ?)', [$start, $end])
-                        ->groupBy('sp.resourceId');
-
-                $data = $query->get();
-
-                // bảo đảm không null và tính free_hours
-                $result = $data->map(function ($item) {
-                        $item->busy_hours = $item->busy_hours ?? 0;
-                        $item->free_hours = ($item->total_hours ?? 0) - $item->busy_hours;
-                        return $item;
-                });
-
-                return $result;
-        }
-
-        // trả về tổngsản lượng lý thuyết
-        public function yield($startDate, $endDate, $group_By){
-
-
-                if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
-                $startDate = Carbon::parse($startDate)->toDateTimeString();
-                $endDate = Carbon::parse($endDate)->toDateTimeString();
-
-                $result = DB::table("$stage_plan_table as sp")
-                ->whereRaw('((sp.start <= ? AND sp.end >= ?))', [$endDate, $startDate])
-                ->whereNotNull('sp.start')
-                ->where('sp.deparment_code', session('user')['production_code'])
-                ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
-                        return $query->where('sp.stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
-                })
-                ->select(
-                        "sp.$group_By",
-                        DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
-                        DB::raw('
-                        CASE
-                                WHEN sp.stage_code <= 4 THEN "Kg"
-                                ELSE "ĐVL"
-                        END as unit
-                        ')
-                )
-                ->groupBy("sp.$group_By", "unit")
-                ->get();
-
-                return $result;
-
-        } // đã có temp
-
-        ///////// Sắp Lịch Ngược ////////
+        ///////// Sắp Lịch Theo Plan_Master_ID ////////
         public function scheduleStartBackward( $start_date, $waite_time) {
 
                 if (session('fullCalender')['mode'] === 'offical') {
