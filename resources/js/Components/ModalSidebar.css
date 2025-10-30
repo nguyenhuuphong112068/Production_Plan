@@ -13,3 +13,8 @@
   display: block !important;
   text-align: center;
 }
+
+.p-column-filter {
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
