@@ -1035,6 +1035,27 @@ class SchedualController extends Controller
                                 ->pluck('id');
                         }
 
+
+                         if ($ids->isNotEmpty()) {
+                                // Lấy danh sách campain_code của các dòng bị xoá
+                                $campainCodes = DB::table($stage_plan_table)
+                                ->whereIn('id', $ids)
+                                ->pluck('campaign_code')
+                                ->unique();
+
+                                // Lấy thêm các id khác có cùng campain_code, nhưng start < start_date
+                                $relatedIds = DB::table($stage_plan_table)
+                                ->whereIn('campaign_code', $campainCodes)
+                                ->where('start', '<', $request->start_date)
+                                ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
+                                        return $query->where('stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
+                                })
+                                ->pluck('id');
+
+                                // Gộp danh sách id lại
+                                $ids = $ids->merge($relatedIds)->unique();
+                        }
+
                         if ($ids->isEmpty()) {
                                 $production = session('user')['production_code'];
                                 $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
