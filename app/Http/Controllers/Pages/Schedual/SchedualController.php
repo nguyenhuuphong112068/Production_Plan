@@ -300,7 +300,7 @@ class SchedualController extends Controller
 
                         // ⏰ Hạn cần hàng / bảo trì
                         if ($plan->expected_date < $plan->end && $plan->stage_code < 9 && $color_event != '#bda124ff') {
-                               // $color_event = '#f90202ff';
+                                $color_event = '#f90202ff';
                                 //$subtitle = $plan->stage_code == 8
                                 //? "Không Đáp Ứng Hạn Bảo Trì: {$plan->expected_date}"
                                 //: "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
