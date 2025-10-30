@@ -106,6 +106,7 @@ const ScheduleTest = () => {
           data = data.replace(/^<!--.*?-->/, "").trim();
           data = JSON.parse(data);
         }
+
         setEvents(data.events);
         setResources(data.resources);
         setType(data.type)
@@ -363,6 +364,9 @@ const ScheduleTest = () => {
       });
   };
 
+
+
+
   /// Tô màu các event trùng khớp
   const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
     const calendarApi = calendarRef.current?.getApi();
@@ -555,54 +559,6 @@ const ScheduleTest = () => {
   };
 
   /// 3 Ham sử lý thay đôi sự kiện
-  // const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
-    
-  //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
-  //     info.revert();
-  //     return false
-  //   };
-  //   console.log (info)
-  //   //return
-  //   const draggedEvent = info.event;
-  //   const delta = info.delta;
-  //   const calendarApi = info.view.calendar;
-
-  //   // Nếu chưa được chọn thì tự động chọn
-  //   if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
-  //     toggleEventSelect(draggedEvent);
-  //   }
-
-  //   // Nếu đã chọn thì xử lý nhóm
-  //   if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
-  //     info.revert();
-
-  //     selectedEvents.forEach(sel => {
-  //       const event = calendarApi.getEventById(sel.id);
-  //       if (event) {
-
-
-  //         const newStart = new Date(
-  //           event.start.getTime() +
-  //           delta.milliseconds +
-  //           delta.days * 24 * 60 * 60 * 1000
-  //         );
-
-  //         const newEnd = new Date(
-  //           event.end.getTime() +
-  //           delta.milliseconds +
-  //           delta.days * 24 * 60 * 60 * 1000
-  //         );
-  //         event.setDates(newStart, newEnd);
-
-  //         handleEventChange({ event });
-  //       }
-  //     });
-  //   } else {
-  //     // Nếu không nằm trong selectedEvents thì xử lý đơn lẻ
-  //     handleEventChange(info);
-  //   }
-
-  // };
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
     if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
       info.revert();
@@ -2021,7 +1977,9 @@ const ScheduleTest = () => {
             click: () => {
               let api = calendarRef.current.getApi();
               api.next();  // gọi hành vi gốc
-              setLoading(!loading);
+              handleViewChange (api.currentData.currentViewType)
+
+              //setLoading(!loading);
             }
           },
           customPre: {
@@ -2029,7 +1987,8 @@ const ScheduleTest = () => {
             click: () => {
               let api = calendarRef.current.getApi();
               api.prev(); // gọi hành vi gốc
-              setLoading(!loading);
+              handleViewChange (api.currentData.currentViewType)
+             
             }
           },
 
