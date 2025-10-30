@@ -69,6 +69,18 @@ const ScheduleTest = () => {
   const [quarantineRoom, setQuarantineRoom] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
 
+  function toLocalISOString(date) {
+      const pad = (n) => String(n).padStart(2, '0');
+      return (
+        date.getFullYear() + '-' +
+        pad(date.getMonth() + 1) + '-' +
+        pad(date.getDate()) + 'T' +
+        pad(date.getHours()) + ':' +
+        pad(date.getMinutes()) + ':' +
+        pad(date.getSeconds()) + '.000Z'
+      );
+  }
+
   /// Get dữ liệu ban đầu
   useEffect(() => {
 
@@ -82,8 +94,8 @@ const ScheduleTest = () => {
 
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
     axios.post("/Schedual/view", {
-      startDate: activeStart.toISOString(),
-      endDate: activeEnd.toISOString(),
+      startDate: toLocalISOString(activeStart),
+      endDate: toLocalISOString(activeEnd),
       viewtype: viewName,
     })
       .then(res => {
@@ -319,8 +331,8 @@ const ScheduleTest = () => {
 
     setViewName(view)
     axios.post(`/Schedual/view`, {
-      startDate: activeStart.toISOString(),
-      endDate: activeEnd.toISOString(),
+      startDate: toLocalISOString(activeStart),
+      endDate: toLocalISOString(activeEnd),
       viewtype: view
     })
       .then(res => {
@@ -462,8 +474,8 @@ const ScheduleTest = () => {
         stage_code: selectedRows[0].stage_codes,
         start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
         products: selectedRows,
-        startDate: activeStart.toISOString(),
-        endDate: activeEnd.toISOString()
+        startDate: toLocalISOString(activeStart),
+        endDate: toLocalISOString(activeEnd),
       })
         .then(res => {
           let data = res.data;
@@ -489,8 +501,8 @@ const ScheduleTest = () => {
         start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
         products: selectedRows,
         is_HVAC: selectedRows[0]?.is_HVAC ?? false,
-        startDate: activeStart.toISOString(),
-        endDate: activeEnd.toISOString()
+        startDate: toLocalISOString(activeStart),
+        endDate: toLocalISOString(activeEnd),
       })
         .then(res => {
           let data = res.data;
@@ -692,8 +704,11 @@ const ScheduleTest = () => {
       });
       return;
     }
-    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
     setSaving(true);
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    let startDate =  toLocalISOString(activeStart)
+    let endDate = toLocalISOString(activeEnd)
 
     axios.put('/Schedual/update', {
       changes: pendingChanges.map(change => ({
@@ -704,8 +719,8 @@ const ScheduleTest = () => {
         title: change.title,
         C_end: change.C_end || false
       })),
-      startDate: activeStart.toISOString(),
-      endDate: activeEnd.toISOString()
+      startDate: startDate,
+      endDate: endDate
     })
       .then(res => {
         let data = res.data;
@@ -1075,8 +1090,8 @@ const ScheduleTest = () => {
 
         axios.post('/Schedual/scheduleAll', {
           ...result.value,
-          startDate: activeStart.toISOString(),
-          endDate: activeEnd.toISOString(),
+          startDate: toLocalISOString(activeStart),
+          endDate: toLocalISOString(activeEnd),
         }, { timeout: 300000 })
           .then(res => {
             let data = res.data;
@@ -1286,8 +1301,9 @@ const ScheduleTest = () => {
 
       axios.put('/Schedual/deActiveAll', {
         ...result.value,
-        startDate: activeStart.toISOString(),
-        endDate: activeEnd.toISOString()
+        startDate: toLocalISOString(activeStart),
+        endDate: toLocalISOString(activeEnd),
+
       })
         .then(res => {
           let data = res.data;
@@ -1346,8 +1362,8 @@ const ScheduleTest = () => {
       if (result.isConfirmed) {
         axios.put('/Schedual/deActive', {
           ids: selectedEvents,
-          startDate: activeStart.toISOString(),
-          endDate: activeEnd.toISOString()
+          startDate: toLocalISOString(activeStart),
+          endDate: toLocalISOString(activeEnd)
         })
           .then((res) => {
             let data = res.data;
@@ -1955,7 +1971,7 @@ const ScheduleTest = () => {
 
         views={{
           resourceTimelineDay: {
-            slotDuration: '00:15:00',
+            slotDuration: '00:05:00',
             slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Ngày',
