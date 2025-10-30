@@ -70,8 +70,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
     if (waitPlan && waitPlan.length > 0) {
 
-      const filtered = waitPlan.filter(event => Number(event.stage_code) === stageFilter).map(event => ({...event,
-      permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+      const filtered = waitPlan.filter(event => Number(event.stage_code) === stageFilter)
+      //.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
       setTableData(filtered);
       setUnQuota (tableData.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
     }
@@ -284,10 +284,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       const nextStage = prev === 1 ? 9 : prev - 1;
 
       let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
-      let stage_plan2 = stage_plan.map(event => ({...event,
-      permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
-
-      setTableData(stage_plan2);
+      //let stage_plan2 = stage_plan.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+      setTableData(stage_plan);
       setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
       return nextStage;
     });
@@ -303,10 +301,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       const nextStage = prev === 9 ? 1 : prev + 1;
 
       let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
-      let stage_plan2 = stage_plan.map(event => ({...event,
-      permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+      //let stage_plan2 = stage_plan.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
 
-      setTableData(stage_plan2);
+      setTableData(stage_plan);
       setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
       return nextStage;
     });
@@ -833,7 +830,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   };
 
   const roomBody = (rowData) => {
-    //console.log (rowData)
+    
     if (!rowData.permisson_room ||  rowData.permisson_room.length === 0 ) {    
         return (
           <span

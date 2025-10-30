@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 
 import '@fullcalendar/daygrid/index.js';
 import '@fullcalendar/resource-timeline/index.js';
@@ -150,6 +150,9 @@ const ScheduleTest = () => {
 
   }, [loading]);
 
+  const memoizedEvents = useMemo(() => events, [events]);
+   
+
   /// Get dư liệu row được chọn
   useEffect(() => {
 
@@ -160,7 +163,7 @@ const ScheduleTest = () => {
 
         // Lấy selectedRows mới nhất từ state
         const draggedData = selectedRows.length ? selectedRows : [];
-        //console.log (draggedData);
+     
         return {
           title: draggedData.length > 1 ? `(${draggedData.length}) sản phẩm` : draggedData[0]?.product_code || 'Trống',
           extendedProps: { rows: draggedData },
@@ -917,8 +920,7 @@ const ScheduleTest = () => {
             const getClass = (value) =>
               `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""
               }`;
-            console.log()
-
+           
             return (
               <Stepper style={{ width: "100%" }}>
                 {(emptyPermission == null || emptyPermission.stage_code >= 4) && (
@@ -1773,6 +1775,7 @@ const ScheduleTest = () => {
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineMonth1h"
         firstDay={1}
+        //events={memoizedEvents}
         events={events}
         eventResourceEditable={true}
         resources={resources}
@@ -1825,7 +1828,7 @@ const ScheduleTest = () => {
 
         // Phòng
         resourceLabelContent={(arg) => {
-          //console.log (arg.resource)
+        
           const res = arg.resource.extendedProps;
           const busy = parseFloat(res.busy_hours) || 0;
           const yields = parseFloat(res.yield) || 0;
@@ -2145,7 +2148,7 @@ const ScheduleTest = () => {
         toggleContinueSelect={["shift"]}
         ref={selectoRef}
         onSelectEnd={(e) => {
-          console.log (e)
+          
           const selected = e.selected.map((el) => {
             const id = el.getAttribute("data-event-id");
             const stageCode = el.getAttribute("data-stage_code");

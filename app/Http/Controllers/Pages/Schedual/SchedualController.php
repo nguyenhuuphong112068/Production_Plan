@@ -474,21 +474,27 @@ class SchedualController extends Controller
                 // 4️⃣ Map dữ liệu permission_room (cực nhanh)
                 $plan_waiting->transform(function ($plan) use ($quotaByIntermediate, $quotaByFinished, $quotaByRoom, $roomIdByInstrument) {
                         if ($plan->stage_code <= 6) {
-                        $key = $plan->intermediate_code . '-' . $plan->stage_code;
-                        $matched = $quotaByIntermediate[$key] ?? collect();
+                                $key = $plan->intermediate_code . '-' . $plan->stage_code;
+                                $matched = $quotaByIntermediate[$key] ?? collect();
                         } elseif ($plan->stage_code == 7) {
-                        $key = $plan->finished_product_code . '-' . $plan->stage_code;
-                        $matched = $quotaByFinished[$key] ?? collect();
+                                $key = $plan->finished_product_code . '-' . $plan->stage_code;
+                                $matched = $quotaByFinished[$key] ?? collect();
                         } elseif ($plan->stage_code == 8) {
-                        $room_id = $roomIdByInstrument[$plan->instrument_code] ?? null;
-                        $matched = $room_id ? ($quotaByRoom[$room_id] ?? collect()) : collect();
+                                $room_id = $roomIdByInstrument[$plan->instrument_code] ?? null;
+                                $matched = $room_id ? ($quotaByRoom[$room_id] ?? collect()) : collect();
                         } else {
-                        $matched = collect();
+                                $matched = collect();
                         }
 
+                        // Mảng phòng được phép
                         $plan->permisson_room = collect($matched)->pluck('code', 'room_id')->unique();
+
+                        // ✅ Thêm field để React có thể filter/search nhanh
+                        $plan->permisson_room_filter = $plan->permisson_room->values()->implode(', ');
+
                         return $plan;
                 });
+
 
                 return $plan_waiting;
         }// đã có temp
@@ -1670,7 +1676,6 @@ class SchedualController extends Controller
                 ]);
         }
 
-
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
@@ -2025,6 +2030,7 @@ class SchedualController extends Controller
                 //Log::info(Carbon::now());
                 return response()->json([]);
         }
+
 
         /** Scheduler cho 1 stage*/
         public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0,  ?Carbon $start_date = null) {
