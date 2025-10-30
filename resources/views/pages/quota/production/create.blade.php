@@ -35,6 +35,7 @@
 
         <div class="modal-body">
             <input type="hidden" name="stage_code" id="stage_code" value="{{ old('stage_code') }}">
+            <input type="hidden" name="quotaView" id="stage_code" value="1">
             {{-- San Phẩm--}}
             <div class="row">
               <div class="col-md-9">

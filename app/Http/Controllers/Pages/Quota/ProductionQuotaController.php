@@ -215,12 +215,13 @@ class ProductionQuotaController extends Controller
                 }
 
                 DB::table('quota')->insert($dataToInsert);
-                
-                $SchedualController = new SchedualController();
-                return response()->json([
-                        'plan' => $SchedualController->getPlanWaiting(session('user')['production_code'])
-                ]);
-
+                if (!isset($request->quotaView)){
+                        $SchedualController = new SchedualController();
+                        return response()->json([
+                                'plan' => $SchedualController->getPlanWaiting(session('user')['production_code'])
+                        ]);
+                }
+        
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
 
