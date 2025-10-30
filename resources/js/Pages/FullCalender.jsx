@@ -14,7 +14,7 @@ import { createRoot } from 'react-dom/client';
 import axios from "axios";
 import 'moment/locale/vi';
 
-import moment from 'moment';
+//import moment, { now } from 'moment';
 import Selecto from "react-selecto";
 import Swal from 'sweetalert2';
 
@@ -71,6 +71,7 @@ const ScheduleTest = () => {
 
   function toLocalISOString(date) {
       const pad = (n) => String(n).padStart(2, '0');
+    
       return (
         date.getFullYear() + '-' +
         pad(date.getMonth() + 1) + '-' +
@@ -83,7 +84,7 @@ const ScheduleTest = () => {
 
   /// Get dữ liệu ban đầu
   useEffect(() => {
-
+    
     Swal.fire({
       title: "Đang tải...",
       allowOutsideClick: false,
@@ -141,8 +142,6 @@ const ScheduleTest = () => {
           Swal.close();
 
         }, 100);
-
-
 
       })
       .catch(err =>
@@ -316,7 +315,7 @@ const ScheduleTest = () => {
 
   ///  Thay đôi khung thời gian
   const handleViewChange = (view) => {
-
+    
     Swal.fire({
       title: "Đang tải...",
       allowOutsideClick: false,
@@ -348,7 +347,7 @@ const ScheduleTest = () => {
         setResources(data.resources);
         setSumBatchByStage(data.sumBatchByStage)
 
-
+        
         setTimeout(() => {
           Swal.close();
         }, 500);
@@ -363,9 +362,6 @@ const ScheduleTest = () => {
         });
       });
   };
-
-
-
 
   /// Tô màu các event trùng khớp
   const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
@@ -1975,11 +1971,11 @@ const ScheduleTest = () => {
           customNext: {
             text: '⏵',
             click: () => {
+             
               let api = calendarRef.current.getApi();
               api.next();  // gọi hành vi gốc
-              handleViewChange (api.currentData.currentViewType)
-
-              //setLoading(!loading);
+              handleViewChange (viewName)
+           
             }
           },
           customPre: {
@@ -1987,7 +1983,7 @@ const ScheduleTest = () => {
             click: () => {
               let api = calendarRef.current.getApi();
               api.prev(); // gọi hành vi gốc
-              handleViewChange (api.currentData.currentViewType)
+              handleViewChange (viewName)
              
             }
           },
