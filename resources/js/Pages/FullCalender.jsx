@@ -311,54 +311,7 @@ const ScheduleTest = () => {
   }
 
   ///  Thay đôi khung thời gian
-  // const handleViewChange = (view) => {
-    
-  //   Swal.fire({
-  //     title: "Đang tải...",
-  //     allowOutsideClick: false,
-  //     didOpen: () => {
-  //       Swal.showLoading();
-  //     },
-  //   });
 
-
-  //   //setViewConfig({ is_clearning: false, timeView: view });
-  //   calendarRef.current?.getApi()?.changeView(view)
-  //   const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-  //   setViewName(view)
-    
-  //   axios.post(`/Schedual/view`, {
-  //     startDate: toLocalISOString(activeStart),
-  //     endDate: toLocalISOString(activeEnd),
-  //     viewtype: view
-  //   })
-  //     .then(res => {
-  //       let data = res.data;
-  //       // Trường hợp response trả về có HTML thừa (ví dụ: <!-- -->)
-  //       if (typeof data === "string") {
-  //         data = data.replace(/^<!--.*?-->/, "").trim();
-  //         data = JSON.parse(data);
-  //       }
-  //       // Chỉ update các state cần thiết (giống `only: ['resources','sumBatchByStage']`)
-  //       setEvents(data.events);
-  //       setResources(data.resources);
-  //       setSumBatchByStage(data.sumBatchByStage)
-
-        
-  //       setTimeout(() => {
-  //         Swal.close();
-  //       }, 500);
-
-  //     })
-  //     .catch(err => {
-  //       console.error("API error:", err.response?.data || err.message);
-  //       Swal.fire({
-  //         icon: 'error',
-  //         title: 'Có lỗi xảy ra',
-  //         text: 'Vui lòng thử lại sau.',
-  //       });
-  //     });
-  // };
   const handleViewChange = useCallback(async (viewType = null, action = null) => {
     const api = calendarRef.current?.getApi();
     if (!api) return;
@@ -388,7 +341,8 @@ const ScheduleTest = () => {
       const { data } = await axios.post(`/Schedual/view`, {
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
-        viewtype: currentView
+        viewtype: currentView,
+        clearning: cleaningHidden
       });
 
       let cleanData = data;
@@ -411,7 +365,7 @@ const ScheduleTest = () => {
     } finally {
       Swal.close();
     }
-  }, []);
+  }, [cleaningHidden]);
 
 
   /// Tô màu các event trùng khớp
@@ -576,33 +530,8 @@ const ScheduleTest = () => {
 
   /// Ẩn hiện sự kiện vệ sinh
   const toggleCleaningEvents = () => {
-    const calendarApi = calendarRef.current?.getApi();
-    if (!calendarApi) return;
-
-    Swal.fire({
-      title: cleaningHidden ? "Hiển thị sự kiện vệ sinh..." : "Ẩn sự kiện vệ sinh...",
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
-
-    setTimeout(() => {
-      const view = calendarApi.view?.type;
-
-      calendarApi.getEvents().forEach(event => {
-        if (event.extendedProps.is_clearning) {
-          const els = document.querySelectorAll(`[data-event-id="${event.id}"]`);
-          els.forEach(el => {
-            el.style.display = cleaningHidden ? "" : "none";
-          });
-        }
-      });
-
-      setCleaningHidden(!cleaningHidden);
-
-      Swal.close();
-    }, 300); // delay 300ms để thấy loading
+    handleViewChange(null, null);
+    setCleaningHidden(!cleaningHidden);
   };
 
   /// 3 Ham sử lý thay đôi sự kiện
@@ -1725,8 +1654,6 @@ const ScheduleTest = () => {
             </>
           )}
         </div>
-
-       
 
         {/* Nút Chọn */}
         <button

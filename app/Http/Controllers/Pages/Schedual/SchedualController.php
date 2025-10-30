@@ -546,7 +546,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-                Log::info('start');
+                
 
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
@@ -554,9 +554,10 @@ class SchedualController extends Controller
 
                 try {
                         $production = session('user')['production_code'];
+                        Log::info(['request' => $request->clearning]);
 
-                        $clearing = true;
-                        if ($viewtype == "resourceTimelineMonth1d" || $viewtype == "resourceTimelineQuarter") {
+                        $clearing = $request->clearning;
+                        if ( $viewtype == "resourceTimelineQuarter") {
                                 $clearing = false;
                         }
 
@@ -592,7 +593,7 @@ class SchedualController extends Controller
                         }
                         $authorization = session('user')['userGroup'];
 
-                        Log::info('end');
+                       
 
                         return response()->json([
                                 'title' => $title,
