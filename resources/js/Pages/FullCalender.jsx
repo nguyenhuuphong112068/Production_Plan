@@ -311,38 +311,39 @@ const ScheduleTest = () => {
   }
 
   ///  Thay đôi khung thời gian
-
   const handleViewChange = useCallback(async (viewType = null, action = null) => {
+    if (saving) return;
+    setSaving(true);
+
     const api = calendarRef.current?.getApi();
     if (!api) return;
 
-    Swal.fire({
-      title: "Đang tải dữ liệu...",
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
-    });
 
     try {
-      // 🔹 1. Nếu có truyền viewType mới → đổi view
+      // 🔹 1. Thay đổi view nếu có yêu cầu
       if (viewType && api.view.type !== viewType) {
         api.changeView(viewType);
         setViewName(viewType);
       }
 
-      // 🔹 2. Nếu là hành động chuyển ngày (Prev/Next/Today)
+      // 🔹 2. Điều hướng ngày
       if (action === "prev") api.prev();
       else if (action === "next") api.next();
       else if (action === "today") api.today();
 
-      // 🔹 3. Sau khi thay đổi view hoặc ngày → lấy lại khoảng thời gian hiện tại
+      // ✅ Đợi 1 chút để FullCalendar cập nhật hoàn tất
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // 🔹 3. Lấy khoảng thời gian hiện tại sau khi chuyển view
       const { activeStart, activeEnd, type: currentView } = api.view;
 
-      // 🔹 4. Gọi API backend để lấy dữ liệu mới
+      const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+      // 🔹 4. Gọi API backend
       const { data } = await axios.post(`/Schedual/view`, {
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
         viewtype: currentView,
-        clearning: cleaningHidden
+        clearning: cleaningHidden,
       });
 
       let cleanData = data;
@@ -350,22 +351,25 @@ const ScheduleTest = () => {
         cleanData = JSON.parse(cleanData.replace(/^<!--.*?-->/, "").trim());
       }
 
-      // 🔹 5. Cập nhật dữ liệu
+      // 🔹 5. Cập nhật dữ liệu mới
       setEvents(cleanData.events);
       setResources(cleanData.resources);
       setSumBatchByStage(cleanData.sumBatchByStage);
 
-    } catch (err) {
-      console.error("API error:", err.response?.data || err.message);
-      Swal.fire({
-        icon: 'error',
-        title: 'Có lỗi xảy ra',
-        text: 'Vui lòng thử lại sau.'
-      });
-    } finally {
-      Swal.close();
+      setSaving(false);
+
+    }  finally {
+         
+      setSaving(false);
     }
-  }, [cleaningHidden]);
+  }, []);
+
+  const toggleCleaningEvents = () => {
+    const current = JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+    const newHidden = !current;
+    sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
+    handleViewChange(null, null);
+  };
 
 
   /// Tô màu các event trùng khớp
@@ -528,11 +532,6 @@ const ScheduleTest = () => {
     }
   };
 
-  /// Ẩn hiện sự kiện vệ sinh
-  const toggleCleaningEvents = () => {
-    handleViewChange(null, null);
-    setCleaningHidden(!cleaningHidden);
-  };
 
   /// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
