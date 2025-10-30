@@ -73,11 +73,11 @@ class SchedualController extends Controller
 
         // trả về tổngsản lượng lý thuyết
         public function yield($startDate, $endDate, $group_By){
-                Log::info([
-                        'startDate' => $startDate, 
-                        'endDate' => $endDate,
-                        'group_By' => $group_By
-                ]);
+                // Log::info([
+                //         'startDate' => $startDate, 
+                //         'endDate' => $endDate,
+                //         'group_By' => $group_By
+                // ]);
                        
 
                 if (session('fullCalender')['mode'] === 'offical'){$stage_plan_table = 'stage_plan';}else{$stage_plan_table = 'stage_plan_temp';}
@@ -540,7 +540,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-                //Log::info($request->all());
+                //Log::info('start');
 
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
@@ -586,6 +586,7 @@ class SchedualController extends Controller
                         }
                         $authorization = session('user')['userGroup'];
 
+                        //Log::info('end');
 
                         return response()->json([
                                 'title' => $title,
