@@ -21,6 +21,24 @@
             </a>
         </div>
 
+          <div style="font-size: 16px; margin: 10px 0; text-align: center;">
+            <span style="display: inline-block; width: 200px; height: 25px; background-color: #46f905; border: 1px solid #000; margin-right: 8px; line-height: 25px;">
+                Đang Sản Xuất
+            </span>
+            <span style="display: inline-block; width: 200px; height: 25px; background-color: #a1a2a2; border: 1px solid #000; margin: 0 8px; line-height: 25px;">
+                Đang Vệ Sinh
+            </span>
+            <span style="display: inline-block; width: 200px; height: 25px; background-color: #f99e02; border: 1px solid #000; margin: 0 8px; line-height: 25px;">
+                Đang Bảo Trì
+            </span>
+            <span style="display: inline-block; width: 200px; height: 25px; background-color: #ff0000; border: 1px solid #000; margin: 0 8px; line-height: 25px; color: white;">
+                Máy Hư
+            </span>
+            <span style="display: inline-block; width: 200px; height: 25px; background-color: #ffffff; border: 1px solid #000; margin: 0 8px; line-height: 25px;">
+                Không Sản Xuất
+            </span>
+          </div>
+
         <div class="text-white w-100 " style="background-color: #CDC717">
             <div class="animate-scroll inline-block text-xl text-red">
                 <i class="nav-icon fas fa-capsules"></i> <<--- {{ $general_notication?->notification ?? 'Không có thông báo mới!' }} --->> <i class="nav-icon fas fa-tablets"></i>
@@ -29,7 +47,10 @@
 
     </div>
     
+
+   
     <div class="row mt-1">
+
       @php $now = now();@endphp
       @if (count($datas) < 25)
         <div class="col-md-12">
@@ -129,7 +150,12 @@
               </tbody>
             </table>
           </div>
+
+
         </div>
+
+
+
       @else
       @php
            // Chia dữ liệu thành 2 phần đều nhau
