@@ -59,7 +59,7 @@
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
                           case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                         
+                          case 4: $color = "#FF0000"; break;
                       }
                   @endphp
                   <tr>
@@ -185,7 +185,7 @@
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
                           case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                         
+                          case 4: $color = "#FF0000"; break;
                       }
                   @endphp
                   <tr>
@@ -299,7 +299,7 @@
                           case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
                           case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                         
+                          case 4: $color = "#FF0000"; break;
                       }
                   @endphp
                   <tr>

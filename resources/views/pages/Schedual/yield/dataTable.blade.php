@@ -24,7 +24,6 @@
                     <!-- Filter From/To -->
                     <div class="col-md-6 d-flex gap-2">
                         @php
-
                             $defaultFrom = \Carbon\Carbon::now()->subMonth(1)->toDateString();
                             $defaultTo = \Carbon\Carbon::now()->addMonth(1)->toDateString();
                             $defaultWeek = \Carbon\Carbon::parse($defaultTo)->weekOfYear; // số tuần trong năm

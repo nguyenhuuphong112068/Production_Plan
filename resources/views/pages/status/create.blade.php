@@ -28,26 +28,6 @@
                             value="{{ old('room_name') }}">
                     </div>
 
-                    {{--<div class="form-group">
-                        <label for="belongGroup_id">Sản Phẩm Đang Sản Xuất</label>
-                        <select class="form-control" name="in_production">
-                            <option value="">-- Chọn Lô Sản Phẩm --</option>
-                            <option value="Không Sản Xuất">Không Sản Xuất</option>
-                            <option value="Đang Vệ Sinh">Đang Vệ Sinh</option>
-                            <option value="Bảo Trì">Bảo Trì</option>
-                            @foreach ($planWaitings as $plan)
-                                <option value="{{ $plan->name . '_' . $plan->batch }}"
-                                    {{ old('in_production') == $plan->name . '_' . $plan->batch ? 'selected' : '' }}>
-                                    {{ $plan->name . '_' . $plan->batch }}
-                                </option>
-                            @endforeach
-
-                        </select>
-                        @error('in_production', 'createErrors')
-                            <div class="alert alert-danger mt-1">{{ $message }}</div>
-                        @enderror
-                    </div> --}}
-
                      <div class="form-group">
                        <label for="in_production">Sản Phẩm Đang Sản Xuất</label>
                         <input class="form-control" list="in_production_list" name="in_production" id="in_production">
@@ -55,6 +35,7 @@
                             <option value="Không Sản Xuất">
                             <option value="Đang Vệ Sinh">
                             <option value="Bảo Trì">
+                            <option value="Máy Hư">
                             @foreach ($planWaitings as $plan)
                                 <option value="{{ $plan->name . '_' . $plan->batch }}">
                             @endforeach
@@ -85,6 +66,15 @@
                                             <input type="radio" id="Status3" name="status" value = "2">
                                             <label for="Status3">
                                                 Đang Vệ Sinh
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group clearfix">
+                                        <div class="icheck-primary d-inline">
+                                            <input type="radio" id="Status5" name="status" value = "4">
+                                            <label for="Status5">
+                                                Máy Hư
                                             </label>
                                         </div>
                                     </div>
