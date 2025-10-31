@@ -6,6 +6,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualReportController;
 use App\Http\Controllers\Pages\Schedual\SchedualStepController;
 use App\Http\Controllers\Pages\Schedual\SchedualTempController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
+use App\Http\Controllers\Pages\Schedual\ShedualYieldController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
    
@@ -77,6 +78,15 @@ use Illuminate\Support\Facades\Route;
                 ->name('report.')
                 ->group(function(){
                         Route::get('','list')->name('list');
+                        Route::get('test','test')->name('test');
+                });
+
+                Route::prefix('/yield')
+                ->controller(ShedualYieldController::class)
+                ->name('yield.')
+                ->group(function(){
+                        Route::get('','index')->name('index');
+                        
                 });  
 
         });
