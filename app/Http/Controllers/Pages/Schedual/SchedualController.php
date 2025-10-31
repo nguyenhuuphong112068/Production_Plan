@@ -2091,8 +2091,7 @@ class SchedualController extends Controller
                         }else {
                                 if (in_array($task->campaign_code, $processedCampaigns)) {continue;}
                                 // Gom nhóm campaign
-                                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code);
-
+                                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->sortBy('batch');;
                                 $this->scheduleCampaign( $campaignTasks, $stageCode, $waite_time,  $start_date);
                                 // Đánh dấu campaign đã xử lý
                                 $processedCampaigns[] = $task->campaign_code;
