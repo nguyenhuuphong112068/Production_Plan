@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\DB;
 
 class SchedualReportController extends Controller
 {
+    
+    
+
+
+
     public function list(Request $request){
                
 
@@ -99,5 +104,11 @@ class SchedualReportController extends Controller
                         'stages' => $stages,
                         'stageCode' => $stageCode
                 ]);
-        }
+    }
+
+
+
+    public function test(){
+        $this->yield (null,null,'resourceId');
+    }
 }

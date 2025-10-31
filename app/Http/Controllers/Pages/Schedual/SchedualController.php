@@ -139,9 +139,6 @@ class SchedualController extends Controller
                         })
                 ->values();
 
-
-
-
                 return $merged;
 
         } // đã có temp
