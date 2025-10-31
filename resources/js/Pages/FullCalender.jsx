@@ -68,6 +68,10 @@ const ScheduleTest = () => {
   const [quarantineRoom, setQuarantineRoom] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
 
+  // const renderCount = useRef(0);
+  // renderCount.current++;
+  // console.log("Render lần:", renderCount.current);
+
   function toLocalISOString(date) {
       const pad = (n) => String(n).padStart(2, '0');
     
@@ -305,25 +309,20 @@ const ScheduleTest = () => {
 
 
   const handleShowList = () => {
-
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
-    setShowSidebar(true);
+      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+      setShowSidebar(true);
   }
 
   ///  Thay đôi khung thời gian
   const handleViewChange = useCallback(async (viewType = null, action = null) => {
-    if (saving) return;
-    setSaving(true);
+    
 
     const api = calendarRef.current?.getApi();
     if (!api) return;
-
-
     try {
       // 🔹 1. Thay đổi view nếu có yêu cầu
       if (viewType && api.view.type !== viewType) {
         api.changeView(viewType);
-        setViewName(viewType);
       }
 
       // 🔹 2. Điều hướng ngày
@@ -351,17 +350,13 @@ const ScheduleTest = () => {
       if (typeof cleanData === "string") {
         cleanData = JSON.parse(cleanData.replace(/^<!--.*?-->/, "").trim());
       }
-
       // 🔹 5. Cập nhật dữ liệu mới
       setEvents(cleanData.events);
       setResources(cleanData.resources);
       setSumBatchByStage(cleanData.sumBatchByStage);
-
-      setSaving(false);
-
+      setViewName(viewType);
     }  finally {
-         
-      setSaving(false);
+
     }
   }, []);
 
@@ -2072,56 +2067,53 @@ const ScheduleTest = () => {
 
 
       />
-      {/* <div className="modal-sidebar"> */}
-      <ModalSidebar
-
-        visible={showSidebar}
-        onClose={setShowSidebar}
-        waitPlan={plan}
-        setPlan={setPlan}
-        percentShow={percentShow}
-        setPercentShow={setPercentShow}
-        selectedRows={selectedRows}
-        setSelectedRows={setSelectedRows}
-        quota={quota}
-        resources={resources}
-        type={type}
-        currentPassword = {currentPassword}
-      />
-
-
-
       <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
       <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData} />
 
+      {/* <div className="modal-sidebar"> */}
+      { CheckAuthorization(authorization, ['Admin', 'Schedualer', false]) && (
+        <ModalSidebar
+          visible={showSidebar}
+          onClose={setShowSidebar}
+          waitPlan={plan}
+          setPlan={setPlan}
+          percentShow={percentShow}
+          setPercentShow={setPercentShow}
+          selectedRows={selectedRows}
+          setSelectedRows={setSelectedRows}
+          quota={quota}
+          resources={resources}
+          type={type}
+          currentPassword = {currentPassword}
+        />)}
+
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
-      <Selecto
-        onDragStart={(e) => {
-          // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
-          if (!e.inputEvent.shiftKey) {
-            e.stop();
-          }
-        }}
-        
+      { CheckAuthorization(authorization, ['Admin', 'Schedualer', false]) && (
+        <Selecto
+          onDragStart={(e) => {
+            // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
+            if (!e.inputEvent.shiftKey) {
+              e.stop();
+            }
+          }}
+          container=".calendar-wrapper"
+          selectableTargets={[".fc-event"]}
+          hitRate={100}
+          selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
+          selectFromInside={true}
+          toggleContinueSelect={["shift"]}
+          ref={selectoRef}
+          onSelectEnd={(e) => {
+            
+            const selected = e.selected.map((el) => {
+              const id = el.getAttribute("data-event-id");
+              const stageCode = el.getAttribute("data-stage_code");
+              return { id, stage_code: stageCode };
+            });
+            setSelectedEvents(selected);
 
-        container=".calendar-wrapper"
-        selectableTargets={[".fc-event"]}
-        hitRate={100}
-        selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
-        selectFromInside={true}
-        toggleContinueSelect={["shift"]}
-        ref={selectoRef}
-        onSelectEnd={(e) => {
-          
-          const selected = e.selected.map((el) => {
-            const id = el.getAttribute("data-event-id");
-            const stageCode = el.getAttribute("data-stage_code");
-            return { id, stage_code: stageCode };
-          });
-          setSelectedEvents(selected);
-
-        }}
-      />
+          }}
+      />)}
 
 
 
