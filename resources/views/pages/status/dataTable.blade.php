@@ -61,20 +61,13 @@
                                 @endif
                                 @php
                                     $current_stage = $data->stage_code;
-                                    switch ($data->status) {
-                                        case 0:
-                                            $color = '#ffffff';
-                                            break; // xám - chưa sản xuất
-                                        case 1:
-                                            $color = '#46f905ff';
-                                            break; // xanh dương - chuẩn bị
-                                        case 2:
-                                            $color = '#a1a2a2ff';
-                                            break; // xanh lá - đang sản xuất
-                                        case 3:
-                                            $color = '#f99e02ff';
-                                            break; // đỏ - lỗi/dừng
-                                    }
+                                     switch ($data->status) {
+                                        case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
+                                        case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
+                                        case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
+                                        case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
+                                        case 4: $color = "#FF0000"; break;
+                                        }
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
@@ -184,20 +177,13 @@
 
                                 @php
                                     $current_stage = $data->production_group;
-                                    switch ($data->status) {
-                                        case 0:
-                                            $color = '#ffffff';
-                                            break; // xám - chưa sản xuất
-                                        case 1:
-                                            $color = '#46f905ff';
-                                            break; // xanh dương - chuẩn bị
-                                        case 2:
-                                            $color = '#a1a2a2ff';
-                                            break; // xanh lá - đang sản xuất
-                                        case 3:
-                                            $color = '#f99e02ff';
-                                            break; // đỏ - lỗi/dừng
-                                    }
+                                     switch ($data->status) {
+                                        case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
+                                        case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
+                                        case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
+                                        case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
+                                        case 4: $color = "#FF0000"; break;
+                                        }
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
@@ -309,20 +295,13 @@
 
                                 @php
                                     $current_stage = $data->production_group;
-                                    switch ($data->status) {
-                                        case 0:
-                                            $color = '#ffffff';
-                                            break; // xám - chưa sản xuất
-                                        case 1:
-                                            $color = '#46f905ff';
-                                            break; // xanh dương - chuẩn bị
-                                        case 2:
-                                            $color = '#a1a2a2ff';
-                                            break; // xanh lá - đang sản xuất
-                                        case 3:
-                                            $color = '#f99e02ff';
-                                            break; // đỏ - lỗi/dừng
-                                    }
+                                     switch ($data->status) {
+                                        case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
+                                        case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
+                                        case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
+                                        case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
+                                        case 4: $color = "#FF0000"; break;
+                                        }
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
