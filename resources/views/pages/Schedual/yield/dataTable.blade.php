@@ -30,6 +30,14 @@
                             $defaultWeek = \Carbon\Carbon::parse($defaultTo)->weekOfYear; // số tuần trong năm
                             $defaultMonth = \Carbon\Carbon::parse($defaultTo)->month; // tháng
                             $defaultYear = \Carbon\Carbon::parse($defaultTo)->year;
+                            $stage_name = [
+                                              1 => 'Cân Nguyên Liệu',
+                                              3 => 'Pha Chế' ,
+                                              4 => 'THT',
+                                              5 => 'Định Hình',
+                                              6 => 'Bao Phim',
+                                              7 => 'ĐGSC-ĐGTC'
+                                      ];
                         @endphp
 
                         <div class="form-group d-flex align-items-center mr-2">
@@ -78,7 +86,7 @@
                     </div>
                 </div>
             </form>
-            @php $current_stage_code = 0; @endphp
+            
 
             <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
                 <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020">
