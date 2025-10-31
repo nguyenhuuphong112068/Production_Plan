@@ -337,7 +337,8 @@ const ScheduleTest = () => {
       // 🔹 3. Lấy khoảng thời gian hiện tại sau khi chuyển view
       const { activeStart, activeEnd, type: currentView } = api.view;
 
-      const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+      const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
+      
       // 🔹 4. Gọi API backend
       const { data } = await axios.post(`/Schedual/view`, {
         startDate: toLocalISOString(activeStart),
@@ -368,6 +369,7 @@ const ScheduleTest = () => {
     const current = JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
     const newHidden = !current;
     sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
+   
     handleViewChange(null, null);
   };
 
