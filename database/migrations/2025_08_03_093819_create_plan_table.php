@@ -105,6 +105,7 @@ return new class extends Migration {
             $table->boolean('scheduling_direction')->nullable();
             $table->boolean('tank')->default(false);
             $table->boolean('keep_dry')->default(false);
+            $table->boolean('submit')->default(false);
             $table->unsignedTinyInteger('AHU_group')->default(0);
 
             $table->float('quarantine_time')->nullable();
