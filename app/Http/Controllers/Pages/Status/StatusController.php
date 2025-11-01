@@ -222,23 +222,15 @@ class StatusController extends Controller
                 ]);
         }
 
-
         public function getPlanWaiting($production, $stage_code){
-                // 1️⃣ Xác định bảng stage_plan hoặc stage_plan_temp
-                $stage_plan_table = session('fullCalender')['mode'] === 'offical'
-                        ? 'stage_plan'
-                        : 'stage_plan_temp';
-                
+  
                 // 2️⃣ Lấy danh sách plan_waiting (chỉ 1 query)
-                $plan_waiting = DB::table("$stage_plan_table as sp")
+                $plan_waiting = DB::table("stage_plan as sp")
                         ->whereNotNull('sp.start')
                         ->where('sp.active', 1)
                         ->where('sp.finished', 0)
                         ->where('sp.stage_code', $stage_code)
                         ->where('sp.deparment_code', $production)
-                        ->when(session('fullCalender')['mode'] === 'temp', function ($query) {
-                        return $query->where('sp.stage_plan_temp_list_id', session('fullCalender')['stage_plan_temp_list_id']);
-                        })
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
@@ -252,7 +244,7 @@ class StatusController extends Controller
                         ->get();
                       
                 return $plan_waiting;
-        }// đã có temp
+        }
 
         public function store (Request $request) {
                //dd ($request->all());

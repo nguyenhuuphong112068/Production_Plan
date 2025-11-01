@@ -32,15 +32,9 @@ class ShedualYieldController extends Controller
     }
     
     public function yield($startDate, $endDate, $group_By){
-
-        if (session('fullCalender')['mode'] === 'offical') {
-            $stage_plan_table = 'stage_plan';
-        } else {
-            $stage_plan_table = 'stage_plan_temp';
-        }
         
         // --- 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
-        $stage_plan_100 = DB::table("$stage_plan_table as sp")
+        $stage_plan_100 = DB::table("stage_plan as sp")
             ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [$startDate, $endDate])
             ->whereNotNull('sp.start')
             ->where('sp.deparment_code', session('user')['production_code'])
@@ -58,7 +52,7 @@ class ShedualYieldController extends Controller
             ->get();
 
         // --- 2️⃣ Giai đoạn chỉ giao nhau 1 phần
-        $stage_plan_part = DB::table("$stage_plan_table as sp")
+        $stage_plan_part = DB::table("stage_plan as sp")
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
             ->whereNotNull('sp.start')
             ->where('sp.deparment_code', session('user')['production_code'])
@@ -141,7 +135,7 @@ class ShedualYieldController extends Controller
             $dayStart = $date->copy()->startOfDay();
             $dayEnd = $date->copy()->endOfDay();
 
-            $totalForDay = DB::table("$stage_plan_table as sp")
+            $totalForDay = DB::table("stage_plan as sp")
                 ->join('room as r', 'sp.resourceId', '=', 'r.id') // 👈 JOIN thêm bảng room
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->whereNotNull('sp.start')

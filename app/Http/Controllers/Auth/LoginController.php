@@ -50,10 +50,7 @@ class LoginController extends Controller
             $production_name = "PX Viên 1";
         }
 
-        session()->put('fullCalender', [
-                'mode' => "offical",
-                'stage_plan_temp_list_id' => null
-        ]);
+
         
         $request->session()->put('user', [
             'userId' => $getUser->id,
@@ -139,11 +136,7 @@ class LoginController extends Controller
             $production_name = "PX Viên 1";
         }
 
-        session()->put('fullCalender', [
-                'mode' => "offical",
-                'stage_plan_temp_list_id' => null
-        ]);
-        
+
         $request->session()->put('user', [
             'userId' => $getUser->id,
             'userName' => $getUser->userName,

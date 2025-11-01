@@ -273,14 +273,6 @@
                 </a>
               </li>
               @endif
-              @if (user_has_permission(session('user')['userId'], 'layout_temp', 'boolean'))
-              <li class="nav-item">
-                <a href="/Schedual/report" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p> Lập Lịch Tạm </p>
-                </a>
-              </li>
-              @endif
 
               <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.list.list') }}" class="nav-link">

@@ -87,7 +87,7 @@ const ScheduleTest = () => {
 
   /// Get dữ liệu ban đầu
   useEffect(() => {
-    
+   
     Swal.fire({
       title: "Đang tải...",
       allowOutsideClick: false,
@@ -336,7 +336,7 @@ const ScheduleTest = () => {
       // 🔹 3. Lấy khoảng thời gian hiện tại sau khi chuyển view
       const { activeStart, activeEnd, type: currentView } = api.view;
 
-      const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
+      const cleaningHidden = true //JSON.parse(sessionStorage.getItem('cleaningHidden'));
       
       // 🔹 4. Gọi API backend
       const { data } = await axios.post(`/Schedual/view`, {
@@ -361,9 +361,9 @@ const ScheduleTest = () => {
   }, []);
 
   const toggleCleaningEvents = () => {
-    const current = JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+    const current = false //JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
     const newHidden = !current;
-    sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
+    //sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
    
     handleViewChange(null, null);
   };
@@ -1617,14 +1617,17 @@ const ScheduleTest = () => {
     setShowHistoryModal(true)
   }
 
+  const handleSubmit = () => {
+     
+  }
+
   const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, viewConfig, viewName, eventFontSize, type, authorization }) => {
     //const adminAutho 
     const event = arg.event;
     const props = event._def.extendedProps;
     const isSelected = selectedEvents.some(ev => ev.id === event.id);
     const now = new Date();
-    //console.log (event.end)
-    //console.log (now)
+
     const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
     //const isWeekView = viewName === 'resourceTimelineWeek';
 
@@ -1745,7 +1748,6 @@ const ScheduleTest = () => {
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineMonth1h"
         firstDay={1}
-        //events={memoizedEvents}
         events={events}
         eventResourceEditable={true}
         resources={resources}
@@ -1762,7 +1764,7 @@ const ScheduleTest = () => {
 
         slotDuration="01:00:00"
         eventDurationEditable={true}
-        //eventStartEditable={true}
+
 
         eventClick={handleEventClick}
         eventResize={handleEventChange}
@@ -1891,7 +1893,7 @@ const ScheduleTest = () => {
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge',
           center: 'title',
-          right: 'fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
+          right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
 
         views={{
@@ -2016,6 +2018,11 @@ const ScheduleTest = () => {
             click: () => setShowRenderBadge(!showRenderBadge)
           },
 
+          Submit: {
+            text: '📤',
+            click: handleSubmit
+          },
+
         }}
 
         eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
@@ -2064,7 +2071,6 @@ const ScheduleTest = () => {
             
           />
         )}
-
 
       />
       <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
