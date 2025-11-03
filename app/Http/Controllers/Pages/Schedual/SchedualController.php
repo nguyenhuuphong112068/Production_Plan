@@ -1518,6 +1518,7 @@ class SchedualController extends Controller
                         ->where('stage_code', $stageCode)
                         ->where('finished', 0)
                         ->where('active', 1)
+                        ->where('sp.deparment_code', session('user')['production_code'])
                         ->whereIn('plan_master_id', $planMasters)
                         ->orderByRaw("FIELD(plan_master_id, " . implode(',', $planMasters->toArray()) . ")")
                         ->update([
@@ -1528,6 +1529,51 @@ class SchedualController extends Controller
                         'plan' => $this->getPlanWaiting(session('user')['production_code']),
                         'message' => "Đã sắp xếp lại kế hoạch cho stage {$stageCode}."
                 ]);
+        }
+
+        public function submit(Request $request){
+
+                // 1️⃣ Lấy danh sách các dòng sẽ update
+                $updatedRows = DB::table('stage_plan')
+                        ->whereNotNull('start')
+                        ->where('finished', 0)
+                        ->where('active', 1)
+                        ->where('submit', 0)
+                        ->where('deparment_code', session('user')['production_code'])
+                ->get();
+
+                // Nếu không có dòng nào thì dừng
+                if ($updatedRows->isEmpty()) {
+                        return response()->json(['message' => 'Không có dữ liệu để submit.']);
+                }
+
+                // 2️⃣ Update submit = 1
+                DB::table('stage_plan')
+                ->whereIn('id', $updatedRows->pluck('id'))
+                ->update(['submit' => 1]);
+
+                // 3️⃣ Insert log cho từng dòng vào stage_plan_history
+                $historyData = $updatedRows->map(function ($row) {
+                $maxVersion = DB::table('stage_plan_history')
+                        ->where('stage_plan_id', $row->id)
+                        ->max('version') ?? 0;
+
+                return [
+                        'stage_plan_id'   => $row->id,
+                        'version'         => $maxVersion + 1,
+                        'resourceId'      => $row->resourceId ?? null,
+                        'start'           => $row->start,
+                        'end'             => $row->end,
+                        'schedualed_by'   => session('user')['fullName'],
+                        'schedualed_at'   => now(),
+                        'deparment_code'  => session('user')['production_code'],
+                        'type_of_change'  => "Tạo Mới Lịch "
+                ];
+                })->toArray();
+
+                DB::table('stage_plan_history')->insert($historyData);
+
+                return response()->json(['updated' => $updatedRows->count()]);
         }
 
         public function required_room (Request $request) {
@@ -2984,7 +3030,7 @@ class SchedualController extends Controller
 
 }
 
-      function toMinutes($time) {
+        function toMinutes($time) {
                 [$hours, $minutes] = explode(':', $time);
                 return ((int)$hours) * 60 + (int)$minutes;
         }
