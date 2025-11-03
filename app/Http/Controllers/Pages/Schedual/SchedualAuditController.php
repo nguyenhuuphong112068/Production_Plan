@@ -1,14 +1,15 @@
 <?php
 
 namespace App\Http\Controllers\Pages\Schedual;
-use Carbon\Carbon;
+
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class SchedualViewController extends Controller
+class SchedualAuditController extends Controller
 {
-        public function list(Request $request){
+            public function index(Request $request){
                 //dd ($request->all());
 
                 $fromDate = $request->from_date ?? Carbon::now()->toDateString();
@@ -16,8 +17,8 @@ class SchedualViewController extends Controller
                 $stage_code = $request->stage_code??3;
                 $production = session('user')['production_code'];
       
-                $datas = DB::table('stage_plan')
-                ->select('stage_plan.*',
+                $datas = DB::table('stage_plan_history')
+                ->select('stage_plan_history.*',
                         'room.name as room_name',
                         'room.code as room_code',
                         'room.stage as stage',
@@ -30,12 +31,12 @@ class SchedualViewController extends Controller
                         'finished_product_category.unit_batch_qty',
                         'market.name as name'
                 )
-                ->whereBetween('stage_plan.start', [$fromDate, $toDate])
-                ->where('stage_plan.active', 1)->where ('stage_plan.stage_code', $stage_code)
-                ->where('stage_plan.deparment_code', $production)->where('stage_plan.finished', 0)->whereNotNull('stage_plan.start')
-                ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
-                ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                ->whereBetween('stage_plan_history.start', [$fromDate, $toDate])
+                ->where('stage_plan_history.active', 1)->where ('stage_plan_history.stage_code', $stage_code)
+                ->where('stage_plan_history.deparment_code', $production)->where('stage_plan_history.finished', 0)->whereNotNull('stage_plan_history.start')
+                ->leftJoin('room', 'stage_plan_history.resourceId', 'room.id')
+                ->leftJoin('plan_master', 'stage_plan_history.plan_master_id', 'plan_master.id')
+                ->leftJoin('finished_product_category', 'stage_plan_history.product_caterogy_id', '=', 'finished_product_category.id')
                 ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->get();
@@ -54,8 +55,8 @@ class SchedualViewController extends Controller
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                
             
-                session()->put(['title'=> 'Lịch Sản Xuất']);
-                return view('pages.Schedual.list.list',[
+                session()->put(['title'=> 'LỊCH SỮ THAY ĐỔI LỊCH SẢN XUẤT']);
+                return view('pages.Schedual.audit.list',[
 
                         'datas' => $datas,
                         'stages' => $stages,
@@ -63,7 +64,4 @@ class SchedualViewController extends Controller
                     
                 ]);
         }
-
-
-
 }

@@ -1410,13 +1410,12 @@ const ScheduleTest = () => {
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
             }
-           
-            //setEvents(data.events);
+          
 
             Swal.fire({
               icon: 'success',
-              title: 'Hoàn Thành',
-              timer: 500,
+              title: data.message,
+              timer: 1500,
               showConfirmButton: false,
             });
 
