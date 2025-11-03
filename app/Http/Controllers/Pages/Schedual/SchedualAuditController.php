@@ -17,8 +17,10 @@ class SchedualAuditController extends Controller
                 $stage_code = $request->stage_code??3;
                 $production = session('user')['production_code'];
       
-                $datas = DB::table('stage_plan_history')
-                ->select('stage_plan_history.*',
+                // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
+                $datas = DB::table('stage_plan_history as h')
+                    ->select(
+                        'h.*',
                         'room.name as room_name',
                         'room.code as room_code',
                         'room.stage as stage',
@@ -30,31 +32,55 @@ class SchedualAuditController extends Controller
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
                         'market.name as name'
-                )
-                ->whereBetween('stage_plan_history.start', [$fromDate, $toDate])
-                ->where('stage_plan_history.active', 1)->where ('stage_plan_history.stage_code', $stage_code)
-                ->where('stage_plan_history.deparment_code', $production)->where('stage_plan_history.finished', 0)->whereNotNull('stage_plan_history.start')
-                ->leftJoin('room', 'stage_plan_history.resourceId', 'room.id')
-                ->leftJoin('plan_master', 'stage_plan_history.plan_master_id', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'stage_plan_history.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
-                ->leftJoin('market','finished_product_category.market_id','market.id')
-                ->get();
+                    )
+                    ->joinSub(
+                        DB::table('stage_plan_history')
+                            ->select('stage_plan_id', DB::raw('MAX(version) as max_version'))
+                            ->groupBy('stage_plan_id'),
+                        'latest',
+                        function ($join) {
+                            $join->on('h.stage_plan_id', '=', 'latest.stage_plan_id')
+                                ->on('h.version', '=', 'latest.max_version');
+                        }
+                    )
+                    ->leftJoin('room', 'h.resourceId', '=', 'room.id')
+                    ->leftJoin('plan_master', 'h.plan_master_id', '=', 'plan_master.id')
+                    ->leftJoin('finished_product_category', 'h.product_caterogy_id', '=', 'finished_product_category.id')
+                    ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                    ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                    ->whereBetween('h.start', [$fromDate, $toDate])
+                    ->where('h.stage_code', $stage_code)
+                    ->where('h.deparment_code', $production)
+                    ->whereNotNull('h.start')
+                    ->get();
 
-                $stages = DB::table('stage_plan')
-                ->select('stage_plan.stage_code', 'room.stage')
-                ->where('stage_plan.active', 1)
-                ->where('stage_plan.deparment_code', $production)
-                ->where('stage_plan.finished', 0)
-                ->whereNotNull('stage_plan.start')
-                ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
-                ->distinct()
-                ->orderby ('stage_code')
+                // 🔹 2. Lấy số lần xuất hiện (lịch sử version) của mỗi stage_plan_id
+                $historyCounts = DB::table('stage_plan_history')
+                    ->select('stage_plan_id', DB::raw('COUNT(stage_plan_id) as count'))
+                    ->groupBy('stage_plan_id')
+                    ->pluck('count', 'stage_plan_id');
+
+                //dd ($historyCounts);
+
+                // 🔹 3. Gắn thêm count lịch sử vào mỗi record (nếu cần)
+                $datas->transform(function ($item) use ($historyCounts) {
+                    $item->history_count = $historyCounts[$item->stage_plan_id] ?? 0;
+                    return $item;
+                });
+
+                $stages = DB::table('stage_plan_history')
+                    ->select('stage_plan_history.stage_code', 'room.stage')
+                    ->where('stage_plan_history.deparment_code', $production)
+        
+                    ->whereNotNull('stage_plan_history.start')
+                    ->leftJoin('room', 'stage_plan_history.resourceId', 'room.id')
+                    ->distinct()
+                    ->orderby ('stage_code')
                 ->get();
 
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
-               
-            
+                
+                
                 session()->put(['title'=> 'LỊCH SỮ THAY ĐỔI LỊCH SẢN XUẤT']);
                 return view('pages.Schedual.audit.list',[
 

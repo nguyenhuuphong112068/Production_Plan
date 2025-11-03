@@ -47,7 +47,10 @@
 
                     <!-- Optional Right Side -->
                     <div class="col-md-4 d-flex justify-content-end">
-                        <!-- Bạn có thể thêm nút submit hoặc button khác ở đây -->
+                        <button type="button" id="filter_has_change" value = "1" name = "filter_has_change" class="btn btn-warning has_change-btn">
+                          <i class="fa fa-filter"></i>
+                          Có Thay đổi
+                        </button>
                     </div>
 
                 </div>
@@ -114,7 +117,7 @@
                                     <i class="fas fa-history"></i>
                                     <span class="badge badge-danger"
                                         style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
-                                        {{-- {{ $data->history_count ?? 0 }} --}} 1
+                                        {{ $data->history_count ?? 0 }} 
                                     </span>
                                 </button>
                             </td>
