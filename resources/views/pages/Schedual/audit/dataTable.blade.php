@@ -43,8 +43,9 @@
                         </span>
                         <button type="button" id="nextStage" class="btn btn-link stage-btn"
                             style="font-size: 25px;">&raquo;</button>
+                        
                     </div>
-
+                    <input type="text" name="filter_has_change" id="filter_has_change_input" value="">
                     <!-- Optional Right Side -->
                     <div class="col-md-4 d-flex justify-content-end">
                         <button type="button" id="filter_has_change" value = "1" name = "filter_has_change" class="btn btn-warning has_change-btn">
@@ -165,6 +166,14 @@
                 }
             },
         });
+
+        $('#filter_has_change').on('click', function() {
+            const input = document.getElementById('filter_has_change_input');
+            input.value = input.value === '1' ? '' : '1';
+            form.submit();
+        });
+
+      
     });
 </script>
 

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class SchedualAuditController extends Controller
 {
-            public function index(Request $request){
+        public function index(Request $request){
                 //dd ($request->all());
 
                 $fromDate = $request->from_date ?? Carbon::now()->toDateString();
@@ -60,13 +60,16 @@ class SchedualAuditController extends Controller
                     ->groupBy('stage_plan_id')
                     ->pluck('count', 'stage_plan_id');
 
-                //dd ($historyCounts);
-
-                // 🔹 3. Gắn thêm count lịch sử vào mỗi record (nếu cần)
-                $datas->transform(function ($item) use ($historyCounts) {
+              
+                $datas = $datas->transform(function ($item) use ($historyCounts, $request) {
                     $item->history_count = $historyCounts[$item->stage_plan_id] ?? 0;
                     return $item;
                 });
+
+                if ($request->filter_has_change == 1) {
+                    $datas = $datas->filter(fn($item) => $item->history_count > 1);
+                }
+               
 
                 $stages = DB::table('stage_plan_history')
                     ->select('stage_plan_history.stage_code', 'room.stage')
