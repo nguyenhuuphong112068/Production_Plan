@@ -13,7 +13,7 @@ import { StepperPanel } from 'primereact/stepperpanel';
 import { createRoot } from 'react-dom/client';
 import axios from "axios";
 import 'moment/locale/vi';
-
+import dayjs from 'dayjs';
 import Selecto from "react-selecto";
 import Swal from 'sweetalert2';
 
@@ -22,9 +22,9 @@ import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
 import NoteModal from '../Components/NoteModal';
-import History from '../Components/History';
-import { CheckAuthorization } from '../Components/CheckAuthorization';
-import dayjs from 'dayjs';
+//import History from '../Components/History';
+//import { CheckAuthorization } from '../Components/CheckAuthorization';
+
 
 
 const ScheduleTest = () => {
@@ -34,7 +34,6 @@ const ScheduleTest = () => {
   moment.locale('vi');
   const [showSidebar, setShowSidebar] = useState(false);
   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
-  const [cleaningHidden, setCleaningHidden] = useState(false);
   const [pendingChanges, setPendingChanges] = useState([]);
   const [saving, setSaving] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState([]);
@@ -48,7 +47,6 @@ const ScheduleTest = () => {
   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
   const [selectedRows, setSelectedRows] = useState([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [viewName, setViewName] = useState("resourceTimelineWeek");
   const [showRenderBadge, setShowRenderBadge] = useState(false);
 
@@ -59,15 +57,17 @@ const ScheduleTest = () => {
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
   const [stageMap, setStageMap] = useState({});
-  const [historyData, setHistoryData] = useState([]);
   const [type, setType] = useState(true);
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
   const [production, setProduction] = useState("PXV1");
-  const [quarantineRoom, setQuarantineRoom] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
-
+  
+  //const [cleaningHidden, setCleaningHidden] = useState(false); 
+  //const [showHistoryModal, setShowHistoryModal] = useState(false);
+  //const [quarantineRoom, setQuarantineRoom] = useState([]);
+  //const [historyData, setHistoryData] = useState([]);
   // const renderCount = useRef(0);
   // renderCount.current++;
   // console.log("Render lần:", renderCount.current);
@@ -87,7 +87,7 @@ const ScheduleTest = () => {
 
   /// Get dữ liệu ban đầu
   useEffect(() => {
-   
+    
     Swal.fire({
       title: "Đang tải...",
       allowOutsideClick: false,
@@ -110,18 +110,22 @@ const ScheduleTest = () => {
           data = data.replace(/^<!--.*?-->/, "").trim();
           data = JSON.parse(data);
         }
-
+        setAuthorization (['Admin', 'Schedualer'].includes(data.authorization))
+        
         setEvents(data.events);
         setResources(data.resources);
         setType(data.type)
-        setAuthorization(data.authorization)
-        setPlan(data.plan);
-        setQuota(data.quota);
         setStageMap(data.stageMap);
         setSumBatchByStage(data.sumBatchByStage);
         setProduction(data.production)
-        setQuarantineRoom(data.quarantineRoom)
-        setCurrentPassword (data.currentPassword)
+        //setQuarantineRoom(data.quarantineRoom)
+        
+        if (!authorization){
+          setPlan(data.plan);
+          setCurrentPassword (data.currentPassword)
+          setQuota(data.quota);
+          
+        }
         
         switch (data.production) {
           case "PXV1":
@@ -146,6 +150,7 @@ const ScheduleTest = () => {
 
         }, 100);
 
+        
       })
       .catch(err =>
         console.error("API error:", err)
@@ -155,7 +160,7 @@ const ScheduleTest = () => {
 
   /// Get dư liệu row được chọn
   useEffect(() => {
-
+    if (!authorization) return
     new Draggable(document.getElementById('external-events'), {
 
       itemSelector: '.fc-event',
@@ -309,10 +314,11 @@ const ScheduleTest = () => {
 
 
   const handleShowList = () => {
-      if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+      if (!authorization) return;
+
       setShowSidebar(true);
   }
-
+      
   ///  Thay đôi khung thời gian
   const handleViewChange = useCallback(async (viewType = null, action = null) => {
     
@@ -532,10 +538,11 @@ const ScheduleTest = () => {
 
   /// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
+    if (!authorization) {
       info.revert();
       return false;
     }
+
 
     const draggedEvent = info.event;
     const delta = info.delta;
@@ -552,7 +559,7 @@ const ScheduleTest = () => {
 
       // Gom thay đổi tạm
       const batchUpdates = [];
-
+     
       selectedEvents.forEach(sel => {
         const event = calendarApi.getEventById(sel.id);
         if (event) {
@@ -617,7 +624,7 @@ const ScheduleTest = () => {
   ///
   const handleSaveChanges = async () => {
 
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) {
+    if (!authorization) {
       info.revert();
       return false
     };
@@ -659,6 +666,9 @@ const ScheduleTest = () => {
         setEvents(data.events);
         setSumBatchByStage(data.sumBatchByStage);
         setPlan(data.plan);
+        setPendingChanges([]);
+        setSaving(false);
+
         Swal.fire({
           icon: 'success',
           title: 'Thành công!',
@@ -666,8 +676,11 @@ const ScheduleTest = () => {
           timer: 1000,
           showConfirmButton: false,
         });
-        setSaving(false);
-        setPendingChanges([]);
+        
+        
+
+        document.querySelectorAll('.fc-event[data-event-id]').forEach(el => {el.style.border = 'none';});
+
       })
       .catch(err => {
         console.error("Lỗi khi lưu events:", err.response?.data || err.message);
@@ -676,17 +689,25 @@ const ScheduleTest = () => {
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
   const toggleEventSelect = (event) => {
-
     setSelectedEvents((prevSelected) => {
       const exists = prevSelected.some(ev => ev.id === event.id);
-      return exists
+      const newSelected = exists
         ? prevSelected.filter(ev => ev.id !== event.id)
         : [...prevSelected, { id: event.id, stage_code: event.extendedProps.stage_code }];
+
+      // highlight DOM ngay lập tức
+      const el = document.querySelector(`[data-event-id="${event.id}"]`);
+      if (el) {
+        el.style.border = exists ? 'none' : '5px solid yellow';
+      }
+
+      return newSelected;
     });
   };
 
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
+   
     const event = clickInfo.event;
     toggleEventSelect(event);
     
@@ -701,6 +722,7 @@ const ScheduleTest = () => {
   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
   const handleClear = () => {
       const sel = selectoRef.current;
+      document.querySelectorAll('.fc-event[data-event-id]').forEach(el => {el.style.border = 'none';});
 
       // 1) Nếu thư viện expose clear trực tiếp
       if (typeof sel?.clear === 'function') {
@@ -728,6 +750,7 @@ const ScheduleTest = () => {
       handleEventUnHightLine?.();
   };
 
+
   const handleEventUnHightLine = () => {
     document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
   };
@@ -736,7 +759,7 @@ const ScheduleTest = () => {
   let emptyPermission = null;
   const handleAutoSchedualer = () => {
 
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+    if (!authorization) return;
     let plansort = plan.sort((a, b) => a.stage_code - b.stage_code);
 
     const hasEmptyPermission = plansort.some(item => {
@@ -1057,7 +1080,7 @@ const ScheduleTest = () => {
 
   /// Xử lý Xóa Toàn Bộ Lịch
   const handleDeleteAllScheduale = () => {
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+    if (!authorization) return;
 
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
@@ -1265,7 +1288,11 @@ const ScheduleTest = () => {
   /// Xử lý xoa các lịch được chọn
   const handleDeleteScheduale = (e) => {
 
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) { return };
+    if (!authorization) { return };
+
+
+
+
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
     if (!selectedEvents || selectedEvents.length === 0) {
       Swal.fire({
@@ -1350,99 +1377,41 @@ const ScheduleTest = () => {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
 
-  /// Xử lý hoản thành lô
+  const finisedEvent = (dropInfo, draggedEvent) => {
+    if (draggedEvent.extendedProps.finished || !authorization) { return false; }
+    return true;
+  };
 
-  const handleFinished = (event) => {
+  const toggleNoteModal = () => {
+    setShowNoteModal(!showNoteModal)
+  }
 
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+  const handleSubmit = (e) => {
 
-    let unit = event._def.extendedProps.stage_code <= 4 ? "Kg" : "ĐVL";
-    let id = event._def.publicId;
+    if (!authorization) return;
 
+    e.stopPropagation();
     Swal.fire({
-      title: 'Hoàn Thành Sản Xuất',
-      html: `
-            <div class="cfg-wrapper">
-              <div class="cfg-card">
-                <!-- Hàng 2 cột -->
-                <div class="cfg-row cfg-grid-2">
-                  <div class="cfg-col">
-                    <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
-                    <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min="0" name="wt_bleding">
-                  </div>
-                  <div class="cfg-col">
-                    <label class="cfg-label" for="unit">Đơn Vị</label>
-                    <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full" readonly>
-                    <input id="stag_plan_id" type="hidden">
-                  </div>
-                </div>
-
-                <!-- Thêm select Quarantine Room -->
-                <div class="cfg-row mt-3" style="text-align:center;">
-                  <label class="cfg-label" for="quarantineRoomSelect">Phòng Biệt Trữ</label>
-                  <select
-                    id="quarantineRoomSelect"
-                    class="swal2-input cfg-input cfg-input--full"
-                    style="display:inline-block; text-align:center; border:1px solid #ccc; border-radius:8px; padding:6px; width:80%;"
-                  >
-                    <option value="">-- Chọn phòng --</option>
-                  </select>
-                </div>
-
-
-              </div>
-            </div>
-          `,
-      didOpen: () => {
-        document.getElementById('unit').value = unit;
-        document.getElementById('stag_plan_id').value = id;
-
-        // 🔽 Gắn dữ liệu cho select từ biến quarantineRoom
-        const select = document.getElementById('quarantineRoomSelect');
-        if (Array.isArray(quarantineRoom)) {
-          quarantineRoom.forEach(room => {
-            const opt = document.createElement('option');
-            opt.value = room.code;
-            opt.textContent = room.code + " - " + room.name;
-            select.appendChild(opt);
-          });
-        }
-      },
-      width: 700,
-      customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+      title: 'Bạn muốn submit toàn bộ lịch đã sắp?',
+      icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Lưu',
+      confirmButtonText: 'Submit',
       cancelButtonText: 'Hủy',
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      preConfirm: () => {
-        const yields_input = document.getElementById('yields');
-        const stag_plan_id = document.getElementById('stag_plan_id').value;
-        const yields = yields_input ? yields_input.value.trim() : "";
-        const room = document.getElementById('quarantineRoomSelect').value;
+      confirmButtonColor: 'rgba(5, 107, 9, 1)',
+      cancelButtonColor: '#3085d6',
 
-        if (!yields) {
-          Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
-          return false;
-        }
-
-        if (!room) {
-          Swal.showValidationMessage('Vui lòng chọn phòng cách ly');
-          return false;
-        }
-
-        return { yields, id: stag_plan_id, room };
-      }
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.put('/Schedual/finished', result.value)
-          .then(res => {
+        axios.put('/Schedual/submit')
+
+        .then(res => {
             let data = res.data;
             if (typeof data === "string") {
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
             }
-            setEvents(data.events);
+           
+            //setEvents(data.events);
 
             Swal.fire({
               icon: 'success',
@@ -1450,8 +1419,9 @@ const ScheduleTest = () => {
               timer: 500,
               showConfirmButton: false,
             });
+
           })
-          .catch(err => {
+        .catch(err => {
             Swal.fire({
               icon: 'error',
               title: 'Lỗi',
@@ -1459,285 +1429,96 @@ const ScheduleTest = () => {
               showConfirmButton: false,
             });
             console.error("Finished error:", err.response?.data || err.message);
-          });
-      }
-    });
-  };
-
-  /// Ngăn xụ thay đổi lô Sau khi hoàn thành
-  const finisedEvent = (dropInfo, draggedEvent) => {
-    if (draggedEvent.extendedProps.finished) { return false; }
-    return true;
-  };
-
-  const handleConfirmSource = (event) => {
-    if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) { return };
-
-    let room_id = event._def.resourceIds[0];
-    let plan_master_id = event._def.extendedProps.plan_master_id;
-    let resource = resources.filter(i => i.id == room_id)[0].title;
-
-    axios.put('/Schedual/getInforSoure', { plan_master_id })
-      .then(res => {
-        const source_infor = res.data.sourceInfo;
-        Swal.fire({
-          title: 'Xác Nhận Nguồn Nguyên Liệu Đã Thẩm Định Trên Thiết Bị',
-          html: `
-              <div class="cfg-wrapper">
-                <div class="cfg-card">
-
-                    <div class="cfg-col">
-                      <label class="cfg-label" for="intermediate_code">Mã BTP</label>
-                      <input id="intermediate_code" type="text"
-                            class="swal2-input cfg-input cfg-input--full" readonly>
-                    </div>
-                    <div class="cfg-col">
-                      <label class="cfg-label" for="name">Sản Phẩm</label>
-                      <textarea id="name" rows="2"
-                                class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
-                    </div>
-
-                    <div class="cfg-col">
-                      <label class="cfg-label" for="room">Phòng Sản Xuất</label>
-                      <input id="room" type="text"
-                            class="swal2-input cfg-input cfg-input--full" readonly>
-                    </div>
-
-                    <div class="cfg-col">
-                      <label class="cfg-label" for="material_source_id">Nguồn Nguyên Liệu</label>
-                      <textarea id="material_source_id" rows="2"
-                                class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
-                    </div>
-                </div>
-              </div>
-            `,
-          didOpen: () => {
-            document.getElementById('intermediate_code').value = source_infor.intermediate_code ?? '';
-            document.getElementById('name').value = source_infor.product_name ?? '';
-            document.getElementById('room').value = resource ?? '';
-            document.getElementById('material_source_id').value = source_infor.name ?? '';
-
-
-          },
-          width: 700,
-          customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
-          showCancelButton: true,
-          confirmButtonText: 'Xác Nhận',
-          cancelButtonText: 'Hủy',
-          confirmButtonColor: '#3085d6',
-          cancelButtonColor: '#d33',
-          preConfirm: () => {
-            const intermediate_code = document.getElementById('intermediate_code');
-
-            if (!intermediate_code) {
-              Swal.showValidationMessage('Lỗi: dữ liệu trống');
-              return false;
-            }
-
-            // Trả dữ liệu về để .then(result) nhận được
-            return {
-              source_id: source_infor.material_source_id,
-              room_id,
-              intermediate_code: source_infor.intermediate_code,
-            };
-          }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            axios.put('/Schedual/confirm_source', result.value)
-              .then(res => {
-                // Nếu Laravel trả về JSON
-                let data = res.data;
-                if (typeof data === "string") {
-                  data = data.replace(/^<!--.*?-->/, "").trim();
-                  data = JSON.parse(data);
-                }
-
-                Swal.fire({
-                  icon: 'success',
-                  title: 'Hoàn Thành',
-                  timer: 500,
-                  showConfirmButton: false,
-                });
-
-                // Nếu có dữ liệu mới trả về thì cập nhật state
-                if (data.events) setEvents(data.events);
-              })
-              .catch(err => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Lỗi',
-                  timer: 500,
-                  showConfirmButton: false,
-                });
-                console.error("Confirm_source error:", err.response?.data || err.message);
-              });
-          }
         });
-      })
-      .catch(() => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Lỗi tải dữ liệu',
-          timer: 500,
-          showConfirmButton: false
-        });
-      });
-  };
 
-  const toggleNoteModal = () => {
-    setShowNoteModal(!showNoteModal)
+      }})
   }
 
-  const handleShowHistory = (event) => {
-    let stage_code_id = event._def.extendedProps.plan_id;
-
-    axios.put('/Schedual/history', { stage_code_id: stage_code_id })
-      .then(res => {
-        // Nếu Laravel trả về JSON
-        let data = res.data;
-        if (typeof data === "string") {
-          data = data.replace(/^<!--.*?-->/, "").trim();
-          data = JSON.parse(data);
-        }
-        setHistoryData(data.history_data);
-
-
-      })
-      .catch(err => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Lỗi',
-          timer: 500,
-          showConfirmButton: false,
-        });
-        console.error("Confirm_source error:", err.response?.data || err.message);
-      });
-
-
-    setShowHistoryModal(true)
-  }
-
-  const handleSubmit = () => {
-     
-  }
-
-  const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, viewConfig, viewName, eventFontSize, type, authorization }) => {
-    //const adminAutho 
+  const EventContent = (arg) => {
     const event = arg.event;
     const props = event._def.extendedProps;
-    const isSelected = selectedEvents.some(ev => ev.id === event.id);
     const now = new Date();
 
-    const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
-    //const isWeekView = viewName === 'resourceTimelineWeek';
+    const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
+    const isSelected = arg.selectedEvents?.some(ev => ev.id === event.id);
+    //const showRenderBadge = false; // nếu bạn có điều kiện riêng thì thay vào
 
-    const renderBadge = (text, color, left) => (
+    const getBadge = (text, color, left) => `
       <div
-        className={`absolute top-[-15px] left-[${left}px] text-xs px-1 rounded shadow text-white ${color}`}
-      >
-        {text}
-      </div>
-    );
+        class="absolute top-[-15px]"
+        style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
+      >${text}</div>
+    `;
 
-    return (
-      <div className="relative group custom-event-content" data-event-id={event.id}>
-        {/* Tiêu đề + thời gian */}
-        <div style={{ fontSize: `${eventFontSize}px` }}>
-          <b>{props.is_clearning ? event.title.split("-")[1] : event.title}</b>
-          {!isTimelineMonth && (
-            <>
-              <br />
-              {viewName !== 'resourceTimelineQuarter' && !props.is_clearning && (
-                <span>{moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}</span>
-              )}
-            </>
-          )}
+    let html = `
+      <div class="relative group custom-event-content" data-event-id="${event.id}">
+        <div style="font-size:${arg.eventFontSize || 12}px;">
+          <b>${props.is_clearning ? event.title.split('-')[1] : event.title}</b>
+          ${!isTimelineMonth ? `
+            <br/>
+            ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
+              `<span>${moment(event.start).format('HH:mm')} - ${moment(event.end).format('HH:mm')}</span>`
+            : ''}
+          ` : ''}
         </div>
+    `;
 
-        {/* Nút Chọn */}
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleEventSelect(event); }}
-          className={`absolute top-0 left-0 text-xs px-1 rounded shadow
-                ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}
-              `}
-          title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
-        >
-          {isSelected ? '✓' : '+'}
-        </button>
+    // Badge ngày cần hàng
+    if (props.expected_date && showRenderBadge) {
+      const colors = {1: 'red', 2: 'orange', 3: 'green'};
+      const color = colors[props.level] || 'blue';
+      html += getBadge(props.expected_date, color, 50);
+    }
 
-        {/* 🎯 Hoàn thành */}
-        {props.finished === 0 && type && event.end < now && (
-          <button
-            onClick={(e) => { e.stopPropagation(); handleFinished(event); }}
-            className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-            title="Xác Nhận Hoàn Thành Lô Sản Xuất"
-          >
-            🎯
-          </button>
-        )}
-
-        {/* Nút Xem Lịch Sử && isWeekView  */}
-        {showRenderBadge && (
-          <button
-            onClick={(e) => { e.stopPropagation(); handleShowHistory(event); }}
-            className="absolute top-[-15px] left-[100px] text-xs px-1 rounded shadow bg-red-500 text-white"
-            title="Xem Lịch Sử Thay Đổi"
-          >
-            {props.number_of_history}
-
-          </button>
-        )}
-
-        {/* Badge Ngày cần hàng */}
-        {props.expected_date && showRenderBadge && renderBadge(
-          props.expected_date,
-          {
-            1: 'bg-red-500',
-            2: 'bg-orange-500',
-            3: 'bg-green-500'
-          }[props.level] || 'bg-blue-500',
-          50
-        )}
+    // Badge % biệt trữ
+    if (!props.is_clearning && showRenderBadge) {
+    html += `
+        <button 
+          class="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
+          title="% biệt trữ"
+        ><b>${props.storage_capacity ?? ''}</b></button>
+      `;
+    }
 
 
-        {/* Hướng công đoạn */}
-        {!props.is_clearning && showRenderBadge && (
-          <button
-            className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
-            title="% biệt trữ"
-          >
-            <b>{props.storage_capacity}</b>
-          </button>
-        )}
+    // // Nút chọn
+    // html += `
+    //   <button
+    //     data-select-event="${event.id}"
+    //     class="absolute top-0 left-0 text-xs px-1 rounded shadow
+    //     ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}"
+    //     title="${isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}"
+    //   >${isSelected ? '✓' : '+'}</button>
+    // `;
 
-         {/* Nút Xóa 
-        {!props.finished && (
-          <button
-            onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
-            className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
-            title="Xóa lịch"
-          >
-            ×
-          </button>
-        )}*/}
+    // // Nút Hoàn thành
+    // if (props.finished === 0 && !props.is_clearning  && event.end < now) {
+    //   html += `
+    //     <button
+    //       data-finish-event="${event.id}"
+    //       class="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+    //       title="Xác Nhận Hoàn Thành Lô Sản Xuất"
+         
+    //     >🎯</button>
+    //   `;
+    // }
 
-        {/* {isWeekView && props.tank && showRenderBadge ? renderBadge('⚗️', 'bg-red-500', 170) : ''}
-        {isWeekView && props.keep_dry && showRenderBadge ? renderBadge('🌡', 'bg-red-500', 200) : ''} */}
-
-        {/* 📦 Nguồn nguyên liệu */}
-        {/* {props.room_source === false && type && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleConfirmSource(event); }}
-                className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-                title="Khai báo nguồn nguyên liệu"
-              >
-                📦
-              </button>
-          )} */}
-
-      </div>
-    );
+  
+    // Nút xem lịch sử
+    // if (showRenderBadge && props.number_of_history) {
+    //   html += `
+    //     <button
+    //       data-show-history="${event.id}"
+    //       class="absolute top-[-15px] left-[150px] text-xs px-1 rounded shadow bg-red-500 text-white"
+    //       title="Xem Lịch Sử Thay Đổi"
+    //     >${props.number_of_history}</button>
+    //   `;
+    // }
+    
+    html += `</div>`;
+    return { html };
   };
+
 
   return (
 
@@ -1765,12 +1546,12 @@ const ScheduleTest = () => {
         slotDuration="01:00:00"
         eventDurationEditable={true}
 
-
-        eventClick={handleEventClick}
-        eventResize={handleEventChange}
-        eventDrop={(info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange)}
-        eventReceive={handleEventReceive}
-        dateClick={handleClear}
+       
+        eventClick={authorization? handleEventClick: false}
+        eventResize={authorization? handleEventChange: false}
+        eventDrop={authorization? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange):false}
+        eventReceive={authorization? handleEventReceive: false}
+        dateClick={authorization? handleClear: false}
         eventAllow={finisedEvent}
 
         resourceGroupField="stage_name"
@@ -1800,96 +1581,97 @@ const ScheduleTest = () => {
 
         // Phòng
         resourceLabelContent={(arg) => {
-        
           const res = arg.resource.extendedProps;
           const busy = parseFloat(res.busy_hours) || 0;
           const yields = parseFloat(res.yield) || 0;
-          const unit = res.unit || null;
+          const unit = res.unit || "";
           const total = parseFloat(res.total_hours) || 1;
           const efficiency = ((busy / total) * 100).toFixed(1);
-
 
           const highlight = selectedRows.some(row => {
             if (!row.permisson_room) return false;
 
             if (Array.isArray(row.permisson_room)) {
-              // nếu backend đổi thành array thì vẫn chạy
-              return row.permisson_room.includes(arg.resource.extendedProps.code);
+              return row.permisson_room.includes(res.code);
             } else if (typeof row.permisson_room === "object") {
-              // trường hợp {id_room: code}
-              return Object.values(row.permisson_room).includes(arg.resource.extendedProps.code);
+              return Object.values(row.permisson_room).includes(res.code);
             } else {
-              // fallback: string / id
               return row.permisson_room == arg.resource.id;
             }
-          });
+        });
 
-          return (
-            <div
-              style={{
-                backgroundColor: highlight ? "#c6f7d0" : "transparent",
-                padding: "0px",
-                borderRadius: "6px",
-                marginTop: "0px",
-                position: "relative",
-                height: heightResource // cần để con có thể dịch lên
-              }}
+          const bgColor = highlight ? "#c6f7d0" : "transparent";
+          const busyWidth = ((busy / total) * 100).toFixed(1);
+          const heightResourcePx = heightResource || 40; // fallback nếu thiếu
+
+          const html = `
+            <div 
+              style="
+                background-color:${bgColor};
+                padding:0;
+                border-radius:6px;
+                margin-top:0;
+                position:relative;
+                height:${heightResourcePx}px;
+              "
             >
               <div
-                style={{
-                  fontSize: "22px",
-                  fontWeight: "bold",
-                  marginBottom: "2px",
-                  width: "8%",
-                  position: "relative",
-                  top: "-26px", // dịch lên trên 6px
-                }}
+                style="
+                  font-size:22px;
+                  font-weight:bold;
+                  margin-bottom:2px;
+                  width:8%;
+                  position:relative;
+                  top:-26px;
+                "
               >
-                {arg.resource.title}-{arg.resource.extendedProps.main_equiment_name}
+                ${arg.resource.title} - ${res.main_equiment_name ?? ""}
               </div>
 
               <div
-                className="resource-bar"
-                style={{
-                  position: "relative",
-                  top: "-26px", // dịch luôn cả progress bar lên
-                  height: "15px",
-                  background: "#eeeeeeff",
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                }}
+                class="resource-bar"
+                style="
+                  position:relative;
+                  top:-26px;
+                  height:15px;
+                  background:#eeeeeeff;
+                  border-radius:20px;
+                  overflow:hidden;
+                  display:flex;
+                  align-items:center;
+                "
               >
                 <div
-                  className="busy"
-                  style={{
-                    width: `${(busy / total) * 100}%`,
-                    background: "red",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                />
+                  class="busy"
+                  style="
+                    width:${busyWidth}%;
+                    background:red;
+                    height:100%;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                  "
+                ></div>
+
                 <b
-                  style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    fontSize: "70%",
-                    color: "#060606ff",
-                  }}
+                  style="
+                    position:absolute;
+                    top:50%;
+                    left:50%;
+                    transform:translate(-50%,-50%);
+                    font-size:70%;
+                    color:#060606ff;
+                  "
                 >
-                  {efficiency}% - {formatNumberWithComma(yields)} {unit}
+                  ${efficiency}% - ${formatNumberWithComma(yields)} ${unit}
                 </b>
               </div>
             </div>
+          `;
 
-          );
+          return { html }; // 🔹 FullCalendar sẽ render nội dung này trực tiếp
         }}
-
+        
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge',
           center: 'title',
@@ -2002,7 +1784,7 @@ const ScheduleTest = () => {
           },
           unSelect: {
             text: '🚫',
-            click: handleClear
+            click: handleDeleteScheduale
           },
           dateRange: { text: '' },
           searchBox: { text: '' },
@@ -2043,9 +1825,7 @@ const ScheduleTest = () => {
             e.stopPropagation();
             handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
           });
-
         }}
-
 
         slotLaneDidMount={(info) => {
           if (info.date < new Date()) {
@@ -2053,31 +1833,13 @@ const ScheduleTest = () => {
           }
         }}
 
-        eventContent={(arg) => (
-          <EventContent
-            
-            arg={arg}
-            selectedEvents={selectedEvents}
-            toggleEventSelect={toggleEventSelect}
-            handleDeleteScheduale={handleDeleteScheduale}
-            handleShowHistory={handleShowHistory}
-            handleFinished={handleFinished}
-            handleConfirmSource={handleConfirmSource}
-            viewConfig={viewConfig}
-            viewName={viewName}
-            eventFontSize={eventFontSize}
-            type={type}
-            authorization={authorization}
-            
-          />
-        )}
+        eventContent={EventContent}
 
       />
       <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
-      <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData} />
-
+      
       {/* <div className="modal-sidebar"> */}
-      { CheckAuthorization(authorization, ['Admin', 'Schedualer', false]) && (
+      { authorization&& (
         <ModalSidebar
           visible={showSidebar}
           onClose={setShowSidebar}
@@ -2094,35 +1856,56 @@ const ScheduleTest = () => {
         />)}
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
-      { CheckAuthorization(authorization, ['Admin', 'Schedualer', false]) && (
-        <Selecto
-          onDragStart={(e) => {
-            // Nếu không nhấn shift thì dừng Selecto => để FullCalendar drag hoạt động
-            if (!e.inputEvent.shiftKey) {
-              e.stop();
-            }
-          }}
+      { authorization && (
+      <Selecto
+          ref={selectoRef}
+          // ✅ Khu vực cho phép kéo chọn
           container=".calendar-wrapper"
+          // ✅ Các phần tử có thể được chọn
           selectableTargets={[".fc-event"]}
-          hitRate={100}
-          selectByClick={false}   // tắt click select (chỉ dùng drag + Shift)
+          // ✅ Phải giữ Shift mới kích hoạt (nếu không thì FullCalendar drag event)
+          onDragStart={(e) => {
+            if (!e.inputEvent.shiftKey) e.stop(); 
+          }}
+          selectByClick={false}
           selectFromInside={true}
           toggleContinueSelect={["shift"]}
-          ref={selectoRef}
+          hitRate={100}
+
+          // 🎯 Khi kết thúc kéo chọn
           onSelectEnd={(e) => {
-            
-            const selected = e.selected.map((el) => {
-              const id = el.getAttribute("data-event-id");
-              const stageCode = el.getAttribute("data-stage_code");
-              return { id, stage_code: stageCode };
+            const newlySelected = e.selected.map((el) => ({
+              id: el.getAttribute("data-event-id"),
+              stage_code: el.getAttribute("data-stage_code"),
+            }));
+
+            setSelectedEvents((prev) => {
+              // ✅ Gộp với vùng chọn cũ, tránh trùng
+              const merged = [...prev, ...newlySelected].filter(
+                (v, i, arr) => arr.findIndex(o => o.id === v.id) === i
+              );
+
+              // 🔹 Nếu kéo ra vùng trống => bỏ chọn hết
+              if (e.selected.length === 0) {
+                document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
+                  el.style.border = "none";
+                });
+                return [];
+              }
+
+              // 🔹 Reset viền cũ
+              document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
+                const id = el.getAttribute("data-event-id");
+                el.style.border = merged.some((ev) => ev.id === id)
+                  ? "5px solid yellow"
+                  : "none";
+              });
+              console.log (selectedEvents)
+              return merged;
             });
-            setSelectedEvents(selected);
-
           }}
-      />)}
-
-
-
+      />
+        )}
     </div>
 
 
@@ -2131,3 +1914,471 @@ const ScheduleTest = () => {
 
 export default ScheduleTest;
 
+  /// Xử lý hoản thành lô
+
+  // const handleFinished = (event) => {
+
+  //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
+
+  //   let unit = event._def.extendedProps.stage_code <= 4 ? "Kg" : "ĐVL";
+  //   let id = event._def.publicId;
+
+  //   Swal.fire({
+  //     title: 'Hoàn Thành Sản Xuất',
+  //     html: `
+  //           <div class="cfg-wrapper">
+  //             <div class="cfg-card">
+  //               <!-- Hàng 2 cột -->
+  //               <div class="cfg-row cfg-grid-2">
+  //                 <div class="cfg-col">
+  //                   <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
+  //                   <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min="0" name="wt_bleding">
+  //                 </div>
+  //                 <div class="cfg-col">
+  //                   <label class="cfg-label" for="unit">Đơn Vị</label>
+  //                   <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full" readonly>
+  //                   <input id="stag_plan_id" type="hidden">
+  //                 </div>
+  //               </div>
+
+  //               <!-- Thêm select Quarantine Room -->
+  //               <div class="cfg-row mt-3" style="text-align:center;">
+  //                 <label class="cfg-label" for="quarantineRoomSelect">Phòng Biệt Trữ</label>
+  //                 <select
+  //                   id="quarantineRoomSelect"
+  //                   class="swal2-input cfg-input cfg-input--full"
+  //                   style="display:inline-block; text-align:center; border:1px solid #ccc; border-radius:8px; padding:6px; width:80%;"
+  //                 >
+  //                   <option value="">-- Chọn phòng --</option>
+  //                 </select>
+  //               </div>
+
+
+  //             </div>
+  //           </div>
+  //         `,
+  //     didOpen: () => {
+  //       document.getElementById('unit').value = unit;
+  //       document.getElementById('stag_plan_id').value = id;
+
+  //       // 🔽 Gắn dữ liệu cho select từ biến quarantineRoom
+  //       const select = document.getElementById('quarantineRoomSelect');
+  //       if (Array.isArray(quarantineRoom)) {
+  //         quarantineRoom.forEach(room => {
+  //           const opt = document.createElement('option');
+  //           opt.value = room.code;
+  //           opt.textContent = room.code + " - " + room.name;
+  //           select.appendChild(opt);
+  //         });
+  //       }
+  //     },
+  //     width: 700,
+  //     customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+  //     showCancelButton: true,
+  //     confirmButtonText: 'Lưu',
+  //     cancelButtonText: 'Hủy',
+  //     confirmButtonColor: '#3085d6',
+  //     cancelButtonColor: '#d33',
+  //     preConfirm: () => {
+  //       const yields_input = document.getElementById('yields');
+  //       const stag_plan_id = document.getElementById('stag_plan_id').value;
+  //       const yields = yields_input ? yields_input.value.trim() : "";
+  //       const room = document.getElementById('quarantineRoomSelect').value;
+
+  //       if (!yields) {
+  //         Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
+  //         return false;
+  //       }
+
+  //       if (!room) {
+  //         Swal.showValidationMessage('Vui lòng chọn phòng cách ly');
+  //         return false;
+  //       }
+
+  //       return { yields, id: stag_plan_id, room };
+  //     }
+  //   }).then((result) => {
+  //     if (result.isConfirmed) {
+  //       axios.put('/Schedual/finished', result.value)
+  //         .then(res => {
+  //           let data = res.data;
+  //           if (typeof data === "string") {
+  //             data = data.replace(/^<!--.*?-->/, "").trim();
+  //             data = JSON.parse(data);
+  //           }
+  //           setEvents(data.events);
+
+  //           Swal.fire({
+  //             icon: 'success',
+  //             title: 'Hoàn Thành',
+  //             timer: 500,
+  //             showConfirmButton: false,
+  //           });
+  //         })
+  //         .catch(err => {
+  //           Swal.fire({
+  //             icon: 'error',
+  //             title: 'Lỗi',
+  //             timer: 500,
+  //             showConfirmButton: false,
+  //           });
+  //           console.error("Finished error:", err.response?.data || err.message);
+  //         });
+  //     }
+  //   });
+  // };
+  // const handleShowHistory = (event) => {
+  //   let stage_code_id = event._def.extendedProps.plan_id;
+
+  //   axios.put('/Schedual/history', { stage_code_id: stage_code_id })
+  //     .then(res => {
+  //       // Nếu Laravel trả về JSON
+  //       let data = res.data;
+  //       if (typeof data === "string") {
+  //         data = data.replace(/^<!--.*?-->/, "").trim();
+  //         data = JSON.parse(data);
+  //       }
+  //       setHistoryData(data.history_data);
+
+
+  //     })
+  //     .catch(err => {
+  //       Swal.fire({
+  //         icon: 'error',
+  //         title: 'Lỗi',
+  //         timer: 500,
+  //         showConfirmButton: false,
+  //       });
+  //       console.error("Confirm_source error:", err.response?.data || err.message);
+  //     });
+
+
+  //   setShowHistoryModal(true)
+  // }
+
+    // const handleConfirmSource = (event) => {
+  //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) { return };
+
+  //   let room_id = event._def.resourceIds[0];
+  //   let plan_master_id = event._def.extendedProps.plan_master_id;
+  //   let resource = resources.filter(i => i.id == room_id)[0].title;
+
+  //   axios.put('/Schedual/getInforSoure', { plan_master_id })
+  //     .then(res => {
+  //       const source_infor = res.data.sourceInfo;
+  //       Swal.fire({
+  //         title: 'Xác Nhận Nguồn Nguyên Liệu Đã Thẩm Định Trên Thiết Bị',
+  //         html: `
+  //             <div class="cfg-wrapper">
+  //               <div class="cfg-card">
+
+  //                   <div class="cfg-col">
+  //                     <label class="cfg-label" for="intermediate_code">Mã BTP</label>
+  //                     <input id="intermediate_code" type="text"
+  //                           class="swal2-input cfg-input cfg-input--full" readonly>
+  //                   </div>
+  //                   <div class="cfg-col">
+  //                     <label class="cfg-label" for="name">Sản Phẩm</label>
+  //                     <textarea id="name" rows="2"
+  //                               class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
+  //                   </div>
+
+  //                   <div class="cfg-col">
+  //                     <label class="cfg-label" for="room">Phòng Sản Xuất</label>
+  //                     <input id="room" type="text"
+  //                           class="swal2-input cfg-input cfg-input--full" readonly>
+  //                   </div>
+
+  //                   <div class="cfg-col">
+  //                     <label class="cfg-label" for="material_source_id">Nguồn Nguyên Liệu</label>
+  //                     <textarea id="material_source_id" rows="2"
+  //                               class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
+  //                   </div>
+  //               </div>
+  //             </div>
+  //           `,
+  //         didOpen: () => {
+  //           document.getElementById('intermediate_code').value = source_infor.intermediate_code ?? '';
+  //           document.getElementById('name').value = source_infor.product_name ?? '';
+  //           document.getElementById('room').value = resource ?? '';
+  //           document.getElementById('material_source_id').value = source_infor.name ?? '';
+
+
+  //         },
+  //         width: 700,
+  //         customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
+  //         showCancelButton: true,
+  //         confirmButtonText: 'Xác Nhận',
+  //         cancelButtonText: 'Hủy',
+  //         confirmButtonColor: '#3085d6',
+  //         cancelButtonColor: '#d33',
+  //         preConfirm: () => {
+  //           const intermediate_code = document.getElementById('intermediate_code');
+
+  //           if (!intermediate_code) {
+  //             Swal.showValidationMessage('Lỗi: dữ liệu trống');
+  //             return false;
+  //           }
+
+  //           // Trả dữ liệu về để .then(result) nhận được
+  //           return {
+  //             source_id: source_infor.material_source_id,
+  //             room_id,
+  //             intermediate_code: source_infor.intermediate_code,
+  //           };
+  //         }
+  //       }).then((result) => {
+  //         if (result.isConfirmed) {
+  //           axios.put('/Schedual/confirm_source', result.value)
+  //             .then(res => {
+  //               // Nếu Laravel trả về JSON
+  //               let data = res.data;
+  //               if (typeof data === "string") {
+  //                 data = data.replace(/^<!--.*?-->/, "").trim();
+  //                 data = JSON.parse(data);
+  //               }
+
+  //               Swal.fire({
+  //                 icon: 'success',
+  //                 title: 'Hoàn Thành',
+  //                 timer: 500,
+  //                 showConfirmButton: false,
+  //               });
+
+  //               // Nếu có dữ liệu mới trả về thì cập nhật state
+  //               if (data.events) setEvents(data.events);
+  //             })
+  //             .catch(err => {
+  //               Swal.fire({
+  //                 icon: 'error',
+  //                 title: 'Lỗi',
+  //                 timer: 500,
+  //                 showConfirmButton: false,
+  //               });
+  //               console.error("Confirm_source error:", err.response?.data || err.message);
+  //             });
+  //         }
+  //       });
+  //     })
+  //     .catch(() => {
+  //       Swal.fire({
+  //         icon: 'error',
+  //         title: 'Lỗi tải dữ liệu',
+  //         timer: 500,
+  //         showConfirmButton: false
+  //       });
+  //     });
+  // };
+
+
+  /// Ngăn xụ thay đổi lô Sau khi hoàn thành
+      // const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, viewConfig, viewName, eventFontSize, type, authorization }) => {
+  //   //const adminAutho 
+  //   const event = arg.event;
+  //   const props = event._def.extendedProps;
+  //   const isSelected = selectedEvents.some(ev => ev.id === event.id);
+  //   const now = new Date();
+
+  //   const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
+  //   //const isWeekView = viewName === 'resourceTimelineWeek';
+
+  //   const renderBadge = (text, color, left) => (
+  //     <div
+  //       className={`absolute top-[-15px] left-[${left}px] text-xs px-1 rounded shadow text-white ${color}`}
+  //     >
+  //       {text}
+  //     </div>
+  //   );
+
+  //   return (
+  //     <div className="relative group custom-event-content" data-event-id={event.id}>
+  //       {/* Tiêu đề + thời gian */}
+  //       <div style={{ fontSize: `${eventFontSize}px` }}>
+  //         <b>{props.is_clearning ? event.title.split("-")[1] : event.title}</b>
+  //         {!isTimelineMonth && (
+  //           <>
+  //             <br />
+  //             {viewName !== 'resourceTimelineQuarter' && !props.is_clearning && (
+  //               <span>{moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}</span>
+  //             )}
+  //           </>
+  //         )}
+  //       </div>
+
+  //       {/* Nút Chọn */}
+  //       <button
+  //         onClick={(e) => { e.stopPropagation(); toggleEventSelect(event); }}
+  //         className={`absolute top-0 left-0 text-xs px-1 rounded shadow
+  //               ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}
+  //             `}
+  //         title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
+  //       >
+  //         {isSelected ? '✓' : '+'}
+  //       </button>
+
+  //       {/* 🎯 Hoàn thành */}
+  //       {props.finished === 0 && type && event.end < now && (
+  //         <button
+  //           onClick={(e) => { e.stopPropagation(); handleFinished(event); }}
+  //           className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+  //           title="Xác Nhận Hoàn Thành Lô Sản Xuất"
+  //         >
+  //           🎯
+  //         </button>
+  //       )}
+
+  //       {/* Nút Xem Lịch Sử && isWeekView  
+  //       {showRenderBadge && (
+  //         <button
+  //           onClick={(e) => { e.stopPropagation(); handleShowHistory(event); }}
+  //           className="absolute top-[-15px] left-[100px] text-xs px-1 rounded shadow bg-red-500 text-white"
+  //           title="Xem Lịch Sử Thay Đổi"
+  //         >
+  //           {props.number_of_history}
+
+  //         </button>
+  //       )}*/}
+
+  //       {/* Badge Ngày cần hàng
+  //       {props.expected_date && showRenderBadge && renderBadge(
+  //         props.expected_date,
+  //         {
+  //           1: 'bg-red-500',
+  //           2: 'bg-orange-500',
+  //           3: 'bg-green-500'
+  //         }[props.level] || 'bg-blue-500',
+  //         50
+  //       )} */}
+
+
+  //       {/* Hướng công đoạn 
+  //       {!props.is_clearning && showRenderBadge && (
+  //         <button
+  //           className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
+  //           title="% biệt trữ"
+  //         >
+  //           <b>{props.storage_capacity}</b>
+  //         </button>
+  //       )}*/}
+
+  //        {/* Nút Xóa 
+  //       {!props.finished && (
+  //         <button
+  //           onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
+  //           className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
+  //           title="Xóa lịch"
+  //         >
+  //           ×
+  //         </button>
+  //       )}*/}
+
+  //       {/* {isWeekView && props.tank && showRenderBadge ? renderBadge('⚗️', 'bg-red-500', 170) : ''}
+  //       {isWeekView && props.keep_dry && showRenderBadge ? renderBadge('🌡', 'bg-red-500', 200) : ''} */}
+
+  //       {/* 📦 Nguồn nguyên liệu */}
+  //       {/* {props.room_source === false && type && (
+  //             <button
+  //               onClick={(e) => { e.stopPropagation(); handleConfirmSource(event); }}
+  //               className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+  //               title="Khai báo nguồn nguyên liệu"
+  //             >
+  //               📦
+  //             </button>
+  //         )} */}
+
+  //     </div>
+  //   );
+  // };
+
+  {/* <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData} /> */}
+
+    // resourceLabelContent={(arg) => {
+        
+        //   const res = arg.resource.extendedProps;
+        //   const busy = parseFloat(res.busy_hours) || 0;
+        //   const yields = parseFloat(res.yield) || 0;
+        //   const unit = res.unit || null;
+        //   const total = parseFloat(res.total_hours) || 1;
+        //   const efficiency = ((busy / total) * 100).toFixed(1);
+
+
+        //   const highlight = selectedRows.some(row => {
+        //     if (!row.permisson_room) return false;
+
+        //     if (Array.isArray(row.permisson_room)) {
+        //       // nếu backend đổi thành array thì vẫn chạy
+        //       return row.permisson_room.includes(arg.resource.extendedProps.code);
+        //     } else if (typeof row.permisson_room === "object") {
+        //       // trường hợp {id_room: code}
+        //       return Object.values(row.permisson_room).includes(arg.resource.extendedProps.code);
+        //     } else {
+        //       // fallback: string / id
+        //       return row.permisson_room == arg.resource.id;
+        //     }
+        //   });
+
+        //   return (
+        //     <div
+        //       style={{
+        //         backgroundColor: highlight ? "#c6f7d0" : "transparent",
+        //         padding: "0px",
+        //         borderRadius: "6px",
+        //         marginTop: "0px",
+        //         position: "relative",
+        //         height: heightResource // cần để con có thể dịch lên
+        //       }}
+        //     >
+        //       <div
+        //         style={{
+        //           fontSize: "22px",
+        //           fontWeight: "bold",
+        //           marginBottom: "2px",
+        //           width: "8%",
+        //           position: "relative",
+        //           top: "-26px", // dịch lên trên 6px
+        //         }}
+        //       >
+        //         {arg.resource.title}-{arg.resource.extendedProps.main_equiment_name}
+        //       </div>
+
+        //       <div
+        //         className="resource-bar"
+        //         style={{
+        //           position: "relative",
+        //           top: "-26px", // dịch luôn cả progress bar lên
+        //           height: "15px",
+        //           background: "#eeeeeeff",
+        //           borderRadius: "20px",
+        //           overflow: "hidden",
+        //           display: "flex",
+        //           alignItems: "center",
+        //         }}
+        //       >
+        //         <div
+        //           className="busy"
+        //           style={{
+        //             width: `${(busy / total) * 100}%`,
+        //             background: "red",
+        //             height: "100%",
+        //             display: "flex",
+        //             alignItems: "center",
+        //             justifyContent: "center",
+        //           }}
+        //         />
+        //         <b
+        //           style={{
+        //             position: "absolute",
+        //             top: "50%",
+        //             left: "50%",
+        //             transform: "translate(-50%, -50%)",
+        //             fontSize: "70%",
+        //             color: "#060606ff",
+        //           }}
+        //         >
+        //           {efficiency}% - {formatNumberWithComma(yields)} {unit}
+        //         </b>
+        //       </div>
+        //     </div>
+
+        //   );
+        // }}

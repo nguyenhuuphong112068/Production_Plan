@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Route;
                 Route::put('confirm_source','confirm_source')->name('confirm_source');
                 Route::put('history','history')->name('history');
                 Route::put('Sorted','Sorted')->name('Sorted');
+                Route::put('submit','submit')->name('submit');
                 Route::put('required_room','required_room')->name('required_room');
 
                 
