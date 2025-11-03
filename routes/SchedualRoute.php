@@ -1,5 +1,7 @@
 <?php
     // use Illuminate\Routing\Route;
+
+use App\Http\Controllers\Pages\Schedual\SchedualAuditController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
 use App\Http\Controllers\Pages\Schedual\SchedualReportController;
@@ -88,6 +90,15 @@ use Illuminate\Support\Facades\Route;
                         Route::get('','index')->name('index');
                         
                 });  
+
+                 Route::prefix('/audit')
+                ->controller(SchedualAuditController::class)
+                ->name('audit.')
+                ->group(function(){
+                        Route::get('','index')->name('index');
+                        
+                });  
+
 
         });
 

@@ -1532,49 +1532,69 @@ class SchedualController extends Controller
         }
 
         public function submit(Request $request){
-
-                // 1️⃣ Lấy danh sách các dòng sẽ update
-                $updatedRows = DB::table('stage_plan')
-                        ->whereNotNull('start')
-                        ->where('finished', 0)
-                        ->where('active', 1)
-                        ->where('submit', 0)
-                        ->where('deparment_code', session('user')['production_code'])
+        // 1️⃣ Lấy danh sách các dòng sẽ update
+        $updatedRows = DB::table('stage_plan')
+                ->whereNotNull('start')
+                ->where('finished', 0)
+                ->where('active', 1)
+                ->where('submit', 0)
+                ->where('deparment_code', session('user')['production_code'])
                 ->get();
 
-                // Nếu không có dòng nào thì dừng
-                if ($updatedRows->isEmpty()) {
-                        return response()->json(['message' => 'Không có dữ liệu để submit.']);
-                }
+        if ($updatedRows->isEmpty()) {
+                return response()->json(['message' => 'Không có lịch mới để submit!']);
+        }
 
-                // 2️⃣ Update submit = 1
-                DB::table('stage_plan')
+        // 2️⃣ Update submit = 1
+        DB::table('stage_plan')
                 ->whereIn('id', $updatedRows->pluck('id'))
                 ->update(['submit' => 1]);
 
-                // 3️⃣ Insert log cho từng dòng vào stage_plan_history
-                $historyData = $updatedRows->map(function ($row) {
+        // 3️⃣ Insert log cho từng dòng
+        $historyData = $updatedRows->map(function ($row) {
                 $maxVersion = DB::table('stage_plan_history')
-                        ->where('stage_plan_id', $row->id)
-                        ->max('version') ?? 0;
+                ->where('stage_plan_id', $row->id)
+                ->max('version') ?? 0;
 
                 return [
-                        'stage_plan_id'   => $row->id,
-                        'version'         => $maxVersion + 1,
-                        'resourceId'      => $row->resourceId ?? null,
-                        'start'           => $row->start,
-                        'end'             => $row->end,
-                        'schedualed_by'   => session('user')['fullName'],
-                        'schedualed_at'   => now(),
-                        'deparment_code'  => session('user')['production_code'],
-                        'type_of_change'  => "Tạo Mới Lịch "
+                'stage_plan_id' => $row->id,
+                'plan_list_id' => $row->plan_list_id,
+                'plan_master_id' => $row->plan_master_id,
+                'product_caterogy_id' => $row->product_caterogy_id,
+                'campaign_code' => $row->campaign_code,
+                'code' => $row->code,
+                'order_by' => $row->order_by,
+                'schedualed' => $row->schedualed,
+                'stage_code' => $row->stage_code,
+                'title' => $row->title,
+                'start' => $row->start,
+                'end' => $row->end,
+                'resourceId' => $row->resourceId,
+                'title_clearning' => $row->title_clearning,
+                'start_clearning' => $row->start_clearning,
+                'end_clearning' => $row->end_clearning,
+                'tank' => $row->tank,
+                'keep_dry' => $row->keep_dry,
+                'AHU_group' => $row->AHU_group,
+                'schedualed_by' => $row->schedualed_by,
+                'schedualed_at' => $row->schedualed_at,
+                'version' => $maxVersion + 1,
+                'note' => $row->note,
+                'deparment_code' => session('user')['production_code'],
+                'type_of_change' => "Tạo Mới Lịch",
+                'created_date' => now(),
+                'created_by' => session('user')['fullName'],
                 ];
-                })->toArray();
+        });
 
-                DB::table('stage_plan_history')->insert($historyData);
+        // 🔹 Chia nhỏ insert để tránh lỗi 1390
+        $historyData->chunk(500)->each(function ($chunk) {
+                DB::table('stage_plan_history')->insert($chunk->toArray());
+        });
 
-                return response()->json(['updated' => $updatedRows->count()]);
+        return response()->json(['message' => "Đã submit " . $updatedRows->count() . " lịch."]);
         }
+
 
         public function required_room (Request $request) {
 

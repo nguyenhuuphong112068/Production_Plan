@@ -294,6 +294,13 @@
                   <p>Sản Lượng Lý Thuyết</p>
                 </a>
               </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.audit.index') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Lịch Sữ Thay Đổi Lịch</p>
+                </a>
+              </li>
             
             </ul>
           </li>
