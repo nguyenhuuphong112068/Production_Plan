@@ -13,4 +13,6 @@
   @include('pages.Schedual.audit.dataTable')
 @endsection
 
-
+@section('model')
+  @include('pages.Schedual.audit.history')
+@endsection

@@ -96,6 +96,7 @@ use Illuminate\Support\Facades\Route;
                 ->name('audit.')
                 ->group(function(){
                         Route::get('','index')->name('index');
+                        Route::post('history','history')->name('history');
                         
                 });  
 

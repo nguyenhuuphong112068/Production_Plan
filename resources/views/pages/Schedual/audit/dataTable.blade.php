@@ -1,5 +1,7 @@
+
 <div class="content-wrapper">
-    <div class="card">
+
+    <div class="card" >
 
         <div class="card-header mt-4">
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
@@ -45,14 +47,7 @@
                             style="font-size: 25px;">&raquo;</button>
                         
                     </div>
-                    <input type="text" name="filter_has_change" id="filter_has_change_input" value="">
-                    <!-- Optional Right Side -->
-                    <div class="col-md-4 d-flex justify-content-end">
-                        <button type="button" id="filter_has_change" value = "1" name = "filter_has_change" class="btn btn-warning has_change-btn">
-                          <i class="fa fa-filter"></i>
-                          Có Thay đổi
-                        </button>
-                    </div>
+                
 
                 </div>
             </form>
@@ -103,7 +98,7 @@
                             <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }}
                             </td>
 
-                            <td> {{ $data->note }} </td>
+                            <td> {{ $data->type_of_change }} </td>
 
 
                             <td>
@@ -114,13 +109,14 @@
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-primary btn-history position-relative"
-                                    data-id="{{ $data->id }}" data-toggle="modal" data-target="#historyModal">
+                                    data-id="{{ $data->stage_plan_id }}" data-toggle="modal" data-target="#historyModal">
                                     <i class="fas fa-history"></i>
                                     <span class="badge badge-danger"
                                         style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
-                                        {{ $data->history_count ?? 0 }} 
+                                        {{ $data->version}} 
                                     </span>
                                 </button>
+                                 {{-- <input type="text" name="stage_code" id="$data->stage_plan_id" value="{{ $data->stage_plan_id }}"> --}}
                             </td>
 
                         </tr>
@@ -167,11 +163,93 @@
             },
         });
 
-        $('#filter_has_change').on('click', function() {
-            const input = document.getElementById('filter_has_change_input');
-            input.value = input.value === '1' ? '' : '1';
-            form.submit();
-        });
+        $('.btn-history').on('click', function() {
+                //const id = $(this).data('id');
+                const id = $(this).data('id');
+                const history_modal = $('#data_table_history_body')
+               
+                // Xóa dữ liệu cũ
+                history_modal.empty();
+              
+                // Gọi Ajax lấy dữ liệu history
+                $.ajax({
+                    url: "{{ route('pages.Schedual.audit.history') }}",
+                    type: 'post',
+                    data: {
+                        id: id,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                        console.log (res)
+                        if (res.length === 0) {
+                            history_modal.append(
+                                `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                              
+                            history_modal.append(`
+                                <tr>
+                                    <td>${index + 1}</td>
+
+                                    <td>
+                                        <div>${item.intermediate_code ?? ''}</div>
+                                        <div>${item.finished_product_code ?? ''}</div>
+                                    </td>
+
+                                    <td>${item.title ?? ''}</td>
+
+                                    <td>${item.batch_qty ? item.batch_qty + ' ' + (item.unit_batch_qty ?? '') : ''}</td>
+                                    <td>${item.batch ?? ''}</td>
+
+
+
+                                    <td>${(item.room_name ?? '') + ' - ' + (item.room_code ?? '')}</td>
+
+                                    <td>
+                                        ${
+                                            item.start && item.end
+                                                ?`<div> ${moment(item.start).format('DD/MM/YYYY HH:mm')} </div> 
+                                                 <div> ${moment(item.end).format('DD/MM/YYYY HH:mm') }</div> `
+                                                : ''
+                                        }
+                                    </td>
+
+                                    <td>
+                                        ${
+                                            item.start_clearning && item.end_clearning
+                                                ? `<div> ${moment(item.start_clearning).format('DD/MM/YYYY HH:mm')} </div>
+                                                 <div> ${ moment(item.end_clearning).format('DD/MM/YYYY HH:mm')} </div>`
+                                                : ''
+                                        }
+                                    </td>
+
+                                    <td>${item.type_of_change ?? ''}</td>
+
+                                    <td>
+                                        <div>${item.schedualed_by ?? ''}</div>
+                                        <div>${item.schedualed_at ? moment(item.schedualed_at).format('DD/MM/YYYY') : ''}</div>
+                                    </td>
+                                    <td>
+                                    <div>${item.version ?? ''}</div>
+                                    </td>
+                                </tr>
+                            `);
+
+
+
+                            });
+                        }
+                    },
+                    error: function() {
+                        history_modal.append(
+                            `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                        );
+                    }
+                });
+            });
+
+       
 
       
     });
@@ -229,3 +307,10 @@
         });
     });
 </script>
+                                    {{-- <td>
+                                        <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
+                                    </td>
+
+                                    <td class="text-center align-middle">
+                                        ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
+                                    </td> --}}

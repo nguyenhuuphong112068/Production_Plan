@@ -713,7 +713,7 @@ class SchedualController extends Controller
                                                 'schedualed_by'   => session('user')['fullName'],
                                                 'scheduled_at'   => now(),
                                                         'deparment_code'  => session('user')['production_code'],
-                                                'type_of_change'  => $this->reasion??"Lập Lịch Thủ Công"
+                                                'type_of_change'  => $request->reason??"Lập Lịch Thủ Công"
                                         ]);
                                 }
 
@@ -834,7 +834,7 @@ class SchedualController extends Controller
                                                         'schedualed_by'   => session('user')['fullName'],
                                                         'schedualed_at'   => now(),
                                                         'deparment_code'  => session('user')['production_code'],
-                                                        'type_of_change'  => $this->reasion??"Lập Lịch Thủ Công"
+                                                        'type_of_change'  => $this->reason??"Lập Lịch Thủ Công"
                                                 ]);
                                         }
 
@@ -895,7 +895,7 @@ class SchedualController extends Controller
                                                         'version' =>  DB::table('stage_plan_history')->where('stage_plan_id',$product['id'])->max('version') + 1 ?? 1,
                                                         'note' => $update_row->note,
                                                         'deparment_code' => session('user')['production_code'],
-                                                        'type_of_change' => $request->reason??"test",
+                                                        'type_of_change' => $request->reason,
                                                         'created_date' => now(),
                                                         'created_by' => session('user')['fullName'],
                                                         ]);
@@ -992,7 +992,7 @@ class SchedualController extends Controller
                                         'version' =>  DB::table('stage_plan_history')->where('stage_plan_id',$realId)->max('version') + 1 ?? 1,
                                         'note' => $update_row->note,
                                         'deparment_code' => session('user')['production_code'],
-                                        'type_of_change' => $request->reason??"test",
+                                        'type_of_change' => $request->reason,
                                         'created_date' => now(),
                                         'created_by' => session('user')['fullName'],
                                         ]);
@@ -1665,7 +1665,7 @@ class SchedualController extends Controller
         protected $order_by = 1;
         protected $selectedDates = [];
         protected $work_sunday = true;
-        protected $reasion = null;
+        protected $reason = null;
 
         /**Load room_status để lấy các slot đã bận*/
         protected function loadRoomAvailability(string $sort, int $roomId){
@@ -1893,7 +1893,7 @@ class SchedualController extends Controller
                                         'schedualed_by'   => session('user')['fullName'],
                                         'schedualed_at'   => now(),
                                         'deparment_code'  => session('user')['production_code'],
-                                        'type_of_change'  => $this->reasion??"Lập Lịch Tự Động",
+                                        'type_of_change'  => $this->reason??"Lập Lịch Tự Động",
                                 ]);
                         }
 
@@ -1902,10 +1902,10 @@ class SchedualController extends Controller
 
         /** Scheduler cho tất cả stage Request */
         public function scheduleAll(Request $request) {
-
+                
                 $this->selectedDates = $request->selectedDates??[];
                 $this->work_sunday = $request->work_sunday??false;
-
+                $this->reason = $request->reason??"NA";
                 $Step = [
                         "PC" => 3,
                         "THT" => 4,
