@@ -118,7 +118,7 @@ const ScheduleTest = () => {
         setStageMap(data.stageMap);
         setSumBatchByStage(data.sumBatchByStage);
         setProduction(data.production)
-        //setQuarantineRoom(data.quarantineRoom)
+       
         
         if (!authorization){
           setPlan(data.plan);

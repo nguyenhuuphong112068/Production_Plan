@@ -134,7 +134,7 @@ class SchedualController extends Controller
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                         ->where('sp.active', 1)
-                        ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin']),fn($query) => $query->where('submit', 1))
+                        ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', $production)
                         ->whereRaw('(sp.start <= ? OR sp.end >= ? OR sp.start_clearning <= ? OR sp.end_clearning >= ?)',[$endDate, $startDate, $endDate, $startDate])
@@ -203,10 +203,10 @@ class SchedualController extends Controller
                 }
 
                 // 3️⃣ Lấy sẵn lịch sử (1 query duy nhất)
-                $historyCounts = DB::table('stage_plan_history')
-                        ->select('stage_plan_id', DB::raw('COUNT(*) as count'))
-                        ->groupBy('stage_plan_id')
-                        ->pluck('count', 'stage_plan_id');
+                // $historyCounts = DB::table('stage_plan_history')
+                //         ->select('stage_plan_id', DB::raw('COUNT(*) as count'))
+                //         ->groupBy('stage_plan_id')
+                //         ->pluck('count', 'stage_plan_id');
 
                 // 4️⃣ Gom nhóm theo plan_master_id
                 $groupedPlans = $event_plans->groupBy('plan_master_id');
@@ -311,12 +311,12 @@ class SchedualController extends Controller
                                 'is_clearning' => false,
                                 'finished' => $plan->finished,
                                 'level' => $plan->level,
-                                'direction' => $plan->scheduling_direction,
+                                //'direction' => $plan->scheduling_direction,
                                 'keep_dry' => $plan->keep_dry,
                                 'tank' => $plan->tank,
                                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
-                                'number_of_history' => $historyCounts[$plan->id] ?? 0,
-                                'order_by' => $plan->order_by,
+                                //'number_of_history' => $historyCounts[$plan->id] ?? 0,
+                                //'order_by' => $plan->order_by,
                                 'storage_capacity' => $storage_capacity
                                 ]);
                         }
@@ -507,7 +507,6 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-                
 
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
@@ -866,21 +865,40 @@ class SchedualController extends Controller
                                                 'schedualed_by'   => session('user')['fullName'],
                                                 'schedualed_at'   => now(),
                                         ]);
-                                        $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
-                                        if ( $submit === 1){
+                                        $update_row = DB::table('stage_plan')->where('id', $product['id'])->first();
+                                        if ( $update_row->submit === 1){
                                                 $last_version = DB::table('stage_plan_history')->where('stage_plan_id', $product['id'])->max('version') ?? 0;
                                                 DB::table('stage_plan_history')
                                                         ->insert([
-                                                        'stage_plan_id'   => $product['id'],
-                                                        'version'         => $last_version + 1,
-                                                        'start'           => $current_start,
-                                                        'end'             => $end_man,
-                                                        'resourceId'      => $request->room_id,
-                                                        'schedualed_by'   => session('user')['fullName'],
-                                                        'schedualed_at'   => now(),
-                                                        'deparment_code'  => session('user')['production_code'],
-                                                        'type_of_change'  => "Lập Lịch Thủ Công"
-                                                ]);
+                
+                                                        'stage_plan_id' => $product['id'],
+                                                        'plan_list_id' => $update_row->plan_list_id,
+                                                        'plan_master_id' => $update_row->plan_master_id,
+                                                        'product_caterogy_id' => $update_row->product_caterogy_id,
+                                                        'campaign_code' => $update_row->campaign_code,
+                                                        'code' => $update_row->code,
+                                                        'order_by' => $update_row->order_by,
+                                                        'schedualed' => $update_row->schedualed,
+                                                        'stage_code' => $update_row->stage_code,
+                                                        'title' => $update_row->title,
+                                                        'start' => $update_row->start,
+                                                        'end' => $update_row->end,
+                                                        'resourceId' => $update_row->resourceId,
+                                                        'title_clearning' => $update_row->title_clearning,
+                                                        'start_clearning' => $update_row->start_clearning,
+                                                        'end_clearning' => $update_row->end_clearning,
+                                                        'tank' => $update_row->tank,
+                                                        'keep_dry' => $update_row->keep_dry,
+                                                        'AHU_group' => $update_row->AHU_group,
+                                                        'schedualed_by' => $update_row->schedualed_by,
+                                                        'schedualed_at' => $update_row->schedualed_at,
+                                                        'version' =>  DB::table('stage_plan_history')->where('stage_plan_id',$product['id'])->max('version') + 1 ?? 1,
+                                                        'note' => $update_row->note,
+                                                        'deparment_code' => session('user')['production_code'],
+                                                        'type_of_change' => $request->reason??"test",
+                                                        'created_date' => now(),
+                                                        'created_by' => session('user')['fullName'],
+                                                        ]);
                                         }
                                         $current_start = $end_man;
                                 }
@@ -944,19 +962,39 @@ class SchedualController extends Controller
                                         'schedualed_at'   => now(),
                                 ]);
 
-                                $submit = DB::table('stage_plan')->where('id',$realId)->value('submit');
-                                if ($submit === 1){
+                                $update_row = DB::table('stage_plan')->where('id',$realId)->first();
+
+                                if ($update_row->submit === 1){
                                         DB::table('stage_plan_history')
                                         ->insert([
-                                        'stage_plan_id'   => $realId,
-                                        'version'         => DB::table('stage_plan_history')->where('stage_plan_id',$realId)->max('version') + 1 ?? 1,
-                                        'resourceId'      => $change['resourceId'],
-                                        'start'           => $change['start'],
-                                        'end'             => $change['end'],
-                                        'schedualed_by'   => session('user')['fullName'],
-                                        'schedualed_at'   => now(),
-                                        'deparment_code'  => session('user')['production_code'],
-                                        'type_of_change'  => "Cập Nhật Lịch"
+ 
+                                        'stage_plan_id' => $realId,
+                                        'plan_list_id' => $update_row->plan_list_id,
+                                        'plan_master_id' => $update_row->plan_master_id,
+                                        'product_caterogy_id' => $update_row->product_caterogy_id,
+                                        'campaign_code' => $update_row->campaign_code,
+                                        'code' => $update_row->code,
+                                        'order_by' => $update_row->order_by,
+                                        'schedualed' => $update_row->schedualed,
+                                        'stage_code' => $update_row->stage_code,
+                                        'title' => $update_row->title,
+                                        'start' => $update_row->start,
+                                        'end' => $update_row->end,
+                                        'resourceId' => $update_row->resourceId,
+                                        'title_clearning' => $update_row->title_clearning,
+                                        'start_clearning' => $update_row->start_clearning,
+                                        'end_clearning' => $update_row->end_clearning,
+                                        'tank' => $update_row->tank,
+                                        'keep_dry' => $update_row->keep_dry,
+                                        'AHU_group' => $update_row->AHU_group,
+                                        'schedualed_by' => $update_row->schedualed_by,
+                                        'schedualed_at' => $update_row->schedualed_at,
+                                        'version' =>  DB::table('stage_plan_history')->where('stage_plan_id',$realId)->max('version') + 1 ?? 1,
+                                        'note' => $update_row->note,
+                                        'deparment_code' => session('user')['production_code'],
+                                        'type_of_change' => $request->reason??"test",
+                                        'created_date' => now(),
+                                        'created_by' => session('user')['fullName'],
                                         ]);
                                 }
                         }
