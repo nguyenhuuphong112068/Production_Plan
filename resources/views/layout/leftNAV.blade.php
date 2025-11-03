@@ -262,7 +262,7 @@
               <li class="nav-item">
                 <a href="/Schedual" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p> Lập Lịch </p>
+                  <p> Lịch Sản Xuất </p>
                 </a>
               </li>
               @if (user_has_permission(session('user')['userId'], 'layout_report', 'boolean'))
