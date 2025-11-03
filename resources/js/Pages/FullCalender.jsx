@@ -623,11 +623,10 @@ const ScheduleTest = () => {
 
   ///
   const handleSaveChanges = async () => {
-
     if (!authorization) {
       info.revert();
-      return false
-    };
+      return false;
+    }
 
     if (pendingChanges.length === 0) {
       Swal.fire({
@@ -640,12 +639,35 @@ const ScheduleTest = () => {
       return;
     }
 
+    // 🟨 Hỏi người dùng nhập lý do thay đổi
+    const { value: reason } = await Swal.fire({
+      title: 'Nhập lý do thay đổi',
+      input: 'textarea',
+      inputLabel: 'Vui lòng ghi rõ lý do chỉnh sửa lịch sản xuất',
+      inputPlaceholder: 'Nhập lý do tại đây...',
+      inputAttributes: {
+        'aria-label': 'Lý do thay đổi'
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Xác nhận lưu',
+      cancelButtonText: 'Hủy',
+      inputValidator: (value) => {
+        if (!value || value.trim() === '') {
+          return 'Bạn phải nhập lý do thay đổi!';
+        }
+      }
+    });
+
+    // Nếu người dùng bấm “Hủy” thì dừng
+    if (!reason) return;
+
     setSaving(true);
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-    let startDate =  toLocalISOString(activeStart)
-    let endDate = toLocalISOString(activeEnd)
+    let startDate = toLocalISOString(activeStart);
+    let endDate = toLocalISOString(activeEnd);
 
     axios.put('/Schedual/update', {
+      reason, // 🟢 gửi thêm lý do
       changes: pendingChanges.map(change => ({
         id: change.id,
         start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
@@ -654,38 +676,44 @@ const ScheduleTest = () => {
         title: change.title,
         C_end: change.C_end || false
       })),
-      startDate: startDate,
-      endDate: endDate
+      startDate,
+      endDate
     })
-      .then(res => {
-        let data = res.data;
-        if (typeof data === "string") {
-          data = data.replace(/^<!--.*?-->/, "").trim();
-          data = JSON.parse(data);
-        }
-        setEvents(data.events);
-        setSumBatchByStage(data.sumBatchByStage);
-        setPlan(data.plan);
-        setPendingChanges([]);
-        setSaving(false);
+    .then(res => {
+      let data = res.data;
+      if (typeof data === "string") {
+        data = data.replace(/^<!--.*?-->/, "").trim();
+        data = JSON.parse(data);
+      }
+      setEvents(data.events);
+      setSumBatchByStage(data.sumBatchByStage);
+      setPlan(data.plan);
+      setPendingChanges([]);
+      setSaving(false);
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Thành công!',
-          text: 'Đã lưu tất cả thay đổi.',
-          timer: 1000,
-          showConfirmButton: false,
-        });
-        
-        
-
-        document.querySelectorAll('.fc-event[data-event-id]').forEach(el => {el.style.border = 'none';});
-
-      })
-      .catch(err => {
-        console.error("Lỗi khi lưu events:", err.response?.data || err.message);
+      Swal.fire({
+        icon: 'success',
+        title: 'Thành công!',
+        text: 'Đã lưu tất cả thay đổi.',
+        timer: 1200,
+        showConfirmButton: false,
       });
+
+      // Xóa border đánh dấu sự kiện đã sửa
+      document.querySelectorAll('.fc-event[data-event-id]')
+        .forEach(el => { el.style.border = 'none'; });
+    })
+    .catch(err => {
+      console.error("Lỗi khi lưu events:", err.response?.data || err.message);
+      setSaving(false);
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: 'Không thể lưu thay đổi. Vui lòng thử lại.',
+      });
+    });
   };
+
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
   const toggleEventSelect = (event) => {
@@ -757,6 +785,7 @@ const ScheduleTest = () => {
 
   /// Xử lý Chạy Lịch Tư Động
   let emptyPermission = null;
+
   const handleAutoSchedualer = () => {
 
     if (!authorization) return;
@@ -784,82 +813,166 @@ const ScheduleTest = () => {
     let selectedDates = [];
     Swal.fire({
       title: 'Cấu Hình Chung Sắp Lịch',
-      html: `
-          <div class="cfg-wrapper">
-            <div class="cfg-card">
-              <!-- Hàng Ngày chạy -->
+      // html: `
+      //     <div class="cfg-wrapper">
+      //       <div class="cfg-card">
+      //         <!-- Hàng Ngày chạy -->
               
-              <div class="cfg-row">
-                <div class="cfg-col">
-                  <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
-                  <input id="schedule-date" type="date"
-                        class="swal2-input cfg-input cfg-input--half" name="start_date"
-                        value="${new Date().toISOString().split('T')[0]}">
-                </div>
-              </div>
+      //         <div class="cfg-row">
+      //           <div class="cfg-col">
+      //             <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
+      //             <input id="schedule-date" type="date"
+      //                   class="swal2-input cfg-input cfg-input--half" name="start_date"
+      //                   value="${new Date().toISOString().split('T')[0]}">
+      //           </div>
+      //         </div>
 
-              <!-- Hàng 2 cột -->
-              <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
-              <div class="cfg-row cfg-grid-2">
-                <div class="cfg-col">
-                  <label class="cfg-label" for="wt_bleding">Trộn Hoàn Tất Lô Thẩm Định</label>
-                  <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_bleding_val">
-                  <label class="cfg-label" for="wt_forming">Định Hình Lô Thẩm Định</label>
-                  <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_forming_val">
-                  <label class="cfg-label" for="wt_coating">Bao Phim Lô Thẩm Định</label>
-                  <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_coating_val">
-                  <label class="cfg-label" for="wt_blitering">Đóng Gói Lô Thẩm Định</label>
-                  <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_blitering_val">
-                </div>
-                <div class="cfg-col">
-                  <label class="cfg-label" for="wt_bleding_val">Trộn Hoàn Tất Lô Thương Mại</label>
-                  <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_bledingl">
-                  <label class="cfg-label" for="wt_forming_val">Định Hình Lô Thương Mại</label>
-                  <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_forming">
-                  <label class="cfg-label" for="wt_coating_val">Bao Phim Lô Thương Mại</label>
-                  <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_coating">
-                  <label class="cfg-label" for="wt_blitering_val">Đóng Gói Lô Thương Mại</label>
-                  <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_blitering">
-                </div>
-              </div>
+      //         <!-- Hàng 2 cột -->
+      //         <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
+      //         <div class="cfg-row cfg-grid-2">
+      //           <div class="cfg-col">
+      //             <label class="cfg-label" for="wt_bleding">Trộn Hoàn Tất Lô Thẩm Định</label>
+      //             <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_bleding_val">
+      //             <label class="cfg-label" for="wt_forming">Định Hình Lô Thẩm Định</label>
+      //             <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_forming_val">
+      //             <label class="cfg-label" for="wt_coating">Bao Phim Lô Thẩm Định</label>
+      //             <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_coating_val">
+      //             <label class="cfg-label" for="wt_blitering">Đóng Gói Lô Thẩm Định</label>
+      //             <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_blitering_val">
+      //           </div>
+      //           <div class="cfg-col">
+      //             <label class="cfg-label" for="wt_bleding_val">Trộn Hoàn Tất Lô Thương Mại</label>
+      //             <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_bledingl">
+      //             <label class="cfg-label" for="wt_forming_val">Định Hình Lô Thương Mại</label>
+      //             <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_forming">
+      //             <label class="cfg-label" for="wt_coating_val">Bao Phim Lô Thương Mại</label>
+      //             <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_coating">
+      //             <label class="cfg-label" for="wt_blitering_val">Đóng Gói Lô Thương Mại</label>
+      //             <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_blitering">
+      //           </div>
+      //         </div>
 
-              <div class="cfg-row">
-              <!-- ✅ Vùng để gắn stepper -->
-              <label class="cfg-label" for="stepper-container">Sắp Lịch Theo Công Đoạn:</label> 
-              <div id="stepper-container" style="margin-top: 15px;"></div>
-              </div>
+      //         <div class="cfg-row">
+      //         <!-- ✅ Vùng để gắn stepper -->
+      //         <label class="cfg-label" for="stepper-container">Sắp Lịch Theo Công Đoạn:</label> 
+      //         <div id="stepper-container" style="margin-top: 15px;"></div>
+      //         </div>
 
-              <div class="cfg-row">
-                <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
-                <label class="switch">
-                  <input id="work-sunday" type="checkbox">
-                  <span class="slider round"></span>
-                  <span class="switch-labels">
-                    <span class="off">No</span>
-                    <span class="on">Yes</span>
-                  </span>
-                </label>
-              </div>
+      //         <div class="cfg-row">
+      //           <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
+      //           <label class="switch">
+      //             <input id="work-sunday" type="checkbox">
+      //             <span class="slider round"></span>
+      //             <span class="switch-labels">
+      //               <span class="off">No</span>
+      //               <span class="on">Yes</span>
+      //             </span>
+      //           </label>
+      //         </div>
 
-              <div class="cfg-row">
-              <!-- ✅ Vùng để gắn Calendar -->
-              <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label> 
-              <div id="calendar-container" style="margin-top: 15px;"></div>
-              </div>
+      //         <div class="cfg-row">
+      //         <!-- ✅ Vùng để gắn Calendar -->
+      //         <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label> 
+      //         <div id="calendar-container" style="margin-top: 15px;"></div>
+      //         </div>
 
 
-              ${hasEmptyPermission
-              ? `<p style="color:red;font-weight:600;margin-top:10px;">
-                          ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
-                          Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
-                        </p>`
-              : ''
-            }
+      //         ${hasEmptyPermission
+      //         ? `<p style="color:red;font-weight:600;margin-top:10px;">
+      //                     ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
+      //                     Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
+      //                   </p>`
+      //         : ''
+      //       }
 
+      //       </div>
+      //     </div>
+      //   `,
+      html: `
+      <div class="cfg-wrapper">
+
+        <!-- Cột trái -->
+        <div class="cfg-card cfg-left">
+          <div class="cfg-row">
+            <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
+            <input id="schedule-date" type="date"
+                  class="swal2-input cfg-input cfg-input--half"
+                  name="start_date"
+                  value="${new Date().toISOString().split('T')[0]}">
+          </div>
+
+          <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
+          <div class="cfg-row cfg-grid-2">
+            <div class="cfg-col">
+              <label class="cfg-label">Trộn Hoàn Tất Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="1">
+              <label class="cfg-label">Định Hình Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
+              <label class="cfg-label">Bao Phim Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
+              <label class="cfg-label">Đóng Gói Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
+            </div>
+
+            <div class="cfg-col">
+              <label class="cfg-label">Trộn Hoàn Tất Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
+              <label class="cfg-label">Định Hình Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
+              <label class="cfg-label">Bao Phim Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
+              <label class="cfg-label">Đóng Gói Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
             </div>
           </div>
-        `,
-      width: 700,
+
+          <label class="cfg-label" for="stepper-container">Sắp Lịch Theo Công Đoạn:</label> 
+          <div id="stepper-container" style="margin-top: 15px;"></div>
+
+          ${hasEmptyPermission
+            ? `<p style="color:red;font-weight:600;margin-top:10px;">
+                ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
+                Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
+              </p>`
+            : ''
+          }
+        </div>
+
+        <!-- Cột phải -->
+        <div class="cfg-card cfg-right">
+          <div class="cfg-row">
+            <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
+            <label class="switch">
+              <input id="work-sunday" type="checkbox">
+              <span class="slider round"></span>
+              <span class="switch-labels">
+                <span class="off">No</span>
+                <span class="on">Yes</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="cfg-row">
+            <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label>
+            <div id="calendar-container" style="margin-top: 15px;"></div>
+          </div>
+
+          <div class="cfg-row">
+            <label class="cfg-label" for="reason">Lý do chạy Auto Scheduler:</label>
+            <input id="reason" type="text"
+                  class="swal2-input cfg-input cfg-input--full"
+                  name="reason"
+                  placeholder="Nhập lý do..."
+                  required>
+          </div>
+        </div>
+        
+
+
+      </div>
+      `,
+
+      width: '40%',
       customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
       showCancelButton: true,
       confirmButtonText: 'Chạy',

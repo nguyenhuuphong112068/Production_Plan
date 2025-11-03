@@ -345,3 +345,32 @@ input:checked + .slider:before {
   cursor: not-allowed;
 }
 
+
+.cfg-wrapper {
+  display: flex;
+  gap: 20px;              /* khoảng cách giữa 2 cột */
+  align-items: stretch;   /* 🔹 giúp 2 cột cao bằng nhau */
+  width: 100%;
+}
+
+
+.cfg-card {
+  flex: 1;                /* chia đều chiều rộng 2 cột */
+  display: flex;
+  flex-direction: column; /* giữ layout dọc bên trong */
+  justify-content: flex-start;
+  background: #fff;
+  border-radius: 8px;
+  padding: 15px 20px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+.cfg-card.cfg-left {
+  margin-right: 0;
+}
+
+.cfg-card.cfg-right {
+  margin-left: 0;
+}
+
+
