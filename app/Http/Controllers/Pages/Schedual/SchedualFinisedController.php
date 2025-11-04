@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SchedualFinisedController extends Controller
 {
-           public function index(Request $request){
+        public function index(Request $request){
                 //dd ($request->all());
 
                 $fromDate = $request->from_date ?? Carbon::now()->toDateString();
@@ -42,6 +43,7 @@ class SchedualFinisedController extends Controller
                     ->where('sp.stage_code', $stage_code)
                     ->where('sp.deparment_code', $production)
                     ->whereNotNull('sp.start')
+                    ->where('sp.finished',0)
                     ->get();
 
                 $quarantine_room = DB::table('quarantine_room')
@@ -77,4 +79,26 @@ class SchedualFinisedController extends Controller
                     
                 ]);
         }
+
+        public function store(Request $request) {
+              
+                DB::table('stage_plan')
+                        ->where('id', $request->id)
+                        ->update([
+                        'start'           => $request->start,
+                        'end'             => $request->end,
+                        'start_clearning' => $request->start_clearning,
+                        'end_clearning'   => $request->end_clearning,
+                        'yields'   => $request->yields,
+                        'quarantine_room_code'   => $request->quarantine_room_code,
+                        'finished'        => 1,
+                        'finished_by'   => session('user')['fullName'],
+                        'finished_date'   => now(),
+                ]);
+
+
+                 return redirect()->back()->with('success', 'Đã thêm thành công!');   
+        }
+
+
 }
