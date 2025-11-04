@@ -283,8 +283,6 @@
 
       });
 
-
-
        $('.form-deActive').on('submit', function (e) {
           e.preventDefault(); // chặn submit mặc định
           const form = this;

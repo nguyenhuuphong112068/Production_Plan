@@ -18,42 +18,41 @@ class SchedualAuditController extends Controller
                 $production = session('user')['production_code'];
       
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
-                $datas = DB::table('stage_plan_history as h')
-                    ->select(
-                        'h.*',
-                        'room.name as room_name',
-                        'room.code as room_code',
-                        'room.stage as stage',
-                        'plan_master.batch',
-                        'plan_master.expected_date',
-                        'plan_master.is_val',
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'market.name as name'
-                    )
-                    ->joinSub(
-                        DB::table('stage_plan_history')
-                            ->select('stage_plan_id', DB::raw('MAX(version) as max_version'))
-                            ->groupBy('stage_plan_id'),
-                        'latest',
-                        function ($join) {
-                            $join->on('h.stage_plan_id', '=', 'latest.stage_plan_id')
-                                ->on('h.version', '=', 'latest.max_version');
-                        }
-                    )
-                    ->leftJoin('room', 'h.resourceId', '=', 'room.id')
-                    ->leftJoin('plan_master', 'h.plan_master_id', '=', 'plan_master.id')
-                    ->leftJoin('finished_product_category', 'h.product_caterogy_id', '=', 'finished_product_category.id')
-                    ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                    ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-                    ->whereBetween('h.start', [$fromDate, $toDate])
-                    ->where('h.stage_code', $stage_code)
-                    ->where('h.deparment_code', $production)
-                    ->whereNotNull('h.start')
-                    ->orderBy('h.start')
-                    ->get();
+            $datas = DB::table('stage_plan_history as h')
+                ->select(
+                    'h.*',
+                    'room.name as room_name',
+                    'room.code as room_code',
+                    'room.stage as stage',
+                    'plan_master.batch',
+                    'plan_master.expected_date',
+                    'plan_master.is_val',
+                    'finished_product_category.intermediate_code',
+                    'finished_product_category.finished_product_code',
+                    'finished_product_category.batch_qty',
+                    'finished_product_category.unit_batch_qty',
+                    'market.name as name'
+                )
+                ->leftJoin('room', 'h.resourceId', '=', 'room.id')
+                ->leftJoin('plan_master', 'h.plan_master_id', '=', 'plan_master.id')
+                ->leftJoin('finished_product_category', 'h.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                ->where('h.version', '>=', 1)
+                ->whereBetween('h.start', [$fromDate, $toDate])
+                ->where('h.stage_code', $stage_code)
+                ->where('h.deparment_code', $production)
+                ->whereNotNull('h.start')
+                ->whereIn('h.stage_plan_id', function ($query) {
+                    $query->select('stage_plan_id')
+                        ->from('stage_plan_history')
+                        ->groupBy('stage_plan_id')
+                        ->havingRaw('COUNT(*) > 1');
+                })
+                ->orderBy('h.plan_master_id')
+                ->orderBy('h.version', 'desc')
+                ->get();
+
 
                   
         
