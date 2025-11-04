@@ -298,7 +298,14 @@
               <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.audit.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Lịch Sữ Thay Đổi Lịch</p>
+                  <p>Lịch Sử Thay Đổi Lịch</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.finised.index') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Xác Nhận Hoàn Thành</p>
                 </a>
               </li>
             

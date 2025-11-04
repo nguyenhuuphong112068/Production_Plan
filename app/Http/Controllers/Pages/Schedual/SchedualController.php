@@ -533,13 +533,7 @@ class SchedualController extends Controller
 
                         $resources = $this->getResources($production, $startDate, $endDate);
 
-                        $quarantine_room = DB::table('quarantine_room')
-                        ->where(function ($query) use ($production) {
-                                $query->where('deparment_code', $production)
-                                ->orWhere('deparment_code', 'NA');
-                        })
-                        ->where('active', true)
-                        ->get();
+
 
                         $title = 'LỊCH SẢN XUẤT';
                         $type = true;
@@ -557,7 +551,6 @@ class SchedualController extends Controller
                                 'type' => $type,
                                 'authorization' => $authorization,
                                 'production' => $production,
-                                'quarantineRoom' => $quarantine_room ?? [],
                                 'currentPassword' => session('user')['passWord']??''
                         ]);
 
