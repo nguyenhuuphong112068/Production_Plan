@@ -71,6 +71,15 @@
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
+                                        <button class="btn btn-success btn-sm btn-plus" 
+                                                  style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                  data-room_name ="{{ $data->room_name }}"
+                                                  data-room_id ="{{ $data->room_id }}"
+                                                  data-in_production = "{{ $data->title}}"
+                                                  data-toggle="modal"
+                                                  data-target="#Modal" 
+                                        >+</button>
+                                        
                                         <div>
                                             {{ $data->room_name }}
                                         </div>
