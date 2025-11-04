@@ -558,7 +558,7 @@ class SchedualController extends Controller
                                 'authorization' => $authorization,
                                 'production' => $production,
                                 'quarantineRoom' => $quarantine_room ?? [],
-                                'currentPassword' => session('user')['passWord']
+                                'currentPassword' => session('user')['passWord']??''
                         ]);
 
                 } catch (\Throwable $e) {
