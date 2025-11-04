@@ -827,7 +827,7 @@ class ProductionPlanController extends Controller
                                                         'keep_dry'            => $tank->keep_dry??0,
                                                         'deparment_code'      => session('user')['production_code'],
                                                         'created_date'        => now(),
-                                                        'Theoretical_yields' => $stageItem['stage_code'] <= 6 ? $plan_packaging->batch_size:$plan_packaging->batch_qty,
+                                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan_packaging->batch_size:$plan_packaging->batch_qty,
                                                 ];
                                         }
 

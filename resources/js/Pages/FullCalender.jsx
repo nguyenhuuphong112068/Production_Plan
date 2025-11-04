@@ -122,7 +122,7 @@ const ScheduleTest = () => {
         
         if (!authorization){
           setPlan(data.plan);
-          setCurrentPassword (data.currentPassword)
+          setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
           
         }

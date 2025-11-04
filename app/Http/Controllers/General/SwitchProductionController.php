@@ -20,6 +20,7 @@ class SwitchProductionController extends Controller{
             'fullName'        => $user['fullName'] ?? null,
             'userGroup'       => $user['userGroup'] ?? null,
             'department'      => $user['department'] ?? null,
+            'passWord'        => $user['passWord'] ?? null,
             'production_code' => $production->code,
             'production_name' => $production->name,
         ]);
