@@ -138,8 +138,8 @@
                                 {{ $splittingModal = "" }}
 
                                 @if ($data->number_parkaging > 0)
-
-                                    <div class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
+                                    @if ($auth_update != 'disabled')
+                                    <div  class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
                                         {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                         data-name="{{ $data->name }}"
                                         data-intermediate_code="{{ $data->intermediate_code }}"
@@ -156,9 +156,12 @@
                                         data-unit_batch_qty="{{ $data->unit_batch_qty}}"
                                         data-material_source_id="{{ $data->material_source_id}}"
                                         data-number_parkaging="{{ $data->number_parkaging}}"
+                                       
                                     >
-                                    {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
-
+                                        {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
+                                    @else
+                                        {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }}
+                                    @endif
                                 @endif
                                 </td>
 
