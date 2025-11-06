@@ -110,6 +110,7 @@ const ScheduleTest = () => {
           data = data.replace(/^<!--.*?-->/, "").trim();
           data = JSON.parse(data);
         }
+
         setAuthorization (['Admin', 'Schedualer'].includes(data.authorization))
         
         setEvents(data.events);
@@ -160,20 +161,31 @@ const ScheduleTest = () => {
 
   /// Get dư liệu row được chọn
   useEffect(() => {
-    if (!authorization) return
-    new Draggable(document.getElementById('external-events'), {
+    if (!authorization) return;
 
+    const externalEl = document.getElementById('external-events');
+    if (!externalEl) return;
+
+    // Tạo instance draggable
+    const draggable = new Draggable(externalEl, {
       itemSelector: '.fc-event',
       eventData: (eventEl) => {
-        // Lấy selectedRows mới nhất từ state
         const draggedData = selectedRows.length ? selectedRows : [];
         return {
-          title: draggedData.length > 1 ? `(${draggedData.length}) sản phẩm` : draggedData[0]?.product_code || 'Trống',
+          title:
+            draggedData.length > 1
+              ? `(${draggedData.length}) sản phẩm`
+              : draggedData[0]?.product_code || 'Trống',
           extendedProps: { rows: draggedData },
         };
       },
     });
-  }, []);
+
+    // 🧹 Cleanup khi component unmount hoặc re-run effect
+    return () => {
+      draggable.destroy();
+    };
+  }, [authorization, selectedRows]);
 
   /// UseEffect cho render nut search
   useEffect(() => {
@@ -417,7 +429,9 @@ const ScheduleTest = () => {
 
   // Nhân Dữ liệu để tạo mới event
   const handleEventReceive = (info) => {
+   
     // chưa chọn row
+    //if (!info?.event || !calendarRef?.current) return;
     const start = info.event.start;
     const now = new Date();
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
@@ -1491,7 +1505,7 @@ const ScheduleTest = () => {
   }
 
   const finisedEvent = (dropInfo, draggedEvent) => {
-    if (draggedEvent.extendedProps.finished || !authorization) { return false; }
+    if (draggedEvent.extendedProps.finished) { return false; }
     return true;
   };
 
@@ -1639,7 +1653,7 @@ const ScheduleTest = () => {
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
-        initialView="resourceTimelineMonth1h"
+        initialView="resourceTimelineWeek"
         firstDay={1}
         events={events}
         eventResourceEditable={true}
@@ -1951,7 +1965,7 @@ const ScheduleTest = () => {
       <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
       
       {/* <div className="modal-sidebar"> */}
-      { authorization&& (
+      { authorization && (
         <ModalSidebar
           visible={showSidebar}
           onClose={setShowSidebar}

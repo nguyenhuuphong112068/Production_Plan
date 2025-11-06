@@ -103,9 +103,7 @@
                                 </h5>
                             </div>
                             <div class="card-body">
-
                                 <div class="card">
-
                                     <div class="card-body">
                                         <table id="room_table" class="table table-bordered table-striped"
                                             style="font-size: 16px">
@@ -252,7 +250,6 @@
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script>
 
 

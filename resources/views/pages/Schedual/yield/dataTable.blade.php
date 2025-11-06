@@ -214,20 +214,6 @@
 </script>
 
 
-
-
-
-{{-- <script>
-    const form = document.getElementById('filterForm');
-    const fromInput = document.getElementById('from_date');
-    const toInput = document.getElementById('to_date');
-
-    [fromInput, toInput].forEach(input => {
-        input.addEventListener('input', function() {
-            form.submit();
-        });
-    });
-</script> --}}
 <script>
     const form = document.getElementById('filterForm');
     const fromInput = document.getElementById('from_date');
