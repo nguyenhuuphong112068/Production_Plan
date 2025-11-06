@@ -312,6 +312,7 @@
             </ul>
           </li>
 
+          <!-- Droplist Menu Biệt Trữ -->
           @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
             <!-- Droplist Menu Biệt Trữ -->
             <li class="nav-item has-treeview">
@@ -343,11 +344,24 @@
             </li>
           @endif
 
+          <!-- Droplist Menu Phản hồi -->
+          @if (user_has_permission(session('user')['userId'], 'layout_feedback', 'boolean'))
+          <li class="nav-item">
+            <a href="{{ route ('pages.AuditTrail.list') }}" class="nav-link">
+              <i class="nav-icon fas fa fa-american-sign-language-interpreting"></i>
+              <p>
+                Phản Hồi KHSX
+              </p>
+            </a>
+          </li>
+          @endif
+
           <!-- roplist Trang Thái Sản Xuất-->
           @if (user_has_permission(session('user')['userId'], 'layout_status', 'boolean'))
             <li class="nav-item">
               <a href="{{ route ('pages.status.index') }}" class="nav-link">
-                <i class="nav-icon fas fa-bars"></i>
+                
+                <i class="nav-icon fas fa fa-recycle"></i>
                 <p>
                   Trang Thái Sản Xuất
                 </p>
