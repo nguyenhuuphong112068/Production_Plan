@@ -326,18 +326,18 @@
               <ul class="nav nav-treeview">
 
                 <li class="nav-item">
-                  <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
+                  <a href="{{ route ('pages.quarantine.theory.list') }}" class="nav-link">
                     <i class="far fa-circle nav-icon"></i>
                     <p> Tồn BTP Lý Thyết </p>
                   </a>
                 </li>
 
-                {{-- <li class="nav-item">
-                  <a href="{{ route ('pages.quarantine.room.list') }}" class="nav-link">
+                <li class="nav-item">
+                  <a href="{{ route ('pages.quarantine.actual.index_actual') }}" class="nav-link">
                     <i class="far fa-circle nav-icon"></i>
-                    <p> Theo Công Đoạn </p>
+                    <p> Tồn BTP Thực Tế </p>
                   </a>
-                </li> --}}
+                </li>
               
               </ul>
             </li>

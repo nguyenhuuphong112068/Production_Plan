@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class QuarantineRoomController extends Controller
 {
+    
     public function index(Request $request) {
 
         $startDate = $request->from_date
@@ -98,10 +99,64 @@ class QuarantineRoomController extends Controller
         
         session()->put(['title' => 'TỒN BÁN THÀNH PHẨM THEO CÔNG ĐOẠN']);
 
-        return view('pages.quarantine.room.list', [
+        return view('pages.quarantine.theory.list', [
             'totals' => $totals,
             'timePoints' => $timePoints,
             'stageTimeSeries' => $stageTimeSeries,
+        ]);
+
+    }
+
+    public function index_actual(Request $request) {
+
+    
+        
+    $datas = DB::table('stage_plan as t')
+        ->leftJoin('stage_plan as t2', function ($join) {
+            $join->on('t2.code','=','t.nextcessor_code');
+        })
+        ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
+        ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
+        ->leftJoin('product_name','fc.product_name_id','product_name.id')
+        ->leftJoin('quarantine_room','t.quarantine_room_code','quarantine_room.code')
+        ->whereNotNull('t.start')
+        ->whereNotNull('t.yields')
+        ->where('t2.start','>',now())
+        ->where('t.active', 1)
+        ->where('t.finished', 1)
+        ->where('quarantine_room.deparment_code', session('user')['production_code'])
+        ->select(
+            'fc.finished_product_code',
+            'fc.intermediate_code',
+            't.plan_master_id',
+            'product_name.name as product_name',
+            'plan_master.batch',
+            't.quarantine_room_code',
+            'quarantine_room.name',
+            't.yields',
+            't.stage_code',
+            't2.stage_code as next_stage',
+            't2.start as next_start',
+        )
+        ->orderBy('t.plan_master_id')
+        ->orderBy('t.stage_code')
+        ->get()
+        ->groupBy('quarantine_room_code')
+        ->map(function ($items) {
+            $totalYields = $items->sum('yields');
+            return [
+                'room_name' => $items->first()->name,
+                'total_yields' => $totalYields,
+                'details' => $items
+            ];
+        });
+
+        
+
+        session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
+
+        return view('pages.quarantine.actual.list', [
+            'datas' => $datas,
         ]);
 
     }

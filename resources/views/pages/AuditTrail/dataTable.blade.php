@@ -1,9 +1,4 @@
 <div class="content-wrapper">
-    <!-- Main content -->
-    <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-12">
             <!-- /.card-header -->
             <div class="card">
 
@@ -48,13 +43,6 @@
               <!-- /.card-body -->
             </div>
             <!-- /.card -->
-          </div>
-          <!-- /.col -->
-        </div>
-        <!-- /.row -->
-      </div>
-      <!-- /.container-fluid -->
-    </section>
     <!-- /.content -->
   </div>
 
@@ -62,3 +50,8 @@
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
+<script>
+ $(document).ready(function () {
+    document.body.style.overflowY = "auto";
+  });
+</script>

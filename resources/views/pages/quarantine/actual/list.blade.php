@@ -10,10 +10,6 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.quarantine.room.dataTable')
+  @include('pages.quarantine.actual.dataTable')
 @endsection
 
-@section('model')
-  {{-- @include('pages.quota.production.create')
-  @include('pages.quota.production.update')  --}}
-@endsection
