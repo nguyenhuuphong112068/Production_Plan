@@ -46,7 +46,7 @@ class ProductionPlanController extends Controller
 
 
         public function open(Request  $request){
-               
+         
                 $datas = DB::table('plan_master')
                 ->select('plan_master.*', 
                         'finished_product_category.intermediate_code', 

@@ -1,16 +1,6 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+
 <style>
-  .step-checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #007bff; /* màu xanh bootstrap */
-  }
-
-  .step-checkbox:checked {
-    box-shadow: 0 0 5px #007bff;
-  }
-
   .time {
     width: 100%;
     border: none;
@@ -22,469 +12,442 @@
     box-sizing: border-box;
   }
 
-  /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
   .time:focus {
     border: 1px solid #007bff;
     border-radius: 2px;
     background-color: #fff;
   }
 
-  /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
   td input.time {
     display: block;
     margin: auto;
   }
+
+  canvas {
+    width: 100% !important;
+    height: 400px !important;
+  }
 </style>
 
-
 <div class="content-wrapper">
-    <!-- Main content -->
-            <!-- /.card-header -->
-            <div class="card">
+  <div class="card ">
+    <div class="card-header">
+      <h3 class="card-title">Biểu đồ tồn lý thuyết theo Stage</h3>
+    </div>
 
-              <div class="card-header mt-4">
-                {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-              </div>
-              <!-- /.card-Body -->
-              <div class="card-body">
-                   
-                  @php
-                      $auth_create = user_has_permission(session('user')['userId'], 'quota_production_create', 'disabled');
-                      $auth_update = user_has_permission(session('user')['userId'], 'quota_production_update', 'disabled');
-                      $auth_deActive = user_has_permission(session('user')['userId'], 'quota_production_deActive', 'disabled');
-                      //dd ($auth_create, $auth_update, $auth_deActive)
-                  @endphp
 
-                 <div class="row">
-                    <div class="col-md-12"></div> 
-                    <div class="col-md-12 d-flex justify-content-end">
-                      <form id = "filterForm"  action="{{ route('pages.quota.production.list') }}" method="get">
-                            @csrf
-                           <div class="form-group" style="width: 177px">
-                               <select class="form-control" name="stage_code" style="text-align-last: center;" onchange="document.getElementById('filterForm').submit();">
-                                  <option  {{ $stage_code == 1 ? 'selected' : '' }} value= 1>Cân</option>
-                                  <option  {{ $stage_code == 3 ? 'selected' : '' }} value= 3>Pha Chế</option>
-                                  <option  {{ $stage_code == 4 ? 'selected' : '' }} value= 4>Trộn Hoàn Tất</option>
-                                  <option  {{ $stage_code == 5 ? 'selected' : '' }} value= 5>Định Hình</option>
-                                  <option  {{ $stage_code == 6 ? 'selected' : '' }} value= 6>Bao Phim</option>
-                                  <option  {{ $stage_code == 7 ? 'selected' : '' }} value= 7>Đóng Gói</option>
-                              </select>           
-                            </div>
-                      </form>
+
+    <div class="card-body">
+
+      <form id="filterForm" method="GET" action="{{ route('pages.quarantine.room.list') }}"
+            class="d-flex flex-wrap gap-2">
+            @csrf
+              <div class="row w-100 align-items-center mt-3">
+                    <!-- Filter From/To -->
+                    <div class="col-md-6 d-flex gap-2">
+                        @php
+                            $defaultFrom = \Carbon\Carbon::now()->startOfMonth()->toDateString(); // ngày đầu tháng
+                            $defaultTo   = \Carbon\Carbon::now()->endOfMonth()->toDateString();  
+                            $defaultWeek = \Carbon\Carbon::parse($defaultTo)->weekOfYear; // số tuần trong năm
+                            $defaultMonth = \Carbon\Carbon::parse($defaultTo)->month; // tháng
+                            $defaultYear = \Carbon\Carbon::parse($defaultTo)->year;
+                            $stage_name = [
+                                              1 => 'Cân Nguyên Liệu',
+                                              3 => 'Pha Chế' ,
+                                              4 => 'THT',
+                                              5 => 'Định Hình',
+                                              6 => 'Bao Phim',
+                                              7 => 'ĐGSC-ĐGTC'
+                                      ];
+                        @endphp
+
+                        <div class="form-group d-flex align-items-center mr-2">
+                            <label for="from_date" class="mr-2 mb-0">From:</label>
+                            <input type="date" id="from_date" name="from_date"
+                                value="{{ request('from_date') ?? $defaultFrom }}" class="form-control" />
+                        </div>
+                        <div class="form-group d-flex align-items-center mr-2">
+                            <label for="to_date" class="mr-2 mb-0">To:</label>
+                            <input type="date" id="to_date" name="to_date"
+                                value="{{ request('to_date') ?? $defaultTo }}" class="form-control" />
+                        </div>
                     </div>
-                </div>    
-                <table id="data_table_quota" class="table table-bordered table-striped" style="font-size: 20px">
-                  <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
-                      <tr>
-                          <th rowspan="2">STT</th>
-                          <th rowspan="2">Mã Sản Phẩm</th>
-                          <th rowspan="2">Tên Sản Phẩm</th>
-                          <th rowspan="2">Cở Lô</th>
-                          @if ($stage_code == 3 || $stage_code == 4)
-                            <th rowspan="2" style="width:1%">Bồn LP</th>
-                          @endif
-                          @if ($stage_code == 7)
-                            <th rowspan="2" style="width:3%">Khử Ẩm EV</th>
-                          @endif
-                  
-                          <th rowspan="2">Phòng Sản Xuất</th>
+                    <div class="col-md-6 d-flex gap-2 justify-content-end">
+                        <!-- Tuần -->
+                        <select id="week_number" name="week_number" class="form-control mr-2">
+                            @for ($i = 1; $i <= 52; $i++)
+                                <option value="{{ $i }}"
+                                    {{ (request('week_number') ?? $defaultWeek) == $i ? 'selected' : '' }}>
+                                    Tuần {{ $i }}
+                                </option>
+                            @endfor
+                        </select>
 
-                          <th colspan="4" class="text-center">Thời Gian</th>
+                        <!-- Tháng -->
+                        <select id="month" name="month" class="form-control mr-2">
+                            @for ($m = 1; $m <= 12; $m++)
+                                <option value="{{ $m }}"
+                                    {{ (request('month') ?? $defaultMonth) == $m ? 'selected' : '' }}>
+                                    Tháng {{ $m }}
+                                </option>
+                            @endfor
+                        </select>
 
-                          <th rowspan="2" style="width: 50px">Số Lô Chiến Dịch</th>
-                          <th rowspan="2">Ghi Chú</th>
-                          <th rowspan="2">Người Tạo/ Ngày Tạo</th>
-                          <th rowspan="2" style="width:1%">Thêm</th>
-                          {{-- <th rowspan="2" style="width:1%">Cập Nhật</th> --}}
-                          <th rowspan="2" style="width:1%">Vô Hiệu</th>
-                          <th rowspan="2" style="width:1%">Lich Sữ</th>
-                          
-                      </tr>
-                      <tr>
-                          <th>Chuẩn Bị</th>
-                          <th>Sản Xuất</th>
-                          <th>Vệ Sinh Cấp I</th>
-                          <th>Vệ Sinh Cấp II</th>
-                      </tr>
+                        <!-- Năm -->
+                        <select id="year" name="year" class="form-control">
+                            @php $currentYear = now()->year; @endphp
+                            @for ($y = $currentYear - 5; $y <= $currentYear + 5; $y++)
+                                <option value="{{ $y }}"
+                                    {{ (request('year') ?? $defaultYear) == $y ? 'selected' : '' }}>
+                                    {{ $y }}
+                                </option>
+                            @endfor
+                        </select>
+
+                    </div>
+                </div>
+            </form>
+
+      @php
+          $stageTimeSeries = collect($stageTimeSeries)
+              ->flatMap(function($data, $stageCode) {
+                  return collect($data)->map(function($d) use ($stageCode) {
+                      $d['stage_code'] = $stageCode;
+                      return $d;
+                  });
+              })
+              ->groupBy('stage_code');
+
+          $stage_name = [
+              1 => "Nguyên Liệu Sau Cân",
+              3 => "Cốm Sau Pha Chế",
+              4 => "Cốm Hoàn Tất",
+              5 => "Viên Nhân",
+              6 => "Viên Bao Phim",
+              7 => "Thành Phẩm",
+          ]
+      @endphp
+
+      {{-- Hiển thị từng stage_code --}}
+      @foreach (collect($stageTimeSeries)->sortKeys()  as $stage_code => $data)
+          <div class="card card-success mb-4">
+
+          <div class="card-header border-transparent">
+            <h3 class="card-title">Tổng Lượng {{ $stage_name[$stage_code] }} Biệt Trữ Lý Thuyết {{$stage_code <5 ? '(Kg)': '(ĐVL)'}}</h3>
+                                <div class="card-tools">
+                                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-tool" data-card-widget="remove">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+ 
+              
+            </div>
+            <div class="card-body">
+              <canvas id="stageChart{{ $stage_code }}"></canvas>
+
+              {{-- Bảng tổng hợp theo ngày/phòng --}}
+              <div class="table-responsive mt-4">
+                <table class="table table-bordered table-striped text-center mb-0" id="summaryTable{{ $stage_code }}">
+                  <thead class="table-success">
+                    <tr id="summaryHeader{{ $stage_code }}">
+                     
+                      <!-- Ngày sẽ được thêm bằng JS -->
+                    </tr>
                   </thead>
-        
-                  <tbody>
-                 
-                       
-                  @foreach ($datas as $data)
-                    <tr>
-                      <td>{{ $loop->iteration}} </td>
-                      <td> 
-                          <div> {{ $data->intermediate_code}} </div>
-                          <div> {{ $data->finished_product_code??''}} </div>
-                      </td>
-                      <td>{{ $data->product_name}} </td>
-                      <td>{{ $data->batch_qty . " " .  $data->unit_batch_qty}}</td>
-
-                      @php
-                          $field = $stage_code == 3 ||  $stage_code == 4 ? 'tank' : ($stage_code == 7 ? 'keep_dry' : null);
-                      @endphp
-
-                      @if ($field)
-                          <td class="text-center align-middle">
-                              <div class="form-check form-switch text-center">
-                                  <input class="form-check-input step-checkbox"
-                                      type="checkbox" role="switch"
-                                      data-id="{{ $data->id }}"
-                                      data-stage_code="{{ $stage_code }}"
-                                      id="{{ $data->id }}"
-                                      {{ $data->$field ? 'checked' : '' }}
-                                      
-                                      >
-                              </div>
-                          </td>
-                      @endif
-
-                      <td>
-                          @if($data->room_name == null)
-                              <span class="px-2 py-1 rounded-pill" style="background-color:red; color:white; font-size: 14px">
-                                  Thiếu Định Mức
-                              </span>
-                            @php $typeInput = 'hidden'; @endphp
-                          @else
-                              {{ $data->room_name . " - " . $data->room_code }}
-                               @php $typeInput = 'text'; @endphp
-                          @endif
-                      </td>
-
-                      <td> 
-                        <input  type= "{{$typeInput}}" class="time" name="p_time" value = "{{$data->p_time }}" data-id = {{ $data->id }} {{ $auth_update }} >
-                      </td>
-
-                      <td> 
-                        <input type= "{{$typeInput}}" class="time" name="m_time" value = "{{$data->m_time }}" data-id = {{ $data->id }} {{ $auth_update }}>
-                      </td>
-                      <td> 
-                        <input type= "{{$typeInput}}" class="time" name="C1_time" value = "{{$data->C1_time }}" data-id = {{ $data->id }} {{ $auth_update }}>
-                      </td>
-                      <td> 
-                        <input type= "{{$typeInput}}" class="time" name="C2_time" value = "{{$data->C2_time }}" data-id = {{ $data->id }} {{ $auth_update }}>
-                      </td>
-                      <td> 
-                        <input type= "{{$typeInput}}" class="time" name="maxofbatch_campaign" value = "{{$data->maxofbatch_campaign }}" data-id = {{ $data->id }} {{ $auth_update }}>
-                      </td>
-                      <td> 
-                        <input type= "{{$typeInput}}" class="time" name="note" value = "{{$data->note }}" data-id = {{ $data->id }} {{ $auth_update }}>
-                      </td>
-                      
-                      <td>
-                          <div> {{ $data->prepared_by}} </div>
-                          <div>{{$typeInput == 'hidden' ?'':\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
-                      </td>                     
-
-  
-                      <td class="text-center align-middle">
-                          <button type="button" class="btn btn-success btn-plus"
-                              {{ $auth_create }}
-                              data-product_name="{{ $data->product_name }}"
-                              data-intermediate_code="{{ $data->intermediate_code }}"
-                              data-finished_product_code="{{ $data->finished_product_code}}"
-                              data-stage_code="{{ $stage_code }}"
-                              
-                              data-toggle="modal"
-                              data-target="#create_modal"
-                              >
-                              <i class="fas fa-plus"></i>
-                          </button>
-                      </td>
-
-    
-
-                      <td class="text-center align-middle">  
-
-                        <form class="form-deActive" action="{{ route('pages.quota.production.deActive') }}" method="post">
-                            @csrf
-                            <input type="hidden"  name="id" value = "{{ $data->id }}">
-                            <input type="hidden"  name="active" value="{{ $data->active }}">
-
-                            @if ($data->active)
-                              <button type="submit"  {{ $auth_deActive }} class="btn btn-danger" {{$data->room_name?'':'disabled'}} data-type="{{ $data->active }}"  data-name="{{ $data->intermediate_code ."-". $data->finished_product_code ."-".  $data->product_name }}">
-                                  <i class="fas fa-lock"></i>
-                              </button>  
-                            @else
-                              <button type="submit" {{ $auth_deActive }} class="btn btn-success" {{$data->room_name?'':'disabled'}} data-type="{{ $data->active }}" data-name="{{ $data->intermediate_code ."-". $data->finished_product_code ."-". $data->product_name }}">
-                                  <i class="fas fa-unlock"></i>
-                              </button>
-                            @endif
-                        </form>
-                      </td>
-                        <td class="text-center align-middle">
-                            <button type="button" class="btn btn-primary btn-history position-relative" 
-                                data-id="{{ $data->id }}"
-                                data-toggle="modal"
-                                data-target="#historyModal">
-                                <i class="fas fa-history"></i>
-                                <span class="badge badge-danger" style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
-                                   1 {{-- {{ $data->history_count ?? 0 }} --}}
-                                </span>
-                            </button>
-                        </td>
-                    </tr>   
-                  @endforeach
-
+                  <tbody id="summaryBody{{ $stage_code }}">
+                    <!-- Dữ liệu sẽ được render bằng JS -->
                   </tbody>
                 </table>
               </div>
-              <!-- /.card-body -->
             </div>
-    <!-- /.content -->
+          </div>
+      @endforeach
+
+    </div>
   </div>
+</div>
 
-
+{{-- Script --}}
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
-
-@if (session('success'))
-<script>
-    Swal.fire({
-        title: 'Thành công!',
-        text: '{{ session('success') }}',
-        icon: 'success',
-        timer: 2000, // tự đóng sau 2 giây
-        showConfirmButton: false
-    });
-</script>
-@endif
+<script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script>
 
 <script>
-
   $(document).ready(function () {
-      document.body.style.overflowY = "auto";
-      $('.btn-create').click(function () {
-          const button = $(this);
-          const modal = $(button.data('target'));
-          modal.find('input[name="stage_code"]').val(button.data('stage_code'));
+    document.body.style.overflowY = "auto";
+  });
+
+  // Nhận dữ liệu từ controller
+  const stageTimeSeries = @json($stageTimeSeries);
+
+  // 🔧 Hàm định dạng ngày yyyy-mm-dd -> dd/mm
+  function formatDate(dateStr) {
+    const [y, m, d] = dateStr.split("-");
+    return `${d}/${m}`;
+  }
+
+  // 🎨 Hàm tạo màu ngẫu nhiên
+  function randomColor() {
+    const r = Math.floor(Math.random() * 180);
+    const g = Math.floor(Math.random() * 180);
+    const b = Math.floor(Math.random() * 180);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  // 🧩 Vẽ biểu đồ và bảng theo từng stage
+  Object.entries(stageTimeSeries).forEach(([stage_code, data]) => {
+    // Gom dữ liệu theo room
+    const byRoom = {};
+    data.forEach(d => {
+      if (!byRoom[d.room_id]) byRoom[d.room_id] = [];
+      byRoom[d.room_id].push(d);
+    });
+
+    // Lấy danh sách các ngày
+    const labels = [...new Set(data.map(d => d.time_point.split(" ")[0]))].sort();
+
+    // Chuẩn bị dataset cho từng phòng
+    const datasets = Object.entries(byRoom).map(([roomId, list]) => {
+      const roomName = list[0]?.room_name || `Room ${roomId}`;
+      const dataPoints = labels.map(date => {
+        const found = list.find(d => d.time_point.startsWith(date));
+        return found ? found.total_stock : 0;
       });
+      return {
+        label: roomName,
+        data: dataPoints,
+        borderWidth: 2,
+        borderColor: randomColor(),
+        fill: false,
+        tension: 0.25,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      };
+    });
 
-      $('.btn-plus').click(function () {
-          const button = $(this);
-          const modal = $('#create_modal');
-          // Gán dữ liệu vào input
-          modal.find('input[name="stage_code"]').val(button.data('stage_code'));
-          modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-          modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-          modal.find('input[name="product_name"]').val(button.data('product_name'));
-          
-          if (button.data('stage_code') <= 6) {
-            modal.find('input[name="intermediate_code"]').show();
-            modal.find('input[name="finished_product_code"]').hide();
-           
-          } else if (button.data('stage_code') === 7) {
-              modal.find('input[name="intermediate_code"]').hide();
-              modal.find('input[name="finished_product_code"]').show();
-          }
-
-      });
-
-
-
-      // $('.btn-edit').click(function () {
-      //     const button = $(this);
-      //     const modal = $('#update_modal');
-      //     console.log (button.data('room_id'),button.data('p_time'), button.data('C1_time'),button.data('C2_time'))
-      //     // Gán dữ liệu vào input
-      //     modal.find('input[name="id"]').val(button.data('id'));
-      //     modal.find('input[name="product_name"]').val(button.data('product_name'));
-      //     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-      //     modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-      //     modal.find('input[name="room_id"]').val(button.data('room_name') +" - "+ button.data('room_code'));
-      //     modal.find('input[name="p_time"]').val(button.data('p_time'));
-      //     modal.find('input[name="m_time"]').val(button.data('m_time'));
-      //     modal.find('input[name="C1_time"]').val(button.data('c1_time'));
-      //     modal.find('input[name="C2_time"]').val(button.data('c2_time'));
-      //     modal.find('input[name="maxofbatch_campaign"]').val(button.data('maxofbatch_campaign'));
-      //     modal.find('input[name="note"]').val(button.data('note'));
-                              
-
-      //     if (button.data('stage_code') <= 6) {
-      //       modal.find('input[name="intermediate_code"]').show();
-      //       modal.find('input[name="finished_product_code"]').hide();
-           
-      //     } else if (button.data('stage_code') === 7) {
-      //         modal.find('input[name="intermediate_code"]').hide();
-      //         modal.find('input[name="finished_product_code"]').show();
-      //     }
-
-      //   });
-
-     
-
-       $('.form-deActive').on('submit', function (e) {
-          e.preventDefault(); // chặn submit mặc định
-          const form = this;
-          const productName = $(form).find('button[type="submit"]').data('name');
-          const active = $(form).find('button[type="submit"]').data('type');
-         
-          let title = 'Bạn chắc chắn muốn vô hiệu hóa danh mục?'
-          if (!active){title = 'Bạn chắc chắn muốn phục hồi danh mục?'}
-
-          Swal.fire({
-            title: title,
-            text: `Sản phẩm: ${productName}`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Đồng ý',
-            cancelButtonText: 'Hủy'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              form.submit(); // chỉ submit sau khi xác nhận
-            }
-          });
-        });
-
-        $('#data_table_quota').DataTable({
-          paging: true,
-          lengthChange: true,
-          searching: true,
-          ordering: true,
-          info: true,
-          autoWidth: false,
-          pageLength: 10,
-          lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50,100, "Tất cả"]],
-          language: {
-              search: "Tìm kiếm:",
-              lengthMenu: "Hiển thị _MENU_ dòng",
-              info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-              paginate: {
-                  previous: "Trước",
-                  next: "Sau"
-              }
+    // 🎯 Vẽ biểu đồ
+    const ctx = document.getElementById(`stageChart${stage_code}`).getContext("2d");
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels.map(formatDate),
+        datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          intersect: false
+        },
+        plugins: {
+          title: {
+            display: true,
+            //text: `Biểu đồ tồn lý thuyết - Stage ${stage_code}`,
+            font: { size: 16 }
           },
-          // infoCallback: function (settings, start, end, max, total, pre) {
-          //     let thieuDinhMuc = 0;
-          //     let daDinhMuc = 0;
+          legend: {
+            display: false,
+            position: "bottom"
+          },
+          tooltip: {
+            enabled: true,
+            backgroundColor: "rgba(0,0,0,0.8)",
+            titleFont: { size: 13, weight: "bold" },
+            bodyFont: { size: 13 },
+            callbacks: {
+              label: function (context) {
+                const val = context.parsed.y.toLocaleString("vi-VN");
+                return `${context.dataset.label}: ${val}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: "Ngày" }
+          },
+          y: {
+            title: { display: true, text: "Tổng Tồn lý thuyết" },
+            beginAtZero: true,
+            ticks: {
+              callback: function (value) {
+                return value.toLocaleString("vi-VN");
+              }
+            }
+          }
+        }
+      }
+    });
 
-          //     settings.aoData.forEach(function(row) {
-          //         // Lấy ô Phòng Sản Xuất (ở cột thứ 5 — tính từ 0)
-          //         const roomCell = row.anCells[4];
-          //         const text = $(roomCell).text().trim();
+    // === Bảng tổng hợp ===
+    const summaryHeader = document.getElementById(`summaryHeader${stage_code}`);
+    const summaryBody = document.getElementById(`summaryBody${stage_code}`);
 
-          //         if (text.includes('Thiếu Định Mức')) {
-          //             thieuDinhMuc++;
-          //         } else {
-          //             daDinhMuc++;
-          //         }
-          //     });
+    // 1️⃣ Lấy danh sách ngày
+    const allDates = [...new Set(data.map(d => d.time_point.split(" ")[0]))].sort();
 
-          //     return pre + ` (Đã Định Mức: ${daDinhMuc}, Chưa Định Mức: ${thieuDinhMuc})`;
-          // }
+    // 2️⃣ Tiêu đề bảng
+    const thEmpty = document.createElement("th");
+    thEmpty.innerText = "Ngày";
+    summaryHeader.appendChild(thEmpty);
+
+    allDates.forEach(date => {
+      const th = document.createElement("th");
+      th.innerText = formatDate(date);
+      summaryHeader.appendChild(th);
+    });
+
+    // 3️⃣ Hàng tổng tồn
+    const trTotal = document.createElement("tr");
+    const tdLabel = document.createElement("td");
+    tdLabel.innerText = "Tổng tồn";
+    trTotal.appendChild(tdLabel);
+
+    allDates.forEach(date => {
+      const sum = data
+        .filter(d => d.time_point.startsWith(date))
+        .reduce((acc, d) => acc + (d.total_stock || 0), 0);
+      const td = document.createElement("td");
+      const decimals = stage_code < 5 ? 2 : 0;
+      td.innerText = sum.toLocaleString("vi-VN", { minimumFractionDigits: decimals});
+      trTotal.appendChild(td);
+    });
+
+    summaryBody.appendChild(trTotal);
+  });
+</script>
+
+<script>
+    const form = document.getElementById('filterForm');
+    const fromInput = document.getElementById('from_date');
+    const toInput = document.getElementById('to_date');
+    const weekInput = document.getElementById('week_number');
+    const monthInput = document.getElementById('month');
+    const yearInput = document.getElementById('year');
+
+    // Submit form với kiểm tra From/To
+    function submitForm() {
+        const fromDate = new Date(fromInput.value);
+        const toDate = new Date(toInput.value);
+
+        if (fromDate > toDate) {
+            Swal.fire({
+                icon: "warning",
+                title: "Ngày không hợp lệ",
+                text: "⚠️ Ngày bắt đầu (From) không được lớn hơn ngày kết thúc (To).",
+                confirmButtonText: "OK"
+            });
+            return;
+        }
+        form.requestSubmit();
+    }
+
+    // Khi thay đổi From/To => cập nhật tháng/năm theo From
+    function updateMonthYearFromDates() {
+        const fromDate = new Date(fromInput.value);
+        if (isNaN(fromDate)) return;
+        monthInput.value = fromDate.getMonth() + 1;
+        yearInput.value = fromDate.getFullYear();
+    }
+
+    // Tính tuần ISO dựa trên ngày
+    function getWeekNumber(date) {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // Khi thay đổi tuần => cập nhật From/To dựa trên tuần/month/year
+    function updateDatesFromWeekMonthYear() {
+        const year = parseInt(yearInput.value);
+        const week = parseInt(weekInput.value);
+        if (!year || !week) return;
+
+        // ISO tuần: ngày đầu tuần là thứ 2
+        const simple = new Date(year, 0, 1 + (week - 1) * 7);
+        const dayOfWeek = simple.getDay();
+        // điều chỉnh để ngày đầu tuần là thứ 2
+        const diff = simple.getDay() <= 0 ? 1 : 2 - dayOfWeek; // Chủ nhật=0
+        const fromDate = new Date(simple);
+        fromDate.setDate(simple.getDate() + diff);
+
+        const toDate = new Date(fromDate);
+        toDate.setDate(fromDate.getDate() + 6);
+
+        fromInput.value = fromDate.toISOString().slice(0, 10);
+        toInput.value = toDate.toISOString().slice(0, 10);
+    }
+
+    // Khi thay đổi tháng => cập nhật From/To dựa trên tháng
+    function updateDatesFromMonth() {
+        const year = parseInt(yearInput.value);
+        const month = parseInt(monthInput.value);
+        if (!year || !month) return;
+
+        const fromDate = new Date(year, month - 1, 1);
+        const toDate = new Date(year, month, 0);
+
+        fromInput.value = fromDate.toISOString().slice(0, 10);
+        toInput.value = toDate.toISOString().slice(0, 10);
+
+        weekInput.value = getWeekNumber(toDate);
+    }
+
+    function updateDatesFromYear() {
+        const year = parseInt(yearInput.value);
+        if (!year) return;
+
+        // Ngày đầu năm
+        const fromDate = new Date(year, 0, 1);
+        // Ngày cuối năm
+        const toDate = new Date(year, 11, 31);
+
+        fromInput.value = fromDate.toISOString().slice(0, 10);
+        toInput.value = toDate.toISOString().slice(0, 10);
+
+        // Tuần cuối năm theo ISO week
+        weekInput.value = getWeekNumber(toDate);
+    }
+
+    // Hàm lấy số tuần ISO
+    function getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // Lắng nghe event
+    [fromInput, toInput].forEach(input => {
+        input.addEventListener('change', () => {
+            updateMonthYearFromDates();
+            submitForm();
         });
+    });
 
-  });
+    weekInput.addEventListener('change', () => {
+        updateDatesFromWeekMonthYear();
+        submitForm();
+    });
 
-  $(document).on('change', '.step-checkbox', function () {
-   
-      let id = $(this).data('id');
-      
-      if (id == ''){
-          Swal.fire({
-          title: 'Cảnh Báo!',
-          text: 'Sản Phẩm Chưa Định Mức',
-          icon: 'warning',
-          timer: 1000, // tự đóng sau 2 giây
-          showConfirmButton: false
-      });
-          $(this).prop('checked', false);
-        return
-      }
-      let stage_code = $(this).data('stage_code');
-      let checked = $(this).is(':checked');
-      //console.log (id, stage_code, checked)
-      $.ajax({
-        url: "{{ route('pages.quota.production.tank_keepDry') }}",
-        type: 'POST',
-        dataType: 'json',
-        data: {
-          _token: '{{ csrf_token() }}',
-          id: id,
-          stage_code: stage_code,
-          checked: checked
-        }
-      });
-  });
+    monthInput.addEventListener('change', () => {
+        updateDatesFromMonth();
+        submitForm();
+    });
 
-  $(document).on('focus', '.time', function () {
-      $(this).data('old-value', $(this).val());
-  });
-
-  $(document).on('blur', '.time', function () {
-      
-      let id = $(this).data('id');
-      let name = $(this).attr('name');
-      let time = $(this).val();
-      let oldValue = $(this).data('old-value');
-
-      if (time === oldValue)return;
-  
-      if (id == ''){
-          Swal.fire({
-          title: 'Cảnh Báo!',
-          text: 'Sản Phẩm Chưa Định Mức',
-          icon: 'warning',
-          timer: 1000, // tự đóng sau 2 giây
-          showConfirmButton: false
-      });
-          $(this).val('');
-        return
-      }
-
-      if (name == "maxofbatch_campaign"){
-        const pattern = /^[1-9]\d*$/;
-        if (time && !pattern.test(time)) {
-            Swal.fire({
-                title: 'Lỗi định dạng!',
-                text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
-                icon: 'error',
-                timer: 2000,
-                showConfirmButton: false
-            });
-            $(this).focus();
-            $(this).css('border', '1px solid red');
-            return;
-        } else {
-            $(this).css('border', '');
-        }
-      }else if (name != "note"){
-        const pattern = /^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/;
-        if (time && !pattern.test(time)) {
-            Swal.fire({
-                title: 'Lỗi định dạng!',
-                text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
-                icon: 'error',
-                timer: 2000,
-                showConfirmButton: false
-            });
-            $(this).focus();
-            $(this).css('border', '1px solid red');
-            return;
-        } else {
-            $(this).css('border', '');
-        }
-      }
-
-      $.ajax({
-        url: "{{ route('pages.quota.production.updateTime') }}",
-        type: 'POST',
-        dataType: 'json',
-        data: {
-          _token: '{{ csrf_token() }}',
-          id: id,
-          name: name,
-          time: time
-        }
-      });
-  });
-
-
+    yearInput.addEventListener('change', () => {
+        updateDatesFromYear();
+        submitForm();
+    });
 </script>
 
 
