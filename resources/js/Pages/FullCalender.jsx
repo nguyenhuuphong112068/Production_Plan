@@ -908,7 +908,7 @@ const ScheduleTest = () => {
         <!-- Cột trái -->
         <div class="cfg-card cfg-left">
           <div class="cfg-row">
-            <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
+            <label class="cfg-label" for="schedule-date">Ngày bắt đầu sắp lịch:</label>
             <input id="schedule-date" type="date"
                   class="swal2-input cfg-input cfg-input--half"
                   name="start_date"

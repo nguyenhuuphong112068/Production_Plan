@@ -25,7 +25,6 @@ class ProductionPlanController extends Controller
         
                 return view('pages.plan.production.plan_list',[
                         'datas' => $datas
-                        
                 ]);
         }
 
@@ -898,13 +897,30 @@ class ProductionPlanController extends Controller
                  return response()->json($datas);    
         }
 
-          public function get_last_id(Request $request) {
+        public function get_last_id (Request $request) {
                 ob_clean();
                 $last = DB::table($request->table)->latest('id')->value('id');
                 return response()->json([
                         'last_id' => $last ?? 0
                 ]);
-          }
+        }
+
+        public function feedback_list (Request $request) {
+               
+                 $datas = DB::table('plan_list')
+                ->where ('active',1)
+                ->where ('send',1)
+                ->where ('deparment_code',session('user')['production_code'])
+                ->where ('type',1)
+                ->orderBy('id','desc')
+                ->get();
+        
+                session()->put(['title'=> 'PHẢN HỒI KẾ HOẠCH SẢN XUẤT THÁNG']);
+        
+                return view('pages.plan.production.feedback_list',[
+                        'datas' => $datas 
+                ]);
+        }
 
 
 }

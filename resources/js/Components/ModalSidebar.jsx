@@ -447,6 +447,42 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       return;
   }
 
+  const handleCreateManualCampainStage = (e) => {
+    if (isSaving) return;
+    setIsSaving(true);  
+    const filteredRows = selectedRows.map(row => ({
+        id: row.id,
+        plan_master_id: row.plan_master_id,
+        product_caterogy_id: row.product_caterogy_id,
+        predecessor_code: row.predecessor_code,
+        campaign_code: row.campaign_code,
+        code: row.code,
+      }));
+
+      axios.put('/Schedual/createManualCampainStage', { data: filteredRows, stage_code: stageFilter })
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
+
+      setIsSaving(false);  
+      setSelectedRows ([]);
+      return;
+  }
+
   const handleCreateAutoCampain = async () => {
 
      const { value: password } = await Swal.fire({
@@ -507,6 +543,91 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     Swal.fire({
                       title: 'Hoàn Thành!',
                       text: 'Tạo Mã Chiến Dịch Thành Công',
+                      icon: 'success',
+                      confirmButtonText: 'OK'
+                    }).then(() => {
+                      setSelectedRows([]);
+                    });
+
+                  }
+      ).catch (err => {
+                    setTimeout(() => {
+                      Swal.close();
+                    }, 100);
+
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
+
+    setIsSaving(false);
+
+  }
+
+  const handleDeleteCampainStage = async () => {
+
+     const { value: password } = await Swal.fire({
+        title: "Nhập Mật Khẩu",
+        width: "500px",
+        text: "Bạn Muốn Xóa Toạn Bộ Mã Chiến Dịch!",
+        input: "password",
+        inputPlaceholder: "Nhập mật khẩu...",
+        showCancelButton: true,
+        confirmButtonText: "Xác nhận",
+        cancelButtonText: "Hủy",
+        customClass: {
+          input: 'passWord-swal-input'
+        },
+        inputValidator: (value) => {
+          if (!value) return "Bạn phải nhập mật khẩu!";
+        },
+    });
+
+    if (!password) return;
+    
+    if (password !== currentPassword) {
+      Swal.fire({
+        icon: "error",
+        title: "Sai mật khẩu!",
+        text: "Vui lòng thử lại.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+
+    if (isSaving) return;
+    setIsSaving(true);
+     Swal.fire({
+              title: "Đang thực thi, vui lòng đợi giây lát..",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              },
+      });
+
+      axios.put('/Schedual/DeleteAutoCampain', {stage_code: stageFilter})
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+
+                    setPlan(data.plan);
+
+                    setTimeout(() => {
+                      Swal.close();
+                    }, 100);
+                    
+                    Swal.fire({
+                      title: 'Hoàn Thành!',
+                      text: 'Mã Chiến Dịch Đã Xóa',
                       icon: 'success',
                       confirmButtonText: 'OK'
                     }).then(() => {
@@ -948,14 +1069,24 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 {unQuota} Lô Thiếu Định Mức 
               </div>)}
 
-              <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn"
+              <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn Ở Công Đoạn Hiện Tại"
                 onClick={handleCreateManualCampain}>
-                 {isSaving === false ?<i className="fas fa-flag"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
+                 {isSaving === false ?<i className="fas fa-cube"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
+              </div>
+
+              <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn Ở Tất Cả Các Công Đoạn"
+                onClick={handleCreateManualCampainStage}>
+                 {isSaving === false ?<i className="fas fa-cubes"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
               </div>
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
-              onClick={handleCreateAutoCampain}>
+                onClick={handleCreateAutoCampain}>
                 {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
+              </div> 
+
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn"
+                onClick={handleDeleteCampainStage}>
+                {isSaving === false ? <i className="fas fa-trash"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div> 
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"

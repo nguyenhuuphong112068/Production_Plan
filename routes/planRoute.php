@@ -37,7 +37,17 @@ Route::prefix('/plan')
             Route::post('updateInput','updateInput')->name('updateInput');
             Route::post('first_batch','first_batch')->name('first_batch');
             Route::post('get_last_id','get_last_id')->name('get_last_id');
+
+            //feedBack
+
+            Route::get('feedback_list','feedback_list')->name('feedback_list');
+            Route::get('open_feedback','open_feedback')->name('open_feedback');
+
+
     });
+
+
+
 
     Route::prefix('/maintenance')
     ->name('maintenance.')
@@ -58,14 +68,6 @@ Route::prefix('/plan')
             Route::post('source_material','source_material')->name('source_material');
     
     });
-
-
-
-
-
-
-
-     
 
 });
    
