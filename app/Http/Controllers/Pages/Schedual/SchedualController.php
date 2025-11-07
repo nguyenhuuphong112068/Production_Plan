@@ -1286,6 +1286,62 @@ class SchedualController extends Controller
                 ]);
         }
 
+        public function createManualCampainStage(Request $request){
+                $datas = $request->input('data');
+                if (count($datas) <= 1){
+                        return response()->json([]);
+                }
+
+                $firstPlanMasterId = $datas[0]['plan_master_id'] ?? null;
+
+                
+                $stage_codes = DB::table('stage_plan')
+                        ->where('plan_master_id', $firstPlanMasterId)
+                         ->where('stage_code', '>=', $request->input('stage_code'))
+                        ->pluck('stage_code');
+               
+
+                try {
+                        $pre_stage_code = null;
+                        foreach ($stage_codes as $stage_code){
+                                foreach ($datas as $data){
+                                        $campaign_code = DB::table('stage_plan')
+                                                ->where('plan_master_id', $data['plan_master_id'])
+                                                ->where('stage_code', $stage_code)
+                                                ->value('campaign_code');
+
+                                        if ($campaign_code !== null){
+                                                DB::table('stage_plan')
+                                                ->where('campaign_code', $campaign_code)
+                                                ->update([
+                                                        'campaign_code' => null
+                                                ]);
+                                        }
+                                }
+
+                                $plan_master_ids = collect($datas)->pluck('plan_master_id')->toArray();
+
+                              
+                                DB::table('stage_plan')
+                                        ->where('stage_code', $stage_code)
+                                        ->whereIn('plan_master_id', $plan_master_ids)
+                                        ->update([
+                                                'campaign_code' => $pre_stage_code == null?$datas[0]['predecessor_code'] : $firstPlanMasterId ."_". $pre_stage_code
+                                ]);
+                                
+                                $pre_stage_code = $stage_code;
+                        }
+
+                }  catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                }
+
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
+        }
+
         public function createAutoCampain(Request $request){
 
                 try {
@@ -1413,6 +1469,20 @@ class SchedualController extends Controller
                 return response()->json([
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
+        }
+
+        public function DeleteAutoCampain (Request $request){  
+                Log::info ($request->all());
+                DB::table('stage_plan')
+                        ->where('finished', 0)
+                        ->where('start', null)
+                        ->where('active', 1)
+                        ->where('stage_code',"=", $request->stage_code)
+                        
+                ->update(['campaign_code' => null]);    
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]); 
         }
 
         public function createOrderPlan (Request $request) {

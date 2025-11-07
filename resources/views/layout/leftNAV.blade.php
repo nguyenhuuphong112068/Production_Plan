@@ -29,7 +29,7 @@
 
     /* Để phần nội dung không bị che bởi sidebar */
     .main-content {
-      margin-left: 00px; /* đúng bằng chiều rộng sidebar */
+      margin-left: 100px; /* đúng bằng chiều rộng sidebar */
       overflow-y: auto;
     }
   </style>
@@ -255,7 +255,21 @@
                 </a>
               </li>
 
-                            <li class="nav-item">
+              <li class="nav-item">
+                <a href="{{ route ('pages.plan.production.feedback_list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Phản hồi KHSX</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.plan.production.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Lệnh Sản Xuất</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
                 <a href="{{ route ('pages.plan.maintenance.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Kế Hoạch Bảo Trì</p>
@@ -359,18 +373,6 @@
                 </li>
               
               </ul>
-            </li>
-          @endif
-
-          <!-- Droplist Menu Phản hồi -->
-          @if (user_has_permission(session('user')['userId'], 'layout_feedback', 'boolean'))
-            <li class="nav-item">
-              <a href="{{ route ('pages.AuditTrail.list') }}" class="nav-link">
-                <i class="nav-icon fas fa fa-american-sign-language-interpreting"></i>
-                <p>
-                  Phản Hồi KHSX
-                </p>
-              </a>
             </li>
           @endif
 

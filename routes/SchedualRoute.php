@@ -34,10 +34,13 @@ use Illuminate\Support\Facades\Route;
                 Route::put('updateOrder', 'updateOrder')->name('updateOrder');
                 // Tạo Mã Chiến Dịch
                 Route::put('createManualCampain', 'createManualCampain')->name('createManualCampain');
+                Route::put('createManualCampainStage', 'createManualCampainStage')->name('createManualCampainStage');
                 Route::put('createAutoCampain', 'createAutoCampain')->name('createAutoCampain');
+                Route::put('DeleteAutoCampain', 'DeleteAutoCampain')->name('DeleteAutoCampain');
                 Route::put('createOrderPlan', 'createOrderPlan')->name('createOrderPlan');
                 Route::put('DeActiveOrderPlan', 'DeActiveOrderPlan')->name('DeActiveOrderPlan');
 
+                
                 // Sắp Lịch Tư Động //
                 Route::post('scheduleAll', 'scheduleAll')->name('scheduleAll');
                 Route::put('getInforSoure','getInforSoure')->name('getInforSoure');
