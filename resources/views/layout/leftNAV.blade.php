@@ -16,16 +16,27 @@
       z-index: 999;
       transition: background-color 0.1s;
     }
+
+    /* Giữ sidebar cố định bên trái */
+    .sidebar {
+      position: fixed;
+      top: 0px;
+      left: 0;
+      height: 100vh; /* chiếm toàn bộ chiều cao trình duyệt */
+      overflow-y: auto; /* nếu menu dài vẫn có thể cuộn riêng */
+      z-index: 1000; /* nằm trên các phần khác */
+    }
+
+    /* Để phần nội dung không bị che bởi sidebar */
+    .main-content {
+      margin-left: 00px; /* đúng bằng chiều rộng sidebar */
+      overflow-y: auto;
+    }
   </style>
   
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
 
-    <!-- Brand Logo -->
-    <a href="{{ route ('pages.general.home')}}" class="brand-link container d-flex justify-content-center align-items-center">
-      <img src="{{ asset('img/iconstella.svg') }}"
-           alt="AdminLTE Logo"
-           style="opacity: .8 ; max-width:43px; hight: auto">
-    </a>
+   
 
    <!-- Sidebar user (optional) -->
     {{-- <div class="user-panel mt-3 pb-3 mb-3 container d-flex justify-content-center align-items-center">
@@ -34,6 +45,13 @@
 
     <!-- Sidebar -->
     <div class="sidebar" >
+
+       <!-- Brand Logo -->
+    <a href="{{ route ('pages.general.home')}}" class="brand-link container d-flex justify-content-center align-items-center">
+      <img src="{{ asset('img/iconstella.svg') }}"
+           alt="AdminLTE Logo"
+           style="opacity: .8 ; max-width:43px; hight: auto">
+    </a>
 
       <!-- Sidebar Menu -->
       <nav class="mt-2" >
@@ -301,14 +319,14 @@
                   <p>Lịch Sử Thay Đổi Lịch</p>
                 </a>
               </li>
-
+              @if (user_has_permission(session('user')['userId'], 'layout_finised', 'boolean'))
               <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.finised.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Xác Nhận Hoàn Thành</p>
                 </a>
               </li>
-            
+              @endif
             </ul>
           </li>
 
@@ -346,14 +364,14 @@
 
           <!-- Droplist Menu Phản hồi -->
           @if (user_has_permission(session('user')['userId'], 'layout_feedback', 'boolean'))
-          <li class="nav-item">
-            <a href="{{ route ('pages.AuditTrail.list') }}" class="nav-link">
-              <i class="nav-icon fas fa fa-american-sign-language-interpreting"></i>
-              <p>
-                Phản Hồi KHSX
-              </p>
-            </a>
-          </li>
+            <li class="nav-item">
+              <a href="{{ route ('pages.AuditTrail.list') }}" class="nav-link">
+                <i class="nav-icon fas fa fa-american-sign-language-interpreting"></i>
+                <p>
+                  Phản Hồi KHSX
+                </p>
+              </a>
+            </li>
           @endif
 
           <!-- roplist Trang Thái Sản Xuất-->
