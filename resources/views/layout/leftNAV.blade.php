@@ -20,7 +20,7 @@
     .sidebar {
       position: fixed;
       top: 0px;
-      left: 15px;
+      left: 0px;
       height: 100vh; /* chiếm toàn bộ chiều cao trình duyệt */
       overflow-y: auto; /* nếu menu dài vẫn có thể cuộn riêng */
       z-index: 1000; /* nằm trên các phần khác */
