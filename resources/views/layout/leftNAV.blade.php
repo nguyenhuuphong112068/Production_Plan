@@ -16,12 +16,11 @@
       z-index: 999;
       transition: background-color 0.1s;
     }
-
     /* Giữ sidebar cố định bên trái */
     .sidebar {
       position: fixed;
       top: 0px;
-      left: 0;
+      left: 15px;
       height: 100vh; /* chiếm toàn bộ chiều cao trình duyệt */
       overflow-y: auto; /* nếu menu dài vẫn có thể cuộn riêng */
       z-index: 1000; /* nằm trên các phần khác */
@@ -32,15 +31,17 @@
       margin-left: 100px; /* đúng bằng chiều rộng sidebar */
       overflow-y: auto;
     }
+
+
   </style>
-  
+
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
 
-   
+
 
    <!-- Sidebar user (optional) -->
     {{-- <div class="user-panel mt-3 pb-3 mb-3 container d-flex justify-content-center align-items-center">
-      
+
     </div> --}}
 
     <!-- Sidebar -->
@@ -67,7 +68,7 @@
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
-            
+
             <ul class="nav nav-treeview">
               <li class="nav-item">
                  <a href="{{ route('switch', ['production_code' => 'PXV1', 'redirect' => url()->current()]) }}" class="nav-link">
@@ -95,8 +96,8 @@
                   <i class="far fa-circle nav-icon {{ session('user')['production_code'] == "PXTN" ? "text-danger":""}}" ></i>
                   <p>PXTN</p>
                 </a>
-              </li> 
-              
+              </li>
+
               <li class="nav-item">
                   <a href="{{ route('switch', ['production_code' => 'PXDN', 'redirect' => url()->current()])}}" class="nav-link">
                   <i class="far fa-circle nav-icon {{ session('user')['production_code'] == "PXDN" ? "text-danger":""}}"></i>
@@ -105,8 +106,8 @@
               </li>
             </ul>
           </li>
-          
-      
+
+
           <!-- Droplist Menu Dữ Liệu Gốc  -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
@@ -116,7 +117,7 @@
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
-            
+
             <ul class="nav nav-treeview">
               <li class="nav-item">
                 <a href="{{ route ('pages.materData.productName.list') }}" class="nav-link">
@@ -137,29 +138,29 @@
                   <i class="far fa-circle nav-icon"></i>
                   <p>Dạng Bào Chế</p>
                 </a>
-              </li> 
-              
+              </li>
+
               <li class="nav-item">
                 <a href="{{ route ('pages.materData.Unit.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Đơn Vị Tính</p>
                 </a>
               </li>
-              
+
               <li class="nav-item">
                 <a href="{{ route ('pages.materData.Market.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Thị Trường</p>
                 </a>
               </li>
-              
+
               <li class="nav-item">
                 <a href="{{ route ('pages.materData.Specification.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Qui Cách Sản Phẩm</p>
                 </a>
               </li>
-              
+
               {{-- <li class="nav-item">
                 <a href="{{ route ('pages.materData.Instrument.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
@@ -177,13 +178,13 @@
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-newspaper"></i>
               <p>
-                Danh Mục 
+                Danh Mục
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
-            
+
             <ul class="nav nav-treeview">
-              
+
               <li class="nav-item">
                 <a href="{{ route ('pages.category.intermediate.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
@@ -211,13 +212,13 @@
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-chart-line"></i>
               <p>
-                Định Mức 
+                Định Mức
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
-            
+
             <ul class="nav nav-treeview">
-              
+
               <li class="nav-item">
                 <a href="{{ route ('pages.quota.production.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
@@ -238,16 +239,16 @@
             <!-- Droplist Kế Hoạch-->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
-              
+
               <i class="nav-icon fas fa-file-import"></i>
               <p>
                 Kế Hoạch
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
-            
+
             <ul class="nav nav-treeview">
-              
+
               <li class="nav-item">
                 <a href="{{ route ('pages.plan.production.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
@@ -288,7 +289,7 @@
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
-            
+
             <ul class="nav nav-treeview">
 
               <li class="nav-item">
@@ -355,7 +356,7 @@
                   <i class="right fas fa-angle-left"></i>
                 </p>
               </a>
-              
+
               <ul class="nav nav-treeview">
 
                 <li class="nav-item">
@@ -371,7 +372,7 @@
                     <p> Tồn BTP Thực Tế </p>
                   </a>
                 </li>
-              
+
               </ul>
             </li>
           @endif
@@ -380,7 +381,7 @@
           @if (user_has_permission(session('user')['userId'], 'layout_status', 'boolean'))
             <li class="nav-item">
               <a href="{{ route ('pages.status.index') }}" class="nav-link">
-                
+
                 <i class="nav-icon fas fa fa-recycle"></i>
                 <p>
                   Trang Thái Sản Xuất
@@ -399,7 +400,7 @@
                   <i class="right fas fa-angle-left"></i>
                 </p>
               </a>
-              
+
               <ul class="nav nav-treeview">
 
                 <li class="nav-item">
@@ -422,7 +423,7 @@
                     <p> Công Đoạn Sản Xuất  </p>
                   </a>
                 </li>
-              
+
               </ul>
             </li>
           @endif
@@ -449,7 +450,7 @@
                   <i class="right fas fa-angle-left"></i>
                 </p>
               </a>
-              
+
               <ul class="nav nav-treeview">
                 <li class="nav-item">
                   <a href="{{ route ('pages.User.user.list') }}" class="nav-link">
@@ -498,7 +499,7 @@
 
         </ul>
 
-  
+
       </nav>
 
       <button onclick="scrollToTop()" id="backToTopBtn" title="Trở về đầu trang" class = "btn btn-success">
