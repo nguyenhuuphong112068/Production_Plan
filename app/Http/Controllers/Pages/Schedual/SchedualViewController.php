@@ -33,6 +33,7 @@ class SchedualViewController extends Controller
                 ->whereBetween('stage_plan.start', [$fromDate, $toDate])
                 ->where('stage_plan.active', 1)->where ('stage_plan.stage_code', $stage_code)
                 ->where('stage_plan.deparment_code', $production)->where('stage_plan.finished', 0)->whereNotNull('stage_plan.start')
+                ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
                 ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
