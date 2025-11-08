@@ -25,6 +25,7 @@ class SchedualStepController extends Controller
 
             // Lấy dữ liệu stage_plan + filter trước khi get()
             $datas = DB::table('stage_plan')
+                ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
                 ->leftJoin('room', 'stage_plan.resourceId' ,'room.id')
                 ->leftJoin('plan_master',  'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id',  'finished_product_category.id')
@@ -74,6 +75,7 @@ class SchedualStepController extends Controller
                 ->groupBy('plan_master_id');
  
             $datas_only_parkaging = DB::table('stage_plan')
+                ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
                 ->leftJoin('room', 'stage_plan.resourceId' ,'room.id')
                 ->leftJoin('plan_master',  'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id',  'finished_product_category.id')
