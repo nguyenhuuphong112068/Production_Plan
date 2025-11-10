@@ -114,6 +114,8 @@ class ProductionPlanController extends Controller
                 ]);
         }
 
+
+
         public function history(Request $request) {
                 //dd ($request->all());
                 $histories = DB::table('plan_master_history')
@@ -151,9 +153,9 @@ class ProductionPlanController extends Controller
                  return response()->json($source_material_list);
         }
 
-       public function store(Request $request){
+        public function store(Request $request){
                //dd ($request->all());
-        $validator = Validator::make($request->all(), [
+                $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
                         'plan_list_id'   => 'required',
                         'batch' => 'required',
@@ -288,6 +290,7 @@ class ProductionPlanController extends Controller
                         ]);
                         $i++;
                 }
+
                 return redirect()->back()->with('success', 'Đã thêm thành công!');
         }
 
@@ -583,7 +586,6 @@ class ProductionPlanController extends Controller
 
         }
 
-
         public function deActive(Request $request){
                
                 $reason = $request->deactive_reason;
@@ -637,7 +639,6 @@ class ProductionPlanController extends Controller
                 return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }
 
-        
         public function send(Request $request){
                 
                 $exists = DB::table('stage_plan')->where('plan_list_id', $request->plan_list_id)->exists();
@@ -856,11 +857,12 @@ class ProductionPlanController extends Controller
         }
 
         public function updateInput(Request $request){
+               
                 DB::table('plan_master')
                         ->where('id', $request->id)
                         ->update([
                                 $request->name => $request->updateValue
-                ]);
+                        ]);
                 return response()->json(['success' => true]);
         }
 
@@ -917,10 +919,137 @@ class ProductionPlanController extends Controller
         
                 session()->put(['title'=> 'PHẢN HỒI KẾ HOẠCH SẢN XUẤT THÁNG']);
         
-                return view('pages.plan.production.feedback_list',[
+                return view('pages.plan.production.feedback_plan_list',[
                         'datas' => $datas 
                 ]);
         }
 
+        public function open_feedback(Request $request){
+                
+               $datas = DB::table('plan_master')
+                ->select(
+                        'plan_master.*',
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.finished_product_code',
+                        'product_name.name',
+                        'market.code as market',
+                        'specification.name as specification',
+                        'finished_product_category.batch_qty',
+                        'finished_product_category.unit_batch_qty',
+                        'finished_product_category.deparment_code',
+                        'source_material.name as source_material_name',
+                        'stage_plan.end as end'
+                )
+                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                ->leftJoin('stage_plan', function ($join) use ($request) {
+                        $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                        ->where('stage_plan.stage_code', 7)
+                        ->where('stage_plan.active', 1)
+                        ->where('stage_plan.plan_list_id', '=', $request->plan_list_id)
+                        ->where('stage_plan.deparment_code', '=', session('user')['production_code']);
+                })
+                ->where('plan_master.plan_list_id', $request->plan_list_id)
+                ->where('plan_master.active', 1)
+                ->where('only_parkaging', 0)
+                ->orderBy('expected_date', 'asc')
+                ->orderBy('level', 'asc')
+                ->orderBy('batch', 'asc')
+                ->get();
+
+                
+
+
+                $production  =  session('user')['production_name'];
+
+                session()->put(['title'=> "Phản Hồi $request->name - $production"]);
+
+                return view('pages.plan.production.feedback_list',[
+                        'datas' => $datas, 
+                        'plan_list_id' => $request->plan_list_id,
+                        'send'=> $request->send??1,
+                ]);
+        }
+
+
+        public function accept_expected_date(Request $request){
+               
+                DB::table('plan_master')->where('id', $request->id)->update([
+                        "expected_date" => $request->new_expected_date,
+                        'prepared_by' => session('user')['fullName'],
+                        'updated_at' => now(),
+                ]);
+
+                // Lấy dữ liệu gốc từ plan_master
+                $plan = DB::table('plan_master')->where('id', $request->id)->first();
+                
+                // Tìm version cao nhất hiện tại trong history
+                $lastVersion = DB::table('plan_master_history')
+                        ->where('plan_master_id', $request->id)
+                        ->max('version');
+
+                $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+
+                DB::table('plan_master_history')->insert([
+                        'plan_master_id' => $plan->id,
+                        'plan_list_id' => $plan->plan_list_id,
+                        'product_caterogy_id' => $plan->product_caterogy_id,
+                        'version' => $newVersion,
+
+                        'level' => $plan->level,
+                        'batch' => $plan->batch,
+                        'expected_date' => $request->new_expected_date,
+                        'is_val' => $plan->is_val,
+                        'after_weigth_date' => $plan->after_weigth_date,
+                        'after_parkaging_date' => $plan->after_parkaging_date,
+                        'material_source_id' => $plan->material_source_id,
+                        'percent_parkaging' => $plan->percent_parkaging,
+                        'only_parkaging' => $plan->only_parkaging,
+                        "number_parkaging" => $plan->number_parkaging,
+                        'note' => $plan->note,
+                        'reason' => "Chấp nhận ngày dự kiến KCS: $request->new_expected_date",
+                        'deparment_code' => $plan->deparment_code,
+
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        ]);
+
+                return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công!']);
+        }
+
+        public function all_feedback(Request $request){
+
+                $dataToUpdate = [];
+                if (isset($request->en_feedback)){
+                        $dataToUpdate = [
+                               'has_punch_die_mold' => $request->has_punch_die_mold == "on" ? 1:0,
+                               'en_feedback' => $request->en_feedback ,
+                        ];
+                }else if (isset($request->qa_feedback)){
+                        $dataToUpdate = [       
+                                'actual_record' => $request->actual_record == "on" ? 1:0,
+                                'has_BMR' => $request->has_BMR == "on" ? 1:0,
+                                'en_feedback' => $request->qa_feedback
+                        ];
+                }else if (isset($request->qc_feedback)){
+                       $dataToUpdate = [       
+                                'qc_feedback' => $request->qc_feedback
+                        ];
+                }else if (isset($request->pro_feedback)){
+                       $dataToUpdate = [       
+                                'pro_feedback' => $request->pro_feedback
+                        ];
+                }
+                
+                DB::table('plan_master')
+                ->where('plan_list_id', $request->plan_list_id)
+                ->update($dataToUpdate);
+
+                return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
+        }
 
 }

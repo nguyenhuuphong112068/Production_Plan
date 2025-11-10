@@ -32,7 +32,7 @@
       overflow-y: auto;
     }
 
-
+  
   </style>
 
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
@@ -263,12 +263,12 @@
                 </a>
               </li>
 
-              <li class="nav-item">
+              {{-- <li class="nav-item">
                 <a href="{{ route ('pages.plan.production.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Lệnh Sản Xuất</p>
                 </a>
-              </li>
+              </li> --}}
 
               <li class="nav-item">
                 <a href="{{ route ('pages.plan.maintenance.list') }}" class="nav-link">
