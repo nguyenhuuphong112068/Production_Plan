@@ -169,6 +169,7 @@
                                 <div> {{ $data->market }} </div>
                                 <div> {{ $data->specification }} </div>
                             </td>
+
                             <td>
                                 <input type= "date" class="updateInput" name="expected_date"  value="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }} {{ $auth_update }}>
                             </td>
@@ -181,7 +182,7 @@
                                     4 => 'background-color: #4caf50; color: white;', // xanh lá
                                 ];
                             @endphp
-                            {{-- style="text-align: center; vertical-align: middle;" --}}
+                           
                             <td class="text-center "> 
                                 <span
                                     style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
@@ -257,7 +258,6 @@
                             </td>
 
                             <td class="text-center align-middle">
-
                                 <form class="form-deActive" action="{{ route('pages.plan.production.deActive') }}"
                                     method="post">
                                     @csrf
@@ -284,7 +284,6 @@
                                             <i class="fas fa-unlock"></i>
                                         </button>
                                     @endif
-
                                 </form>
 
                             </td>

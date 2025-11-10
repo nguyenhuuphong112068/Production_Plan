@@ -21,7 +21,6 @@ Route::prefix('/plan')
             // các hàm xử lý plan_list
             Route::post('create_plan_list','create_plan_list')->name('create_plan_list');
 
-
             // các hàm xử lý plan_master
             Route::get('open','open')->name('open');
             Route::post('store','store')->name('store');
@@ -38,10 +37,10 @@ Route::prefix('/plan')
             Route::post('first_batch','first_batch')->name('first_batch');
             Route::post('get_last_id','get_last_id')->name('get_last_id');
 
-            //feedBack
-
             Route::get('feedback_list','feedback_list')->name('feedback_list');
             Route::get('open_feedback','open_feedback')->name('open_feedback');
+            Route::post('accept_expected_date','accept_expected_date')->name('accept_expected_date');
+            Route::post('all_feedback','all_feedback')->name('all_feedback');
 
 
     });
