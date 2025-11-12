@@ -1,10 +1,9 @@
 <!-- Modal -->
-<div class="modal fade " id="Modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
+<div class="modal fade" id="Modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
 
-        <form action="{{ route('pages.status.store') }}" method="POST">
+        <form action="{{ route('pages.status_HPLC.import') }}" method="POST" enctype="multipart/form-data">
             @csrf
-
             <div class="modal-content">
                 <div class="modal-header">
                     <a href="{{ route('pages.general.home') }}">
@@ -23,180 +22,35 @@
                 <div class="modal-body">
 
                     <div class="form-group">
-                        <label for="name">Phòng Sản Xuất</label>
-                        <input type="text" class="form-control" name="room_name" readonly
-                            value="{{ old('room_name') }}">
+                        <label>Chọn file Excel:</label>
+                        <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls">
                     </div>
 
-                     <div class="form-group">
-                       <label for="in_production">Sản Phẩm Đang Sản Xuất</label>
-                        <input class="form-control" list="in_production_list" name="in_production" id="in_production">
-                        <datalist id="in_production_list">
-                            <option value="Không Sản Xuất">
-                            <option value="Đang Vệ Sinh">
-                            <option value="Bảo Trì">
-                            <option value="Máy Hư">
-                            @foreach ($planWaitings as $plan)
-                                <option value="{{ $plan->name . '_' . $plan->batch }}">
+                    @php 
+                        $date = [
+                            1 => \Carbon\Carbon::now()->subDays(3)->format('d-m-Y'),
+                            2 => \Carbon\Carbon::now()->subDays(2)->format('d-m-Y'),
+                            3 => \Carbon\Carbon::now()->subDays(1)->format('d-m-Y'),
+                            4 => \Carbon\Carbon::now()->format('d-m-Y'),
+                            5 => \Carbon\Carbon::now()->addDays(1)->format('d-m-Y'),
+                            6 => \Carbon\Carbon::now()->addDays(2)->format('d-m-Y'),
+                            7 => \Carbon\Carbon::now()->addDays(3)->format('d-m-Y'),
+                            8 => \Carbon\Carbon::now()->addDays(4)->format('d-m-Y'),
+                            9 => \Carbon\Carbon::now()->addDays(5)->format('d-m-Y'),
+                        ];
+                    @endphp
+
+                    <div class="form-group">
+                        <label>Ngày UpLoad:</label>
+                        <select class="select" data-placeholder="Select a State" id ="room_id"
+                                style="width: 100%;" name="date_upload" required>
+                            <option value="" >-- Chọn Ngày Cập Nhật --</option>
+                            @foreach ($date as $item)
+                                <option value="{{ $item }}" >
+                                    {{ $item }}
+                                </option>
                             @endforeach
-                        </datalist>
-                    </div>
-
-
-                    <div class="card card-success">
-                        <div class="card-header">
-                            <h3 class="card-title">Trạng Thái Phòng Sản Xuẩt</h3>
-                        </div>
-                        <div class="card-body">
-                            <!-- Minimal style -->
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <!-- radio -->
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status2" name="status" value = "1" checked>
-                                            <label for="Status2">
-                                                Đang Sản Xuất
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status3" name="status" value = "2">
-                                            <label for="Status3">
-                                                Đang Vệ Sinh
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status5" name="status" value = "4">
-                                            <label for="Status5">
-                                                Máy Hư
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div> 
-                                <div class="col-md-6">  
-
-                                     <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status1" name="status" value = "0">
-                                            <label for="Status1">
-                                                Không Sản Xuất
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status4" name="status" value = "3">
-                                            <label for="Status4">
-                                                Đang Bảo Trì
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- <div class="col-md-4">
-                                    <!-- radio -->
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="sheet1" name="sheet" value = "1" checked>
-                                            <label for="sheet1">
-                                                Đầu Ca
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="sheet2" name="sheet" value = "2">
-                                            <label for="sheet2">
-                                                Giữa Ca
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="sheet3" name="sheet" value = "3">
-                                            <label for="sheet3">
-                                                Cuối Ca
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="sheet4" name="sheet" value = "0">
-                                            <label for="sheet4">
-                                                NA
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-4">
-                                    <!-- radio -->
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="step_batch1" name="step_batch" value = "1" checked>
-                                            <label for="step_batch1">
-                                                Đầu Lô
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="step_batch2" name="step_batch" value = "2">
-                                            <label for="step_batch2">
-                                                Giữa Lô
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="step_batch3" name="step_batch" value = "3">
-                                            <label for="step_batch3">
-                                                Cuối Lô
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group clearfix">
-                                        <div class="icheck-primary d-inline">
-                                            <input type="radio" id="step_batch4" name="step_batch" value = "0">
-                                            <label for="step_batch4">
-                                                NA
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                </div> --}}
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label>Thời Gian Bắt Đầu</label>
-                            <div class="input-group">
-                                <input type="datetime-local" class="form-control" name = "start" value="{{ old('start', \Carbon\Carbon::now()->format('Y-m-d\TH:i')) }}" >
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label>Dự Kiến Kết Thúc</label>
-                            <div class="input-group">
-                                <input type="datetime-local" class="form-control" name = "end"  value="{{ old('end', \Carbon\Carbon::now()->format('Y-m-d\TH:i')) }}">
-                            </div>
-                        </div>
+                        </select>
                     </div>
 
                     <div class="row mt-3">
@@ -209,34 +63,63 @@
                         @enderror
                     </div>
 
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label>Thời Hạn Thông báo</label>
+                            <div class="input-group">
+                                <input type="datetime-local" class="form-control" name = "durability" value="{{ old('durability', \Carbon\Carbon::now()->format('Y-m-d\TH:i')) }}" >
+                            </div>
+                        </div>
+                    </div>
+
 
                 </div>
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-                    <button type="submit" class="btn btn-primary">
-                        Lưu
-                    </button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
-
-{{-- //Show modal nếu có lỗi validation --}}
-@if ($errors->createErrors->any())
+{{-- Hiển thị lỗi từ validation hoặc session --}}
+@if ($errors->any() || session('error'))
     <script>
         $(document).ready(function() {
-            $('#Modal').modal('show');
+            $('#Modal').modal('show'); // Tự động mở lại modal
         });
     </script>
+
+    <div class="alert alert-danger mt-3">
+        @if (session('error'))
+            {{ session('error') }}
+        @else
+            {{ $errors->first() }}
+        @endif
+    </div>
 @endif
 
+
 <script>
-    $('.select2').select2({
-    tags: true,
-    placeholder: "-- Chọn hoặc nhập --",
-    allowClear: true
+    document.getElementById('excel_file').addEventListener('change', function() {
+        const file = this.files[0];
+        const fileNameElement = document.getElementById('fileName');
+
+    if (file) {
+        if (file.name !== "Upload_DashBoard_QC.xlsx") {
+            alert("⚠️ Vui lòng chọn đúng file: Upload_DashBoard_QC.xlsx");
+            this.value = ''; // ❌ Xóa file đã chọn
+            fileNameElement.textContent = ''; // Xóa hiển thị tên
+            return;
+        }
+
+        // ✅ Nếu đúng tên file, hiển thị tên ra giao diện
+        fileNameElement.textContent = "Tên file đã chọn: " + file.name;
+    } else {
+        fileNameElement.textContent = '';
+    }
+
     });
 </script>

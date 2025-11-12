@@ -1,0 +1,34 @@
+Cấu hình Server ban đầu
+https://www.digitalocean.com/community/tutorials/how-to-install-nginx-on-ubuntu-20-04
+https://cloudfly.vn/techblog/cach-cai-dat-va-bao-mat-phpmyadmin-voi-nginx-tren-may-chu-ubuntu-2004
+
+Các phần mềm cần cài trên server:
+
+- OS: Ubuntu server, current version. Cấu hình cạc mạng để có thể điều khiển qua Putty.
+- Mysql + thiết lập bảo mật: {
+	+Tao user
+}
+- php: php8.3-fpm.pid  php8.3-fpm.sock  php-fpm.sock
+- php myAdmin: {
+	cấu hình : sudo vi /etc/nginx/sites-available/default
+}
+-Cầu hình server tại  /var/www/QCPlan/index.html
+			/etc/nginx/sites-enabled/Domain {file cấu hình)
+
+Deploy Projetc on /var/www/QCPlan/
+
+- Cai đặt Composer
+
+-copy project len server :scp -o StrictHostKeyChecking=no App-laravel.zip qa2_phongnh@192.168.56.100:/var/www/QCPlan
+
+Cài đặt dependencies : composer install --no-dev --optimize-autoloader
+
+
+
+https://themewagon.com/theme-price/free/
+
+
+Laravel Login-LogOut: Brezee
+
+user_ubutu: qa2_phongnh
+password: phong@123

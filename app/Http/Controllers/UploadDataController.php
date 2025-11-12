@@ -13,6 +13,7 @@ class UploadDataController extends Controller
     {
         return view('upload.form_load');
     }
+
     public function import(Request $request){
         // ⚙️ Cho phép chạy lâu và dùng nhiều RAM hơn
         ini_set('max_execution_time', 300); // 5 phút
@@ -242,6 +243,16 @@ class UploadDataController extends Controller
                     'active' => 1,
                     'created_by' => 'Auto-generate'
                 ],
+            ],
+            
+            'hplc_instrument' => [
+                'columns' => [
+                    'id',
+                    'code',
+                    'name',
+        
+                ],
+                'extra' => [],
             ],
         ];
 

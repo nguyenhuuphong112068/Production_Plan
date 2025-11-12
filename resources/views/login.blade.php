@@ -99,7 +99,7 @@
                 <span class="toggle-link" onclick="toggleForms(true)">Đổi mật khẩu?</span>
             </form>
             <a  href="/status" class="toggle-link"> Xem Trang Thái Phòng Sản Xuất </a>
-            <a  href="/status_HPLC" class="toggle-link"> Xem Trang Thái Kiểm Nghiệm - HPLC  </a>
+            <a  href="/status_HPLC" class="toggle-link"> Xem Trang Thái Kiểm Nghiệm - HPLC</a>
 
             <!-- ✅ Form đổi mật khẩu -->
             <form id="changePassForm" action="{{ route('changePassword') }}" method="POST" style="display: none;">
