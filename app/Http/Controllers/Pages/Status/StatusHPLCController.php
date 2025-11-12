@@ -1,318 +1,199 @@
 <?php
 
 namespace App\Http\Controllers\Pages\Status;
-
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+
+
 
 class StatusHPLCController extends Controller
 {
        
 
-        public function show(){
-                $production =  session('user')['production_code']??"PXV1";
-
-                $now = Carbon::now();
-
-                $general_notication = DB::table('room_status_notification')
-                        ->where ('deparment_code', $production)
-                        ->where ('durability', '>=' , $now)
-                        ->orderBy('id','desc')->first();
-
-                $latest = DB::table('room_status as rs2')
-                ->join('room as r2', 'rs2.room_id', '=', 'r2.id')
-                ->select('r2.production_group', DB::raw('MAX(rs2.created_at) as latest_created_at'))
-                ->groupBy('r2.production_group');
-
-                $lasestupdate = DB::table('room_status as rs')
-                ->join('room as r', 'rs.room_id', '=', 'r.id')
-                ->joinSub($latest, 'latest', function ($join) {
-                        $join->on('r.production_group', '=', 'latest.production_group')
-                        ->on('rs.created_at', '=', 'latest.latest_created_at');
-                })
-                ->select(
-                        'r.deparment_code',
-                        'r.production_group',
-                        DB::raw("CONCAT(rs.created_by, '_', DATE_FORMAT(rs.created_at, '%Y-%m-%d %H:%i:%s')) as info")
-                )
-                ->where('r.deparment_code', $production)
-                ->orderBy('r.production_group', 'asc')
-                ->pluck('info', 'r.production_group');
-
-
-
-                $datas = DB::table('room')
-                        ->leftJoin('stage_plan', function ($join) use ($now) {
-                                $join->on('room.id', '=', 'stage_plan.resourceId')
-                                ->where('stage_plan.active', true)
-                                ->where('stage_plan.finished', false)
-                                ->where(function ($q) use ($now) {
-                                        $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
-                                        ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
-                                });
-                        })
-                        ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-                        ->leftJoinSub(
-                                DB::table('room_status as rs1')
-                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch', 'rs1.start as start_realtime', 'rs1.end as end_realtime',  'rs1.status', 'rs1.in_production', 'rs1.notification')
-                                ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
-                                'rs', function ($join) {
-                                $join->on('room.id', '=', 'rs.room_id');
-                                }
-                        )
-                        ->where('room.deparment_code', $production)
-                        ->select(
-                                'room.stage_code',
-                                'room.stage',
-                                'room.production_group',	
-                                'stage_plan.title',
-                                'stage_plan.start',
-                                'stage_plan.end',
-                                'stage_plan.end',	
-                                'stage_plan.title_clearning',
-                                'stage_plan.start_clearning',
-                                'stage_plan.end_clearning',
-                                DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
-                                DB::raw("COALESCE(rs.status, 0) as status"),
-                                DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
-                                DB::raw("COALESCE(rs.notification, 'NA') as notification"),
-                                //DB::raw("COALESCE(rs.sheet, '') as sheet"),
-                                //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
-                                DB::raw("COALESCE(rs.start_realtime, '') as start_realtime"),
-                                DB::raw("COALESCE(rs.end_realtime, '') as end_realtime"),
-                        )
-                        ->orderBy('room.group_code')
-                        ->orderBy('room.order_by')
-                ->get();
-
-
-                session()->put(['title'=> "TRANG THÁI KIỂM NGHIỆM - HPLC $production"]);
-                //dd ($lasestupdate);
-                return view('pages.status_HPLC.dataTableShow',[
-                        'datas' =>  $datas,
-                        'production' =>  $production,
-                        'general_notication' =>  $general_notication,
-                        'lasestupdate' => $lasestupdate
-                ]);
-        }
-
-        public function next(Request $request){
-              
-                if ($request->production == "PXV1"){
-                     $production_code = "PXV2";
-                }elseif ($request->production == "PXV2"){
-                     $production_code = "PXVH";
-                }elseif ($request->production == "PXVH"){
-                     $production_code = "PXTN";
-                }elseif ($request->production == "PXTN"){
-                     $production_code = "PXDN";
-                }else {
-                        $production_code = "PXV1";
-                }
-
-                $request->session()->put('user', [
-                        'production_code' => $production_code
-                ]);
-                                
-                session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production_code"]);
-                // Nếu có redirect URL thì quay lại đó
-                return redirect()->back();
-        }
-
-        public function index(){
+        public function show(Request $request){
                
                 $production =  session('user')['production_code']??"PXV1";
-                $now = Carbon::now();
-                                $latest = DB::table('room_status as rs2')
-                ->join('room as r2', 'rs2.room_id', '=', 'r2.id')
-                ->select('r2.production_group', DB::raw('MAX(rs2.created_at) as latest_created_at'))
-                ->groupBy('r2.production_group');
 
-                $lasestupdate = DB::table('room_status as rs')
-                ->join('room as r', 'rs.room_id', '=', 'r.id')
-                ->joinSub($latest, 'latest', function ($join) {
-                        $join->on('r.production_group', '=', 'latest.production_group')
-                        ->on('rs.created_at', '=', 'latest.latest_created_at');
-                })
-                ->select(
-                        'r.deparment_code',
-                        'r.production_group',
-                        DB::raw("CONCAT(rs.created_by, '_', DATE_FORMAT(rs.created_at, '%Y-%m-%d %H:%i:%s')) as info")
-                )
-                ->where('r.deparment_code', $production)
-                ->orderBy('r.production_group', 'asc')
-                ->pluck('info', 'r.production_group');
+                $firstDate = Carbon::parse ($request->firstDate?? Carbon::now());
 
-                //dd ($datas);
                 $general_notication = DB::table('room_status_notification')
-                        ->where ('deparment_code', $production)
+                        ->where ('deparment_code', "QC")
                         ->where ('durability', '>=' , now())
-                        ->orderBy('id', 'desc')->first();
+                        ->orderBy('id','desc')->first();
 
-                $datas = DB::table('room')
-                        ->leftJoin('stage_plan', function ($join) use ($now) {
-                                $join->on('room.id', '=', 'stage_plan.resourceId')
-                                ->where('stage_plan.active', true)
-                                ->where('stage_plan.finished', false)
-                                ->where(function ($q) use ($now) {
-                                        $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
-                                        ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
-                                });
+                $general_notication = DB::table('room_status_notification')
+                        ->where ('deparment_code', "QC")
+                        ->where ('durability', '>=' , Carbon::now())
+                        ->orderBy('id','desc')->first();
+
+                $datas = DB::table('hplc_instrument')
+                        ->leftJoin('hplc_status', function ($join) use ($firstDate) {
+                                $join->on('hplc_instrument.id', '=', 'hplc_status.ins_id')
+                                ->whereIn(DB::raw('DATE(hplc_status.start_time)'), [
+                                        $firstDate->toDateString(),
+                                        $firstDate->copy()->addDays(1)->toDateString(),
+                                ]);
                         })
-                        ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
-                        ->leftJoinSub(
-                                DB::table('room_status as rs1')
-                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch',  'rs1.status', 'rs1.in_production', 'rs1.notification')
-                                ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
-                                'rs', function ($join) {
-                                $join->on('room.id', '=', 'rs.room_id');
-                                }
-                        )
-                        ->where('room.deparment_code', $production)
-                        ->select(
-                                'room.stage_code',
-                                'room.stage',
-                                'room.production_group',	
-                                'room.order_by',
-                                'room.group_code',
-                                'stage_plan.title',
-                                'stage_plan.start',
-                                'stage_plan.end',
-                                'stage_plan.end',	
-                                'stage_plan.title_clearning',
-                                'stage_plan.start_clearning',
-                                'stage_plan.end_clearning',
-                                DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
-                                DB::raw("COALESCE(rs.status, 0) as status"),
-                                DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
-                                DB::raw("COALESCE(rs.notification, 'NA') as notification"),
-                                //DB::raw("COALESCE(rs.sheet, '') as sheet"),
-                                //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
-                                DB::raw("COALESCE(rs.room_id, '') as room_id")
-                        )
-                        ->orderBy('room.group_code')
-                        ->orderBy('room.order_by')
-                ->get();
+                        ->select('hplc_instrument.id as ins_id', 'hplc_instrument.code', 'hplc_status.*')
+                        ->orderBy('hplc_status.start_time', 'desc') // sắp xếp theo thời gian mới nhất
+                        ->orderBy('hplc_status.id', 'desc')
+                        ->get()
+                        ->groupBy(function($item) {
+                                // nhóm theo ngày
+                                return $item->start_time
+                                ? \Carbon\Carbon::parse($item->start_time)->toDateString()
+                                : 'no_data';
+                        })
+                        ->map(function($itemsByDate) {
+                                // Với mỗi ngày, nhóm theo ins_id
+                                return $itemsByDate->groupBy('ins_id')
+                                ->map(function($itemsByIns) {
+                                        // Lấy 2 bản ghi mới nhất mỗi ins_id trong ngày
+                                        return $itemsByIns->take(2);
+                                })
+                                ->flatMap(function($items) {
+                                        return $items; // trả về mảng phẳng các bản ghi
+                                });
+                });
 
-                $planWaitings = $this->getPlanWaiting ($production, 5);
+
+                $datas = $datas->map(function ($items) {
+                        return $items->sortBy('id'); 
+                });
+                //dd($firstDate, $datas);
+                                                        
+        
+                session()->put(['title'=> "TRANG THÁI KIỂM NGHIỆM - HPLC $production"]);
                 
-                //dd ($planWaiting);
-
-                session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
-              
-                return view('pages.status.list',[
+                return view('pages.status_HPLC.dataTableShow',[
                         'datas' =>  $datas,
-                        'production' =>  $production,
-                        'planWaitings' =>  $planWaitings,
-                        'stage' => $this->stage,
                         'general_notication' =>  $general_notication,
-                        'lasestupdate' => $lasestupdate
-                        
+                        'firstDate' => $firstDate,
+                        'general_notication' =>  $general_notication,
                 ]);
         }
 
-        public function getPlanWaiting($production, $stage_code){
-  
-                // 2️⃣ Lấy danh sách plan_waiting (chỉ 1 query)
-                $plan_waiting = DB::table("stage_plan as sp")
-                        ->whereNotNull('sp.start')
-                        ->where('sp.active', 1)
-                        ->where('sp.finished', 0)
-                        ->where('sp.stage_code', $stage_code)
-                        ->where('sp.deparment_code', $production)
-                        ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
-                        ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-                        ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                        ->select( 
-                        'sp.order_by',         
-                        'plan_master.batch',
-                        'product_name.name'
-                        )
-                        ->distinct()
-                        ->orderBy('product_name.name', 'asc')
-                        ->get();
-                      
-                return $plan_waiting;
-        }
 
-        public function store (Request $request) {
-               //dd ($request->all());
-                // $sheet = [
-                //         '0' => 'NA',
-                //         '1' => 'Đầu Ca',
-                //         '2' => 'Giữa Ca',
-                //         '3' => 'Cuối Ca',
-                // ];
 
-                // $step_batch = [
-                //         '0' => 'NA',
-                //         '1' => 'Đầu Lô',
-                //         '2' => 'Giữa Lô',
-                //         '3' => 'Cuối Lô',
-                // ];
+        public function import(Request $request){
+              
 
-                $validator = Validator::make($request->all(), [
-                    'room_name' => 'required',
-                    'in_production' => 'required',
-                    'status' => 'required',
-                    'notification'=> 'required',
-                ],[
-                    'room_name.required' => 'Chọn phòng sản xuất', 
-                    'in_production.required' => 'Chọn sản phẩm đang sản xuất', 
-                    'status.required' => 'Chọn trạng thái phòng sản xuất hiện tại.',  
-                    'notification.required'=> 'Vui lòng nhập thông báo, Nếu không có nhập NA',   
-                ]);
+                if ($request->hasFile('excel_file') && $request->filled('date_upload')) {
+                        $path = $request->file('excel_file')->getRealPath();
+                        $spreadsheet = IOFactory::load($path);
 
-                if ($validator->fails()) {
-                    return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
+                        $sheetNames = $spreadsheet->getSheetNames();
+
+                        if (!in_array($request->date_upload, $sheetNames)) {
+                        return back()->withErrors([
+                                'sheet' => "❌ Sheet '{$request->date_upload}' không tồn tại trong file Excel."
+                        ]);
+                        }
+
+                        // Chọn sheet
+                        $spreadsheet->setActiveSheetIndexByName($request->date_upload);
+                        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+
+                        // Lấy tất cả ins_id từ bảng hplc_instrument
+                        $allInsIds = DB::table('hplc_instrument')->pluck('id', 'code');
+
+                        // Gom dữ liệu Excel theo ins_id
+                        $excelDataByIns = [];
+                        foreach ($rows as $index => $row) {
+                        if ($index < 7) continue; // bỏ dòng tiêu đề
+                        if (empty($row['D'])) continue;
+
+                        $code = $row['B'] ?? null;
+                        if (!$code || !isset($allInsIds[$code])) continue;
+
+                        $ins_id = $allInsIds[$code];
+                        $excelDataByIns[$ins_id][] = [
+                                'ins_id'      => $ins_id,
+                                'column'      => $row['C'] ?? null,
+                                'analyst'     => $row['D'] ?? null,
+                                'sample_name' => $row['E'] ?? null,
+                                'batch_no'    => $row['F'] ?? null,
+                                'stage'       => $row['G'] ?? null,
+                                'test'        => $row['H'] ?? null,
+                                'notes'       => $row['I'] ?? null,
+                                'remark'      => $row['J'] ?? null,
+                                'start_time'  => $this->combineDateTime($row['K'] ?? null, $row['L'] ?? null),
+                                'end_time'    => $this->combineDateTime($row['M'] ?? null, $row['N'] ?? null),
+                                'created_at'  => now(),
+                                'updated_at'  => now(),
+                        ];
+                        }
+
+                        // Chèn dữ liệu Excel đầu tiên
+                        $allDataToInsert = [];
+                        foreach ($excelDataByIns as $ins_id => $datas) {
+                        $allDataToInsert = array_merge($allDataToInsert, $datas);
+                        }
+
+                        if (!empty($allDataToInsert)) {
+                        DB::table('hplc_status')->insert($allDataToInsert);
+                        }
+
+                        // Đảm bảo mỗi ins_id có 2 dòng
+                        foreach ($allInsIds as $ins_id) {
+                        $dataForIns = $excelDataByIns[$ins_id] ?? [];
+
+                        // Nếu có ít hơn 2 dòng, thêm null để đủ 2
+                        while (count($dataForIns) < 2) {
+                                $dataForIns[] = [
+                                'ins_id'      => $ins_id,
+                                'column'      => null,
+                                'analyst'     => null,
+                                'sample_name' => null,
+                                'batch_no'    => null,
+                                'stage'       => null,
+                                'test'        => null,
+                                'notes'       => null,
+                                'remark'      => null,
+                                'start_time'  => Carbon::parse($request->date_upload)->format('Y-m-d'),
+                                'end_time'    => null,
+                                'created_at'  => now(),
+                                'updated_at'  => now(),
+                                ];
+                        }
+
+                        // Nếu đã có bản ghi từ Excel, chỉ chèn thêm các bản ghi null còn thiếu
+                        $nullRows = array_slice($dataForIns, count($excelDataByIns[$ins_id] ?? []));
+                        if (!empty($nullRows)) {
+                                DB::table('hplc_status')->insert($nullRows);
+                        }
+                        }
+
                 }
 
-                $room_code = explode ("-", $request->room_name)[0];
-                $room_id =  DB::table('room')->where ('code', $room_code)->value ('id');
+                if ($request->notification) {
 
-                
-                DB::table('room_status')->insert([
-                        'room_id' => $room_id,
-                        'status' => $request->status,
-                        //'sheet' => $sheet[$request->status],
-                        //'step_batch' => $step_batch[$request->status],
-                        'start' => $request->start,
-                        'end' => $request->end,
-                        'in_production' => $request->in_production,
+                        DB::table('room_status_notification')->insert([
                         'notification' => $request->notification,
-                        'created_by' => session('user')['fullName'] ?? 'Admin',
-                        'created_at' => now(),
-                ]);
-                return redirect()->back()->with('success', 'Đã thêm thành công!');    
-        }
-
-        public function getLastStatusRoom (Request $request){
-                ob_clean();
-                $result = DB::table('room_status')
-                ->where('room_id', $request->room_id)
-                ->orderByDesc('id')
-                ->first();
-
-                return response()->json([
-                        'last_row' => $result
-                ]);                
-        }
-
-        public function store_general_notification (Request $request){
-                
-                DB::table('room_status_notification')->insert([
-                        'notification' => $request->notification??null,
                         'group_code' => 0,
                         'durability' => $request->durability??now(),
-                        'deparment_code' => session('user')['production_code'],
-                        'created_by' => session('user')['fullName'],
+                        'deparment_code' => "QC",
+                        'created_by' => null,
                         'created_at' => now(),
-                ]);
-                
-                return redirect()->back()->with('success', 'Đã thêm thành công!');      
+                        ]);
+
+                }
+
+                return back()->with('success', '✅ Import dữ liệu thành công! Mỗi máy có đủ 2 dòng.');
+        }
+
+
+
+        private function combineDateTime($date, $time){
+        if (empty($date)) return null;
+        try {
+                return Carbon::parse(trim($date . ' ' . ($time ?? '00:00:00')));
+        } catch (\Exception $e) {
+                return null;
+        }
         }
 
 }

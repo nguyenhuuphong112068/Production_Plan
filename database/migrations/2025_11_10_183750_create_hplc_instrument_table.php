@@ -22,33 +22,21 @@ return new class extends Migration
         });
 
     Schema::create('hplc_status', function (Blueprint $table) {
-        $table->id(); 
+
+        $table->id();
         $table->unsignedTinyInteger('ins_id')->nullable();
+        $table->string('column', 20)->nullable(); 
+        $table->string('analyst', 100)->nullable(); 
+        $table->string('sample_name', 255)->nullable();
+        $table->string('batch_no', 100)->nullable(); 
+        $table->string('stage', 100)->nullable(); 
+        $table->string('test', 100)->nullable(); 
+        $table->string('notes', 255)->nullable(); 
+        $table->string('remark', 255)->nullable(); 
+        $table->dateTime('start_time')->nullable();
+        $table->dateTime('end_time')->nullable();
+        $table->timestamps();
 
-        // Sample 1
-        $table->string('sample_1')->nullable();
-        $table->datetime('sample_start_1')->nullable();
-        $table->datetime('sample_end_1')->nullable();
-
-        $table->string('actual_1')->nullable();
-        $table->datetime('actual_start_1')->nullable();
-        $table->datetime('actual_end_1')->nullable();
-        $table->string('analyst_1', 100)->nullable();
-        $table->timestamp('update_time_1')->nullable();
-
-        // Sample 2
-        $table->string('sample_2')->nullable();
-        $table->datetime('sample_start_2')->nullable();
-        $table->datetime('sample_end_2')->nullable();
-
-        $table->string('actual_2')->nullable();
-        $table->datetime('actual_start_2')->nullable();
-        $table->datetime('actual_end_2')->nullable();
-        $table->string('analyst_2', 100)->nullable();
-        $table->timestamp('update_time_2')->nullable();
-
-        $table->string('created_by', 100)->nullable();
-        $table->timestamp('created_at')->nullable();
     });
 
     }
