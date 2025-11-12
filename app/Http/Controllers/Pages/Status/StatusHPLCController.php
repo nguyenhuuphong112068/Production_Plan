@@ -66,7 +66,7 @@ class StatusHPLCController extends Controller
                 //dd($firstDate, $datas);
                                                         
         
-                session()->put(['title'=> "TRANG THÁI KIỂM NGHIỆM - HPLC $production"]);
+                session()->put(['title'=> "TRANG THÁI KIỂM NGHIỆM - HPLC - QC1"]);
                 
                 return view('pages.status_HPLC.dataTableShow',[
                         'datas' =>  $datas,
