@@ -43,7 +43,7 @@
                     <div class="form-group">
                         <label>Ngày UpLoad:</label>
                         <select class="select" data-placeholder="Select a State" id ="room_id"
-                                style="width: 100%;" name="date_upload" required>
+                                style="width: 100%;" name="date_upload" >
                             <option value="" >-- Chọn Ngày Cập Nhật --</option>
                             @foreach ($date as $item)
                                 <option value="{{ $item }}" >
@@ -71,7 +71,11 @@
                             </div>
                         </div>
                     </div>
-
+                    
+                    <div class="mb-3 mt-3 password-wrapper">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password"  name="passWord" class="form-control" required>
+                    </div>
 
                 </div>
 
@@ -122,4 +126,25 @@
     }
 
     });
+</script>
+
+<script>
+    // 🔁 Chuyển form login <-> đổi mật khẩu
+  
+
+    // 👁‍🗨 Toggle hiển thị mật khẩu
+    function togglePassword(inputId, icon) {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.remove("bi-eye-slash");
+            icon.classList.add("bi-eye");
+        } else {
+            input.type = "password";
+            icon.classList.remove("bi-eye");
+            icon.classList.add("bi-eye-slash");
+        }
+    }
+
+
 </script>

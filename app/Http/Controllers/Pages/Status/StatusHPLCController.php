@@ -15,7 +15,7 @@ class StatusHPLCController extends Controller
 
         public function show(Request $request){
                
-                $production =  session('user')['production_code']??"PXV1";
+               
 
                 $firstDate = Carbon::parse ($request->firstDate?? Carbon::now());
 
@@ -79,7 +79,18 @@ class StatusHPLCController extends Controller
 
 
         public function import(Request $request){
-              
+             // dd ($request->all());
+                if (!$request->passWord || $request->passWord != "Stell@QC" ) {
+                         return back()->withErrors([
+                                'sheet' => "❌ PassWord Không Chính Xác, Vui Lòng Nhập Lại!."
+                        ]);
+                }
+
+                if ($request->hasFile('excel_file') && !$request->date_upload) {
+                         return back()->withErrors([
+                                'sheet' => "❌ Vui Lòng Chọn Ngày cần Upload !."
+                        ]);
+                }
 
                 if ($request->hasFile('excel_file') && $request->filled('date_upload')) {
                         $path = $request->file('excel_file')->getRealPath();
@@ -182,7 +193,7 @@ class StatusHPLCController extends Controller
 
                 }
 
-                return back()->with('success', '✅ Import dữ liệu thành công! Mỗi máy có đủ 2 dòng.');
+                return back()->with('success', "✅ Import dữ liệu phân công ngày $request->date_upload thành công!");
         }
 
 

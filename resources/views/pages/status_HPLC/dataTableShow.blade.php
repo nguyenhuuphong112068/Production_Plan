@@ -150,6 +150,26 @@
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
+@if (session('success'))
+    <div id="success-message" class="alert alert-success text-center" style="position: fixed; top: 20px; left: 10%; transform: translateX(-50%); z-index: 9999;">
+        {{ session('success') }}
+    </div>
+
+    <script>
+        // Tự ẩn thông báo sau 1 giây
+        setTimeout(() => {
+            const msg = document.getElementById('success-message');
+            if (msg) {
+                msg.style.transition = 'opacity 0.5s ease';
+                msg.style.opacity = '0';
+                setTimeout(() => msg.remove(), 500);
+            }
+        }, 3000);
+    </script>
+@endif
+
+
+
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
