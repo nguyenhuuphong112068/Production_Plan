@@ -168,6 +168,13 @@ class SchedualController extends Controller
                         'plan_master.is_val',
                         'plan_master.level',
                         'intermediate_category.quarantine_total',
+                        DB::raw("CASE
+                                        WHEN sp.stage_code = 7 THEN 
+                                        CONCAT(finished_product_category.intermediate_code, '_', finished_product_category.finished_product_code)
+                                        ELSE 
+                                        CONCAT(finished_product_category.intermediate_code, '_NA')
+                                END as process_code
+                                "),
                         DB::raw("
                                 CASE
                                 WHEN sp.stage_code IN (1,2) THEN
@@ -191,13 +198,12 @@ class SchedualController extends Controller
                                         THEN intermediate_category.quarantine_coating * 24
                                         ELSE intermediate_category.quarantine_coating END
                                 ELSE 0
-                                END as quarantine_time_limit
-                        ")
+                                END as quarantine_time_limit")
                         )
                         ->orderBy('sp.plan_master_id')
                         ->orderBy('sp.stage_code')
                 ->get();
-
+                
                 if ($event_plans->isEmpty()) {
                         return collect();
                 }
@@ -311,7 +317,7 @@ class SchedualController extends Controller
                                 'is_clearning' => false,
                                 'finished' => $plan->finished,
                                 'level' => $plan->level,
-                                //'direction' => $plan->scheduling_direction,
+                                'process_code' => $plan->process_code,
                                 'keep_dry' => $plan->keep_dry,
                                 'tank' => $plan->tank,
                                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
@@ -334,7 +340,8 @@ class SchedualController extends Controller
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => true,
-                                'finished' => $plan->finished
+                                'finished' => $plan->finished,
+                                'process_code' => $plan->process_code,
                                 ]);
                         }
                         }
@@ -962,9 +969,9 @@ class SchedualController extends Controller
                                         ->insert([
  
                                         'stage_plan_id' => $realId,
-                                        'plan_list_id' => $update_row->plan_list_id,
-                                        'plan_master_id' => $update_row->plan_master_id,
-                                        'product_caterogy_id' => $update_row->product_caterogy_id,
+                                        //'plan_list_id' => $update_row->plan_list_id,
+                                        //'plan_master_id' => $update_row->plan_master_id,
+                                        //'product_caterogy_id' => $update_row->product_caterogy_id,
                                         'campaign_code' => $update_row->campaign_code,
                                         'code' => $update_row->code,
                                         'order_by' => $update_row->order_by,

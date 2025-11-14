@@ -125,7 +125,7 @@ const ScheduleTest = () => {
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
-          
+         
         }
         
         switch (data.production) {
@@ -548,8 +548,40 @@ const ScheduleTest = () => {
     }
   };
 
+  
+  const timeToMilliseconds = (time) => {
+    const [h, m] = time.split(":").map(Number);
+    return (h * 3600 + m * 60) * 1000;
+  };
+
+  const isInSundayToMondayWindow = (date) => {
+  const day = date.getDay();     // 0 = Sunday, 1 = Monday
+  const hour = date.getHours();  // 0–23
+  const minutes = date.getMinutes();
+
+  // Tạo thời điểm 06:00
+  const timeInMinutes = hour * 60 + minutes;
+  const sixAM = 6 * 60;
+
+  // Chủ Nhật từ 06:00 → hết ngày
+  if (day === 0 && timeInMinutes >= sixAM) {
+    return true;
+  }
+
+  // Thứ Hai từ 00:00 → 06:00
+  if (day === 1 && timeInMinutes < sixAM) {
+    return true;
+  }
+
+  return false;
+  };
+
+
+
+
   /// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+    
     if (!authorization) {
       info.revert();
       return false;
@@ -558,25 +590,66 @@ const ScheduleTest = () => {
     const draggedEvent = info.event;
     const delta = info.delta;
     const calendarApi = info.view.calendar;
+    
 
     // Nếu chưa được chọn thì tự động chọn
     if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+      info.revert();
       toggleEventSelect(draggedEvent);
+      
     }
 
     // Nếu đã chọn thì xử lý nhóm
     if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
       info.revert();
-
+    
       // Gom thay đổi tạm
       const batchUpdates = [];
      
       selectedEvents.forEach(sel => {
         const event = calendarApi.getEventById(sel.id);
+        
+        /// kiểm tra lại định mức
         if (event) {
+
+          let process_code =  event._def.extendedProps.process_code +"_"+ event._def.resourceIds[0]
+          let stage_code = event._def.extendedProps.stage_code
+          let is_clearning = event._def.extendedProps.is_clearning
+          let quota_event = quota.find(q => q.process_code == process_code && q.stage_code == stage_code);
+          let newEnd = null;
+
+          if (!quota_event){
+              Swal.fire({
+                icon: 'warning',
+                title: 'Thiếu Định Mức',
+                timer: 1000,
+                showConfirmButton: false,
+              });
+              info.revert();
+              return false;
+          } 
+            
+
           const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
-          const newStart = new Date(event.start.getTime() + offset);
-          const newEnd = new Date(event.end.getTime() + offset);
+          const event_start = event.start.getTime()
+          const newStart = new Date(event_start + offset);
+          
+          let quota_event_m_time_seconds = timeToMilliseconds(quota_event.m_time)
+          if (is_clearning){
+            if(event._def.title == "VS-II"){
+                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
+              }else{
+                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C1_time)
+              }
+               
+          }
+            
+            newEnd = new Date(event_start + offset + quota_event_m_time_seconds);
+           
+            //return
+            if (isInSundayToMondayWindow (newEnd)){
+                    newEnd = new Date(event_start + offset + quota_event_m_time_seconds + 86400000)
+            }
 
           event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
 

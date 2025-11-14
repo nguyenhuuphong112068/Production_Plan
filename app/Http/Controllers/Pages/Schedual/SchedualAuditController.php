@@ -12,10 +12,10 @@ class SchedualAuditController extends Controller
         public function index(Request $request){
                 //dd ($request->all());
 
-                $fromDate = $request->from_date ?? Carbon::now()->toDateString();
-                $toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
-                $stage_code = $request->stage_code??3;
-                $production = session('user')['production_code'];
+            $fromDate = $request->from_date ?? Carbon::now()->toDateString();
+            $toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
+            $stage_code = $request->stage_code??3;
+            $production = session('user')['production_code'];
       
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
             $datas = DB::table('stage_plan_history as h')
@@ -33,9 +33,10 @@ class SchedualAuditController extends Controller
                     'finished_product_category.unit_batch_qty',
                     'market.name as name'
                 )
+                ->leftJoin('stage_plan as sp', 'h.stage_plan_id', '=', 'sp.id')
                 ->leftJoin('room', 'h.resourceId', '=', 'room.id')
-                ->leftJoin('plan_master', 'h.plan_master_id', '=', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'h.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                 ->where('h.version', '>=', 1)
@@ -49,7 +50,7 @@ class SchedualAuditController extends Controller
                         ->groupBy('stage_plan_id')
                         ->havingRaw('COUNT(*) > 1');
                 })
-                ->orderBy('h.plan_master_id')
+                //->orderBy('h.plan_master_id')
                 ->orderBy('h.version', 'desc')
                 ->get();
 
