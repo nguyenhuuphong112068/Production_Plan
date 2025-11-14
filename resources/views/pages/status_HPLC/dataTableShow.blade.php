@@ -4,7 +4,7 @@
 @section('mainContent')
     @php
         $now = now();
-        $dates = [$firstDate->toDateString(), $firstDate->copy()->addDay()->toDateString()];
+        $dates = [$firstDate->toDateString()];
         $allCodes = collect($datas)->flatten(1)->pluck('code')->unique();
     @endphp
 
@@ -44,15 +44,16 @@
                                 Mã Thiết Bị
                             </th>
 
-                            <th colspan="4" class="text-center align-middle" >
+                            <th colspan="6" class="text-center align-middle" >
                                 <button id="prevDay" class="btn btn-lg text-start"><i class="fa fa-angle-double-left"></i></button>
-                                {{ \Carbon\Carbon::parse($firstDate)->format('d/m/Y') }} 
+                                {{ \Carbon\Carbon::parse($firstDate)->format('d/m/Y') }}
+                                <button id="nextDay" class="btn btn-lg"><i class="fa fa-angle-double-right"></i></button> 
                             </th>
 
-                            <th colspan="4" class="text-center align-middle">
+                            {{-- <th colspan="4" class="text-center align-middle">
                                 {{ \Carbon\Carbon::parse($firstDate)->addDays(1)->format('d/m/Y') }}
                                <button id="nextDay" class="btn btn-lg"><i class="fa fa-angle-double-right"></i></button>
-                            </th>
+                            </th> --}}
 
                         </tr>
                         <tr>
@@ -60,10 +61,8 @@
                             <th class="text-center align-middle">TG KN Mẫu 1</th>
                             <th class="text-center align-middle">Phân Công Mẫu 2</th>
                             <th class="text-center align-middle">TG KN Mẫu 2</th>
-                            <th class="text-center align-middle">Phân Công Mẫu 1</th>
-                            <th class="text-center align-middle">TG KN Mẫu 1</th>
-                            <th class="text-center align-middle">Phân Công Mẫu 2</th>
-                            <th class="text-center align-middle">TG KN Mẫu 2</th>
+                            <th class="text-center align-middle">Phân Công Mẫu 3</th>
+                            <th class="text-center align-middle">TG KN Mẫu 3</th>
                         </tr>
                     </thead>
 
@@ -99,13 +98,12 @@
                                     {{-- Mẫu 1 --}}
                                     <td class="multi-line" style="background-color: {{ $getBgColor($first) }}">
                                         @if ($first && $first->sample_name)
-                                            💊: {{ $first->sample_name ?? 'NA' }} - {{ $first->batch_no ?? 'NA' }} -
-                                            {{ $first->stage ?? 'NA' }}<br>
-                                            🧪: {{ $first->test ?? 'NA' }}<br>
-                                            🌡️: {{ $first->column ?? 'NA' }}<br>
-                                            👩‍🔬: {{ $first->analyst ?? 'NA' }}<br>
-                                            ⚠️: {{ $first->notes ?? '' }}<br>
-                                            📝: {{ $first->remark ?? '' }}
+                                            Mẫu: {{ $first->sample_name ?? 'NA' }} - {{ $first->batch_no ?? 'NA' }} -{{ $first->stage ?? 'NA' }}<br>
+                                            Chỉ Tiêu: {{ $first->test ?? 'NA' }}<br>
+                                            Cột: {{ $first->column ?? 'NA' }}<br>
+                                            KNV: {{ $first->analyst ?? 'NA' }}<br>
+                                            Lưu Ý: {{ $first->notes ?? '' }}<br>
+                                            Ghi Chú: {{ $first->remark ?? '' }}
                                         @endif
                                     </td>
                                     <td style="background-color: {{ $getBgColor($first) }}">
@@ -118,13 +116,12 @@
                                     {{-- Mẫu 2 --}}
                                     <td class="multi-line" style="background-color: {{ $getBgColor($second) }}">
                                         @if ($second && $second->sample_name)
-                                            💊: {{ $second->sample_name ?? 'NA' }} - {{ $second->batch_no ?? 'NA' }} -
-                                            {{ $second->stage ?? 'NA' }}<br>
-                                            🧪: {{ $second->test ?? 'NA' }}<br>
-                                            🌡️: {{ $second->column ?? 'NA' }}<br>
-                                            👩‍🔬: {{ $second->analyst ?? 'NA' }}<br>
-                                            ⚠️: {{ $second->notes ?? '' }}<br>
-                                            📝: {{ $second->remark ?? '' }}
+                                            Mẫu: {{ $second->sample_name ?? 'NA' }} - {{ $second->batch_no ?? 'NA' }} - {{ $second->stage ?? 'NA' }}<br>
+                                            Chỉ Tiêu: {{ $second->test ?? 'NA' }}<br>
+                                            Cột: {{ $second->column ?? 'NA' }}<br>
+                                            KNV: {{ $second->analyst ?? 'NA' }}<br>
+                                            Lưu Ý: {{ $second->notes ?? '' }}<br>
+                                            Ghi Chú: {{ $second->remark ?? '' }}
                                         @endif
                                     </td>
                                     <td style="background-color: {{ $getBgColor($second) }}">
@@ -133,6 +130,26 @@
                                             {{ \Carbon\Carbon::parse($second->end_time)->format('H:i d/m') }}
                                         @endif
                                     </td>
+
+                                    
+                                    {{-- Mẫu 2 --}}
+                                    <td class="multi-line" style="background-color: {{ $getBgColor($second) }}">
+                                        @if ($second && $second->sample_name)
+                                            Mẫu: {{ $second->sample_name ?? 'NA' }} - {{ $second->batch_no ?? 'NA' }} - {{ $second->stage ?? 'NA' }}<br>
+                                            Chỉ Tiêu: {{ $second->test ?? 'NA' }}<br>
+                                            Cột: {{ $second->column ?? 'NA' }}<br>
+                                            KNV: {{ $second->analyst ?? 'NA' }}<br>
+                                            Lưu Ý: {{ $second->notes ?? '' }}<br>
+                                            Ghi Chú: {{ $second->remark ?? '' }}
+                                        @endif
+                                    </td>
+                                    <td style="background-color: {{ $getBgColor($second) }}">
+                                        @if ($second && $second->end_time)
+                                            {{ \Carbon\Carbon::parse($second->start_time)->format('H:i d/m') }}<br>
+                                            {{ \Carbon\Carbon::parse($second->end_time)->format('H:i d/m') }}
+                                        @endif
+                                    </td>
+
 
 
                                 @endforeach

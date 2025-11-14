@@ -386,7 +386,6 @@ const ScheduleTest = () => {
     handleViewChange(null, null);
   };
 
-
   /// Tô màu các event trùng khớp
   const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
     const calendarApi = calendarRef.current?.getApi();
@@ -549,14 +548,12 @@ const ScheduleTest = () => {
     }
   };
 
-
   /// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
     if (!authorization) {
       info.revert();
       return false;
     }
-
 
     const draggedEvent = info.event;
     const delta = info.delta;
