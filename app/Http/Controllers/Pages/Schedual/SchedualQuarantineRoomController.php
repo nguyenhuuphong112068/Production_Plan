@@ -13,8 +13,8 @@ class SchedualQuarantineRoomController extends Controller
         public function index(Request $request){
                 //dd ($request->all());
 
-                $fromDate = $request->from_date ?? Carbon::now()->toDateString();
-                $toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
+                //$fromDate = $request->from_date ?? Carbon::now()->toDateString();
+                //$toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
                 $stage_code = $request->stage_code??3;
                 $production = session('user')['production_code'];
       
@@ -39,7 +39,6 @@ class SchedualQuarantineRoomController extends Controller
                     ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                     ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                     ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                   
                     ->where('sp.stage_code', $stage_code)
                     ->where('sp.deparment_code', $production)
                     ->whereNotNull('sp.start')
