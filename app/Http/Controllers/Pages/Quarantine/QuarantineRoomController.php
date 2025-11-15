@@ -108,49 +108,63 @@ class QuarantineRoomController extends Controller
     }
 
     public function index_actual(Request $request) {
+       
 
-    
-        
-    $datas = DB::table('stage_plan as t')
-        ->leftJoin('stage_plan as t2', function ($join) {
-            $join->on('t2.code','=','t.nextcessor_code');
-        })
-        ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
-        ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
-        ->leftJoin('product_name','fc.product_name_id','product_name.id')
-        ->leftJoin('quarantine_room','t.quarantine_room_code','quarantine_room.code')
-        ->whereNotNull('t.start')
-        ->whereNotNull('t.yields')
-        ->where('t2.start','>',now())
-        ->where('t.active', 1)
-        ->where('t.finished', 1)
-        ->where('quarantine_room.deparment_code', session('user')['production_code'])
-        ->select(
-            'fc.finished_product_code',
-            'fc.intermediate_code',
-            't.plan_master_id',
-            'product_name.name as product_name',
-            'plan_master.batch',
-            't.quarantine_room_code',
-            'quarantine_room.name',
-            't.yields',
-            't.stage_code',
-            't2.stage_code as next_stage',
-            't2.start as next_start',
-        )
-        ->orderBy('t.plan_master_id')
-        ->orderBy('t.stage_code')
-        ->get()
-        ->groupBy('quarantine_room_code')
-        ->map(function ($items) {
-            $totalYields = $items->sum('yields');
+        // 1) Lấy toàn bộ dữ liệu gốc
+        $datasRaw = DB::table('stage_plan as t')
+            ->leftJoin('stage_plan as t2', function ($join) {
+                $join->on('t2.code','=','t.nextcessor_code');
+            })
+            ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
+            ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
+            ->leftJoin('product_name','fc.product_name_id','product_name.id')
+            ->leftJoin('quarantine_room','t.quarantine_room_code','quarantine_room.code')
+            ->leftJoin('room','t2.resourceId','room.id')
+            ->whereNotNull('t.start')
+            ->whereNotNull('t.yields')
+            ->where('t2.start','>',now())
+            ->where('t.active', 1)
+            ->where('t.finished', 1)
+            ->where('quarantine_room.deparment_code', session('user')['production_code'])
+            ->select(
+                'fc.finished_product_code',
+                'fc.intermediate_code',
+                't.plan_master_id',
+                'product_name.name as product_name',
+                'plan_master.batch',
+                't.quarantine_room_code',
+                'quarantine_room.name',
+                't.yields',
+                't.stage_code',
+                't2.stage_code as next_stage',
+                't2.start as next_start',
+                't2.resourceId as next_room_id',
+                'room.name as next_room'
+            )
+            ->orderBy('t.plan_master_id')
+            ->orderBy('t.stage_code')
+            ->get();
+
+
+        // 2) Group theo phòng (datas chính)
+        $datas = $datasRaw->groupBy('quarantine_room_code')->map(function ($items) {
+
             return [
                 'room_name' => $items->first()->name,
-                'total_yields' => $totalYields,
+                'total_yields' => $items->sum('yields'),
                 'details' => $items
             ];
         });
 
+
+        // 3) 🔥 SUM BY NEXT ROOM — tách hẳn ra
+        $sum_by_next_room = $datasRaw->groupBy('next_room_id')->map(function ($items) {
+            return $items->sum('yields');
+        });
+
+
+        
+        dd ($datasRaw);
         
 
         session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
