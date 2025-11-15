@@ -90,7 +90,7 @@ class SchedualFinisedController extends Controller
                         'start_clearning' => $request->start_clearning,
                         'end_clearning'   => $request->end_clearning,
                         'yields'   => $request->yields,
-                        //'quarantine_room_code'   => $request->quarantine_room_code,
+                        'note'   => $request->note??"NA",
                         'finished'        => 1,
                         'finished_by'   => session('user')['fullName'],
                         'finished_date'   => now(),

@@ -92,6 +92,7 @@
                                 {{ '(ĐVL)' }}
                             @endif
                         </th>
+                        <th>Ghi Chú</th>
                         <th>Phòng Biệt Trữ</th>
                         <th>Xác Nhận</th>
 
@@ -123,6 +124,9 @@
 
                             <td>
                                 {{ $data->yields }}
+                            </td>
+                            <td>
+                                {{ $data->note }}
                             </td>
 
                             <td>

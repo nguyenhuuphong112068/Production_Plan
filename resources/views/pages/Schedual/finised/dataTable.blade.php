@@ -22,6 +22,25 @@
         display: block;
         margin: auto;
     }
+
+    .updateInput {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        text-align: center;
+        height: 100%;
+        padding: 2px 4px;
+        box-sizing: border-box;
+    }
+
+  /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
+    .updateInput:focus {
+        border: 1px solid #007bff;
+        border-radius: 2px;
+        background-color: #fff;
+    }
+
 </style>
 
 <div class="content-wrapper">
@@ -94,7 +113,7 @@
                                 {{ '(ĐVL)' }}
                             @endif
                         </th>
-                        {{-- <th>Phòng Biệt Trữ</th> --}}
+                        <th>Ghi Chú</th>
                         <th>Xác Nhận</th>
 
 
@@ -164,18 +183,10 @@
 
                             </td>
 
-                            {{-- <td>
-
-                                <select class="form-control" name="quarantine_room_code">
-                                    @foreach ($quarantine_room as $item)
-                                        <option value="{{ $item->code }}"
-                                            {{ $data->quarantine_room_code == $item->code ? 'selected' : '' }}>
-                                            {{ $item->code }}
-                                        </option>
-                                    @endforeach
-                                </select>
-
-                            </td> --}}
+                            <td>
+                                <textarea  class="updateInput text-left" name="note" > {{ $data->note }} </textarea>
+                            
+                            </td>
 
 
                             <td class="text-center align-middle">
