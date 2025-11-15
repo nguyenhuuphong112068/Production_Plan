@@ -341,6 +341,14 @@
                   <p>Xác Nhận Hoàn Thành</p>
                 </a>
               </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.quarantine_room.index') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Xác Định Phòng BT</p>
+                </a>
+              </li>
+
               @endif
             </ul>
           </li>

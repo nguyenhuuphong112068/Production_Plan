@@ -114,8 +114,6 @@ class ProductionPlanController extends Controller
                 ]);
         }
 
-
-
         public function history(Request $request) {
                 //dd ($request->all());
                 $histories = DB::table('plan_master_history')
