@@ -158,12 +158,12 @@
 
 
       @else
-      @php
-           // Chia dữ liệu thành 2 phần đều nhau
-              $half = ceil(count($datas) / 2) - 1;
-              //dd (count($datas),$half);
-              $leftData = $datas->slice(0, $half);
-              $rightData = $datas->slice($half);
+        @php
+          // Chia dữ liệu thành 2 phần đều nhau
+          $half = ceil(count($datas) / 2) - 1;
+          //dd (count($datas),$half);
+          $leftData = $datas->slice(0, $half);
+          $rightData = $datas->slice($half);
         @endphp
         {{-- BẢNG TRÁI --}}
         <div class="col-md-6">
@@ -190,12 +190,10 @@
                           <div class="text-left text-red text-xl">
                             {{ $data->production_group }}
                           </div>
-
                           @php
-                                $info = $lasestupdate[$data->production_group] ?? '';
-                                [$user, $datetime] = explode('_', $info . '_'); // tránh lỗi nếu null
+                              $info = $lasestupdate[$data->production_group] ?? '';
+                              [$user, $datetime] = explode('_', $info . '_');
                           @endphp
-
                           <div class="text-right">
                             Người cập nhật: {{ $user ?? '' }} <br>
                             Thời gian cập nhật: {{ $datetime ? \Carbon\Carbon::parse($datetime)->format('H:i d/m/Y') : '' }}
@@ -214,6 +212,11 @@
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
                           case 4: $color = "#FF0000"; break;
                       }
+
+                      if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime)))
+                          $color = "#FF0000";
+                      endif
+
                   @endphp
                   <tr>
                     <td style="background-color: {{ $color }};" class ="multi-line" >
@@ -250,8 +253,12 @@
                       </div>
                     </td>
                     {{-- sp đang sx 1 --}}
-                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                            {{ $data->in_production}}
+                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">  
+                        @if ($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))
+                             {{ $data->in_production}}
+                        @else
+                            <div>KSX</div>
+                        @endif
                     </td>
 
                     <td style="max-width: 250px; overflow: hidden;">
@@ -328,6 +335,9 @@
                           case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
                           case 4: $color = "#FF0000"; break;
                       }
+                      if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime)))
+                          $color = "#FF0000";
+                      endif
                   @endphp
                   <tr>
                     <td style="background-color: {{ $color }};" class ="multi-line" >
@@ -365,7 +375,11 @@
                     </td>
                     {{-- sp đang sx 1 --}}
                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                        @if ($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))
                             {{ $data->in_production}}
+                        @else
+                            <div>-</div>
+                        @endif
                     </td>
 
                     <td style="max-width: 250px; overflow: hidden;">
