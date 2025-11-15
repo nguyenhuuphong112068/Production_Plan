@@ -54,12 +54,14 @@
                         <th>Mã Sản Phẩm</th>
                         <th>Sản Phẩm</th>
                         <th>Cở lô</th>
-                        <th>Số Lô</th>
+                       
                         <th>Ngày Dự Kiến KCS</th>
                         <th>Lô Thẩm Định</th>
                         <th>Phòng Sản Xuất</th>
                         <th>Thới Gian Sản Xuất</th>
                         <th>Thời Gian Vệ Sinh</th>
+                        <th>Sản Lượng TT</th>
+                        <th>Phòng BT</th>
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                     </tr>
@@ -75,7 +77,7 @@
                       </td>
                       <td>{{$data->title}}</td>
                       <td>{{$data->batch_qty . " " .  $data->unit_batch_qty}}</td>
-                      <td>{{$data->batch}}  </td>
+                      
                      
                       <td>
                           <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
@@ -88,7 +90,8 @@
                       <td> {{ $data->room_name ." - ". $data->room_code}} </td>
                       <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td>
                       <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }} </td>
-
+                      <td> {{ $data->yields}} {{$stageCode <=4?"Kg":"ĐVL"}}</td>
+                      <td> {{ $data->quarantine_room_code}}  </td>
                       <td> {{ $data->note}} </td>
 
                       <td>

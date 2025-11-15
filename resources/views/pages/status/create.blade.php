@@ -233,10 +233,10 @@
     </script>
 @endif
 
-<script>
+{{-- <script>
     $('.select2').select2({
     tags: true,
     placeholder: "-- Chọn hoặc nhập --",
     allowClear: true
     });
-</script>
+</script> --}}
