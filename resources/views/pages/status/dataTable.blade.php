@@ -194,9 +194,11 @@
                                         case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
                                         case 4: $color = "#FF0000"; break;
                                         }
-                                    // if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))){
-                                    //     $color = "#ffffff";
-                                    // } 
+                                    $color = (
+                                                !empty($data->start_realtime) &&
+                                                !empty($data->end_realtime) &&
+                                                $now->between($data->start_realtime, $data->end_realtime)
+                                            ) ? $color : "#ffffff";
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
@@ -315,9 +317,11 @@
                                         case 4: $color = "#FF0000"; break;
                                         }
 
-                                    // if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))){
-                                    //     $color = "#ffffff";
-                                    // } 
+                                    $color = (
+                                                !empty($data->start_realtime) &&
+                                                !empty($data->end_realtime) &&
+                                                $now->between($data->start_realtime, $data->end_realtime)
+                                            ) ? $color: "#ffffff";
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
