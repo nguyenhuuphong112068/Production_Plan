@@ -47,9 +47,7 @@
         </div>
 
     </div>
-    
 
-   
     <div class="row mt-1">
 
       @php $now = now();@endphp

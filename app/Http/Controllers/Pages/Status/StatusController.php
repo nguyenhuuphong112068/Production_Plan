@@ -160,6 +160,51 @@ class StatusController extends Controller
                         ->where ('durability', '>=' , now())
                         ->orderBy('id', 'desc')->first();
 
+                // $datas = DB::table('room')
+                //         ->leftJoin('stage_plan', function ($join) use ($now) {
+                //                 $join->on('room.id', '=', 'stage_plan.resourceId')
+                //                 ->where('stage_plan.active', true)
+                //                 ->where('stage_plan.finished', false)
+                //                 ->where(function ($q) use ($now) {
+                //                         $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
+                //                         ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
+                //                 });
+                //         })
+                //         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+                //         ->leftJoinSub(
+                //                 DB::table('room_status as rs1')
+                //                 ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch',  'rs1.status', 'rs1.in_production', 'rs1.notification')
+                //                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
+                //                 'rs', function ($join) {
+                //                 $join->on('room.id', '=', 'rs.room_id');
+                //                 }
+                //         )
+                //         ->where('room.deparment_code', $production)
+                //         ->select(
+                //                 'room.stage_code',
+                //                 'room.stage',
+                //                 'room.production_group',	
+                //                 'room.order_by',
+                //                 'room.group_code',
+                //                 'stage_plan.title',
+                //                 'stage_plan.start',
+                //                 'stage_plan.end',
+                //                 'stage_plan.end',	
+                //                 'stage_plan.title_clearning',
+                //                 'stage_plan.start_clearning',
+                //                 'stage_plan.end_clearning',
+                //                 DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
+                //                 DB::raw("COALESCE(rs.status, 0) as status"),
+                //                 DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
+                //                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
+                //                 //DB::raw("COALESCE(rs.sheet, '') as sheet"),
+                //                 //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
+                //                 DB::raw("COALESCE(rs.room_id, '') as room_id")
+                //         )
+                //         ->orderBy('room.group_code')
+                //         ->orderBy('room.order_by')
+                // ->get();
+                
                 $datas = DB::table('room')
                         ->leftJoin('stage_plan', function ($join) use ($now) {
                                 $join->on('room.id', '=', 'stage_plan.resourceId')
@@ -173,7 +218,7 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status as rs1')
-                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch',  'rs1.status', 'rs1.in_production', 'rs1.notification')
+                                ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch', 'rs1.start as start_realtime', 'rs1.end as end_realtime',  'rs1.status', 'rs1.in_production', 'rs1.notification')
                                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
                                 'rs', function ($join) {
                                 $join->on('room.id', '=', 'rs.room_id');
@@ -184,8 +229,6 @@ class StatusController extends Controller
                                 'room.stage_code',
                                 'room.stage',
                                 'room.production_group',	
-                                'room.order_by',
-                                'room.group_code',
                                 'stage_plan.title',
                                 'stage_plan.start',
                                 'stage_plan.end',
@@ -199,6 +242,8 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
                                 //DB::raw("COALESCE(rs.sheet, '') as sheet"),
                                 //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
+                                DB::raw("COALESCE(rs.start_realtime, '') as start_realtime"),
+                                DB::raw("COALESCE(rs.end_realtime, '') as end_realtime"),
                                 DB::raw("COALESCE(rs.room_id, '') as room_id")
                         )
                         ->orderBy('room.group_code')
@@ -209,7 +254,7 @@ class StatusController extends Controller
                 
                 //dd ($planWaiting);
 
-                session()->put(['title'=> "TRANG THÁI PHÒNG SẢN XUẤT $production"]);
+                session()->put(['title'=> "CẬP NHẬT TRANG THÁI PHÒNG SẢN XUẤT $production"]);
               
                 return view('pages.status.list',[
                         'datas' =>  $datas,
@@ -266,12 +311,12 @@ class StatusController extends Controller
                     'room_name' => 'required',
                     'in_production' => 'required',
                     'status' => 'required',
-                    'notification'=> 'required',
+                    //'notification'=> 'required',
                 ],[
                     'room_name.required' => 'Chọn phòng sản xuất', 
                     'in_production.required' => 'Chọn sản phẩm đang sản xuất', 
                     'status.required' => 'Chọn trạng thái phòng sản xuất hiện tại.',  
-                    'notification.required'=> 'Vui lòng nhập thông báo, Nếu không có nhập NA',   
+                    //'notification.required'=> 'Vui lòng nhập thông báo, Nếu không có nhập NA',   
                 ]);
 
                 if ($validator->fails()) {
@@ -290,8 +335,8 @@ class StatusController extends Controller
                         'start' => $request->start,
                         'end' => $request->end,
                         'in_production' => $request->in_production,
-                        'notification' => $request->notification,
-                        'created_by' => session('user')['fullName'] ?? 'Admin',
+                        'notification' => $request->notification??"NA",
+                        'created_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    

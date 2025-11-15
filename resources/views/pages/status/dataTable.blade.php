@@ -185,6 +185,7 @@
                                 @endif
 
                                 @php
+                               
                                     $current_stage = $data->production_group;
                                      switch ($data->status) {
                                         case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
@@ -193,6 +194,9 @@
                                         case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
                                         case 4: $color = "#FF0000"; break;
                                         }
+                                    // if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))){
+                                    //     $color = "#ffffff";
+                                    // } 
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
@@ -244,19 +248,18 @@
 
 
                                     {{-- sp đang sx 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        {{ $data->in_production }}
+                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">  
+                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null)  && $now->between($data->start_realtime, $data->end_realtime))
+                                            {{ $data->in_production}}
+                                        @else
+                                            <div>KSX</div>
+                                        @endif
                                     </td>
 
                                     <td style="max-width: 250px; overflow: hidden;">
-                                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
-                                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
-                                            </div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
-                                            </div>
+                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null) && $now->between($data->start_realtime, $data->end_realtime))
+                                            <div>{{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}</div>
+                                            <div>{{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}</div>
                                         @else
                                             <div>-</div>
                                         @endif
@@ -311,6 +314,10 @@
                                         case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
                                         case 4: $color = "#FF0000"; break;
                                         }
+
+                                    // if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))){
+                                    //     $color = "#ffffff";
+                                    // } 
                                 @endphp
                                 <tr>
                                     <td style="background-color: {{ $color }};">
@@ -363,18 +370,17 @@
 
                                     {{-- sp đang sx 1 --}}
                                     <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        {{ $data->in_production }}
+                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null)  && $now->between($data->start_realtime, $data->end_realtime))
+                                            {{ $data->in_production}}
+                                        @else
+                                            <div>-</div>
+                                        @endif
                                     </td>
 
                                     <td style="max-width: 250px; overflow: hidden;">
-                                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
-                                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
-                                            </div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
-                                            </div>
+                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null) && $now->between($data->start_realtime, $data->end_realtime))
+                                            <div>{{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}</div>
+                                            <div>{{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}</div>
                                         @else
                                             <div>-</div>
                                         @endif
