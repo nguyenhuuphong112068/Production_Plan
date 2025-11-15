@@ -203,7 +203,7 @@ class QuarantineRoomController extends Controller
 
     public function detail(Request $request) {
 
-        Log::info($request->all());
+        
         $detial = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
                 $join->on('t2.code','=','t.nextcessor_code');
