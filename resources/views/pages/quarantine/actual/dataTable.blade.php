@@ -14,7 +14,41 @@
               @endphp 
               <!-- /.card-Body -->
               <div class="card-body">
+                <!-- Sản Lượng thực tế phòng sx tiêp theo -->
+                <div class="card-body">
+                    <table id="data_table_instrument" class="table table-bordered table-striped">
+                        <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
+                            <tr>
+                                <th>STT</th>
+                                <th>Phòng Sản Xuất</th>
+                                <th>Tên Phòng</th>
+                                <th>sản Lương Thực Tế Công Đoạn trước</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                 @foreach ($details['details'] as $data)
+                                    <tr>
+                                        <td>{{ $loop->iteration }}</td>
+                                        <td>
+                                            {{ $data->stage_code <= 4 ? $data->intermediate_code : $data->finished_product_code }}
+                                        </td>
+                                        <td>{{ $data->product_name }}</td>
+                                        <td>{{ $data->batch }}</td>
+                                        <td>
+                                        {{ number_format($data->yields, 2) }}
+                                        {{ $data->stage_code <= 4 ? '(Kg)' : '(ĐVL)' }}
+                                        </td>
+                                        <td>{{ $stage_name[$data->next_stage] ?? '' }}</td>
+                                        <td>
+                                            {{ \Carbon\Carbon::parse($data->next_start)->format('d/m/Y H:i') }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                        </tbody>
+                    </table>
+                </div>
 
+                <!-- Sản Lượng thực tế đang lưu ở từng phòng biệt trữ -->
                 @foreach (collect($datas)->sortKeys() as $quarantine_room_code => $details)
                     <div class="card card-success mb-4">
                         <div class="card-header border-transparent">

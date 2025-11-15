@@ -49,7 +49,7 @@ const ScheduleTest = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [viewName, setViewName] = useState("resourceTimelineWeek");
   const [showRenderBadge, setShowRenderBadge] = useState(false);
-
+  const [workingSunday, setWorkingSunday] = useState(false);
 
   const [events, setEvents] = useState([]);
   const [resources, setResources] = useState([]);
@@ -64,13 +64,6 @@ const ScheduleTest = () => {
   const [production, setProduction] = useState("PXV1");
   const [currentPassword, setCurrentPassword] = useState(null);
   
-  //const [cleaningHidden, setCleaningHidden] = useState(false); 
-  //const [showHistoryModal, setShowHistoryModal] = useState(false);
-  //const [quarantineRoom, setQuarantineRoom] = useState([]);
-  //const [historyData, setHistoryData] = useState([]);
-  // const renderCount = useRef(0);
-  // renderCount.current++;
-  // console.log("Render lần:", renderCount.current);
 
   function toLocalISOString(date) {
       const pad = (n) => String(n).padStart(2, '0');
@@ -548,7 +541,6 @@ const ScheduleTest = () => {
     }
   };
 
-  
   const timeToMilliseconds = (time) => {
     const [h, m] = time.split(":").map(Number);
     return (h * 3600 + m * 60) * 1000;
@@ -575,9 +567,6 @@ const ScheduleTest = () => {
 
   return false;
   };
-
-
-
 
   /// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
@@ -612,44 +601,56 @@ const ScheduleTest = () => {
         /// kiểm tra lại định mức
         if (event) {
 
-          let process_code =  event._def.extendedProps.process_code +"_"+ event._def.resourceIds[0]
-          let stage_code = event._def.extendedProps.stage_code
-          let is_clearning = event._def.extendedProps.is_clearning
-          let quota_event = quota.find(q => q.process_code == process_code && q.stage_code == stage_code);
-          let newEnd = null;
-
-          if (!quota_event){
-              Swal.fire({
-                icon: 'warning',
-                title: 'Thiếu Định Mức',
-                timer: 1000,
-                showConfirmButton: false,
-              });
-              info.revert();
-              return false;
-          } 
-            
 
           const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
           const event_start = event.start.getTime()
           const newStart = new Date(event_start + offset);
-          
-          let quota_event_m_time_seconds = timeToMilliseconds(quota_event.m_time)
-          if (is_clearning){
-            if(event._def.title == "VS-II"){
-                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
-              }else{
-                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C1_time)
-              }
-               
-          }
+          let newEnd = null;
+          // Kiêm tra điều chinh đinh mức ngày chủ nhật
+
+          if (!workingSunday){
+            let process_code =  event._def.extendedProps.process_code +"_"+ event._def.resourceIds[0]
+            let stage_code = event._def.extendedProps.stage_code
+            let is_clearning = event._def.extendedProps.is_clearning
+            let quota_event = quota.find(q => q.process_code == process_code && q.stage_code == stage_code);
             
+
+            if (!quota_event){
+                Swal.fire({
+                  icon: 'warning',
+                  title: 'Thiếu Định Mức',
+                  timer: 1000,
+                  showConfirmButton: false,
+                });
+                info.revert();
+                return false;
+            }
+
+            let quota_event_m_time_seconds = timeToMilliseconds(quota_event.m_time)
+            if (is_clearning){
+              if(event._def.title == "VS-II"){
+                  quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
+                }else{
+                  quota_event_m_time_seconds = timeToMilliseconds(quota_event.C1_time)
+                }
+                
+            }
             newEnd = new Date(event_start + offset + quota_event_m_time_seconds);
-           
-            //return
+
             if (isInSundayToMondayWindow (newEnd)){
                     newEnd = new Date(event_start + offset + quota_event_m_time_seconds + 86400000)
             }
+
+          }else{
+              newEnd = new Date(event.end.getTime() + offset);
+          }
+ 
+            
+
+            
+            
+           
+           
 
           event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
 
@@ -833,6 +834,7 @@ const ScheduleTest = () => {
 
   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
   const handleClear = () => {
+
       const sel = selectoRef.current;
       document.querySelectorAll('.fc-event[data-event-id]').forEach(el => {el.style.border = 'none';});
 
@@ -892,86 +894,9 @@ const ScheduleTest = () => {
       return matched; // some() sẽ dừng ngay khi true
     });
 
-    // true hoặc false
-
     let selectedDates = [];
     Swal.fire({
       title: 'Cấu Hình Chung Sắp Lịch',
-      // html: `
-      //     <div class="cfg-wrapper">
-      //       <div class="cfg-card">
-      //         <!-- Hàng Ngày chạy -->
-              
-      //         <div class="cfg-row">
-      //           <div class="cfg-col">
-      //             <label class="cfg-label" for="schedule-date">Ngày chạy bắt đầu sắp lịch:</label>
-      //             <input id="schedule-date" type="date"
-      //                   class="swal2-input cfg-input cfg-input--half" name="start_date"
-      //                   value="${new Date().toISOString().split('T')[0]}">
-      //           </div>
-      //         </div>
-
-      //         <!-- Hàng 2 cột -->
-      //         <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
-      //         <div class="cfg-row cfg-grid-2">
-      //           <div class="cfg-col">
-      //             <label class="cfg-label" for="wt_bleding">Trộn Hoàn Tất Lô Thẩm Định</label>
-      //             <input id="wt_bleding" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="1" name="wt_bleding_val">
-      //             <label class="cfg-label" for="wt_forming">Định Hình Lô Thẩm Định</label>
-      //             <input id="wt_forming" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_forming_val">
-      //             <label class="cfg-label" for="wt_coating">Bao Phim Lô Thẩm Định</label>
-      //             <input id="wt_coating" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_coating_val">
-      //             <label class="cfg-label" for="wt_blitering">Đóng Gói Lô Thẩm Định</label>
-      //             <input id="wt_blitering" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="5" name="wt_blitering_val">
-      //           </div>
-      //           <div class="cfg-col">
-      //             <label class="cfg-label" for="wt_bleding_val">Trộn Hoàn Tất Lô Thương Mại</label>
-      //             <input id="wt_bleding_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_bledingl">
-      //             <label class="cfg-label" for="wt_forming_val">Định Hình Lô Thương Mại</label>
-      //             <input id="wt_forming_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_forming">
-      //             <label class="cfg-label" for="wt_coating_val">Bao Phim Lô Thương Mại</label>
-      //             <input id="wt_coating_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_coating">
-      //             <label class="cfg-label" for="wt_blitering_val">Đóng Gói Lô Thương Mại</label>
-      //             <input id="wt_blitering_val" type="number" class="swal2-input cfg-input cfg-input--full" min="0" value="0" name="wt_blitering">
-      //           </div>
-      //         </div>
-
-      //         <div class="cfg-row">
-      //         <!-- ✅ Vùng để gắn stepper -->
-      //         <label class="cfg-label" for="stepper-container">Sắp Lịch Theo Công Đoạn:</label> 
-      //         <div id="stepper-container" style="margin-top: 15px;"></div>
-      //         </div>
-
-      //         <div class="cfg-row">
-      //           <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
-      //           <label class="switch">
-      //             <input id="work-sunday" type="checkbox">
-      //             <span class="slider round"></span>
-      //             <span class="switch-labels">
-      //               <span class="off">No</span>
-      //               <span class="on">Yes</span>
-      //             </span>
-      //           </label>
-      //         </div>
-
-      //         <div class="cfg-row">
-      //         <!-- ✅ Vùng để gắn Calendar -->
-      //         <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label> 
-      //         <div id="calendar-container" style="margin-top: 15px;"></div>
-      //         </div>
-
-
-      //         ${hasEmptyPermission
-      //         ? `<p style="color:red;font-weight:600;margin-top:10px;">
-      //                     ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
-      //                     Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
-      //                   </p>`
-      //         : ''
-      //       }
-
-      //       </div>
-      //     </div>
-      //   `,
       html: `
       <div class="cfg-wrapper">
 
@@ -1050,9 +975,6 @@ const ScheduleTest = () => {
                   required>
           </div>
         </div>
-        
-
-
       </div>
       `,
 
@@ -1186,9 +1108,6 @@ const ScheduleTest = () => {
           confirmBtn.style.opacity = "0.5";
           confirmBtn.style.cursor = "not-allowed";
         }
-
-
-
       }
       ,
       preConfirm: () => {
@@ -1209,7 +1128,7 @@ const ScheduleTest = () => {
 
         const workSunday = document.getElementById('work-sunday');
         formValues.work_sunday = workSunday.checked;
-
+       
         formValues.selectedDates = selectedDates;
         formValues.selectedStep = activeStepText ?? "PC";
 
@@ -1219,10 +1138,13 @@ const ScheduleTest = () => {
         }
 
         return formValues;
+      },
+      willClose: () => {
+        const workSunday = document.getElementById('work-sunday')?.checked ?? false;
+        setWorkingSunday (workSunday);
       }
 
     }).then((result) => {
-
       if (result.isConfirmed) {
         Swal.fire({
           title: 'Đang chạy Auto Scheduler...',
@@ -1253,21 +1175,11 @@ const ScheduleTest = () => {
               timer: 1000,
               showConfirmButton: false,
             });
-
-            // setEvents(data.events);
-            // setSumBatchByStage(data.sumBatchByStage);
-            // setPlan(data.plan);
-
             setLoading(!loading)
 
           })
           .catch(err => {
-            // Swal.fire({
-            //   icon: 'error',
-            //   title: 'Lỗi',
-            //   timer: 1000,
-            //   showConfirmButton: false,
-            // });
+
             setLoading(!loading)
             console.error("ScheduleAll error:", err.response?.data || err.message);
           });
@@ -2110,471 +2022,4 @@ const ScheduleTest = () => {
 
 export default ScheduleTest;
 
-  /// Xử lý hoản thành lô
-
-  // const handleFinished = (event) => {
-
-  //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) return;
-
-  //   let unit = event._def.extendedProps.stage_code <= 4 ? "Kg" : "ĐVL";
-  //   let id = event._def.publicId;
-
-  //   Swal.fire({
-  //     title: 'Hoàn Thành Sản Xuất',
-  //     html: `
-  //           <div class="cfg-wrapper">
-  //             <div class="cfg-card">
-  //               <!-- Hàng 2 cột -->
-  //               <div class="cfg-row cfg-grid-2">
-  //                 <div class="cfg-col">
-  //                   <label class="cfg-label" for="wt_bleding">Sản Lượng Thực Tế</label>
-  //                   <input id="yields" type="number" class="swal2-input cfg-input cfg-input--full" min="0" name="wt_bleding">
-  //                 </div>
-  //                 <div class="cfg-col">
-  //                   <label class="cfg-label" for="unit">Đơn Vị</label>
-  //                   <input id="unit" type="text" class="swal2-input cfg-input cfg-input--full" readonly>
-  //                   <input id="stag_plan_id" type="hidden">
-  //                 </div>
-  //               </div>
-
-  //               <!-- Thêm select Quarantine Room -->
-  //               <div class="cfg-row mt-3" style="text-align:center;">
-  //                 <label class="cfg-label" for="quarantineRoomSelect">Phòng Biệt Trữ</label>
-  //                 <select
-  //                   id="quarantineRoomSelect"
-  //                   class="swal2-input cfg-input cfg-input--full"
-  //                   style="display:inline-block; text-align:center; border:1px solid #ccc; border-radius:8px; padding:6px; width:80%;"
-  //                 >
-  //                   <option value="">-- Chọn phòng --</option>
-  //                 </select>
-  //               </div>
-
-
-  //             </div>
-  //           </div>
-  //         `,
-  //     didOpen: () => {
-  //       document.getElementById('unit').value = unit;
-  //       document.getElementById('stag_plan_id').value = id;
-
-  //       // 🔽 Gắn dữ liệu cho select từ biến quarantineRoom
-  //       const select = document.getElementById('quarantineRoomSelect');
-  //       if (Array.isArray(quarantineRoom)) {
-  //         quarantineRoom.forEach(room => {
-  //           const opt = document.createElement('option');
-  //           opt.value = room.code;
-  //           opt.textContent = room.code + " - " + room.name;
-  //           select.appendChild(opt);
-  //         });
-  //       }
-  //     },
-  //     width: 700,
-  //     customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
-  //     showCancelButton: true,
-  //     confirmButtonText: 'Lưu',
-  //     cancelButtonText: 'Hủy',
-  //     confirmButtonColor: '#3085d6',
-  //     cancelButtonColor: '#d33',
-  //     preConfirm: () => {
-  //       const yields_input = document.getElementById('yields');
-  //       const stag_plan_id = document.getElementById('stag_plan_id').value;
-  //       const yields = yields_input ? yields_input.value.trim() : "";
-  //       const room = document.getElementById('quarantineRoomSelect').value;
-
-  //       if (!yields) {
-  //         Swal.showValidationMessage('Vui lòng nhập sản lượng thực tế');
-  //         return false;
-  //       }
-
-  //       if (!room) {
-  //         Swal.showValidationMessage('Vui lòng chọn phòng cách ly');
-  //         return false;
-  //       }
-
-  //       return { yields, id: stag_plan_id, room };
-  //     }
-  //   }).then((result) => {
-  //     if (result.isConfirmed) {
-  //       axios.put('/Schedual/finished', result.value)
-  //         .then(res => {
-  //           let data = res.data;
-  //           if (typeof data === "string") {
-  //             data = data.replace(/^<!--.*?-->/, "").trim();
-  //             data = JSON.parse(data);
-  //           }
-  //           setEvents(data.events);
-
-  //           Swal.fire({
-  //             icon: 'success',
-  //             title: 'Hoàn Thành',
-  //             timer: 500,
-  //             showConfirmButton: false,
-  //           });
-  //         })
-  //         .catch(err => {
-  //           Swal.fire({
-  //             icon: 'error',
-  //             title: 'Lỗi',
-  //             timer: 500,
-  //             showConfirmButton: false,
-  //           });
-  //           console.error("Finished error:", err.response?.data || err.message);
-  //         });
-  //     }
-  //   });
-  // };
-  // const handleShowHistory = (event) => {
-  //   let stage_code_id = event._def.extendedProps.plan_id;
-
-  //   axios.put('/Schedual/history', { stage_code_id: stage_code_id })
-  //     .then(res => {
-  //       // Nếu Laravel trả về JSON
-  //       let data = res.data;
-  //       if (typeof data === "string") {
-  //         data = data.replace(/^<!--.*?-->/, "").trim();
-  //         data = JSON.parse(data);
-  //       }
-  //       setHistoryData(data.history_data);
-
-
-  //     })
-  //     .catch(err => {
-  //       Swal.fire({
-  //         icon: 'error',
-  //         title: 'Lỗi',
-  //         timer: 500,
-  //         showConfirmButton: false,
-  //       });
-  //       console.error("Confirm_source error:", err.response?.data || err.message);
-  //     });
-
-
-  //   setShowHistoryModal(true)
-  // }
-
-    // const handleConfirmSource = (event) => {
-  //   if (!CheckAuthorization(authorization, ['Admin', 'Schedualer'])) { return };
-
-  //   let room_id = event._def.resourceIds[0];
-  //   let plan_master_id = event._def.extendedProps.plan_master_id;
-  //   let resource = resources.filter(i => i.id == room_id)[0].title;
-
-  //   axios.put('/Schedual/getInforSoure', { plan_master_id })
-  //     .then(res => {
-  //       const source_infor = res.data.sourceInfo;
-  //       Swal.fire({
-  //         title: 'Xác Nhận Nguồn Nguyên Liệu Đã Thẩm Định Trên Thiết Bị',
-  //         html: `
-  //             <div class="cfg-wrapper">
-  //               <div class="cfg-card">
-
-  //                   <div class="cfg-col">
-  //                     <label class="cfg-label" for="intermediate_code">Mã BTP</label>
-  //                     <input id="intermediate_code" type="text"
-  //                           class="swal2-input cfg-input cfg-input--full" readonly>
-  //                   </div>
-  //                   <div class="cfg-col">
-  //                     <label class="cfg-label" for="name">Sản Phẩm</label>
-  //                     <textarea id="name" rows="2"
-  //                               class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
-  //                   </div>
-
-  //                   <div class="cfg-col">
-  //                     <label class="cfg-label" for="room">Phòng Sản Xuất</label>
-  //                     <input id="room" type="text"
-  //                           class="swal2-input cfg-input cfg-input--full" readonly>
-  //                   </div>
-
-  //                   <div class="cfg-col">
-  //                     <label class="cfg-label" for="material_source_id">Nguồn Nguyên Liệu</label>
-  //                     <textarea id="material_source_id" rows="2"
-  //                               class="swal2-textarea cfg-input cfg-input--full" readonly></textarea>
-  //                   </div>
-  //               </div>
-  //             </div>
-  //           `,
-  //         didOpen: () => {
-  //           document.getElementById('intermediate_code').value = source_infor.intermediate_code ?? '';
-  //           document.getElementById('name').value = source_infor.product_name ?? '';
-  //           document.getElementById('room').value = resource ?? '';
-  //           document.getElementById('material_source_id').value = source_infor.name ?? '';
-
-
-  //         },
-  //         width: 700,
-  //         customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
-  //         showCancelButton: true,
-  //         confirmButtonText: 'Xác Nhận',
-  //         cancelButtonText: 'Hủy',
-  //         confirmButtonColor: '#3085d6',
-  //         cancelButtonColor: '#d33',
-  //         preConfirm: () => {
-  //           const intermediate_code = document.getElementById('intermediate_code');
-
-  //           if (!intermediate_code) {
-  //             Swal.showValidationMessage('Lỗi: dữ liệu trống');
-  //             return false;
-  //           }
-
-  //           // Trả dữ liệu về để .then(result) nhận được
-  //           return {
-  //             source_id: source_infor.material_source_id,
-  //             room_id,
-  //             intermediate_code: source_infor.intermediate_code,
-  //           };
-  //         }
-  //       }).then((result) => {
-  //         if (result.isConfirmed) {
-  //           axios.put('/Schedual/confirm_source', result.value)
-  //             .then(res => {
-  //               // Nếu Laravel trả về JSON
-  //               let data = res.data;
-  //               if (typeof data === "string") {
-  //                 data = data.replace(/^<!--.*?-->/, "").trim();
-  //                 data = JSON.parse(data);
-  //               }
-
-  //               Swal.fire({
-  //                 icon: 'success',
-  //                 title: 'Hoàn Thành',
-  //                 timer: 500,
-  //                 showConfirmButton: false,
-  //               });
-
-  //               // Nếu có dữ liệu mới trả về thì cập nhật state
-  //               if (data.events) setEvents(data.events);
-  //             })
-  //             .catch(err => {
-  //               Swal.fire({
-  //                 icon: 'error',
-  //                 title: 'Lỗi',
-  //                 timer: 500,
-  //                 showConfirmButton: false,
-  //               });
-  //               console.error("Confirm_source error:", err.response?.data || err.message);
-  //             });
-  //         }
-  //       });
-  //     })
-  //     .catch(() => {
-  //       Swal.fire({
-  //         icon: 'error',
-  //         title: 'Lỗi tải dữ liệu',
-  //         timer: 500,
-  //         showConfirmButton: false
-  //       });
-  //     });
-  // };
-
-
-  /// Ngăn xụ thay đổi lô Sau khi hoàn thành
-      // const EventContent = ({ arg, selectedEvents, toggleEventSelect, handleDeleteScheduale, handleShowHistory, handleFinished, viewConfig, viewName, eventFontSize, type, authorization }) => {
-  //   //const adminAutho 
-  //   const event = arg.event;
-  //   const props = event._def.extendedProps;
-  //   const isSelected = selectedEvents.some(ev => ev.id === event.id);
-  //   const now = new Date();
-
-  //   const isTimelineMonth = viewConfig.timeView === 'resourceTimelineMonth';
-  //   //const isWeekView = viewName === 'resourceTimelineWeek';
-
-  //   const renderBadge = (text, color, left) => (
-  //     <div
-  //       className={`absolute top-[-15px] left-[${left}px] text-xs px-1 rounded shadow text-white ${color}`}
-  //     >
-  //       {text}
-  //     </div>
-  //   );
-
-  //   return (
-  //     <div className="relative group custom-event-content" data-event-id={event.id}>
-  //       {/* Tiêu đề + thời gian */}
-  //       <div style={{ fontSize: `${eventFontSize}px` }}>
-  //         <b>{props.is_clearning ? event.title.split("-")[1] : event.title}</b>
-  //         {!isTimelineMonth && (
-  //           <>
-  //             <br />
-  //             {viewName !== 'resourceTimelineQuarter' && !props.is_clearning && (
-  //               <span>{moment(event.start).format('HH:mm')} - {moment(event.end).format('HH:mm')}</span>
-  //             )}
-  //           </>
-  //         )}
-  //       </div>
-
-  //       {/* Nút Chọn */}
-  //       <button
-  //         onClick={(e) => { e.stopPropagation(); toggleEventSelect(event); }}
-  //         className={`absolute top-0 left-0 text-xs px-1 rounded shadow
-  //               ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}
-  //             `}
-  //         title={isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}
-  //       >
-  //         {isSelected ? '✓' : '+'}
-  //       </button>
-
-  //       {/* 🎯 Hoàn thành */}
-  //       {props.finished === 0 && type && event.end < now && (
-  //         <button
-  //           onClick={(e) => { e.stopPropagation(); handleFinished(event); }}
-  //           className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-  //           title="Xác Nhận Hoàn Thành Lô Sản Xuất"
-  //         >
-  //           🎯
-  //         </button>
-  //       )}
-
-  //       {/* Nút Xem Lịch Sử && isWeekView  
-  //       {showRenderBadge && (
-  //         <button
-  //           onClick={(e) => { e.stopPropagation(); handleShowHistory(event); }}
-  //           className="absolute top-[-15px] left-[100px] text-xs px-1 rounded shadow bg-red-500 text-white"
-  //           title="Xem Lịch Sử Thay Đổi"
-  //         >
-  //           {props.number_of_history}
-
-  //         </button>
-  //       )}*/}
-
-  //       {/* Badge Ngày cần hàng
-  //       {props.expected_date && showRenderBadge && renderBadge(
-  //         props.expected_date,
-  //         {
-  //           1: 'bg-red-500',
-  //           2: 'bg-orange-500',
-  //           3: 'bg-green-500'
-  //         }[props.level] || 'bg-blue-500',
-  //         50
-  //       )} */}
-
-
-  //       {/* Hướng công đoạn 
-  //       {!props.is_clearning && showRenderBadge && (
-  //         <button
-  //           className="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
-  //           title="% biệt trữ"
-  //         >
-  //           <b>{props.storage_capacity}</b>
-  //         </button>
-  //       )}*/}
-
-  //        {/* Nút Xóa 
-  //       {!props.finished && (
-  //         <button
-  //           onClick={(e) => { e.stopPropagation(); handleDeleteScheduale(e); }}
-  //           className="absolute top-0 right-0 hidden group-hover:block text-red-500 text-sm bg-white px-1 rounded shadow"
-  //           title="Xóa lịch"
-  //         >
-  //           ×
-  //         </button>
-  //       )}*/}
-
-  //       {/* {isWeekView && props.tank && showRenderBadge ? renderBadge('⚗️', 'bg-red-500', 170) : ''}
-  //       {isWeekView && props.keep_dry && showRenderBadge ? renderBadge('🌡', 'bg-red-500', 200) : ''} */}
-
-  //       {/* 📦 Nguồn nguyên liệu */}
-  //       {/* {props.room_source === false && type && (
-  //             <button
-  //               onClick={(e) => { e.stopPropagation(); handleConfirmSource(event); }}
-  //               className="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-  //               title="Khai báo nguồn nguyên liệu"
-  //             >
-  //               📦
-  //             </button>
-  //         )} */}
-
-  //     </div>
-  //   );
-  // };
-
-  {/* <History show={showHistoryModal} setShow={setShowHistoryModal} historyData={historyData} /> */}
-
-    // resourceLabelContent={(arg) => {
-        
-        //   const res = arg.resource.extendedProps;
-        //   const busy = parseFloat(res.busy_hours) || 0;
-        //   const yields = parseFloat(res.yield) || 0;
-        //   const unit = res.unit || null;
-        //   const total = parseFloat(res.total_hours) || 1;
-        //   const efficiency = ((busy / total) * 100).toFixed(1);
-
-
-        //   const highlight = selectedRows.some(row => {
-        //     if (!row.permisson_room) return false;
-
-        //     if (Array.isArray(row.permisson_room)) {
-        //       // nếu backend đổi thành array thì vẫn chạy
-        //       return row.permisson_room.includes(arg.resource.extendedProps.code);
-        //     } else if (typeof row.permisson_room === "object") {
-        //       // trường hợp {id_room: code}
-        //       return Object.values(row.permisson_room).includes(arg.resource.extendedProps.code);
-        //     } else {
-        //       // fallback: string / id
-        //       return row.permisson_room == arg.resource.id;
-        //     }
-        //   });
-
-        //   return (
-        //     <div
-        //       style={{
-        //         backgroundColor: highlight ? "#c6f7d0" : "transparent",
-        //         padding: "0px",
-        //         borderRadius: "6px",
-        //         marginTop: "0px",
-        //         position: "relative",
-        //         height: heightResource // cần để con có thể dịch lên
-        //       }}
-        //     >
-        //       <div
-        //         style={{
-        //           fontSize: "22px",
-        //           fontWeight: "bold",
-        //           marginBottom: "2px",
-        //           width: "8%",
-        //           position: "relative",
-        //           top: "-26px", // dịch lên trên 6px
-        //         }}
-        //       >
-        //         {arg.resource.title}-{arg.resource.extendedProps.main_equiment_name}
-        //       </div>
-
-        //       <div
-        //         className="resource-bar"
-        //         style={{
-        //           position: "relative",
-        //           top: "-26px", // dịch luôn cả progress bar lên
-        //           height: "15px",
-        //           background: "#eeeeeeff",
-        //           borderRadius: "20px",
-        //           overflow: "hidden",
-        //           display: "flex",
-        //           alignItems: "center",
-        //         }}
-        //       >
-        //         <div
-        //           className="busy"
-        //           style={{
-        //             width: `${(busy / total) * 100}%`,
-        //             background: "red",
-        //             height: "100%",
-        //             display: "flex",
-        //             alignItems: "center",
-        //             justifyContent: "center",
-        //           }}
-        //         />
-        //         <b
-        //           style={{
-        //             position: "absolute",
-        //             top: "50%",
-        //             left: "50%",
-        //             transform: "translate(-50%, -50%)",
-        //             fontSize: "70%",
-        //             color: "#060606ff",
-        //           }}
-        //         >
-        //           {efficiency}% - {formatNumberWithComma(yields)} {unit}
-        //         </b>
-        //       </div>
-        //     </div>
-
-        //   );
-        // }}
+  
