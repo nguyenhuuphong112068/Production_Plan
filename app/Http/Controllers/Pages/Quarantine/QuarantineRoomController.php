@@ -139,16 +139,17 @@ class QuarantineRoomController extends Controller
                 't2.stage_code as next_stage',
                 't2.start as next_start',
                 't2.resourceId as next_room_id',
-                'room.name as next_room'
+                DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
+               'room.production_group as production_group',
+               'room.stage as stage',
+
             )
             ->orderBy('t.plan_master_id')
             ->orderBy('t.stage_code')
             ->get();
 
-
         // 2) Group theo phòng (datas chính)
         $datas = $datasRaw->groupBy('quarantine_room_code')->map(function ($items) {
-
             return [
                 'room_name' => $items->first()->name,
                 'total_yields' => $items->sum('yields'),
@@ -156,15 +157,18 @@ class QuarantineRoomController extends Controller
             ];
         });
 
-
         // 3) 🔥 SUM BY NEXT ROOM — tách hẳn ra
-        $sum_by_next_room = $datasRaw->groupBy('next_room_id')->map(function ($items) {
-            return $items->sum('yields');
+        $sum_by_next_room = $datasRaw->groupBy('next_room')->map(function ($items) {
+            return [
+                'production_group' => $items->first()->production_group,
+                'stage' => $items->first()->stage,
+                'sum_yields' => $items->sum('yields')
+            ];
         });
 
 
         
-        dd ($datasRaw);
+        dd ($sum_by_next_room);
         
 
         session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);

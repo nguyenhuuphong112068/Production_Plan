@@ -5,6 +5,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualAuditController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
 use App\Http\Controllers\Pages\Schedual\SchedualFinisedController;
+use App\Http\Controllers\Pages\Schedual\SchedualQuarantineRoomController;
 use App\Http\Controllers\Pages\Schedual\SchedualReportController;
 use App\Http\Controllers\Pages\Schedual\SchedualStepController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
@@ -107,6 +108,15 @@ use Illuminate\Support\Facades\Route;
                 Route::prefix('/finised')
                 ->controller(SchedualFinisedController::class)
                 ->name('finised.')
+                ->group(function(){
+                        Route::get('','index')->name('index');
+                        Route::post('store','store')->name('store');
+                        
+                });  
+
+                Route::prefix('/quarantine_room')
+                ->controller(SchedualQuarantineRoomController::class)
+                ->name('quarantine_room.')
                 ->group(function(){
                         Route::get('','index')->name('index');
                         Route::post('store','store')->name('store');

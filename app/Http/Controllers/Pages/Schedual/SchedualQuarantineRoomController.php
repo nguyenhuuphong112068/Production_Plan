@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 //use Illuminate\Support\Facades\Log;
 
-class SchedualFinisedController extends Controller
+class SchedualQuarantineRoomController extends Controller
 {
         public function index(Request $request){
                 //dd ($request->all());
@@ -39,20 +39,22 @@ class SchedualFinisedController extends Controller
                     ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                     ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                     ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                    //->whereBetween('sp.start', [$fromDate, $toDate])
+                   
                     ->where('sp.stage_code', $stage_code)
                     ->where('sp.deparment_code', $production)
                     ->whereNotNull('sp.start')
-                    ->where('sp.finished',0)
+                    ->where('sp.finished',1)
+                    ->whereNotNull('sp.yields')
+                    ->whereNull('sp.quarantine_room_code')
                     ->get();
 
-                // $quarantine_room = DB::table('quarantine_room')
-                //         ->where(function ($query) use ($production) {
-                //                 $query->where('deparment_code', $production)
-                //                 ->orWhere('deparment_code', 'NA');
-                //         })
-                //         ->where('active', true)
-                // ->get();
+                $quarantine_room = DB::table('quarantine_room')
+                        ->where(function ($query) use ($production) {
+                                $query->where('deparment_code', $production)
+                                ->orWhere('deparment_code', 'NA');
+                        })
+                        ->where('active', true)
+                ->get();
 
                   
         
@@ -69,13 +71,13 @@ class SchedualFinisedController extends Controller
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                 
                 //dd ($datas);
-                session()->put(['title'=> 'XÁC NHẬN HOÀN THÀNH LÔ SẢN XUẤT']);
-                return view('pages.Schedual.finised.list',[
+                session()->put(['title'=> 'XÁC ĐỊNH VỊ TRÍ PHÒNG BIỆT TRỮ BÁN THÀNH PHẨM']);
+                return view('pages.Schedual.quarantine_room.list',[
 
                         'datas' => $datas,
                         'stages' => $stages,
                         'stageCode' => $stageCode,
-                        //'quarantine_room' => $quarantine_room
+                        'quarantine_room' => $quarantine_room
                     
                 ]);
         }
@@ -85,15 +87,9 @@ class SchedualFinisedController extends Controller
                 DB::table('stage_plan')
                         ->where('id', $request->id)
                         ->update([
-                        'start'           => $request->start,
-                        'end'             => $request->end,
-                        'start_clearning' => $request->start_clearning,
-                        'end_clearning'   => $request->end_clearning,
-                        'yields'   => $request->yields,
-                        //'quarantine_room_code'   => $request->quarantine_room_code,
-                        'finished'        => 1,
-                        'finished_by'   => session('user')['fullName'],
-                        'finished_date'   => now(),
+                        'quarantine_room_code'   => $request->quarantine_room_code,
+                        'quarantined_by'   => session('user')['fullName'],
+                        'quarantined_date'   => now(),
                 ]);
 
 

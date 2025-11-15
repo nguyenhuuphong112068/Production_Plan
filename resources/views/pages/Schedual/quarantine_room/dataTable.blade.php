@@ -35,7 +35,7 @@
         <div class="card-body">
 
 
-            <form id="filterForm" method="GET" action="{{ route('pages.Schedual.finised.index') }}"
+            <form id="filterForm" method="GET" action="{{ route('pages.Schedual.quarantine_room.index') }}"
                 class="d-flex flex-wrap gap-2">
                 @csrf
                 <div class="row w-100 align-items-center">
@@ -84,9 +84,7 @@
                         <th>Mã Sản Phẩm</th>
                         <th>Sản Phẩm</th>
                         <th>Số lô</th>
-                        <th>Phòng Sản Xuất</th>
-                        <th colspan="2">Thới Gian Sản Xuất</th>
-                        <th colspan="2">Thời Gian Vệ Sinh</th>
+                        
                         <th>Sản Lượng Thực Tế
                             @if ($stageCode <= 4)
                                 {{ '(Kg)' }}
@@ -94,7 +92,7 @@
                                 {{ '(ĐVL)' }}
                             @endif
                         </th>
-                        {{-- <th>Phòng Biệt Trữ</th> --}}
+                        <th>Phòng Biệt Trữ</th>
                         <th>Xác Nhận</th>
 
 
@@ -123,48 +121,11 @@
                                 @endif
                             </td>
 
-                            <td> {{ $data->room_name . ' - ' . $data->room_code }} </td>
                             <td>
-                                <div>BD: </div>
-                                <div>KT: </div>
-                            </td>
-                            <td>
-                                <input type="datetime-local" class="time"
-                                    name="start"value="{{ \Carbon\Carbon::parse($data->start)->format('Y-m-d\TH:i') }}">
-                                <input type="datetime-local" class="time" name="end"
-                                    value = "{{ \Carbon\Carbon::parse($data->end)->format('Y-m-d\TH:i') }}">
+                                {{ $data->yields }}
                             </td>
 
                             <td>
-                                <div>BĐ: </div>
-                                <div>KT: </div>
-                            </td>
-                            <td>
-                                <input type="datetime-local" class="time"
-                                    name="start_clearning"value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
-                                <input type="datetime-local" class="time" name="end_clearning"
-                                    value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
-                            </td>
-
-                            <td>
-
-                                <input type="text" class="time" name="yields"
-                                    data-max="{{ $data->Theoretical_yields }}"
-                                    value="{{ $data->yields ?? ($data->Theoretical_yields ?? '') }}"
-                                    oninput="
-                                            this.value = this.value
-                                                .replace(',', '.')
-                                                .replace(/[^0-9.]/g, '')
-                                                .replace(/(\..*)\./g, '$1');
-
-                                            const max = parseFloat(this.dataset.max);
-                                            const val = parseFloat(this.value);
-                                            if (!isNaN(val) && val > max) this.value = max;
-                                        ">
-
-                            </td>
-
-                            {{-- <td>
 
                                 <select class="form-control" name="quarantine_room_code">
                                     @foreach ($quarantine_room as $item)
@@ -175,7 +136,7 @@
                                     @endforeach
                                 </select>
 
-                            </td> --}}
+                            </td>
 
 
                             <td class="text-center align-middle">
@@ -307,7 +268,7 @@
             btn.disabled = true;
 
             $.ajax({
-                url: "{{ route('pages.Schedual.finised.store') }}",
+                url: "{{ route('pages.Schedual.quarantine_room.store') }}",
                 type: 'post',
                 data: {
                     ...data,
