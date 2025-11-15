@@ -208,6 +208,8 @@
                                                   data-room_name ="{{ $data->room_name }}"
                                                   data-room_id ="{{ $data->room_id }}"
                                                   data-in_production = "{{ $data->title}}"
+                                                  data-start = "{{ $data->start}}"
+                                                  data-end = "{{ $data->end}}"
                                                   data-toggle="modal"
                                                   data-target="#Modal"
                                                   
@@ -331,6 +333,8 @@
                                                   data-room_name ="{{ $data->room_name }}"
                                                   data-room_id ="{{ $data->room_id }}"
                                                   data-in_production = "{{ $data->title}}"
+                                                  data-start = "{{ $data->start}}"
+                                                  data-end = "{{ $data->end}}"
                                                   data-toggle="modal"
                                                   data-target="#Modal"
                                                   
@@ -484,58 +488,61 @@
             //alert (button.data('in_production'))
             let  lastStatusRoom  = null;
 
-            $.ajax({
-                    url: "{{ route('pages.status.getLastStatusRoom') }}",
-                    type: 'post',
-                    data: {
-                        room_id: button.data('room_id'),
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(res) {
-                      lastStatusRoom = res.last_row;
+            // $.ajax({
+            //         url: "{{ route('pages.status.getLastStatusRoom') }}",
+            //         type: 'post',
+            //         data: {
+            //             room_id: button.data('room_id'),
+            //             _token: "{{ csrf_token() }}"
+            //         },
+            //         success: function(res) {
+            //           lastStatusRoom = res.last_row;
                       
-                      modal.find('input[name="start"]').val(res.last_row.start);
-                      modal.find('input[name="end"]').val(res.last_row.end);
-                      modal.find('select[name="in_production"]').val(res.last_row.in_production);
-                      modal.find('textarea[name="notification"]').val(res.last_row.notification);
+            //         //   modal.find('input[name="start"]').val(res.last_row.start);
+            //         //   modal.find('input[name="end"]').val(res.last_row.end);
+            //           modal.find('select[name="in_production"]').val(res.last_row.in_production);
+            //           modal.find('textarea[name="notification"]').val(res.last_row.notification);
 
-                      modal.find(`input[name="status"][value="${lastStatusRoom.status}"]`).prop('checked', true);
-
-                      // Nếu "sheet" là chuỗi như "Đầu Ca", "Giữa Ca", "Cuối Ca", "NA"
-                    //   switch (lastStatusRoom.sheet) {
-                    //       case "Đầu Ca":
-                    //           modal.find('input[name="sheet"][value="1"]').prop('checked', true);
-                    //           break;
-                    //       case "Giữa Ca":
-                    //           modal.find('input[name="sheet"][value="2"]').prop('checked', true);
-                    //           break;
-                    //       case "Cuối Ca":
-                    //           modal.find('input[name="sheet"][value="3"]').prop('checked', true);
-                    //           break;
-                    //       default:
-                    //           modal.find('input[name="sheet"][value="0"]').prop('checked', true);
-                    //   }
-
-                    //   // Nếu "step_batch" là chuỗi như "Đầu Lô", "Giữa Lô", "Cuối Lô", "NA"
-                    //   switch (lastStatusRoom.step_batch) {
-                    //       case "Đầu Lô":
-                    //           modal.find('input[name="step_batch"][value="1"]').prop('checked', true);
-                    //           break;
-                    //       case "Giữa Lô":
-                    //           modal.find('input[name="step_batch"][value="2"]').prop('checked', true);
-                    //           break;
-                    //       case "Cuối Lô":
-                    //           modal.find('input[name="step_batch"][value="3"]').prop('checked', true);
-                    //           break;
-                    //       default:
-                    //           modal.find('input[name="step_batch"][value="0"]').prop('checked', true);
-                    //   }
+            //           modal.find(`input[name="status"][value="${lastStatusRoom.status}"]`).prop('checked', true);
+                   
 
 
-                    }
-            });
-            
+            //           // Nếu "sheet" là chuỗi như "Đầu Ca", "Giữa Ca", "Cuối Ca", "NA"
+            //         //   switch (lastStatusRoom.sheet) {
+            //         //       case "Đầu Ca":
+            //         //           modal.find('input[name="sheet"][value="1"]').prop('checked', true);
+            //         //           break;
+            //         //       case "Giữa Ca":
+            //         //           modal.find('input[name="sheet"][value="2"]').prop('checked', true);
+            //         //           break;
+            //         //       case "Cuối Ca":
+            //         //           modal.find('input[name="sheet"][value="3"]').prop('checked', true);
+            //         //           break;
+            //         //       default:
+            //         //           modal.find('input[name="sheet"][value="0"]').prop('checked', true);
+            //         //   }
 
+            //         //   // Nếu "step_batch" là chuỗi như "Đầu Lô", "Giữa Lô", "Cuối Lô", "NA"
+            //         //   switch (lastStatusRoom.step_batch) {
+            //         //       case "Đầu Lô":
+            //         //           modal.find('input[name="step_batch"][value="1"]').prop('checked', true);
+            //         //           break;
+            //         //       case "Giữa Lô":
+            //         //           modal.find('input[name="step_batch"][value="2"]').prop('checked', true);
+            //         //           break;
+            //         //       case "Cuối Lô":
+            //         //           modal.find('input[name="step_batch"][value="3"]').prop('checked', true);
+            //         //           break;
+            //         //       default:
+            //         //           modal.find('input[name="step_batch"][value="0"]').prop('checked', true);
+            //         //   }
+
+
+            //         }
+            // });
+
+            modal.find('input[name="start"]').val(button.data('start'));
+            modal.find('input[name="end"]').val(button.data('end'));
             modal.find('input[name="room_name"]').val(button.data('room_name'));
             modal.find('select [name="in_production"]').val(button.data('in_production'));
 
