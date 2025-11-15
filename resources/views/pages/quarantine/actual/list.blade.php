@@ -13,3 +13,8 @@
   @include('pages.quarantine.actual.dataTable')
 @endsection
 
+@section('model')
+
+  @include('pages.quarantine.actual.detail')
+  
+@endsection

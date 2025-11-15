@@ -22,7 +22,8 @@ Route::prefix('/quarantine')
     Route::prefix('/actual')
     ->name('actual.')
     ->group(function(){
-            Route::get('','index_actual')->name('index_actual');           
+            Route::get('','index_actual')->name('index_actual'); 
+            Route::post('detail','detail')->name('detail');          
     });
 
 
