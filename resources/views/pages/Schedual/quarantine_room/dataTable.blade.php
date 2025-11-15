@@ -86,11 +86,10 @@
                         <th>Số lô</th>
                         
                         <th>Sản Lượng Thực Tế
-                            @if ($stageCode <= 4)
-                                {{ '(Kg)' }}
-                            @else
-                                {{ '(ĐVL)' }}
-                            @endif
+                           
+                        </th>
+                        <th>
+                             Ngưới/Ngày Xác Nhận HT 
                         </th>
                         <th>Ghi Chú</th>
                         <th>Phòng Biệt Trữ</th>
@@ -123,7 +122,11 @@
                             </td>
 
                             <td>
-                                {{ $data->yields }}
+                                {{ $data->yields }} {{$stageCode <= 4?'(Kg)': '(ĐVL)'}}
+                            </td>
+                            <td>
+                                <div> {{ $data->finished_by }} </div>
+                                <div> {{ \Carbon\Carbon::parse($data->finished_date)->format('H:i d/m/Y') }} </div>
                             </td>
                             <td>
                                 {{ $data->note }}
