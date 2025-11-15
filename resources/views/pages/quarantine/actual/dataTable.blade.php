@@ -132,11 +132,9 @@
 
 
 <script>
-
+  const stageNameMap = @json($stage_name);
   $(document).ready(function () {
-      document.body.style.overflowY = "auto";
-
-
+    document.body.style.overflowY = "auto";
     $('.btn-detial').on('click', function() {
 
         const room_id = $(this).data('room_id');
@@ -161,8 +159,8 @@
                             );
                         } else {
                             res.forEach((item, index) => {
-                                // map màu level
-                        
+                            // map màu level
+                                
                             history_modal.append(`
                               <tr>
                                   <td>${index + 1}</td>
@@ -176,12 +174,12 @@
                                   <td>${item.batch ?? ''}</td>
                                   <td>${(item.pre_room ?? '') + (item.stage_code <= 4 ? "Kg" : "ĐVL")}</td>
                                   <td>${item.yields ?? ''}</td>
-                                  <td>${item.next_stage ?? ''}</td>
+                                  <td>${stageNameMap[item.next_stage] ?? ''}</td>
+                                
                                   <td>${moment(item.next_start).format('hh:mm DD/MM/YYYY') ?? ''}</td>
                                   <td>${item.quarantine_room_code ?? ''}</td>
                               </tr>
-                          `);
-                            });
+                          `);});
                         }
                     },
                     error: function() {
