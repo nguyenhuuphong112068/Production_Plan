@@ -214,7 +214,7 @@
                       }
 
                       if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))){
-                        $color = "#FF0000";
+                        $color = "#ffffff";
                       } 
                         
 
@@ -338,7 +338,7 @@
                       }
 
                       if (!($data->start_realtime && $data->end_realtime && $now->between($data->start_realtime, $data->end_realtime))){
-                        $color = "#FF0000";
+                        $color = "#ffffff";
                       } 
                   @endphp
                   <tr>
