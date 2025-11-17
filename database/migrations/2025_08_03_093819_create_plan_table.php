@@ -112,6 +112,12 @@ return new class extends Migration {
             	
             $table->string('schedualed_by',100)->nullable();
             $table->dateTime('schedualed_at')->nullable();
+
+            $table->dateTime('actual_start')->nullable();
+            $table->dateTime('actual_end')->nullable();
+            $table->dateTime('actual_start_clearning')->nullable();
+            $table->dateTime('actual_end_clearning')->nullable();
+
             $table->string('note',255)->nullable();   
             $table->float('yields')->nullable();
             $table->float('theoretical_yields')->nullable();  

@@ -108,7 +108,5 @@ class SchedualReportController extends Controller
 
 
 
-    public function test(){
-        $this->yield (null,null,'resourceId');
-    }
+   
 }

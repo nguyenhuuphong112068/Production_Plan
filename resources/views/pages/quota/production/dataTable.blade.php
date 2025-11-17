@@ -62,7 +62,8 @@
                             @csrf
                            <div class="form-group" style="width: 177px">
                                <select class="form-control" name="stage_code" style="text-align-last: center;" onchange="document.getElementById('filterForm').submit();">
-                                  <option  {{ $stage_code == 1 ? 'selected' : '' }} value= 1>Cân</option>
+                                  <option  {{ $stage_code == 1 ? 'selected' : '' }} value= 1>Cân NL</option>
+                                  <option  {{ $stage_code == 2 ? 'selected' : '' }} value= 2>Cân NL Khác</option>
                                   <option  {{ $stage_code == 3 ? 'selected' : '' }} value= 3>Pha Chế</option>
                                   <option  {{ $stage_code == 4 ? 'selected' : '' }} value= 4>Trộn Hoàn Tất</option>
                                   <option  {{ $stage_code == 5 ? 'selected' : '' }} value= 5>Định Hình</option>
@@ -92,6 +93,11 @@
                           <th colspan="4" class="text-center">Thời Gian</th>
 
                           <th rowspan="2" style="width: 50px">Số Lô Chiến Dịch</th>
+
+                          @if ($stage_code <=2)
+                            <th rowspan="2" style="width: 50px">Hệ Số CD</th>
+                          @endif
+                          
                           <th rowspan="2">Ghi Chú</th>
                           <th rowspan="2">Người Tạo/ Ngày Tạo</th>
                           <th rowspan="2" style="width:1%">Thêm</th>
@@ -168,6 +174,12 @@
                       <td> 
                         <input type= "{{$typeInput}}" class="time" name="maxofbatch_campaign" value = "{{$data->maxofbatch_campaign }}" data-id = {{ $data->id }} {{ $auth_update }}>
                       </td>
+
+                      @if ($stage_code <=2)
+                      <td> 
+                        <input type= "{{$typeInput}}" class="time" name="campaign_index" value = "{{$data->campaign_index }}" data-id = {{ $data->id }} {{ $auth_update }}>
+                      </td>
+                      @endif
                       <td> 
                         <input type= "{{$typeInput}}" class="time" name="note" value = "{{$data->note }}" data-id = {{ $data->id }} {{ $auth_update }}>
                       </td>
@@ -403,6 +415,7 @@
           $(this).val('');
         return
       }
+      
 
       if (name == "maxofbatch_campaign"){
         const pattern = /^[1-9]\d*$/;
@@ -410,6 +423,22 @@
             Swal.fire({
                 title: 'Lỗi định dạng!',
                 text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                icon: 'error',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            $(this).focus();
+            $(this).css('border', '1px solid red');
+            return;
+        } else {
+            $(this).css('border', '');
+        }
+      }else if (name == "campaign_index"){
+        const pattern = /^\d+\.\d$/;
+        if (time && !pattern.test(time)) {
+            Swal.fire({
+                title: 'Lỗi định dạng!',
+                text: 'Hệ số tăng thời gian chiến dịch là 1 số thập phân 1 số lẻ.',
                 icon: 'error',
                 timer: 2000,
                 showConfirmButton: false

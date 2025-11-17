@@ -61,7 +61,6 @@
             <div class="col-md-12">
                 <div class="form-group">
                   <label>Phòng Sản Xuất</label>
-
                     <select class="select2" multiple="multiple" data-placeholder="Select a State" id ="room_id"
                             style="width: 100%; height: 50mm" name="room_id[]">
                         @foreach ($room as $item)
@@ -69,12 +68,11 @@
                                 {{ collect(old('room_id', []))->contains($item->id) ? 'selected' : '' }}>
                                 {{ $item->code . " - " . $item->name }}
                             </option>
-                            
                         @endforeach
                     </select>
-                @error('room_id', 'create_Errors')
-                  <div class="alert alert-danger">{{ $message }}</div>
-                @enderror 
+                    @error('room_id', 'create_Errors')
+                      <div class="alert alert-danger">{{ $message }}</div>
+                    @enderror 
                 <div id="check_result" class="mt-2"></div>
                 </div>
             </div>
@@ -142,7 +140,7 @@
 
           {{-- Biệt Trữ--}}
           <div class="row">          
-            <div class="col-md-3 col-sm-6">
+            <div class="col-md-3">
               <div class="form-group">
                 <label for="code">Số lô chiện dịch tối đa</label>
                 <input type="number" class="form-control" name="maxofbatch_campaign" 
@@ -153,8 +151,21 @@
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>
+            @if ($stage_code <= 2)
+              <div class="col-md-3">
+                  <div class="form-group">
+                    <label for="campaign_index">Hệ Số chiến Dịch </label>
+                    <input type="number" class="form-control" name="campaign_index" 
+                          value="{{ old('campaign_index') }}" min="1" step="0.1" 
+                          placeholder="Số Thập Phân 1 Số lẻ">
+                  </div>
+                  @error('campaign_index', 'create_Errors')
+                      <div class="alert alert-danger">{{ $message }}</div>
+                  @enderror 
+              </div>
+            @endif
 
-            <div class="col-md-9 col-sm-6">
+            <div class="col-md-6">
               <div class="form-group">
                 <label for="note">Ghi Chú</label>
                 <input type="text" class="form-control" name="note" 
@@ -165,11 +176,9 @@
                   <div class="alert alert-danger">{{ $message }}</div>
               @enderror 
             </div>
+
           </div>
 
-
-          
-          
 
         </div>
 
@@ -208,7 +217,7 @@
           let roomId = $(this).val()?.slice(-1)[0]; // lấy room_id cuối cùng vừa chọn
           let $select = $(this);
           let html = "";
-        console.log (finished_product_code)
+       
           if (!intermediate_code) {
               // reset select về rỗng để tránh chọn nhầm
               html = '<div class="text-danger"> Vui Lòng Nhập Mã Thiết Bị Trước Khi Chọn Vị Trí Lắp Đặt!</div>';
@@ -222,6 +231,7 @@
                   url: "{{ route('pages.quota.production.check_code_room_id') }}",
                   type: "POST",
                   data: {
+                      stage_code : stage_code,
                       intermediate_code: intermediate_code, 
                       finished_product_code: finished_product_code?? "NA",
                       room_id: roomId,
