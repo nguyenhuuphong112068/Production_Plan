@@ -496,7 +496,7 @@
 
           @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
           <li class="nav-item">
-            <a href="/Schedual/report/test" class="nav-link">
+            <a href="/Schedual/test" class="nav-link">
               <i class="nav-icon fas fa-th"></i>
               <p>
                 Test Route

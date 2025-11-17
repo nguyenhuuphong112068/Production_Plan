@@ -16,9 +16,15 @@ class ProductionQuotaController extends Controller
                 $stage_code = $request->stage_code ?? 1;
                 $production = session('user')['production_code'];
 
+                $stage_code_room = $stage_code;
+                if ($stage_code == 2){
+                        $stage_code_room = 1;
+                }
+
+
                 $room = DB::table('room')
                         ->where('deparment_code', $production)
-                        ->where('stage_code', $stage_code)
+                        ->where('stage_code', $stage_code_room)
                         ->where('active', true)
                         ->get();
                 
@@ -54,6 +60,7 @@ class ProductionQuotaController extends Controller
                                 'quota.C1_time',
                                 'quota.C2_time',
                                 'quota.maxofbatch_campaign',
+                                'quota.campaign_index',
                                 'quota.note',
                                 'quota.prepared_by',
                                 'quota.created_at',
@@ -100,6 +107,7 @@ class ProductionQuotaController extends Controller
                                 'quota.C1_time',
                                 'quota.C2_time',
                                 'quota.maxofbatch_campaign',
+                                'quota.campaign_index',
                                 'quota.note',
                                 'quota.prepared_by',
                                 'quota.created_at',
@@ -144,6 +152,10 @@ class ProductionQuotaController extends Controller
 
                 $process_code = $intermediate_code . "_" . $finished_product_code . "_" . $room_id;
 
+                if ($request->stage_code ==2){
+                        $process_code = $process_code ."_". $request->stage_code;
+                }
+                
                 $exists = DB::table('quota')
                         ->where('process_code', $process_code) // bỏ khoảng trắng
                         ->exists();
@@ -193,11 +205,16 @@ class ProductionQuotaController extends Controller
                         $process_code = $request->intermediate_code ."_". $request->finished_product_code;
                         $finished_product_code = $request->finished_product_code;                
                 }
-                
+
+                $process_code_index = NULL;
+                if ($request->stage_code == 2){
+                        $process_code_index = "_2";
+                }
+               
                 $dataToInsert = [];
                  foreach ($selectedRooms as $selectedRoom) {
                         $dataToInsert[] = [
-                                'process_code' => $process_code ."_". $selectedRoom,
+                                'process_code' => $process_code ."_". $selectedRoom ."_". $process_code_index,
                                 'intermediate_code' => $request->intermediate_code,                       
                                 'finished_product_code' => $finished_product_code,
                                 'room_id'=> $selectedRoom,
@@ -207,6 +224,7 @@ class ProductionQuotaController extends Controller
                                 'C2_time'=> $request->C2_time,
                                 'stage_code'=> $request->stage_code,
                                 'maxofbatch_campaign'=> $request->maxofbatch_campaign,
+                                'campaign_index'=> $request->campaign_index,
                                 'note'=> $request->note??"NA",
                                 'deparment_code'=>  session('user')['production_code'],
                                 'prepared_by' => session('user')['fullName'],

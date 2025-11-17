@@ -514,7 +514,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-
+              
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";
@@ -535,7 +535,7 @@ class SchedualController extends Controller
                         $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
 
                         $events = $this->getEvents($production, $startDate, $endDate, $clearing);
-
+                      
                         $sumBatchByStage = $this->yield($startDate, $endDate, "stage_code");
 
                         $resources = $this->getResources($production, $startDate, $endDate);
@@ -546,7 +546,7 @@ class SchedualController extends Controller
                         $type = true;
                        
                         $authorization = session('user')['userGroup'];
-                        
+                      
                         return response()->json([
                                 'title' => $title,
                                 'events' => $events,
@@ -1726,7 +1726,7 @@ class SchedualController extends Controller
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
-              //$this->view (null);
+              $this->view (null);
               //$this->Sorted (null);
         }
 
