@@ -80,7 +80,7 @@
                           <th rowspan="2">STT</th>
                           <th rowspan="2">Mã Sản Phẩm</th>
                           <th rowspan="2">Tên Sản Phẩm</th>
-                          <th rowspan="2">Cở Lô</th>
+                          <th rowspan="2">Cỡ Lô</th>
                           @if ($stage_code == 3 || $stage_code == 4)
                             <th rowspan="2" style="width:1%">Bồn LP</th>
                           @endif

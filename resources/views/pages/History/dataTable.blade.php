@@ -1,7 +1,5 @@
 <div class="content-wrapper">
-    <!-- Main content -->
-    <section class="content">
-            <!-- /.card-header -->
+  
             <div class="card">
 
               {{-- <div class="card-header mt-4">
@@ -53,7 +51,7 @@
                         <th>STT</th>
                         <th>Mã Sản Phẩm</th>
                         <th>Sản Phẩm</th>
-                        <th>Cở lô</th>
+                        <th>Cỡ lô</th>
                        
                         <th>Ngày Dự Kiến KCS</th>
                         <th>Lô Thẩm Định</th>
@@ -109,7 +107,6 @@
             </div>
             <!-- /.card -->
       <!-- /.container-fluid -->
-    </section>
     <!-- /.content -->
   </div>
 

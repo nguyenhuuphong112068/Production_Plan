@@ -64,7 +64,7 @@ class ProductCategoryController extends Controller
                         'process_code.unique' => 'Mã bán thành phẩm đã được liên kết với mà báng thành phẩm ',       
                         'finished_product_code.required' => 'Vui lòng nhập Mã Thành Phẩm',
                         'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
-                        'batch_qty.required' => 'Vui lòng nhâp cở lô',
+                        'batch_qty.required' => 'Vui lòng nhâp cỡ lô',
                         'market_id.required' => 'Vui lòng chọn thị trường',
                         'specification_id.required' => 'Vui lòng chọn qui cách',
                 ]);
@@ -104,7 +104,7 @@ class ProductCategoryController extends Controller
                 ], [
                        
                         'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
-                        'batch_qty.required' => 'Vui lòng nhâp cở lô',
+                        'batch_qty.required' => 'Vui lòng nhâp cỡ lô',
                         'market_id.required' => 'Vui lòng chọn thị trường',
                         'specification_id.required' => 'Vui lòng chọn qui cách',
                 ]);

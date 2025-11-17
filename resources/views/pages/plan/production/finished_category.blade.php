@@ -42,7 +42,7 @@
                     <th>Mã BTP</th>
                     <th>Mã TP</th>
                     <th>Tên Sản Phẩm</th>
-                    <th>Cở Lô</th>
+                    <th>Cỡ Lô</th>
                     <th>Thị Trường</th>
                     <th>Qui Cách</th>
                     <th>Chọn</th>

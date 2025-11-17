@@ -76,7 +76,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Cở Lô</label>
+                                <label>Cỡ Lô</label>
                                 <input type="text" class="form-control" name="batch_qty" readonly
                                     value="{{ old('batch_qty') }}" />
                             </div>

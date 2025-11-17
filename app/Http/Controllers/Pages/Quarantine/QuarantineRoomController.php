@@ -46,6 +46,8 @@ class QuarantineRoomController extends Controller
                 't.theoretical_yields',
                 't.nextcessor_code',
                 't.start',
+                
+                
                 't2.start as next_start'
             )
             ->orderBy('t.plan_master_id')
@@ -110,7 +112,7 @@ class QuarantineRoomController extends Controller
 
     public function index_actual(Request $request) {
        
-
+        
         // 1) Lấy toàn bộ dữ liệu gốc
         $datasRaw = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
@@ -138,6 +140,7 @@ class QuarantineRoomController extends Controller
                 'quarantine_room.name',
                 't.yields',
                 't.stage_code',
+                't.number_of_boxes',
     
                 't2.stage_code as next_stage',
                 't2.start as next_start',
@@ -146,8 +149,6 @@ class QuarantineRoomController extends Controller
                'room.production_group as production_group',
                'room.stage as stage',
                'room.group_code',
-              
-
             )
             ->orderBy('t.plan_master_id')
             ->orderBy('t.stage_code')
@@ -243,4 +244,5 @@ class QuarantineRoomController extends Controller
             return response()->json($detial);
         
     }
+    
 }

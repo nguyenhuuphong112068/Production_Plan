@@ -50,8 +50,8 @@ class IntermediateCategoryController extends Controller
                         'intermediate_code.unique' => 'Mã bán thành phẩm đã tồn tại.',
                         'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
                         'dosage_id.required' => 'Vui lòng chọn dạng bào chế',
-                        'batch_size.required' => 'Vui lòng nhập cở lô',
-                        'batch_qty.required' => 'Vui lòng nhập cở lô',
+                        'batch_size.required' => 'Vui lòng nhập cỡ lô',
+                        'batch_qty.required' => 'Vui lòng nhập cỡ lô',
                         'unit_batch_qty.required' => 'Vui lòng chọn đơn vị '
                 ]);
                
@@ -109,8 +109,8 @@ class IntermediateCategoryController extends Controller
                         'intermediate_code.unique' => 'Mã bán thành phẩm đã tồn tại.',
                         'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
                         'dosage_id.required' => 'Vui lòng chọn dạng bào chế',
-                        'batch_size.required' => 'Vui lòng nhập cở lô',
-                        'batch_qty.required' => 'Vui lòng nhập cở lô',
+                        'batch_size.required' => 'Vui lòng nhập cỡ lô',
+                        'batch_qty.required' => 'Vui lòng nhập cỡ lô',
                         'unit_batch_qty.required' => 'Vui lòng chọn đơn vị '
                 ]);
                 

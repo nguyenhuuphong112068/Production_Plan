@@ -51,7 +51,7 @@
                                             <td>{{ $data->next_room }}</td>
                                             <td>{{ $data->stage }}</td>
                                             <td>{{ $data->production_group }}</td>
-                                            <td>{{ $data->sum_yields }} {{$data->stage_code<=5?"Kg":"ĐVL"}}</td>
+                                            <td>{{ $data->sum_yields }} {{$data->stage_code<=5?"Kg":"ĐVL"}}  </td>
 
                                            <td class="text-center align-middle">
                                                 <button type="button" class="btn btn-primary btn-detial"
@@ -108,8 +108,8 @@
                                             <td>{{ $data->product_name }}</td>
                                             <td>{{ $data->batch }}</td>
                                             <td>
-                                                {{ number_format($data->yields, 2) }}
-                                                {{ $data->stage_code <= 4 ? '(Kg)' : '(ĐVL)' }}
+                                                {{ number_format($data->yields, 2) }} 
+                                                {{ $data->stage_code <= 4 ? '(Kg)' : '(ĐVL)' }} # {{$data->number_of_boxes ." (Thùng)" }}
                                             </td>
                                             <td>{{ $stage_name[$data->next_stage] ?? '' }}</td>
                                             <td>

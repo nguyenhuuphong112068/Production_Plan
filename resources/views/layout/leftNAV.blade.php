@@ -45,7 +45,7 @@
     </div> --}}
 
     <!-- Sidebar -->
-    <div class="sidebar" >
+    <div class="sidebar-wrapper" >
 
        <!-- Brand Logo -->
     <a href="{{ route ('pages.general.home')}}" class="brand-link container d-flex justify-content-center align-items-center">
@@ -387,15 +387,34 @@
 
           <!-- roplist Trang Thái Sản Xuất-->
           @if (user_has_permission(session('user')['userId'], 'layout_status', 'boolean'))
-            <li class="nav-item">
-              <a href="{{ route ('pages.status.index') }}" class="nav-link">
-
-                <i class="nav-icon fas fa fa-recycle"></i>
+            <li class="nav-item has-treeview">
+              <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-recycle"></i>
                 <p>
-                  Trang Thái Sản Xuất
+                  Trang Thái SX
+                  <i class="right fas fa-angle-left"></i>
                 </p>
               </a>
+
+              <ul class="nav nav-treeview">
+
+                <li class="nav-item">
+                  <a href="{{ route ('pages.status.index') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Cập Nhật </p>
+                  </a>
+                </li>
+
+                <li class="nav-item">
+                  <a href="{{ route ('pages.status.history.index') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Lịch Sử </p>
+                  </a>
+                </li>
+
+              </ul>
             </li>
+
           @endif
 
           <!-- Droplist Thống Kê -->
@@ -495,14 +514,14 @@
           </li>
 
           @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
-          <li class="nav-item">
-            <a href="/Schedual/test" class="nav-link">
-              <i class="nav-icon fas fa-th"></i>
-              <p>
-                Test Route
-              </p>
-            </a>
-          </li>
+            <li class="nav-item">
+              <a href="/Schedual/test" class="nav-link">
+                <i class="nav-icon fas fa-th"></i>
+                <p>
+                  Test Route
+                </p>
+              </a>
+            </li>
           @endif
 
         </ul>

@@ -59,7 +59,7 @@
                         <th>STT</th>
                         <th>Mã Sản Phẩm</th>
                         <th>Sản Phẩm</th>
-                        <th>Cở lô</th>
+                        <th>Cỡ lô</th>
                         <th>Số Lô</th>
                         <th>Ngày Dự Kiến KCS</th>
                         <th>Lô Thẩm Định</th>
