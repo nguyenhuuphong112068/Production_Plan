@@ -46,14 +46,6 @@ class SchedualFinisedController extends Controller
                     ->where('sp.finished',0)
                     ->get();
 
-                // $quarantine_room = DB::table('quarantine_room')
-                //         ->where(function ($query) use ($production) {
-                //                 $query->where('deparment_code', $production)
-                //                 ->orWhere('deparment_code', 'NA');
-                //         })
-                //         ->where('active', true)
-                // ->get();
-
                   
         
                 $stages = DB::table('stage_plan')
@@ -90,6 +82,7 @@ class SchedualFinisedController extends Controller
                         'start_clearning' => $request->start_clearning,
                         'end_clearning'   => $request->end_clearning,
                         'yields'   => $request->yields,
+                        'number_of_boxes'   => $request->number_of_boxes??1,
                         'note'   => $request->note??"NA",
                         'finished'        => 1,
                         'finished_by'   => session('user')['fullName'],
