@@ -106,13 +106,14 @@
                         <th>Phòng Sản Xuất</th>
                         <th colspan="2">Thới Gian Sản Xuất</th>
                         <th colspan="2">Thời Gian Vệ Sinh</th>
-                        <th>Sản Lượng Thực Tế
+                        <th class = "text-center">Sản Lượng Thực Tế
                             @if ($stageCode <= 4)
                                 {{ '(Kg)' }}
                             @else
                                 {{ '(ĐVL)' }}
                             @endif
                         </th>
+                        <th class = "text-center">Số Thùng</th>
                         <th>Ghi Chú</th>
                         <th>Xác Nhận</th>
 
@@ -182,10 +183,27 @@
                                         ">
 
                             </td>
+                            <td>
+                                <input type="text" class="time" name="number_of_boxes"
+                                    value="{{ $data->number_of_boxes ?? 1 }}"
+                                    oninput="
+                                        // Chỉ cho nhập số nguyên
+                                        this.value = this.value.replace(/[^0-9]/g, '');
+
+                                      
+                                        let val = parseInt(this.value);
+
+                                        // Nếu nhỏ hơn 1 thì xóa
+                                        if (!isNaN(val) && val <= 1) {
+                                            this.value = '';
+                                            return;
+                                        }
+                                      
+                                    ">
+                            </td>
 
                             <td>
                                 <textarea  class="updateInput text-left" name="note" > {{ $data->note }} </textarea>
-                            
                             </td>
 
 

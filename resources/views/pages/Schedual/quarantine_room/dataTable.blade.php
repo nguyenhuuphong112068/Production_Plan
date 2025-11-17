@@ -85,12 +85,9 @@
                         <th>Sản Phẩm</th>
                         <th>Số lô</th>
                         
-                        <th>Sản Lượng Thực Tế
-                           
-                        </th>
-                        <th>
-                             Ngưới/Ngày Xác Nhận HT 
-                        </th>
+                        <th>Sản Lượng Thực Tế</th>
+                        <th>Số Thùng</th>
+                        <th>Ngưới/Ngày Xác Nhận HT </th>
                         <th>Ghi Chú</th>
                         <th>Phòng Biệt Trữ</th>
                         <th>Xác Nhận</th>
@@ -123,6 +120,9 @@
 
                             <td>
                                 {{ $data->yields }} {{$stageCode <= 4?'(Kg)': '(ĐVL)'}}
+                            </td>
+                            <td>
+                                {{ $data->number_of_boxes}} 
                             </td>
                             <td>
                                 <div> {{ $data->finished_by }} </div>
