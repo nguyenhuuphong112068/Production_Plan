@@ -70,7 +70,7 @@ class SchedualAuditController extends Controller
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                 
                 //dd ($datas);
-                session()->put(['title'=> 'LỊCH SỮ THAY ĐỔI LỊCH SẢN XUẤT']);
+                session()->put(['title'=> 'LỊCH SỬ THAY ĐỔI LỊCH SẢN XUẤT']);
                 return view('pages.Schedual.audit.list',[
 
                         'datas' => $datas,

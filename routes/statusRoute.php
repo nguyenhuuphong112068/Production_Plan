@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Pages\Status\StatusController;
+use App\Http\Controllers\Pages\Status\StatusHistoryController;
 use App\Http\Controllers\Pages\Status\StatusHPLCController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,21 @@ use Illuminate\Support\Facades\Route;
             Route::post('getLastStatusRoom','getLastStatusRoom')->name('getLastStatusRoom');
             Route::post('store_general_notification','store_general_notification')->name('store_general_notification');
     });
+
+     Route::prefix('/status/history')
+        ->controller(StatusHistoryController::class)
+        ->name('pages.status.history.')
+        ->group(function(){
+        
+            Route::get('','index')->name('index');
+        //     Route::get('/next','next')->name('next');
+        //     Route::get('index','index')->name('index');
+        //     Route::post('store','store')->name('store');
+        //     Route::post('getLastStatusRoom','getLastStatusRoom')->name('getLastStatusRoom');
+        //     Route::post('store_general_notification','store_general_notification')->name('store_general_notification');
+    });
+
+
 
     Route::prefix('/status_HPLC')
     ->controller(StatusHPLCController::class)

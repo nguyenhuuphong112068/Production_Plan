@@ -41,7 +41,7 @@
                       <th rowspan="2">STT</th>
                       <th rowspan="2">Mã BTP</th>
                       <th rowspan="2">Tên Sản Phẩm</th>
-                      <th rowspan="2">Cở Lô</th>
+                      <th rowspan="2">Cỡ Lô</th>
                       <th rowspan="2">Dạng Bào Chế</th>
                       
                       <!-- Gom nhóm 6 cột -->

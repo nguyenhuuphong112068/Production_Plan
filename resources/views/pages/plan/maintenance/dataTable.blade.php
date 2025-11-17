@@ -59,7 +59,7 @@
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th style="width:1%">Cập Nhật</th>
                         <th style="width:1%">Vô Hiệu</th>
-                        <th style="width:1%">Lịch Sữ</th>
+                        <th style="width:1%">Lịch Sử</th>
                     </tr>
                   </thead>
                   <tbody>
