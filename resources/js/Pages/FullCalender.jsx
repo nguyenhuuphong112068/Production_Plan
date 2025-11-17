@@ -120,6 +120,7 @@ const ScheduleTest = () => {
           setQuota(data.quota);
          
         }
+
         
         switch (data.production) {
           case "PXV1":
@@ -417,7 +418,6 @@ const ScheduleTest = () => {
 
     highlightAllEvents();
   };
-
 
   // Nhân Dữ liệu để tạo mới event
   const handleEventReceive = (info) => {
@@ -798,7 +798,6 @@ const ScheduleTest = () => {
       });
     });
   };
-
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
   const toggleEventSelect = (event) => {

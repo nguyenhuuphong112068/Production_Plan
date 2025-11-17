@@ -625,60 +625,69 @@ class SchedualController extends Controller
 
         public function store(Request $request) {
 
-                DB::beginTransaction();
+               
+                DB::beginTransaction(); 
                         try {
                         $products = collect($request->products);
                         $current_start = Carbon::parse($request->start);
+
                         foreach ($products as $index => $product) {
                                 if ($index === 0 && $product['stage_code'] !== 9) {
+
                                         if ($product['stage_code'] < 7) {
                                                 $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;
                                         } else if ($product['stage_code'] === 7) {
                                                 $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;
                                         }
-
+                                        
                                         $quota = DB::table('quota')
                                         ->select(
-                                                'room_id', 'p_time', 'm_time', 'C1_time', 'C2_time',
-                                                DB::raw('(TIME_TO_SEC(p_time)/3600) as p_time_hours'),
-                                                DB::raw('(TIME_TO_SEC(m_time)/3600) as m_time_hours'),
-                                                DB::raw('(TIME_TO_SEC(C1_time)/3600) as C1_time_hours'),
-                                                DB::raw('(TIME_TO_SEC(C2_time)/3600) as C2_time_hours')
+                                                'room_id', 'campaign_index',
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
                                         )
-                                        ->where('process_code', $process_code)
+                                        ->where('process_code', 'like',  $process_code. '%')
                                         ->first();
+                                        
+                                        $p_time_minutes  = $quota->p_time_minutes??0;
+                                        $m_time_minutes  = $quota->m_time_minutes??0;
+                                        $C1_time_minutes = $quota->C1_time_minutes??0;
+                                        $C2_time_minutes = $quota->C2_time_minutes??0;
 
-                                        $p_time_minutes  = toMinutes($quota->p_time);
-                                        $m_time_minutes  = toMinutes($quota->m_time);
-                                        $C1_time_minutes = toMinutes($quota->C1_time);
-                                        $C2_time_minutes = toMinutes($quota->C2_time);
                                 }elseif ($index === 0 && $product['stage_code'] === 9) {
                                         $p_time_minutes  = 30;
                                         $m_time_minutes  = 60;
                                         $C1_time_minutes = 30;
                                         $C2_time_minutes = 60;
                                 }
-                                if ($product['stage_code'] === 1) {
-                                        $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
-                                        $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
+
+                                 Log::info([$request->start, $p_time_minutes, $m_time_minutes, $C1_time_minutes, $C2_time_minutes]);
+
+
+                                if ($product['stage_code'] <= 2) {
+                                        $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes  + (float)$m_time_minutes * $quota->campaign_index);
+                                        $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
                                         $clearning_type = "VS-II";
+
                                 }else {
                                         if ($products->count() === 1) {
-                                                $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
-                                                $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
+                                                $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
                                                 $clearning_type = "VS-II";
                                         } else {
                                                 if ($index === 0) {
-                                                $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
-                                                $end_clearning = $end_man->copy()->addMinutes($C1_time_minutes);
+                                                $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
                                                 $clearning_type = "VS-I";
                                                 } else if ($index === $products->count() - 1) {
-                                                $end_man = $current_start->copy()->addMinutes($p_time_minutes + $m_time_minutes);
-                                                $end_clearning = $end_man->copy()->addMinutes($C2_time_minutes);
+                                                $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
                                                 $clearning_type = "VS-II";
                                                 } else {
-                                                $end_man = $current_start->copy()->addMinutes($m_time_minutes);
-                                                $end_clearning = $end_man->copy()->addMinutes($C1_time_minutes);
+                                                $end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
                                                 $clearning_type = "VS-I";
                                                 }
                                         }
@@ -1726,7 +1735,7 @@ class SchedualController extends Controller
         public function test(){
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
-              $this->view (null);
+              //$this->view (null);
               //$this->Sorted (null);
         }
 

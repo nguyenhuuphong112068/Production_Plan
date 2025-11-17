@@ -1419,7 +1419,21 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
                           </Form.Group>                      
                       </Col>
-                      <Col md={9}>
+                      
+                      {stageFilter <=2  && (
+                      <Col md={3}>
+                          <Form.Group >
+                          <Form.Label>Hệ Số Chiến Dịch</Form.Label>
+                          <Form.Control type="number" min= "1" step="0.1" name ='campaign_index' value = {modalQuotaData.campaign_index?? 1.0} onChange={(e) => setModalQuotaData({...modalQuotaData, campaign_index: e.target.value})}  required  placeholder="Bắt buộc" />
+                                {errorsModal?.create_inter_Errors?.maxofbatch_campaign && (
+                                <div className="alert alert-danger mt-1">
+                                  {errorsModal.create_inter_Errors.maxofbatch_campaign}
+                                </div>)}
+
+                          </Form.Group>                      
+                      </Col>)}
+
+                      <Col md={6}>
                           <Form.Group >
                           <Form.Label>Ghi Chú</Form.Label>
                           <Form.Control type="text" name ='note' value = {modalQuotaData.note?? ""} onChange={(e) => setModalQuotaData({...modalQuotaData, note: e.target.value})} placeholder="Không Bắt Buộc" />
