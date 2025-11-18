@@ -28,22 +28,22 @@
             </div>
             <div class="col-md-6">
                 <div style="font-size: 16px; margin:0; text-align: center;">
-                <span style="display: inline-block; width: 200px; height: 30px; background-color: #46f905; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+                <span style="display: inline-block; width: 100px; height: 30px; background-color: #46f905; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
                     Sản Xuất
                 </span>
-                <span style="display: inline-block; width: 200px; height: 30px; background-color: #a1a2a2; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+                <span style="display: inline-block; width: 100px; height: 30px; background-color: #a1a2a2; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
                     Vệ Sinh
                 </span>
-                <span style="display: inline-block; width: 200px; height: 30px; background-color: #f99e02; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+                <span style="display: inline-block; width: 100px; height: 30px; background-color: #f99e02; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
                     Bảo Trì
                 </span>
-                <span style="display: inline-block; width: 200px; height: 30px; background-color: #ff0000; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: white; font-weight: 600;">
+                <span style="display: inline-block; width: 100px; height: 30px; background-color: #ff0000; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: white; font-weight: 600;">
                     Máy Hư
                 </span>
-                <span style="display: inline-block; width: 200px; height: 30px; background-color: #ffffff; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+                <span style="display: inline-block; width: 100px; height: 30px; background-color: #ffffff; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
                     Sản Xuất
                 </span>
-                <span style="display: inline-block; width: 200px; height: 30px; background-color: #3f2643; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600; color: white;">
+                <span style="display: inline-block; width: 100px; height: 30px; background-color: #3f2643; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600; color: white;">
                     Hủy
                 </span>
                 </div>
