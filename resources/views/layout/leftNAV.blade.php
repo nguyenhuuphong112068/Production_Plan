@@ -401,14 +401,14 @@
                 <li class="nav-item">
                   <a href="{{ route ('pages.status.index') }}" class="nav-link">
                     <i class="far fa-circle nav-icon"></i>
-                    <p> Cập Nhật </p>
+                    <p> Tạo Mới Trang Thái </p>
                   </a>
                 </li>
 
                 <li class="nav-item">
                   <a href="{{ route ('pages.status.history.index') }}" class="nav-link">
                     <i class="far fa-circle nav-icon"></i>
-                    <p> Lịch Sử </p>
+                    <p> Cập Nhật Trang Thái </p>
                   </a>
                 </li>
 

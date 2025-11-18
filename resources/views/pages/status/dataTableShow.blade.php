@@ -10,34 +10,43 @@
                 <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:35px;">
             </a>
 
-           
             <div class="mx-auto text-center" style="color: #CDC717;  font-weight: bold; line-height: 0.8; rgba(0,0,0,0.4);">
-              <h1>{{ session('title') }} </h1>
+               <form id="filterForm" method="GET" action="{{ route('pages.status.history.show') }}">
+              <h1 class="inline-block">{{ session('title') }} 
+                  @csrf   
+                  <button class="mx-5 btn-history"
+                          style="color:#CDC717; background:none; border:none; outline:none;"
+                          title="Lịch Sữ Trang Thái Sản Xuất"
+                          >
+                      <i class="fas fa-history"></i>
+                  </button>
+            
+              </h1>
             </div>
-           
+            
 
             <a href="{{ route('logout') }}" class="nav-link text-primary mx-4" style="font-size: 20px">
                 <i class="fas fa-sign-out-alt"></i>
             </a>
         </div>
 
-<div style="font-size: 16px; margin:0; text-align: center;">
-  <span style="display: inline-block; width: 200px; height: 30px; background-color: #46f905; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
-    Đang Sản Xuất
-  </span>
-  <span style="display: inline-block; width: 200px; height: 30px; background-color: #a1a2a2; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
-    Đang Vệ Sinh
-  </span>
-  <span style="display: inline-block; width: 200px; height: 30px; background-color: #f99e02; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
-    Đang Bảo Trì
-  </span>
-  <span style="display: inline-block; width: 200px; height: 30px; background-color: #ff0000; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: white; font-weight: 600;">
-    Máy Hư
-  </span>
-  <span style="display: inline-block; width: 200px; height: 30px; background-color: #ffffff; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
-    Không Sản Xuất
-  </span>
-</div>
+        <div style="font-size: 16px; margin:0; text-align: center;">
+          <span style="display: inline-block; width: 200px; height: 30px; background-color: #46f905; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+            Đang Sản Xuất
+          </span>
+          <span style="display: inline-block; width: 200px; height: 30px; background-color: #a1a2a2; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+            Đang Vệ Sinh
+          </span>
+          <span style="display: inline-block; width: 200px; height: 30px; background-color: #f99e02; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+            Đang Bảo Trì
+          </span>
+          <span style="display: inline-block; width: 200px; height: 30px; background-color: #ff0000; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); color: white; font-weight: 600;">
+            Máy Hư
+          </span>
+          <span style="display: inline-block; width: 200px; height: 30px; background-color: #ffffff; border: 1px solid #000; margin: 6px; line-height: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: 600;">
+            Không Sản Xuất
+          </span>
+        </div>
 
 
         <div class="text-white w-100 " style="background-color: #CDC717">
@@ -233,7 +242,7 @@
                           @if ($data->start && $data->end && $now->between($data->start, $data->end))
                                 {{$data->title }}
                           @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                {{$data->title_clearning}}
+                                {{$data->title_clearning . "-" . $data->title }}
                           @else
                                 <div>KSX</div>
                           @endif
@@ -357,7 +366,7 @@
                           @if ($data->start && $data->end && $now->between($data->start, $data->end))
                                 {{$data->title }}
                           @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                {{$data->title_clearning}}
+                                {{$data->title_clearning . "-" . $data->title }}
                           @else
                                 <div>KSX</div>
                           @endif
