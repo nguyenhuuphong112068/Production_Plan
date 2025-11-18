@@ -96,6 +96,7 @@
                                         <th>Sản Lượng Thực Tế</th>
                                         <th>Công Đoạn Tiếp Theo</th>
                                         <th>Thời Gian SX Dự Kiến</th>
+                                        <th>Người/Ngày Xác Nhận</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -114,6 +115,9 @@
                                             <td>{{ $stage_name[$data->next_stage] ?? '' }}</td>
                                             <td>
                                                 {{ \Carbon\Carbon::parse($data->next_start)->format('d/m/Y H:i') }}
+                                            </td>
+                                             <td>
+                                                {{$data->finished_by ."/". \Carbon\Carbon::parse($data->finished_date)->format('d/m/Y H:i') }}
                                             </td>
                                         </tr>
                                     @endforeach
