@@ -210,6 +210,9 @@
                                                   data-in_production = "{{ $data->title}}"
                                                   data-start = "{{ $data->start}}"
                                                   data-end = "{{ $data->end}}"
+                                                  data-stage_code = "{{ $data->stage_code}}"
+                                         
+                                                  
                                                   data-toggle="modal"
                                                   data-target="#Modal"
                                                   
@@ -478,75 +481,48 @@
         // Gọi khi tải trang và khi thay đổi kích thước
         adjustRowHeight();
         window.addEventListener('resize', adjustRowHeight);
-
+        const planWaitings = @json($planWaitings);
 
 
         $('.btn-plus').click(function() {
+            const button  = $(this);
+            const modal   = $('#Modal');
+            const room_id = button.data('room_id');
 
-            const button = $(this);
-            const modal = $('#Modal');
-            //alert (button.data('in_production'))
-            let  lastStatusRoom  = null;
+            // Clear datalist cũ
+            $('#in_production_list').empty();
 
-            // $.ajax({
-            //         url: "{{ route('pages.status.getLastStatusRoom') }}",
-            //         type: 'post',
-            //         data: {
-            //             room_id: button.data('room_id'),
-            //             _token: "{{ csrf_token() }}"
-            //         },
-            //         success: function(res) {
-            //           lastStatusRoom = res.last_row;
-                      
-            //         //   modal.find('input[name="start"]').val(res.last_row.start);
-            //         //   modal.find('input[name="end"]').val(res.last_row.end);
-            //           modal.find('select[name="in_production"]').val(res.last_row.in_production);
-            //           modal.find('textarea[name="notification"]').val(res.last_row.notification);
+            // Thêm option cố định
+            $('#in_production_list').append('<option value="Không Sản Xuất"></option>');
+            $('#in_production_list').append('<option value="Đang Vệ Sinh"></option>');
+            $('#in_production_list').append('<option value="Bảo Trì"></option>');
+            $('#in_production_list').append('<option value="Máy Hư"></option>');
 
-            //           modal.find(`input[name="status"][value="${lastStatusRoom.status}"]`).prop('checked', true);
-                   
+            // Thêm option động lọc theo room_id
+            planWaitings.forEach(plan => {
+                if (plan.resourceId == room_id) {
+                    
+                    $('#in_production_list').append(
+                        `<option 
+                            value="${plan.name}_${plan.batch}" 
+                            data-stage_code="${plan.stage_code}" 
+                            data-resource_id="${plan.resourceId}"
+                            data-finished_product_code="${plan.finished_product_code}"
+                            data-intermediate_code="${plan.intermediate_code}"
+                            >
+                        </option>`
+                    );
+                }
+            });
 
-
-            //           // Nếu "sheet" là chuỗi như "Đầu Ca", "Giữa Ca", "Cuối Ca", "NA"
-            //         //   switch (lastStatusRoom.sheet) {
-            //         //       case "Đầu Ca":
-            //         //           modal.find('input[name="sheet"][value="1"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Giữa Ca":
-            //         //           modal.find('input[name="sheet"][value="2"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Cuối Ca":
-            //         //           modal.find('input[name="sheet"][value="3"]').prop('checked', true);
-            //         //           break;
-            //         //       default:
-            //         //           modal.find('input[name="sheet"][value="0"]').prop('checked', true);
-            //         //   }
-
-            //         //   // Nếu "step_batch" là chuỗi như "Đầu Lô", "Giữa Lô", "Cuối Lô", "NA"
-            //         //   switch (lastStatusRoom.step_batch) {
-            //         //       case "Đầu Lô":
-            //         //           modal.find('input[name="step_batch"][value="1"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Giữa Lô":
-            //         //           modal.find('input[name="step_batch"][value="2"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Cuối Lô":
-            //         //           modal.find('input[name="step_batch"][value="3"]').prop('checked', true);
-            //         //           break;
-            //         //       default:
-            //         //           modal.find('input[name="step_batch"][value="0"]').prop('checked', true);
-            //         //   }
-
-
-            //         }
-            // });
-
+            // Điền dữ liệu cũ (nếu có)
+            //modal.find('input[name="in_production"]').val(button.data('in_production'));
             modal.find('input[name="start"]').val(button.data('start'));
             modal.find('input[name="end"]').val(button.data('end'));
             modal.find('input[name="room_name"]').val(button.data('room_name'));
-            modal.find('select [name="in_production"]').val(button.data('in_production'));
-
         });
+
+
 
     });
 </script>

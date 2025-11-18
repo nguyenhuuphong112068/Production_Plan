@@ -21,7 +21,7 @@
                 </div>
 
                 <div class="modal-body">
-
+                  
                     <div class="form-group">
                         <label for="name">Phòng Sản Xuất</label>
                         <input type="text" class="form-control" name="room_name" readonly
@@ -32,13 +32,15 @@
                        <label for="in_production">Sản Phẩm Đang Sản Xuất</label>
                         <input class="form-control" list="in_production_list" name="in_production" id="in_production">
                         <datalist id="in_production_list">
-                            <option value="Không Sản Xuất">
+                            {{-- <option value="Không Sản Xuất">
                             <option value="Đang Vệ Sinh">
                             <option value="Bảo Trì">
                             <option value="Máy Hư">
                             @foreach ($planWaitings as $plan)
-                                <option value="{{ $plan->name . '_' . $plan->batch }}">
-                            @endforeach
+                                <option value="{{ $plan->name . '_' . $plan->batch }}"
+                                    data-stage_code="{{ $plan->stage_code }}"
+                                    data-resource_id="{{ $plan->resourceId }}">
+                            @endforeach --}}
                         </datalist>
                     </div>
 
@@ -54,8 +56,8 @@
                                     <!-- radio -->
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status2" name="status" value = "1" checked>
-                                            <label for="Status2">
+                                            <input type="radio" id="Status1" name="status" value = "1" checked>
+                                            <label for="Status1">
                                                 Đang Sản Xuất
                                             </label>
                                         </div>
@@ -63,8 +65,8 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status3" name="status" value = "2">
-                                            <label for="Status3">
+                                            <input type="radio" id="Status2" name="status" value = "2">
+                                            <label for="Status2">
                                                 Đang Vệ Sinh
                                             </label>
                                         </div>
@@ -72,8 +74,8 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status5" name="status" value = "4">
-                                            <label for="Status5">
+                                            <input type="radio" id="Status4" name="status" value = "4">
+                                            <label for="Status4">
                                                 Máy Hư
                                             </label>
                                         </div>
@@ -83,8 +85,8 @@
 
                                      <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status1" name="status" value = "0">
-                                            <label for="Status1">
+                                            <input type="radio" id="Status0" name="status" value = "0">
+                                            <label for="Status0">
                                                 Không Sản Xuất
                                             </label>
                                         </div>
@@ -92,8 +94,8 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status4" name="status" value = "3">
-                                            <label for="Status4">
+                                            <input type="radio" id="Status3" name="status" value = "3">
+                                            <label for="Status3">
                                                 Đang Bảo Trì
                                             </label>
                                         </div>
@@ -185,6 +187,34 @@
                     </div>
 
                     <div class="row">
+                        <div class="col-md-3">
+                            <label>Thời Gian Chuẩn bị</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id = "p_time" readonly >
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Thời Gian Sản Xuất</label>
+                            <div class="input-group">
+                                 <input type="text" class="form-control" id = "m_time" readonly >
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Thời Gian VS-I</label>
+                            <div class="input-group">
+                                 <input type="text" class="form-control" id = "C1_time" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Thời Gian VS-II</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id = "C2_time" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+
+                    <div class="row">
                         <div class="col-md-6">
                             <label>Thời Gian Bắt Đầu</label>
                             <div class="input-group">
@@ -232,11 +262,130 @@
         });
     </script>
 @endif
+<script>
+$(document).ready(function() {
 
-{{-- <script>
-    $('.select2').select2({
-    tags: true,
-    placeholder: "-- Chọn hoặc nhập --",
-    allowClear: true
+    $('#in_production').on('input', function() {
+        const inputVal = $(this).val();
+
+        const selectedOption = $('#in_production_list option').filter(function() {
+            return $(this).val() === inputVal;
+        });
+       
+        if (selectedOption.length === 0) return; // không tìm thấy => dừng
+
+        // Lấy intermediate_code từ option
+        const intermediate_code = selectedOption.data('intermediate_code');
+        const finished_product_code = selectedOption.data('finished_product_code');
+        const stage_code = selectedOption.data('stage_code');
+        let process_code = null;
+        if (stage_code == 2){
+             process_code = intermediate_code + "_NA_" + selectedOption.data('resource_id') + "_2"
+        }else if (stage_code == 7) {
+            process_code = intermediate_code + "_" + finished_product_code + "_" + selectedOption.data('resource_id')           
+        }else {
+            process_code = intermediate_code + "_NA_" + selectedOption.data('resource_id')          
+        }
+        
+        if ( process_code == null){
+
+            $('#p_time').val('00:00');
+            $('#m_time').val('00:00');
+            $('#C1_time').val('00:00');
+            $('#C2_time').val('00:00');
+
+            return
+        }
+      
+        // Gửi AJAX
+        $.ajax({
+            url: "{{ route('pages.status.getQuota') }}",  // route trả về quota
+            type: "POST",
+            data: {
+                process_code: process_code,
+                _token: "{{ csrf_token() }}"
+            },
+            success: function(res) {
+               
+                const q = res[0];
+                // Cập nhật lên các field nếu muốn
+                $('#p_time').val(q.p_time ?? '');
+                $('#m_time').val(q.m_time ?? '');
+                $('#C1_time').val(q.C1_time ?? '');
+                $('#C2_time').val(q.C2_time ?? '');
+            },
+            error: function(err) {
+                console.error(err);
+            }
+        });
+
     });
-</script> --}}
+        // Khi user đổi thời gian bắt đầu
+    $('input[name="start"]').on('change input', updateEndTime);
+        $('#m_time').on('change input', updateEndTime);
+
+    });
+</script>
+
+
+
+<script>
+
+function parseDurationToMinutes(v) {
+    if (!v) return 0;
+    v = v.toString().trim();
+    if (v === '') return 0;
+
+    if (v.includes(':')) {
+        const [hh, mm] = v.split(':').map(x => parseInt(x, 10) || 0);
+        return hh * 60 + mm;
+    }
+
+    // dạng số phút
+    const num = Number(v);
+    return isNaN(num) ? 0 : Math.round(num);
+}
+
+function updateEndTime() {
+    const startVal = $('input[name="start"]').val();
+    if (!startVal) return;
+
+    // get status (radio name="status")
+    const status = $('input[name="status"]:checked').val();
+
+    // parse times
+    const pTime  = parseDurationToMinutes($('#p_time').val());
+    const mTime  = parseDurationToMinutes($('#m_time').val());
+    const C2Time = parseDurationToMinutes($('#C2_time').val());
+    
+    let totalMinutes = 0;
+
+    // logic theo status
+    if (status == "1") {
+        totalMinutes = pTime + mTime;
+    } 
+    else if (status == "2") {
+        totalMinutes = C2Time;
+    } 
+    else {
+        // fallback nếu status khác
+        totalMinutes = mTime;
+    }
+
+    // tạo Date từ datetime-local
+    const startDate = new Date(startVal);
+    startDate.setMinutes(startDate.getMinutes() + totalMinutes);
+
+    // format yyyy-MM-ddTHH:mm
+    const pad = (n) => n.toString().padStart(2, '0');
+
+    const formattedEnd =
+        `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`
+        + `T${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+
+    $('input[name="end"]').val(formattedEnd);
+}
+
+ 
+
+</script>

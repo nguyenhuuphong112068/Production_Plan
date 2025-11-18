@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class StatusController extends Controller
@@ -54,8 +55,8 @@ class StatusController extends Controller
                 $datas = DB::table('room')
                         ->leftJoin('stage_plan', function ($join) use ($now) {
                                 $join->on('room.id', '=', 'stage_plan.resourceId')
-                                ->where('stage_plan.active', true)
-                                ->where('stage_plan.finished', false)
+                                ->where('stage_plan.active', 1)
+                                ->where('stage_plan.finished', 0)
                                 ->where(function ($q) use ($now) {
                                         $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
                                         ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
@@ -64,8 +65,10 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status as rs1')
+                                ->where('rs1.active', 1)
                                 ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch', 'rs1.start as start_realtime', 'rs1.end as end_realtime',  'rs1.status', 'rs1.in_production', 'rs1.notification')
                                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
+                                
                                 'rs', function ($join) {
                                 $join->on('room.id', '=', 'rs.room_id');
                                 }
@@ -173,6 +176,7 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status as rs1')
+                                ->where('rs1.active', 1)
                                 ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch', 'rs1.start as start_realtime', 'rs1.end as end_realtime',  'rs1.status', 'rs1.in_production', 'rs1.notification')
                                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
                                 'rs', function ($join) {
@@ -191,24 +195,24 @@ class StatusController extends Controller
                                 'stage_plan.title_clearning',
                                 'stage_plan.start_clearning',
                                 'stage_plan.end_clearning',
+                               
+                                'room.id as room_id',
                                 DB::raw("CONCAT(room.code,'-', room.name) as room_name"),
                                 DB::raw("COALESCE(rs.status, 0) as status"),
                                 DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
-                                //DB::raw("COALESCE(rs.sheet, '') as sheet"),
-                                //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
                                 DB::raw("COALESCE(rs.start_realtime, '') as start_realtime"),
                                 DB::raw("COALESCE(rs.end_realtime, '') as end_realtime"),
-                                DB::raw("COALESCE(rs.room_id, '') as room_id")
+                                
                         )
                         ->orderBy('room.group_code')
                         ->orderBy('room.order_by')
                 ->get();
 
-                $planWaitings = $this->getPlanWaiting ($production, 5);
+                $planWaitings = $this->getPlanWaiting ($production);
                 
-                //dd ($planWaiting);
-
+              
+                //dd ($datas);
                 session()->put(['title'=> "CẬP NHẬT TRANG THÁI PHÒNG SẢN XUẤT $production"]);
               
                 return view('pages.status.list',[
@@ -222,14 +226,14 @@ class StatusController extends Controller
                 ]);
         }
 
-        public function getPlanWaiting($production, $stage_code){
+        public function getPlanWaiting($production){
   
                 // 2️⃣ Lấy danh sách plan_waiting (chỉ 1 query)
                 $plan_waiting = DB::table("stage_plan as sp")
                         ->whereNotNull('sp.start')
                         ->where('sp.active', 1)
                         ->where('sp.finished', 0)
-                        ->where('sp.stage_code', $stage_code)
+                        //->where('sp.stage_code', $stage_code)
                         ->where('sp.deparment_code', $production)
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
@@ -237,9 +241,13 @@ class StatusController extends Controller
                         ->select( 
                         'sp.order_by',         
                         'plan_master.batch',
-                        'product_name.name'
+                        'product_name.name',
+                        'finished_product_category.finished_product_code',
+                        'finished_product_category.intermediate_code',
+                        'sp.stage_code',
+                        'sp.resourceId',
                         )
-                        ->distinct()
+                        
                         ->orderBy('product_name.name', 'asc')
                         ->get();
                       
@@ -321,6 +329,11 @@ class StatusController extends Controller
                 ]);
                 
                 return redirect()->back()->with('success', 'Đã thêm thành công!');      
+        }
+
+        public function getQuota (Request $request){
+             
+                return DB::table('quota')->select ('p_time','m_time', 'C1_time', 'C2_time')->where('quota.process_code', $request->process_code)->get();
         }
 
 }

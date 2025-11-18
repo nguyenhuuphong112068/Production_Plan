@@ -1,14 +1,36 @@
+
+<link rel="stylesheet" href="{{asset ('dataTable/plugins/fontawesome-free/css/all.min.css')}} ">
+<link rel="stylesheet" href="{{asset ('dataTable/plugins/fontawesome-free/css/all.min.css')}}">
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <!-- ====== HEADER ====== -->
 <div class="content-wrapper">
 
     <div class="card">
-    <div class="card-body mt-5">
+        <div class="card-body">
+
+        <div class="row">
+            <div class="col-md-3">
+                <a href="{{ route('pages.status.next', ['production' => $production]) }}" class=" mx-5">
+                    <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:35px;">
+                </a>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mx-auto text-center" style="color: #CDC717;  font-weight: bold; line-height: 0.8; rgba(0,0,0,0.4);">
+                <h1 class="inline-block">{{ session('title') }} </h1>
+                </div>
+            </div>
             
+            <div class="col-md-3 text-right">
+                <a href="{{ route('logout') }}" class="nav-link text-primary mx-4" style="font-size: 20px">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
        
         <div class="row mt-1">
             <div class="col-md-3">
-            <form id="filterForm" method="GET" action="{{ route('pages.status.history.index') }}" class="d-flex flex-wrap gap-0">
+            <form id="filterForm" method="GET" action="{{ route('pages.status.history.show') }}" class="d-flex flex-wrap gap-0">
                     @csrf
                     <div class="row w-100 align-items-center">
                         <!-- Filter From/To -->
@@ -24,7 +46,7 @@
                             </div>
                         </div>
                     </div>
-                </form>
+            </form>
             </div>
             <div class="col-md-6">
                 <div style="font-size: 16px; margin:0; text-align: center;">
@@ -192,8 +214,6 @@
                                     <th style="width: 5%">T.Gian TT</th>
                                     <th style="width: 20%" class="text-center">Thông Báo</th>
                                     <th  class="text-center" style="width: 5%">Người/Ngày Cập Nhật</th>
-                                    <th  class="text-center" style="width: 5%">Cập Nhật</th>
-                                   
                                 </tr>
                             </thead>
 
@@ -305,42 +325,6 @@
                                                 <div> {{ isset($a['created_at']) ? \Carbon\Carbon::parse($a['created_at'])->format('d/m/Y H:i') : '-' }} </div>
                                                
                                             </td>
-
-                                            <td class="text-center">
-                                                @if (isset($a['in_production']) &&  isset($a['active']) && $a['active'] == 1)
-                                                <div class="d-flex justify-content-center gap-2">
-                                                    <button class="btn btn-warning btn-edit mx-1"
-                                                            style="width:40px; height:40px; padding:0;"
-                                                            data-room_name="{{ $roomName }}"
-                                                            data-id="{{ $a['id'] }}"
-                                                            data-in_production="{{ $a['in_production'] }}"
-                                                            data-status="{{ $a['status'] }}"
-                                                            data-start="{{ $a['start'] }}"
-                                                            data-end="{{ $a['end'] }}"
-                                                            data-notification="{{ $a['notification'] }}"
-                                                            data-toggle="modal"
-                                                            data-target="#Modal">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-
-                                                    <form class="form-deActive"
-                                                            action="{{ route('pages.status.history.deActive') }}"
-                                                            method="post">
-                                                        @csrf
-                                                        <input type="hidden" name="id" value="{{ $a['id'] }}">
-                                                       
-                                                        <button class="btn btn-danger btn-deactive mx-1"
-                                                                style="width:40px; height:40px; padding:10px;">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                  
-                                                    </form>
-                                                </div>
-                                                @endif
-                                            </td>
-
-
-                                          
                                         </tr>
 
                                     @endfor
@@ -363,10 +347,18 @@
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+
 
 <script>
     $(document).ready(function() {
+
+        const startDate = document.getElementById('startDate');
+        const form = document.getElementById('filterForm');
+
+        startDate.addEventListener('input', function () {
+            form.submit();
+        });
+
         // Cho phép cuộn trang
         document.body.style.overflowY = "auto";
         max_charater_unnote = 27;
@@ -425,163 +417,9 @@
         window.addEventListener('resize', adjustRowHeight);
 
 
-
-        $('.btn-plus').click(function() {
-
-            const button = $(this);
-            const modal = $('#Modal');
-            //alert (button.data('in_production'))
-            let  lastStatusRoom  = null;
-
-            // $.ajax({
-            //         url: "{{ route('pages.status.getLastStatusRoom') }}",
-            //         type: 'post',
-            //         data: {
-            //             room_id: button.data('room_id'),
-            //             _token: "{{ csrf_token() }}"
-            //         },
-            //         success: function(res) {
-            //           lastStatusRoom = res.last_row;
-                      
-            //         //   modal.find('input[name="start"]').val(res.last_row.start);
-            //         //   modal.find('input[name="end"]').val(res.last_row.end);
-            //           modal.find('select[name="in_production"]').val(res.last_row.in_production);
-            //           modal.find('textarea[name="notification"]').val(res.last_row.notification);
-
-            //           modal.find(`input[name="status"][value="${lastStatusRoom.status}"]`).prop('checked', true);
-                   
-
-
-            //           // Nếu "sheet" là chuỗi như "Đầu Ca", "Giữa Ca", "Cuối Ca", "NA"
-            //         //   switch (lastStatusRoom.sheet) {
-            //         //       case "Đầu Ca":
-            //         //           modal.find('input[name="sheet"][value="1"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Giữa Ca":
-            //         //           modal.find('input[name="sheet"][value="2"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Cuối Ca":
-            //         //           modal.find('input[name="sheet"][value="3"]').prop('checked', true);
-            //         //           break;
-            //         //       default:
-            //         //           modal.find('input[name="sheet"][value="0"]').prop('checked', true);
-            //         //   }
-
-            //         //   // Nếu "step_batch" là chuỗi như "Đầu Lô", "Giữa Lô", "Cuối Lô", "NA"
-            //         //   switch (lastStatusRoom.step_batch) {
-            //         //       case "Đầu Lô":
-            //         //           modal.find('input[name="step_batch"][value="1"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Giữa Lô":
-            //         //           modal.find('input[name="step_batch"][value="2"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Cuối Lô":
-            //         //           modal.find('input[name="step_batch"][value="3"]').prop('checked', true);
-            //         //           break;
-            //         //       default:
-            //         //           modal.find('input[name="step_batch"][value="0"]').prop('checked', true);
-            //         //   }
-
-
-            //         }
-            // });
-
-            modal.find('input[name="start"]').val(button.data('start'));
-            modal.find('input[name="end"]').val(button.data('end'));
-            modal.find('input[name="room_name"]').val(button.data('room_name'));
-            modal.find('select [name="in_production"]').val(button.data('in_production'));
-
-        });
-
     });
 </script>
 
-<script>
-    const startDate = document.getElementById('startDate');
-    const form = document.getElementById('filterForm');
-
-    startDate.addEventListener('input', function () {
-        form.submit();
-    });
-
-            $('.btn-edit').click(function() {
-                const button = $(this);
-                const modal = $('#Modal');
-
-
-
-                // Gán dữ liệu vào input
-                modal.find('input[name="id"]').val(button.data('id'));
-                modal.find('input[name="room_name"]').val(button.data('room_name'));
-                modal.find('input[name="in_production"]').val(button.data('in_production'));
-                modal.find('input[name="start"]').val(button.data('start'));
-                modal.find('input[name="end"]').val(button.data('end'));
-                modal.find('input[name="notification"]').val(button.data('notification'));
-
-                let s = button.data('status');
-
-                for (let i = 0; i <= 4; i++) {
-                    modal.find('#Status' + i).val(0).prop('checked', false);
-                }
-
-                modal.find('#Status' + s).val(s).prop('checked', true);
-       
-            });
-
-
-            $('.form-deActive').on('submit', function(e) {
-                e.preventDefault(); // chặn submit mặc định
-                const form = this;
-                const productName = $(form).find('button[type="submit"]').data('name');
-                const type = $(form).find('button[type="submit"]').data('type');
-
-                if (type == "delete") {
-                    title = "Bạn chắc chắn muốn xóa kế hoạch?"
-                } else if (type == "cancel") {
-                    title = "Bạn chắc chắn muốn hủy kế hoạch?"
-                } else {
-                    title = "Bạn chắc chắn muốn phục hồi kế hoạch?"
-                }
-
-                Swal.fire({
-                    title: title,
-                    text: `Sản phẩm: ${productName}`,
-                    icon: 'warning',
-                    input: 'textarea', // ô nhập lý do
-                    inputPlaceholder: 'Nhập lý do hủy...',
-                    inputAttributes: {
-                        'aria-label': 'Nhập lý do hủy'
-                    },
-                    showCancelButton: true,
-                    confirmButtonColor: '#28a745',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Đồng ý',
-                    cancelButtonText: 'Hủy',
-                    preConfirm: (reason) => {
-                        if (!reason) {
-                            Swal.showValidationMessage('Bạn phải nhập lý do');
-                        }
-                        return reason;
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Tạo 1 input hidden trong form để gửi lý do
-                        $('<input>').attr({
-                            type: 'hidden',
-                            name: 'deactive_reason',
-                            value: result.value
-                        }).appendTo(form);
-                        $('<input>').attr({
-                            type: 'hidden',
-                            name: 'type',
-                            value: type
-                        }).appendTo(form);
-
-                        form.submit(); // submit sau khi xác nhận
-                    }
-                });
-            });
-</script>
 
 <!-- ====== STYLE ====== -->
 <style>
