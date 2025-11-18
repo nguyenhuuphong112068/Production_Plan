@@ -111,7 +111,7 @@ class QuarantineRoomController extends Controller
     }
 
     public function index_actual(Request $request) {
-       
+
         
         // 1) Lấy toàn bộ dữ liệu gốc
         $datasRaw = DB::table('stage_plan as t')
@@ -141,6 +141,8 @@ class QuarantineRoomController extends Controller
                 't.yields',
                 't.stage_code',
                 't.number_of_boxes',
+                't.finished_by',
+                't.finished_date',
     
                 't2.stage_code as next_stage',
                 't2.start as next_start',
