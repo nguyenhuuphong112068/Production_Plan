@@ -10,7 +10,7 @@
 
         <div class="row">
             <div class="col-md-3">
-                <a href="{{ route('pages.status.next', ['production' => $production]) }}" class=" mx-5">
+                <a href="#" class=" mx-5">
                     <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:35px;">
                 </a>
             </div>
