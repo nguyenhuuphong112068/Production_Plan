@@ -143,3 +143,44 @@
         });
     </script>
 @endif
+
+{{-- <script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const input = document.getElementById('in_production');
+        const radios = document.querySelectorAll('input[name="status"]');
+
+        function setStatus(statusId, lock) {
+            const radio = document.getElementById(statusId);
+            if (radio) radio.checked = true;
+
+            // Khóa hoặc mở khóa tất cả radio
+            radios.forEach(r => r.disabled = lock);
+            if (lock) radio.disabled = false; // giữ radio được chọn vẫn mở
+        }
+
+        input.addEventListener('input', function () {
+            const val = input.value.trim();
+
+            if (val === "Đang Vệ Sinh") {
+                setStatus("Status2", true);
+            }
+            else if (val === "Bảo Trì") {
+                setStatus("Status3", true);
+            }
+            else if (val === "Máy Hư") {
+                setStatus("Status4", true);
+            }
+            else if (val === "Không Sản Xuất") {
+                setStatus("Status0", true);
+            }
+            else {
+                // Trường hợp khác: mở khóa radio để chọn bình thường
+                setStatus("Status1", true);
+                //radios.forEach(r => r.disabled = false);
+            }
+        });
+
+    });
+</script> --}}
+

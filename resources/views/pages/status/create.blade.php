@@ -56,7 +56,7 @@
                                     <!-- radio -->
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status1" name="status" value = "1" checked>
+                                            <input type="radio" id="Status1" name="status" value = "1" checked disabled>
                                             <label for="Status1">
                                                 Đang Sản Xuất
                                             </label>
@@ -65,7 +65,7 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status2" name="status" value = "2">
+                                            <input type="radio" id="Status2" name="status" value = "2" disabled>
                                             <label for="Status2">
                                                 Đang Vệ Sinh
                                             </label>
@@ -74,7 +74,7 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status4" name="status" value = "4">
+                                            <input type="radio" id="Status4" name="status" value = "4" disabled>
                                             <label for="Status4">
                                                 Máy Hư
                                             </label>
@@ -85,7 +85,7 @@
 
                                      <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status0" name="status" value = "0">
+                                            <input type="radio" id="Status0" name="status" value = "0" disabled>
                                             <label for="Status0">
                                                 Không Sản Xuất
                                             </label>
@@ -94,7 +94,7 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status3" name="status" value = "3">
+                                            <input type="radio" id="Status3" name="status" value = "3" disabled>
                                             <label for="Status3">
                                                 Đang Bảo Trì
                                             </label>
@@ -262,8 +262,9 @@
         });
     </script>
 @endif
+
 <script>
-$(document).ready(function() {
+    $(document).ready(function() {
 
     $('#in_production').on('input', function() {
         const inputVal = $(this).val();
@@ -327,65 +328,103 @@ $(document).ready(function() {
     });
 </script>
 
-
-
 <script>
 
-function parseDurationToMinutes(v) {
-    if (!v) return 0;
-    v = v.toString().trim();
-    if (v === '') return 0;
+    function parseDurationToMinutes(v) {
+        if (!v) return 0;
+        v = v.toString().trim();
+        if (v === '') return 0;
 
-    if (v.includes(':')) {
-        const [hh, mm] = v.split(':').map(x => parseInt(x, 10) || 0);
-        return hh * 60 + mm;
+        if (v.includes(':')) {
+            const [hh, mm] = v.split(':').map(x => parseInt(x, 10) || 0);
+            return hh * 60 + mm;
+        }
+
+        // dạng số phút
+        const num = Number(v);
+        return isNaN(num) ? 0 : Math.round(num);
     }
 
-    // dạng số phút
-    const num = Number(v);
-    return isNaN(num) ? 0 : Math.round(num);
-}
+    function updateEndTime() {
+        const startVal = $('input[name="start"]').val();
+        if (!startVal) return;
 
-function updateEndTime() {
-    const startVal = $('input[name="start"]').val();
-    if (!startVal) return;
+        // get status (radio name="status")
+        const status = $('input[name="status"]:checked').val();
 
-    // get status (radio name="status")
-    const status = $('input[name="status"]:checked').val();
+        // parse times
+        const pTime  = parseDurationToMinutes($('#p_time').val());
+        const mTime  = parseDurationToMinutes($('#m_time').val());
+        const C2Time = parseDurationToMinutes($('#C2_time').val());
+        
+        let totalMinutes = 0;
 
-    // parse times
-    const pTime  = parseDurationToMinutes($('#p_time').val());
-    const mTime  = parseDurationToMinutes($('#m_time').val());
-    const C2Time = parseDurationToMinutes($('#C2_time').val());
-    
-    let totalMinutes = 0;
+        // logic theo status
+        if (status == "1") {
+            totalMinutes = pTime + mTime;
+        } 
+        else if (status == "2") {
+            totalMinutes = C2Time;
+        } 
+        else {
+            // fallback nếu status khác
+            totalMinutes = mTime;
+        }
 
-    // logic theo status
-    if (status == "1") {
-        totalMinutes = pTime + mTime;
-    } 
-    else if (status == "2") {
-        totalMinutes = C2Time;
-    } 
-    else {
-        // fallback nếu status khác
-        totalMinutes = mTime;
+        // tạo Date từ datetime-local
+        const startDate = new Date(startVal);
+        startDate.setMinutes(startDate.getMinutes() + totalMinutes);
+
+        // format yyyy-MM-ddTHH:mm
+        const pad = (n) => n.toString().padStart(2, '0');
+
+        const formattedEnd =
+            `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`
+            + `T${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+
+        $('input[name="end"]').val(formattedEnd);
     }
-
-    // tạo Date từ datetime-local
-    const startDate = new Date(startVal);
-    startDate.setMinutes(startDate.getMinutes() + totalMinutes);
-
-    // format yyyy-MM-ddTHH:mm
-    const pad = (n) => n.toString().padStart(2, '0');
-
-    const formattedEnd =
-        `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`
-        + `T${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
-
-    $('input[name="end"]').val(formattedEnd);
-}
 
  
 
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const input = document.getElementById('in_production');
+        const radios = document.querySelectorAll('input[name="status"]');
+
+        function setStatus(statusId, lock) {
+            const radio = document.getElementById(statusId);
+            if (radio) radio.checked = true;
+
+            // Khóa hoặc mở khóa tất cả radio
+            radios.forEach(r => r.disabled = lock);
+            if (lock) radio.disabled = false; // giữ radio được chọn vẫn mở
+        }
+
+        input.addEventListener('input', function () {
+            const val = input.value.trim();
+
+            if (val === "Đang Vệ Sinh") {
+                setStatus("Status2", true);
+            }
+            else if (val === "Bảo Trì") {
+                setStatus("Status3", true);
+            }
+            else if (val === "Máy Hư") {
+                setStatus("Status4", true);
+            }
+            else if (val === "Không Sản Xuất") {
+                setStatus("Status0", true);
+            }
+            else {
+                // Trường hợp khác: mở khóa radio để chọn bình thường
+                setStatus("Status1", true);
+                //radios.forEach(r => r.disabled = false);
+            }
+        });
+
+    });
 </script>
