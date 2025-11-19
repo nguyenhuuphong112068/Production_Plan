@@ -56,7 +56,7 @@
                                     <!-- radio -->
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status1" name="status" value = "1" checked disabled>
+                                            <input type="radio" id="Status1" name="status" value = "1" checked>
                                             <label for="Status1">
                                                 Đang Sản Xuất
                                             </label>
@@ -65,7 +65,7 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status2" name="status" value = "2" disabled>
+                                            <input type="radio" id="Status2" name="status" value = "2" >
                                             <label for="Status2">
                                                 Đang Vệ Sinh
                                             </label>
@@ -74,7 +74,7 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status4" name="status" value = "4" disabled>
+                                            <input type="radio" id="Status4" name="status" value = "4" >
                                             <label for="Status4">
                                                 Máy Hư
                                             </label>
@@ -85,7 +85,7 @@
 
                                      <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status0" name="status" value = "0" disabled>
+                                            <input type="radio" id="Status0" name="status" value = "0" >
                                             <label for="Status0">
                                                 Không Sản Xuất
                                             </label>
@@ -94,7 +94,7 @@
 
                                     <div class="form-group clearfix">
                                         <div class="icheck-primary d-inline">
-                                            <input type="radio" id="Status3" name="status" value = "3" disabled>
+                                            <input type="radio" id="Status3" name="status" value = "3" >
                                             <label for="Status3">
                                                 Đang Bảo Trì
                                             </label>
@@ -400,8 +400,8 @@
             if (radio) radio.checked = true;
 
             // Khóa hoặc mở khóa tất cả radio
-            radios.forEach(r => r.disabled = lock);
-            if (lock) radio.disabled = false; // giữ radio được chọn vẫn mở
+            //radios.forEach(r => r.disabled = lock);
+            //if (lock) radio.disabled = false; // giữ radio được chọn vẫn mở
         }
 
         input.addEventListener('input', function () {

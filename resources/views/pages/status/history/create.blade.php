@@ -144,7 +144,7 @@
     </script>
 @endif
 
-{{-- <script>
+<script>
     document.addEventListener("DOMContentLoaded", function () {
 
         const input = document.getElementById('in_production');
@@ -155,8 +155,8 @@
             if (radio) radio.checked = true;
 
             // Khóa hoặc mở khóa tất cả radio
-            radios.forEach(r => r.disabled = lock);
-            if (lock) radio.disabled = false; // giữ radio được chọn vẫn mở
+            //radios.forEach(r => r.disabled = lock);
+            //if (lock) radio.disabled = false; // giữ radio được chọn vẫn mở
         }
 
         input.addEventListener('input', function () {
@@ -182,5 +182,5 @@
         });
 
     });
-</script> --}}
+</script>
 
