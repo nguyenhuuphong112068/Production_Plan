@@ -212,20 +212,11 @@
                                 <td class="text-end" >{{ number_format(array_sum($stageTT), 2) }}</td>
                                 <td class="text-center">{{ $unit }}</td>
                             </tr>
-
-
-
                         @endif
-
-
-
-
                     @endforeach
                 </tbody>
             </table>
 
-
-            
         </div>
     </div>
 </div>

@@ -2,6 +2,7 @@
     <!-- Main content -->
           <div class="card">
               <div class="card-header mt-4"></div>
+           
               @php
                  $stage_name = [
                       1 => "Cân Nguyên Liệu",
@@ -14,13 +15,33 @@
               @endphp 
               <!-- /.card-Body -->
               <div class="card-body">
-
+                <div>
+                    <form id="filterForm" method="GET" action="{{ route('pages.report.daily_report.index') }}" class="d-flex flex-wrap gap-0">
+                        @csrf
+                        <div class="row w-100 align-items-center">
+                            <!-- Filter From/To -->
+                            <div class="col-md-4 d-flex gap-2">
+                                @php
+                                    use Carbon\Carbon;
+                                    $defaultFrom = $reportedDate
+                                        ? Carbon::createFromFormat('!d/m/Y', trim($reportedDate))->format('Y-m-d')
+                                        : Carbon::now()->format('Y-m-d');
+                                @endphp
+                                <div class="form-group d-flex align-items-center">
+                                    <label for="reportedDate" class="mr-2 mb-0">Chọn Ngày:</label>
+                                    <input type="date" id="reportedDate" name="reportedDate" value="{{ $defaultFrom }}" class="form-control"  max="{{ \Carbon\Carbon::yesterday()->format('Y-m-d') }}" />
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                    
 
                 <!-- Sản Lượng thực tế phòng sx tiêp theo -->
                 <div class="card card-primary mb-4">
                         <div class="card-header border-transparent">
                             <h3 class="card-title">
-                               Tồn Kho Phân Bổ Theo Phòng Sản Xuất Ở Công Đoạn Tiếp Theo
+                               {{"Tồn Kho Phân Bổ Theo Phòng Sản Xuất Ở Công Đoạn Tiếp Theo (Tính đến 06:00 ngày báo cáo)"}}
                             </h3>
                             <div class="card-tools">
                                 <button type="button" class="btn btn-tool" data-card-widget="collapse">
@@ -65,8 +86,9 @@
                         </table>
                     </div>
                 </div>
+
                 <!-- Sản Lượng thực tế đang lưu ở từng phòng biệt trữ -->
-                @foreach (collect($datas)->sortKeys() as $quarantine_room_code => $details)
+                {{-- @foreach (collect($datas)->sortKeys() as $quarantine_room_code => $details)
                     <div class="card card-success mb-4">
                         <div class="card-header border-transparent">
                             <h3 class="card-title">
@@ -125,7 +147,7 @@
                             </table>
                         </div>
                     </div>
-                @endforeach
+                @endforeach --}}
 
               </div>
             </div>
@@ -136,64 +158,73 @@
 
 
 <script>
-  const stageNameMap = @json($stage_name);
-  $(document).ready(function () {
-    document.body.style.overflowY = "auto";
-    $('.btn-detial').on('click', function() {
 
-        const room_id = $(this).data('room_id');
-       
-        const history_modal = $('#data_table_detail_body')
+    const startDate = document.getElementById('reportedDate');
+    const form = document.getElementById('filterForm');
 
-                // Xóa dữ liệu cũ
-                history_modal.empty();
-
-                // Gọi Ajax lấy dữ liệu history
-                $.ajax({
-                    url: "{{ route('pages.quarantine.actual.detail') }}",
-                    type: 'post',
-                    data: {
-                        room_id: room_id,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(res) {
-                        if (res.length === 0) {
-                            history_modal.append(
-                                `<tr><td colspan="8" class="text-center">Không có dữ liệu</td></tr>`
-                            );
-                        } else {
-                            res.forEach((item, index) => {
-                            // map màu level
-                                
-                            history_modal.append(`
-                              <tr>
-                                  <td>${index + 1}</td>
-
-                                  <td> 
-                                      <div>${item.intermediate_code ?? ''}</div>
-                                      <div>${item.finished_product_code ?? ''}</div>
-                                  </td>
-
-                                  <td>${item.product_name ?? ''} </td>
-                                  <td>${item.batch ?? ''}</td>
-                                  <td>${(item.pre_room ?? '')}</td>
-                                  <td>${(item.yields ?? '') + (item.stage_code <= 4 ? " Kg" : " ĐVL")}</td>
-                                  <td>${stageNameMap[item.next_stage] ?? ''}</td>
-                                
-                                  <td>${moment(item.next_start).format('hh:mm DD/MM/YYYY') ?? ''}</td>
-                                  <td>${item.quarantine_room_code ?? ''}</td>
-                              </tr>
-                          `);});
-                        }
-                    },
-                    error: function() {
-                        history_modal.append(
-                            `<tr><td colspan="8" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-                        );
-                    }
-                });
+    startDate.addEventListener('input', function () {
+        form.submit();
     });
-  });
+
+
+    const stageNameMap = @json($stage_name);
+    $(document).ready(function () {
+        document.body.style.overflowY = "auto";
+        $('.btn-detial').on('click', function() {
+
+            const room_id = $(this).data('room_id');
+        
+            const history_modal = $('#data_table_detail_body')
+
+                    // Xóa dữ liệu cũ
+                    history_modal.empty();
+
+                    // Gọi Ajax lấy dữ liệu history
+                    $.ajax({
+                        url: "{{ route('pages.quarantine.actual.detail') }}",
+                        type: 'post',
+                        data: {
+                            room_id: room_id,
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function(res) {
+                            if (res.length === 0) {
+                                history_modal.append(
+                                    `<tr><td colspan="8" class="text-center">Không có dữ liệu</td></tr>`
+                                );
+                            } else {
+                                res.forEach((item, index) => {
+                                // map màu level
+                                    
+                                history_modal.append(`
+                                <tr>
+                                    <td>${index + 1}</td>
+
+                                    <td> 
+                                        <div>${item.intermediate_code ?? ''}</div>
+                                        <div>${item.finished_product_code ?? ''}</div>
+                                    </td>
+
+                                    <td>${item.product_name ?? ''} </td>
+                                    <td>${item.batch ?? ''}</td>
+                                    <td>${(item.pre_room ?? '') }</td>
+                                    <td>${(item.yields ?? '') + (item.stage_code <= 4 ? " Kg" : " ĐVL")}</td>
+                                    <td>${stageNameMap[item.next_stage] ?? ''}</td>
+                                    
+                                    <td>${moment(item.next_start).format('hh:mm DD/MM/YYYY') ?? ''}</td>
+                                    <td>${item.quarantine_room_code ?? ''}</td>
+                                </tr>
+                            `);});
+                            }
+                        },
+                        error: function() {
+                            history_modal.append(
+                                `<tr><td colspan="8" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                            );
+                        }
+                    });
+        });
+    });
 </script>
 
 

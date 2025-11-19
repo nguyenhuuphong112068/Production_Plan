@@ -354,15 +354,38 @@
             </ul>
           </li>
 
+          <!-- Droplist Menu Báo Cáo Ngày -->
            @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
-           <li class="nav-item">
-              <a href="{{ route ('pages.History.list') }}" class="nav-link">
+
+            <li class="nav-item has-treeview">
+              <a href="#" class="nav-link">
                 <i class="nav-icon fas fa-crosshairs"></i>
                 <p>
-                  Báo Cáo Ngày
+                  Báo Cáo
+                  <i class="right fas fa-angle-left"></i>
                 </p>
               </a>
+
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ route ('pages.report.daily_report.index') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Báo Cáo Ngày </p>
+                  </a>
+                </li>
+
+                {{-- 
+                <li class="nav-item">
+                  <a href="{{ route ('pages.quarantine.actual.index_actual') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Báo Cáo Kiểm Tra Lịch Sản Xuất </p>
+                  </a>
+                </li> --}}
+
+              </ul>
             </li>
+
+
           @endif
           <!-- Droplist Menu Biệt Trữ -->
           @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
