@@ -328,7 +328,6 @@ const ScheduleTest = () => {
   ///  Thay đôi khung thời gian
   const handleViewChange = useCallback(async (viewType = null, action = null) => {
     
-
     const api = calendarRef.current?.getApi();
     if (!api) return;
     try {
@@ -349,13 +348,16 @@ const ScheduleTest = () => {
       const { activeStart, activeEnd, type: currentView } = api.view;
 
       const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
-      
+      const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+
+     
       // 🔹 4. Gọi API backend
       const { data } = await axios.post(`/Schedual/view`, {
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
         viewtype: currentView,
         clearning: cleaningHidden,
+        theory: theoryHidden,
       });
 
       let cleanData = data;
@@ -373,11 +375,20 @@ const ScheduleTest = () => {
   }, []);
 
   const toggleCleaningEvents = () => {
-    const current = JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+    const current = JSON.parse(sessionStorage.getItem('cleaningHidden'));
     const newHidden = !current;
     sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
    
     handleViewChange(null, null);
+  };
+
+  const toggleTheoryEvents = () => {
+    
+    const current = JSON.parse(sessionStorage.getItem('theoryHidden'));
+    const newTheory = !current;
+    sessionStorage.setItem('theoryHidden', JSON.stringify(newTheory));
+   
+  handleViewChange(null, null);
   };
 
   /// Tô màu các event trùng khớp
@@ -1780,7 +1791,7 @@ const ScheduleTest = () => {
         }}
         
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -1875,6 +1886,12 @@ const ScheduleTest = () => {
             text: '🙈',
             click: toggleCleaningEvents
           },
+
+          hiddenTheory: {
+            text: '🧭',
+            click: toggleTheoryEvents
+          },
+
           autoSchedualer: {
             text: '🤖',
             click: handleAutoSchedualer,
