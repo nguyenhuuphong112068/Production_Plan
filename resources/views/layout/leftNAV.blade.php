@@ -281,7 +281,7 @@
             </ul>
           </li>
 
-          <!-- Droplist Menu Lập Lịch -->
+          <!-- Droplist Menu Lịch SX -->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-calendar-alt"></i>
@@ -325,7 +325,7 @@
               <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.yield.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Sản Lượng Lý Thuyết</p>
+                  <p>Sản Lượng</p>
                 </a>
               </li>
 
@@ -353,6 +353,7 @@
               @endif
             </ul>
           </li>
+
            @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
            <li class="nav-item">
               <a href="{{ route ('pages.History.list') }}" class="nav-link">
