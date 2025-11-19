@@ -11,6 +11,12 @@ use Carbon\CarbonPeriod;
 
 class SchedualController extends Controller
 {
+        protected $roomAvailability = [];
+        protected $order_by = 1;
+        protected $selectedDates = [];
+        protected $work_sunday = true;
+        protected $reason = null;
+        protected $theory = null;
 
         public function index (){
 
@@ -123,8 +129,8 @@ class SchedualController extends Controller
 
         }
 
-        protected function getEvents($production, $startDate, $endDate, $clearning){
-
+        protected function getEvents($production, $startDate, $endDate, $clearning, bool $theory = false){
+                 
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate   = Carbon::parse($endDate)->toDateTimeString();
 
@@ -310,7 +316,7 @@ class SchedualController extends Controller
                         }
 
                         // 🎯 Push event chính
-                        if ($plan->start && $plan->end) {
+                        if ($plan->start) {
                                 $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-main",
@@ -335,7 +341,7 @@ class SchedualController extends Controller
                         }
 
                         // 🧽 Push event vệ sinh
-                        if ($clearning && $plan->start_clearning && $plan->end_clearning && $plan->yields >= 0) {
+                        if ($clearning && $plan->start_clearning  && $plan->yields >= 0) {
                                 $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-cleaning",
@@ -351,6 +357,50 @@ class SchedualController extends Controller
                                 'process_code' => $plan->process_code,
                                 ]);
                         }
+                        
+                        // event Lich chính lý thuyết
+                        if ($plan->actual_start && $theory) {
+                               
+                                $events->push([
+                                'plan_id' => $plan->id,
+                                'id' => "{$plan->id}-main-theory",
+                                'title' => trim($plan->title . "- Lịch Lý Thuyết"?? '') ,
+                                'start' => $plan->acutal_start ?? $plan->start,
+                                'end' => $plan->acutal_end ?? $plan->end,
+                                'resourceId' => $plan->resourceId,
+                                'color' => '#8397faff',
+                                'plan_master_id' => $plan->plan_master_id,
+                                'stage_code' => $plan->stage_code,
+                                'is_clearning' => false,
+                                'finished' => $plan->finished,
+                                'level' => $plan->level,
+                                'process_code' => $plan->process_code,
+                                'keep_dry' => $plan->keep_dry,
+                                'tank' => $plan->tank,
+                                'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
+                                //'number_of_history' => $historyCounts[$plan->id] ?? 0,
+                                //'order_by' => $plan->order_by,
+                                'storage_capacity' => $storage_capacity
+                                ]);
+                        }
+                        // event Lich VS lý thuyết
+                        if ($clearning && $plan->actual_start && $plan->yields >= 0 && $theory) {
+                                $events->push([
+                                'plan_id' => $plan->id,
+                                'id' => "{$plan->id}-cleaning-theory",
+                                'title' => $plan->title_clearning . " - Lịch Lý Thuyết" ?? 'Vệ sinh',
+                                'start' => $plan->start_clearning,
+                                'end' =>  $plan->end_clearning,
+                                'resourceId' => $plan->resourceId,
+                                'color' => '#8397faff',
+                                'plan_master_id' => $plan->plan_master_id,
+                                'stage_code' => $plan->stage_code,
+                                'is_clearning' => true,
+                                'finished' => $plan->finished,
+                                'process_code' => $plan->process_code,
+                                ]);
+                        }
+
                         }
                 }
 
@@ -525,7 +575,8 @@ class SchedualController extends Controller
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";
-
+                $this->theory = $request->theory ?? false;
+                
                 try {
                         $production = session('user')['production_code'];
                        
@@ -541,7 +592,7 @@ class SchedualController extends Controller
 
                         $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
 
-                        $events = $this->getEvents($production, $startDate, $endDate, $clearing);
+                        $events = $this->getEvents($production, $startDate, $endDate, $clearing , $this->theory);
                       
                         $sumBatchByStage = $this->yield($startDate, $endDate, "stage_code");
 
@@ -618,7 +669,7 @@ class SchedualController extends Controller
                         ]);
 
                         $production = session('user')['production_code'];
-                        $events = $this->getEvents($production, $request->startDate, $request->endDate, true);
+                        $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
                         return response()->json([
                                 'events' => $events,
                         ]);
@@ -670,7 +721,7 @@ class SchedualController extends Controller
                                         $C2_time_minutes = 60;
                                 }
 
-                                 Log::info([$request->start, $p_time_minutes, $m_time_minutes, $C1_time_minutes, $C2_time_minutes]);
+                            
 
 
                                 if ($product['stage_code'] <= 2) {
@@ -748,7 +799,7 @@ class SchedualController extends Controller
 
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
@@ -787,9 +838,7 @@ class SchedualController extends Controller
                         ]);
                 }
 
-                // Ghi log số lượng + dữ liệu chi tiết
-                // Log::info('History data count: ' . $history_data->count());
-                // Log::debug('History data details:', $history_data->toArray());
+              
 
                 // Trả dữ liệu về frontend
                 return response()->json([
@@ -928,7 +977,7 @@ class SchedualController extends Controller
                 }
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
@@ -1022,7 +1071,7 @@ class SchedualController extends Controller
                 }
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
@@ -1089,7 +1138,7 @@ class SchedualController extends Controller
 
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
 
@@ -1146,7 +1195,7 @@ class SchedualController extends Controller
 
                         if ($ids->isEmpty()) {
                                 $production = session('user')['production_code'];
-                                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
                                 $plan_waiting = $this->getPlanWaiting($production);
                                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
                                 return response()->json([
@@ -1177,7 +1226,7 @@ class SchedualController extends Controller
                 }
 
                 $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true);
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
                 $plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
                 return response()->json([
@@ -1225,7 +1274,7 @@ class SchedualController extends Controller
                                 'plan_waiting' => $plan_waiting
                         ]);
                 }else {
-                        $events = $this->getEvents($production, $request->startDate, $request->endDate, true);
+                        $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
                         return response()->json([
                                 'events' => $events,
                         ]);
@@ -1495,7 +1544,7 @@ class SchedualController extends Controller
         }
 
         public function DeleteAutoCampain (Request $request){  
-                Log::info ($request->all());
+              
                 DB::table('stage_plan')
                         ->where('finished', 0)
                         ->where('start', null)
@@ -1747,11 +1796,7 @@ class SchedualController extends Controller
         }
 
         ///////// Các hàm liên Auto Schedualer
-        protected $roomAvailability = [];
-        protected $order_by = 1;
-        protected $selectedDates = [];
-        protected $work_sunday = true;
-        protected $reason = null;
+
 
         /**Load room_status để lấy các slot đã bận*/
         protected function loadRoomAvailability(string $sort, int $roomId){
@@ -2007,7 +2052,7 @@ class SchedualController extends Controller
 
                 
                 
-                //Log::info(Carbon::now());
+               
                 $stageCodes = DB::table("stage_plan as sp")
                         ->distinct()
                         ->where('sp.stage_code',">=",3)
@@ -2061,7 +2106,7 @@ class SchedualController extends Controller
                         }
                         $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date);
                 }
-                //Log::info(Carbon::now());
+                
                 return response()->json([]);
         }
 
