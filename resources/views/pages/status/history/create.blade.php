@@ -22,7 +22,7 @@
 
                 <div class="modal-body">
 
-                    <input class="form-control" name="id" id="id">
+                    <input type ="hidden" class="form-control" name="id" id="id">
 
                     <div class="form-group">
                         <label for="name">Phòng Sản Xuất</label>
