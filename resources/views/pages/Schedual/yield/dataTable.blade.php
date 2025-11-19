@@ -192,7 +192,7 @@
 
                             {{-- ⭐ Tổng LT --}}
                             <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
-                                <td class="text-center align-middle" rowspan="2">{{ 'Công Đoạn ' . ($stage_name[$stage_code] ?? $stage_code) }} (LT)</td>
+                                <td class="text-center align-middle" rowspan="2">{{ 'Công Đoạn ' . ($stage_name[$stage_code] ?? $stage_code) }}</td>
                                 <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
 
                                 @foreach ($allDates as $date)

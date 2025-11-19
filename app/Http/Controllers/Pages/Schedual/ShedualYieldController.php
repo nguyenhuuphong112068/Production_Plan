@@ -26,7 +26,7 @@ class ShedualYieldController extends Controller
         $actual = $this->yield_actual ( $startDate, $endDate, 'resourceId');
         
        //dd ($theory, $theory2);
-        session()->put(['title'=> 'SẢN lƯỢNG LÝ THUYẾT - THỰC TẾ']);
+        session()->put(['title'=> 'SẢN LƯỢNG LÝ THUYẾT - THỰC TẾ']);
         return view('pages.Schedual.yield.list',[   
             'theory' => $theory,
             'actual' => $actual,
