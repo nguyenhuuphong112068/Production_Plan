@@ -353,7 +353,7 @@
               @endif
             </ul>
           </li>
-
+           @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
            <li class="nav-item">
               <a href="{{ route ('pages.History.list') }}" class="nav-link">
                 <i class="nav-icon fas fa-crosshairs"></i>
@@ -362,7 +362,7 @@
                 </p>
               </a>
             </li>
-
+          @endif
           <!-- Droplist Menu Biệt Trữ -->
           @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
             <!-- Droplist Menu Biệt Trữ -->
