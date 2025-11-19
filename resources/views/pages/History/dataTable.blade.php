@@ -86,15 +86,15 @@
                           @endif
                       </td>
                       <td> {{ $data->room_name ." - ". $data->room_code}} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }} </td>
+                      <td> {{ \Carbon\Carbon::parse($data->actual_start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->actual_end)->format('d/m/Y H:i') }} </td>
+                      <td> {{ \Carbon\Carbon::parse($data->actual_start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->actual_end_clearning)->format('d/m/Y H:i') }} </td>
                       <td> {{ $data->yields}} {{$stageCode <=4?"Kg":"ĐVL"}}</td>
                       <td> {{ $data->quarantine_room_code}}  </td>
                       <td> {{ $data->note}} </td>
 
                       <td>
-                          <div> {{ $data->schedualed_by}} </div>
-                          <div>{{ \Carbon\Carbon::parse($data->schedualed_at)->format('d/m/Y') }} </div>
+                          <div> {{ $data->finished_by}} </div>
+                          <div>{{ \Carbon\Carbon::parse($data->finished_date)->format('d/m/Y') }} </div>
                       </td>                     
 
                     </tr>

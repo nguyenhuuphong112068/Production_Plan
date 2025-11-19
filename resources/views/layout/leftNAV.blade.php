@@ -17,10 +17,11 @@
       transition: background-color 0.1s;
     }
     /* Giữ sidebar cố định bên trái */
-    .sidebar {
+    .sidebar{
       position: fixed;
       top: 0px;
       left: 0px;
+   
       height: 100vh; /* chiếm toàn bộ chiều cao trình duyệt */
       overflow-y: auto; /* nếu menu dài vẫn có thể cuộn riêng */
       z-index: 1000; /* nằm trên các phần khác */
@@ -352,6 +353,15 @@
               @endif
             </ul>
           </li>
+
+           <li class="nav-item">
+              <a href="{{ route ('pages.History.list') }}" class="nav-link">
+                <i class="nav-icon fas fa-crosshairs"></i>
+                <p>
+                  Báo Cáo Ngày
+                </p>
+              </a>
+            </li>
 
           <!-- Droplist Menu Biệt Trữ -->
           @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
