@@ -77,10 +77,17 @@ class SchedualFinisedController extends Controller
                 DB::table('stage_plan')
                         ->where('id', $request->id)
                         ->update([
-                        'start'           => $request->start,
-                        'end'             => $request->end,
-                        'start_clearning' => $request->start_clearning,
-                        'end_clearning'   => $request->end_clearning,
+                                   
+                        //'start'           => $request->start,
+                        //'end'             => $request->end,
+                        //'start_clearning' => $request->start_clearning,
+                        //'end_clearning'   => $request->end_clearning,
+                        
+                        'actual_start'           => $request->start,
+                        'actual_end'             => $request->end,
+                        'actual_start_clearning' => $request->start_clearning,
+                        'actual_end_clearning'   => $request->end_clearning,
+
                         'yields'   => $request->yields,
                         'number_of_boxes'   => $request->number_of_boxes??1,
                         'note'   => $request->note??"NA",
