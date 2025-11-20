@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class DailyReportController extends Controller
 {
@@ -49,7 +50,7 @@ class DailyReportController extends Controller
 
         $reportedDate = $reportedDate->subDays(1)->format ('d/m/Y');    
         session()->put(['title' => "BÁO CÁO NGÀY $reportedDate"]);
-        
+       // dd ($sum_by_next_room, $theory);
         return view('pages.report.daily_report.list', [
             'actual' => $actual,
             'theory' => $theory,
@@ -58,7 +59,6 @@ class DailyReportController extends Controller
         ]);
 
     }
-
 
     public function yield_actual($startDate, $endDate, $group_By){
         // ------------------------------
@@ -417,6 +417,48 @@ class DailyReportController extends Controller
                 ->orderBy('t.stage_code')
             ->get();
             return response()->json($detial);
+    }
+
+    public function getExplainationContent(Request $request) {
+       
+        $data = DB::table('explanation')
+            ->where('reported_date', $request->reported_date)
+            ->where('stage_code', $request->stage_code)
+            ->first();
+
+        if (!$data) {
+            // Chưa có thì tạo mới
+            DB::table('explanation')->insert([
+                'reported_date' => $request->reported_date,
+                'stage_code' => $request->stage_code,
+                'content' => "Chưa Có Ghi Chú",
+                'created_by' => session ('user')['fullName'],
+                'created_at' => now(),
+               
+            ]);
+
+            // Lấy lại dữ liệu sau khi insert
+            $data = DB::table('explanation')
+                ->where('reported_date', $request->reported_date)
+                ->where('stage_code', $request->stage_code)
+                ->first();
+        }
+
+
+        return response()->json($data);
+    }
+
+    public function explain (Request $request) {
+
+         DB::table('explanation')
+            ->where ('reported_date', $request->reported_date)
+            ->where ('stage_code', $request->stage_code)
+            ->update([
+                    'content' => $request->note,
+                    'created_by' => session ('user')['fullName'],
+                    'updated_at' => now(),
+                ]);
+        return redirect()->back()->with('success', 'Đã thêm thành công!');    
     }
 
 
