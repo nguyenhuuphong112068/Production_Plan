@@ -32,9 +32,9 @@
 
         <div class="modal-body">
             {{-- NAME --}}
-            <div class="form-group">
+            <div class="form-group" >
               <label for="name">Nội Dung Ghi Chú </label>
-              <textarea type="text" class="form-control" name="note" $auth_update > {{ old('content') }} </textarea>
+              <textarea type="text" class="form-control" name="note"  {{ $auth_update }} > {{ old('content') }} </textarea>
             </div>
 
             <div class="form-group">
