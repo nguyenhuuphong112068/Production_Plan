@@ -434,7 +434,7 @@ class DailyReportController extends Controller
                 'stage_code' => $request->stage_code,
                 'content' => "Chưa Có Ghi Chú",
                 //'created_by' => session ('user')['fullName'],
-                'created_at' => now(),
+                //'created_at' => now(),
                
             ]);
 
@@ -458,6 +458,7 @@ class DailyReportController extends Controller
                     'content' => $request->note,
                     'created_by' => session ('user')['fullName'],
                     'updated_at' => now(),
+                    'created_at' => now(),
                 ]);
         return redirect()->back()->with('success', 'Đã thêm thành công!');    
     }
