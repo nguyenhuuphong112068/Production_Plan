@@ -290,7 +290,7 @@
 </script>
 
 
-
+{{-- 
 <script>
     const form = document.getElementById('filterForm');
     const fromInput = document.getElementById('from_date');
@@ -301,7 +301,7 @@
             form.submit();
         });
     });
-</script>
+</script> --}}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -324,10 +324,33 @@
             const btn = this; // nút vừa click
             const row = btn.closest('tr');
             const id = row.dataset.id;
+            const now = new Date();
+
+            // Lấy tất cả input trong dòng
+            const inputs = row.querySelectorAll('input[type="datetime-local"]');
+
+            // --- KIỂM TRA THỜI GIAN NHẬP ---
+            for (let input of inputs) {
+                if (input.value) {
+                    let valTime = new Date(input.value);
+
+                    if (valTime > now) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Thời gian không hợp lệ",
+                            text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
+                            timer: 2000
+                        });
+                        return; // NGỪNG HÀM, KHÔNG GỬI AJAX
+                    }
+                }
+            }
+
 
             // Lấy dữ liệu input trong dòng đó
             const data = {};
             row.querySelectorAll('input, select, textarea').forEach(input => {
+
                 data[input.name] = input.value;
             });
             data['id'] = id;
