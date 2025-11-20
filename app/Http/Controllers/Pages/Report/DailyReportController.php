@@ -14,10 +14,11 @@ class DailyReportController extends Controller
 
         $reportedDate = $request->reportedDate ?? Carbon::yesterday()->format('Y-m-d');
 
-        $reportedDate = Carbon::parse ($reportedDate)->addDays(1)->setTime (6,0,0);
-        $endDate =  $reportedDate->copy();
-        $startDate =  $endDate->copy()->subDays(1);
-    
+        $reportedDate = Carbon::parse($reportedDate)->setTime (6,0,0);
+        
+        $startDate =  $reportedDate->copy();
+        $endDate =  $reportedDate->copy()->addDays(1);
+        
        
         $actual = $this->yield_actual($startDate, $endDate, 'resourceId');
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
@@ -48,9 +49,9 @@ class DailyReportController extends Controller
             ->orderBy('group_code')   // sắp xếp theo stage
             ->get();
 
-        $reportedDate = $reportedDate->subDays(1)->format ('d/m/Y');    
+        $reportedDate = $reportedDate->format ('d/m/Y');    
         session()->put(['title' => "BÁO CÁO NGÀY $reportedDate"]);
-       // dd ($sum_by_next_room, $theory);
+      
         return view('pages.report.daily_report.list', [
             'actual' => $actual,
             'theory' => $theory,
