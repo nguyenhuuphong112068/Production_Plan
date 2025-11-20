@@ -13,8 +13,8 @@ class SchedualFinisedController extends Controller
         public function index(Request $request){
                 //dd ($request->all());
 
-                $fromDate = $request->from_date ?? Carbon::now()->toDateString();
-                $toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
+                //$fromDate = $request->from_date ?? Carbon::now()->toDateString();
+                //$toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
                 $stage_code = $request->stage_code??3;
                 $production = session('user')['production_code'];
       
@@ -44,6 +44,7 @@ class SchedualFinisedController extends Controller
                     ->where('sp.deparment_code', $production)
                     ->whereNotNull('sp.start')
                     ->where('sp.finished',0)
+                    ->orderBy('sp.start')
                     ->get();
 
                   
