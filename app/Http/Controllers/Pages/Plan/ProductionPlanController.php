@@ -430,17 +430,17 @@ class ProductionPlanController extends Controller
         public function splitting(Request $request){
                 //dd ($request->all());
                 $validator = Validator::make($request->all(), [
-                        'batch' => 'required',
+                        //'batch' => 'required',
                         'expected_date' => 'required',
                         'level' => 'required',
                         'percent_packaging' => 'required',
-                        'number_of_batch' => 'required',
+                        'number_of_unit' => 'required',
                 ], [
-                        'batch.required' => 'Vui lòng nhập số lô',
+                        //'batch.required' => 'Vui lòng nhập số lô',
                         'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level.required' => 'Vui lòng chọn mức độ ưu tiên',
                         'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
-                        'number_of_batch.required' => 'Vui lòng chọn số lượng lô',
+                        'number_of_unit.required' => 'Vui lòng chọn số lượng đóng gói',
                 ]);
 
                 if ($validator->fails()) {
@@ -515,17 +515,17 @@ class ProductionPlanController extends Controller
         public function splittingUpdate(Request $request){
                 //dd ($request->all());
                 $validator = Validator::make($request->all(), [
-                        'batch' => 'required',
+                        //'batch' => 'required',
                         'expected_date' => 'required',
                         'level' => 'required',
                         'percent_packaging' => 'required',
-                        'number_of_batch' => 'required',
+                        'number_of_unit' => 'required',
                 ], [
-                        'batch.required' => 'Vui lòng nhập số lô',
+                        //'batch.required' => 'Vui lòng nhập số lô',
                         'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level.required' => 'Vui lòng chọn mức độ ưu tiên',
                         'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
-                        'number_of_batch.required' => 'Vui lòng chọn số lượng lô',
+                        'number_of_unit.required' => 'Vui lòng chọn số lượng đóng gói',
                 ]);
 
                 if ($validator->fails()) {
