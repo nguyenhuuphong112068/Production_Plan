@@ -88,14 +88,14 @@
 
                             <label>Số lô</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" name="batch"
+                                <input type="text" class="form-control" name="batch" readonly
                                     value="{{ old('batch') }}"/>
                                 <input type="number" min="1" step="1" class="form-control"
                                     name="number_of_batch" value="{{ old('number_of_batch', 1) }}"
                                     oninput="this.value = this.value.replace(/[^0-9]/g, '')" readonly >
-                                <span class="input-group-text p-0" style="width: 105px">
+                                {{-- <span class="input-group-text p-0" style="width: 105px">
                                     <input type="checkbox" name="format_batch_no" checked data-bootstrap-switch>
-                                </span>
+                                </span> --}}
                             </div>
 
                             <label class="mt-2">% Đóng gói</label>

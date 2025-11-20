@@ -156,6 +156,7 @@
                                         data-unit_batch_qty="{{ $data->unit_batch_qty}}"
                                         data-material_source_id="{{ $data->material_source_id}}"
                                         data-number_parkaging="{{ $data->number_parkaging}}"
+
                                        
                                     >
                                         {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
@@ -411,8 +412,11 @@
                     modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
                     modal.find('input[name="expected_date"]').val(button.data('expected_date'));
                     modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data('is_val'));
+                    
 
                     modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
+
+
                 }else {
                     const modal_splitting = $('#splittingModal');
                     modal_splitting.find('input[name="id"]').val(button.data('id'));
