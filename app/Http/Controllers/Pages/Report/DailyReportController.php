@@ -433,7 +433,7 @@ class DailyReportController extends Controller
                 'reported_date' => $request->reported_date,
                 'stage_code' => $request->stage_code,
                 'content' => "Chưa Có Ghi Chú",
-                'created_by' => session ('user')['fullName'],
+                //'created_by' => session ('user')['fullName'],
                 'created_at' => now(),
                
             ]);
