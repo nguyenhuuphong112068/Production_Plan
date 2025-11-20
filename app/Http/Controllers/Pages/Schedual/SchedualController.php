@@ -294,9 +294,9 @@ class SchedualController extends Controller
                                 //: "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
                         }
 
-                        if ($plan->finished == 1) {
-                                $color_event = '#002af9ff';
-                        }
+                        // if ($plan->finished == 1) {
+                        //         $color_event = '#002af9ff';
+                        // }
 
                         // 🔗 Kiểm tra predecessor / successor
                         if ($plan->predecessor_code) {
@@ -324,7 +324,7 @@ class SchedualController extends Controller
                                 'start' => $plan->acutal_start ?? $plan->start,
                                 'end' => $plan->acutal_end ?? $plan->end,
                                 'resourceId' => $plan->resourceId,
-                                'color' => $color_event,
+                                'color' => $plan->finished == 1? '#002af9ff':$color_event,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => false,
@@ -349,7 +349,7 @@ class SchedualController extends Controller
                                 'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
                                 'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
-                                'color' => '#a1a2a2ff',
+                                'color' => $plan->finished == 1? '#002af9ff':'#a1a2a2ff',
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => true,
