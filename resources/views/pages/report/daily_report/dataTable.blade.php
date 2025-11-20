@@ -1,3 +1,5 @@
+
+
 <div class="content-wrapper">
     <!-- Main content -->
           <div class="card">
@@ -47,100 +49,56 @@
                     </div>
                 </div>
 
+                <!-- Sản Lượng -->
+                <div class="card card-success mb-4">
+                    <div class="card-header border-transparent">
+                        <h3 class="card-title">
+                               Sản Lượng
+                        </h3>
+                        <div class="card-tools">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <button type="button" class="btn btn-tool" data-card-widget="remove">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                        </div>
+                    </div>
 
-                <!-- Sản Lượng thực tế-->
-                <div class="card card-primary mb-4">
-              
-                    <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
-                        <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
-                            <tr style="background-color: #CDC717; color:#003A4F; font-size: 20px; font-weight: bold;">
-                                <th class="text-center" style="min-width: 200px;">Phòng SX</th>
-                                <th class="text-center">ĐV</th>
+                    <div class="card-body">
+                        <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
+                            <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
+                                <tr style="color:#003A4F; font-size: 20px; font-weight: bold;">
+                                    <th class="text-center" style="min-width: 200px;">Phòng SX</th>
 
-                                @foreach ($theory['yield_day'] as $date => $dayData)
-                                    <th class="text-center">{{ \Carbon\Carbon::parse($date)->format('d/m/y') }}</th>
-                                @endforeach
-
-                                <th class="text-center">Tổng</th>
-                                <th class="text-center">ĐV</th>
-                            </tr>
-                        </thead>
-
-                        <tbody style="font-size: 20px;">
-
-                            @foreach ($theory['yield_room'] as $index => $roomLT)
-                                @php
-                                    $resourceId = $roomLT->resourceId;
-                                    $unit = $roomLT->unit;
-
-                                    $roomTT = $actual['yield_room']->firstWhere('resourceId', $resourceId);
-                                
-                                    $allDates = $theory['yield_day']->keys()   // lấy tất cả key từ collection
-                                    ->merge($actual['yield_day']->keys())  // merge với actual
-                                    ->unique()
-                                    ->sort();
-                                @endphp
-
-                                {{-- ------------------- LÝ THUYẾT ------------------- --}}
-                                <tr >
-                                    <td class="text-center align-middle" rowspan="2">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
-                                    <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
-
-                                    @php $sumLT = 0; @endphp
-                                    @foreach ($allDates as $date)
-                                        @php
-                                            $dayLT = $theory['yield_day'][$date] ?? collect();
-                                            $item = $dayLT->firstWhere('resourceId', $resourceId);
-                                            $qty = $item['total_qty'] ?? 0;
-                                            $sumLT += $qty;
-                                        @endphp
-                                        <td class="text-end" style="background:#93f486;" >{{ number_format($qty, 2) }}</td>
-                                    @endforeach
-
-                                    <td class="text-end fw-bold" style="background:#93f486;">{{ number_format($sumLT, 2) }}</td>
-                                    <td class="text-center" style="background:#93f486;">{{ $unit }}</td>
-                                </tr>
-
-                                {{-- ------------------- THỰC TẾ ------------------- --}}
-                                <tr >
-                                    @php $sumTT = 0; @endphp
-                                    @foreach ($allDates as $date)
-                                        @php
-                                            $dayTT = $actual['yield_day'][$date] ?? collect();
-                                            $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
-                                            $qtyTT = $itemTT['total_qty'] ?? 0;
-                                            $sumTT += $qtyTT;
-                                        @endphp
-                                        <td class="text-end" style="color:#003A4F; background:#69b8f4;">
-                                            {{ number_format($qtyTT, 2) }}
-                                        </td>
-                                    @endforeach
-
-                                    <td class="text-end fw-bold" style="background:#69b8f4;">{{ number_format($sumTT, 2) }}</td>
-                                    <td class="text-center" style="background:#69b8f4;">{{ $unit }}</td>
-                                </tr>
-
-                                {{-- ------------- TỔNG THEO CÔNG ĐOẠN (LT + TT) --------------- --}}
-                                @php
-                                    $nextItem = $theory['yield_room'][$index + 1] ?? null;
-                                    $nextStage = $nextItem->stage_code ?? null;
-                                @endphp
-
-
-
-                                @if ($nextStage != $roomLT->stage_code)
                                     @php
-                                        $stage_code = $roomLT->stage_code;
-
-                                        // Lấy allDates giống hàng chi tiết
                                         $allDates = $theory['yield_day']->keys()
                                             ->merge($actual['yield_day']->keys())
                                             ->unique()
                                             ->sort();
+                                    @endphp
 
-                                        // Tính tổng LT/TT theo công đoạn
+                                    @foreach ($allDates as $date)
+                                        <th class="text-center">Sản lượng lý thuyết</th>
+                                        <th class="text-center">Sản lượng thực tế</th>
+                                        <th class="text-center">Phần trăm đáp ứng</th>
+                                    @endforeach
+
+                                    <th class="text-center">ĐV</th>
+                                </tr>
+                            </thead>
+
+                            <tbody style="font-size: 20px;">
+                                @php
+                                    $roomsByStage = $theory['yield_room']->groupBy('stage_code');
+                                @endphp
+
+                                @foreach ($roomsByStage as $stage_code => $rooms)
+                                    {{-- Tính tổng công đoạn trước --}}
+                                    @php
                                         $stageLT = [];
                                         $stageTT = [];
+                                        $stagePercent = [];
 
                                         foreach ($allDates as $date) {
                                             $dayLT = $theory['yield_day'][$date] ?? collect();
@@ -148,45 +106,87 @@
 
                                             $dayTT = $actual['yield_day'][$date] ?? collect();
                                             $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
+
+                                            $stagePercent[$date] = $stageLT[$date] > 0 ? ($stageTT[$date] / $stageLT[$date] * 100) : 0;
                                         }
                                     @endphp
 
-                                    {{-- ⭐ Tổng LT --}}
-                                    <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
-                                        <td class="text-center align-middle" rowspan="2">{{ 'Công Đoạn ' . ($stage_name[$stage_code] ?? $stage_code) }}</td>
-                                        <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
+                                    {{-- ⭐ Dòng tổng công đoạn --}}
+                                    <tr style="background:#CDC717; color:#003A4F; font-weight:bold; cursor: pointer;"
+                                        class="stage-total" data-stage="{{ $stage_code }}">
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-info toggle-stage" 
+                                             style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                            data-stage="{{ $stage_code }}">+</button>
+                                            Công Đoạn {{ $stage_name[$stage_code] ?? $stage_code }}
+                                        </td>
 
                                         @foreach ($allDates as $date)
-                                            <td class="text-end" >{{ number_format($stageLT[$date], 2) }}</td>
+                                            <td class="text-center">{{ number_format($stageLT[$date], 2) }}</td>
+                                            <td class="text-center">{{ number_format($stageTT[$date], 2) }}</td>
+                                           <td class="text-center " 
+                                                style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
+
+                                                {{ number_format($stagePercent[$date], 2) }}%
+                                                @if (number_format($stagePercent[$date], 2) < 90)
+                                                    <button type="button" class="btn btn-sm btn-explain"
+                                                        data-stage_code="{{ $stage_code }}"
+                                                        data-reported_date="{{ $defaultFrom }}"
+                                                        data-toggle="modal" 
+                                                        data-target="#explanation"
+                                                        
+                                                        >📝
+                                                    </button>  
+                                                @endif
+
+                                            </td>
                                         @endforeach
 
-                                        <td class="text-end" >{{ number_format(array_sum($stageLT), 2) }}</td>
-                                        <td class="text-center">{{ $unit }}</td>
+                                        <td class="text-center">{{ $rooms->first()->unit }}</td>
                                     </tr>
 
-                                    {{-- ⭐ Tổng TT --}}
-                                    <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
-                                        @foreach ($allDates as $date)
-                                            <td class="text-end" >{{ number_format($stageTT[$date], 2) }}</td>
-                                        @endforeach
+                                    {{-- ⭐ Lặp các phòng trong stage --}}
+                                    @foreach ($rooms as $roomLT)
+                                        @php
+                                            $resourceId = $roomLT->resourceId;
+                                            $unit = $roomLT->unit;
+                                        @endphp
 
-                                        <td class="text-end" >{{ number_format(array_sum($stageTT), 2) }}</td>
-                                        <td class="text-center">{{ $unit }}</td>
-                                    </tr>
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
+                                        <tr class="stage-child stage-{{ $stage_code }}">
+                                            <td class="align-middle">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
 
+                                            @foreach ($allDates as $date)
+                                                @php
+                                                    $dayLT = $theory['yield_day'][$date] ?? collect();
+                                                    $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
+                                                    $qtyLT = $itemLT['total_qty'] ?? 0;
+
+                                                    $dayTT = $actual['yield_day'][$date] ?? collect();
+                                                    $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
+                                                    $qtyTT = $itemTT['total_qty'] ?? 0;
+
+                                                    $percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
+                                                @endphp
+
+                                                <td class="text-center" style="background:#93f486;">{{ number_format($qtyLT, 2) }}</td>
+                                                <td class="text-center" style="background:#69b8f4;">{{ number_format($qtyTT, 2) }}</td>
+                                                <td class="text-center" style="background: {{ number_format($percent, 2) < 90 ? 'red' : 'none' }}">{{ number_format($percent, 2) }}%</td>
+                                            @endforeach
+
+                                            <td class="text-center">{{ $unit }}</td>
+                                        </tr>
+                                    @endforeach
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                    
-
-                <!-- Sản Lượng thực tế phòng sx tiêp theo -->
+                <!-- Tồn Kho -->
                 <div class="card card-primary mb-4">
                         <div class="card-header border-transparent">
                             <h3 class="card-title">
-                               {{"Tồn Kho Phân Bổ Theo Phòng Sản Xuất Ở Công Đoạn Tiếp Theo (Tính đến 06:00 ngày báo cáo)"}}
+                               {{"Phân Bố Tồn Kho"}}
                             </h3>
                             <div class="card-tools">
                                 <button type="button" class="btn btn-tool" data-card-widget="collapse">
@@ -200,7 +200,7 @@
 
                     <div class="card-body">
                         <table id="data_table_instrument" class="table table-bordered table-striped">
-                            <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
+                            <thead style=" position: sticky; top: 60px;  z-index: 1020;">
                                 <tr>
                                     <th>STT</th>
                                     <th>Tên Phòng - Thiết Bị Chính</th>
@@ -211,7 +211,17 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                    @php $stage_code_current = null; @endphp
+
                                     @foreach ($sum_by_next_room as $key_room => $data)
+
+                                        @if ($stage_code_current != $data->stage_code)
+                                            <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
+                                                <td class="text-center" colspan="6">Công Đoạn {{ $stage_name[$data->stage_code] }}</td>
+                                            </tr>
+                                             @php $stage_code_current = $data->stage_code; @endphp
+                                        @endif
+
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->next_room }}</td>
@@ -231,17 +241,21 @@
                         </table>
                     </div>
                 </div>
+
               </div>
             </div>
 </div>
+
+
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
+<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
 
 <script>
     $(document).ready(function () {
-        document.body.style.overflowY = "auto";
+        document.body.style.overflowY = "auto";     
 
         const startDate = document.getElementById('reportedDate');
         const form = document.getElementById('filterForm');
@@ -306,7 +320,57 @@
                     });
         });
 
+        $('.btn-explain').on('click', function() {
 
+            const button = $(this);
+            const modal = $('#explanation')
+            let stage_code = button.data('stage_code')
+            let reported_date = button.data('reported_date')
+
+            modal.find('input[name="stage_code"]').val(stage_code);
+            modal.find('input[name="reported_date"]').val(reported_date);
+
+            $.ajax({
+                        url: "{{ route('pages.report.daily_report.getExplainationContent') }}",
+                        type: 'post',
+                        data: {
+                            stage_code: stage_code,
+                            reported_date: reported_date,
+                            _token: "{{ csrf_token() }}"
+                        },
+                        success: function(res) {
+                            
+                            modal.find('textarea[name="note"]').val(res.content);
+                            modal.find('input[name="created_by"]').val(res.created_by);
+                            modal.find('input[name="created_at"]').val(res.updated_at || res.created_at);
+                        },
+                        error: function() {
+                            Swal.fire({
+                                title: 'Lỗi!',
+                                icon: 'error',
+                                timer: 1000, // tự đóng sau 2 giây
+                                showConfirmButton: false
+                            });
+                        }
+                    });
+        });
+        
+    });
+</script>
+
+
+<script>
+    document.querySelectorAll('.toggle-stage').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const stage = this.getAttribute('data-stage');
+            const rows = document.querySelectorAll('.stage-' + stage);
+            rows.forEach(row => {
+                row.style.display = row.style.display === 'none' ? '' : 'none';
+            });
+
+            // đổi dấu + / -
+            this.textContent = this.textContent === '+' ? '-' : '+';
+        });
     });
 </script>
 

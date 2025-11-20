@@ -44,8 +44,18 @@
                                     <th class ="text-center">Chi Tiết</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody> 
+                                    @php $stage_code_current = null; @endphp
                                     @foreach ($sum_by_next_room as $key_room => $data)
+
+                                    
+                                        @if ($stage_code_current != $data->stage_code)
+                                            <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
+                                                <td class="text-center" colspan="6">Công Đoạn {{ $stage_name[$data->stage_code] }}</td>
+                                            </tr>
+                                             @php $stage_code_current = $data->stage_code; @endphp
+                                        @endif
+                                        
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->next_room }}</td>

@@ -11,9 +11,10 @@ use Illuminate\Support\Facades\Route;
         ->group(function(){
         
             Route::get('','index')->name('index');
-            Route::post('','detail')->name('detail');
-           
-            
+            Route::post('detail','detail')->name('detail');
+            Route::post('explain','explain')->name('explain');
+            Route::post('getExplainationContent','getExplainationContent')->name('getExplainationContent');
+        
       
     });
 
