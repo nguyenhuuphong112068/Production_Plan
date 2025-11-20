@@ -49,8 +49,136 @@
 
 
                 <!-- Sản Lượng thực tế-->
+                <div class="card card-primary mb-4">
+              
+                    <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
+                        <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
+                            <tr style="background-color: #CDC717; color:#003A4F; font-size: 20px; font-weight: bold;">
+                                <th class="text-center" style="min-width: 200px;">Phòng SX</th>
+                                <th class="text-center">ĐV</th>
 
-                
+                                @foreach ($theory['yield_day'] as $date => $dayData)
+                                    <th class="text-center">{{ \Carbon\Carbon::parse($date)->format('d/m/y') }}</th>
+                                @endforeach
+
+                                <th class="text-center">Tổng</th>
+                                <th class="text-center">ĐV</th>
+                            </tr>
+                        </thead>
+
+                        <tbody style="font-size: 20px;">
+
+                            @foreach ($theory['yield_room'] as $index => $roomLT)
+                                @php
+                                    $resourceId = $roomLT->resourceId;
+                                    $unit = $roomLT->unit;
+
+                                    $roomTT = $actual['yield_room']->firstWhere('resourceId', $resourceId);
+                                
+                                    $allDates = $theory['yield_day']->keys()   // lấy tất cả key từ collection
+                                    ->merge($actual['yield_day']->keys())  // merge với actual
+                                    ->unique()
+                                    ->sort();
+                                @endphp
+
+                                {{-- ------------------- LÝ THUYẾT ------------------- --}}
+                                <tr >
+                                    <td class="text-center align-middle" rowspan="2">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
+                                    <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
+
+                                    @php $sumLT = 0; @endphp
+                                    @foreach ($allDates as $date)
+                                        @php
+                                            $dayLT = $theory['yield_day'][$date] ?? collect();
+                                            $item = $dayLT->firstWhere('resourceId', $resourceId);
+                                            $qty = $item['total_qty'] ?? 0;
+                                            $sumLT += $qty;
+                                        @endphp
+                                        <td class="text-end" style="background:#93f486;" >{{ number_format($qty, 2) }}</td>
+                                    @endforeach
+
+                                    <td class="text-end fw-bold" style="background:#93f486;">{{ number_format($sumLT, 2) }}</td>
+                                    <td class="text-center" style="background:#93f486;">{{ $unit }}</td>
+                                </tr>
+
+                                {{-- ------------------- THỰC TẾ ------------------- --}}
+                                <tr >
+                                    @php $sumTT = 0; @endphp
+                                    @foreach ($allDates as $date)
+                                        @php
+                                            $dayTT = $actual['yield_day'][$date] ?? collect();
+                                            $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
+                                            $qtyTT = $itemTT['total_qty'] ?? 0;
+                                            $sumTT += $qtyTT;
+                                        @endphp
+                                        <td class="text-end" style="color:#003A4F; background:#69b8f4;">
+                                            {{ number_format($qtyTT, 2) }}
+                                        </td>
+                                    @endforeach
+
+                                    <td class="text-end fw-bold" style="background:#69b8f4;">{{ number_format($sumTT, 2) }}</td>
+                                    <td class="text-center" style="background:#69b8f4;">{{ $unit }}</td>
+                                </tr>
+
+                                {{-- ------------- TỔNG THEO CÔNG ĐOẠN (LT + TT) --------------- --}}
+                                @php
+                                    $nextItem = $theory['yield_room'][$index + 1] ?? null;
+                                    $nextStage = $nextItem->stage_code ?? null;
+                                @endphp
+
+
+
+                                @if ($nextStage != $roomLT->stage_code)
+                                    @php
+                                        $stage_code = $roomLT->stage_code;
+
+                                        // Lấy allDates giống hàng chi tiết
+                                        $allDates = $theory['yield_day']->keys()
+                                            ->merge($actual['yield_day']->keys())
+                                            ->unique()
+                                            ->sort();
+
+                                        // Tính tổng LT/TT theo công đoạn
+                                        $stageLT = [];
+                                        $stageTT = [];
+
+                                        foreach ($allDates as $date) {
+                                            $dayLT = $theory['yield_day'][$date] ?? collect();
+                                            $stageLT[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
+
+                                            $dayTT = $actual['yield_day'][$date] ?? collect();
+                                            $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
+                                        }
+                                    @endphp
+
+                                    {{-- ⭐ Tổng LT --}}
+                                    <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
+                                        <td class="text-center align-middle" rowspan="2">{{ 'Công Đoạn ' . ($stage_name[$stage_code] ?? $stage_code) }}</td>
+                                        <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
+
+                                        @foreach ($allDates as $date)
+                                            <td class="text-end" >{{ number_format($stageLT[$date], 2) }}</td>
+                                        @endforeach
+
+                                        <td class="text-end" >{{ number_format(array_sum($stageLT), 2) }}</td>
+                                        <td class="text-center">{{ $unit }}</td>
+                                    </tr>
+
+                                    {{-- ⭐ Tổng TT --}}
+                                    <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
+                                        @foreach ($allDates as $date)
+                                            <td class="text-end" >{{ number_format($stageTT[$date], 2) }}</td>
+                                        @endforeach
+
+                                        <td class="text-end" >{{ number_format(array_sum($stageTT), 2) }}</td>
+                                        <td class="text-center">{{ $unit }}</td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
+
+                </div>
 
                     
 

@@ -428,7 +428,9 @@ class ProductionPlanController extends Controller
         }
 
         public function splitting(Request $request){
-                //dd ($request->all());
+
+               
+
                 $validator = Validator::make($request->all(), [
                         //'batch' => 'required',
                         'expected_date' => 'required',
@@ -442,12 +444,22 @@ class ProductionPlanController extends Controller
                         'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
                         'number_of_unit.required' => 'Vui lòng chọn số lượng đóng gói',
                 ]);
+                
 
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
                 }
 
+               
+
                 $mainPlanMaster = DB::table('plan_master')->where ('id', $request->id)->first();
+                $main_intermediate_code = DB::table('finished_product_category')->where ('id', $mainPlanMaster->product_caterogy_id)->value('intermediate_code');
+                 
+               
+                if ($request->intermediate_code != $main_intermediate_code) {
+                        $error = ['intermediate_code' => 'Mã bán thành phẩm không khớp với sản phẩm chính.'];
+                        return redirect()->back()->withErrors($error, 'update_Errors')->withInput();
+                }
 
                 $planMasterId = DB::table('plan_master')->insertGetId([
                         "product_caterogy_id" => $request->product_caterogy_id,
@@ -458,9 +470,9 @@ class ProductionPlanController extends Controller
                         "is_val" => $mainPlanMaster->is_val,
                         "code_val" => $mainPlanMaster->code_val,
                         "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                        "before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                        //"before_weigth_date" => $mainPlanMaster->before_weigth_date,
                         "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                        "before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                        //"before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
                         "material_source_id" => $mainPlanMaster->material_source_id,
                         "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,4),
                         "number_parkaging" => $request->number_of_unit,
@@ -482,7 +494,7 @@ class ProductionPlanController extends Controller
                                 "percent_parkaging" => round(($mainPlanMaster->number_parkaging - $request->number_of_unit)/$request->max_number_of_unit,4),
                         ]);
 
-                        // Insert vào plan_master_history
+                // Insert vào plan_master_history
                 DB::table('plan_master_history')->insert([
                         "plan_master_id" => $planMasterId,
                         "plan_list_id" => $mainPlanMaster->plan_list_id,
@@ -492,9 +504,9 @@ class ProductionPlanController extends Controller
                         "level" => $request->level,
                         "is_val" => $mainPlanMaster->is_val,
                         "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                        "before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                        //"before_weigth_date" => $mainPlanMaster->before_weigth_date,
                         "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                        "before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                        //"before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
                         "material_source_id" => $mainPlanMaster->material_source_id,
                         "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,2),
                         "number_parkaging" =>  $request->number_of_unit,
@@ -545,7 +557,7 @@ class ProductionPlanController extends Controller
                         'created_at' => now(),
                 ]);
 
-                $sum_number_parkaging =  DB::table('plan_master')->where('main_parkaging_id', $mainPlanMaster->main_parkaging_id)->where('only_parkaging',1)->sum('number_parkaging');
+                $sum_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $mainPlanMaster->main_parkaging_id)->where('only_parkaging',1)->sum('number_parkaging');
                 //dd ($request->all());
                 DB::table('plan_master')
                         ->where('id', $mainPlanMaster->main_parkaging_id)
@@ -603,11 +615,17 @@ class ProductionPlanController extends Controller
                         $active_stage_plan = 1;
                 }
                 if ($request->only_parkaging == 1){
-
+                        
                         $main_parkaging_id =  DB::table('plan_master')->where('id', $request->id)->value('main_parkaging_id');
-                        $max_number_parkaging =  DB::table('plan_master')->where('main_parkaging_id', $main_parkaging_id)->sum('number_parkaging');
+                        
+                        $max_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $main_parkaging_id)->sum('number_parkaging');
+                        
                         DB::table('plan_master')->where('id', $request->id)->update($updatesql);
-                        $sum_number_parkaging =  DB::table('plan_master')->where('main_parkaging_id', $request->id)->where('only_parkaging',1)->sum('number_parkaging');
+
+
+                        $sum_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $main_parkaging_id)->where('only_parkaging',1)->sum('number_parkaging');
+                        
+          
                         DB::table('plan_master')
                         ->where('id', $main_parkaging_id)
                         ->update([
