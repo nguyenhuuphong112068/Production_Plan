@@ -19,8 +19,8 @@ class UnitController extends Controller
         public function store (Request $request) {
                
                 $validator = Validator::make($request->all(), [
-                        'code' => 'required|unique:Unit,code',
-                        'name' => 'required|unique:Unit,name',
+                        'code' => 'required|unique:unit,code',
+                        'name' => 'required|unique:unit,name',
                 ],[
                         'name.required' => 'Vui Lòng Nhập Đơn Vị Tính', 
                         'name.unique' => 'Đơn Vị Tính Đã Tồn Tại.',
@@ -45,8 +45,8 @@ class UnitController extends Controller
         public function update(Request $request){
                 
                 $validator = Validator::make($request->all(), [
-                        'code' => 'required|unique:Unit,code',
-                        'name' => 'required|unique:Unit,name',
+                        'code' => 'required|unique:unit,code',
+                        'name' => 'required|unique:unit,name',
                 ],[
                         'name.required' => 'Vui Lòng Nhập Đơn Vị Tính', 
                         'name.unique' => 'Đơn Vị Tính Đã Tồn Tại.',
