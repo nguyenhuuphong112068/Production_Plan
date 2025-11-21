@@ -224,6 +224,8 @@ class SchedualController extends Controller
                         ->orderBy('sp.plan_master_id')
                         ->orderBy('sp.stage_code')
                 ->get();
+
+              
                 
                 if ($event_plans->isEmpty()) {
                         return collect();
@@ -329,7 +331,7 @@ class SchedualController extends Controller
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-main",
                                 'title' => trim($plan->title ?? '') ,
-                                'start' => $plan->acutal_start ?? $plan->start,
+                                'start' => $plan->finished == 1 ? $plan->acutal_start : $plan->start,
                                 'end' => $plan->acutal_end ?? $plan->end,
                                 'resourceId' => $plan->resourceId,
                                 'color' => $plan->finished == 1? '#002af9ff':$color_event,
@@ -354,7 +356,7 @@ class SchedualController extends Controller
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-cleaning",
                                 'title' => $plan->title_clearning ?? 'Vệ sinh',
-                                'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
+                                'start' => $plan->finished == 1 ? $plan->actual_start_clearning : $plan->start_clearning,
                                 'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
                                 'color' => $plan->finished == 1? '#002af9ff':'#a1a2a2ff',
