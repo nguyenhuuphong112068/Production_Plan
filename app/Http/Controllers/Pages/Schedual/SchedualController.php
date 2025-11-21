@@ -16,7 +16,14 @@ class SchedualController extends Controller
         protected $selectedDates = [];
         protected $work_sunday = true;
         protected $reason = null;
-        protected $theory = null;
+        protected $theory = false;
+
+        public function test(){
+              //$this->scheduleAll (null);
+              //$this->createAutoCampain();
+              //$this->view (null);
+              //$this->Sorted (null);
+        }
 
         public function index (){
 
@@ -1788,16 +1795,6 @@ class SchedualController extends Controller
                 ]);
         }
 
-        public function test(){
-              //$this->scheduleAll (null);
-              //$this->createAutoCampain();
-              //$this->view (null);
-              //$this->Sorted (null);
-        }
-
-        ///////// Các hàm liên Auto Schedualer
-
-
         /**Load room_status để lấy các slot đã bận*/
         protected function loadRoomAvailability(string $sort, int $roomId){
                 $this->roomAvailability[$roomId] = []; // reset
@@ -2456,6 +2453,7 @@ class SchedualController extends Controller
                         if ($pred) {
 
                                 $code = $pred->campaign_code;
+
                                 if (!in_array($code, $pre_campaign_codes) && $code != null) {
                                         $pre_campaign_codes [] = $code ;
 
@@ -2493,7 +2491,7 @@ class SchedualController extends Controller
                                        
                                         if ($currCycle && $currCycle >= $prevCycle){
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
-                                        }else {
+                                        }else if (false) {
                                                 $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
                                         }
