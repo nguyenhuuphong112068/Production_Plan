@@ -82,7 +82,7 @@
                                 <div class="row">
                                     <div class="col-md-8">
                                         <label for="batch_size">Cỡ Lô Theo Khối Lượng</label>
-                                        <input type="number" min = "0" class="form-control" name="batch_size" value="{{ old('batch_size') }}">
+                                        <input type="number" min = "0" step="0.01"  class="form-control" name="batch_size" value="{{ old('batch_size') }}">
                                         @error('batch_size', 'updateErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
