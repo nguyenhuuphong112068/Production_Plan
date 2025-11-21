@@ -179,6 +179,7 @@ class SchedualController extends Controller
                         'sp.scheduling_direction',
                         'sp.predecessor_code',
                         'sp.nextcessor_code',
+                        'sp.immediately',
                         'finished_product_category.intermediate_code',
                         'plan_master.expected_date',
                         'plan_master.after_weigth_date',
@@ -1365,6 +1366,46 @@ class SchedualController extends Controller
                 ]);
         }
 
+        public function immediately(Request $request){
+
+                $datas = $request->input('data', []);
+                $modeCreate = true; // mặc định true
+                try {
+                        // Không có dữ liệu → bỏ qua
+                        if (empty($datas)) {
+                                return response()->json(['error' => 'No data'], 400);
+                        }
+
+                        // 1. Kiểm tra nếu bất kỳ dòng nào đang có immediately = true
+                        foreach ($datas as $data) {
+                                if ($data['immediately'] == true) {
+                                        $modeCreate = false;
+                                        break;
+                                }
+                        }
+
+                        // 2. Nếu KHÔNG có dòng nào có immediately → BẬT cho tất cả
+                        $ids = collect($datas)->pluck('id')->filter()->toArray();   
+                        DB::table('stage_plan')
+                        ->whereIn('id', $ids)
+                        ->update([
+                                'immediately' => $modeCreate
+                        ]);
+
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện immediately:', [
+                        'error' => $e->getMessage(),
+                        'line' => $e->getLine(),
+                        ]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                }
+
+                // Trả lại dữ liệu mới
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
+        }
+
         public function createManualCampainStage(Request $request){
                 $datas = $request->input('data');
                 if (count($datas) <= 1){
@@ -2124,6 +2165,7 @@ class SchedualController extends Controller
                         'sp.keep_dry',
                         'sp.order_by',
                         'sp.required_room_code',
+                        'sp.immediately',
                         'plan_master.batch',
                         'plan_master.is_val',
                         'plan_master.code_val',
@@ -2488,12 +2530,14 @@ class SchedualController extends Controller
                                         ->value('avg_m_time_minutes');
                                         
                                         $maxCount = max($campaignTasks->count(), $pre_campaign_batch->count());
-                                       
+
                                         if ($currCycle && $currCycle >= $prevCycle){
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
-                                        }else if (false) {
-                                                $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
-                                                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
+                                        }else  {
+                                                if ($campaignTask->immediately == false){
+                                                        $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
+                                                        $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
+                                                }    
                                         }
                                 }
 

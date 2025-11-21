@@ -149,6 +149,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     <Checkbox checked={rowData.is_val ? true : false} />
   );
 
+  const ImmediatelyBodyTemplate = (rowData) => (
+    <Checkbox checked={rowData.immediately ? true : false}/>
+  );
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -424,6 +428,44 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       }));
 
       axios.put('/Schedual/createManualCampain', { data: filteredRows })
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
+
+      setIsSaving(false);  
+      setSelectedRows ([]);
+      return;
+  }
+
+  const handleImmediately = (e) => {
+    if (isSaving) return;
+    setIsSaving(true);  
+
+    const filteredRows = selectedRows.map(row => ({
+        id: row.id,
+        plan_master_id: row.plan_master_id,
+        product_caterogy_id: row.product_caterogy_id,
+        predecessor_code: row.predecessor_code,
+        campaign_code: row.campaign_code,
+        code: row.code,
+        immediately: row.immediately
+    }));
+
+      axios.put('/Schedual/immediately', { data: filteredRows })
       . then (res => {
                     let data = res.data;
                     if (typeof data === "string") {
@@ -1020,7 +1062,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
-     
       { field: "month", header: "tháng", sortable: true,  filter: false, filterField: "month" },
       { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" , style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
       { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "permisson_room",style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
@@ -1034,6 +1075,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: packagingBodyTemplate },
       { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"), style: { width: '25rem', maxWidth: '25rem', ...longTextStyle } },
       { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
+      { field: "immediately", header: (<><i className="fa fa-bolt me-1"></i></>), body: ImmediatelyBodyTemplate, style: {width: '5rem', maxWidth: '5rem', ...longTextStyle }},
       { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") , filter: false, filterField: "note", style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
   ];
     
@@ -1077,6 +1119,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn Ở Tất Cả Các Công Đoạn"
                 onClick={handleCreateManualCampainStage}>
                  {isSaving === false ?<i className="fas fa-cubes"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
+              </div>
+
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Lệnh Sắp Ngay Sau Kết Thúc Công Đoạn Trước"
+                onClick={handleImmediately}>
+                {isSaving === false ? <i className="fa fa-bolt"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"

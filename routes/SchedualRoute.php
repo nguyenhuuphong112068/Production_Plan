@@ -50,8 +50,9 @@ use Illuminate\Support\Facades\Route;
                 Route::put('Sorted','Sorted')->name('Sorted');
                 Route::put('submit','submit')->name('submit');
                 Route::put('required_room','required_room')->name('required_room');
+                Route::put('immediately','immediately')->name('immediately');
 
-                
+
                 Route::get('test','test')->name('test');
 
                 

@@ -14,7 +14,9 @@ export default function NoteModal({ show, setShow }) {
     { color: "#a1a2a2ff", label: "Vệ Sinh Phòng" },
     { color: "#003A4F", label: "Hiệu Chuẩn - Bảo Trì" },
     { color: "#eb0cb3ff", label: "Sự Kiện Khác Ngoài Kế Hoạch" },
-    { color: "#002af9ff", label: "Công Đoạn Sản Xuất Hoàn Thành" },
+    { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước" },
+    { color: "#002af9ff", label: "Lịch Sản Xuất Lý Thực Tế" },
+    { color: "#8195f5ff", label: "Lịch Sản Xuất Lý Thuyết" },
    
   ];
 
