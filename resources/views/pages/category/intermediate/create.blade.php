@@ -13,7 +13,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" id="productNameModalLabel" style="color: #CDC717">
-                        Tạo Mới Danh Mục Sản Phẩm Công Đoạn Sản Xuất
+                        Tạo Mới Danh Mục Bán Thành Phẩm
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
