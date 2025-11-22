@@ -399,7 +399,7 @@
                     success: function(res) {
                       
                         $('input[name="batchNo1"]').val(batch);
-                        $('input[name="code_val_first"]').val(res.last_id + "_1");
+                        $('input[name="code_val_first"]').val((res.last_id + 1) + "_1");
                     },
                     error: function(xhr, status, error) {
                             console.error("❌ Lỗi Ajax:", {

@@ -157,11 +157,18 @@
           e.preventDefault(); // chặn submit mặc định
           const form = this;
           const productName = $(form).find('button[type="submit"]').data('name');
+          const active = $(form).find('button[type="submit"]').data('type');
+          
+             let title = 'Bạn chắc chắn muốn vô hiệu hóa danh mục?'
+            if (!active) {
+                title = 'Bạn chắc chắn muốn phục hồi danh mục?'
+            }
+
          
 
           Swal.fire({
-            title: 'Bạn chắc chắn muốn vô hiệu hóa?',
-            text: `Chỉ Tiêu: ${productName}`,
+            title: title,
+            text: `Danh Mục: ${productName}`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#28a745',
