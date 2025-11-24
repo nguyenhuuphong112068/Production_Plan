@@ -301,8 +301,8 @@
           const productName = $(form).find('button[type="submit"]').data('name');
           const active = $(form).find('button[type="submit"]').data('type');
          
-          let title = 'Bạn chắc chắn muốn vô hiệu hóa danh mục?'
-          if (!active){title = 'Bạn chắc chắn muốn phục hồi danh mục?'}
+          let title = 'Bạn chắc chắn muốn vô hiệu hóa định mức?'
+          if (!active){title = 'Bạn chắc chắn muốn phục hồi định mức?'}
 
           Swal.fire({
             title: title,

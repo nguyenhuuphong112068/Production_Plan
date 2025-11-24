@@ -14,8 +14,6 @@
               @endphp 
               <!-- /.card-Body -->
               <div class="card-body">
-
-
                 <!-- Sản Lượng thực tế phòng sx tiêp theo -->
                 <div class="card card-primary mb-4">
                         <div class="card-header border-transparent">
@@ -75,6 +73,7 @@
                         </table>
                     </div>
                 </div>
+
                 <!-- Sản Lượng thực tế đang lưu ở từng phòng biệt trữ -->
                 @foreach (collect($datas)->sortKeys() as $quarantine_room_code => $details)
                     <div class="card card-success mb-4">
@@ -82,8 +81,8 @@
                             <h3 class="card-title">
                                 {{ $quarantine_room_code }}
                                 - {{ $details['room_name'] }}:
-                                Tổng Lượng Biệt Trữ {{ number_format($details['total_yields'], 2) }}
-                                (Kg)
+                                Tổng Lượng Biệt Trữ {{ number_format($details['total_yields'], 0) }}
+                                (Thùng)
                             </h3>
                             <div class="card-tools">
                                 <button type="button" class="btn btn-tool" data-card-widget="collapse">
