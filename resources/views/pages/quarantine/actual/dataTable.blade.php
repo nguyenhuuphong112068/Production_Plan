@@ -66,7 +66,12 @@
                                             <td>{{ $data->next_room }}</td>
                                             <td>{{ $data->stage }}</td>
                                             <td>{{ $data->production_group }}</td>
-                                            <td>{{ number_format($data->sum_yields,2) }} {{$data->stage_code<=5?"Kg":"ĐVL"}}  </td>
+                                            <td>
+                                                {{ $data->stage_code <= 5 
+                                                    ? number_format($data->sum_yields, 2) . ' Kg' 
+                                                    : number_format($data->sum_yields, 0) . ' ĐVL' 
+                                                }}
+                                            </td>
 
                                            <td class="text-center align-middle">
                                                 <button type="button" class="btn btn-primary btn-detial"
