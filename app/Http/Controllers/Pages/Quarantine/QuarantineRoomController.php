@@ -143,6 +143,7 @@ class QuarantineRoomController extends Controller
                 't.number_of_boxes',
                 't.finished_by',
                 't.finished_date',
+                
     
                 't2.stage_code as next_stage',
                 't2.start as next_start',
@@ -157,10 +158,11 @@ class QuarantineRoomController extends Controller
             ->get();
 
         // 2) Group theo phòng (datas chính)
-        $datas = $datasRaw->groupBy('quarantine_room_code')->map(function ($items) {
+            $datas = $datasRaw->groupBy('quarantine_room_code')->map(function ($items) {
+
             return [
                 'room_name' => $items->first()->name,
-                'total_yields' => $items->sum('yields'),
+                'total_yields' => $items->sum('number_of_boxes'),
                 'details' => $items
                 
             ];
@@ -188,10 +190,11 @@ class QuarantineRoomController extends Controller
 
             )
             ->groupBy('next_room')
+            ->orderBy('stage_code')
             ->orderBy('group_code')   // sắp xếp theo stage
             ->get();
 
-        //dd ($sum_by_next_room);
+        //dd ($datas);
 
         
 

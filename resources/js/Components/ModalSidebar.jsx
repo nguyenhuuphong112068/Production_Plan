@@ -58,8 +58,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   useEffect(() => {
     
     if (resources && resources.length > 0 && stageFilter) {
+      let index_filter = stageFilter;
+      
+      if (index_filter == 2){
+            index_filter = 1;
+      }
+
       const filtered = resources.filter(
-        (q) => Number(q.stage_code) == Number(stageFilter)
+        (q) => Number(q.stage_code) == Number(index_filter)
       );
       setOptionRooms(filtered);
      
