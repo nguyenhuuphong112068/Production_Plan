@@ -46,15 +46,21 @@
                                     @php $stage_code_current = null; @endphp
                                     @foreach ($sum_by_next_room as $key_room => $data)
 
-                                    
                                         @if ($stage_code_current != $data->stage_code)
                                             <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
-                                                <td class="text-center" colspan="6">Công Đoạn {{ $stage_name[$data->stage_code] }}</td>
+                                                <td class="text-end" colspan="6">
+
+                                                <button type="button" class="btn btn-sm btn-info toggle-stage" 
+                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                    data-stage="{{ $data->stage_code }}">+</button>
+
+                                                    Công Đoạn {{ $stage_name[$data->stage_code] }}
+                                                </td>
                                             </tr>
                                              @php $stage_code_current = $data->stage_code; @endphp
                                         @endif
                                         
-                                        <tr>
+                                        <tr class="stage-child stage-{{ $data->stage_code }}">
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->next_room }}</td>
                                             <td>{{ $data->stage }}</td>
@@ -204,5 +210,21 @@
     });
   });
 </script>
+
+<script>
+    document.querySelectorAll('.toggle-stage').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const stage = this.getAttribute('data-stage');
+            const rows = document.querySelectorAll('.stage-' + stage);
+            rows.forEach(row => {
+                row.style.display = row.style.display === 'none' ? '' : 'none';
+            });
+
+            // đổi dấu + / -
+            this.textContent = this.textContent === '+' ? '-' : '+';
+        });
+    });
+</script>
+
 
 
