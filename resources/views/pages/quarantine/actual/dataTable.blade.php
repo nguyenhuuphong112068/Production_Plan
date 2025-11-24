@@ -14,6 +14,7 @@
               @endphp 
               <!-- /.card-Body -->
               <div class="card-body">
+
                 <!-- Sản Lượng thực tế phòng sx tiêp theo -->
                 <div class="card card-primary mb-4">
                         <div class="card-header border-transparent">
@@ -65,7 +66,7 @@
                                             <td>{{ $data->next_room }}</td>
                                             <td>{{ $data->stage }}</td>
                                             <td>{{ $data->production_group }}</td>
-                                            <td>{{ $data->sum_yields }} {{$data->stage_code<=5?"Kg":"ĐVL"}}  </td>
+                                            <td>{{ number_format($data->sum_yields,2) }} {{$data->stage_code<=5?"Kg":"ĐVL"}}  </td>
 
                                            <td class="text-center align-middle">
                                                 <button type="button" class="btn btn-primary btn-detial"
