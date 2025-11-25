@@ -96,9 +96,21 @@
                         <th class="text-center" style="min-width: 200px;">Phòng SX</th>
                         <th class="text-center">ĐV</th>
 
-                        @foreach ($theory['yield_day'] as $date => $dayData)
+                        {{-- @foreach ($theory['yield_day'] as $date => $dayData)
+                            <th class="text-center">{{ \Carbon\Carbon::parse($date)->format('d/m/y') }}</th>
+                        @endforeach --}}
+
+                        @php
+                            $allDates = $theory['yield_day']->keys()
+                                ->merge($actual['yield_day']->keys())
+                                ->unique()
+                                ->sort();
+                        @endphp
+
+                        @foreach ($allDates as $date)
                             <th class="text-center">{{ \Carbon\Carbon::parse($date)->format('d/m/y') }}</th>
                         @endforeach
+
 
                         <th class="text-center">Tổng</th>
                         <th class="text-center">ĐV</th>
