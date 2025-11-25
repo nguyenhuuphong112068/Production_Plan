@@ -290,6 +290,7 @@ class ShedualYieldController extends Controller
         $period = new \DatePeriod($startDate, new \DateInterval('P1D'), $endDate->copy()->addDay());
         
         foreach ($period as $date) {
+            
             $date = Carbon::instance($date);
             $dayStart = $date->copy()->startOfDay();
             $dayEnd = $date->copy()->endOfDay();
@@ -334,10 +335,14 @@ class ShedualYieldController extends Controller
                 ]);
             }
         }
+
         $dailyTotals = $dailyTotals->groupBy("date");
         $merged = $merged->sortBy('stage_code')->values();
        // dd ($merged,$dailyTotals, $merged_by_stage);
         // --- 5️⃣ Trả về cả 2 phần
+
+
+        //dd ($dailyTotals, $dailyTotals, $merged_by_stage);
         return [
             'yield_room' => $merged,
             'yield_day' => $dailyTotals,
