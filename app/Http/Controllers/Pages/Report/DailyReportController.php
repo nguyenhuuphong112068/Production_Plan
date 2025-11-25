@@ -14,11 +14,12 @@ class DailyReportController extends Controller
 
         $reportedDate = $request->reportedDate ?? Carbon::yesterday()->format('Y-m-d');
 
-        $reportedDate = Carbon::parse($reportedDate)->setTime (6,0,0);
+        $reportedDate = Carbon::parse($reportedDate)->setTime (0,0,0);
         
         $startDate =  $reportedDate->copy();
         $endDate =  $reportedDate->copy()->addDays(1);
         
+       //dd ($startDate,$endDate );
        
         $actual = $this->yield_actual($startDate, $endDate, 'resourceId');
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
