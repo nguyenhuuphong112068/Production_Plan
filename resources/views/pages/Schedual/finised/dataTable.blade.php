@@ -265,17 +265,17 @@
 <script>
     let stages = @json($stages);
     let currentIndex = stages.findIndex(s => s.stage_code == {{ $stageCode ?? 'null' }});
-
+   
     const filterForm = document.getElementById("filterForm");
     const stageNameEl = document.getElementById("stageName");
     const stageCodeEl = document.getElementById("stage_code");
 
-
+    
     function updateStage() {
         stageNameEl.textContent = stages[currentIndex].stage;
         stageCodeEl.value = stages[currentIndex].stage_code;
     }
-
+   
     document.getElementById("prevStage").addEventListener("click", function() {
         currentIndex = (currentIndex > 0) ? currentIndex - 1 : stages.length - 1;
         updateStage();
@@ -289,19 +289,6 @@
     });
 </script>
 
-
-{{-- 
-<script>
-    const form = document.getElementById('filterForm');
-    const fromInput = document.getElementById('from_date');
-    const toInput = document.getElementById('to_date');
-
-    [fromInput, toInput].forEach(input => {
-        input.addEventListener('input', function() {
-            form.submit();
-        });
-    });
-</script> --}}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
