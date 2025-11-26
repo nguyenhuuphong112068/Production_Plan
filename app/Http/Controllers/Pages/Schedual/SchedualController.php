@@ -2813,7 +2813,7 @@ class SchedualController extends Controller
                         if ($check_plan_master_id_complete){
 
                                 //$this->schedulePlanBackwardPlanMasterId($planId, $work_sunday, $bufferDate, $waite_time , $start_date);
-                               
+                                
                                 $this->schedulePlanForwardPlanMasterId ($planId, $waite_time, $start_date);
 
                         }
@@ -2865,8 +2865,9 @@ class SchedualController extends Controller
                 ->where('stage_code',"<=",7)
                 ->orderBy('stage_code', 'asc') // chạy thuận
                 ->get(); // 1 lô gồm tất cả các stage
-       
                 
+                
+
                 foreach ($tasks as  $task) { // Vòng lập chính duyệt qua toàn bộ các task cùng plan_master_id
                         $waite_time_for_task = null;
 
@@ -3030,6 +3031,8 @@ class SchedualController extends Controller
                                         ->where('stage_code', $task->stage_code)
                                         ->get();
                         }
+
+                        
 
                        
                         $bestRoom = null;
@@ -3234,8 +3237,10 @@ class SchedualController extends Controller
                         }else {
                                 if ($this->work_sunday == false) { 
                                         //Giả sử $bestStart là Carbon instance
+                                       
                                         $startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(0, 0, 0); // CN 6h sáng
                                         $endOfPeriod   = (clone $startOfSunday)->addDay()->setTime(6, 0, 0); // T2 tuần kế tiếp 6h sáng
+
                                         if ($bestStart->between($startOfSunday, $endOfPeriod)) {
                                                 $bestStart = $endOfPeriod->copy();
                                                 $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
@@ -3262,7 +3267,6 @@ class SchedualController extends Controller
         }
 
 }
-
         function toMinutes($time) {
                 [$hours, $minutes] = explode(':', $time);
                 return ((int)$hours) * 60 + (int)$minutes;
