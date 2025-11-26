@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 class SchedualFinisedController extends Controller
 {
         public function index(Request $request){
-                dd ($request->all());
+                //dd ($request->all());
 
                 //$fromDate = $request->from_date ?? Carbon::now()->toDateString();
                 //$toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
