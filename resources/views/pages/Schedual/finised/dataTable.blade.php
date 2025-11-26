@@ -305,7 +305,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Init tất cả stepper
+      
         document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
             new Stepper(stepperEl, {
                 linear: false,
