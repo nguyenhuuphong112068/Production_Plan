@@ -37,6 +37,7 @@ class StatusHistoryController extends Controller{
 
         $process = DB::table('stage_plan')
             ->where('submit', 1)
+            ->where('deparment_code', $production)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start', $startDate)
                 ->orWhereDate('end', $startDate);
@@ -52,6 +53,7 @@ class StatusHistoryController extends Controller{
 
         $cleaning = DB::table('stage_plan')
             ->where('submit', 1)
+            ->where('deparment_code', $production)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start_clearning', $startDate)
                 ->orWhereDate('end_clearning', $startDate);
@@ -148,7 +150,8 @@ class StatusHistoryController extends Controller{
 
         //dd ($rooms);
         session()->put(['title'=> "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production"]);
-              
+        
+        
         return view('pages.status.history.list',[
             'datas' =>  $rooms,
             'production' =>  $production,
@@ -337,4 +340,28 @@ class StatusHistoryController extends Controller{
         ]);
     }
     
+
+    public function next(Request $request){
+              
+                if ($request->production == "PXV1"){
+                     $production_code = "PXV2";
+                }elseif ($request->production == "PXV2"){
+                     $production_code = "PXVH";
+                }elseif ($request->production == "PXVH"){
+                     $production_code = "PXTN";
+                }elseif ($request->production == "PXTN"){
+                     $production_code = "PXDN";
+                }else {
+                        $production_code = "PXV1";
+                }
+
+                $request->session()->put('user', [
+                        'production_code' => $production_code
+                ]);
+                                
+                session()->put(['title'=> "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production_code"]);
+                // Nếu có redirect URL thì quay lại đó
+                return redirect()->back();
+    }
+
 }

@@ -26,11 +26,11 @@ use Illuminate\Support\Facades\Route;
         ->group(function(){
         
             Route::get('','index')->name('index');
+            Route::get('/next','next')->name('next');
             Route::get('show','show')->name('show');
             Route::post('update','update')->name('update');
             Route::post('deActive','deActive')->name('deActive');
             
-      
     });
 
 
