@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Route;
                 Route::put('multiStore','multiStore')->name('multiStore');
                 Route::put('update', 'update')->name('update');
                 Route::put('addEventContent/{id}', 'addEventContent')->name('addEventContent');
-                Route::put('update', 'update')->name('update');
+                Route::put('updateClearning', 'updateClearning')->name('updateClearning');
                 Route::post('getSumaryData', 'getSumaryData')->name('getSumaryData');
 
                 // Sắp Thứ Tự Trong Bảng KH CD

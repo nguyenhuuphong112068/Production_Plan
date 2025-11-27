@@ -1092,6 +1092,52 @@ class SchedualController extends Controller
                 ]);
         }
 
+        public function updateClearning(Request $request){
+
+               
+                $changes = $request->input('changes', []);
+
+                try {
+                foreach ($changes as $change) {
+                        // Tách id: "102-main" -> 102
+                        $idParts = explode('-', $change['id']);
+                        $realId = $idParts[0] ?? null;
+
+                        if (!$realId) {
+                                continue; // bỏ qua nếu id không hợp lệ
+                        }
+
+                        // Nếu là sự kiện vệ sinh (title chứa "VS-")
+                     
+                                DB::table('stage_plan')
+                                ->where('id', $realId)
+                                ->update([
+                                        'start_clearning' => $change['start'],
+                                        'end_clearning'   => $change['end'],
+                                        'resourceId'      => $change['resourceId'],
+                                        'schedualed_by'   => session('user')['fullName'],
+                                        'schedualed_at'   => now(),
+                                ]);
+
+                }
+
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                }
+
+                $production = session('user')['production_code'];
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
+                $plan_waiting = $this->getPlanWaiting($production);
+                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+
+                return response()->json([
+                        'events' => $events,
+                        'plan' => $plan_waiting,
+                        'sumBatchByStage' => $sumBatchByStage,
+                ]);
+        }
+
         public function deActive(Request $request){
                 
                 $items = collect($request->input('ids'));

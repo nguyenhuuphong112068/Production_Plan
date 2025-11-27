@@ -43,7 +43,6 @@ class ProductionPlanController extends Controller
 
         }
 
-
         public function open(Request  $request){
          
                 $datas = DB::table('plan_master')
