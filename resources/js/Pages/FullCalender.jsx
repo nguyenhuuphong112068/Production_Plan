@@ -758,6 +758,7 @@ const ScheduleTest = () => {
     if (!reason) return;
 
     setSaving(true);
+
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
     let startDate = toLocalISOString(activeStart);
     let endDate = toLocalISOString(activeEnd);
@@ -830,8 +831,50 @@ const ScheduleTest = () => {
 
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
-   
+    
     const event = clickInfo.event;
+    // ALT + CLICK
+ if (clickInfo.jsEvent.altKey) {
+
+    if (!authorization) {
+      clickInfo.revert();
+      return false;
+    }
+
+    if (selectedEvents.length === 0) {
+      return;
+    }
+
+    console.log("Selected events:", selectedEvents);
+
+    // Lấy instance calendar
+    const calendar = clickInfo.view.calendar;
+
+    selectedEvents.forEach(sel => {
+      const mainId = sel.id;                // "28217-main"
+      const cleanId = mainId.replace("-main", "-cleaning");
+
+      const mainEvent = calendar.getEventById(mainId);
+      const cleanEvent = calendar.getEventById(cleanId);
+
+      if (!mainEvent || !cleanEvent) return;
+
+      // đặt event vệ sinh ngay sau event chính
+      const newStart = new Date(mainEvent.end);
+      const duration = cleanEvent.end - cleanEvent.start;
+      const newEnd = new Date(newStart.getTime() + duration);
+
+      cleanEvent.setStart(newStart);
+      cleanEvent.setEnd(newEnd);
+
+      // trigger pending changes
+      handleEventChange({ event: cleanEvent });
+    });
+
+    return;
+  }
+
+    
     toggleEventSelect(event);
     
     // if ( clickInfo.jsEvent.ctrlKey) {
