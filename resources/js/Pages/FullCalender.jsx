@@ -435,6 +435,9 @@ const ScheduleTest = () => {
    
     // chưa chọn row
     //if (!info?.event || !calendarRef?.current) return;
+
+ 
+
     const start = info.event.start;
     const now = new Date();
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
@@ -461,6 +464,9 @@ const ScheduleTest = () => {
     }
 
     // Phòng được chọn và định mực k giống
+    console.log (resourceId);
+    console.log (selectedRows);
+
     const hasPermission = selectedRows.some(row => {
       if (!row.permisson_room) return false;
 

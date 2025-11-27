@@ -10,9 +10,10 @@
 
         <div class="row">
             <div class="col-md-3">
-                <a href="#" class=" mx-5">
+                <a href="{{ route('pages.status.history.next', ['production' => $production]) }}" class=" mx-5">
                     <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:35px;">
                 </a>
+
             </div>
 
             <div class="col-md-6">
@@ -77,124 +78,7 @@
         </div>
         <div class="row mt-1">
             @php $now = now();@endphp
-            @if (count($datas) < 25)
-                <div class="col-md-12">
-                    <div class="card">
-                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-                            <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
-                                <tr>
-                                    <th style="width: 15%">Phòng SX</th>
-                                    <th style="width: 25%">Lịch SX</th>
-                                    <th style="width: 5%">TG</th>
-                                    <th style="width: 25%">Đang SX</th>
-                                    <th style="width: 5%">TG</th>
-                                    <th style="width: 25%" class="text-center">Thông Báo</th>
-                                </tr>
-                            </thead>
-                            <tbody class="font-bold"
-                                style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
-                                @php $current_stage = 0; @endphp
-                                @foreach ($datas as $data)
-                                    @if ($data->stage_code != $current_stage)
-                                        <tr class="text-center"
-                                            style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
-                                            <td colspan="6">{{ $stage[$data->stage] }}</td>
-                                        </tr>
-                                    @endif
-                                    @php
-                                        $current_stage = $data->stage_code;
-                                        switch ($data->status) {
-                                            case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
-                                            case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
-                                            case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
-                                            case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                                            case 4: $color = "#FF0000"; break;
-                                            }
-                                    @endphp
-                                    <tr>
-                                        <td style="background-color: {{ $color }};">
-                                            <button class="btn btn-success btn-sm btn-plus" 
-                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                                    data-room_name ="{{ $data->room_name }}"
-                                                    data-room_id ="{{ $data->room_id }}"
-                                                    data-in_production = "{{ $data->title}}"
-                                                    data-toggle="modal"
-                                                    data-target="#Modal" 
-                                            >+</button>
-                                            
-                                            <div>
-                                                {{ $data->room_name }}
-                                            </div>
-                                            {{-- <div>
-                                                {{ $data->sheet }}
-                                            </div> --}}
-                                        </td>
 
-                                        {{-- sp theo lịch 1 --}}
-                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                            @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                                {{ $data->title }}
-                                            @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                                {{ $data->title_clearning }}
-                                            @else
-                                                <div>KSX</div>
-                                            @endif
-                                        </td>
-
-                                        <td style="max-width: 250px; overflow: hidden;">
-                                            <div class="scroll-text-wrapper">
-                                                @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                                    <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                                                    <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
-                                                @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                                    <div>
-                                                        {{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
-                                                    </div>
-                                                    <div>
-                                                        {{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
-                                                    </div>
-                                                @else
-                                                    <div>-</div>
-                                                @endif
-                                            </div>
-                                        </td>
-
-
-                                        {{-- sp đang sx 1 --}}
-                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                            {{ $data->in_production }}
-                                        </td>
-
-                                        <td style="max-width: 250px; overflow: hidden;">
-                                            @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                                <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                                                <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
-                                            @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                                <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
-                                                </div>
-                                                <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
-                                                </div>
-                                            @else
-                                                <div>-</div>
-                                            @endif
-                                        </td>
-
-
-                                        {{-- thông báo 1 --}}
-                                        <td style="max-width: 250px; overflow: hidden;">
-                                            <div class="scroll-text-wrapper">
-                                                <div class="scroll-text note">
-                                                    {{ $data->notification }}
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @else
             @php
                     $datas = collect($datas);   // ép sang Collection
                     //$half = ceil($datas->count() / 2);
@@ -335,8 +219,6 @@
                     </div>
                 </div>
 
-
-            @endif
         </div>
     </div>
     </div>
