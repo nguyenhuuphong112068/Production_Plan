@@ -1212,20 +1212,23 @@ class SchedualController extends Controller
 
         public function deActiveAll(Request $request){
         
-                
+                $production = session('user')['production_code'];
                 try {   
                        if ($request->mode == "step"){
                                 $Step = ["PC" => 3, "THT" => 4,"ĐH" => 5,"BP" => 6,"ĐG" => 7,];
                                 $stage_code = $Step[$request->selectedStep];
                                 $ids = DB::table('stage_plan')
+                                ->where('deparment_code', $production)
                                 ->whereNotNull('start')
                                 ->where ('start', '>=', $request->start_date)
                                 ->where('active', 1)
                                 ->where('finished', 0)
                                 ->where('stage_code', ">=", $stage_code)
                                 ->pluck('id');
+                                
                         }else if ($request->mode == "resource"){
                                 $ids = DB::table('stage_plan')
+                                ->where('deparment_code', $production)
                                 ->whereNotNull('start')
                                 ->where ('start', '>=', $request->start_date)
                                 ->where('active', 1)
@@ -1238,12 +1241,14 @@ class SchedualController extends Controller
                          if ($ids->isNotEmpty()) {
                                 // Lấy danh sách campain_code của các dòng bị xoá
                                 $campainCodes = DB::table('stage_plan')
+                                ->where('deparment_code', $production)
                                 ->whereIn('id', $ids)
                                 ->pluck('campaign_code')
                                 ->unique();
 
                                 // Lấy thêm các id khác có cùng campain_code, nhưng start < start_date
                                 $relatedIds = DB::table('stage_plan')
+                                ->where('deparment_code', $production)
                                 ->whereIn('campaign_code', $campainCodes)
                                 ->where('start', '<', $request->start_date)
                                 ->pluck('id');
