@@ -1620,6 +1620,23 @@ const ScheduleTest = () => {
     let html = `
       <div class="relative group custom-event-content" data-event-id="${event.id}">
         <div style="font-size:${arg.eventFontSize || 12}px;">
+          
+        ${!props.is_clearning ? `
+            <span 
+              style="
+                position:absolute;
+                top:2px;
+                right:2px;
+                display:inline-block;
+                width:8px;
+                height:8px;
+                border-radius:50%;
+                background:${props.submit ? 'green' : 'red'};
+                z-index:10;
+              ">
+            </span>
+          ` : ''}
+
           <b>${props.is_clearning ? event.title.split('-')[1] : event.title}</b>
           ${!isTimelineMonth ? `
             <br/>
@@ -1646,6 +1663,7 @@ const ScheduleTest = () => {
         ><b>${props.storage_capacity ?? ''}</b></button>
       `;
     }
+    // Trang thai submit
 
 
     // // Nút chọn
