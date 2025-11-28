@@ -340,7 +340,6 @@ class StatusHistoryController extends Controller{
         ]);
     }
     
-
     public function next(Request $request){
               
                 if ($request->production == "PXV1"){

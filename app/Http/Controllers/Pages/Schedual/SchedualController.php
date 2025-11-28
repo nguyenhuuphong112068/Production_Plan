@@ -176,10 +176,13 @@ class SchedualController extends Controller
                         'sp.keep_dry',
                         'sp.yields',
                         'sp.order_by',
-                        'sp.scheduling_direction',
+                        //'sp.scheduling_direction',
                         'sp.predecessor_code',
                         'sp.nextcessor_code',
                         'sp.immediately',
+                        'sp.submit',
+
+                        
                         'finished_product_category.intermediate_code',
                         'plan_master.expected_date',
                         'plan_master.after_weigth_date',
@@ -345,7 +348,7 @@ class SchedualController extends Controller
                                 'tank' => $plan->tank,
                                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
                                 //'number_of_history' => $historyCounts[$plan->id] ?? 0,
-                                //'order_by' => $plan->order_by,
+                                'submit' => $plan->submit,
                                 'storage_capacity' => $storage_capacity
                                 ]);
                         }
@@ -375,8 +378,8 @@ class SchedualController extends Controller
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-main-theory",
                                 'title' => trim($plan->title . "- Lịch Lý Thuyết"?? '') ,
-                                'start' => $plan->actual_start ?? $plan->start,
-                                'end' => $plan->actual_end ?? $plan->end,
+                                'start' =>  $plan->start,
+                                'end' =>  $plan->end,
                                 'resourceId' => $plan->resourceId,
                                 'color' => '#8397faff',
                                 'plan_master_id' => $plan->plan_master_id,
