@@ -594,9 +594,9 @@ class SchedualController extends Controller
                         $production = session('user')['production_code'];
                        
                         $clearing = $request->clearning??true;
-                        //if ( $viewtype == "resourceTimelineQuarter") {
-                        //        $clearing = false;
-                        //}
+                        if ( $viewtype == "resourceTimelineQuarter") {
+                                $clearing = false;
+                        }
 
                         if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
                                 $plan_waiting = $this->getPlanWaiting($production);
