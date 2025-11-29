@@ -594,7 +594,7 @@ class SchedualController extends Controller
                         $production = session('user')['production_code'];
                        
                         $clearing = $request->clearning??true;
-                        
+
                         if ( $viewtype == "resourceTimelineQuarter") {
                                 $clearing = false;
                         }
@@ -792,8 +792,8 @@ class SchedualController extends Controller
                                                 'end'             => $end_man,
                                                 'resourceId'      => $request->room_id,
                                                 'schedualed_by'   => session('user')['fullName'],
-                                                'scheduled_at'   => now(),
-                                                        'deparment_code'  => session('user')['production_code'],
+                                                'schedualed_at'   => now(),
+                                                'deparment_code'  => session('user')['production_code'],
                                                 'type_of_change'  => $request->reason??"Lập Lịch Thủ Công"
                                         ]);
                                 }
