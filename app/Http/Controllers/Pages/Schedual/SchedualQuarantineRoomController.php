@@ -60,7 +60,7 @@ class SchedualQuarantineRoomController extends Controller
                 $stages = DB::table('stage_plan')
                     ->select('stage_plan.stage_code', 'room.stage')
                     ->where('stage_plan.deparment_code', $production)
-        
+                    ->where('stage_plan.stage_code','<',7)
                     ->whereNotNull('stage_plan.start')
                     ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
                     ->distinct()
@@ -69,7 +69,7 @@ class SchedualQuarantineRoomController extends Controller
 
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                 
-                //dd ($datas);
+                //dd ($stages);
                 session()->put(['title'=> 'XÁC ĐỊNH VỊ TRÍ PHÒNG BIỆT TRỮ BÁN THÀNH PHẨM']);
                 return view('pages.Schedual.quarantine_room.list',[
 
