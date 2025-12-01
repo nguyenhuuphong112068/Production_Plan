@@ -15,6 +15,7 @@ return new class extends Migration
         Schema::create('stage_plan_history', function (Blueprint $table) {
 
             $table->id();
+            $table->unsignedInteger('stage_plan_id');
             $table->unsignedInteger('plan_list_id');
             $table->unsignedInteger('plan_master_id');
             $table->unsignedInteger('product_caterogy_id');
