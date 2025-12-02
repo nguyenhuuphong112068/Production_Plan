@@ -503,7 +503,7 @@ class SchedualController extends Controller
                 });
 
                 $quotaByFinished = $quota->groupBy(function ($q) {
-                        return $q->finished_product_code . '-' . $q->stage_code;
+                        return  $q->intermediate_code . '-' . $q->finished_product_code . '-' . $q->stage_code;
                 });
 
                 $quotaByRoom = $quota->groupBy('room_id');
@@ -515,7 +515,7 @@ class SchedualController extends Controller
                                 $key = $plan->intermediate_code . '-' . $plan->stage_code;
                                 $matched = $quotaByIntermediate[$key] ?? collect();
                         } elseif ($plan->stage_code == 7) {
-                                $key = $plan->finished_product_code . '-' . $plan->stage_code;
+                                $key = $plan->intermediate_code . '-' .  $plan->finished_product_code . '-' . $plan->stage_code;
                                 $matched = $quotaByFinished[$key] ?? collect();
                         } elseif ($plan->stage_code == 8) {
                                 $room_id = $roomIdByInstrument[$plan->instrument_code] ?? null;
@@ -696,7 +696,7 @@ class SchedualController extends Controller
         }
 
         public function store(Request $request) {
-
+                
                
                 DB::beginTransaction(); 
                         try {
