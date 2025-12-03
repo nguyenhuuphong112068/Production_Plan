@@ -322,6 +322,13 @@
                 </a>
               </li>
 
+               <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.clearning_validation.index') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> Lịch Thẩm Định Vệ Sinh</p>
+                </a>
+              </li>
+
               <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.yield.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
@@ -335,6 +342,7 @@
                   <p>Lịch Sử Thay Đổi Lịch</p>
                 </a>
               </li>
+
               @if (user_has_permission(session('user')['userId'], 'layout_finised', 'boolean'))
               <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.finised.index') }}" class="nav-link">

@@ -923,7 +923,6 @@ const ScheduleTest = () => {
       handleEventUnHightLine?.();
   };
 
-
   const handleEventUnHightLine = () => {
     document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
   };
@@ -1637,11 +1636,11 @@ const ScheduleTest = () => {
             </span>
           ` : ''}
 
-          <b>${props.is_clearning ? event.title.split('-')[1] : event.title}</b>
+          <b style="color: ${props.textColor};">${props.is_clearning ? event.title.split('-')[1] : event.title}</b>
           ${!isTimelineMonth ? `
             <br/>
             ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
-              `<span>${moment(event.start).format('HH:mm')} - ${moment(event.end).format('HH:mm')}</span>`
+              `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm')} - ${moment(event.end).format('HH:mm')}</div>`
             : ''}
           ` : ''}
         </div>
