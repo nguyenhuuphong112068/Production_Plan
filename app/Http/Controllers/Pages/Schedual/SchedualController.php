@@ -176,7 +176,7 @@ class SchedualController extends Controller
                         'sp.keep_dry',
                         'sp.yields',
                         'sp.order_by',
-                        //'sp.scheduling_direction',
+                        'sp.clearning_validation',
                         'sp.predecessor_code',
                         'sp.nextcessor_code',
                         'sp.immediately',
@@ -256,16 +256,22 @@ class SchedualController extends Controller
                         // 🎨 Màu mặc định
                         if ($plan->stage_code <= 7) {
                                 $color_event = '#4CAF50';
+                                $textColor= '#fefefee2';
                         } elseif ($plan->stage_code == 8) {
                                 $color_event = '#003A4F';
+                                $textColor= '#fefefee2';
                         } else {
                                 $color_event = '#eb0cb3ff';
+                                $textColor= '#fefefee2';
                         }
 
                         // ✅ Nếu hoàn thành
                         if ($plan->is_val == 1) {
                                 $color_event = '#40E0D0';
+                                $textColor= '#fefefee2';
                         }
+
+
 
                         // ⏱ Kiểm tra biệt trữ giữa các công đoạn
                         $storage_capacity = 0;
@@ -279,6 +285,7 @@ class SchedualController extends Controller
                                                 }
                                                 if ($diff > $prev->quarantine_time_limit) {
                                                         $color_event = '#bda124ff';
+                                                        $textColor= '#fefefee2';
                                                         //$subtitle = "Quá Hạn Biệt Trữ: {$diff}h / {$prev->quarantine_time_limit}h";
                                                 }
                                         }
@@ -291,31 +298,37 @@ class SchedualController extends Controller
                                 $plan->after_weigth_date > $plan->start &&
                                 $plan->before_weigth_date < $plan->start) {
                                 $color_event = '#f99e02ff';
+                                $textColor= '#fefefee2';
                                 //$subtitle = "Nguyên Liệu Không Đáp Ứng: {$plan->after_weigth_date} - {$plan->before_weigth_date}";
                         } elseif ($plan->stage_code === 7 &&
                                 $plan->after_parkaging_date > $plan->start &&
                                 $plan->before_parkaging_date < $plan->start) {
                                 $color_event = '#f99e02ff';
+                                $textColor= '#fefefee2';
                                 //$subtitle = "Bao Bì Không Đáp Ứng: {$plan->after_parkaging_date} - {$plan->before_parkaging_date}";
                         }
 
                         // ⏰ Hạn cần hàng / bảo trì
                         if ($plan->expected_date < $plan->end && $plan->stage_code < 9 && $color_event != '#bda124ff') {
                                 $color_event = '#f90202ff';
+                                $textColor= '#fefefee2';
                                 //$subtitle = $plan->stage_code == 8
                                 //? "Không Đáp Ứng Hạn Bảo Trì: {$plan->expected_date}"
                                 //: "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
                         }
 
-                        // if ($plan->finished == 1) {
-                        //         $color_event = '#002af9ff';
-                        // }
+                        if ($plan->clearning_validation == 1) {
+                                $color_event = '#e4e405e2';
+                                $textColor= '#fb0101e2';
+                        }
+
 
                         // 🔗 Kiểm tra predecessor / successor
                         if ($plan->predecessor_code) {
                                 $prePlan = $plans->firstWhere('code', $plan->predecessor_code);
                                 if ($prePlan && $plan->start < $prePlan->end) {
                                         $color_event = '#4d4b4bff';
+                                        $textColor= '#fefefee2';
                                         //$subtitle = 'Vi phạm: Start < End công đoạn trước';
                                 }
                         }
@@ -324,6 +337,7 @@ class SchedualController extends Controller
                                 $nextPlan = $plans->firstWhere('code', $plan->nextcessor_code);
                                 if ($nextPlan && $plan->end > $nextPlan->start) {
                                         $color_event = '#4d4b4bff';
+                                        $textColor= '#fefefee2';
                                         //$subtitle = 'Vi phạm: End > Start công đoạn sau';
                                 }
                         }
@@ -338,6 +352,7 @@ class SchedualController extends Controller
                                 'end' => $plan->actual_end ?? $plan->end,
                                 'resourceId' => $plan->resourceId,
                                 'color' => $plan->finished == 1? '#002af9ff':$color_event,
+                                'textColor' => $textColor,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => false,
@@ -363,6 +378,7 @@ class SchedualController extends Controller
                                 'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
                                 'color' => $plan->finished == 1? '#002af9ff':'#a1a2a2ff',
+                                'textColor' => $textColor,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => true,
@@ -382,6 +398,7 @@ class SchedualController extends Controller
                                 'end' =>  $plan->end,
                                 'resourceId' => $plan->resourceId,
                                 'color' => '#8397faff',
+                                'textColor' => $textColor,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => false,
@@ -406,6 +423,7 @@ class SchedualController extends Controller
                                 'end' =>  $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
                                 'color' => '#8397faff',
+                                'textColor' => $textColor,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => true,
@@ -1448,6 +1466,50 @@ class SchedualController extends Controller
                         ->update([
                                 'immediately' => $modeCreate
                         ]);
+
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện immediately:', [
+                        'error' => $e->getMessage(),
+                        'line' => $e->getLine(),
+                        ]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                }
+
+                // Trả lại dữ liệu mới
+                return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
+        }
+
+        public function clearningValidation(Request $request){
+
+                Log::info ($request->all());
+
+                $datas = $request->input('data', []);
+             
+                try {
+                        // Không có dữ liệu → bỏ qua
+                        if (empty($datas)) {
+                                return response()->json(['error' => 'No data'], 400);
+                        }
+
+                        // 1. Kiểm tra nếu bất kỳ dòng nào đang có immediately = true
+                        $cases = [];
+                        $ids = [];
+
+                        foreach ($datas as $data) {
+                        $ids[] = $data['id'];
+                        $cases[] = "WHEN {$data['id']} THEN " . ($data['clearning_validation'] ? 0 : 1);
+                        }
+
+                        $ids_list = implode(',', $ids);
+                        $cases_sql = implode(' ', $cases);
+
+                        DB::update("UPDATE stage_plan SET clearning_validation = CASE id $cases_sql END WHERE id IN ($ids_list)");
+
+                        // 2. Nếu KHÔNG có dòng nào có immediately → BẬT cho tất cả
+                        //$ids = collect($datas)->pluck('id')->filter()->toArray();   
+                       
 
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện immediately:', [

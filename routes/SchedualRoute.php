@@ -1,6 +1,7 @@
 <?php
     // use Illuminate\Routing\Route;
 
+use App\Http\Controllers\Pages\Schedual\ClearningValidationController;
 use App\Http\Controllers\Pages\Schedual\SchedualAuditController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
@@ -51,6 +52,7 @@ use Illuminate\Support\Facades\Route;
                 Route::put('submit','submit')->name('submit');
                 Route::put('required_room','required_room')->name('required_room');
                 Route::put('immediately','immediately')->name('immediately');
+                Route::put('clearningValidation','clearningValidation')->name('clearningValidation');
 
 
                 Route::get('test','test')->name('test');
@@ -124,6 +126,12 @@ use Illuminate\Support\Facades\Route;
                         
                 });  
 
+                Route::prefix('/clearning_validation')
+                ->controller(ClearningValidationController::class)
+                ->name('clearning_validation.')
+                ->group(function(){
+                        Route::get('','index')->name('index');
+                });  
 
         });
 

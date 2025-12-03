@@ -158,6 +158,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const ImmediatelyBodyTemplate = (rowData) => (
     <Checkbox checked={rowData.immediately ? true : false}/>
   );
+  const clearningValidationBodyTemplate = (rowData) => (
+    <Checkbox checked={rowData.clearning_validation ? true : false}/>
+  );
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
@@ -1065,6 +1068,42 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       };
   }
 
+
+  const handleConfirmClearningValidation = (e) => {
+    if (isSaving) return;
+    setIsSaving(true);  
+
+    const filteredRows = selectedRows.map(row => ({
+        id: row.id,
+        clearning_validation: row.clearning_validation
+    }));
+
+
+
+      axios.put('/Schedual/clearningValidation', { data: filteredRows })
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setPlan(data.plan);
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
+
+      setIsSaving(false);  
+      setSelectedRows ([]);
+      return;
+  }
+
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
@@ -1082,6 +1121,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"), style: { width: '25rem', maxWidth: '25rem', ...longTextStyle } },
       { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
       { field: "immediately", header: (<><i className="fa fa-bolt me-1"></i></>), body: ImmediatelyBodyTemplate, style: {width: '5rem', maxWidth: '5rem', ...longTextStyle }},
+      { field: "clearning_validation", header:"🚿", body: clearningValidationBodyTemplate, style: {width: '5rem', maxWidth: '5rem', ...longTextStyle }},
       { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") , filter: false, filterField: "note", style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
   ];
     
@@ -1145,6 +1185,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
                 onClick={handleSorted}>
                 {isSaving === false ? <i className="fas fa-sort"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
+              </div>
+
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xác định lô thẩm định vệ sinh"
+                onClick={handleConfirmClearningValidation}>
+                {isSaving === false ? "🚿":<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
 
               </>):<></>}
