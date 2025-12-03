@@ -20,7 +20,7 @@ class SchedualController extends Controller
         protected $prev_orderBy = false;
 
         public function test(){
-              $this->scheduleAll (null);
+              //$this->scheduleAll (null);
               //$this->createAutoCampain();
               //$this->view (null);
               //$this->Sorted (null);
@@ -713,136 +713,6 @@ class SchedualController extends Controller
                 }
 
         }
-
-        // public function store(Request $request) {
-                
-        //         //Log::info($request->all());
-        //         $offdate =  $request->offdate;
-        //         DB::beginTransaction(); 
-        //                 try {
-        //                 $products = collect($request->products)->sortBy('batch')->values();
-        //                 $current_start = Carbon::parse($request->start);
-
-        //                 foreach ($products as $index => $product) {
-        //                         if ($index === 0 && $product['stage_code'] !== 9) {
-
-        //                                 if ($product['stage_code'] < 7) {
-        //                                         $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;
-        //                                 } else if ($product['stage_code'] === 7) {
-        //                                         $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;
-        //                                 }
-                                        
-        //                                 $quota = DB::table('quota')
-        //                                 ->select(
-        //                                         'room_id', 'campaign_index',
-        //                                         DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-        //                                         DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-        //                                         DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-        //                                         DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
-        //                                 )
-        //                                 ->where('process_code', 'like',  $process_code. '%')
-        //                                 ->first();
-                                        
-        //                                 $p_time_minutes  = $quota->p_time_minutes??0;
-        //                                 $m_time_minutes  = $quota->m_time_minutes??0;
-        //                                 $C1_time_minutes = $quota->C1_time_minutes??0;
-        //                                 $C2_time_minutes = $quota->C2_time_minutes??0;
-
-        //                         }elseif ($index === 0 && $product['stage_code'] === 9) {
-        //                                 $p_time_minutes  = 30;
-        //                                 $m_time_minutes  = 60;
-        //                                 $C1_time_minutes = 30;
-        //                                 $C2_time_minutes = 60;
-        //                         }
-
-                            
-
-
-        //                         if ($product['stage_code'] <= 2) {
-        //                                 $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes  + (float)$m_time_minutes * $quota->campaign_index);
-        //                                 $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
-        //                                 $clearning_type = "VS-II";
-
-        //                         }else {
-        //                                 if ($products->count() === 1) {
-        //                                         $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
-        //                                         $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
-        //                                         $clearning_type = "VS-II";
-        //                                 } else {
-        //                                         if ($index === 0) {
-        //                                         $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
-        //                                         $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
-        //                                         $clearning_type = "VS-I";
-        //                                         } else if ($index === $products->count() - 1) {
-        //                                         $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
-        //                                         $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
-        //                                         $clearning_type = "VS-II";
-        //                                         } else {
-        //                                         $end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
-        //                                         $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
-        //                                         $clearning_type = "VS-I";
-        //                                         }
-        //                                 }
-        //                         }
-                    
-        //                         DB::table('stage_plan')
-        //                                 ->where('id', $product['id'])
-        //                                 ->update([
-        //                                 'start'           => $current_start,
-        //                                 'end'             => $end_man,
-        //                                 'start_clearning' => $end_man,
-        //                                 'end_clearning'   => $end_clearning,
-        //                                 'resourceId'      => $request->room_id,
-        //                                 'title'           => $product['stage_code'] ===9? ($product['title']. "-" . $product['batch'] ): ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
-        //                                 'title_clearning' => $clearning_type,
-        //                                 'schedualed'      => 1,
-        //                                 'schedualed_by'   => session('user')['fullName'],
-        //                                 'schedualed_at'   => now(),
-        //                         ]);
-
-        //                         $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
-                                        
-        //                         if ($submit == 1){
-        //                                 $last_version = DB::table('stage_plan_history')->where('stage_plan_id', $product['id'])->max('version') ?? 0;
-        //                                 DB::table('stage_plan_history')
-        //                                         ->insert([
-        //                                         'stage_plan_id'   => $product['id'],
-        //                                         'version'         => $last_version + 1,
-        //                                         'start'           => $current_start,
-        //                                         'end'             => $end_man,
-        //                                         'resourceId'      => $request->room_id,
-        //                                         'schedualed_by'   => session('user')['fullName'],
-        //                                         'schedualed_at'   => now(),
-        //                                         'deparment_code'  => session('user')['production_code'],
-        //                                         'type_of_change'  => $request->reason??"Lập Lịch Thủ Công"
-        //                                 ]);
-        //                         }
-
-        //                         if ($product['stage_code'] === 1){
-        //                                 $current_start = $current_start;
-        //                         }else{
-        //                                 $current_start = $end_clearning;
-        //                         }
-        //                 }
-        //                 DB::commit();
-        //         } catch (\Exception $e) {
-        //                 DB::rollBack();
-        //                 Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
-        //                 return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-        //         }
-
-
-        //         $production = session('user')['production_code'];
-        //         $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
-        //         $plan_waiting = $this->getPlanWaiting($production);
-        //         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
-
-        //         return response()->json([
-        //                 'events' => $events,
-        //                 'plan' => $plan_waiting,
-        //                 'sumBatchByStage' => $sumBatchByStage,
-        //         ]);
-        // }
 
         private function check_offdate(Carbon $current_start, $offdate){
         if (!$offdate || count($offdate) === 0) {
@@ -2454,7 +2324,7 @@ class SchedualController extends Controller
         }
 
         /** Scheduler cho tất cả stage Request */
-        public function scheduleAll( $request) {
+        public function scheduleAll(Request $request) {
                 
                 $this->selectedDates = $request->selectedDates??[];
                 $this->work_sunday = $request->work_sunday??false;
