@@ -17,6 +17,7 @@ class SchedualController extends Controller
         protected $work_sunday = true;
         protected $reason = null;
         protected $theory = false;
+        protected $prev_orderBy = false;
 
         public function test(){
               //$this->scheduleAll (null);
@@ -606,7 +607,7 @@ class SchedualController extends Controller
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";
-                $this->theory = $request->theory ?? false;
+                $this->theory = $request->theory ?? true;
                 
                 try {
                         $production = session('user')['production_code'];
@@ -715,10 +716,27 @@ class SchedualController extends Controller
 
         public function store(Request $request) {
                 
-               
+                //Log::info($request->all());
+                $offdate =  $request->offdate;
+                // $offdate_time = [];
+                // if ($offdate){
+                //         foreach ($offdate as $dateStr) {
+                
+                //                 $date = Carbon::parse($dateStr)->startOfDay(); // 00:00 của ngày đó
+                //                 $nextDay = $date->copy()->addDay()->setTime(6, 0, 0); // 06:00 hôm sau
+                //                 $offdate_time = [
+                //                 'start' => $date,
+                //                 'end'   => $nextDay,
+                //                 ];
+                              
+                //         }
+                // }
+                
+
+
                 DB::beginTransaction(); 
                         try {
-                        $products = collect($request->products);
+                        $products = collect($request->products)->sortBy('batch')->values();
                         $current_start = Carbon::parse($request->start);
 
                         foreach ($products as $index => $product) {
@@ -2194,6 +2212,9 @@ class SchedualController extends Controller
                 $this->selectedDates = $request->selectedDates??[];
                 $this->work_sunday = $request->work_sunday??false;
                 $this->reason = $request->reason??"NA";
+                $this->prev_orderBy =  $request->prev_orderBy??false;
+
+
                 $Step = [
                         "PC" => 3,
                         "THT" => 4,
@@ -2261,6 +2282,7 @@ class SchedualController extends Controller
 
                                         break;
                         }
+                        
                         $this->scheduleStage($stageCode, $waite_time_nomal_batch , $waite_time_val_batch, $start_date);
                 }
                 
@@ -2270,46 +2292,104 @@ class SchedualController extends Controller
         /** Scheduler cho 1 stage*/
         public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0,  ?Carbon $start_date = null) {
 
-                $tasks = DB::table("stage_plan as sp")
-                ->select('sp.id',
-                        'sp.plan_master_id',
-                        'sp.product_caterogy_id',
-                        'sp.predecessor_code',
-                        'sp.nextcessor_code',
-                        'sp.campaign_code',
-                        'sp.code',
-                        'sp.stage_code',
-                        'sp.campaign_code',
-                        'sp.tank',
-                        'sp.keep_dry',
-                        'sp.order_by',
-                        'sp.required_room_code',
-                        'sp.immediately',
-                        'plan_master.batch',
-                        'plan_master.is_val',
-                        'plan_master.code_val',
-                        'plan_master.expected_date',
-                        'plan_master.batch',
-                        'plan_master.after_weigth_date',
-                        'plan_master.after_parkaging_date',
-                        'finished_product_category.product_name_id',
-                        'finished_product_category.market_id',
-                        'finished_product_category.finished_product_code',
-                        'finished_product_category.intermediate_code',
-                        'product_name.name',
-                        'market.code as market'
-                )
-                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->where('sp.stage_code', $stageCode)
-                ->where('sp.finished',0)
-                ->where('sp.active',1)
-                ->whereNull('sp.start')
-                ->where('sp.deparment_code', session('user')['production_code'])
-                ->orderBy('order_by','asc')
-                ->get();
+                
+                if ($this->prev_orderBy && $stageCode >= 5) {
+
+                    
+                        $tasks = DB::table("stage_plan as sp")
+                                ->select(
+                                        'sp.id',
+                                        'sp.plan_master_id',
+                                        'sp.product_caterogy_id',
+                                        'sp.predecessor_code',
+                                        'sp.nextcessor_code',
+                                        'sp.campaign_code',
+                                        'sp.code',
+                                        'sp.stage_code',
+                                        'sp.campaign_code',
+                                        'sp.tank',
+                                        'sp.keep_dry',
+                                        'sp.order_by',
+                                        'sp.required_room_code',
+                                        'sp.immediately',
+                                        
+                                        'plan_master.batch',
+                                        'plan_master.is_val',
+                                        'plan_master.code_val',
+                                        'plan_master.expected_date',
+                                        'plan_master.batch',
+                                        'plan_master.after_weigth_date',
+                                        'plan_master.after_parkaging_date',
+
+                                        'finished_product_category.product_name_id',
+                                        'finished_product_category.market_id',
+                                        'finished_product_category.finished_product_code',
+                                        'finished_product_category.intermediate_code',
+                                        'product_name.name',
+                                        'market.code as market',
+
+                                        'prev.start as prev_start'   // lấy start của công đoạn trước
+                                )
+                                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
+                                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                                // JOIN công đoạn trước
+                                ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                                ->where('sp.stage_code', $stageCode)
+                                ->where('sp.finished',0)
+                                ->where('sp.active',1)
+                                ->whereNull('sp.start')
+                                ->where('sp.deparment_code', session('user')['production_code'])
+                                // 🎯 Sắp xếp theo start của công đoạn trước
+                                ->orderBy('prev.start', 'asc')
+
+                        ->get();
+                  
+                }       
+                else{
+                         $tasks = DB::table("stage_plan as sp")
+                                ->select('sp.id',
+                                'sp.plan_master_id',
+                                'sp.product_caterogy_id',
+                                'sp.predecessor_code',
+                                'sp.nextcessor_code',
+                                'sp.campaign_code',
+                                'sp.code',
+                                'sp.stage_code',
+                                'sp.campaign_code',
+                                'sp.tank',
+                                'sp.keep_dry',
+                                'sp.order_by',
+                                'sp.required_room_code',
+                                'sp.immediately',
+                                'plan_master.batch',
+                                'plan_master.is_val',
+                                'plan_master.code_val',
+                                'plan_master.expected_date',
+                                'plan_master.batch',
+                                'plan_master.after_weigth_date',
+                                'plan_master.after_parkaging_date',
+                                'finished_product_category.product_name_id',
+                                'finished_product_category.market_id',
+                                'finished_product_category.finished_product_code',
+                                'finished_product_category.intermediate_code',
+                                'product_name.name',
+                                'market.code as market'
+                                )
+                                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
+                                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                                ->where('sp.stage_code', $stageCode)
+                                ->where('sp.finished',0)
+                                ->where('sp.active',1)
+                                ->whereNull('sp.start')
+                                ->where('sp.deparment_code', session('user')['production_code'])
+                                ->orderBy('order_by','asc')
+                        ->get();
+                       
+                }
 
                 $processedCampaigns = []; // campaign đã xử lý
 

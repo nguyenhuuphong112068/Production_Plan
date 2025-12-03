@@ -7,6 +7,7 @@ export default function NoteModal({ show, setShow }) {
   const legends = [
     { color: "#46f905ff", label: "Lô Thương Mại - Đáp Ứng Ngày Cần Hàng" },
     { color: "#40E0D0", label: "Lô Thẩm Định - Đáp Ứng Ngày Cần Hàng" },
+    { color: "#e4e405e2", label: "Lô Thẩm Vệ Sinh" },
     { color: "#bda124ff", label: "Quá Hạn Biệt Trữ" },
     { color: "#f99e02ff", label: "Nguyên Liệu Hoặc Bao Bì Không Đáp Ứng Kế Hoạch" },
     { color: "#dc02f9ff", label: "Sản Phẩm Có Nguồn Nguyên Liệu Chưa Được Khai Báo Tại Phòng Sản Xuất"},

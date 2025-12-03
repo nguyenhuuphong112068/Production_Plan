@@ -50,6 +50,7 @@ const ScheduleTest = () => {
   const [viewName, setViewName] = useState("resourceTimelineWeek");
   const [showRenderBadge, setShowRenderBadge] = useState(false);
   const [workingSunday, setWorkingSunday] = useState(false);
+  const [offDays, setOffDays] = useState([]);
 
   const [events, setEvents] = useState([]);
   const [resources, setResources] = useState([]);
@@ -436,8 +437,6 @@ const ScheduleTest = () => {
     // chưa chọn row
     //if (!info?.event || !calendarRef?.current) return;
 
- 
-
     const start = info.event.start;
     const now = new Date();
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
@@ -464,9 +463,6 @@ const ScheduleTest = () => {
     }
 
     // Phòng được chọn và định mực k giống
-    console.log (resourceId);
-    console.log (selectedRows);
-
     const hasPermission = selectedRows.some(row => {
       if (!row.permisson_room) return false;
 
@@ -511,6 +507,7 @@ const ScheduleTest = () => {
         products: selectedRows,
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
+        offdate: offDays
       })
         .then(res => {
           let data = res.data;
@@ -837,7 +834,7 @@ const ScheduleTest = () => {
 
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
-    
+  
     const event = clickInfo.event;
     // ALT + CLICK
  if (clickInfo.jsEvent.altKey) {
@@ -993,6 +990,18 @@ const ScheduleTest = () => {
             </div>
           </div>
 
+          <div class="cfg-row">
+            <label class="cfg-label" for="prev_orderBy">Thứ tự công đoạn từ ĐH -> ĐG theo :</label>
+            <label class="switch">
+              <input id="prev_orderBy" type="checkbox">
+              <span class="slider round"></span>
+              <span class="switch-labels">
+                <span class="off">KHCĐ</span>
+                <span class="on">CĐT</span>
+              </span>
+            </label>
+          </div>
+
           <label class="cfg-label" for="stepper-container">Sắp Lịch Theo Công Đoạn:</label> 
           <div id="stepper-container" style="margin-top: 15px;"></div>
 
@@ -1064,6 +1073,7 @@ const ScheduleTest = () => {
 
             setLocalDates(e.value);
             selectedDates = selected;
+            setOffDays(selected);
           };
 
           return (
@@ -1083,7 +1093,6 @@ const ScheduleTest = () => {
 
         // ------------------ Stepper ------------------
         const stepperContainer = document.getElementById("stepper-container");
-
         if (stepperContainer) {
           const stepperRoot = createRoot(stepperContainer);
 
@@ -1186,6 +1195,9 @@ const ScheduleTest = () => {
 
         const workSunday = document.getElementById('work-sunday');
         formValues.work_sunday = workSunday.checked;
+
+        const prev_orderBy = document.getElementById('prev_orderBy');
+        formValues.prev_orderBy = prev_orderBy.checked;
        
         formValues.selectedDates = selectedDates;
         formValues.selectedStep = activeStepText ?? "PC";
@@ -2090,7 +2102,7 @@ const ScheduleTest = () => {
                   ? "5px solid yellow"
                   : "none";
               });
-              console.log (selectedEvents)
+              
               return merged;
             });
           }}
