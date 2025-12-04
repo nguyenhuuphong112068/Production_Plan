@@ -12,7 +12,7 @@ class SchedualAuditController extends Controller
         public function index(Request $request){
                 //dd ($request->all());
 
-            $fromDate = $request->from_date ?? Carbon::now()->toDateString();
+            $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
             $toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
             $stage_code = $request->stage_code??3;
             $production = session('user')['production_code'];
@@ -39,19 +39,19 @@ class SchedualAuditController extends Controller
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-                ->where('h.version', '>=', 1)
+                //->where('h.version', '>=', 1)
                 ->whereBetween('h.start', [$fromDate, $toDate])
                 ->where('h.stage_code', $stage_code)
                 ->where('h.deparment_code', $production)
-                ->whereNotNull('h.start')
-                ->whereIn('h.stage_plan_id', function ($query) {
-                    $query->select('stage_plan_id')
-                        ->from('stage_plan_history')
-                        ->groupBy('stage_plan_id')
-                        ->havingRaw('COUNT(*) > 1');
-                })
+                //->whereNotNull('h.start')
+                // ->whereIn('h.stage_plan_id', function ($query) {
+                //     $query->select('stage_plan_id')
+                //         ->from('stage_plan_history')
+                //         ->groupBy('stage_plan_id')
+                //         ->havingRaw('COUNT(*) > 1');
+                // })
                 //->orderBy('h.plan_master_id')
-                ->orderBy('h.version', 'desc')
+                ->orderBy('h.start', 'desc')
                 ->get();
 
 

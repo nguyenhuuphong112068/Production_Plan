@@ -611,6 +611,7 @@ class SchedualController extends Controller
                 
                 try {
                         $production = session('user')['production_code'];
+                        $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
                        
                         $clearing = $request->clearning??true;
 
@@ -649,7 +650,9 @@ class SchedualController extends Controller
                                 'type' => $type,
                                 'authorization' => $authorization,
                                 'production' => $production,
+                                'department' => $department,
                                 'currentPassword' => session('user')['passWord']??''
+                                
                         ]);
 
                 } catch (\Throwable $e) {
