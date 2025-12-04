@@ -105,7 +105,8 @@
                         <th>Số lô</th>
                         <th>Phòng Sản Xuất</th>
                         <th colspan="2">Thới Gian Sản Xuất</th>
-                        <th colspan="2">Thời Gian Vệ Sinh</th>
+                       
+                        
                         <th class = "text-center">Sản Lượng Thực Tế
                             @if ($stageCode <= 4)
                                 {{ '(Kg)' }}
@@ -115,7 +116,10 @@
                         </th>
                         <th class = "text-center">Số Thùng</th>
                         <th>Ghi Chú</th>
-                        <th>Xác Nhận</th>
+                         <th>Xác Nhận Sản Xuất</th>
+
+                        <th colspan="2">Thời Gian Vệ Sinh</th>
+                        <th>Xác Nhận Tòa Bộ </th>
 
 
                     </tr>
@@ -149,23 +153,11 @@
                                 <div>KT: </div>
                             </td>
                             <td>
-                                <input type="datetime-local" class="time"
+                                <input type="datetime-local" class="time" id = "start"
                                     name="start"value="{{ \Carbon\Carbon::parse($data->start)->format('Y-m-d\TH:i') }}">
-                                <input type="datetime-local" class="time" name="end"
+                                <input type="datetime-local" class="time" name="end" id = "end"
                                     value = "{{ \Carbon\Carbon::parse($data->end)->format('Y-m-d\TH:i') }}">
                             </td>
-
-                            <td>
-                                <div>BĐ: </div>
-                                <div>KT: </div>
-                            </td>
-                            <td>
-                                <input type="datetime-local" class="time"
-                                    name="start_clearning"value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
-                                <input type="datetime-local" class="time" name="end_clearning"
-                                    value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
-                            </td>
-
                             <td>
 
                                 <input type="text" class="time" name="yields"
@@ -206,12 +198,31 @@
                                 <textarea  class="updateInput text-left" name="note" > {{ $data->note }} </textarea>
                             </td>
 
+                            <td class="text-center align-middle">
+                                <button type="button" class="btn btn-success btn-semi-finised position-relative"
+                                    {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
+                                    data-toggle="modal" data-target="#finisedModal">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </td>
+
+                            <td>
+                                <div>BĐ: </div>
+                                <div>KT: </div>
+                            </td>
+                            <td>
+                                <input type="datetime-local" class="time" id = "start_clearning"
+                                    name="start_clearning"value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
+                                <input type="datetime-local" class="time" name="end_clearning" id = "end_clearning"
+                                    value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
+                            </td>
+
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-success btn-finised position-relative"
                                     {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
                                     data-toggle="modal" data-target="#finisedModal">
-                                    <i class="fas fa-check"></i>
+                                    <i class="fas fa-check"></i><i class="fas fa-check" style="margin-left:-6px;"></i>
                                 </button>
                             </td>
 
@@ -305,13 +316,23 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Gắn sự kiện bằng delegation để không bị mất sau khi search/reload
-        $(document).on('click', '.btn-finised', function(e) {
+
+        $(document).on('click', '.btn-finised, .btn-semi-finised', function(e) {
             e.preventDefault();
 
             const btn = this; // nút vừa click
             const row = btn.closest('tr');
             const id = row.dataset.id;
             const now = new Date();
+            let actionType = "";
+
+            if (btn.classList.contains('btn-finised')) {
+                actionType = "finised";        // hoàn thành
+            }
+
+            if (btn.classList.contains('btn-semi-finised')) {
+                actionType = "semi-finised";   // hoàn thành 1 phần
+            }
 
             // Lấy tất cả input trong dòng
             const inputs = row.querySelectorAll('input[type="datetime-local"]');
@@ -332,6 +353,8 @@
                     }
                 }
             }
+
+
 
 
             // Lấy dữ liệu input trong dòng đó

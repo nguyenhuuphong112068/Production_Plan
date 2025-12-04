@@ -1041,9 +1041,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               setPlan(data.plan)
 
           }).catch (err => {
+                        console.log (err)
                         Swal.fire({
-                          icon: 'error',
-                          title: 'Lỗi',
+                          icon: 'warning',
+                          title: err.message,
                           timer: 1500
                         });
                         console.error("API error:", err.response?.data || err.message);
