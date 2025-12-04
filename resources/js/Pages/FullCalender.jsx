@@ -62,7 +62,8 @@ const ScheduleTest = () => {
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
-  const [production, setProduction] = useState("PXV1");
+  //const [production, setProduction] = useState(null);
+  //const [department, setDepartment] = useState(null);
   const [currentPassword, setCurrentPassword] = useState(null);
   
 
@@ -104,15 +105,17 @@ const ScheduleTest = () => {
           data = data.replace(/^<!--.*?-->/, "").trim();
           data = JSON.parse(data);
         }
+        console.log (data.production)
+        console.log (data.department)
 
-        setAuthorization (['Admin', 'Schedualer'].includes(data.authorization))
+        setAuthorization (['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department )
         
         setEvents(data.events);
         setResources(data.resources);
         setType(data.type)
         setStageMap(data.stageMap);
         setSumBatchByStage(data.sumBatchByStage);
-        setProduction(data.production)
+        //setProduction(data.production)
        
         
         if (!authorization){

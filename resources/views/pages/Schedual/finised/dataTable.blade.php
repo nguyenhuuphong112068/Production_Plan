@@ -430,6 +430,10 @@
 
                     // Giữ nút ở trạng thái disabled sau khi hoàn thành
                     $(btn).addClass('disabled').text('✓ Đã hoàn thành');
+                   // if (actionType = 'finised') {
+                    //        $(btn).addClass('disabled').text('✓ Đã hoàn thành');
+                   // }
+                    
                 },
                 error: function() {
                     alert("Lỗi khi gửi dữ liệu");
