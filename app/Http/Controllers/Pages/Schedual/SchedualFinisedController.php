@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 //use Illuminate\Support\Facades\Log;
 
 class SchedualFinisedController extends Controller
@@ -44,7 +46,7 @@ class SchedualFinisedController extends Controller
                     ->where('sp.stage_code', $stage_code)
                     ->where('sp.deparment_code', $production)
                     ->whereNotNull('sp.start')
-                    ->where('sp.finished',0)
+                    ->whereNull('sp.actual_start_clearning')
                     ->orderBy('sp.start')
                     ->get();
 
@@ -75,8 +77,10 @@ class SchedualFinisedController extends Controller
         }
 
         public function store(Request $request) {
-              
-                DB::table('stage_plan')
+                Log::info ($request->all());
+
+                if ($request->actionType == 'finised') {
+                        DB::table('stage_plan')
                         ->where('id', $request->id)
                         ->update([
                                    
@@ -96,8 +100,29 @@ class SchedualFinisedController extends Controller
                         'finished'        => 1,
                         'finished_by'   => session('user')['fullName'],
                         'finished_date'   => now(),
-                ]);
+                        ]);
 
+                }else {
+
+                        DB::table('stage_plan')
+                        ->where('id', $request->id)
+                        ->update([
+                                   
+                        'actual_start'           => $request->start,
+                        'actual_end'             => $request->end,
+                        //'actual_start_clearning' => $request->start_clearning,
+                        //'actual_end_clearning'   => $request->end_clearning,
+
+                        'yields'   => $request->yields,
+                        'number_of_boxes'   => $request->number_of_boxes??1,
+                        'note'   => $request->note??"NA",
+                        'finished'        => 1,
+                        'finished_by'   => session('user')['fullName'],
+                        'finished_date'   => now(),
+                        ]);
+
+                }
+                
 
                  return redirect()->back()->with('success', 'Đã thêm thành công!');   
         }

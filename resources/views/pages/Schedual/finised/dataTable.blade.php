@@ -133,6 +133,14 @@
                             @php $finisedRow = false @endphp
                         @endif
 
+                        @if ($data->actual_start)
+                            @php $semi_finished = 'disabled' @endphp
+                        @else
+                            @php $semi_finished = '' @endphp
+                        @endif
+
+                        
+
 
                         <tr data-id="{{ $data->id }}">
                             <td>{{ $loop->iteration }} </td>
@@ -153,14 +161,14 @@
                                 <div>KT: </div>
                             </td>
                             <td>
-                                <input type="datetime-local" class="time" id = "start"
+                                <input type="datetime-local" class="time" id = "start" {{ $semi_finished }}
                                     name="start"value="{{ \Carbon\Carbon::parse($data->start)->format('Y-m-d\TH:i') }}">
-                                <input type="datetime-local" class="time" name="end" id = "end"
+                                <input type="datetime-local" class="time" name="end" id = "end" {{ $semi_finished }}
                                     value = "{{ \Carbon\Carbon::parse($data->end)->format('Y-m-d\TH:i') }}">
                             </td>
                             <td>
 
-                                <input type="text" class="time" name="yields"
+                                <input type="text" class="time" name="yields" {{ $semi_finished }}
                                     data-max="{{ $data->Theoretical_yields }}"
                                     value="{{ $data->yields ?? ($data->Theoretical_yields ?? '') }}"
                                     oninput="
@@ -176,7 +184,7 @@
 
                             </td>
                             <td>
-                                <input type="text" class="time" name="number_of_boxes"
+                                <input type="text" class="time" name="number_of_boxes" {{ $semi_finished }}
                                     value="{{ $data->number_of_boxes ?? 1 }}"
                                     oninput="
                                         // Chỉ cho nhập số nguyên
@@ -194,16 +202,26 @@
                                     ">
                             </td>
 
-                            <td>
+                            <td> 
                                 <textarea  class="updateInput text-left" name="note" > {{ $data->note }} </textarea>
                             </td>
+                           
+
+
 
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-success btn-semi-finised position-relative"
-                                    {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
-                                    data-toggle="modal" data-target="#finisedModal">
-                                    <i class="fas fa-check"></i>
-                                </button>
+                                @if ($semi_finished == 'disabled')
+                                    <button type="button" class="btn btn-success" disabled>
+                                        ✓ Đã hoàn thành
+                                    </button>  
+                                @else
+                                    <button type="button" class="btn btn-success btn-semi-finised position-relative" 
+                                        {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
+                                        data-toggle="modal" data-target="#finisedModal">
+                                        <i class="fas fa-check"></i>
+                                    </button>  
+                                @endif
+
                             </td>
 
                             <td>
@@ -220,7 +238,7 @@
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-success btn-finised position-relative"
-                                    {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
+                                    {{ $data->actual_start_clearning ? 'disabled' : '' }} data-id="{{ $data->id }}"
                                     data-toggle="modal" data-target="#finisedModal">
                                     <i class="fas fa-check"></i><i class="fas fa-check" style="margin-left:-6px;"></i>
                                 </button>
@@ -316,6 +334,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Gắn sự kiện bằng delegation để không bị mất sau khi search/reload
+      
 
         $(document).on('click', '.btn-finised, .btn-semi-finised', function(e) {
             e.preventDefault();
@@ -327,34 +346,59 @@
             let actionType = "";
 
             if (btn.classList.contains('btn-finised')) {
-                actionType = "finised";        // hoàn thành
-            }
+                actionType = "finised"; 
+                const inputs = row.querySelectorAll('input[type="datetime-local"]');
+                // --- KIỂM TRA THỜI GIAN NHẬP ---
+                for (let input of inputs) {
+                    if (input.value) {
+                        let valTime = new Date(input.value);
 
-            if (btn.classList.contains('btn-semi-finised')) {
-                actionType = "semi-finised";   // hoàn thành 1 phần
-            }
-
-            // Lấy tất cả input trong dòng
-            const inputs = row.querySelectorAll('input[type="datetime-local"]');
-
-            // --- KIỂM TRA THỜI GIAN NHẬP ---
-            for (let input of inputs) {
-                if (input.value) {
-                    let valTime = new Date(input.value);
-
-                    if (valTime > now) {
-                        Swal.fire({
-                            icon: "warning",
-                            title: "Thời gian không hợp lệ",
-                            text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
-                            timer: 2000
-                        });
-                        return; // NGỪNG HÀM, KHÔNG GỬI AJAX
+                        if (valTime > now) {
+                            Swal.fire({
+                                icon: "warning",
+                                title: "Thời gian không hợp lệ",
+                                text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
+                                timer: 2000
+                            });
+                            return; // NGỪNG HÀM, KHÔNG GỬI AJAX
+                        }
                     }
                 }
             }
 
+            if (btn.classList.contains('btn-semi-finised')) {
+                actionType = "semi-finised";   // hoàn thành 1 phần
+                const start = row.querySelectorAll('#start');
+                const end = row.querySelectorAll('#end');
 
+                if (start.value) {
+                        let valTime = new Date(start.value);
+
+                        if (valTime > now) {
+                            Swal.fire({
+                                icon: "warning",
+                                title: "Thời gian không hợp lệ",
+                                text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
+                                timer: 2000
+                            });
+                            return; // NGỪNG HÀM, KHÔNG GỬI AJAX
+                        }
+                }
+
+                if (end.value) {
+                        let valTime = new Date(end.value);
+
+                        if (valTime > now) {
+                            Swal.fire({
+                                icon: "warning",
+                                title: "Thời gian không hợp lệ",
+                                text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
+                                timer: 2000
+                            });
+                            return; // NGỪNG HÀM, KHÔNG GỬI AJAX
+                        }
+                }
+            }
 
 
             // Lấy dữ liệu input trong dòng đó
@@ -373,7 +417,8 @@
                 type: 'post',
                 data: {
                     ...data,
-                    _token: "{{ csrf_token() }}"
+                    _token: "{{ csrf_token() }}",
+                    actionType: actionType
                 },
                 success: function(res) {
                     Swal.fire({
