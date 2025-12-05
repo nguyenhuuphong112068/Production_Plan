@@ -12,7 +12,16 @@ class DailyReportController extends Controller
 {
     public function index(Request $request) {
 
-        $reportedDate = $request->reportedDate ?? Carbon::yesterday()->format('Y-m-d');
+        
+        
+        $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
+
+        if ($department == session('user')['production_code']){{
+             $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
+        }}else {
+            $reportedDate = $request->reportedDate ?? Carbon::yesterday()->format('Y-m-d');
+        }
+       
 
         $reportedDate = Carbon::parse($reportedDate)->setTime (0,0,0);
         
@@ -23,8 +32,6 @@ class DailyReportController extends Controller
        
         $actual = $this->yield_actual($startDate, $endDate, 'resourceId');
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
-
-        
 
 
         $sum_by_next_room = DB::table('stage_plan as t')
