@@ -14,7 +14,7 @@
                       6 => "Bao Phim",
                       7 => "ĐGSC - ĐGTC",
                   ]
-              @endphp 
+              @endphp ---
               <!-- /.card-Body -->
               <div class="card-body">
                  <!-- Tiêu đề -->
@@ -33,7 +33,7 @@
                                     @endphp
                                     <div class="form-group d-flex align-items-center">
                                         <label for="reportedDate" class="mr-2 mb-0">Chọn Ngày:</label>
-                                        <input type="date" id="reportedDate" name="reportedDate" value="{{ $defaultFrom }}" class="form-control"  max="{{ \Carbon\Carbon::yesterday()->format('Y-m-d') }}" />
+                                        <input type="date" id="reportedDate" name="reportedDate" value="{{ $defaultFrom }}" class="form-control"  max="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" />
                                     </div>
                                 </div>
                             </div>

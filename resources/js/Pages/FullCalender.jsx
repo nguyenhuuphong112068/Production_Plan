@@ -109,6 +109,10 @@ const ScheduleTest = () => {
         console.log (data.department)
 
         setAuthorization (['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department )
+
+        if (data.department == 'BOD'){
+          setAuthorization (true);
+        }
         
         setEvents(data.events);
         setResources(data.resources);

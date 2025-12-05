@@ -941,6 +941,7 @@ class ProductionPlanController extends Controller
 
         public function open_feedback(Request $request){
                 
+               $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');  
                $datas = DB::table('plan_master')
                 ->select(
                         'plan_master.*',
@@ -978,14 +979,17 @@ class ProductionPlanController extends Controller
                 
 
 
-                $production  =  session('user')['production_name'];
+                $production_name  =  session('user')['production_name'];
+                $production =  session('user')['production_code'];
 
-                session()->put(['title'=> "Phản Hồi $request->name - $production"]);
-
+                session()->put(['title'=> "Phản Hồi $request->name - $production_name"]);
+                
                 return view('pages.plan.production.feedback_list',[
                         'datas' => $datas, 
                         'plan_list_id' => $request->plan_list_id,
                         'send'=> $request->send??1,
+                        'department' => $department,
+                        'production' => $production
                 ]);
         }
 

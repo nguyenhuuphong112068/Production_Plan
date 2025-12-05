@@ -106,7 +106,9 @@
 
 
                         <tr data-id="{{ $data->id }}">
-                            <td>{{ $loop->iteration }} </td>
+                            <td>{{ $loop->iteration }}
+                            @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif    
+                            </td>
                             <td>
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code }} </div>

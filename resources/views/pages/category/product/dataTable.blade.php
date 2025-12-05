@@ -41,7 +41,9 @@
                 <tbody>
                     @foreach ($datas as $data)
                         <tr>
-                            <td>{{ $loop->iteration }} </td>
+                            <td>{{ $loop->iteration }} 
+                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                            </td>
                             @if ($data->active)
                                 <td class="text-success">
                                     <div>{{ $data->finished_product_code }} </div>
