@@ -133,7 +133,7 @@
                             @php $finisedRow = false @endphp
                         @endif
 
-                        @if ($data->actual_start)
+                        @if ($data->actual_start || $data->actual_start_clearning)
                             @php $semi_finished = 'disabled' @endphp
                         @else
                             @php $semi_finished = '' @endphp
@@ -212,7 +212,7 @@
 
 
                             <td class="text-center align-middle">
-                                @if ($semi_finished == 'disabled')
+                                @if ($semi_finished == 'disabled' || $data->actual_start_clearning)
                                     <button type="button" class="btn btn-success" disabled>
                                         ✓ Đã hoàn thành
                                     </button>  
@@ -349,10 +349,16 @@
 
             if (btn.classList.contains('btn-finised')) {
                 actionType = "finised"; 
-                const inputs = row.querySelectorAll('input[type="datetime-local"]');
-                // --- KIỂM TRA THỜI GIAN NHẬP ---
+
+                const inputs = [
+                    ...row.querySelectorAll('#start'),
+                    ...row.querySelectorAll('#end'),
+                    ...row.querySelectorAll('#start_clearning'),
+                    ...row.querySelectorAll('#end_clearning')
+                ];
+
                 for (let input of inputs) {
-                    if (input.value) {
+                    if (input && input.value) {
                         let valTime = new Date(input.value);
 
                         if (valTime > now) {
@@ -362,45 +368,38 @@
                                 text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
                                 timer: 2000
                             });
-                            return; // NGỪNG HÀM, KHÔNG GỬI AJAX
+                            return;
                         }
                     }
                 }
             }
 
             if (btn.classList.contains('btn-semi-finised')) {
-                actionType = "semi-finised";   // hoàn thành 1 phần
-                const start = row.querySelectorAll('#start');
-                const end = row.querySelectorAll('#end');
 
-                if (start.value) {
-                        let valTime = new Date(start.value);
+                actionType = "semi-finised";  
 
-                        if (valTime > now) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Thời gian không hợp lệ",
-                                text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
-                                timer: 2000
-                            });
-                            return; // NGỪNG HÀM, KHÔNG GỬI AJAX
-                        }
-                }
+                const start = row.querySelector('#start');
+                const end = row.querySelector('#end');
 
-                if (end.value) {
-                        let valTime = new Date(end.value);
+                const inputs = [start, end];
+
+                for (let input of inputs) {
+                    if (input && input.value) {
+                        let valTime = new Date(input.value);
 
                         if (valTime > now) {
                             Swal.fire({
                                 icon: "warning",
                                 title: "Thời gian không hợp lệ",
-                                text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
+                                text: "Không được nhập thời gian lớn hơn hiện tại!",
                                 timer: 2000
                             });
-                            return; // NGỪNG HÀM, KHÔNG GỬI AJAX
+                            return;
                         }
+                    }
                 }
             }
+
 
 
             // Lấy dữ liệu input trong dòng đó
@@ -432,9 +431,12 @@
 
                     // Giữ nút ở trạng thái disabled sau khi hoàn thành
                     $(btn).addClass('disabled').text('✓ Đã hoàn thành');
-                   // if (actionType = 'finised') {
-                    //        $(btn).addClass('disabled').text('✓ Đã hoàn thành');
-                   // }
+
+                    if (actionType === 'finised') {
+                        $(row).find('.btn-semi-finised')
+                            .addClass('disabled')
+                            .text('✓ Đã hoàn thành');
+                    }
                     
                 },
                 error: function() {
