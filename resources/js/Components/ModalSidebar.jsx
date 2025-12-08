@@ -1228,10 +1228,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
           </Col>
           <Col md={3} className='d-flex justify-content-end'>
               
-            <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xác Nhận Hoàn Thành Lô Sản Xuất"
+            {/* <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xác Nhận Hoàn Thành Lô Sản Xuất"
                 onClick={handleFinished}>
                 {isSaving === false ? <i className="fas fa-check"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
-            </div>
+            </div> */}
 
             {percentShow === "100%" ? (
               <InputText className='border mr-5'
