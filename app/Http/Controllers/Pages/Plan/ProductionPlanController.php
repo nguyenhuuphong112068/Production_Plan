@@ -872,12 +872,67 @@ class ProductionPlanController extends Controller
         }
 
         public function updateInput(Request $request){
+                $now = now();
+                $user = session('user')['fullName'];
+
+                Log::info  ($request->all());
+                $updateData = [
+                        $request->name => $request->updateValue
+                ];
+
+                switch ($request->name) {
+                case 'pro_feedback':
+                        $updateData['pro_feedback_by']   = $user;
+                        $updateData['pro_feedback_date'] = $now;
+                        break;
+
+                case 'qc_feedback':
+                        $updateData['qc_feedback_by']   = $user;
+                        $updateData['qc_feedback_date'] = $now;
+                        break;
+                case 'actual_CoA_date':
+                        $updateData['qc_feedback_by']   = $user;
+                        $updateData['qc_feedback_date'] = $now;
+                        break;
+   
+                case 'en_feedback':
+                        $updateData['en_feedback_by']   = $user;
+                        $updateData['en_feedback_date'] = $now;
+                        break;
+
+                case 'has_punch_die_mold':
+                        $updateData['en_feedback_by']   = $user;
+                        $updateData['en_feedback_date'] = $now;
+                        break;
+
+                case 'qa_feedback':
+                        $updateData['qa_feedback_by']   = $user;
+                        $updateData['qa_feedback_date'] = $now;
+                        break;
+                case 'has_BMR':
+                        $updateData['qa_feedback_by']   = $user;
+                        $updateData['qa_feedback_date'] = $now;
+                        break;
+                case 'actual_record':
+                        $updateData['qa_feedback_by']   = $user;
+                        $updateData['qa_feedback_date'] = $now;
+                        break;
+
+                case 'actual_KCS':
+                        $updateData['kcs_record_by']   = $user;
+                        $updateData['kcs_record_date'] = $now;
+                        break;
+
+                default:
+                        // các field khác như has_BMR, actual_record… thì không cần _by và _date
+                        break;
+                }
+
                
                 DB::table('plan_master')
                         ->where('id', $request->id)
-                        ->update([
-                                $request->name => $request->updateValue
-                        ]);
+                        ->update($updateData);
+
                 return response()->json(['success' => true]);
         }
 
@@ -942,6 +997,7 @@ class ProductionPlanController extends Controller
         public function open_feedback(Request $request){
                 
                $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');  
+
                $datas = DB::table('plan_master')
                 ->select(
                         'plan_master.*',
@@ -965,8 +1021,9 @@ class ProductionPlanController extends Controller
                         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
                         ->where('stage_plan.stage_code', 7)
                         ->where('stage_plan.active', 1)
-                        ->where('stage_plan.plan_list_id', '=', $request->plan_list_id)
-                        ->where('stage_plan.deparment_code', '=', session('user')['production_code']);
+                       // ->where('stage_plan.plan_list_id', '=', $request->plan_list_id)
+                        //->where('stage_plan.deparment_code', '=', session('user')['production_code'])
+                        ;
                 })
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
                 ->where('plan_master.active', 1)
@@ -975,6 +1032,10 @@ class ProductionPlanController extends Controller
                 ->orderBy('level', 'asc')
                 ->orderBy('batch', 'asc')
                 ->get();
+
+
+
+               // dd ($datas);
 
                 
 
@@ -992,7 +1053,6 @@ class ProductionPlanController extends Controller
                         'production' => $production
                 ]);
         }
-
 
         public function accept_expected_date(Request $request){
                
@@ -1029,12 +1089,11 @@ class ProductionPlanController extends Controller
                         'only_parkaging' => $plan->only_parkaging,
                         "number_parkaging" => $plan->number_parkaging,
                         'note' => $plan->note,
-                        'reason' => "Chấp nhận ngày dự kiến KCS: $request->new_expected_date",
+                        'reason' => "Chấp nhận ngày dự kiến KCS mới: $request->new_expected_date",
                         'deparment_code' => $plan->deparment_code,
 
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
-                        'updated_at' => now(),
                         ]);
 
                 return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công!']);

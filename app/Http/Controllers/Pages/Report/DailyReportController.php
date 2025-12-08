@@ -11,9 +11,6 @@ use Illuminate\Support\Facades\Log;
 class DailyReportController extends Controller
 {
     public function index(Request $request) {
-
-        
-        
         $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
 
         if ($department == session('user')['production_code']){{
@@ -23,15 +20,17 @@ class DailyReportController extends Controller
         }
        
 
-        $reportedDate = Carbon::parse($reportedDate)->setTime (0,0,0);
+        $reportedDate = Carbon::parse($reportedDate)->setTime (6,0,0);
         
         $startDate =  $reportedDate->copy();
         $endDate =  $reportedDate->copy()->addDays(1);
         
-       //dd ($startDate,$endDate );
-       
+
         $actual = $this->yield_actual($startDate, $endDate, 'resourceId');
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
+        $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
+      
+        
 
 
         $sum_by_next_room = DB::table('stage_plan as t')
@@ -57,20 +56,134 @@ class DailyReportController extends Controller
             ->orderBy('group_code')   // sắp xếp theo stage
             ->get();
 
-        $reportedDate = $reportedDate->format ('d/m/Y');    
-        session()->put(['title' => "BÁO CÁO NGÀY $reportedDate"]);
-      
-        return view('pages.report.daily_report.list', [
-            'actual' => $actual,
-            'theory' => $theory,
-            'sum_by_next_room' => $sum_by_next_room ,
-            'reportedDate' => $reportedDate
-        ]);
+            $displayDate = $reportedDate->format('d/m/Y');
+            session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
+                
+            return view('pages.report.daily_report.list', [
+                'actual' => $actual,
+                'yield_actual_detial' => $yield_actual_detial,
+                'theory' => $theory,
+                'sum_by_next_room' => $sum_by_next_room ,
+                'reportedDate'    => $displayDate
+            ]);
 
     }
 
+    public function yield_actual_detial ($startDate, $endDate, $group_By){
+
+            $startDateStr = $startDate->format('Y-m-d H:i:s');
+            $endDateStr   = $endDate->format('Y-m-d H:i:s');
+
+            // 1) FULL PRODUCTION
+            $production_full = DB::table("stage_plan as sp")
+                ->whereNotNull('sp.actual_start')
+                ->whereNotNull('sp.actual_end')
+                ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->select(
+                    "sp.$group_By",
+                    DB::raw("CONCAT(sp.id, '-main') AS id"),
+                    "sp.title",
+                    "sp.actual_start",
+                    "sp.actual_end",
+                    "sp.yields",
+                    DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit')
+                )->get();
+
+            // 2) FULL CLEANING
+            $cleaning_full = DB::table("stage_plan as sp")
+                ->whereNotNull('sp.actual_start_clearning')
+                ->whereNotNull('sp.actual_end_clearning')
+                ->whereRaw('(sp.actual_start_clearning >= ? AND sp.actual_end_clearning <= ?)', [$startDate, $endDate])
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->select(
+                    "sp.$group_By",
+                    DB::raw("CONCAT(sp.id, '-clearning') AS id"),
+                    "sp.title_clearning",
+                    "sp.actual_start_clearning",
+                    "sp.actual_end_clearning"
+                )->get();
+
+            // 3) PARTIAL PRODUCTION
+            $production_partial = DB::table("stage_plan as sp")
+                ->whereNotNull('sp.actual_start')
+                ->whereNotNull('sp.actual_end')
+                ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->select(
+                    "sp.$group_By",
+                    "sp.title",
+                    DB::raw("CONCAT(sp.id, '-main') AS id"),
+
+                    // identical cutting
+                    DB::raw("CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END AS actual_start"),
+                    DB::raw("CASE WHEN sp.actual_end   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end   END AS actual_end"),
+
+                    // identical overlap
+                    DB::raw("
+                        (sp.yields *
+                            TIME_TO_SEC(
+                                TIMEDIFF(
+                                    (CASE WHEN sp.actual_end > '$endDateStr' THEN '$endDateStr' ELSE sp.actual_end END),
+                                    (CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END)
+                                )
+                            ) /
+                            TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+                        ) AS yield_overlap
+                    "),
+
+                    DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit')
+                )->get();
+
+            // 4) PARTIAL CLEANING
+            $cleaning_partial = DB::table("stage_plan as sp")
+                ->whereNotNull('sp.actual_start_clearning')
+                ->whereNotNull('sp.actual_end_clearning')
+                ->whereRaw('(sp.actual_start_clearning < ? AND sp.actual_end_clearning > ?)', [$endDate, $startDate])
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->select(
+                    "sp.$group_By",
+                    "sp.title_clearning",
+                    DB::raw("CONCAT(sp.id, '-clearning') AS id"),
+                    DB::raw("CASE WHEN sp.actual_start_clearning < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start_clearning END AS actual_start_clearning"),
+                    DB::raw("CASE WHEN sp.actual_end_clearning   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end_clearning   END AS actual_end_clearning")
+                )->get();
+
+
+            // ------------------------------
+            // ACTUAL DETAIL (chuẩn)
+            // ------------------------------
+            $actual_detail = collect()
+                ->concat($production_full)
+                ->concat($cleaning_full)
+                ->concat($production_partial)
+                ->concat($cleaning_partial)
+                ->unique('id')
+                ->map(function ($item) use ($group_By) {
+                    return (object)[
+                        'resourceId'    => $item->$group_By,
+                        'reported_date' => substr($item->actual_start ?? $item->actual_start_clearning, 0, 10),
+                        'id'            => $item->id,
+                        'title'         => $item->title ?? $item->title_clearning,
+                        'start'         => $item->actual_start ?? $item->actual_start_clearning,
+                        'end'           => $item->actual_end ?? $item->actual_end_clearning,
+                        'yields'        => $item->yield_overlap ?? $item->yields ?? null,
+                        'unit'          => $item->unit ?? null
+                    ];
+                })
+                ->sortBy('start')
+                ->values();
+
+            return [
+                'actual_detail'  => $actual_detail
+            ];
+    }
+    
+
+   
     public function yield_actual($startDate, $endDate, $group_By){
         // ------------------------------
+      
         // 1️⃣ Giai đoạn nằm hoàn toàn trong 1 ngày
         // ------------------------------
         $stage_plan_100 = DB::table("stage_plan as sp")
@@ -90,6 +203,8 @@ class DailyReportController extends Controller
             )
             ->groupBy("sp.$group_By", "unit")
             ->get();
+
+        
 
         // ------------------------------
         // 2️⃣ Giai đoạn giao nhau 1 phần trong 1 ngày
@@ -147,7 +262,7 @@ class DailyReportController extends Controller
                 ];
             })
             ->values();
-
+        
         // ------------------------------
         // 4️⃣ Tổng hợp theo ROOM (resourceId)
         // ------------------------------
@@ -166,20 +281,20 @@ class DailyReportController extends Controller
                 ];
             })
             ->values();
-
+        
         // ------------------------------
         // 6️⃣ Tạo dailyTotals cho 1 ngày duy nhất
         // ------------------------------
         $dailyTotals = collect();
         $dayStart = $startDate->copy()->startOfDay();
-        $dayEnd   = $startDate->copy()->endOfDay();
-
+        $dayEnd   = $endDate->copy()->endOfDay();
+   
         $totalForDay = DB::table("stage_plan as sp")
             ->join('room as r', 'sp.resourceId', '=', 'r.id')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->whereNotNull('sp.start')
             ->whereNotNull('sp.actual_start')
-            ->whereRaw('(sp.actual_start <= ? AND sp.actual_end >= ?)', [$dayEnd, $dayStart])
+            ->whereRaw('(sp.actual_start <= ? AND sp.actual_end >= ?)', [$endDate, $startDate])
             ->select(
                 "sp.$group_By",
                 'r.code as room_code',
@@ -188,7 +303,7 @@ class DailyReportController extends Controller
                 DB::raw('
                     SUM(
                         sp.yields *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$dayEnd.'"), GREATEST(sp.actual_start, "'.$dayStart.'"))) /
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
                     ) as total_qty
                 '),
@@ -225,7 +340,7 @@ class DailyReportController extends Controller
             'yield_day'   => $dailyTotals          // 1 ngày duy nhất
         ];
     }
-
+    
     public function yield_theory($startDate, $endDate, $group_By){
         // ------------------------------
         // 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
@@ -473,3 +588,321 @@ class DailyReportController extends Controller
 
 
 }
+ 
+    //     // ------------------------------
+    //     // 1️⃣ Giai đoạn nằm hoàn toàn trong 1 ngày
+    //     // ------------------------------
+    //     $stage_plan_100 = DB::table("stage_plan as sp")
+    //         ->whereNotNull('sp.actual_start')
+    //         ->whereNotNull('sp.start')
+    //         ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
+    //         ->where('sp.deparment_code', session('user')['production_code'])
+    //         ->select(
+    //             "sp.$group_By",
+    //             DB::raw('SUM(sp.yields) as total_qty'),
+    //             DB::raw('
+    //                 CASE
+    //                     WHEN sp.stage_code <= 4 THEN "Kg"
+    //                     ELSE "ĐVL"
+    //                 END as unit
+    //             ')
+    //         )
+    //         ->groupBy("sp.$group_By", "unit")
+    //         ->get();
+    
+        
+    //     // ------------------------------
+    //     // 2️⃣ Giai đoạn giao nhau 1 phần trong 1 ngày
+    //     // ------------------------------
+    //     $stage_plan_part = DB::table("stage_plan as sp")
+    //         ->whereNotNull('sp.actual_start')
+    //         ->whereNotNull('sp.start')
+    //         ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
+    //         ->whereRaw('NOT (sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
+    //         ->where('sp.deparment_code', session('user')['production_code'])
+    //         ->select(
+    //             "sp.$group_By",
+    //             DB::raw('
+    //                 SUM(
+    //                     sp.yields *
+    //                     TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
+    //                     TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+    //                 ) as total_qty
+    //             '),
+    //             DB::raw('
+    //                 CASE
+    //                     WHEN sp.stage_code <= 4 THEN "Kg"
+    //                     ELSE "ĐVL"
+    //                 END as unit
+    //             ')
+    //         )
+    //         ->groupBy("sp.$group_By", "unit")
+    //         ->get();
+
+
+    //     $production_full = DB::table("stage_plan as sp")
+    //             ->whereNotNull('sp.actual_start')
+    //             ->whereNotNull('sp.actual_end')
+    //             ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
+    //             ->where('sp.deparment_code', session('user')['production_code'])
+    //             ->select(
+    //                 "sp.$group_By",
+    //                 DB::raw("CONCAT(sp.id, '-main') AS id"),
+    //                 "sp.title",
+    //                 "sp.actual_start",
+    //                 "sp.actual_end",
+    //                 "sp.yields",
+    //                 "sp.actual_end_clearning",
+    //                  DB::raw('
+    //                     CASE
+    //                         WHEN sp.stage_code <= 4 THEN "Kg"
+    //                         ELSE "ĐVL"
+    //                     END as unit
+    //                 ')
+    //             )
+    //     ->get();
+
+
+    //     $cleaning_full = DB::table("stage_plan as sp")
+    //             ->whereNotNull('sp.actual_start_clearning')
+    //             ->whereNotNull('sp.actual_end_clearning')
+    //             ->whereRaw('(sp.actual_start_clearning >= ? AND sp.actual_end_clearning <= ?)', [$startDate, $endDate])
+    //             ->where('sp.deparment_code', session('user')['production_code'])
+    //             ->select(
+    //                 "sp.$group_By",
+    //                 DB::raw("CONCAT(sp.id, '-clearning') AS id"),
+    //                 "sp.title_clearning",
+    //                 "sp.actual_start_clearning",
+    //                 "sp.actual_end_clearning",
+                    
+    //             )
+    //     ->get();
+
+
+    //     $production_partial = DB::table("stage_plan as sp")
+    //             ->whereNotNull('sp.actual_start')
+    //             ->whereNotNull('sp.actual_end')
+    //             ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
+    //             ->whereRaw('NOT (sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
+    //             ->where('sp.deparment_code', session('user')['production_code'])
+    //             ->select(
+    //                 "sp.$group_By",
+    //                 "sp.title",
+    //                  DB::raw("CONCAT(sp.id, '-main') AS id"),
+    //                 // ✔ Cắt thời gian bằng CASE
+    //                 DB::raw("CASE 
+    //                             WHEN sp.actual_start < '$startDate' THEN '$startDate'
+    //                             ELSE sp.actual_start 
+    //                         END AS actual_start"),
+
+    //                 DB::raw("CASE 
+    //                             WHEN sp.actual_end > '$endDate' THEN '$endDate'
+    //                             ELSE sp.actual_end 
+    //                         END AS actual_end"),
+
+    //                 // ✔ Tính thời gian giao nhau theo CASE
+    //                 DB::raw("TIME_TO_SEC(
+    //                             TIMEDIFF(
+    //                                 (CASE 
+    //                                     WHEN sp.actual_end > '$endDate' THEN '$endDate'
+    //                                     ELSE sp.actual_end
+    //                                 END),
+    //                                 (CASE 
+    //                                     WHEN sp.actual_start < '$startDate' THEN '$startDate'
+    //                                     ELSE sp.actual_start
+    //                                 END)
+    //                             )
+    //                         ) AS overlap_sec"),
+
+    //                 // ✔ Sản lượng giao theo CASE
+    //                 DB::raw("(sp.yields *
+    //                         TIME_TO_SEC(
+    //                             TIMEDIFF(
+    //                                 (CASE 
+    //                                     WHEN sp.actual_end > '$endDate' THEN '$endDate'
+    //                                     ELSE sp.actual_end
+    //                                 END),
+    //                                 (CASE 
+    //                                     WHEN sp.actual_start < '$startDate' THEN '$startDate'
+    //                                     ELSE sp.actual_start
+    //                                 END)
+    //                             )
+    //                         ) /
+    //                         TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+    //                 ) AS yield_overlap"),
+
+    //                 // Unit
+    //                 DB::raw('
+    //                     CASE
+    //                         WHEN sp.stage_code <= 4 THEN "Kg"
+    //                         ELSE "ĐVL"
+    //                     END as unit
+    //                 ')
+    //             )
+    //         ->get();
+
+                
+    //     $cleaning_partial = DB::table("stage_plan as sp")
+    //             ->whereNotNull('sp.actual_start_clearning')
+    //             ->whereNotNull('sp.actual_end_clearning')
+    //             ->whereRaw('(sp.actual_start_clearning < ? AND sp.actual_end_clearning > ?)', [$endDate, $startDate])
+    //             ->whereRaw('NOT (sp.actual_start_clearning >= ? AND sp.actual_end_clearning <= ?)', [$startDate, $endDate])
+    //             ->where('sp.deparment_code', session('user')['production_code'])
+    //             ->select(
+    //                 "sp.$group_By",
+    //                 "sp.title_clearning",
+    //                 DB::raw("CONCAT(sp.id, '-clearning') AS id"),
+    //                 DB::raw("CASE 
+    //                             WHEN sp.actual_start_clearning < '$startDate' THEN '$startDate'
+    //                             ELSE sp.actual_start_clearning 
+    //                         END AS actual_start_clearning"),
+
+    //                 DB::raw("CASE 
+    //                             WHEN sp.actual_end_clearning > '$endDate' THEN '$endDate'
+    //                             ELSE sp.actual_end_clearning 
+    //                         END AS actual_end_clearning")
+    //             )
+    //     ->get();
+
+    //     $actual_detial = collect()
+    //         ->concat($production_full)
+    //         ->concat($cleaning_full)
+    //         ->concat($production_partial)
+    //         ->concat($cleaning_partial)
+    //         ->unique('id')   // loại dòng trùng theo ID
+    //         ->map(function($item) use ($group_By) {
+    //             return (object)[
+    //                 'resourceId'      => $item->$group_By,
+    //                 'reported_date'   => substr($item->actual_start ?? $item->actual_start_clearning, 0, 10),
+    //                 'id'              => $item->id,
+    //                 'title'           => $item->title ?? $item->title_clearning,
+    //                 'start'           => $item->actual_start ?? $item->actual_start_clearning,
+    //                 'end'             => $item->actual_end ?? $item->actual_end_clearning,
+    //                 'yields'          => $item->yield_overlap ?? $item->yields ?? null,
+    //                 'unit'            => $item->unit ?? null
+    //             ];
+    //         })
+    //         ->sortBy('start')  
+    //         ->values();
+
+        
+
+    //    // dd ($acutal_detial);
+
+                    
+
+
+    //     // ------------------------------
+    //     // 3️⃣ Gom 2 phần lại
+    //     // ------------------------------
+    //     $merged = $stage_plan_100->merge($stage_plan_part)
+    //         ->groupBy(function ($item) use ($group_By) {
+    //             return $item->$group_By . '-' . $item->unit;
+    //         })
+    //         ->map(function ($items) use ($group_By) {
+    //             $first = $items->first();
+    //             $total_qty = round($items->sum('total_qty'), 2);
+
+    //             // Lấy thông tin phòng
+    //             $room = DB::table('room')
+    //                 ->select('code', 'name', 'stage_code', 'order_by')
+    //                 ->where('id', $first->$group_By)
+    //                 ->first();
+
+    //             return (object)[
+    //                 $group_By     => $first->$group_By,
+    //                 'room_code'   => $room->code ?? null,
+    //                 'room_name'   => $room->name ?? null,
+    //                 'stage_code'  => $room->stage_code ?? null,
+    //                 'order_by'    => $room->order_by ?? null,
+    //                 'unit'        => $first->unit,
+    //                 'total_qty'   => $total_qty
+    //             ];
+    //         })
+    //         ->values();
+
+    //     // ------------------------------
+    //     // 4️⃣ Tổng hợp theo ROOM (resourceId)
+    //     // ------------------------------
+    //     $yield_room = $merged->sortBy('stage_code')->values();
+
+    //     // ------------------------------
+    //     // 5️⃣ Tổng hợp theo STAGE
+    //     // ------------------------------
+    //     $yield_stage = $yield_room
+    //         ->groupBy('stage_code')
+    //         ->map(function ($group) {
+    //             return (object)[
+    //                 'stage_code' => $group->first()->stage_code,
+    //                 'total_qty'  => round($group->sum('total_qty'), 2),
+    //                 'details'    => $group->values()
+    //             ];
+    //         })
+    //         ->values();
+
+    //     // ------------------------------
+    //     // 6️⃣ Tạo dailyTotals cho 1 ngày duy nhất
+    //     // ------------------------------
+    //     $dailyTotals = collect();
+    //     $dayStart = $startDate->copy()->startOfDay();
+    //     $dayEnd   = $startDate->copy()->endOfDay();
+
+    //     $totalForDay = DB::table("stage_plan as sp")
+    //         ->join('room as r', 'sp.resourceId', '=', 'r.id')
+    //         ->where('sp.deparment_code', session('user')['production_code'])
+    //         ->whereNotNull('sp.start')
+    //         ->whereNotNull('sp.actual_start')
+    //         ->whereRaw('(sp.actual_start <= ? AND sp.actual_end >= ?)', [$dayEnd, $dayStart])
+    //         ->select(
+    //             "sp.$group_By",
+    //             'r.code as room_code',
+    //             'r.name as room_name',
+    //             'r.stage_code as stage_code',
+    //             DB::raw('
+    //                 SUM(
+    //                     sp.yields *
+    //                     TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$dayEnd.'"), GREATEST(sp.actual_start, "'.$dayStart.'"))) /
+    //                     TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+    //                 ) as total_qty
+    //             '),
+    //             DB::raw('
+    //                 CASE
+    //                     WHEN sp.stage_code <= 4 THEN "Kg"
+    //                     ELSE "ĐVL"
+    //                 END as unit
+    //             ')
+    //         )
+    //         ->groupBy("sp.$group_By", "r.code", "r.name", "r.stage_code", "unit")
+    //         ->get();
+
+    //     foreach ($totalForDay as $item) {
+    //         $dailyTotals->push([
+    //             $group_By    => $item->$group_By,
+    //             "stage_code" => $item->stage_code,
+    //             "room_code"  => $item->room_code,
+    //             "room_name"  => $item->room_name,
+    //             "unit"       => $item->unit,
+    //             "date"       => $dayStart->format('Y-m-d'),
+    //             "total_qty"  => round($item->total_qty ?? 0, 2),
+    //         ]);
+    //     }
+
+
+
+       
+
+
+       
+
+    //     $dailyTotals = $dailyTotals->groupBy("date");
+
+    //     // ------------------------------
+    //     // 7️⃣ Trả về dữ liệu
+    //     // ------------------------------
+    //     return [
+    //         'yield_room'  => $yield_room,          // theo room
+    //         'yield_stage' => $yield_stage,         // theo stage
+    //         'yield_day'   => $dailyTotals,          // 1 ngày duy nhất
+    //         'actual_detial' => $actual_detial
+    //     ];
+    // }

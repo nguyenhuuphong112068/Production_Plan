@@ -50,8 +50,10 @@
         </div>
         @php
 
-            $auth_update = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
-
+            //$auth_update = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled') ?? false;
+            $plan_feedback = user_has_permission(session('user')['userId'], 'plan_feedback', 'boolean');
+            $Record_KCS_Date = user_has_permission(session('user')['userId'], 'Record_KCS_Date', 'boolean');
+            //dd ($department, $plan_feedback );
             $colors = [
                 1 => 'background-color: #f44336; color: white;', // đỏ
                 2 => 'background-color: #ff9800; color: white;', // cam
@@ -78,29 +80,31 @@
                             <div>{{"(1) Dự Kiến KT ĐG "}}</div>
                             <div>{{"(2) Ngày ra Hồ sơ PX"}} </div>
                             <div>{{"(3) Phản Hồi"}} </div>
-                             @if ($department == $production)
+
+                            {{-- @if ($department == $production && $plan_feedback)
                                 <button class = "btn btn-success"
                                         data-toggle="modal"
                                         data-target="#pro_feedback_modal"
                                 >Phản hồi toàn bộ</button>
-                            @endif
+                            @endif --}}
+
                         </th>
                         <th>
                             <div>{{"Đảm Bảo Chất Lượng"}}</div>
                             <div>{{"(1) Tình hình hồ sơ lô "}}</div>
                             <div>{{"(2) Hồ sơ thực tế?"}} </div>
                             <div>{{"(3) Phản hồi"}} </div>
-                            @if ($department == "QA")
+                            {{-- @if ($department == "QA" && $plan_feedback)
                                 <button class = "btn btn-success"
                                         data-toggle="modal"
                                         data-target="#qa_feedback_modal"
                                 >Phản hồi toàn bộ</button>
-                           @endif
+                           @endif --}}
                         <th>
                             <div>{{"Kỹ Thuật Bảo Trì"}}</div>
                             <div>{{"(1) Tình hình CC - KM "}}</div>
                             <div>{{"(2) Phản hồi"}} </div>
-                            @if ($department == "EN")
+                            @if ($department == "EN" && $plan_feedback)
                                 <button class = "btn btn-success btn-en-feedback"
                                     data-toggle="modal"
                                     data-target="#en_feedback_modal"
@@ -111,12 +115,12 @@
                             <div>{{"Kiểm Tra Chất Lượng"}}</div>
                             <div>{{"(1) Ngày yêu cầu ra phiếu TP"}}</div>
                             <div>{{"(2) Phản hồi"}} </div>
-                            @if ($department == "QC")
+                            {{-- @if ($department == "QC")
                                 <button class = "btn btn-success"
                                     data-toggle="modal"
                                     data-target="#qc_feedback_modal"
                                 >Phản hồi toàn bộ</button>
-                            @endif
+                            @endif --}}
                         </th>                       
                         <th>Ngày KCS thực tế </th>
                     </tr>
@@ -149,22 +153,26 @@
                                 <div>  {{ $data->specification }} </div>
                             </td>
 
-                            <td class = "text-center">
 
-                                @if (\Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString())
+                             {{-- KH Phản hồi --}}
+                            <td class = "text-left">
+
+                                @if (!$data->end)
+                                        <div class ="text-black font-weight-bold">{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
+                                @elseif (\Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString())
                                         <div class ="text-red font-weight-bold">{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
                                 @else
                                         <div class ="text-green font-weight-bold">{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
                                 @endif
                                 
-                                <div
+                                {{-- <div
                                     class = "text-center mt-1" style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
                                     {{$data->level}}
-                                </div>
+                                </div> --}}
 
-                                @if (\Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString())
+                                @if ($department == "PL" && $plan_feedback && $data->end && (\Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString()))
                                     <div>
-                                        <button class = "btn btn-success btn-accept mt-1 "
+                                        <button class = "btn btn-success btn-accept mt-1"
                                             data-id = {{ $data->id }}
                                             data-new_expected_date = {{ \Carbon\Carbon::parse($data->end)->addDays(5)->format('Y-m-d')}}
                                         > 
@@ -173,39 +181,55 @@
                                         </button>
                                     </div>
                                 @endif
+
+
                             </td>
 
 
                             {{-- PX Phản hồi --}}
-                            <td class="text-left " > 
+                            <td class="text-left" > 
 
-                                <div><b>{{"(1): " .\Carbon\Carbon::parse($data->end)->format('d/m/Y H:n') }} </b></div>
+                                @if ($data->end)
+                                    <div class = "{{ \Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString()?"text-red":"text-green" }}"
+                                    ><b>{{"(1): " .\Carbon\Carbon::parse($data->end)->format('d/m/Y H:n') }} </b></div>
+                                @else
+                                    <div><b>{{"(1): Chưa có ngày kết thúc đóng gói " }} </b></div>
+                                @endif
+                                
+                               
+                                
+                                @if ($department == $production && $plan_feedback)  
+                                    <b> {{"(2):"}}</b>
+                                    <input type= "date" class="updateInput" name="actual_record_date"  value="{{$data->actual_record_date}}" data-id = {{ $data->id }} ></input>
+                                    <b> {{ "(3):" }}</b> 
 
-                                {{-- <div><b>{{"(2): " .\Carbon\Carbon::parse($data->end)->addDays(2)->format('d/m/Y') }} </b> </div> --}}
-                                <b> {{"(2):"}}</b>
-                                <input type= "date" class="updateInput" name="actual_record_date"  value="{{$data->actual_record_date}}" data-id = {{ $data->id }} {{ $auth_update }}></input>
-                                <b> {{ "(3):" }}</b> 
-                                @if ($department == $production)  
                                     <textarea class="updateInput text-left"
                                         name="pro_feedback"
                                         data-id="{{ $data->id }}"
                                         placeholder="Phân Xưởng Phản Hồi Tại Đây"
                                     >@if(!empty($data->pro_feedback)){{ $data->pro_feedback }}@endif</textarea>
                                 @else
+                                    <b> {{"(2):"}}</b>
+                                    {{empty($data->actual_record_date) || $data->actual_record_date == null ?  "Chưa có ngày ra hồ sơ" : $data->pro_feedback }}
+                                    <br>
+                                    <b> {{ "(3):" }}</b> 
                                     {{empty($data->pro_feedback)?  "Chưa có phản hồi" : $data->pro_feedback }}
-                                @endif             
+                                @endif  
+
+                                <div> {{"Updated_by: " . $data->pro_feedback_by }} </div>
+                                <div>{{"Updated_date: "}} {{$data->pro_feedback_date ? \Carbon\Carbon::parse($data->pro_feedback_date)->format('d/m/Y') : '' }}</div>           
                             </td>
 
                             {{-- QA Phản hồi --}}
-                            <td class="text-center"> 
+                            <td class="text-left"> 
                                 <div class="input-group mx-4">
                                     <label for="{{ $data->id }}"> : Hồ sơ lô</label>
                                     <input class="form-check-input step-checkbox"
                                         type="checkbox" 
                                         name ="has_BMR"
-                                        data-id="{{ $data->id }}"
                                         id="{{ $data->id }}"
-                                        {{ $auth_update != ''?'readOnly':''}}
+                                        data-id="{{ $data->id }}"
+                                        data-permission="{{ $department == "QA" && $plan_feedback?'1': "0" }}"
                                         {{ $data->has_BMR ? 'checked' : '' }}
                                       >
                                 </div>
@@ -217,15 +241,15 @@
                                       name ="actual_record"
                                       data-id="{{ $data->id }}"
                                       id="{{ $data->id }}"
-                                      {{ $auth_update != ''?'readOnly':''}}
+                                      data-permission="{{ $department == "QA" && $plan_feedback?'1': "0" }}"
                                       {{ $data->actual_record ? 'checked' : '' }}
                                       >
                                 </div>
 
                                 <div>
-                                    @if ($department == "QA")
+                                    @if ($department == "QA" && $plan_feedback)
                                         <textarea class="updateInput text-left"
-                                            name="pro_feedback"
+                                            name="qa_feedback"
                                             data-id="{{ $data->id }}"
                                             placeholder="QA Phản Hồi Tại Đây"
                                         >@if(!empty($data->qa_feedback)){{ $data->qa_feedback }}@endif</textarea>
@@ -234,25 +258,31 @@
                                     @endif
                                 </div>
 
+                                <div> {{"Updated_by: " . $data->qa_feedback_by }} </div>
+                                <div>{{"Updated_date: "}} {{$data->qa_feedback_date ? \Carbon\Carbon::parse($data->qa_feedback_date)->format('d/m/Y') : '' }}</div>
+
                             </td>
 
                             {{-- EN Phản hồi --}}
-                            <td class="text-center "> 
+                            <td class="text-left"> 
+
                                 <div class="input-group mx-4">
                                     <label for="{{ $data->id }}"> : Chày cối - Khuôn mẫu sẳn sàng</label>
+
                                     <input class="form-check-input step-checkbox"
                                       type="checkbox"
-                                      name ="has_punch_die_mold"
+                                      name ="has_punch_die_mold" 
                                       data-id="{{ $data->id }}"
                                       id="{{ $data->id }}"
-                                      {{ $auth_update != ''?'readOnly':''}}
+                                      data-permission="{{ $department == "EN" && $plan_feedback?'1': "0" }}"
                                       {{ $data->has_punch_die_mold ? 'checked' : '' }}
                                       >
+
                                 </div>
            
 
                                  <div>
-                                    @if ($department == "EN")
+                                    @if ($department == "EN" && $plan_feedback)
                                         <textarea class="updateInput text-left"
                                             name="en_feedback"
                                             data-id="{{ $data->id }}"
@@ -262,21 +292,24 @@
                                         {{empty($data->en_feedback)?  "Chưa có phản hồi" : $data->qa_feedback }}
                                     @endif
                                 </div>
+
+                                <div> {{"Updated_by: " . $data->en_feedback_by }} </div>
+                                <div>{{"Updated_date: "}} {{$data->en_feedback_date ? \Carbon\Carbon::parse($data->en_feedback_date)->format('d/m/Y') : '' }}</div>
                             </td>
 
                             {{-- Qc Phản hồi --}}
                             <td class="text-left"> 
                               
                                 <b> {{"(1):"}}</b>
-                                @if ($department == "QC")
-                                    <input type= "date" class="updateInput" name="actual_CoA_date"  value="{{$data->actual_CoA_date}}" data-id = {{ $data->id }} {{ $auth_update }}></input>
+                                @if ($department == "QC" && $plan_feedback)
+                                    <input type= "date" class="updateInput" name="actual_CoA_date"  value="{{$data->actual_CoA_date}}" data-id = {{ $data->id }} ></input>
                                 @else
                                     {{ $data->actual_CoA_date?? "Chưa có phản hồi"}}
                                 @endif
                                 <br>
                                 <b> {{"(2):"}}</b>
                                 <div>
-                                    @if ($department == "QC")
+                                    @if ($department == "QC" && $plan_feedback)
                                         <textarea class="updateInput text-left"
                                             name="qc_feedback"
                                             data-id="{{ $data->id }}"
@@ -287,15 +320,22 @@
                                     @endif
                                 </div>
 
+                                <div> {{"Updated_by: " . $data->qc_feedback_by }} </div>
+                                <div>{{"Updated_date: "}} {{$data->qc_feedback_date ? \Carbon\Carbon::parse($data->qc_feedback_date)->format('d/m/Y') : '' }}</div>
+
                             </td>
 
                             {{-- KCS thực tế Phản hồi --}}
-                            <td class="text-center "> 
-                                @if ($department == "QA")
-                                    <input type= "date" class="updateInput" name="actual_KCS"  value="{{$data->actual_KCS}}" data-id = {{ $data->id }} {{ $auth_update }}></input>
+                            <td class="text-left"> 
+                                
+                                @if (!$data->actual_KCS && $department == "QA" && $Record_KCS_Date)
+                                    <input type= "date" class="updateInput" name="actual_KCS"  value="{{$data->actual_KCS}}" data-id = {{ $data->id }} ></input>
                                 @else
-                                    {{$data->actual_KCS}}
+                                    <b> {{$data->actual_KCS}} </b>
                                 @endif
+
+                                <div> {{"Updated_by: " . $data->kcs_record_by }} </div>
+                                <div>{{"Updated_date: "}}{{ $data->kcs_record_date ? \Carbon\Carbon::parse($data->kcs_record_date)->format('d/m/Y') : '' }}</div>
                             </td> 
 
                         </tr>
@@ -380,7 +420,7 @@
                 let name = $(this).attr('name');
                 let updateValue = $(this).val();
                 let oldValue = $(this).data('old-value');
-              
+               
                 if (updateValue === oldValue)return;
     
                 $.ajax({
@@ -398,9 +438,22 @@
 
             $(document).on('change', '.step-checkbox', function () {
                 let id = $(this).data('id');
+                let permission = $(this).data('permission');
                 let name = $(this).attr('name');
                 let checked = $(this).is(':checked');
                 
+                if (permission == 0){
+                    Swal.fire({
+                            title: 'Bạn Không Có Phân Quyền Thực Hiện Thao Tác Này',
+                            icon: 'warning',
+                            timer: 1000,
+                            showConfirmButton: false
+                    });
+                     $(this).prop("checked", !checked);
+                    return
+                }
+
+
                 if (checked){
                     checked = 1
                 }else{
@@ -432,28 +485,54 @@
 
             $('.btn-accept').on('click', function() {
                 const planMasterId = $(this).data('id');
-                const new_expected_date = $(this).data('new_expected_date');
+                const new_expected_date = $(this).data('new_expected_date'); // yyyy-mm-dd
 
-                // Gọi Ajax lấy dữ liệu history
-                $.ajax({
-                    url: "{{ route('pages.plan.production.accept_expected_date') }}",
-                    type: 'post',
-                    data: {
-                        id: planMasterId,
-                        new_expected_date: new_expected_date,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(res) {
-                        Swal.fire({
-                            title: 'Hoàn Thành',
-                            icon: 'success',
-                            timer: 1000,
-                            showConfirmButton: false
+                Swal.fire({
+                    title: 'Chấp Nhận Thay Đổi Ngày Dự Kiến KCS thành:',
+                    html: `
+                        <input 
+                            type="date" 
+                            id="swal_new_expected_date" 
+                            class="swal2-input"
+                            value="${new_expected_date}"
+                        >
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Lưu',
+                    cancelButtonText: 'Hủy',
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        const val = document.getElementById('swal_new_expected_date').value;
+                        if (!val) {
+                            Swal.showValidationMessage("Vui lòng chọn ngày!");
+                        }
+                        return val;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const selectedDate = result.value;
+
+                        $.ajax({
+                            url: "{{ route('pages.plan.production.accept_expected_date') }}",
+                            type: 'post',
+                            data: {
+                                id: planMasterId,
+                                new_expected_date: selectedDate,
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(res) {
+                                Swal.fire({
+                                    title: 'Hoàn Thành',
+                                    icon: 'success',
+                                    timer: 1000,
+                                    showConfirmButton: false
+                                });
+
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 500);
+                            }
                         });
-
-                        setTimeout(() => {
-                            location.reload();
-                        }, 500);
                     }
                 });
             });

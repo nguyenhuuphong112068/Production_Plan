@@ -41,8 +41,8 @@
                     </div>
                     <div class="col-md-6 text-center" style="font-size: 20px;color: #CDC717;">
                         <div>
-                        Báo cáo được tính từ 00:00 ngày {{ Carbon::parse($defaultFrom)->format('d/m/Y') }}
-                        đến 00:00 ngày {{ Carbon::parse($defaultFrom)->addDays(1)->format('d/m/Y') }}
+                        Báo cáo được tính từ 60:00 ngày {{ Carbon::parse($defaultFrom)->format('d/m/Y') }}
+                        đến 60:00 ngày {{ Carbon::parse($defaultFrom)->addDays(1)->format('d/m/Y') }}
                         </div>
                     </div>
                     <div class ="col-md-3">
@@ -80,6 +80,7 @@
 
                                     @foreach ($allDates as $date)
                                         <th class="text-center">Sản lượng lý thuyết</th>
+                                        <th class="text-center">Chi tiết</th>
                                         <th class="text-center">Sản lượng thực tế</th>
                                         <th class="text-center">Phần trăm đáp ứng</th>
                                     @endforeach
@@ -123,6 +124,7 @@
 
                                         @foreach ($allDates as $date)
                                             <td class="text-center">{{ number_format($stageLT[$date], 2) }}</td>
+                                            <td class="text-center">{{ "-" }}</td>
                                             <td class="text-center">{{ number_format($stageTT[$date], 2) }}</td>
                                            <td class="text-center " 
                                                 style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
@@ -145,37 +147,80 @@
                                         <td class="text-center">{{ $rooms->first()->unit }}</td>
                                     </tr>
 
-                                    {{-- ⭐ Lặp các phòng trong stage --}}
-                                    @foreach ($rooms as $roomLT)
-                                        @php
-                                            $resourceId = $roomLT->resourceId;
-                                            $unit = $roomLT->unit;
-                                        @endphp
+                                {{-- ⭐ Lặp các phòng trong stage --}}
+                                @foreach ($rooms as $roomLT)
+                                    @php
+                                        $resourceId = $roomLT->resourceId;
+                                        $unit = $roomLT->unit;
+                                    @endphp
 
-                                        <tr class="stage-child stage-{{ $stage_code }}">
-                                            <td class="align-middle">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
+                                    <tr class="stage-child stage-{{ $stage_code }}">
+                                        <td class="align-middle">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
 
-                                            @foreach ($allDates as $date)
-                                                @php
-                                                    $dayLT = $theory['yield_day'][$date] ?? collect();
-                                                    $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
-                                                    $qtyLT = $itemLT['total_qty'] ?? 0;
+                                        @foreach ($allDates as $date)
+                                            @php
+                                                // LT
+                                                $dayLT = $theory['yield_day'][$date] ?? collect();
+                                                $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
+                                                $qtyLT = $itemLT['total_qty'] ?? 0;
 
-                                                    $dayTT = $actual['yield_day'][$date] ?? collect();
-                                                    $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
-                                                    $qtyTT = $itemTT['total_qty'] ?? 0;
+                                                // TT
+                                                $dayTT = $actual['yield_day'][$date] ?? collect();
+                                                $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
+                                                $qtyTT = $itemTT['total_qty'] ?? 0;
 
-                                                    $percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
-                                                @endphp
+                                                // %
+                                                $percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
 
-                                                <td class="text-center" style="background:#93f486;">{{ number_format($qtyLT, 2) }}</td>
-                                                <td class="text-center" style="background:#69b8f4;">{{ number_format($qtyTT, 2) }}</td>
-                                                <td class="text-center" style="background: {{ number_format($percent, 2) < 90 ? 'red' : 'none' }}">{{ number_format($percent, 2) }}%</td>
-                                            @endforeach
+                                                // Chi tiết đúng chuẩn
+                                                $detail = $detail = collect($yield_actual_detial['actual_detail'] ?? [])
+                                                            ->where('resourceId', $resourceId)
+                                                            ->where('reported_date', $date);
+                                            @endphp
 
-                                            <td class="text-center">{{ $unit }}</td>
-                                        </tr>
-                                    @endforeach
+                                            {{-- LT --}}
+                                            <td class="text-center" style="background:#93f486;">
+                                                {{ number_format($qtyLT, 2) }}
+                                            </td>
+
+                                            {{-- CHI TIẾT --}}
+                                            <td class="text-left" style="background:#d7eaff; font-size:14px;">
+                                                @if($detail->count())
+                                                    @foreach ($detail as $d)
+                                                        <div>
+                                                            • {{ $d->title }}
+                                                            ({{ \Carbon\Carbon::parse($d->start)->format('H:i') }} -
+                                                            {{ \Carbon\Carbon::parse($d->end)->format('H:i') }})
+
+                                                            @if ($d->yields)
+                                                                → <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }}</b>
+                                                            @endif
+                                                            
+                                                        </div>
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+
+                                            {{-- TT --}}
+                                            <td class="text-center" style="background:#69b8f4;">
+                                                {{ number_format($qtyTT, 2) }}
+                                            </td>
+
+                                            {{-- % --}}
+                                            <td class="text-center"
+                                                style="background: {{ $percent < 90 ? 'red' : 'none' }}">
+                                                {{ number_format($percent, 2) }}%
+                                            </td>
+                                        @endforeach
+
+                                        <td class="text-center">{{ $unit }}</td>
+                                    </tr>
+
+                                @endforeach
+
+
                                 @endforeach
                             </tbody>
                         </table>
@@ -373,5 +418,3 @@
         });
     });
 </script>
-
-
