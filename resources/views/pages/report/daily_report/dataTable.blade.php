@@ -186,8 +186,49 @@
 
                                             {{-- CHI TIẾT --}}
                                             <td class="text-left" style="background:#d7eaff; font-size:14px;">
+                                            
+                                                @php
+                                                // --- Cấu hình ca làm việc ---
+                                                $shiftStart = Carbon::parse($date.' 06:00:00');
+                                                $shiftEnd   = $shiftStart->copy()->addDay();  // 06:00 hôm sau
+                                                $totalShiftSeconds = $shiftStart ->diffInSeconds($shiftEnd); // tổng ca
+
+                                                $totalActiveSeconds = 0;
+
+                                                foreach ($detail as $d) {
+                                                    $start = Carbon::parse($d->start);
+                                                    $end   = Carbon::parse($d->end);
+
+                                                    // Nếu kết thúc < bắt đầu → qua ngày
+                                                    if ($end < $start) {
+                                                        $end->addDay();
+                                                    }
+
+                                                    // Giới hạn trong ca
+                                                    $realStart = $start->max($shiftStart);
+                                                    $realEnd   = $end->min($shiftEnd);
+
+                                                    if ($realEnd > $realStart) {
+                                                        $totalActiveSeconds += $realStart->diffInSeconds($realEnd );
+                                                    }
+                                                }
+
+                                                // --- Thời gian hoạt động ---
+                                                $activityHours   = floor($totalActiveSeconds / 3600);
+                                                $activityMinutes = floor(($totalActiveSeconds % 3600) / 60);
+
+                                                // --- Thời gian chết = tổng ca - hoạt động ---
+                                                $totalDeadSeconds = $totalShiftSeconds - $totalActiveSeconds;
+                                                $deadHours   = floor($totalDeadSeconds / 3600);
+                                                $deadMinutes = floor(($totalDeadSeconds % 3600) / 60);
+                                                @endphp
+
+
+
                                                 @if($detail->count())
-                                                    @foreach ($detail as $d)
+
+
+                                                   @foreach ($detail as $d)
                                                         <div>
                                                             • {{ $d->title }}
                                                             ({{ \Carbon\Carbon::parse($d->start)->format('H:i') }} -
@@ -198,10 +239,20 @@
                                                             @endif
                                                             
                                                         </div>
-                                                    @endforeach
+
+                                                    @endforeach 
+
+                                                    <div>   
+                                                        <b>Tổng thời gian các hoạt động:</b> {{ $activityHours }} giờ {{ $activityMinutes }} phút
+                                                        <br>
+                                                        <b>Tổng thời gian chết:</b> {{ $deadHours }} giờ {{ $deadMinutes }} phút
+                                                    </div>
+
                                                 @else
                                                     <span class="text-muted">—</span>
                                                 @endif
+
+
                                             </td>
 
                                             {{-- TT --}}
