@@ -48,7 +48,7 @@ class SchedualFinisedController extends Controller
                     ->whereNotNull('sp.start')
                     ->whereNull('sp.actual_start_clearning')
                     ->orderBy('sp.start')
-                    ->get();
+                ->get();
 
                   
         
