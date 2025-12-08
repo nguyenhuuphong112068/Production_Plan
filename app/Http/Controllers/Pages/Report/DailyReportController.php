@@ -237,6 +237,9 @@ class DailyReportController extends Controller
         // ------------------------------
         // 3️⃣ Gom 2 phần lại
         // ------------------------------
+            
+        
+
         $merged = $stage_plan_100->merge($stage_plan_part)
             ->groupBy(function ($item) use ($group_By) {
                 return $item->$group_By . '-' . $item->unit;
@@ -262,6 +265,8 @@ class DailyReportController extends Controller
                 ];
             })
             ->values();
+      
+
         
         // ------------------------------
         // 4️⃣ Tổng hợp theo ROOM (resourceId)
@@ -426,11 +431,34 @@ class DailyReportController extends Controller
             })
             ->values();
 
+
+                  // ------------------------------
+        // 4️⃣ MERGE ROOMS + MERGED DATA
+        // ------------------------------
+        $rooms = DB::table ('room')->where('deparment_code', session('user')['production_code'])->get();
+        $yield_room = $rooms->map(function ($room) use ($merged, $group_By) {
+
+            // Tìm xem phòng có dữ liệu sản lượng không
+            $found = $merged->firstWhere($group_By, $room->id);
+
+            return (object)[
+                $group_By     => $room->id,
+                'room_code'   => $room->code,
+                'room_name'   => $room->name,
+                'stage_code'  => $room->stage_code,
+                'order_by'    => $room->order_by,
+                'unit'        => $found->unit ?? null,
+                'total_qty'   => $found->total_qty ?? 0
+            ];
+        })->sortBy('order_by')->values();
+
+       
         // ------------------------------
         // 4️⃣ Tổng hợp theo ROOM
         // ------------------------------
-        $yield_room = $merged->sortBy('stage_code')->values();
+        $yield_room = $yield_room->sortBy('stage_code')->values();
 
+       
         // ------------------------------
         // 5️⃣ Tổng hợp theo STAGE
         // ------------------------------

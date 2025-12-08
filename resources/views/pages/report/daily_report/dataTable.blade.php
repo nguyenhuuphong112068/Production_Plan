@@ -97,6 +97,7 @@
                                 @foreach ($roomsByStage as $stage_code => $rooms)
                                     {{-- Tính tổng công đoạn trước --}}
                                     @php
+                                        
                                         $stageLT = [];
                                         $stageTT = [];
                                         $stagePercent = [];
