@@ -471,8 +471,9 @@ class DailyReportController extends Controller
                     'details' => $group->values(),
                 ];
             })
-            ->values();
+        ->values();
 
+            
         // ------------------------------
         // 6️⃣ Tạo dailyTotals cho 1 ngày duy nhất
         // ------------------------------
