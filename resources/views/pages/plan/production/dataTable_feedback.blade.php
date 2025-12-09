@@ -72,8 +72,9 @@
                         <th style="width:10%" >Sản Phẩm</th>
                         <th>
                             <div>{{"Kế Hoạch"}}</div>
-                            <div>{{"(1) Ngày cần hàng"}}</div>
-                            <div>{{"(2) Mức độ ưu tiên"}}</div>
+                            <div>{{"(1) Ngày dự kiến KCS"}}</div>
+                            <div>{{"(2) Số lệnh"}}</div>
+                            
                         </th>
                         <th>
                             <div>{{"Phân Xưởng "}}</div>
@@ -156,13 +157,13 @@
 
                              {{-- KH Phản hồi --}}
                             <td class = "text-left">
-
+                               
                                 @if (!$data->end)
-                                        <div class ="text-black font-weight-bold">{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
+                                        <div class ="text-black font-weight-bold">{{ "(1): " . \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
                                 @elseif (\Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString())
-                                        <div class ="text-red font-weight-bold">{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
+                                        <div class ="text-red font-weight-bold">{{ "(1): ". \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
                                 @else
-                                        <div class ="text-green font-weight-bold">{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
+                                        <div class ="text-green font-weight-bold">{{ "(1): ". \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
                                 @endif
                                 
                                 {{-- <div
@@ -170,18 +171,41 @@
                                     {{$data->level}}
                                 </div> --}}
 
+
                                 @if ($department == "PL" && $plan_feedback && $data->end && (\Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString()))
-                                    <div>
+                                    <div class = "text-center">
                                         <button class = "btn btn-success btn-accept mt-1"
                                             data-id = {{ $data->id }}
                                             data-new_expected_date = {{ \Carbon\Carbon::parse($data->end)->addDays(5)->format('Y-m-d')}}
                                         > 
-                                            <div> Chấp Nhận </div>
+                                            <div> Cập Nhật Ngày Dự Kiên KCS </div>
                                             <div> {{ "(".  \Carbon\Carbon::parse($data->end)->addDays(5)->format('d/m/Y') .")" }} </div>
                                         </button>
                                     </div>
+                                    <div> {{"Updated_by: " . $data->order_by }} </div>
+                                    <div>{{"Updated_date: "}} {{$data->order_date ? \Carbon\Carbon::parse($data->pro_feedback_date)->format('d/m/Y') : '' }}</div>   
                                 @endif
 
+
+
+                                <b> {{"(2):"}}</b>
+                                @if ($department == "PL" && $plan_feedback && !$data->order_number)
+                                    <div class="text-center">
+                                        <button class = "btn btn-success btn-order mt-1"
+                                            data-id = {{ $data->id }}
+                                            data-batch = {{ $data->batch }}
+                                        > 
+                                            <div> Cập Nhật Số Lệnh </div>
+                                            <div> {{ $data->batch }} </div>
+                                        </button>
+                                    </div>
+                                @elseif ($data->order_number)
+                                    {{ $data->order_number }}
+                                    <div> {{"Updated_by: " . $data->order_by }} </div>
+                                    <div>{{"Updated_date: "}} {{$data->order_date ? \Carbon\Carbon::parse($data->pro_feedback_date)->format('d/m/Y') : '' }}</div>  
+                                @endif
+
+ 
 
                             </td>
 
@@ -531,6 +555,79 @@
                                 setTimeout(() => {
                                     location.reload();
                                 }, 500);
+                            }
+                        });
+                    }
+                });
+            });
+
+            $('.btn-order').on('click', function() {
+
+                const planMasterId = $(this).data('id');
+                const batch = $(this).data('batch'); // giá trị mặc định
+                
+                Swal.fire({
+                    title: 'Cập Nhật Thông Tin Ra Lệnh Sản Xuất',
+                    html: `
+                        <div style="text-align:left; margin-bottom:10px;">
+                            <label for="swal_batch_no">Số lô:</label>
+                            <input 
+                                type="text" 
+                                id="swal_batch_no" 
+                                class="swal2-input" 
+                                placeholder="Nhập số lô"
+                                style="width:80%;"
+                                value="${batch}" 
+                            >
+                        </div>
+                        <div style="text-align:left; margin-bottom:10px;">
+                            <label for="swal_order_no">Số lệnh:</label>
+                            <input 
+                                type="text" 
+                                id="swal_order_no" 
+                                class="swal2-input" 
+                                placeholder="Nhập số lệnh"
+                                style="width:80%;"
+                            >
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Lưu',
+                    cancelButtonText: 'Hủy',
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        const batchNo = document.getElementById('swal_batch_no').value;
+                        const orderNo = document.getElementById('swal_order_no').value;
+
+                        if (!batchNo || !orderNo) {
+                            Swal.showValidationMessage("Vui lòng điền đầy đủ số lô và số lệnh!");
+                            return false;
+                        }
+
+                        return { batchNo, orderNo };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const { batchNo, orderNo } = result.value;
+                        $.ajax({
+                            url: "{{ route('pages.plan.production.order') }}",
+                            type: 'post',
+                            data: {
+                                id: planMasterId,
+                                batch: batchNo,
+                                order_number: orderNo,
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(res) {
+                                
+                                Swal.fire({
+                                    title: 'Hoàn Thành',
+                                    icon: 'success',
+                                    timer: 1000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    location.reload(); // reload ngay sau khi popup đóng
+                                });
                             }
                         });
                     }
