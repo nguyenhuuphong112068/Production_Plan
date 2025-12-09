@@ -18,9 +18,10 @@
     }
     /* Giữ sidebar cố định bên trái */
     .sidebar{
+      
       position: fixed;
       top: 0px;
-      left: 0px;
+      left: -3px;
    
       height: 100vh; /* chiếm toàn bộ chiều cao trình duyệt */
       overflow-y: auto; /* nếu menu dài vẫn có thể cuộn riêng */
@@ -29,6 +30,7 @@
 
     /* Để phần nội dung không bị che bởi sidebar */
     .main-content {
+      
       margin-left: 100px; /* đúng bằng chiều rộng sidebar */
       overflow-y: auto;
     }
@@ -45,8 +47,8 @@
 
     </div> --}}
 
-    <!-- Sidebar -->
-    <div class="sidebar-wrapper" >
+    <!-- Sidebar -wrapper-->
+    <div class="sidebar" >
 
        <!-- Brand Logo -->
     <a href="{{ route ('pages.general.home')}}" class="brand-link container d-flex justify-content-center align-items-center">
