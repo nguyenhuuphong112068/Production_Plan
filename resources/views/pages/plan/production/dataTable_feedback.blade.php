@@ -60,75 +60,33 @@
                 3 => 'background-color: blue; color: white;', // vàng
                 4 => 'background-color: #4caf50; color: white;', // xanh lá
                 ];
+              $end_packaging = 0;
+              $missingOrders = 0;
+              $actual_CoA_Count = 0;
+              $actual_KCS_Count = 0;
+              $actual_Mod_Count = 0;
+              $actual_export_record_Count = 0;
+              $has_BMR = 0;
          @endphp
 
         <!-- /.card-Body -->
         <div class="card-body">
             <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
-                <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
-                    <tr>
-                        <th>STT</th>
-                        <th >Mã Sản Phẩm</th>
-                        <th style="width:10%" >Sản Phẩm</th>
-                        <th>
-                            <div>{{"Kế Hoạch"}}</div>
-                            <div>{{"(1) Ngày dự kiến KCS"}}</div>
-                            <div>{{"(2) Số lệnh"}}</div>
-                            
-                        </th>
-                        <th>
-                            <div>{{"Phân Xưởng "}}</div>
-                            <div>{{"(1) Dự Kiến KT ĐG "}}</div>
-                            <div>{{"(2) Ngày ra Hồ sơ PX"}} </div>
-                            <div>{{"(3) Phản Hồi"}} </div>
 
-                            {{-- @if ($department == $production && $plan_feedback)
-                                <button class = "btn btn-success"
-                                        data-toggle="modal"
-                                        data-target="#pro_feedback_modal"
-                                >Phản hồi toàn bộ</button>
-                            @endif --}}
-
-                        </th>
-                        <th>
-                            <div>{{"Đảm Bảo Chất Lượng"}}</div>
-                            <div>{{"(1) Tình hình hồ sơ lô "}}</div>
-                            <div>{{"(2) Hồ sơ thực tế?"}} </div>
-                            <div>{{"(3) Phản hồi"}} </div>
-                            {{-- @if ($department == "QA" && $plan_feedback)
-                                <button class = "btn btn-success"
-                                        data-toggle="modal"
-                                        data-target="#qa_feedback_modal"
-                                >Phản hồi toàn bộ</button>
-                           @endif --}}
-                        <th>
-                            <div>{{"Kỹ Thuật Bảo Trì"}}</div>
-                            <div>{{"(1) Tình hình CC - KM "}}</div>
-                            <div>{{"(2) Phản hồi"}} </div>
-                            @if ($department == "EN" && $plan_feedback)
-                                <button class = "btn btn-success btn-en-feedback"
-                                    data-toggle="modal"
-                                    data-target="#en_feedback_modal"
-                                >Phản hồi toàn bộ</button>
-                            @endif
-                        </th>
-                        <th>
-                            <div>{{"Kiểm Tra Chất Lượng"}}</div>
-                            <div>{{"(1) Ngày yêu cầu ra phiếu TP"}}</div>
-                            <div>{{"(2) Phản hồi"}} </div>
-                            {{-- @if ($department == "QC")
-                                <button class = "btn btn-success"
-                                    data-toggle="modal"
-                                    data-target="#qc_feedback_modal"
-                                >Phản hồi toàn bộ</button>
-                            @endif --}}
-                        </th>                       
-                        <th>Ngày KCS thực tế </th>
-                    </tr>
-                </thead>
                 <tbody>
+                    
 
                     @foreach ($datas as $data)
+                        @php
+                            if ($data->actual_CoA_date == null) {$actual_CoA_Count++;}
+                            if ($data->actual_KCS == null) {$actual_KCS_Count++;}
+                            if ($data->actual_record_date == null) {$actual_export_record_Count++;}
+                            if ($data->has_BMR == 0) {$has_BMR++;}
+                            if ($data->has_punch_die_mold == 0) {$actual_Mod_Count++;}
+                            if ($data->end == null) {$end_packaging++;}
+                        @endphp
+
+
                         <tr>
                             <td>
                                 <div> {{ $loop->iteration }} </div>
@@ -165,12 +123,7 @@
                                 @else
                                         <div class ="text-green font-weight-bold">{{ "(1): ". \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y')}}</div>
                                 @endif
-                                
-                                {{-- <div
-                                    class = "text-center mt-1" style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
-                                    {{$data->level}}
-                                </div> --}}
-
+                            
 
                                 @if ($department == "PL" && $plan_feedback && $data->end && (\Carbon\Carbon::parse($data->expected_date)->toDateString() < \Carbon\Carbon::parse($data->end)->addDays(5)->toDateString()))
                                     <div class = "text-center">
@@ -187,7 +140,6 @@
                                 @endif
 
 
-
                                 <b> {{"(2):"}}</b>
                                 @if ($department == "PL" && $plan_feedback && !$data->order_number)
                                     <div class="text-center">
@@ -199,6 +151,9 @@
                                             <div> {{ $data->batch }} </div>
                                         </button>
                                     </div>
+                                    @php
+                                         $missingOrders++;
+                                    @endphp
                                 @elseif ($data->order_number)
                                     {{ $data->order_number }}
                                     <div> {{"Updated_by: " . $data->order_by }} </div>
@@ -226,7 +181,6 @@
                                     <b> {{"(2):"}}</b>
                                     <input type= "date" class="updateInput" name="actual_record_date"  value="{{$data->actual_record_date}}" data-id = {{ $data->id }} ></input>
                                     <b> {{ "(3):" }}</b> 
-
                                     <textarea class="updateInput text-left"
                                         name="pro_feedback"
                                         data-id="{{ $data->id }}"
@@ -234,7 +188,7 @@
                                     >@if(!empty($data->pro_feedback)){{ $data->pro_feedback }}@endif</textarea>
                                 @else
                                     <b> {{"(2):"}}</b>
-                                    {{empty($data->actual_record_date) || $data->actual_record_date == null ?  "Chưa có ngày ra hồ sơ" : $data->pro_feedback }}
+                                    {{empty($data->actual_record_date) || $data->actual_record_date == null ?  "Chưa có ngày ra hồ sơ" : \Carbon\Carbon::parse($data->actual_record_date)->format('d/m/Y')}}
                                     <br>
                                     <b> {{ "(3):" }}</b> 
                                     {{empty($data->pro_feedback)?  "Chưa có phản hồi" : $data->pro_feedback }}
@@ -365,6 +319,72 @@
                         </tr>
                     @endforeach
                 </tbody>
+
+                <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
+                    <tr>
+                        <th>STT</th>
+                        <th >Mã Sản Phẩm</th>
+                        <th style="width:10%" >Sản Phẩm</th>
+                        <th >
+                            <div>{{"KẾ HOẠCH"}}</div>
+                            <div>{{"(1) Ngày dự kiến KCS"}}</div>
+                            <div>{{ "(2) Số lệnh" }} <span class ="text-red"> {{"(chưa có:  $missingOrders lô)"}} </span> </div>
+                            
+                        </th>
+                        <th>
+                            <div>{{"PHÂN XƯỞNG"}}</div>
+                            <div>{{"(1) Dự Kiến KT ĐG"}} <span class ="text-red"> {{"(chưa có:  $end_packaging lô)"}} </span> </div>
+                            <div>{{"(2) Ngày ra Hồ sơ PX" }} <span class ="text-red"> {{"(chưa có:  $actual_export_record_Count lô)"}} </span></div>
+                            <div>{{"(3) Phản Hồi"}} </div>
+
+                            {{-- @if ($department == $production && $plan_feedback)
+                                <button class = "btn btn-success"
+                                        data-toggle="modal"
+                                        data-target="#pro_feedback_modal"
+                                >Phản hồi toàn bộ</button>
+                            @endif --}}
+
+                        </th>
+                        <th>
+                            <div>{{"ĐẢM BẢO CHẤT LƯỢNG"}}</div>
+                            <div>{{"(1) Tình hình hồ sơ lô" }} <span class ="text-red"> {{"(chưa có:  $has_BMR lô)"}} </span></div>
+                            <div>{{"(2) Hồ sơ thực tế?"}} </div>
+                            <div>{{"(3) Phản hồi"}} </div>
+                            {{-- @if ($department == "QA" && $plan_feedback)
+                                <button class = "btn btn-success"
+                                        data-toggle="modal"
+                                        data-target="#qa_feedback_modal"
+                                >Phản hồi toàn bộ</button>
+                           @endif --}}
+                        <th>
+                            <div>{{"KỸ THUẬT BẢO TRÌ"}}</div>
+                            <div>{{"(1) Tình hình CC - KM"}} <span class ="text-red"> {{"(chưa có:  $actual_Mod_Count lô)"}} </span> </div>
+                            <div>{{"(2) Phản hồi"}} </div>
+                            @if ($department == "EN" && $plan_feedback)
+                                <button class = "btn btn-success btn-en-feedback"
+                                    data-toggle="modal"
+                                    data-target="#en_feedback_modal"
+                                >Phản hồi toàn bộ</button>
+                            @endif
+                        </th>
+                        <th>
+                            <div>{{"KIỂM TRA CHẤT LƯỢNG"}}</div>
+                            <div>{{"(1) Ngày yêu cầu ra phiếu TP"}} <span class ="text-red"> {{"(chưa có:  $actual_CoA_Count lô)"}} </span></div>
+                            <div>{{"(2) Phản hồi"}} </div>
+                            {{-- @if ($department == "QC")
+                                <button class = "btn btn-success"
+                                    data-toggle="modal"
+                                    data-target="#qc_feedback_modal"
+                                >Phản hồi toàn bộ</button>
+                            @endif --}}
+                        </th>                       
+                        <th> 
+                            <div>{{ "Ngày KCS thực tế"}}</div>
+                            <div class ="text-red"> {{"(chưa có:  $actual_KCS_Count lô)"}} </div>
+
+                        </th>
+                    </tr>
+                </thead>
             </table>
         </div>
     </div>
@@ -415,24 +435,8 @@
                         previous: "Trước",
                         next: "Sau"
                     }
-                },
-                infoCallback: function(settings, start, end, max, total, pre) {
-                    let activeCount = 0;
-                    let inactiveCount = 0;
-
-                    settings.aoData.forEach(function(row) {
-                        // row.anCells là danh sách <td> của từng hàng
-                        const lastTd = row.anCells[row.anCells.length -
-                            1]; // cột cuối (Vô Hiệu)
-                        const btn = $(lastTd).find('button[type="submit"]');
-                        const status = btn.data('type'); // lấy 1 hoặc 0
-
-                        if (status == 1) activeCount++;
-                        else inactiveCount++;
-                    });
-
-                    return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
                 }
+
             });
 
             $(document).on('focus', '.updateInput', function () {
@@ -619,7 +623,7 @@
                                 _token: "{{ csrf_token() }}"
                             },
                             success: function(res) {
-                                
+
                                 Swal.fire({
                                     title: 'Hoàn Thành',
                                     icon: 'success',

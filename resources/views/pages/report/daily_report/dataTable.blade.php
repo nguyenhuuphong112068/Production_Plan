@@ -41,8 +41,8 @@
                     </div>
                     <div class="col-md-6 text-center" style="font-size: 20px;color: #CDC717;">
                         <div>
-                        Báo cáo được tính từ 60:00 ngày {{ Carbon::parse($defaultFrom)->format('d/m/Y') }}
-                        đến 60:00 ngày {{ Carbon::parse($defaultFrom)->addDays(1)->format('d/m/Y') }}
+                        Báo cáo được tính từ 06:00 ngày {{ Carbon::parse($defaultFrom)->format('d/m/Y') }}
+                        đến 06:00 ngày {{ Carbon::parse($defaultFrom)->addDays(1)->format('d/m/Y') }}
                         </div>
                     </div>
                     <div class ="col-md-3">
