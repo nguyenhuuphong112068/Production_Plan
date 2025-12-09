@@ -41,6 +41,7 @@ Route::prefix('/plan')
             Route::get('open_feedback','open_feedback')->name('open_feedback');
             Route::post('accept_expected_date','accept_expected_date')->name('accept_expected_date');
             Route::post('all_feedback','all_feedback')->name('all_feedback');
+            Route::post('order','order')->name('order');
 
 
     });

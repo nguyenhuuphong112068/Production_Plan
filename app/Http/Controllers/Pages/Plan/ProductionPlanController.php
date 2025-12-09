@@ -1130,4 +1130,50 @@ class ProductionPlanController extends Controller
                 return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }
 
+        public function order (Request $request){
+               
+                DB::table('plan_master')->where('id', $request->id)->update([
+                        "batch" => $request->batch,
+                        'order_number' =>  $request->order_number,
+                        'order_by' => session('user')['fullName'],
+                        'order_date' => now(),
+                ]);
+
+                // Lấy dữ liệu gốc từ plan_master
+                $plan = DB::table('plan_master')->where('id', $request->id)->first();
+                
+                // Tìm version cao nhất hiện tại trong history
+                $lastVersion = DB::table('plan_master_history')
+                        ->where('plan_master_id', $request->id)
+                        ->max('version');
+
+                $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+
+                DB::table('plan_master_history')->insert([
+                        'plan_master_id' => $plan->id,
+                        'plan_list_id' => $plan->plan_list_id,
+                        'product_caterogy_id' => $plan->product_caterogy_id,
+                        'version' => $newVersion,
+
+                        'level' => $plan->level,
+                        'batch' => $plan->batch,
+                        'expected_date' => $plan->expected_date,
+                        'is_val' => $plan->is_val,
+                        'after_weigth_date' => $plan->after_weigth_date,
+                        'after_parkaging_date' => $plan->after_parkaging_date,
+                        'material_source_id' => $plan->material_source_id,
+                        'percent_parkaging' => $plan->percent_parkaging,
+                        'only_parkaging' => $plan->only_parkaging,
+                        "number_parkaging" => $plan->number_parkaging,
+                        'note' => $plan->note,
+                        'reason' => "Cập nhật Số lệnh: $request->order_number",
+                        'deparment_code' => $plan->deparment_code,
+
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        ]);
+
+                return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công!']);
+        }
+
 }
