@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Pages\Plan;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class MaintenancePlanController extends Controller
 {
-       public function index()
-       {   
+       public function index(){   
                 $datas = DB::table('plan_list')
                 ->where ('active',1)
                 ->where ('type',0)
@@ -135,8 +135,9 @@ class MaintenancePlanController extends Controller
                 ]);
         }
 
-        public function store(Request $request)
-        {
+        public function store(Request $request){
+
+                
                 
                 $validator = Validator::make($request->all(), [
                         'devices.*.expected_date' => 'required|date',
@@ -149,6 +150,8 @@ class MaintenancePlanController extends Controller
                         ->withErrors($validator, 'create_Errors')
                         ->withInput();
                 }
+
+
                
                 $now            = now();
                 $preparedBy     = session('user')['fullName'];
@@ -173,6 +176,7 @@ class MaintenancePlanController extends Controller
                                 "is_val"              => 0,
                                 "percent_parkaging"   => 1,
                                 "only_parkaging"      => 0,
+                                "number_parkaging"    => 1,
                                 "note"                => $device['note'] ?? "NA",
                                 "deparment_code"      => $departmentCode,
                                 "prepared_by"         => $preparedBy,
@@ -190,6 +194,7 @@ class MaintenancePlanController extends Controller
                                 "is_val"              => 0,
                                 "percent_parkaging"   => 1,
                                 "only_parkaging"      => 0,
+                                "number_parkaging"    => 1,
                                 "note"                => $device['note'] ?? "NA",
                                 "deparment_code"      => $departmentCode,
                                 "prepared_by"         => $preparedBy,
@@ -206,10 +211,14 @@ class MaintenancePlanController extends Controller
 
                         DB::commit();
                         return redirect()->back()->with('success', 'Đã thêm thành công!');
-        } catch (\Exception $e) {
-                DB::rollBack();
-                return redirect()->back()->with('error', 'Lỗi khi thêm dữ liệu: ' . $e->getMessage());
-        }
+                } catch (\Exception $e) {
+                        DB::rollBack();
+                        Log::error('Lỗi khi thêm dữ liệu plan_master: ' . $e->getMessage(), [
+                                'trace' => $e->getTraceAsString(),
+                                'request_data' => $request->all()
+                        ]);
+                        return redirect()->back()->with('error', 'Lỗi khi thêm dữ liệu: ' . $e->getMessage());
+                }
         }
 
 

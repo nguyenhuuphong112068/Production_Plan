@@ -86,8 +86,19 @@
                           @endif
                       </td>
                       <td> {{ $data->room_name ." - ". $data->room_code}} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->actual_start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->actual_end)->format('d/m/Y H:i') }} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->actual_start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->actual_end_clearning)->format('d/m/Y H:i') }} </td>
+                      @if ($data->actual_start)
+                          <td> {{ \Carbon\Carbon::parse($data->actual_start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->actual_end)->format('d/m/Y H:i') }} </td>
+                      @else
+                          <td> {{ "Chưa Xác nhận Hoàn Thành" }} </td>
+                      @endif
+
+                      @if ($data->actual_start_clearning)
+                          <td> {{ \Carbon\Carbon::parse($data->actual_start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->actual_end_clearning)->format('d/m/Y H:i') }} </td>
+                      @else
+                          <td> {{ "Chưa Xác nhận Hoàn Thành" }} </td>
+                      @endif
+      
+
                       <td> {{ $data->yields}} {{$stageCode <=4?"Kg":"ĐVL"}}</td>
                       <td> {{ $data->quarantine_room_code}}  </td>
                       <td> {{ $data->note}} </td>
