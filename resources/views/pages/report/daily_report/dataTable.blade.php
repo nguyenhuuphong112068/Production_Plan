@@ -195,10 +195,9 @@
                                                         data-room_code = "{{$roomLT->room_code}}" 
                                                         data-room_name = "{{$roomLT->room_name}}" 
                                                         data-room_id = "{{$roomLT->resourceId}}"     
-
-
-                                                    data-toggle="modal"
-                                                    data-target="#Modal"
+                                                        data-toggle="modal"
+                                                        data-target="#Modal"
+                                                        title = "Tạo mới Báo Cáo Hoạt Động Khác"
                                                     
                                                     >+</button>
                                                 @endif
@@ -304,6 +303,7 @@
                                                                     data-room_id = "{{$roomLT->resourceId}}"
                                                                     data-room_code = "{{$roomLT->room_code}}" 
                                                                     data-room_name = "{{$roomLT->room_name}}" 
+                                                                    title = "Cập Nhật Báo Cáo Hoạt Động Khác"
                                                                     data-toggle="modal"
                                                                     data-target="#updateModal"
                                                                 >
@@ -314,6 +314,7 @@
                                                                     @csrf
                                                                     <input type="hidden" name="id" value="{{ $d->id }}">
                                                                     <button class="btn btn-danger btn-sm btn-deactive" 
+                                                                        title = "Hủy Báo Cáo Hoạt Động Khác"
                                                                         style="width: 20px; height: 20px; padding: 0; line-height: 0;"
                                                                     >
                                                                         <i class="fas fa-trash"></i>
