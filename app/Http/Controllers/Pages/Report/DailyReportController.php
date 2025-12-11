@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class DailyReportController extends Controller
 {
@@ -87,6 +88,7 @@ class DailyReportController extends Controller
                     "sp.actual_start",
                     "sp.actual_end",
                     "sp.yields",
+                    "sp.note",
                     DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit')
                 )->get();
 
@@ -101,7 +103,8 @@ class DailyReportController extends Controller
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
                     "sp.title_clearning",
                     "sp.actual_start_clearning",
-                    "sp.actual_end_clearning"
+                    "sp.actual_end_clearning",
+                    
                 )->get();
 
             // 3) PARTIAL PRODUCTION
@@ -113,6 +116,7 @@ class DailyReportController extends Controller
                 ->select(
                     "sp.$group_By",
                     "sp.title",
+                    "sp.note",
                     DB::raw("CONCAT(sp.id, '-main') AS id"),
 
                     // identical cutting
@@ -144,11 +148,63 @@ class DailyReportController extends Controller
                 ->select(
                     "sp.$group_By",
                     "sp.title_clearning",
+                    
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
                     DB::raw("CASE WHEN sp.actual_start_clearning < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start_clearning END AS actual_start_clearning"),
                     DB::raw("CASE WHEN sp.actual_end_clearning   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end_clearning   END AS actual_end_clearning")
                 )->get();
 
+            // 5) ROOM_STATUS
+            $order_action_full = DB::table("room_status as sp")
+                ->whereNotNull('sp.start')
+                ->whereNotNull('sp.end')
+                ->where ('sp.is_daily_report', 1)
+                ->where ('sp.active', 1)
+                ->whereRaw('(sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
+                ->where('sp.deparment_code', session('user')['production_code'])
+                ->select(
+                    "sp.id",
+                    "sp.room_id as $group_By",
+                    "sp.start as actual_start",
+                    "sp.end as actual_end",
+                    "sp.notification as note",
+                    "sp.in_production as title",
+                    'sp.is_daily_report'
+                )->get();
+
+            // 6) ROOM_STATUS_partial       
+            $order_action_partial = DB::table("room_status as sp")
+                ->whereNotNull('sp.start')
+                ->whereNotNull('sp.end')
+                ->where('sp.is_daily_report', 1)
+                ->where('sp.active', 1)
+                ->where('sp.deparment_code', session('user')['production_code'])
+
+                // Giao nhau
+                ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate])
+
+                // Nhưng loại bỏ FULL
+                ->whereRaw('NOT (sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
+
+                ->select(
+
+                    "sp.id",
+                    "sp.room_id as $group_By",
+
+                    // Cắt thời gian đang vượt ra ngoài khoảng
+                    DB::raw("CASE WHEN sp.start < '$startDate' THEN '$startDate' ELSE sp.start END AS actual_start"),
+                    DB::raw("CASE WHEN sp.end   > '$endDate'   THEN '$endDate'   ELSE sp.end END AS actual_end"),
+
+                    "sp.notification as note",
+                    "sp.in_production as title",
+                    'sp.is_daily_report'
+                )
+                ->get();
+
+
+            
+               
+           
 
             // ------------------------------
             // ACTUAL DETAIL (chuẩn)
@@ -158,6 +214,8 @@ class DailyReportController extends Controller
                 ->concat($cleaning_full)
                 ->concat($production_partial)
                 ->concat($cleaning_partial)
+                ->concat($order_action_full)
+                ->concat($order_action_partial)
                 ->unique('id')
                 ->map(function ($item) use ($group_By) {
                     return (object)[
@@ -168,19 +226,21 @@ class DailyReportController extends Controller
                         'start'         => $item->actual_start ?? $item->actual_start_clearning,
                         'end'           => $item->actual_end ?? $item->actual_end_clearning,
                         'yields'        => $item->yield_overlap ?? $item->yields ?? null,
-                        'unit'          => $item->unit ?? null
+                        'unit'          => $item->unit ?? null,
+                        "note"          => $item->note ?? null,
+                        "is_order_action"          => $item->is_daily_report ?? 0
                     ];
                 })
                 ->sortBy('start')
                 ->values();
+
+               
 
             return [
                 'actual_detail'  => $actual_detail
             ];
     }
     
-
-   
     public function yield_actual($startDate, $endDate, $group_By){
         // ------------------------------
       
@@ -613,6 +673,93 @@ class DailyReportController extends Controller
                     'created_at' => now(),
                 ]);
         return redirect()->back()->with('success', 'Đã thêm thành công!');    
+    }
+
+    public function store (Request $request) {
+            
+
+                $validator = Validator::make($request->all(), [
+                    'in_production' => 'required',
+                    'start' => 'required',
+                    'end' => 'required',
+                ],[
+            
+                    'in_production.required' => 'Hoạt Động Không Được Để Trống', 
+                    'start.required' => 'Nhập Giờ Bắt Đầu',  
+                    'end.required' => 'Nhập Giờ Kết Thúc',
+                ]);
+
+                if ($validator->fails()) {
+                    return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
+                }
+                
+                DB::table('room_status')->insert([
+                        'room_id' => $request->room_id,
+                        'status' => 1,
+                        'start' => $request->start,
+                        'end' => $request->end,
+                        'in_production' => $request->in_production,
+                        'notification' => $request->notification??"NA",
+                        'is_daily_report' => 1,
+                        'deparment_code' => session('user')['production_code'],
+                        'created_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                ]);
+                return redirect()->back()->with('success', 'Đã thêm thành công!');    
+    }
+
+
+    public function update (Request $request) {
+                //dd ($request->all());
+                $validator = Validator::make($request->all(), [
+                    'id' => 'required',
+                    'in_production' => 'required',
+                    'start' => 'required',
+                    'end' => 'required',
+                ],[
+                    'id.required' => 'Chọn Hoạt Động Cần Sửa', 
+                    'in_production.required' => 'Hoạt Động Không Được Để Trống', 
+                    'start.required' => 'Nhập Giờ Bắt Đầu',  
+                    'end.required' => 'Nhập Giờ Kết Thúc',
+                ]);
+
+                if ($validator->fails()) {
+                    return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
+                }
+                
+                DB::table('room_status')->where ('id', $request->id)->update([
+            
+                        'start' => $request->start,
+                        'end' => $request->end,
+                        'in_production' => $request->in_production,
+                        'notification' => $request->notification??"NA",
+                        
+                        'created_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                ]);
+
+                return redirect()->back()->with('success', 'Đã cập nhật thành công!');    
+    }
+
+    public function deActive (Request $request) {
+                //dd ($request->all());
+                $validator = Validator::make($request->all(), [
+                    'id' => 'required',
+                ],[
+                    'id.required' => 'Chọn Hoạt Động Cần Sửa', 
+                ]);
+
+                if ($validator->fails()) {
+                    return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
+                }
+                
+                DB::table('room_status')->where ('id', $request->id)->update([
+                        'active' => 0,
+                        'created_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                ]);
+
+                return redirect()->back()->with('success', 'Đã hủy thành công!');    
     }
 
 

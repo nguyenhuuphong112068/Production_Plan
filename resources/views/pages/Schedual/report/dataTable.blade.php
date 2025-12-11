@@ -68,8 +68,7 @@
                       <td>{{ $loop->iteration}} </td>
                       <td>{{$key}}</td>
                       <td>{{$data}}  </td>
-                     
-                      {{-- <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td> --}}
+
                     </tr>
                   @endforeach
 

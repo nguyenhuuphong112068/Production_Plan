@@ -14,6 +14,8 @@
 @endsection
 
 @section('model')
+  @include('pages.report.daily_report.create')
+   @include('pages.report.daily_report.update')
   @include('pages.report.daily_report.detail')
   @include('pages.report.daily_report.explanation')
 @endsection

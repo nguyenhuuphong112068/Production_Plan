@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Route;
             Route::post('detail','detail')->name('detail');
             Route::post('explain','explain')->name('explain');
             Route::post('getExplainationContent','getExplainationContent')->name('getExplainationContent');
+            Route::post('store','store')->name('store');
+            Route::post('update','update')->name('update');
+            Route::post('deActive','deActive')->name('deActive');
         
       
     });
