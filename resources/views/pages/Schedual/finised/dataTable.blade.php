@@ -164,9 +164,9 @@
                             </td>
                             <td>
                                 <input type="datetime-local" class="time" id = "start" {{ $semi_finished }}
-                                    name="start"value="{{ \Carbon\Carbon::parse($data->start)->format('Y-m-d\TH:i') }}">
+                                    name="start"value="{{ \Carbon\Carbon::parse( $data->actual_start??$data->start )->format('Y-m-d\TH:i') }}">
                                 <input type="datetime-local" class="time" name="end" id = "end" {{ $semi_finished }}
-                                    value = "{{ \Carbon\Carbon::parse($data->end)->format('Y-m-d\TH:i') }}">
+                                    value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
                             </td>
                             <td>
 
