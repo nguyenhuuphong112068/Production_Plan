@@ -1,11 +1,13 @@
 
-
 <div class="content-wrapper">
     <!-- Main content -->
           <div class="card">
               <div class="card-header mt-4"></div>
            
               @php
+
+                $update_daily_report = user_has_permission(session('user')['userId'], 'update_daily_report', 'boolean');
+                
                  $stage_name = [
                       1 => "Cân Nguyên Liệu",
                       3 => "Pha Chế",
@@ -30,6 +32,7 @@
                                         $defaultFrom = $reportedDate
                                             ? Carbon::createFromFormat('!d/m/Y', trim($reportedDate))->format('Y-m-d')
                                             : Carbon::now()->format('Y-m-d');
+                                           
                                     @endphp
                                     <div class="form-group d-flex align-items-center">
                                         <label for="reportedDate" class="mr-2 mb-0">Chọn Ngày:</label>
@@ -186,66 +189,143 @@
 
                                             {{-- CHI TIẾT --}}
                                             <td class="text-left" style="background:#d7eaff; font-size:14px;">
-                                            
+                                                @if ($update_daily_report)
+                                                    <button class="btn btn-success btn-sm btn-plus float-right" 
+                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                        data-room_code = "{{$roomLT->room_code}}" 
+                                                        data-room_name = "{{$roomLT->room_name}}" 
+                                                        data-room_id = "{{$roomLT->resourceId}}"     
+
+
+                                                    data-toggle="modal"
+                                                    data-target="#Modal"
+                                                    
+                                                    >+</button>
+                                                @endif
+
                                                 @php
-                                                // --- Cấu hình ca làm việc ---
-                                                $shiftStart = Carbon::parse($date.' 06:00:00');
-                                                $shiftEnd   = $shiftStart->copy()->addDay();  // 06:00 hôm sau
-                                                $totalShiftSeconds = $shiftStart ->diffInSeconds($shiftEnd); // tổng ca
+                                                    // --- Cấu hình ca ---
+                                                    $shiftStart = Carbon::parse($date . ' 06:00:00');
+                                                    $shiftEnd   = $shiftStart->copy()->addDay();
 
-                                                $totalActiveSeconds = 0;
+                                                    // Lưu các đoạn đã chuẩn hóa
+                                                    $intervals = [];
 
-                                                foreach ($detail as $d) {
-                                                    $start = Carbon::parse($d->start);
-                                                    $end   = Carbon::parse($d->end);
+                                                    foreach ($detail as $d) {
+                                                        $start = Carbon::parse($d->start);
+                                                        $end   = Carbon::parse($d->end);
 
-                                                    // Nếu kết thúc < bắt đầu → qua ngày
-                                                    if ($end < $start) {
-                                                        $end->addDay();
+                                                        if ($end < $start) {
+                                                            $end->addDay();
+                                                        }
+
+                                                        // Giới hạn trong ca
+                                                        $realStart = $start->max($shiftStart);
+                                                        $realEnd   = $end->min($shiftEnd);
+
+                                                        if ($realEnd > $realStart) {
+                                                            $intervals[] = [
+                                                                'start' => $realStart,
+                                                                'end' => $realEnd,
+                                                            ];
+                                                        }
                                                     }
 
-                                                    // Giới hạn trong ca
-                                                    $realStart = $start->max($shiftStart);
-                                                    $realEnd   = $end->min($shiftEnd);
+                                                    // Nếu không có khoảng nào
+                                                    if (count($intervals) === 0) {
+                                                        $totalActiveSeconds = 0;
+                                                    } else {
+                                                        // 1. Sắp xếp theo thời gian bắt đầu
+                                                        usort($intervals, function ($a, $b) {
+                                                            return $a['start']->timestamp <=> $b['start']->timestamp;
+                                                        });
 
-                                                    if ($realEnd > $realStart) {
-                                                        $totalActiveSeconds += $realStart->diffInSeconds($realEnd );
+                                                        // 2. Gộp khoảng
+                                                        $merged = [];
+                                                        $current = $intervals[0];
+
+                                                        foreach ($intervals as $int) {
+                                                            if ($int['start'] <= $current['end']) {
+                                                                // chồng nhau → kéo dài đoạn hiện tại
+                                                                $current['end'] = $int['end']->max($current['end']);
+                                                            } else {
+                                                                // không chồng → add vào list
+                                                                $merged[] = $current;
+                                                                $current = $int;
+                                                            }
+                                                        }
+                                                        $merged[] = $current;
+
+                                                        // 3. Tính tổng thời gian
+                                                        $totalActiveSeconds = 0;
+                                                        foreach ($merged as $m) {
+                                                            $totalActiveSeconds += $m['start']->diffInSeconds($m['end']);
+                                                        }
                                                     }
-                                                }
 
-                                                // --- Thời gian hoạt động ---
-                                                $activityHours   = floor($totalActiveSeconds / 3600);
-                                                $activityMinutes = floor(($totalActiveSeconds % 3600) / 60);
+                                                    // Tổng ca
+                                                    $totalShiftSeconds = $shiftStart->diffInSeconds($shiftEnd);
 
-                                                // --- Thời gian chết = tổng ca - hoạt động ---
-                                                $totalDeadSeconds = $totalShiftSeconds - $totalActiveSeconds;
-                                                $deadHours   = floor($totalDeadSeconds / 3600);
-                                                $deadMinutes = floor(($totalDeadSeconds % 3600) / 60);
+                                                    // Thời gian chết
+                                                    $totalDeadSeconds = $totalShiftSeconds - $totalActiveSeconds;
+
+                                                    // Giờ phút
+                                                    $activityHours   = floor($totalActiveSeconds / 3600);
+                                                    $activityMinutes = floor(($totalActiveSeconds % 3600) / 60);
+
+                                                    $deadHours   = floor($totalDeadSeconds / 3600);
+                                                    $deadMinutes = floor(($totalDeadSeconds % 3600) / 60);
                                                 @endphp
 
-
-
                                                 @if($detail->count())
-
-
-                                                   @foreach ($detail as $d)
-                                                        <div>
-                                                            • {{ $d->title }}
+                                                    @php $i = 1; @endphp
+                                                   @foreach ($detail as  $d)
+                                                        <div style="display: flex; flex-direction: row; gap: 3px;">
+                                                            {{$i++ .". ".  $d->title }}
                                                             ({{ \Carbon\Carbon::parse($d->start)->format('H:i') }} -
                                                             {{ \Carbon\Carbon::parse($d->end)->format('H:i') }})
 
                                                             @if ($d->yields)
-                                                                → <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }}</b>
+                                                                || <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }}</b>
                                                             @endif
-                                                            
+
+                                                            @if ($d->note && $d->note <> "NA" )
+                                                                || <b>{{"Ghi Chú: ". $d->note }} </b>
+                                                            @endif
+
+                                                            @if ($d->is_order_action && $update_daily_report)
+                                                                <button class="btn btn-warning btn-sm btn-edit" 
+                                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                                    data-id = "{{$d->id}}" 
+                                                                    data-title = "{{$d->title}}"
+                                                                    data-start = "{{$d->start}}"
+                                                                    data-end = "{{$d->end}}"
+                                                                    data-note = "{{$d->note}}"
+                                                                    data-room_id = "{{$roomLT->resourceId}}"
+                                                                    data-room_code = "{{$roomLT->room_code}}" 
+                                                                    data-room_name = "{{$roomLT->room_name}}" 
+                                                                    data-toggle="modal"
+                                                                    data-target="#updateModal"
+                                                                >
+                                                                    <i class="fas fa-pen"></i>
+                                                                </button>
+
+                                                                <form class="form-deActive" action="{{ route('pages.report.daily_report.deActive') }}" method="post">
+                                                                    @csrf
+                                                                    <input type="hidden" name="id" value="{{ $d->id }}">
+                                                                    <button class="btn btn-danger btn-sm btn-deactive" 
+                                                                        style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                                    >
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            @endif
                                                         </div>
-
                                                     @endforeach 
-
                                                     <div>   
-                                                        <b>Tổng thời gian các hoạt động:</b> {{ $activityHours }} giờ {{ $activityMinutes }} phút
+                                                        <b>Tổng thời gian xác định:</b> {{ $activityHours }} giờ {{ $activityMinutes }} phút
                                                         <br>
-                                                        <b>Tổng thời gian chết:</b> {{ $deadHours }} giờ {{ $deadMinutes }} phút
+                                                        <b>Tổng thời gian không xác định:</b> {{ $deadHours }} giờ {{ $deadMinutes }} phút
                                                     </div>
 
                                                 @else
@@ -451,6 +531,29 @@
                         }
                     });
         });
+
+        $('.btn-plus').click(function() {
+            const button  = $(this);
+            const modal   = $('#Modal');
+            modal.find('input[name="room_id"]').val(button.data('room_id'));
+            modal.find('input[name="room_name"]').val(button.data('room_code') +" - " + button.data('room_name'));
+
+        });
+
+        $('.btn-edit').click(function() {
+            const button  = $(this);
+            const modal   = $('#updateModal');
+
+            modal.find('input[name="id"]').val(button.data('id'));
+            modal.find('input[name="room_id"]').val(button.data('room_id'));
+            modal.find('input[name="room_name"]').val(button.data('room_code') +" - " + button.data('room_name'));
+            modal.find('input[name="in_production"]').val(button.data('title'));
+            modal.find('input[name="start"]').val(button.data('start'));
+            modal.find('input[name="end"]').val(button.data('end'));
+            modal.find('textarea[name="notification"]').val(button.data('note'));
+
+        });                                  
+                                                                          
         
     });
 </script>
