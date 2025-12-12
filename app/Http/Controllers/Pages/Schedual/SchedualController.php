@@ -632,7 +632,7 @@ class SchedualController extends Controller
 
                         $resources = $this->getResources($production, $startDate, $endDate);
 
-
+                        $reason = DB::table('reason')->where('deparment_code', $production)->pluck('name');
 
                         $title = 'LỊCH SẢN XUẤT';
                         $type = true;
@@ -647,6 +647,7 @@ class SchedualController extends Controller
                                 'stageMap' => $stageMap ?? [],
                                 'resources' => $resources?? [],
                                 'sumBatchByStage' => $sumBatchByStage ?? [],
+                                'reason' => $reason ?? [],
                                 'type' => $type,
                                 'authorization' => $authorization,
                                 'production' => $production,
@@ -1159,7 +1160,6 @@ class SchedualController extends Controller
         }
 
         public function update(Request $request){
-
                
                 $changes = $request->input('changes', []);
 
@@ -1172,6 +1172,16 @@ class SchedualController extends Controller
                         if (!$realId) {
                                 continue; // bỏ qua nếu id không hợp lệ
                         }
+
+                        if ($request->reason['saveReason']){
+                                DB::table('reason')
+                                ->insert([
+                                        'name'                  => $request->reason['reason'],
+                                        'deparment_code'        => session('user')['production_code'],
+                                        'created_by'            => session('user')['fullName'],
+                                        'created_at'            => now(),
+                                ]);
+                        } 
 
                         // Nếu là sự kiện vệ sinh (title chứa "VS-")
                         if (strpos($change['title'], "VS-") !== false) {
@@ -1194,17 +1204,13 @@ class SchedualController extends Controller
                                         'schedualed_by'   => session('user')['fullName'],
                                         'schedualed_at'   => now(),
                                 ]);
-
+                                
                                 $update_row = DB::table('stage_plan')->where('id',$realId)->first();
 
-                                if ($update_row->submit === 1){
-                                        DB::table('stage_plan_history')
+                                if ($update_row->submit == 1){
+                                        $check = DB::table('stage_plan_history')
                                         ->insert([
- 
                                         'stage_plan_id' => $realId,
-                                        //'plan_list_id' => $update_row->plan_list_id,
-                                        //'plan_master_id' => $update_row->plan_master_id,
-                                        //'product_caterogy_id' => $update_row->product_caterogy_id,
                                         'campaign_code' => $update_row->campaign_code,
                                         'code' => $update_row->code,
                                         'order_by' => $update_row->order_by,
@@ -1225,12 +1231,15 @@ class SchedualController extends Controller
                                         'version' =>  DB::table('stage_plan_history')->where('stage_plan_id',$realId)->max('version') + 1 ?? 1,
                                         'note' => $update_row->note,
                                         'deparment_code' => session('user')['production_code'],
-                                        'type_of_change' => $request->reason,
+                                        'type_of_change' => $request->reason['reason'],
                                         'created_date' => now(),
                                         'created_by' => session('user')['fullName'],
+                                        
                                         ]);
                                 }
                         }
+
+
                 }
 
                 } catch (\Exception $e) {
