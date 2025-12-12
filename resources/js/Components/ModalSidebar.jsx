@@ -1069,7 +1069,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       };
   }
 
-
   const handleConfirmClearningValidation = (e) => {
     if (isSaving) return;
     setIsSaving(true);  

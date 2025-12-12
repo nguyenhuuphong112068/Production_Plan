@@ -62,7 +62,7 @@ const ScheduleTest = () => {
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
-  //const [production, setProduction] = useState(null);
+  const [reasons, setReasons] = useState([]);
   //const [department, setDepartment] = useState(null);
   const [currentPassword, setCurrentPassword] = useState(null);
   
@@ -105,8 +105,7 @@ const ScheduleTest = () => {
           data = data.replace(/^<!--.*?-->/, "").trim();
           data = JSON.parse(data);
         }
-        console.log (data.production)
-        console.log (data.department)
+
 
         setAuthorization (['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department )
 
@@ -119,7 +118,8 @@ const ScheduleTest = () => {
         setType(data.type)
         setStageMap(data.stageMap);
         setSumBatchByStage(data.sumBatchByStage);
-        //setProduction(data.production)
+        setReasons(data.reason)
+   
        
         
         if (!authorization){
@@ -745,22 +745,65 @@ const ScheduleTest = () => {
       return;
     }
 
-    // 🟨 Hỏi người dùng nhập lý do thay đổi
+     // 🟨 Tạo datalist từ state "reasons"
+    const htmlOptions = reasons
+      .map(r => `<option value="${r}">`)
+      .join("");
+
+    // 🟨 Swal datalist (select hoặc nhập)
     const { value: reason } = await Swal.fire({
-      title: 'Nhập lý do thay đổi',
-      input: 'textarea',
-      inputLabel: 'Vui lòng ghi rõ lý do chỉnh sửa lịch sản xuất',
-      inputPlaceholder: 'Nhập lý do tại đây...',
-      inputAttributes: {
-        'aria-label': 'Lý do thay đổi'
-      },
+      title: 'Chọn lý do thay đổi',
+      width: '800px',
+      html: `
+        <style>
+          #reasonInput {
+            width: 650px !important;   
+            max-width: 650px !important;
+          }
+        </style>
+
+      
+          <input list="reasonList" id="reasonInput" name="reason"
+                class="swal2-input"
+                placeholder="Chọn hoặc nhập lý do">
+          <datalist id="reasonList">
+            ${htmlOptions}
+          </datalist>
+
+
+          <div class="cfg-row">
+              <label class="mt-2 cfg-label" for="work-sunday">Lưu Lại Lý Do:</label>
+              <label class="switch">
+                <input id="saveReason" type="checkbox">
+                <span class="slider round"></span>
+                <span class="switch-labels">
+                  <span class="off">No</span>
+                  <span class="on">Yes</span>
+                </span>
+              </label>
+          </div>
+      
+      `,
+      focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'Xác nhận lưu',
       cancelButtonText: 'Hủy',
-      inputValidator: (value) => {
-        if (!value || value.trim() === '') {
-          return 'Bạn phải nhập lý do thay đổi!';
+      preConfirm: () => {
+        const formValues = {};
+
+        const reason = document.getElementById('reasonInput').value;
+
+        const saveReason = document.getElementById('saveReason');
+        formValues.saveReason = saveReason.checked;
+        
+
+        if (!reason || reason.trim() === '') {
+          Swal.showValidationMessage('Bạn phải nhập hoặc chọn lý do!');
+          return false;
         }
+        formValues.reason = reason;
+
+        return formValues;
       }
     });
 
@@ -855,7 +898,7 @@ const ScheduleTest = () => {
       return;
     }
 
-    console.log("Selected events:", selectedEvents);
+
 
     // Lấy instance calendar
     const calendar = clickInfo.view.calendar;
@@ -1192,7 +1235,7 @@ const ScheduleTest = () => {
         }
 
         const formValues = {};
-          document.querySelectorAll('.swal2-input').forEach(input => {
+        document.querySelectorAll('.swal2-input').forEach(input => {
             formValues[input.name] = input.value;
         });
 
