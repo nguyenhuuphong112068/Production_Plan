@@ -101,7 +101,7 @@ class DailyReportController extends Controller
                 ->select(
                     "sp.$group_By",
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
-                    "sp.title_clearning",
+                    "sp.title_clearning as title",
                     "sp.actual_start_clearning",
                     "sp.actual_end_clearning",
                     
@@ -147,7 +147,7 @@ class DailyReportController extends Controller
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->select(
                     "sp.$group_By",
-                    "sp.title_clearning",
+                    "sp.title_clearning as title",
                     
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
                     DB::raw("CASE WHEN sp.actual_start_clearning < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start_clearning END AS actual_start_clearning"),
@@ -222,7 +222,7 @@ class DailyReportController extends Controller
                         'resourceId'    => $item->$group_By,
                         'reported_date' => substr($item->actual_start ?? $item->actual_start_clearning, 0, 10),
                         'id'            => $item->id,
-                        'title'         => $item->title ?? $item->title_clearning,
+                        'title'         => $item->title,
                         'start'         => $item->actual_start ?? $item->actual_start_clearning,
                         'end'           => $item->actual_end ?? $item->actual_end_clearning,
                         'yields'        => $item->yield_overlap ?? $item->yields ?? null,
