@@ -101,7 +101,16 @@ class SchedualFinisedController extends Controller
         }
 
         public function store(Request $request) {
-                Log::info ($request->all());
+
+                $yields_batch_qty = null;
+                if ($request->stage_code == 4){
+                        $stage_plan = DB::table('stage_plan')->where('id', $request->id)->first();
+                        $batch_qty = DB::table('finished_product_category')->where('id', $stage_plan->product_caterogy_id)->value('batch_qty');
+                        $yields_batch_qty = round(($request->yields/$stage_plan->Theoretical_yields) * $batch_qty,2);
+                }else
+
+                Log::info ($yields_batch_qty);
+
 
                 if ($request->actionType == 'finised') {
                         DB::table('stage_plan')
@@ -117,7 +126,7 @@ class SchedualFinisedController extends Controller
                         'actual_end'             => $request->end,
                         'actual_start_clearning' => $request->start_clearning,
                         'actual_end_clearning'   => $request->end_clearning,
-
+                        'yields_batch_qty'        => $yields_batch_qty??null,
                         'yields'   => $request->yields,
                         'number_of_boxes'   => $request->number_of_boxes??1,
                         'note'   => $request->note??"NA",
@@ -138,6 +147,7 @@ class SchedualFinisedController extends Controller
                         //'actual_end_clearning'   => $request->end_clearning,
 
                         'yields'   => $request->yields,
+                        'yields_batch_qty'        => $yields_batch_qty??null,
                         'number_of_boxes'   => $request->number_of_boxes??1,
                         'note'   => $request->note??"NA",
                         'finished'        => 1,

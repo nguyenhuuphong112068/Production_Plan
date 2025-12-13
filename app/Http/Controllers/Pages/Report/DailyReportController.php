@@ -89,6 +89,7 @@ class DailyReportController extends Controller
                     "sp.actual_start",
                     "sp.actual_end",
                     "sp.yields",
+                    "sp.yields_batch_qty",
                     "sp.note",
                     DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit')
                 )->get();
@@ -106,9 +107,40 @@ class DailyReportController extends Controller
                     "sp.actual_start_clearning",
                     "sp.actual_end_clearning",
                     
-                )->get();
+            )->get();
 
             // 3) PARTIAL PRODUCTION
+            // $production_partial = DB::table("stage_plan as sp")
+            //     ->whereNotNull('sp.actual_start')
+            //     ->whereNotNull('sp.actual_end')
+            //     ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
+            //     ->where('sp.deparment_code', session('user')['production_code'])
+            //     ->select(
+            //         "sp.$group_By",
+            //         "sp.title",
+            //         "sp.note",
+            //         DB::raw("CONCAT(sp.id, '-main') AS id"),
+
+            //         // identical cutting
+            //         DB::raw("CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END AS actual_start"),
+            //         DB::raw("CASE WHEN sp.actual_end   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end   END AS actual_end"),
+
+            //         // identical overlap
+            //         DB::raw("
+            //             (sp.yields *
+            //                 TIME_TO_SEC(
+            //                     TIMEDIFF(
+            //                         (CASE WHEN sp.actual_end > '$endDateStr' THEN '$endDateStr' ELSE sp.actual_end END),
+            //                         (CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END)
+            //                     )
+            //                 ) /
+            //                 TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+            //             ) AS yield_overlap
+            //         "),
+            //         DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit')
+            // )->get();
+
+
             $production_partial = DB::table("stage_plan as sp")
                 ->whereNotNull('sp.actual_start')
                 ->whereNotNull('sp.actual_end')
@@ -120,27 +152,50 @@ class DailyReportController extends Controller
                     "sp.note",
                     DB::raw("CONCAT(sp.id, '-main') AS id"),
 
-                    // identical cutting
+                    // 🔹 clamp thời gian
                     DB::raw("CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END AS actual_start"),
                     DB::raw("CASE WHEN sp.actual_end   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end   END AS actual_end"),
 
-                    // identical overlap
+                    // 🔹 yield overlap
                     DB::raw("
-                        (sp.yields *
+                        ROUND(
+                            sp.yields *
                             TIME_TO_SEC(
                                 TIMEDIFF(
-                                    (CASE WHEN sp.actual_end > '$endDateStr' THEN '$endDateStr' ELSE sp.actual_end END),
-                                    (CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END)
+                                    LEAST(sp.actual_end, '$endDateStr'),
+                                    GREATEST(sp.actual_start, '$startDateStr')
                                 )
                             ) /
-                            TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
-                        ) AS yield_overlap
+                            NULLIF(TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start)), 0),
+                        2) AS yield_overlap
                     "),
 
-                    DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit')
-                )->get();
+                    // 🔹 yields_batch_qty overlap (CHỈ stage 4)
+                    DB::raw("
+                        CASE 
+                            WHEN sp.stage_code = 4 THEN
+                                ROUND(
+                                    sp.yields_batch_qty *
+                                    TIME_TO_SEC(
+                                        TIMEDIFF(
+                                            LEAST(sp.actual_end, '$endDateStr'),
+                                            GREATEST(sp.actual_start, '$startDateStr')
+                                        )
+                                    ) /
+                                    NULLIF(TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start)), 0),
+                                2)
+                            ELSE 0
+                        END AS yields_batch_qty_overlap
+                    "),
 
-            // 4) PARTIAL CLEANING
+                    // 🔹 đơn vị
+                    DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit')
+                )
+            ->get();
+
+            
+            
+                // 4) PARTIAL CLEANING
             $cleaning_partial = DB::table("stage_plan as sp")
                 ->whereNotNull('sp.actual_start_clearning')
                 ->whereNotNull('sp.actual_end_clearning')
@@ -233,6 +288,7 @@ class DailyReportController extends Controller
                         'start'         => $item->actual_start ?? $item->actual_start_clearning,
                         'end'           => $item->actual_end ?? $item->actual_end_clearning,
                         'yields'        => $item->yield_overlap ?? $item->yields ?? null,
+                        'yields_batch_qty'        => $item->yields_batch_qty_overlap ?? $item->yields_batch_qty ?? null,
                         'unit'          => $item->unit ?? null,
                         "note"          => $item->note ?? null,
                         "is_order_action"          => $item->is_daily_report ?? 0

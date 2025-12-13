@@ -285,7 +285,7 @@
                                                             {{ \Carbon\Carbon::parse($d->end)->format('H:i') }})
 
                                                             @if ($d->yields)
-                                                                || <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }}</b>
+                                                                || <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }} {{ $d->yields_batch_qty? "# $d->yields_batch_qty  ĐVL" : "" }}</b>
                                                             @endif
 
                                                             @if ($d->note && $d->note <> "NA" )
