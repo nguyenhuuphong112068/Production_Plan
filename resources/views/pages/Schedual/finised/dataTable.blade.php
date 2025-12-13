@@ -356,12 +356,15 @@
 
         $(document).on('click', '.btn-finised, .btn-semi-finised', function(e) {
             e.preventDefault();
-
+            const stage_code = $('#stage_code').val();
             const btn = this; // nút vừa click
             const row = btn.closest('tr');
             const id = row.dataset.id;
             const now = new Date();
             let actionType = "";
+
+           
+       
 
             if (btn.classList.contains('btn-finised')) {
                 actionType = "finised"; 
@@ -435,7 +438,8 @@
                 data: {
                     ...data,
                     _token: "{{ csrf_token() }}",
-                    actionType: actionType
+                    actionType: actionType,
+                    stage_code: stage_code
                 },
                 success: function(res) {
                     Swal.fire({
