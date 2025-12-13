@@ -45,7 +45,7 @@ class SchedualFinisedController extends Controller
                     //->whereBetween('sp.start', [$fromDate, $toDate])
                     ->where('sp.stage_code', $stage_code)
                     ->where('sp.deparment_code', $production)
-                    ->whereNotNull('sp.start')
+                    //->whereNotNull('sp.start')
                     ->whereNull('sp.actual_start_clearning')
                     ->orderBy('sp.start')
                 ->get();

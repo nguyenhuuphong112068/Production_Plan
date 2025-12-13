@@ -98,8 +98,14 @@
                         <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
                         <th>Nguồn</th>
-                        <th>Ngày có đủ NL/BB</th>
-                        {{-- <th>Bao Bì</th> --}}
+                        <th>
+                            <div> {{ "(1) Này có đủ NL" }}  </div>
+                            <div> {{ "(2) Này có đủ BB" }}  </div>
+                            <div> {{ "(3) Ngày được phép cân" }}  </div>
+                            <div> {{ "(1) Này có đủ NL" }}  </div>
+                            <div> {{ "(1) Này có đủ NL" }}  </div>
+                        </th>
+                       
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th style="width:1%">Cập Nhật</th>
