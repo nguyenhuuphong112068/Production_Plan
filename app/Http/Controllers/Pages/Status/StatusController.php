@@ -31,11 +31,13 @@ class StatusController extends Controller
                         ->orderBy('id','desc')->first();
 
                 $latest = DB::table('room_status as rs2')
+                ->where ('rs2.is_daily_report',0)
                 ->join('room as r2', 'rs2.room_id', '=', 'r2.id')
                 ->select('r2.production_group', DB::raw('MAX(rs2.created_at) as latest_created_at'))
                 ->groupBy('r2.production_group');
 
                 $lasestupdate = DB::table('room_status as rs')
+                ->where ('rs.is_daily_report',0)
                 ->join('room as r', 'rs.room_id', '=', 'r.id')
                 ->joinSub($latest, 'latest', function ($join) {
                         $join->on('r.production_group', '=', 'latest.production_group')
@@ -65,6 +67,7 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status as rs1')
+                                ->where ('rs1.is_daily_report',0)
                                 ->where('rs1.active', 1)
                                 ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch', 'rs1.start as start_realtime', 'rs1.end as end_realtime',  'rs1.status', 'rs1.in_production', 'rs1.notification')
                                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
@@ -137,12 +140,14 @@ class StatusController extends Controller
                
                 $production =  session('user')['production_code']??"PXV1";
                 $now = Carbon::now();
-                                $latest = DB::table('room_status as rs2')
+
+                $latest = DB::table('room_status as rs2')
                 ->join('room as r2', 'rs2.room_id', '=', 'r2.id')
                 ->select('r2.production_group', DB::raw('MAX(rs2.created_at) as latest_created_at'))
                 ->groupBy('r2.production_group');
 
                 $lasestupdate = DB::table('room_status as rs')
+                ->where ('rs.is_daily_report',0)
                 ->join('room as r', 'rs.room_id', '=', 'r.id')
                 ->joinSub($latest, 'latest', function ($join) {
                         $join->on('r.production_group', '=', 'latest.production_group')
@@ -176,6 +181,7 @@ class StatusController extends Controller
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status as rs1')
+                                ->where ('rs1.is_daily_report',0)
                                 ->where('rs1.active', 1)
                                 ->select('rs1.room_id', 'rs1.sheet', 'rs1.step_batch', 'rs1.start as start_realtime', 'rs1.end as end_realtime',  'rs1.status', 'rs1.in_production', 'rs1.notification')
                                 ->whereRaw('rs1.id = (SELECT MAX(rs2.id) FROM room_status rs2 WHERE rs2.room_id = rs1.room_id)'),
@@ -299,6 +305,7 @@ class StatusController extends Controller
                         'end' => $request->end,
                         'in_production' => $request->in_production,
                         'notification' => $request->notification??"NA",
+                        'deparment_code' => session('user')['production_code'],
                         'created_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
