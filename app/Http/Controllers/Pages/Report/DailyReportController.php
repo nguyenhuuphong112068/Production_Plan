@@ -40,6 +40,7 @@ class DailyReportController extends Controller
             })
             ->leftJoin('room','t2.resourceId','room.id')
             ->whereNotNull('t.yields')
+            ->where('t.deparment_code', session('user')['production_code'])
             ->where('t2.start','>', $reportedDate)
             ->where('t.active', 1)
             ->where('t.finished', 1)
