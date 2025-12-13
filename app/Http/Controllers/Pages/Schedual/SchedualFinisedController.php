@@ -23,7 +23,7 @@ class SchedualFinisedController extends Controller
       
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
                 $datas = DB::table('stage_plan as sp')
-                    ->select(
+                ->select(
                         'sp.*',
                         'room.name as room_name',
                         'room.code as room_code',
@@ -36,31 +36,55 @@ class SchedualFinisedController extends Controller
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
                         'product_name.name as product_name'
-                    
-                    )
-                    ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
-                    ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
-                    ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-                    ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
-                    //->whereBetween('sp.start', [$fromDate, $toDate])
-                    ->where('sp.stage_code', $stage_code)
-                    ->where('sp.deparment_code', $production)
-                    //->whereNotNull('sp.start')
-                    ->whereNull('sp.actual_start_clearning')
-                    ->orderBy('sp.start')
+                )
+                ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
+                ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                ->where('sp.stage_code', $stage_code)
+                ->where('sp.deparment_code', $production)
+
+                // 🔹 finished logic
+                ->where(function ($q) {
+                        $q->where('sp.finished', 0)
+                        ->orWhere(function ($q2) {
+                        $q2->where('sp.finished', 1)
+                                ->whereNull('sp.actual_start_clearning');
+                        });
+                })
+
+                // 🔹 loại trừ bản ghi lỗi
+                ->whereNot(function ($q) {
+                        $q->where('sp.finished', 1)
+                        ->whereNull('sp.actual_start')
+                        ->whereNull('sp.start');
+                })
+
+                ->orderBy('sp.start')
                 ->get();
+
 
                   
         
                 $stages = DB::table('stage_plan')
-                    ->select('stage_plan.stage_code', 'room.stage')
-                    ->where('stage_plan.deparment_code', $production)
-        
-                    ->whereNotNull('stage_plan.start')
-                    ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
-                    ->distinct()
-                    ->orderby ('stage_code')
+                ->select(
+                        'stage_plan.stage_code',
+                        DB::raw("
+                        CASE 
+                                WHEN stage_plan.stage_code = 2 THEN 'Cân Nguyên Liệu Khác'
+                                ELSE room.stage
+                        END AS stage
+                        ")
+                )
+                ->leftJoin('room', 'stage_plan.stage_code', '=', 'room.stage_code')
+                ->where('stage_plan.deparment_code', $production)
+                ->distinct()
+                ->orderBy('stage_plan.stage_code')
                 ->get();
+
+            
+
+                //dd ($stages);
 
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                 
