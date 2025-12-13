@@ -68,6 +68,7 @@ class StatusHistoryController extends Controller{
             ->get();
 
         $actual = DB::table('room_status')
+            ->where ('room_status.is_daily_report',0)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start', $startDate)
                 ->orWhereDate('end', $startDate);
@@ -250,6 +251,7 @@ class StatusHistoryController extends Controller{
             ->get();
 
         $actual = DB::table('room_status')
+            ->where ('room_status.is_daily_report',0)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start', $startDate)
                 ->orWhereDate('end', $startDate);
