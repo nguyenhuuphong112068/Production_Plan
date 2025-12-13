@@ -163,8 +163,8 @@ class DailyReportController extends Controller
                 ->whereRaw('(sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->select(
-                    //"sp.id",
-                    DB::raw("CONCAT(sp.id, '-action') AS id"),
+                    "sp.id",
+                    //DB::raw("CONCAT(sp.id, '-action') AS id"),
                     "sp.room_id as $group_By",
                     "sp.start as actual_start",
                     "sp.end as actual_end",
@@ -191,8 +191,8 @@ class DailyReportController extends Controller
 
                 ->select(
 
-                    //"sp.id",
-                    DB::raw("CONCAT(sp.id, '-action') AS id"),
+                    "sp.id",
+                    //DB::raw("CONCAT(sp.id, '-action') AS id"),
                     "sp.room_id as $group_By",
 
                     // Cắt thời gian đang vượt ra ngoài khoảng
