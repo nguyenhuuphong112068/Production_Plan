@@ -178,8 +178,8 @@
 
                                                 // Chi tiết đúng chuẩn
                                                 $detail = $detail = collect($yield_actual_detial['actual_detail'] ?? [])
-                                                            ->where('resourceId', $resourceId)
-                                                            ->where('reported_date', $date);
+                                                            ->where('resourceId', $resourceId);
+                                                           // ->where('reported_date', $date);
                                             @endphp
 
                                             {{-- LT --}}

@@ -163,7 +163,8 @@ class DailyReportController extends Controller
                 ->whereRaw('(sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->select(
-                    "sp.id",
+                    //"sp.id",
+                    DB::raw("CONCAT(sp.id, '-action') AS id"),
                     "sp.room_id as $group_By",
                     "sp.start as actual_start",
                     "sp.end as actual_end",
@@ -172,6 +173,8 @@ class DailyReportController extends Controller
                     'sp.is_daily_report'
                 )->get();
 
+                //dd ($order_action_full);
+                    
             // 6) ROOM_STATUS_partial       
             $order_action_partial = DB::table("room_status as sp")
                 ->whereNotNull('sp.start')
@@ -188,7 +191,8 @@ class DailyReportController extends Controller
 
                 ->select(
 
-                    "sp.id",
+                    //"sp.id",
+                    DB::raw("CONCAT(sp.id, '-action') AS id"),
                     "sp.room_id as $group_By",
 
                     // Cắt thời gian đang vượt ra ngoài khoảng
@@ -200,7 +204,9 @@ class DailyReportController extends Controller
                     'sp.is_daily_report'
                 )
                 ->get();
+                
 
+                //dd ($startDate,$endDate );
 
             
                
@@ -234,7 +240,7 @@ class DailyReportController extends Controller
                 ->sortBy('start')
                 ->values();
 
-               
+                 
 
             return [
                 'actual_detail'  => $actual_detail
