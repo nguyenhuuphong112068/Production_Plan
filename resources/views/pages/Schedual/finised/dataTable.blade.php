@@ -163,10 +163,18 @@
                                 <div>KT: </div>
                             </td>
                             <td>
-                                <input type="datetime-local" class="time" id = "start" {{ $semi_finished }}
-                                    name="start"value="{{ \Carbon\Carbon::parse( $data->actual_start??$data->start )->format('Y-m-d\TH:i') }}">
-                                <input type="datetime-local" class="time" name="end" id = "end" {{ $semi_finished }}
-                                    value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
+                                @if ($data->start)
+                                    <input type="datetime-local" class="time" id = "start" {{ $semi_finished }}
+                                        name="start"value="{{ \Carbon\Carbon::parse( $data->actual_start??$data->start )->format('Y-m-d\TH:i') }}">
+                                    <input type="datetime-local" class="time" name="end" id = "end" {{ $semi_finished }}
+                                        value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
+                                @else
+                                 <input type="datetime-local" class="time" id = "start" {{ $semi_finished }}
+                                        name="start">
+                                    <input type="datetime-local" class="time" id = "end" {{ $semi_finished }}
+                                         name="end">
+                                @endif
+                                
                             </td>
                             <td>
 
@@ -231,10 +239,18 @@
                                 <div>KT: </div>
                             </td>
                             <td>
-                                <input type="datetime-local" class="time" id = "start_clearning"
-                                    name="start_clearning"value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
-                                <input type="datetime-local" class="time" name="end_clearning" id = "end_clearning"
-                                    value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
+                                @if ($data->start_clearning)
+                                    <input type="datetime-local" class="time" id = "start_clearning"
+                                        name="start_clearning"value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
+                                    <input type="datetime-local" class="time" name="end_clearning" id = "end_clearning"
+                                        value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
+                                @else
+                                    <input type="datetime-local" class="time" id = "start_clearning"
+                                        name="start_clearning">
+                                    <input type="datetime-local" class="time"  id = "end_clearning"
+                                        name="end_clearning">
+                                @endif
+
                             </td>
 
 
