@@ -158,7 +158,7 @@
                             @if ($data->room_name)
                                 
                                 <td> {{ $data->room_name . ' - ' . $data->room_code }} 
-                                    <input type="hidden"  name="resourceId" value = "{{$data->resourceId}}">
+                                    <input type="hidden" name="resourceId" value = "{{$data->resourceId}}">
                                 </td>
                             @else
                                 <td> 
@@ -382,11 +382,27 @@
             const now = new Date();
             let actionType = "";
 
+
            
        
 
             if (btn.classList.contains('btn-finised')) {
                 actionType = "finised"; 
+
+                const resourceInput = row.querySelector('[name="resourceId"]');
+                const resourceId = resourceInput ? resourceInput.value : null;
+                
+                if (!resourceId || resourceId == "") {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Phòng Sản Xuất không hợp lệ",
+                        text: "Chọn Phòng Sản Xuất!",
+                        timer: 2000
+                    });
+                    return;
+                }
+
+
 
                 const inputs = [
                     ...row.querySelectorAll('#start'),
@@ -398,8 +414,8 @@
                 for (let input of inputs) {
                     if (input && input.value) {
                         let valTime = new Date(input.value);
-
-                        if (valTime > now) {
+                        
+                        if (valTime > now || input.value == "") {
                             Swal.fire({
                                 icon: "warning",
                                 title: "Thời gian không hợp lệ",
@@ -416,16 +432,30 @@
 
                 actionType = "semi-finised";  
 
+                const resourceInput = row.querySelector('[name="resourceId"]');
+                const resourceId = resourceInput ? resourceInput.value : null;
+               
+                if (!resourceId || resourceId == "" ) {
+                    Swal.fire({
+                       icon: "warning",
+                        title: "Phòng Sản Xuất không hợp lệ",
+                        text: "Chọn Phòng Sản Xuất!",
+                        timer: 2000
+                    });
+                    return;
+                }
+
                 const start = row.querySelector('#start');
                 const end = row.querySelector('#end');
 
                 const inputs = [start, end];
-
+                
                 for (let input of inputs) {
-                    if (input && input.value) {
+                   
+                    if (input && input.value == "") {
                         let valTime = new Date(input.value);
 
-                        if (valTime > now) {
+                        if (valTime > now || input.value == "") {
                             Swal.fire({
                                 icon: "warning",
                                 title: "Thời gian không hợp lệ",
@@ -485,5 +515,6 @@
                 }
             });
         });
+
     });
 </script>
