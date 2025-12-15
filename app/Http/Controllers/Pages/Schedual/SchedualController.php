@@ -148,6 +148,7 @@ class SchedualController extends Controller
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                         ->where('sp.active', 1)
+                        ->whereNotNull('sp.resourceId')
                         ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
                         ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', $production)
@@ -485,7 +486,7 @@ class SchedualController extends Controller
                         'sp.order_by',
                         'sp.clearning_validation',
 
-
+                        'plan_master.id as plan_master_id',       
                         'plan_master.batch',
                         'plan_master.expected_date',
                         'plan_master.responsed_date',
@@ -1950,34 +1951,57 @@ class SchedualController extends Controller
                 ]);
 
         }
-        //Request
+        
         public function Sorted(Request $request){
-
                 
+                Log::info ($request->all());
+
+                if ($request->sortType === 'response') {
+                        
+                        if (
+                                $request->filled('plan_master_ids') &&
+                                is_array($request->plan_master_ids) &&
+                                count($request->plan_master_ids) > 0 &&
+                                $request->filled('response_date')
+                        ) {
+                                DB::table('plan_master')
+                                ->whereIn('id', $request->plan_master_ids)
+                                ->update([
+                                        'responsed_date' => $request->response_date
+                                ]);
+                        }
+                        
+                        $sortType = 'responsed_date';
+
+                } else {
+                        $sortType = 'expected_date';
+                }
+
+
                 $stageCode =  $request->stage_code??3;
              
                 // Danh sách cấu hình sắp xếp
                 $stages = [
                         ['codes' => [1, 2, 3], 'orderBy' => [
-                        ['expected_date', 'asc'],
+                        [$sortType, 'asc'],
                         ['level', 'asc'],
                         [DB::raw('batch + 0'), 'asc']
                         ]],
                         ['codes' => [4], 'orderBy' => [
                         ['intermediate_category.quarantine_blending', 'asc'],
-                        ['expected_date', 'asc'],
+                        [$sortType, 'asc'],
                         ['level', 'asc'],
                         [DB::raw('batch + 0'), 'asc']
                         ]],
                         ['codes' => [5], 'orderBy' => [
                         ['intermediate_category.quarantine_forming', 'asc'],
-                        ['expected_date', 'asc'],
+                        [$sortType, 'asc'],
                         ['level', 'asc'],
                         [DB::raw('batch + 0'), 'asc']
                         ]],
                         ['codes' => [6], 'orderBy' => [
                         ['intermediate_category.quarantine_coating', 'asc'],
-                        ['expected_date', 'asc'],
+                        [$sortType, 'asc'],
                         ['level', 'asc'],
                         [DB::raw('batch + 0'), 'asc']
                         ]],

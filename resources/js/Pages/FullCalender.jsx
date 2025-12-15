@@ -129,7 +129,7 @@ const ScheduleTest = () => {
 
         }
 
-        console.log (data.plan);
+  
         console.log ("ok");
 
         switch (data.production) {
