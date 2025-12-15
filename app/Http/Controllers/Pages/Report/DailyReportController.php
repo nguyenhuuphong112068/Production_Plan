@@ -110,37 +110,7 @@ class DailyReportController extends Controller
             )->get();
 
             // 3) PARTIAL PRODUCTION
-            // $production_partial = DB::table("stage_plan as sp")
-            //     ->whereNotNull('sp.actual_start')
-            //     ->whereNotNull('sp.actual_end')
-            //     ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
-            //     ->where('sp.deparment_code', session('user')['production_code'])
-            //     ->select(
-            //         "sp.$group_By",
-            //         "sp.title",
-            //         "sp.note",
-            //         DB::raw("CONCAT(sp.id, '-main') AS id"),
-
-            //         // identical cutting
-            //         DB::raw("CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END AS actual_start"),
-            //         DB::raw("CASE WHEN sp.actual_end   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end   END AS actual_end"),
-
-            //         // identical overlap
-            //         DB::raw("
-            //             (sp.yields *
-            //                 TIME_TO_SEC(
-            //                     TIMEDIFF(
-            //                         (CASE WHEN sp.actual_end > '$endDateStr' THEN '$endDateStr' ELSE sp.actual_end END),
-            //                         (CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END)
-            //                     )
-            //                 ) /
-            //                 TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
-            //             ) AS yield_overlap
-            //         "),
-            //         DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit')
-            // )->get();
-
-
+ 
             $production_partial = DB::table("stage_plan as sp")
                 ->whereNotNull('sp.actual_start')
                 ->whereNotNull('sp.actual_end')
@@ -740,7 +710,6 @@ class DailyReportController extends Controller
 
     public function store (Request $request) {
             
-
                 $validator = Validator::make($request->all(), [
                     'in_production' => 'required',
                     'start' => 'required',

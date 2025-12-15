@@ -238,6 +238,7 @@
                         </div>
                     </div>
 
+                    {{-- Ngày ràng buột --}}
                     <div class="row">
                         <div class="col-md-6">
                         <label>Ngày có đủ nguyên liệu Pha Chế</label>
@@ -273,13 +274,66 @@
                             </div>
                         </div> --}}
                     </div>
+
+                    {{--  Ngày được phép cân - hết hạn nguyên liệu --}}
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                        <label>Ngày được phép cân (Mặc định theo ngày có đủ NL)</label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "allow_weight_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('allow_weight_before_date', date('Y-m-d')) }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label> Ngày hết hạn nguyên liệu (Nếu có) </label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                            </div>
+                        </div>
+                    </div>      
+                    
+                    {{-- Cân Trước ngày --}}
+                    <div class="row mt-2">
+                        <div class="col-md-4">
+                            <label>Pha chế trước ngày (Nếu có)</label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('after_weigth_date', date('Y-m-d')) }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label>Trộn hoàn tất trước ngày (Nếu có)</label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label>Bao Phim trước ngày (nếu có)</label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                            </div>
+                        </div>
+                    </div>  
+
+
                     {{-- Ghi chú --}}
-                    <div class="row mt-3">
+                    <div class="row mt-2">
                         <div class="col-md-12">
-                            <label>Ghi Chú</label>
+                            <label>Ghi Chú (nếu có)</label>
                             <textarea class="form-control" name="note" rows="2"></textarea>
                         </div>
                     </div>
+
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>

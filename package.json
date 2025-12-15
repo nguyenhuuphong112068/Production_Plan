@@ -11,6 +11,7 @@
         "@vitejs/plugin-react": "^4.6.0",
         "autoprefixer": "^10.4.21",
         "axios": "^1.8.2",
+        "baseline-browser-mapping": "^2.9.7",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^1.2.0",
         "postcss": "^8.5.6",

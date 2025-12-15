@@ -80,7 +80,8 @@ const ScheduleTest = () => {
       );
   }
 
-  /// Get dữ liệu ban đầu
+  // Get dữ liệu ban đầu
+
   useEffect(() => {
     
     Swal.fire({
@@ -97,7 +98,7 @@ const ScheduleTest = () => {
       endDate: toLocalISOString(activeEnd),
       viewtype: viewName,
     })
-      .then(res => {
+    .then(res => {
 
         let data = res.data;
 
@@ -122,14 +123,15 @@ const ScheduleTest = () => {
    
        
         
-        if (!authorization){
+        //if (!authorization){
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
          
-        }
+        //}
 
-        
+        console.log ("ok");
+
         switch (data.production) {
           case "PXV1":
             setHeightResource('1px');

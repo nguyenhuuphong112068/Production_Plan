@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
         ->name('pages.Schedual.')
         ->middleware(CheckLogin::class)
         ->group(function(){
+                
                 Route::get('','index')->name('index'); 
                 Route::post('view', 'view')->name('view');
                 Route::put('finished','finished')->name('finished'); 

@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
-
 class ProductionPlanController extends Controller
 {
         public function index(){
@@ -823,7 +822,8 @@ class ProductionPlanController extends Controller
                                         'keep_dry'            => $tank->keep_dry??0,
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
-                                        'Theoretical_yields' => $stageItem['stage_code'] <= 6 ? $plan->batch_size:$plan->batch_qty,
+                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan->batch_size:$plan->batch_qty,
+                                        
                                         ];
 
                                 if ($plan->percent_parkaging  < 1 && $stageItem['stage_code'] == 7){
@@ -843,6 +843,7 @@ class ProductionPlanController extends Controller
                                                         'deparment_code'      => session('user')['production_code'],
                                                         'created_date'        => now(),
                                                         'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan_packaging->batch_size:$plan_packaging->batch_qty,
+                                                       
                                                 ];
                                         }
 

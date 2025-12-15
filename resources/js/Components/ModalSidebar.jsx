@@ -790,10 +790,18 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         return rowData.title ?? "NA";
       }
 
-      if (field === "expected_date") {
+      if (field === "expected_date" ) {
           if (!rowData.expected_date) return "NA";
+
           const date = new Date(rowData.expected_date);
           if (isNaN(date)) return rowData.expected_date; // giá trị không hợp lệ thì giữ nguyên
+          return date.toLocaleDateString("vi-VN"); // format mặc định: dd/MM/yyyy
+      }
+      if (field === "responsed_date" ) {
+          if (!rowData.responsed_date) return "NA";
+
+          const date = new Date(rowData.responsed_date);
+          if (isNaN(date)) return rowData.responsed_date; // giá trị không hợp lệ thì giữ nguyên
           return date.toLocaleDateString("vi-VN"); // format mặc định: dd/MM/yyyy
       }
 
@@ -1113,7 +1121,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false,  filterField: "name" , style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
       { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" , style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
       { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle }},
-      { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date", style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
+      { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date", style: { width: '5%', maxWidth: '7.5%', ...longTextStyle }},
+      { field: "responsed_date", header: "Ngày đáp ứng", body: naBody("responsed_date") ,  filter: false, filterField: "responsed_date", style: { width: '5%', maxWidth: '7.5%'}},
       { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate, style: { width: '5%', maxWidth: '5%', ...longTextStyle } },
       { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
       { field: "weight_dates", header: "Cân NL", sortable: true, body: weightPBodyTemplate },
