@@ -23,7 +23,7 @@ class SchedualController extends Controller
               //$this->scheduleAll (null);
               //$this->createAutoCampain();
               //$this->view (null);
-              //$this->Sorted (null);
+             // $this->Sorted (null);
         }
 
         public function index (){
@@ -727,71 +727,71 @@ class SchedualController extends Controller
         }
 
         private function check_offdate(Carbon $current_start, $offdate){
-        if (!$offdate || count($offdate) === 0) {
+                if (!$offdate || count($offdate) === 0) {
+                        return $current_start;
+                }
+
+                // 1) chuẩn hóa, loại trùng, và sắp xếp ngày off asc
+                $dates = collect($offdate)
+                        ->filter()                     // loại null/empty
+                        ->map(function ($d) {
+                        return Carbon::parse($d)->startOfDay();
+                        })
+                        ->unique()
+                        ->sort()
+                        ->values();
+
+                if ($dates->isEmpty()) {
+                        return $current_start;
+                }
+
+                // 2) tạo mảng khoảng [start, end) cho mỗi ngày off
+                $intervals = [];
+                foreach ($dates as $date) {
+                        $start = $date->copy();                    // 00:00 ngày off
+                        $end = $date->copy()->addDay()->setTime(6, 0, 0); // 06:00 ngày tiếp theo
+                        $intervals[] = ['start' => $start, 'end' => $end];
+                }
+
+                // 3) hợp nhất các khoảng chồng lấn/tiếp xúc để đơn giản hoá (optional nhưng an toàn)
+                $merged = [];
+                foreach ($intervals as $int) {
+                        if (empty($merged)) {
+                        $merged[] = $int;
+                        continue;
+                        }
+
+                        $last = &$merged[count($merged) - 1];
+
+                        // Nếu khoảng mới bắt đầu trước hoặc đúng lúc last end (chồng/tiếp xúc) -> nối
+                        if ($int['start']->lte($last['end'])) {
+                        // mở rộng end nếu cần
+                        if ($int['end']->gt($last['end'])) {
+                                $last['end'] = $int['end']->copy();
+                        }
+                        } else {
+                        // không chồng -> thêm mới
+                        $merged[] = $int;
+                        }
+                }
+
+                // 4) lặp cho đến khi current_start không rơi vào bất kỳ khoảng off nào
+                $changed = true;
+                while ($changed) {
+                        $changed = false;
+                        foreach ($merged as $int) {
+                        // kiểm tra thuộc khoảng [start, end) — dùng < end để tránh boundary ambiguity
+                        if ($current_start->gte($int['start']) && $current_start->lt($int['end'])) {
+                                // nhảy đến end của khoảng đó
+                                $current_start = $int['end']->copy();
+                                $changed = true;
+                                // cần break để lặp lại kiểm tra từ đầu (vì end có thể vào khoảng sau)
+                                break;
+                        }
+                        }
+                }
+
                 return $current_start;
-        }
-
-        // 1) chuẩn hóa, loại trùng, và sắp xếp ngày off asc
-        $dates = collect($offdate)
-                ->filter()                     // loại null/empty
-                ->map(function ($d) {
-                return Carbon::parse($d)->startOfDay();
-                })
-                ->unique()
-                ->sort()
-                ->values();
-
-        if ($dates->isEmpty()) {
-                return $current_start;
-        }
-
-        // 2) tạo mảng khoảng [start, end) cho mỗi ngày off
-        $intervals = [];
-        foreach ($dates as $date) {
-                $start = $date->copy();                    // 00:00 ngày off
-                $end = $date->copy()->addDay()->setTime(6, 0, 0); // 06:00 ngày tiếp theo
-                $intervals[] = ['start' => $start, 'end' => $end];
-        }
-
-        // 3) hợp nhất các khoảng chồng lấn/tiếp xúc để đơn giản hoá (optional nhưng an toàn)
-        $merged = [];
-        foreach ($intervals as $int) {
-                if (empty($merged)) {
-                $merged[] = $int;
-                continue;
-                }
-
-                $last = &$merged[count($merged) - 1];
-
-                // Nếu khoảng mới bắt đầu trước hoặc đúng lúc last end (chồng/tiếp xúc) -> nối
-                if ($int['start']->lte($last['end'])) {
-                // mở rộng end nếu cần
-                if ($int['end']->gt($last['end'])) {
-                        $last['end'] = $int['end']->copy();
-                }
-                } else {
-                // không chồng -> thêm mới
-                $merged[] = $int;
-                }
-        }
-
-        // 4) lặp cho đến khi current_start không rơi vào bất kỳ khoảng off nào
-        $changed = true;
-        while ($changed) {
-                $changed = false;
-                foreach ($merged as $int) {
-                // kiểm tra thuộc khoảng [start, end) — dùng < end để tránh boundary ambiguity
-                if ($current_start->gte($int['start']) && $current_start->lt($int['end'])) {
-                        // nhảy đến end của khoảng đó
-                        $current_start = $int['end']->copy();
-                        $changed = true;
-                        // cần break để lặp lại kiểm tra từ đầu (vì end có thể vào khoảng sau)
-                        break;
-                }
-                }
-        }
-
-        return $current_start;
         }
 
         public function store(Request $request) {
@@ -1950,10 +1950,12 @@ class SchedualController extends Controller
                 ]);
 
         }
-
+        //Request
         public function Sorted(Request $request){
-                $stageCode = (int) $request->stage_code;
 
+                
+                $stageCode =  $request->stage_code??3;
+             
                 // Danh sách cấu hình sắp xếp
                 $stages = [
                         ['codes' => [1, 2, 3], 'orderBy' => [
@@ -1980,7 +1982,7 @@ class SchedualController extends Controller
                         [DB::raw('batch + 0'), 'asc']
                         ]],
                 ];
-
+                  
                 // Tìm stage group tương ứng với stage_code được gửi lên
                 $stageGroup = collect($stages)->first(fn($group) => in_array($stageCode, $group['codes']));
 
@@ -2011,7 +2013,7 @@ class SchedualController extends Controller
                         ->where('stage_code', $stageCode)
                         ->where('finished', 0)
                         ->where('active', 1)
-                        ->where('sp.deparment_code', session('user')['production_code'])
+                        ->where('deparment_code', session('user')['production_code'])
                         ->whereIn('plan_master_id', $planMasters)
                         ->orderByRaw("FIELD(plan_master_id, " . implode(',', $planMasters->toArray()) . ")")
                         ->update([

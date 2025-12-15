@@ -139,8 +139,6 @@
                             @php $semi_finished = '' @endphp
                         @endif
 
-                        
-
 
                         <tr data-id="{{ $data->id }}">
                             <td>{{ $loop->iteration }} 
@@ -157,7 +155,28 @@
                                 @endif
                             </td>
 
-                            <td> {{ $data->room_name . ' - ' . $data->room_code }} </td>
+                            @if ($data->room_name)
+                                
+                                <td> {{ $data->room_name . ' - ' . $data->room_code }} 
+                                    <input type="hidden"  name="resourceId" value = "{{$data->resourceId}}">
+                                </td>
+                            @else
+                                <td> 
+                                <select class="form-control" name="resourceId" >
+                                    <option value="">-- Phòng Sản Xuất --</option>
+                                        @foreach ($room_stages as $room_stage)
+                                            <option value="{{ $room_stage->id}}" 
+                                               >
+                                                {{ $room_stage->code }}
+                                            </option>
+                                        @endforeach
+                                </select>
+                                </td>
+                            @endif
+                            
+
+
+
                             <td>
                                 <div>BD: </div>
                                 <div>KT: </div>
