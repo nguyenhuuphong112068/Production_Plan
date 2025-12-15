@@ -127,9 +127,9 @@ const ScheduleTest = () => {
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
-         
-        //}
 
+        //}
+        console.log (data.plan);
         console.log ("ok");
 
         switch (data.production) {
@@ -529,6 +529,7 @@ const ScheduleTest = () => {
           setResources(data.resources);
           setSumBatchByStage(data.sumBatchByStage);
           setPlan(data.plan);
+
 
           setSelectedRows([]);
         })

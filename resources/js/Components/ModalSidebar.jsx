@@ -1282,6 +1282,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
             "permisson_room_filter",
             "market",
             "expected_date",
+            "responsed_date",
             "level",
             "note",
             "code",

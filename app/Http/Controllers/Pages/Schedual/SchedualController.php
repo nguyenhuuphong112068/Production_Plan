@@ -478,6 +478,7 @@ class SchedualController extends Controller
                         })
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                         ->select(
+                        'sp.id',
                         'sp.code',
                         'sp.campaign_code',
                         'sp.stage_code',
