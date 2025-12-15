@@ -18,3 +18,61 @@
   pointer-events: auto !important;
   z-index: 10 !important;
 }
+
+
+.sort-option {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.sort-card {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 12px 10px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 14px;
+  background: #f9fafb;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.sort-card input {
+  display: none;
+}
+
+.sort-card:hover {
+  border-color: #3b82f6;
+}
+
+.sort-card input:checked + span {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.sort-card:has(input:checked) {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.response-date-input {
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: center;
+  width: 300px;
+}
+
+.response-date-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.response-date-input {
+  width: 240px !important;   /* 👈 khóa cứng */
+  min-width: unset !important;
+  max-width: 100% !important;
+}
