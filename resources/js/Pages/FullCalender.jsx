@@ -81,7 +81,6 @@ const ScheduleTest = () => {
   }
 
   // Get dữ liệu ban đầu
-
   useEffect(() => {
     
     Swal.fire({
@@ -123,12 +122,13 @@ const ScheduleTest = () => {
    
        
         
-        //if (!authorization){
+        if (!authorization){
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
 
-        //}
+        }
+
         console.log (data.plan);
         console.log ("ok");
 

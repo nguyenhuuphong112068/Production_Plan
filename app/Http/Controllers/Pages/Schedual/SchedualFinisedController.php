@@ -13,12 +13,17 @@ use Illuminate\Support\Facades\Log;
 class SchedualFinisedController extends Controller
 {
         public function index(Request $request){
-                //dd ($request->all());
+              
 
                 //$fromDate = $request->from_date ?? Carbon::now()->toDateString();
                 //$toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
                 
-                $stage_code = $request->stage_code??3;
+                $stage_code = $request->stage_code??1;
+
+                $stage_code_room =  $stage_code;
+
+                if ($stage_code == 2){ $stage_code_room = 1;}
+                
                 $production = session('user')['production_code'];
       
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
@@ -86,8 +91,13 @@ class SchedualFinisedController extends Controller
 
                 //dd ($stages);
 
-                 $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
-                
+                $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
+                $room_stages = DB::table('room')
+                        ->where ('stage_code', $stage_code_room)
+                         ->where('deparment_code', $production)
+                         ->get();
+
+
                 //dd ($datas);
                 session()->put(['title'=> 'XÁC NHẬN HOÀN THÀNH LÔ SẢN XUẤT']);
                 return view('pages.Schedual.finised.list',[
@@ -95,12 +105,15 @@ class SchedualFinisedController extends Controller
                         'datas' => $datas,
                         'stages' => $stages,
                         'stageCode' => $stageCode,
+                        'room_stages' => $room_stages
                         //'quarantine_room' => $quarantine_room
                     
                 ]);
         }
 
         public function store(Request $request) {
+
+                Log::info ($request->all());
 
                 $yields_batch_qty = null;
                 if ($request->stage_code == 4){
@@ -109,8 +122,7 @@ class SchedualFinisedController extends Controller
                         $yields_batch_qty = round(($request->yields/$stage_plan->Theoretical_yields) * $batch_qty,2);
                 }else
 
-                Log::info ($yields_batch_qty);
-
+                
 
                 if ($request->actionType == 'finised') {
                         DB::table('stage_plan')
@@ -121,7 +133,8 @@ class SchedualFinisedController extends Controller
                         //'end'             => $request->end,
                         //'start_clearning' => $request->start_clearning,
                         //'end_clearning'   => $request->end_clearning,
-                        
+
+                        'resourceId'            => $request->resourceId,
                         'actual_start'           => $request->start,
                         'actual_end'             => $request->end,
                         'actual_start_clearning' => $request->start_clearning,
@@ -145,7 +158,7 @@ class SchedualFinisedController extends Controller
                         'actual_end'             => $request->end,
                         //'actual_start_clearning' => $request->start_clearning,
                         //'actual_end_clearning'   => $request->end_clearning,
-
+                        'resourceId'            => $request->resourceId,        
                         'yields'   => $request->yields,
                         'yields_batch_qty'        => $yields_batch_qty??null,
                         'number_of_boxes'   => $request->number_of_boxes??1,
