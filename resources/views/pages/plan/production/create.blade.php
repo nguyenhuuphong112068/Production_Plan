@@ -244,7 +244,7 @@
                         <label>Ngày có đủ nguyên liệu Pha Chế (Nếu chưa xác định thì để trống)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                    name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask id = "after_weigth_date"
                                     value="{{ old('after_weigth_date')}}">
                             </div>
                         </div>
@@ -267,7 +267,7 @@
                         <label>Ngày được phép cân (Mặc định theo ngày có đủ NL)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                    name = "allow_weight_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    name = "allow_weight_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask data-mask id = "allow_weight_before_date"
                                     value="{{ old('allow_weight_before_date') }}">
                             </div>
                         </div>
@@ -554,6 +554,10 @@
                 $('#fist_batch_modal').modal('show');
             }
 
+        });
+
+        $("#after_weigth_date").on("change", function () {
+            $("#allow_weight_before_date").val($(this).val());
         });
 
 
