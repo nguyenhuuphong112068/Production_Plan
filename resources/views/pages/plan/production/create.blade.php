@@ -241,8 +241,7 @@
                     {{-- Ngày ràng buột --}}
                     <div class="row">
                         <div class="col-md-6">
-                        <label>Ngày có đủ nguyên liệu Pha Chế 
-                            (Nếu Có 1 NL Không xác định ngày có đủ thì để trống)</label>
+                        <label>Ngày có đủ nguyên liệu Pha Chế (Nếu chưa xác định thì để trống)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
@@ -252,7 +251,7 @@
 
 
                         <div class="col-md-6">
-                            <label>Ngày có đủ bao bì đóng gói</label>
+                            <label>Ngày có đủ bao bì đóng gói (Nếu chưa xác định thì để trống)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
