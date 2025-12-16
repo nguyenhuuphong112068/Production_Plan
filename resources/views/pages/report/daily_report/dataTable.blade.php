@@ -174,7 +174,17 @@
                                                 $qtyTT = $itemTT['total_qty'] ?? 0;
 
                                                 // %
-                                                $percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
+                                                //$percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
+
+                                                if ($qtyTT > 0 && $qtyLT > 0){
+                                                    $percent = $qtyTT / $qtyLT * 100;
+                                                }elseif ($qtyTT == 0 && $qtyLT == 0){
+                                                    $percent = 0;
+                                                }elseif ($qtyTT > 0 && $qtyLT == 0){
+                                                    $percent = 100;
+                                                }else{
+                                                    $percent = 0;
+                                                }
 
                                                 // Chi tiết đúng chuẩn
                                                 $detail = $detail = collect($yield_actual_detial['actual_detail'] ?? [])
