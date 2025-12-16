@@ -75,7 +75,7 @@
                           <div> {{ $data->intermediate_code}} </div>
                           <div> {{ $data->finished_product_code}} </div>
                       </td>
-                      <td>{{$data->title}}</td>
+                      <td>{{$data->name . " - " . $data->market}}</td>
                       <td>{{$data->batch_qty . " " .  $data->unit_batch_qty}}</td>
                       
                      
