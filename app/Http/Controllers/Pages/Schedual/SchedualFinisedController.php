@@ -113,8 +113,7 @@ class SchedualFinisedController extends Controller
 
         public function store(Request $request) {
 
-                Log::info ($request->all());
-
+                
                 $yields_batch_qty = null;
                 if ($request->stage_code == 4){
                         $stage_plan = DB::table('stage_plan')->where('id', $request->id)->first();

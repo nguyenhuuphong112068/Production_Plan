@@ -290,9 +290,22 @@
                                                     @php $i = 1; @endphp
                                                    @foreach ($detail as  $d)
                                                         <div style="display: flex; flex-direction: row; gap: 3px;">
-                                                            {{$i++ .". ".  $d->title }}
-                                                            ({{ \Carbon\Carbon::parse($d->start)->format('H:i') }} -
-                                                            {{ \Carbon\Carbon::parse($d->end)->format('H:i') }})
+                                                            @php
+                                                                $start = \Carbon\Carbon::parse($d->start);
+                                                                $end   = \Carbon\Carbon::parse($d->end);
+
+                                                                // Nếu end nhỏ hơn start => qua ngày hôm sau
+                                                                if ($end->lessThan($start)) {
+                                                                    $end->addDay();
+                                                                }
+
+                                                                $minutes = $start->diffInMinutes($end);
+                                                                $hours = intdiv($minutes, 60);
+                                                                $mins  = $minutes % 60;
+                                                            @endphp
+
+                                                            {{$i++ .". "}}  {{$d->title == null && $d->yields == null  ?"VS":$d->title}}
+                                                            ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} = <b> {{ $hours }}h{{ $mins }}p </b>)
 
                                                             @if ($d->yields)
                                                                 || <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }} {{ $d->yields_batch_qty? "# $d->yields_batch_qty  ĐVL" : "" }}</b>
