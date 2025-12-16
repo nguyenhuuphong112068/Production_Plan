@@ -150,16 +150,20 @@ class ProductionPlanController extends Controller
         }
 
         public function store(Request $request){
-               //dd ($request->all());
+
+
+                try {
+
+                
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
                         'plan_list_id'   => 'required',
                         'batch' => 'required',
                         'expected_date' => 'required',
                         'level' => 'required',
-                        'after_weigth_date' => 'required',
+                        //'after_weigth_date' => 'required',
                         //'before_weigth_date' => 'required',
-                        'after_parkaging_date' => 'required',
+                        //'after_parkaging_date' => 'required',
                         //'before_parkaging_date' => 'required',
                         'material_source_id' => 'required',
                        
@@ -169,12 +173,14 @@ class ProductionPlanController extends Controller
                         'batch' => 'Vui lòng nhập số lô',
                         'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level' => 'vui lòng chọn mức độ ưu tiên',
-                        'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
+                        //'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
                         //'before_weigth_date' => 'vui lòng chọn ngày cân trước',
-                        'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
+                        //'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
                         //'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
                         'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
+
+             
 
                 if ($validator->fails()) {
                         return redirect()->back()
@@ -225,6 +231,8 @@ class ProductionPlanController extends Controller
 
               
                 $i = 1;
+
+                
                 foreach ($batches as  $batch) {
                         if ($i <= $total){
                                 $code_val_part_1 = $current_val_batch - 1 + $i;
@@ -241,10 +249,16 @@ class ProductionPlanController extends Controller
                                 "level" => $request->level,
                                 "is_val" => ($i <= $total) ? 1 : 0,
                                 "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
+
                                 "after_weigth_date" => $request->after_weigth_date,
-                                //"before_weigth_date" => $request->before_weigth_date,
                                 "after_parkaging_date" => $request->after_parkaging_date,
-                               // "before_parkaging_date" => $request->before_parkaging_date,
+
+                                "allow_weight_before_date" => $request->allow_weight_before_date,
+                                "expired_material_date" => $request->expired_material_date,
+                                "preperation_before_date" => $request->preperation_before_date,
+                                "blending_before_date" => $request->blending_before_date,
+                                "coating_before_date" => $request->coating_before_date,
+                        
                                 "material_source_id" => $request->material_source_id,
                                 "percent_parkaging" => 1,
                                 "number_parkaging" => $request->max_number_of_unit,
@@ -270,9 +284,14 @@ class ProductionPlanController extends Controller
                                 "level" => $request->level,
                                 "is_val" => ($i <= $total) ? 1 : 0,
                                 "after_weigth_date" => $request->after_weigth_date,
-                                //"before_weigth_date" => $request->before_weigth_date,
                                 "after_parkaging_date" => $request->after_parkaging_date,
-                                //"before_parkaging_date" => $request->before_parkaging_date,
+
+                                "allow_weight_before_date" => $request->allow_weight_before_date,
+                                "expired_material_date" => $request->expired_material_date,
+                                "preperation_before_date" => $request->preperation_before_date,
+                                "blending_before_date" => $request->blending_before_date,
+                                "coating_before_date" => $request->coating_before_date,
+
                                 "material_source_id" => $request->material_source_id,
                                 "percent_parkaging" => 1,
                                 "number_parkaging" => $request->max_number_of_unit,
@@ -286,9 +305,25 @@ class ProductionPlanController extends Controller
                                 "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
                         ]);
                         $i++;
-                }
+                        }
+
+
 
                 return redirect()->back()->with('success', 'Đã thêm thành công!');
+
+                } catch (\Throwable $e) {
+
+                        Log::error('Lỗi store plan_master', [
+                        'message' => $e->getMessage(),
+                        'file'    => $e->getFile(),
+                        'line'    => $e->getLine(),
+                        'request' => $request->all(),
+                        'user'    => session('user') ?? null,
+                        ]);
+
+                        return redirect()->back()
+                        ->with('error', 'Có lỗi xảy ra, vui lòng kiểm tra log!');
+                }
         }
 
         public function store_source(Request $request){

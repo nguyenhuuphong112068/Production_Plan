@@ -133,7 +133,7 @@ class SchedualFinisedController extends Controller
                         //'end'             => $request->end,
                         //'start_clearning' => $request->start_clearning,
                         //'end_clearning'   => $request->end_clearning,
-
+                        'title'                  => $request->title,
                         'resourceId'            => $request->resourceId,
                         'actual_start'           => $request->start,
                         'actual_end'             => $request->end,
@@ -158,6 +158,7 @@ class SchedualFinisedController extends Controller
                         'actual_end'             => $request->end,
                         //'actual_start_clearning' => $request->start_clearning,
                         //'actual_end_clearning'   => $request->end_clearning,
+                        'title'                  => $request->title,
                         'resourceId'            => $request->resourceId,        
                         'yields'   => $request->yields,
                         'yields_batch_qty'        => $yields_batch_qty??null,
