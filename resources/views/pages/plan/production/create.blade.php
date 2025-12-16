@@ -241,38 +241,25 @@
                     {{-- Ngày ràng buột --}}
                     <div class="row">
                         <div class="col-md-6">
-                        <label>Ngày có đủ nguyên liệu Pha Chế</label>
+                        <label>Ngày có đủ nguyên liệu Pha Chế 
+                            (Nếu Có 1 NL Không xác định ngày có đủ thì để trống)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('after_weigth_date', date('Y-m-d')) }}">
+                                    value="{{ old('after_weigth_date')}}">
                             </div>
                         </div>
 
-                        {{-- <div class="col-md-3">
-                            <label>Cân Trước ngày</label>
-                            <div class="input-group">
-                                <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                    name = "before_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
-                            </div>
-                        </div> --}}
+
                         <div class="col-md-6">
                             <label>Ngày có đủ bao bì đóng gói</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                                    value="{{ old('after_parkaging_date')}}">
                             </div>
                         </div>
-                        {{-- <div class="col-md-3">
-                            <label>Đóng gói trước ngày</label>
-                            <div class="input-group">
-                                <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                    name = "before_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
-                            </div>
-                        </div> --}}
+
                     </div>
 
                     {{--  Ngày được phép cân - hết hạn nguyên liệu --}}
@@ -282,7 +269,7 @@
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "allow_weight_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('allow_weight_before_date', date('Y-m-d')) }}">
+                                    value="{{ old('allow_weight_before_date') }}">
                             </div>
                         </div>
 
@@ -291,7 +278,7 @@
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "expired_material_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    >
+                                    value="{{ old('expired_material_date') }}">
                             </div>
                         </div>
                     </div>      
@@ -303,7 +290,7 @@
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime"
                                         name = "preperation_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                        >
+                                        value="{{ old('preperation_before_date') }}">
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -311,7 +298,7 @@
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "blending_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    >
+                                    value="{{ old('blending_before_date') }}">
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -319,7 +306,7 @@
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "coating_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    >
+                                    value="{{ old('coating_before_date') }}">
                             </div>
                         </div>
                     </div>  

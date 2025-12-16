@@ -148,7 +148,10 @@
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code }} </div>
                             </td>
-                            <td>{{ $data->product_name }}</td>
+                            <td>{{ $data->product_name }}
+                                <input type="hidden" name="title" value = "{{$data->product_name ."-". $data->batch}}">
+
+                            </td>
                             <td>{{ $data->batch }}
                                 @if ($data->is_val)
                                     <i class="fas fa-check-circle text-primary fs-4"></i>
