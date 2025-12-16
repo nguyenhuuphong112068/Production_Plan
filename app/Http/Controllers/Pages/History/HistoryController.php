@@ -11,7 +11,7 @@ class HistoryController extends Controller{
                 
                 $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
                 $toDate   = $request->to_date   ?? Carbon::now()->toDateString(); 
-                $stage_code = $request->stage_code??3;
+                $stage_code = $request->stage_code??1;
                 $production = session('user')['production_code'];
       
                 $datas = DB::table('stage_plan')
@@ -47,14 +47,15 @@ class HistoryController extends Controller{
                 ->where('stage_plan.active', 1)
                 ->where('stage_plan.deparment_code', $production)
                 ->where('stage_plan.finished', 1)
-                ->whereNotNull('stage_plan.start')
-                ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
+                //->whereNotNull('stage_plan.start')
+                ->leftJoin('room', 'stage_plan.stage_code', 'room.stage_code')
                 ->distinct()
                 ->orderby ('stage_code')
                 ->get();
 
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
-               
+
+                 dd ($stages);
             
                 session()->put(['title'=> 'LỊCH SỬ SẢN XUẤT']);
                 return view('pages.History.list',[

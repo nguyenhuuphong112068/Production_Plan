@@ -290,8 +290,8 @@
                             <label> Ngày hết hạn nguyên liệu (Nếu có) </label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                    name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                                    name = "expired_material_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    >
                             </div>
                         </div>
                     </div>      
@@ -302,24 +302,24 @@
                             <label>Pha chế trước ngày (Nếu có)</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                        name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                        value="{{ old('after_weigth_date', date('Y-m-d')) }}">
+                                        name = "preperation_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        >
                             </div>
                         </div>
                         <div class="col-md-4">
                             <label>Trộn hoàn tất trước ngày (Nếu có)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                    name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                                    name = "blending_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    >
                             </div>
                         </div>
                         <div class="col-md-4">
                             <label>Bao Phim trước ngày (nếu có)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
-                                    name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
-                                    value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                                    name = "coating_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    >
                             </div>
                         </div>
                     </div>  

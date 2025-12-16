@@ -920,271 +920,165 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   
   }
 
-
-  // const handleSorted = async () => {
-
-  //   const { value: formData } = await Swal.fire({
-  //     title: "Sắp Xếp Thứ Tự Lô Sản Phẩm",
-  //     width: "520px",
-  //     html: `
-  //       <div style="text-align:center">
-        
-
-  //         <div class="sort-option">
-  //           <label class="sort-card">
-  //             <input type="radio" name="sortType" value="kcs" checked>
-  //             <span>📅 Theo ngày KCS</span>
-  //           </label>
-
-  //           <label class="sort-card">
-  //             <input type="radio" name="sortType" value="response">
-  //             <span>📦 Theo ngày đáp ứng</span>
-  //           </label>
-  //         </div>
-
-  //         <hr/>
-
-  //         <input id="swal-password" 
-  //               type="password" 
-  //               class="swal2-input passWord-swal-input" 
-  //               placeholder="Nhập mật khẩu..." />
-  //       </div>
-  //     `,
-  //     focusConfirm: false,
-  //     showCancelButton: true,
-  //     confirmButtonText: "Xác nhận",
-  //     cancelButtonText: "Hủy",
-  //     preConfirm: () => {
-  //       const password = document.getElementById("swal-password").value;
-  //       const sortType = document.querySelector('input[name="sortType"]:checked')?.value;
-
-  //       if (!password) {
-  //         Swal.showValidationMessage("Bạn phải nhập mật khẩu!");
-  //         return false;
-  //       }
-
-  //       return { password, sortType };
-  //     }
-  //   });
-
-  //   if (!formData) return;
-
-  //   const { password, sortType } = formData;
-
-  //   if (password !== currentPassword) {
-  //     Swal.fire({
-  //       icon: "error",
-  //       title: "Sai mật khẩu!",
-  //       text: "Vui lòng thử lại.",
-  //       timer: 1500,
-  //       showConfirmButton: false,
-  //     });
-  //     return;
-  //   }
-
-  //   if (isSaving) return;
-  //   setIsSaving(true);
-
-  //   Swal.fire({
-  //     title: "Đang Sắp Xếp Lại, vui lòng đợi giây lát..",
-  //     allowOutsideClick: false,
-  //     didOpen: () => Swal.showLoading(),
-  //   });
-
-  //   axios.put('/Schedual/Sorted', {
-  //     stage_code: stageFilter,
-  //     sortType: sortType, 
-  //   })
-  //   .then(res => {
-  //     let data = res.data;
-  //     if (typeof data === "string") {
-  //       data = data.replace(/^<!--.*?-->/, "").trim();
-  //       data = JSON.parse(data);
-  //     }
-
-  //     setPlan(data.plan);
-
-  //     Swal.fire({
-  //       icon: 'success',
-  //       title: 'Hoàn Thành',
-  //       timer: 500,
-  //       showConfirmButton: false,
-  //     });
-  //   })
-  //   .catch(err => {
-  //     Swal.fire({
-  //       icon: 'error',
-  //       title: 'Lỗi',
-  //       timer: 500,
-  //       showConfirmButton: false,
-  //     });
-  //     console.error("Finished error:", err.response?.data || err.message);
-  //   })
-  //   .finally(() => {
-  //     setIsSaving(false);
-  //   });
-  // };
-
   const handleSorted = async () => {
 
-  // 1️⃣ Popup chọn kiểu sắp xếp + mật khẩu
-  const { value: formData } = await Swal.fire({
-    title: "Sắp Xếp Thứ Tự Lô Sản Phẩm",
-    width: "600px",
-    html: `
-      <div style="text-align:center">
+    // 1️⃣ Popup chọn kiểu sắp xếp + mật khẩu
+    const { value: formData } = await Swal.fire({
+      title: "Sắp Xếp Thứ Tự Lô Sản Phẩm",
+      width: "600px",
+      html: `
+        <div style="text-align:center">
 
-        <div class="sort-option">
-          <label class="sort-card">
-            <input type="radio" name="sortType" value="kcs" checked>
-            <span>📅 Theo ngày KCS</span>
-          </label>
+          <div class="sort-option">
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="kcs" checked>
+              <span>📅 Theo ngày KCS</span>
+            </label>
 
-          <label class="sort-card">
-            <input type="radio" name="sortType" value="response">
-            <span>📦 Theo ngày đáp ứng</span>
-          </label>
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="response">
+              <span>📦 Theo ngày đáp ứng</span>
+            </label>
+          </div>
+
+          <div id="response-date-wrap" class="response-date-wrap" style="display: none;">
+              <input
+                id="response-date"
+                type="date"
+                class="swal2-input response-date-input"
+              />
+          </div>
+
+          <hr/>
+
+          <input
+            id="swal-password"
+            type="password"
+            class="swal2-input passWord-swal-input"
+            placeholder="Nhập mật khẩu..."
+          />
+
         </div>
+      `,
+      didOpen: () => {
+        const radios = document.querySelectorAll('input[name="sortType"]');
+        const dateWrap = document.getElementById('response-date-wrap');
 
-        <div id="response-date-wrap" class="response-date-wrap" style="display: none;">
-            <input
-              id="response-date"
-              type="date"
-              class="swal2-input response-date-input"
-            />
-        </div>
-
-        <hr/>
-
-        <input
-          id="swal-password"
-          type="password"
-          class="swal2-input passWord-swal-input"
-          placeholder="Nhập mật khẩu..."
-        />
-
-      </div>
-    `,
-    didOpen: () => {
-      const radios = document.querySelectorAll('input[name="sortType"]');
-      const dateWrap = document.getElementById('response-date-wrap');
-
-      radios.forEach(radio => {
-        radio.addEventListener('change', () => {
-          dateWrap.style.display =
-            radio.value === 'response' && radio.checked
-              ? 'block'
-              : 'none';
+        radios.forEach(radio => {
+          radio.addEventListener('change', () => {
+            dateWrap.style.display =
+              radio.value === 'response' && radio.checked
+                ? 'block'
+                : 'none';
+          });
         });
+      },
+      showCancelButton: true,
+      confirmButtonText: "Xác nhận",
+      cancelButtonText: "Hủy",
+      focusConfirm: false,
+      preConfirm: () => {
+        const password = document.getElementById("swal-password").value;
+        const sortType = document.querySelector('input[name="sortType"]:checked')?.value;
+        const responseDate = document.getElementById("response-date")?.value;
+
+        if (!password) {
+          Swal.showValidationMessage("Bạn phải nhập mật khẩu!");
+          return false;
+        }
+
+        if (sortType === "response" && !responseDate && selectedRows.length > 0) {
+          Swal.showValidationMessage("Vui lòng chọn ngày đáp ứng!");
+          return false;
+        }
+
+        return { password, sortType, responseDate };
+      }
+    });
+
+    if (!formData) return;
+
+    // 2️⃣ Validate mật khẩu
+    const { password, sortType, responseDate } = formData;
+
+    if (password !== currentPassword) {
+      Swal.fire({
+        icon: "error",
+        title: "Sai mật khẩu!",
+        timer: 1500,
+        showConfirmButton: false,
       });
-    },
-    showCancelButton: true,
-    confirmButtonText: "Xác nhận",
-    cancelButtonText: "Hủy",
-    focusConfirm: false,
-    preConfirm: () => {
-      const password = document.getElementById("swal-password").value;
-      const sortType = document.querySelector('input[name="sortType"]:checked')?.value;
-      const responseDate = document.getElementById("response-date")?.value;
-
-      if (!password) {
-        Swal.showValidationMessage("Bạn phải nhập mật khẩu!");
-        return false;
-      }
-
-      if (sortType === "response" && !responseDate && selectedRows.length > 0) {
-        Swal.showValidationMessage("Vui lòng chọn ngày đáp ứng!");
-        return false;
-      }
-
-      return { password, sortType, responseDate };
-    }
-  });
-
-  if (!formData) return;
-
-  // 2️⃣ Validate mật khẩu
-  const { password, sortType, responseDate } = formData;
-
-  if (password !== currentPassword) {
-    Swal.fire({
-      icon: "error",
-      title: "Sai mật khẩu!",
-      timer: 1500,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // 3️⃣ Nếu sort theo response → bắt buộc chọn dòng
-  
-  // if (
-  //   sortType === "response" &&
-  //   (!selectedRows || selectedRows.length === 0)
-  // ) {
-  //   Swal.fire({
-  //     icon: "warning",
-  //     title: "Chưa chọn kế hoạch",
-  //     text: "Vui lòng chọn ít nhất một dòng!",
-  //     timer: 1500,
-  //     showConfirmButton: false,
-  //   });
-  //   return;
-  // }
-
-  // 4️⃣ Chuẩn bị plan_master_ids
-  const planMasterIds =
-    sortType === "response"
-      ? selectedRows.map(row => row.plan_master_id)
-      : [];
-
-  // 5️⃣ Gửi request
-  if (isSaving) return;
-  setIsSaving(true);
-
-  Swal.fire({
-    title: "Đang Sắp Xếp Lại, vui lòng đợi giây lát..",
-    allowOutsideClick: false,
-    didOpen: () => Swal.showLoading(),
-  });
-
-  axios.put('/Schedual/Sorted', {
-    stage_code: stageFilter,
-    sortType,
-    response_date: responseDate || null,
-    plan_master_ids: planMasterIds,
-  })
-  .then(res => {
-    let data = res.data;
-
-    if (typeof data === "string") {
-      data = data.replace(/^<!--.*?-->/, "").trim();
-      data = JSON.parse(data);
+      return;
     }
 
-    setPlan(data.plan);
+    // 3️⃣ Nếu sort theo response → bắt buộc chọn dòng
+    
+    // if (
+    //   sortType === "response" &&
+    //   (!selectedRows || selectedRows.length === 0)
+    // ) {
+    //   Swal.fire({
+    //     icon: "warning",
+    //     title: "Chưa chọn kế hoạch",
+    //     text: "Vui lòng chọn ít nhất một dòng!",
+    //     timer: 1500,
+    //     showConfirmButton: false,
+    //   });
+    //   return;
+    // }
+
+    // 4️⃣ Chuẩn bị plan_master_ids
+    const planMasterIds =
+      sortType === "response"
+        ? selectedRows.map(row => row.plan_master_id)
+        : [];
+
+    // 5️⃣ Gửi request
+    if (isSaving) return;
+    setIsSaving(true);
 
     Swal.fire({
-      icon: 'success',
-      title: 'Hoàn Thành',
-      timer: 600,
-      showConfirmButton: false,
+      title: "Đang Sắp Xếp Lại, vui lòng đợi giây lát..",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
     });
-  })
-  .catch(err => {
-    Swal.fire({
-      icon: 'error',
-      title: 'Lỗi',
-      timer: 1500,
-      showConfirmButton: false,
-    });
-    console.error("Sorted error:", err.response?.data || err.message);
-  })
-  .finally(() => {
-    setIsSaving(false);
-  });
-};
 
+    axios.put('/Schedual/Sorted', {
+      stage_code: stageFilter,
+      sortType,
+      response_date: responseDate || null,
+      plan_master_ids: planMasterIds,
+    })
+    .then(res => {
+      let data = res.data;
+
+      if (typeof data === "string") {
+        data = data.replace(/^<!--.*?-->/, "").trim();
+        data = JSON.parse(data);
+      }
+
+      setPlan(data.plan);
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Hoàn Thành',
+        timer: 600,
+        showConfirmButton: false,
+      });
+    })
+    .catch(err => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      console.error("Sorted error:", err.response?.data || err.message);
+    })
+    .finally(() => {
+      setIsSaving(false);
+    });
+  };
 
   const handleDragOver = (e) => {
     const wrapper = wrapperRef.current?.querySelector(".p-datatable-wrapper");
