@@ -1953,8 +1953,6 @@ class SchedualController extends Controller
         }
         
         public function Sorted(Request $request){
-                
-                Log::info ($request->all());
 
                 if ($request->sortType === 'response') {
                         
@@ -2051,129 +2049,71 @@ class SchedualController extends Controller
         }
 
         public function submit(Request $request){
-        // 1️⃣ Lấy danh sách các dòng sẽ update
-        $updatedRows = DB::table('stage_plan')
-                ->whereNotNull('start')
-                ->where('finished', 0)
-                ->where('active', 1)
-                ->where('submit', 0)
-                ->where('deparment_code', session('user')['production_code'])
-                ->get();
+                // 1️⃣ Lấy danh sách các dòng sẽ update
+                $updatedRows = DB::table('stage_plan')
+                        ->whereNotNull('start')
+                        ->where('finished', 0)
+                        ->where('active', 1)
+                        ->where('submit', 0)
+                        ->where('deparment_code', session('user')['production_code'])
+                        ->get();
 
-        if ($updatedRows->isEmpty()) {
-                return response()->json(['message' => 'Không có lịch mới để submit!']);
+                if ($updatedRows->isEmpty()) {
+                        return response()->json(['message' => 'Không có lịch mới để submit!']);
+                }
+
+                // 2️⃣ Update submit = 1
+                DB::table('stage_plan')
+                        ->whereIn('id', $updatedRows->pluck('id'))
+                        ->update(['submit' => 1]);
+
+                // 3️⃣ Insert log cho từng dòng
+                $historyData = $updatedRows->map(function ($row) {
+                        $maxVersion = DB::table('stage_plan_history')
+                        ->where('stage_plan_id', $row->id)
+                        ->max('version') ?? 0;
+
+                        return [
+                        'stage_plan_id' => $row->id,
+                        'plan_list_id' => $row->plan_list_id,
+                        'plan_master_id' => $row->plan_master_id,
+                        'product_caterogy_id' => $row->product_caterogy_id,
+                        'campaign_code' => $row->campaign_code,
+                        'code' => $row->code,
+                        'order_by' => $row->order_by,
+                        'schedualed' => $row->schedualed,
+                        'stage_code' => $row->stage_code,
+                        'title' => $row->title,
+                        'start' => $row->start,
+                        'end' => $row->end,
+                        'resourceId' => $row->resourceId,
+                        'title_clearning' => $row->title_clearning,
+                        'start_clearning' => $row->start_clearning,
+                        'end_clearning' => $row->end_clearning,
+                        'tank' => $row->tank,
+                        'keep_dry' => $row->keep_dry,
+                        'AHU_group' => $row->AHU_group,
+                        'schedualed_by' => $row->schedualed_by,
+                        'schedualed_at' => $row->schedualed_at,
+                        'version' => $maxVersion + 1,
+                        'note' => $row->note,
+                        'deparment_code' => session('user')['production_code'],
+                        'type_of_change' => "Tạo Mới Lịch",
+                        'created_date' => now(),
+                        'created_by' => session('user')['fullName'],
+                        ];
+                });
+
+                // 🔹 Chia nhỏ insert để tránh lỗi 1390
+                $historyData->chunk(500)->each(function ($chunk) {
+                        DB::table('stage_plan_history')->insert($chunk->toArray());
+                });
+
+                return response()->json(['message' => "Đã submit " . $updatedRows->count() . " lịch."]);
         }
-
-        // 2️⃣ Update submit = 1
-        DB::table('stage_plan')
-                ->whereIn('id', $updatedRows->pluck('id'))
-                ->update(['submit' => 1]);
-
-        // 3️⃣ Insert log cho từng dòng
-        $historyData = $updatedRows->map(function ($row) {
-                $maxVersion = DB::table('stage_plan_history')
-                ->where('stage_plan_id', $row->id)
-                ->max('version') ?? 0;
-
-                return [
-                'stage_plan_id' => $row->id,
-                'plan_list_id' => $row->plan_list_id,
-                'plan_master_id' => $row->plan_master_id,
-                'product_caterogy_id' => $row->product_caterogy_id,
-                'campaign_code' => $row->campaign_code,
-                'code' => $row->code,
-                'order_by' => $row->order_by,
-                'schedualed' => $row->schedualed,
-                'stage_code' => $row->stage_code,
-                'title' => $row->title,
-                'start' => $row->start,
-                'end' => $row->end,
-                'resourceId' => $row->resourceId,
-                'title_clearning' => $row->title_clearning,
-                'start_clearning' => $row->start_clearning,
-                'end_clearning' => $row->end_clearning,
-                'tank' => $row->tank,
-                'keep_dry' => $row->keep_dry,
-                'AHU_group' => $row->AHU_group,
-                'schedualed_by' => $row->schedualed_by,
-                'schedualed_at' => $row->schedualed_at,
-                'version' => $maxVersion + 1,
-                'note' => $row->note,
-                'deparment_code' => session('user')['production_code'],
-                'type_of_change' => "Tạo Mới Lịch",
-                'created_date' => now(),
-                'created_by' => session('user')['fullName'],
-                ];
-        });
-
-        // 🔹 Chia nhỏ insert để tránh lỗi 1390
-        $historyData->chunk(500)->each(function ($chunk) {
-                DB::table('stage_plan_history')->insert($chunk->toArray());
-        });
-
-        return response()->json(['message' => "Đã submit " . $updatedRows->count() . " lịch."]);
-        }
-
-
-        // public function required_room (Request $request) {
-
-        //         Log::info ($request->all());
-
-        //         $campaign_code = DB::table('stage_plan')->where('id', $request->stage_plan_id)->value('campaign_code');
-
-        //         $room_id = DB::table('room')->where ('code', $request->room_code)->value('id');
-
-        //         if ($campaign_code){
-
-        //                 $plans = DB::table('stage_plan')
-        //                 ->leftJoin('finished_product_category','finished_product_category.id','stage_plan.product_caterogy_id')
-        //                 ->select('stage_plan.id', 
-        //                         'stage_plan.stage_code',
-        //                         'finished_product_category.intermediate_code', 
-        //                         'finished_product_category.finished_product_code'
-        //                         )
-        //                 ->where('stage_plan.campaign_code', $campaign_code)
-        //                 ->get();
-
-        //                 foreach ($plans as $p) {
-
-        //                 // Tạo process_code đúng tiêu chí
-        //                         if ($p->stage_code < 7) {
-        //                                 $process_code = $p->intermediate_code . "_NA_" . $room_id;
-        //                         } else {
-        //                                 $process_code = $p->intermediate_code . "_" . $p->finished_product_code . "_" . $room_id;
-        //                         }
-
-        //                         $quota = DB::table('quota')
-        //                                 ->where('process_code', 'like', $process_code . '%')
-        //                                 ->first();
-
-        //                         if (!$quota) {
-        //                                 return response()->json([
-        //                                 'status' => 'error',
-        //                                 'message' => "Lô ID {$p->id} không có định mức cho phòng {$room_id}. Không thể yêu cầu phòng!"
-        //                                 ], 422);
-        //                         }
-        //                 }
-
-
-
-        //                 DB::table('stage_plan')
-        //                 ->where('campaign_code', $campaign_code)
-        //                 ->update(['required_room_code' => $request->checked?$request->room_code:null]);
-        //         }else{
-        //                 DB::table('stage_plan')
-        //                 ->where('id', $request->stage_plan_id)
-        //                 ->update(['required_room_code' => $request->checked?$request->room_code:null]);
-        //         }
-
-        //         return response()->json([
-        //                 'plan' => $this->getPlanWaiting(session('user')['production_code'])
-        //         ]);
-        // }
 
         public function required_room (Request $request) {
-                Log::info($request->all());
+
         
                 $campaign_code = DB::table('stage_plan')->where('id', $request->stage_plan_id)->value('campaign_code');
                 $room_id = DB::table('room')->where ('code', $request->room_code)->value('id');
@@ -2595,14 +2535,12 @@ class SchedualController extends Controller
                                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
                                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                                // JOIN công đoạn trước
                                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                                 ->where('sp.stage_code', $stageCode)
                                 ->where('sp.finished',0)
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
                                 ->where('sp.deparment_code', session('user')['production_code'])
-                                // 🎯 Sắp xếp theo start của công đoạn trước
                                 ->orderBy('prev.start', 'asc')
 
                         ->get();

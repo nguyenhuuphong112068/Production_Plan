@@ -237,6 +237,7 @@ class ProductionPlanController extends Controller
                                 "plan_list_id" => $request->plan_list_id,
                                 "batch" => $batch,
                                 "expected_date" => $request->expected_date,
+                                "responsed_date" => $request->expected_date,
                                 "level" => $request->level,
                                 "is_val" => ($i <= $total) ? 1 : 0,
                                 "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
