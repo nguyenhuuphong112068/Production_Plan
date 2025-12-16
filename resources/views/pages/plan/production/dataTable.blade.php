@@ -102,8 +102,12 @@
                             <div> {{ "(1) Này có đủ NL" }}  </div>
                             <div> {{ "(2) Này có đủ BB" }}  </div>
                             <div> {{ "(3) Ngày được phép cân" }}  </div>
-                            <div> {{ "(1) Này có đủ NL" }}  </div>
-                            <div> {{ "(1) Này có đủ NL" }}  </div>
+                        </th>
+
+                        <th>
+                            <div> {{ "(1) PC trước" }}  </div>
+                            <div> {{ "(2) THT trước" }}  </div>
+                            <div> {{ "(3) BP trước" }}  </div>
                         </th>
                        
                         <th>Ghi Chú</th>
@@ -215,16 +219,56 @@
                             <td>{{ $data->source_material_name }}</td>
 
                             <td>
-                                <input {{ $auth_update }} type= "date" class="updateInput" name="after_weigth_date" value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
-                                {{-- <input {{ $auth_update }} type= "date" class="updateInput" name="before_weigth_date" value="{{ $data->before_weigth_date ? \Carbon\Carbon::parse($data->before_weigth_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}> --}}
-                            
-                                <input {{ $auth_update }} type= "date" class="updateInput" name="after_parkaging_date" value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}>
-                                {{-- <input {{ $auth_update }} type= "date" class="updateInput" name="before_parkaging_date" value="{{ $data->before_parkaging_date ? \Carbon\Carbon::parse($data->before_parkaging_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }}> --}}
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(1):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="after_weigth_date"
+                                        value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(2):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="after_parkaging_date"
+                                        value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(3):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="allow_weight_before_date"
+                                        value="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+                         
                             </td>
+
+                            <td>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(1):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="preperation_before_date"
+                                        value="{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(2):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="blending_before_date"
+                                        value="{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(3):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="coating_before_date"
+                                        value="{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+                         
+                            </td>
+
+
                             <td> 
                                 {{ $data->note }}
-                                {{-- <input {{ $auth_update }} type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}> --}}
-                                {{-- <textarea {{ $auth_update }} type= "text" class="updateInput" name="note" value = "{{$data->note }}" data-id = {{ $data->id }}> </textarea> --}}
                             </td>
 
                             <td>
