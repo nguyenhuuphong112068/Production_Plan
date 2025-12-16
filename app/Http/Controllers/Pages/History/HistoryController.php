@@ -42,20 +42,28 @@ class HistoryController extends Controller{
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->get();
 
+
+
+
                 $stages = DB::table('stage_plan')
-                ->select('stage_plan.stage_code', 'room.stage')
-                ->where('stage_plan.active', 1)
+                ->select(
+                        'stage_plan.stage_code',
+                        DB::raw("
+                        CASE 
+                                WHEN stage_plan.stage_code = 2 THEN 'Cân Nguyên Liệu Khác'
+                                ELSE room.stage
+                        END AS stage
+                        ")
+                )
+                ->leftJoin('room', 'stage_plan.stage_code', '=', 'room.stage_code')
                 ->where('stage_plan.deparment_code', $production)
-                ->where('stage_plan.finished', 1)
-                //->whereNotNull('stage_plan.start')
-                ->leftJoin('room', 'stage_plan.stage_code', 'room.stage_code')
                 ->distinct()
-                ->orderby ('stage_code')
+                ->orderBy('stage_plan.stage_code')
                 ->get();
 
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
 
-                 dd ($stages);
+             
             
                 session()->put(['title'=> 'LỊCH SỬ SẢN XUẤT']);
                 return view('pages.History.list',[
