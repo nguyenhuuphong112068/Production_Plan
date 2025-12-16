@@ -30,8 +30,8 @@ class HistoryController extends Controller{
                         'product_name.name as name'
                 )
                 ->where('stage_plan.deparment_code', $production)
-                ->whereBetween('stage_plan.start', [$fromDate, $toDate])
-                ->whereNotNull('stage_plan.start')
+                ->whereBetween('stage_plan.actual_start', [$fromDate, $toDate])
+                ->whereNotNull('stage_plan.actual_start')
                 ->where('stage_plan.active', 1)
                 ->where('stage_plan.finished', 1)
                 ->where ('stage_plan.stage_code', $stage_code)              
