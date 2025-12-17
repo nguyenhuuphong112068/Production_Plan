@@ -92,21 +92,20 @@ const ScheduleTest = () => {
     });
 
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
-
     axios.post("/Schedual/view", {
       startDate: toLocalISOString(activeStart),
       endDate: toLocalISOString(activeEnd),
       viewtype: viewName,
     })
     .then(res => {
-      
+
         let data = res.data;
-       
+
         if (typeof data === "string") {
           data = data.replace(/^<!--.*?-->/, "").trim();
           data = JSON.parse(data);
         }
+
 
         setAuthorization (['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department )
 
@@ -127,6 +126,7 @@ const ScheduleTest = () => {
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
+
         }
 
   
@@ -152,12 +152,12 @@ const ScheduleTest = () => {
 
         setTimeout(() => {
           Swal.close();
+
         }, 100);
 
         
       })
       .catch(err =>
-        
         console.error("API error:", err)
       );
 
@@ -1776,7 +1776,7 @@ const ScheduleTest = () => {
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
-        initialView= "resourceTimelineDay" //"resourceTimelineWeek"
+        initialView="resourceTimelineWeek"
         firstDay={1}
         events={events}
         eventResourceEditable={true}
@@ -1829,97 +1829,97 @@ const ScheduleTest = () => {
         }}
 
         // Phòng
-        // resourceLabelContent={(arg) => {
-        //   const res = arg.resource.extendedProps;
-        //   const busy = parseFloat(res.busy_hours) || 0;
-        //   const yields = parseFloat(res.yield) || 0;
-        //   const unit = res.unit || "";
-        //   const total = parseFloat(res.total_hours) || 1;
-        //   const efficiency = ((busy / total) * 100).toFixed(1);
+        resourceLabelContent={(arg) => {
+          const res = arg.resource.extendedProps;
+          const busy = parseFloat(res.busy_hours) || 0;
+          const yields = parseFloat(res.yield) || 0;
+          const unit = res.unit || "";
+          const total = parseFloat(res.total_hours) || 1;
+          const efficiency = ((busy / total) * 100).toFixed(1);
 
-        //   const highlight = selectedRows.some(row => {
-        //     if (!row.permisson_room) return false;
+          const highlight = selectedRows.some(row => {
+            if (!row.permisson_room) return false;
 
-        //     if (Array.isArray(row.permisson_room)) {
-        //       return row.permisson_room.includes(res.code);
-        //     } else if (typeof row.permisson_room === "object") {
-        //       return Object.values(row.permisson_room).includes(res.code);
-        //     } else {
-        //       return row.permisson_room == arg.resource.id;
-        //     }
-        // });
+            if (Array.isArray(row.permisson_room)) {
+              return row.permisson_room.includes(res.code);
+            } else if (typeof row.permisson_room === "object") {
+              return Object.values(row.permisson_room).includes(res.code);
+            } else {
+              return row.permisson_room == arg.resource.id;
+            }
+        });
 
-        //   const bgColor = highlight ? "#c6f7d0" : "transparent";
-        //   const busyWidth = ((busy / total) * 100).toFixed(1);
-        //   const heightResourcePx = heightResource || 40; // fallback nếu thiếu
+          const bgColor = highlight ? "#c6f7d0" : "transparent";
+          const busyWidth = ((busy / total) * 100).toFixed(1);
+          const heightResourcePx = heightResource || 40; // fallback nếu thiếu
 
-        //   const html = `
-        //     <div 
-        //       style="
-        //         background-color:${bgColor};
-        //         padding:0;
-        //         border-radius:6px;
-        //         margin-top:0;
-        //         position:relative;
-        //         height:${heightResourcePx}px;
-        //       "
-        //     >
-        //       <div
-        //         style="
-        //           font-size:22px;
-        //           font-weight:bold;
-        //           margin-bottom:2px;
-        //           width:8%;
-        //           position:relative;
-        //           top:-26px;
-        //         "
-        //       >
-        //         ${arg.resource.title} - ${res.main_equiment_name ?? ""}
-        //       </div>
+          const html = `
+            <div 
+              style="
+                background-color:${bgColor};
+                padding:0;
+                border-radius:6px;
+                margin-top:0;
+                position:relative;
+                height:${heightResourcePx}px;
+              "
+            >
+              <div
+                style="
+                  font-size:22px;
+                  font-weight:bold;
+                  margin-bottom:2px;
+                  width:8%;
+                  position:relative;
+                  top:-26px;
+                "
+              >
+                ${arg.resource.title} - ${res.main_equiment_name ?? ""}
+              </div>
 
-        //       <div
-        //         class="resource-bar"
-        //         style="
-        //           position:relative;
-        //           top:-26px;
-        //           height:15px;
-        //           background:#eeeeeeff;
-        //           border-radius:20px;
-        //           overflow:hidden;
-        //           display:flex;
-        //           align-items:center;
-        //         "
-        //       >
-        //         <div
-        //           class="busy"
-        //           style="
-        //             width:${busyWidth}%;
-        //             background:red;
-        //             height:100%;
-        //             display:flex;
-        //             align-items:center;
-        //             justify-content:center;
-        //           "
-        //         ></div>
+              <div
+                class="resource-bar"
+                style="
+                  position:relative;
+                  top:-26px;
+                  height:15px;
+                  background:#eeeeeeff;
+                  border-radius:20px;
+                  overflow:hidden;
+                  display:flex;
+                  align-items:center;
+                "
+              >
+                <div
+                  class="busy"
+                  style="
+                    width:${busyWidth}%;
+                    background:red;
+                    height:100%;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                  "
+                ></div>
 
-        //         <b
-        //           style="
-        //             position:absolute;
-        //             top:50%;
-        //             left:50%;
-        //             transform:translate(-50%,-50%);
-        //             font-size:70%;
-        //             color:#060606ff;
-        //           "
-        //         >
-        //           ${efficiency}% - ${formatNumberWithComma(yields)} ${unit}
-        //         </b>
-        //       </div>
-        //     </div>
-        //   `;
+                <b
+                  style="
+                    position:absolute;
+                    top:50%;
+                    left:50%;
+                    transform:translate(-50%,-50%);
+                    font-size:70%;
+                    color:#060606ff;
+                  "
+                >
+                  ${efficiency}% - ${formatNumberWithComma(yields)} ${unit}
+                </b>
+              </div>
+            </div>
+          `;
 
-        //   return { html }; // 🔹 FullCalendar sẽ render nội dung này trực tiếp
-        // }}
+          return { html }; // 🔹 FullCalendar sẽ render nội dung này trực tiếp
+        }}
         
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge',

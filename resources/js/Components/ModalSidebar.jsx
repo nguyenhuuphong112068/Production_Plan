@@ -30,7 +30,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const [isSaving, setIsSaving] = useState(false);
   const [optionRooms, setOptionRooms] = useState([]);
   const [unQuota, setUnQuota] = useState(0);
-  const [isViewLine, setIsViewLine] = useState(false);
  
 
   const columnWidths100 = {
@@ -1324,11 +1323,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 onClick={handleFinished}>
                 {isSaving === false ? <i className="fas fa-check"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
             </div> */}
-
-            <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xác Nhận Hoàn Thành Lô Sản Xuất"
-                onClick={setIsViewLine(true)}>
-                {<i className="fas fa-check"></i>}
-            </div>
 
             {percentShow === "100%" ? (
               <InputText className='border mr-5'
