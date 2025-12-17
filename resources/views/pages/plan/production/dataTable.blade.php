@@ -668,14 +668,14 @@
             });
 
             $(document).on('blur', '.updateInput', function () {
-
+                
                 let id = $(this).data('id');
                 let name = $(this).attr('name');
                 let updateValue = $(this).val();
                 let oldValue = $(this).data('old-value');
+              
+                if (updateValue === oldValue)return;
                 
-                if (updateValue == oldValue && oldValue)return;
-
                 if (id == ''){
                     Swal.fire({
                     title: 'Cảnh Báo!',
@@ -693,7 +693,7 @@
                     if (updateValue && !pattern.test(updateValue)) {
                         Swal.fire({
                             title: 'Lỗi định dạng!',
-                            text: 'Số Nguyên Từ 1 - 4',
+                            text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
                             icon: 'error',
                             timer: 2000,
                             showConfirmButton: false
