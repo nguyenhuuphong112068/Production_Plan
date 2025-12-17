@@ -660,7 +660,7 @@ class SchedualController extends Controller
                                 'quota' => $quota ?? [],
                                 'stageMap' => $stageMap ?? [],
                                 'resources' => $resources?? [],
-                                'sumBatchByStage' => [],// $sumBatchByStage ?? [],
+                                'sumBatchByStage' =>  $sumBatchByStage ?? [],
                                 'reason' => $reason ?? [],
                                 'type' => $type,
                                 'authorization' => $authorization,
