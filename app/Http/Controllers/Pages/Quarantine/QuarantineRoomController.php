@@ -112,7 +112,6 @@ class QuarantineRoomController extends Controller
 
     public function index_actual(Request $request) {
 
-        
         // 1) Lấy toàn bộ dữ liệu gốc
         $datasRaw = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
@@ -144,7 +143,6 @@ class QuarantineRoomController extends Controller
                 't.finished_by',
                 't.finished_date',
                 
-    
                 't2.stage_code as next_stage',
                 't2.start as next_start',
                 't2.resourceId as next_room_id',
@@ -164,7 +162,6 @@ class QuarantineRoomController extends Controller
                 'room_name' => $items->first()->name,
                 'total_yields' => $items->sum('number_of_boxes'),
                 'details' => $items
-                
             ];
         });
 
@@ -195,7 +192,6 @@ class QuarantineRoomController extends Controller
             ->get();
 
         //dd ($datas);
-
         
 
         session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);

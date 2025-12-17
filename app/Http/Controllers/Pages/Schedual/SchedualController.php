@@ -188,12 +188,11 @@ class SchedualController extends Controller
                         'finished_product_category.intermediate_code',
                         'plan_master.expected_date',
                         'plan_master.after_weigth_date',
-                        'plan_master.before_weigth_date',
                         'plan_master.after_parkaging_date',
-                        'plan_master.before_parkaging_date',
                         'plan_master.is_val',
                         'plan_master.level',
                         'intermediate_category.quarantine_total',
+
                         DB::raw("CASE
                                         WHEN sp.stage_code = 7 THEN 
                                         CONCAT(finished_product_category.intermediate_code, '_', finished_product_category.finished_product_code)
@@ -612,7 +611,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-              
+                Log::info($request->all());
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";
@@ -647,7 +646,13 @@ class SchedualController extends Controller
                         $type = true;
                        
                         $authorization = session('user')['userGroup'];
-                      
+                        Log::info([
+                              
+                                'events' => $events,
+                                
+
+                        ]);
+
                         return response()->json([
                                 'title' => $title,
                                 'events' => $events,
@@ -655,7 +660,7 @@ class SchedualController extends Controller
                                 'quota' => $quota ?? [],
                                 'stageMap' => $stageMap ?? [],
                                 'resources' => $resources?? [],
-                                'sumBatchByStage' => $sumBatchByStage ?? [],
+                                'sumBatchByStage' => [],// $sumBatchByStage ?? [],
                                 'reason' => $reason ?? [],
                                 'type' => $type,
                                 'authorization' => $authorization,
