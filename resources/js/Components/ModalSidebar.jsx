@@ -4,15 +4,16 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Row, Col, Modal, Form } from 'react-bootstrap';
+import { Row, Col, Modal, Form} from 'react-bootstrap';
 import { Checkbox } from 'primereact/checkbox';
+import { Dropdown } from 'primereact/dropdown';
 import './ModalSidebar.css'
 import { InputSwitch } from 'primereact/inputswitch';
 import Swal from 'sweetalert2'; 
 import axios from "axios";
 
 
-const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows, setSelectedRows, resources, type, currentPassword }) => {
+const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows, setSelectedRows, resources, type, currentPassword, lines }) => {
 
    const wrapperRef = useRef(null);
 
@@ -30,14 +31,18 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const [isSaving, setIsSaving] = useState(false);
   const [optionRooms, setOptionRooms] = useState([]);
   const [unQuota, setUnQuota] = useState(0);
+  const [isShowLine, setIsShowLine] = useState(false);
+  const [selectedLine, setSelectedLine] = useState("S16");
  
+  
 
   const columnWidths100 = {
     code: '8%',                // Mã sản phẩm
     permisson_room: '6%',      // Phòng SX
     name: '10%',               // Sản phẩm
     batch: '8%',               // Số lô
-    expected_date: '8%',       // Ngày DK KCS
+    expected_date: '4%',       // Ngày DK KCS
+    responsed_date: '4%',       // Ngày DK KCS
     market: '6%',              // Thị trường
     level: '4%',               // Ưu tiên
     is_val: '5%',              // Thẩm định
@@ -325,10 +330,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   }
 
   const handleRowReorder = (e) => {
+    
     const { value: newData, dropIndex, dragIndex } = e;
 
+    //console.log (selectedRows.length)
     // Nếu chưa chọn gì thì chỉ cần đánh lại order_by
-    if (!selectedRows || selectedRows.length === 0) {
+    if (!selectedRows || selectedRows.length == 0) {
       // Đánh lại order_by liên tục
       const updateOrderData = newData.map((row, i) => ({
         ...row,
@@ -342,11 +349,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       }));
 
       // Cập nhật state
-
+      //console.log (payload)
       setPlan (updateOrderData)
+
+  
       // Gửi lên server
       axios.put('/Schedual/updateOrder', { updateOrderData: payload })
       . then (res => {
+                    alert ("sa")
                     let data = res.data;
                     if (typeof data === "string") {
                       data = data.replace(/^<!--.*?-->/, "").trim();
@@ -403,7 +413,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
     setPlan (updateOrderData)
 
-    axios.put('/Schedual/updateOrder', { updateOrderData: payload })
+    axios.put('/Schedual/updateOrder', 
+      { 
+        updateOrderData: payload, 
+        isShowLine: isShowLine
+      })
       . then (res => {
                     let data = res.data;
                     if (typeof data === "string") {
@@ -911,6 +925,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const filterUnQuotaRow = () => {
     if (isSaving) return;
     setIsSaving(true);
+
   
     let UnQuotaRow = waitPlan.filter(event => Number(event.stage_code) === stageFilter && Array.isArray(event.permisson_room) && event.permisson_room.length === 0)
     setTableData(UnQuotaRow)
@@ -1195,6 +1210,49 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       return;
   }
 
+  const hasAnyRoom = (filterStr, userRoomStr) => {
+    if (!filterStr || !userRoomStr) return false;
+
+    const filterArr = filterStr
+      .split(',')
+      .map(r => r.trim());
+
+    return filterArr.includes(userRoomStr.trim());
+  };
+
+  const handleShowLine = (room, type_search) => {
+    //if (isSaving) return;
+    //setIsSaving(true); Number(event.stage_code) === stageFilter &&
+    if (type_search){
+      setIsShowLine (!isShowLine)
+      const filtered = waitPlan.filter(event => Number(event.stage_code) === stageFilter)
+      setTableData(filtered);
+      setSelectedRows([]);
+      return;
+    }
+    
+
+    const filtered = waitPlan
+        .filter(event =>
+          (
+            hasAnyRoom(event.permisson_room_filter, room) &&
+            Object.values(event.permisson_room || {}).length === 1
+          ) ||
+          event.required_room_code === room
+        )
+        .sort((a, b) => {
+          const aOrder = Number(a.order_by_line ?? 0);
+          const bOrder = Number(b.order_by_line ?? 0);
+          return aOrder - bOrder; // ASC
+    });
+
+    setTableData(filtered);
+
+    setSelectedRows([]);
+    
+  };
+
+
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
@@ -1205,8 +1263,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" , style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
       { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle }},
       { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date", style: { width: '5%', maxWidth: '7.5%', ...longTextStyle }},
-      { field: "responsed_date", header: "Ngày đáp ứng", body: naBody("responsed_date") ,  filter: false, filterField: "responsed_date", style: { width: '5%', maxWidth: '7.5%'}},
-      { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate, style: { width: '5%', maxWidth: '5%', ...longTextStyle } },
+      { field: "responsed_date", header: "Ngày đáp ứng", body: naBody("responsed_date") ,  filter: false, filterField: "responsed_date", style: { width: '5%', maxWidth: '7.5%', ...longTextStyle}},
+      { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate, style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
       { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
       { field: "weight_dates", header: "Cân NL", sortable: true, body: weightPBodyTemplate },
       { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: packagingBodyTemplate },
@@ -1284,7 +1342,15 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 {isSaving === false ? "🚿":<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
 
+                {stageFilter > 2 && stageFilter < 8 ? (
+                  <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xác định lô thẩm định vệ sinh"
+                    onClick={() => handleShowLine(null, true)}>
+                    {isShowLine === false ? "Line":"Stage"}
+                  </div>)
+                :<></>}
+
               </>):<></>}
+
               {percentShow === "100%" && stageFilter === 9 && type ? (
                 <>
                   <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Sự Kiện Khác"
@@ -1299,22 +1365,54 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 </>
               ):<></>}
 
+              
+
           </Col>
 
           <Col md={6}>
             <div className="p-inputgroup flex-1">
-              <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
-              {percentShow === "100%" ? (
+              
+              
+              
+              {percentShow === "100%" && !isShowLine ? (
+                  <>
+                    <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
+                    <InputText
+                      value={`${stageFilter}. Công Đoạn ${stageNames[stageFilter]} - ${tableData.length} Mục Chờ Sắp Lịch`}
+                      className="text-center fw-bold rounded"
+                      style={{ fontSize: '25px', color: '#CDC171' }}
+                      readOnly
+                    />
+                    <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
+                  </>
+                ) : percentShow === "100%" && isShowLine? (
+                    <Dropdown
+                      value={selectedLine}
+                      onChange={(e) => {
+                        setSelectedLine(e.value);
+                        handleShowLine(e.value.name, false); // truyền cả object
+                      }}
+                      options={lines[stageFilter]}
+                      optionLabel="name_code"
+                      placeholder="Chọn Phòng Sản Xuất"
+                      className="w-full md:w-14rem fw-bold text-center"
+                    />
+                ) : (
+                  <>
+                    <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
+                    <InputText
+                      value={stageNames[stageFilter]}
+                      className="text-center fw-bold"
+                      style={{ fontSize: '15px', color: '#CDC171' }}
+                      readOnly
+                    />
+                    <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
+                  </>
+                )}
 
-              <InputText value= {stageFilter +". " + "Công Đoạn " + stageNames[stageFilter] + " - " + 
-                tableData.length + " Mục Chờ Sắp Lịch"} className="text-center  fw-bold rounded" style={{ fontSize: '25px' , color: ' #CDC171'}} readOnly 
-                /> 
-              ):
 
-              <InputText value={ stageNames[stageFilter]} className="text-center fw-bold" style={{ fontSize: '15px', color: ' #CDC171'}} readOnly />
-              }
+              
 
-              <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
             </div>
           </Col>
           <Col md={3} className='d-flex justify-content-end'>
@@ -1323,6 +1421,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 onClick={handleFinished}>
                 {isSaving === false ? <i className="fas fa-check"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
             </div> */}
+          
+
 
             {percentShow === "100%" ? (
               <InputText className='border mr-5'
