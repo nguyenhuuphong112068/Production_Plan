@@ -63,7 +63,8 @@ const ScheduleTest = () => {
   const [authorization, setAuthorization] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
   const [reasons, setReasons] = useState([]);
-  //const [department, setDepartment] = useState(null);
+  const [lines, setLines] = useState(['S16']);
+  const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
   
 
@@ -103,7 +104,7 @@ const ScheduleTest = () => {
 
         if (typeof data === "string") {
           data = data.replace(/^<!--.*?-->/, "").trim();
-          data = JSON.parse(data);
+          //data = JSON.parse(data);
         }
 
 
@@ -113,14 +114,15 @@ const ScheduleTest = () => {
           setAuthorization (true);
         }
         
-        setEvents(data.events);
-        setResources(data.resources);
-        setType(data.type)
-        setStageMap(data.stageMap);
-        setSumBatchByStage(data.sumBatchByStage);
-        setReasons(data.reason)
-   
-       
+          setEvents(data.events);
+          setResources(data.resources);
+          setType(data.type)
+          setStageMap(data.stageMap);
+          setSumBatchByStage(data.sumBatchByStage);
+          setReasons(data.reason)
+          setLines(data.Lines)
+          setAllLines (data.allLines)
+        
         
         if (!authorization){
           setPlan(data.plan);
@@ -129,7 +131,7 @@ const ScheduleTest = () => {
 
         }
 
-  
+
         console.log ("ok");
 
         switch (data.production) {
@@ -977,6 +979,30 @@ const ScheduleTest = () => {
     document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
   };
 
+
+  const hasAnyRoom = (filterStr, userRoomStr) => {
+    if (!filterStr || !userRoomStr) return false;
+
+    const filterArr = filterStr
+      .split(',')
+      .map(r => r.trim());
+
+    return filterArr.includes(userRoomStr.trim());
+  };
+  //Number(p.stage_code) === 3 &&
+  const handleShowLine = (room) => {
+    
+    return plan.filter(p =>
+        (
+          hasAnyRoom(p.permisson_room_filter, room) &&
+          Object.values(p.permisson_room || {}).length === 1
+        ) ||
+        p.required_room_code === room
+      )
+      .map(p => p.id);
+  };
+
+
   /// Xử lý Chạy Lịch Tư Động
   let emptyPermission = null;
 
@@ -1017,7 +1043,7 @@ const ScheduleTest = () => {
                   name="start_date"
                   value="${new Date().toISOString().split('T')[0]}">
           </div>
-
+          <hr/>
           <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
           <div class="cfg-row cfg-grid-2">
             <div class="cfg-col">
@@ -1042,7 +1068,40 @@ const ScheduleTest = () => {
               <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
             </div>
           </div>
+        <hr/>
 
+        <div style="text-align:center">
+          <div class="sort-option">
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="stage" checked>
+              <span> Sắp Lich Theo Công Đoạn</span>
+            </label>
+
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="line">
+              <span> Sắp Lich Theo Line</span>
+            </label>
+          </div>
+        </div>
+
+
+        <div id="stepper-container" style="margin-top: 15px;"></div>
+
+        <div id="Stage_line" class="response-date-wrap text-center" style="display:none;">
+          <label class="cfg-label">Chọn Line Sắp Lịch</label>
+          <select id="lines" class="swal2-input response-date-input" name="lines">
+            <option value="">-- Chọn Line --</option>
+          </select>
+        </div>
+
+          ${hasEmptyPermission
+            ? `<p style="color:red;font-weight:600;margin-top:10px;">
+                ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
+                Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
+              </p>`
+            : ''
+          }
+          <hr/>
           <div class="cfg-row">
             <label class="cfg-label" for="prev_orderBy">Thứ tự công đoạn từ ĐH -> ĐG theo :</label>
             <label class="switch">
@@ -1055,16 +1114,6 @@ const ScheduleTest = () => {
             </label>
           </div>
 
-          <label class="cfg-label" for="stepper-container">Sắp Lịch Theo Công Đoạn:</label> 
-          <div id="stepper-container" style="margin-top: 15px;"></div>
-
-          ${hasEmptyPermission
-            ? `<p style="color:red;font-weight:600;margin-top:10px;">
-                ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
-                Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
-              </p>`
-            : ''
-          }
         </div>
 
         <!-- Cột phải -->
@@ -1081,10 +1130,14 @@ const ScheduleTest = () => {
             </label>
           </div>
 
+          <hr/>
+
           <div class="cfg-row">
             <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label>
             <div id="calendar-container" style="margin-top: 15px;"></div>
           </div>
+
+          <hr/>
 
           <div class="cfg-row">
             <label class="cfg-label" for="reason">Lý do chạy Auto Scheduler:</label>
@@ -1098,7 +1151,7 @@ const ScheduleTest = () => {
       </div>
       `,
 
-      width: '40%',
+      width: '1200px',
       customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
       showCancelButton: true,
       confirmButtonText: 'Chạy',
@@ -1107,7 +1160,6 @@ const ScheduleTest = () => {
       cancelButtonColor: '#d33',
 
       didOpen: () => {
-
         // ------------------ Calendar ------------------
         const calendarContainer = document.getElementById("calendar-container");
         const calendarRoot = ReactDOM.createRoot(calendarContainer);
@@ -1228,6 +1280,37 @@ const ScheduleTest = () => {
           confirmBtn.style.opacity = "0.5";
           confirmBtn.style.cursor = "not-allowed";
         }
+
+        const radios = document.querySelectorAll('input[name="sortType"]');
+        const lineWrap = document.getElementById('Stage_line');
+        const stageWrap = document.getElementById('stepper-container');
+        
+        radios.forEach(radio => {
+          radio.addEventListener('change', () => {
+            stageWrap.style.display =
+              radio.value === 'line' && radio.checked
+                ? 'none'
+                : 'block';
+
+            lineWrap.style.display =
+              radio.value === 'line' && radio.checked
+                ? 'block'
+                : 'none';
+          });
+        });
+        
+
+         // ------------- Thêm soure cho Lines ------------- //
+        const linesSelect = document.getElementById("lines");
+        if (allLines && allLines?.length) {
+            allLines.forEach(r => {
+              const opt = document.createElement("option");
+              opt.value = r.code;
+              opt.textContent = r.code + " - "+ r.name ;
+              linesSelect.appendChild(opt);
+            });
+        }
+
       }
       ,
       preConfirm: () => {
@@ -1251,15 +1334,19 @@ const ScheduleTest = () => {
 
         const prev_orderBy = document.getElementById('prev_orderBy');
         formValues.prev_orderBy = prev_orderBy.checked;
+
+        const runType = document.querySelector('input[name="sortType"]:checked')?.value;
+        formValues.runType = runType;
        
         formValues.selectedDates = selectedDates;
         formValues.selectedStep = activeStepText ?? "PC";
+
+        
 
         if (!formValues.start_date) {
           Swal.showValidationMessage('Vui lòng chọn ngày!');
           return false;
         }
-
         return formValues;
       },
       willClose: () => {
@@ -1278,12 +1365,14 @@ const ScheduleTest = () => {
           },
         });
 
-        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+        const {activeStart, activeEnd} = calendarRef.current?.getApi().view;
 
         axios.post('/Schedual/scheduleAll', {
           ...result.value,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
+          stage_plan_ids: handleShowLine (result.value['lines']),
+          room_code: result.value['lines']
         }, { timeout: 300000 })
           .then(res => {
             let data = res.data;
@@ -2108,6 +2197,7 @@ const ScheduleTest = () => {
           resources={resources}
           type={type}
           currentPassword = {currentPassword}
+          lines = {lines}
         />)}
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
