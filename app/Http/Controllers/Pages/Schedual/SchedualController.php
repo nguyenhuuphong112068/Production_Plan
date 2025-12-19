@@ -153,9 +153,18 @@ class SchedualController extends Controller
                         ->where('sp.active', 1)
                         ->whereNotNull('sp.resourceId')
                         ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
-                        ->whereNotNull('sp.start')
                         ->where('sp.deparment_code', $production)
-                        ->whereRaw('(sp.start <= ? OR sp.end >= ? OR sp.start_clearning <= ? OR sp.end_clearning >= ?)',[$endDate, $startDate, $endDate, $startDate])
+                        //->whereRaw('(sp.start <= ? OR sp.end >= ? OR sp.start_clearning <= ? OR sp.end_clearning >= ?)',[$endDate, $startDate, $endDate, $startDate])
+                        ->where(function ($q) {
+                        $q->whereNotNull('sp.start')
+                        ->orWhereNotNull('sp.actual_start');
+                        })
+                        ->where(function ($q) use ($startDate, $endDate) {
+                                $q->whereRaw('(sp.start <= ? AND sp.end >= ?)',[$endDate, $startDate])
+                                ->orWhereRaw('(sp.start_clearning <= ? AND sp.end_clearning >= ?)', [$endDate, $startDate])
+                                ->orWhereRaw('(sp.actual_start <= ? AND sp.actual_end >= ?)',[$endDate, $startDate])
+                                ->orWhereRaw('(sp.actual_start_clearning <= ? AND sp.actual_end_clearning >= ?)',[$endDate, $startDate]);
+                        })
                         ->select(
                         'sp.id',
                         'sp.code',
@@ -203,6 +212,7 @@ class SchedualController extends Controller
                                         CONCAT(finished_product_category.intermediate_code, '_NA')
                                 END as process_code
                                 "),
+
                         DB::raw("
                                 CASE
                                 WHEN sp.stage_code IN (1,2) THEN
@@ -232,17 +242,14 @@ class SchedualController extends Controller
                         ->orderBy('sp.stage_code')
                 ->get();
 
+        
+
               
                 
                 if ($event_plans->isEmpty()) {
                         return collect();
                 }
 
-                // 3️⃣ Lấy sẵn lịch sử (1 query duy nhất)
-                // $historyCounts = DB::table('stage_plan_history')
-                //         ->select('stage_plan_id', DB::raw('COUNT(*) as count'))
-                //         ->groupBy('stage_plan_id')
-                //         ->pluck('count', 'stage_plan_id');
 
                 // 4️⃣ Gom nhóm theo plan_master_id
                 $groupedPlans = $event_plans->groupBy('plan_master_id');
@@ -258,7 +265,7 @@ class SchedualController extends Controller
                         $subtitle = null;
 
                         // 🎨 Màu mặc định
-                        if ($plan->stage_code <= 7) {
+                        if ($plan->stage_code <= 7 ) {
                                 $color_event = '#4CAF50';
                                 $textColor= '#fefefee2';
                         } elseif ($plan->stage_code == 8) {
@@ -298,15 +305,11 @@ class SchedualController extends Controller
                         }
 
                         // ⚠️ Kiểm tra nguyên liệu / bao bì
-                        if ($plan->stage_code === 1 &&
-                                $plan->after_weigth_date > $plan->start &&
-                                $plan->before_weigth_date < $plan->start) {
+                        if ($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start) {
                                 $color_event = '#f99e02ff';
                                 $textColor= '#fefefee2';
                                 //$subtitle = "Nguyên Liệu Không Đáp Ứng: {$plan->after_weigth_date} - {$plan->before_weigth_date}";
-                        } elseif ($plan->stage_code === 7 &&
-                                $plan->after_parkaging_date > $plan->start &&
-                                $plan->before_parkaging_date < $plan->start) {
+                        } elseif ($plan->stage_code === 7 && $plan->after_parkaging_date > $plan->start) {
                                 $color_event = '#f99e02ff';
                                 $textColor= '#fefefee2';
                                 //$subtitle = "Bao Bì Không Đáp Ứng: {$plan->after_parkaging_date} - {$plan->before_parkaging_date}";
@@ -347,7 +350,7 @@ class SchedualController extends Controller
                         }
 
                         // 🎯 Push event chính
-                        if ($plan->start) {
+                        if ($plan->start || $plan->actual_start) {
                                 $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-main",
@@ -355,7 +358,7 @@ class SchedualController extends Controller
                                 'start' => $plan->actual_start ?? $plan->start,
                                 'end' => $plan->actual_end ?? $plan->end,
                                 'resourceId' => $plan->resourceId,
-                                'color' => $plan->finished == 1? '#002af9ff':$color_event,
+                                'color' => $plan->finished == 1? '#002af9ff': $color_event,
                                 'textColor' => $textColor,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
@@ -366,19 +369,18 @@ class SchedualController extends Controller
                                 'keep_dry' => $plan->keep_dry,
                                 'tank' => $plan->tank,
                                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
-                                //'number_of_history' => $historyCounts[$plan->id] ?? 0,
                                 'submit' => $plan->submit,
                                 'storage_capacity' => $storage_capacity
                                 ]);
                         }
 
                         // 🧽 Push event vệ sinh
-                        if ($clearning && $plan->start_clearning  && $plan->yields >= 0) {
+                        if (($clearning && $plan->start_clearning  && $plan->yields >= 0) || ($clearning && $plan->actual_start_clearning && $plan->yields >= 0)  ) {
                                 $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-cleaning",
-                                'title' => $plan->title_clearning ?? 'Vệ sinh',
-                                'start' => $plan->finished == 1 ? $plan->actual_start_clearning : $plan->start_clearning,
+                                'title' => $plan->title_clearning ?? 'VS',
+                                'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
                                 'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
                                 'color' => $plan->finished == 1? '#002af9ff':'#a1a2a2ff',
@@ -411,9 +413,6 @@ class SchedualController extends Controller
                                 'process_code' => $plan->process_code,
                                 'keep_dry' => $plan->keep_dry,
                                 'tank' => $plan->tank,
-                                'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
-                                //'number_of_history' => $historyCounts[$plan->id] ?? 0,
-                                //'order_by' => $plan->order_by,
                                 'storage_capacity' => $storage_capacity
                                 ]);
                         }

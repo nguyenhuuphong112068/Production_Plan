@@ -103,7 +103,8 @@ class DailyReportController extends Controller
                 ->select(
                     "sp.$group_By",
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
-                    "sp.title_clearning as title",
+                    DB::raw("CONCAT(sp.title_clearning, '->', sp.title) AS title"),
+                   // "sp.title_clearning as title",
                     "sp.actual_start_clearning",
                     "sp.actual_end_clearning",
                     

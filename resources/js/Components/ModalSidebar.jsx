@@ -41,13 +41,13 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     permisson_room: '6%',      // Phòng SX
     name: '10%',               // Sản phẩm
     batch: '8%',               // Số lô
-    expected_date: '4%',       // Ngày DK KCS
-    responsed_date: '4%',       // Ngày DK KCS
-    market: '6%',              // Thị trường
+    expected_date: '6%',       // Ngày DK KCS
+    responsed_date: '6%',       // Ngày DK KCS
+    market: '3%',              // Thị trường
     level: '4%',               // Ưu tiên
     is_val: '5%',              // Thẩm định
-    weight_dates: '8%',        // Cân NL
-    pakaging_dates: '8%',      // Đóng gói
+    weight_dates: '5%',        // Cân NL
+    pakaging_dates: '5%',      // Đóng gói
     source_material_name: '10%',// Nguồn nguyên liệu
     campaign_code: '6%',       // Mã chiến dịch
     note: '23%',               // Ghi chú
@@ -94,14 +94,33 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
     if (percentShow === "100%") {
 
-      if (stageFilter === 1 || stageFilter === 3 ) {
-        visibleCols = allColumns.filter(col => !["pakaging_dates"].includes(col.field));
-      } else if (stageFilter === 7) {
-        visibleCols = allColumns.filter(col => !["weight_dates"].includes(col.field));
+      if (stageFilter === 1 ) {
+        visibleCols = allColumns.filter(col => !["pakaging_dates", 
+          ,"preperation_before_date", "blending_before_date", "coating_before_date" ].includes(col.field));
+      }else if (stageFilter === 2 ) {
+        visibleCols = allColumns.filter(col => !["pakaging_dates", 
+          "expired_material_date", "preperation_before_date", "blending_before_date", "coating_before_date" ].includes(col.field));
+      }else if (stageFilter === 3 ) {
+        visibleCols = allColumns.filter(col => !["pakaging_dates", 
+          , "blending_before_date", "coating_before_date","allow_weight_before_date" ].includes(col.field));
+      }else if (stageFilter === 4 ) {
+        visibleCols = allColumns.filter(col => !["pakaging_dates", 
+          "expired_material_date", "preperation_before_date", "coating_before_date","allow_weight_before_date" ].includes(col.field));
+      }else if (stageFilter === 5 ) {
+        visibleCols = allColumns.filter(col => !["pakaging_dates", 
+          "expired_material_date", "preperation_before_date", "coating_before_date", "blending_before_date","allow_weight_before_date"].includes(col.field));
+      }else if (stageFilter === 6 ) {
+        visibleCols = allColumns.filter(col => !["pakaging_dates", 
+          "expired_material_date", "preperation_before_date",  "blending_before_date","allow_weight_before_date"].includes(col.field));
+      }else if (stageFilter === 7) {
+        visibleCols = allColumns.filter(col => !["weight_dates",
+          "expired_material_date", "preperation_before_date", "coating_before_date", "blending_before_date","allow_weight_before_date"].includes(col.field));
       } else if (stageFilter === 8) {
         visibleCols = allColumns.filter(col => ![
           "weight_dates", "pakaging_dates", "level",
-          "batch", "market", "is_val", "source_material_name", "campaign_code"
+          "batch", "market", "is_val", "source_material_name", "campaign_code",
+          "clearning_validation", "immediately", "expected_date", "responsed_date",
+          "expired_material_date", "preperation_before_date", "coating_before_date", "blending_before_date","allow_weight_before_date"
         ].includes(col.field));
       } else if (stageFilter === 9) {
         visibleCols = allColumns.filter(col => ["name", "batch", "note"].includes(col.field));
@@ -195,6 +214,101 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     );
   };
 
+  const allowWeightBeforeDateTemplate = (rowData) => {
+    const isEmpty = !rowData.allow_weight_before_date;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span
+          style={{
+            color: isEmpty ?  "inherit" : "red" ,
+            fontWeight: isEmpty ? 600 : 400,
+          }}
+        >
+          {isEmpty
+            ? "-"
+            : formatDate(rowData.allow_weight_before_date)}
+        </span>
+      </div>
+    );
+  };
+
+
+  const preperationBeforeDateTemplate = (rowData) => {
+    const isEmpty = !rowData.preperation_before_date;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span
+          style={{
+            color: isEmpty ?  "inherit" : "red" ,
+            fontWeight: isEmpty ? 600 : 400,
+          }}
+        >
+          {isEmpty
+            ? "-"
+            : formatDate(rowData.preperation_before_date)}
+        </span>
+      </div>
+    );
+  };
+
+  const blendingBeforeDateTemplate = (rowData) => {
+    const isEmpty = !rowData.blending_before_date;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span
+          style={{
+            color: isEmpty ?  "inherit" : "red" ,
+            fontWeight: isEmpty ? 600 : 400,
+          }}
+        >
+          {isEmpty
+            ? "-"
+            : formatDate(rowData.blending_before_date)}
+        </span>
+      </div>
+    );
+  };
+
+  const coatingBeforeDateTemplate = (rowData) => {
+    const isEmpty = !rowData.coating_before_date;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span
+          style={{
+            color: isEmpty ?  "inherit" : "red" ,
+            fontWeight: isEmpty ? 600 : 400,
+          }}
+        >
+          {isEmpty
+            ? "-"
+            : formatDate(rowData.coating_before_date)}
+        </span>
+      </div>
+    );
+  };
+
+  const expiredMaterialDateTemplate = (rowData) => {
+    const isEmpty = !rowData.expired_material_date;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span
+          style={{
+            color: isEmpty ?  "inherit" : "red" ,
+            fontWeight: isEmpty ? 600 : 400,
+          }}
+        >
+          {isEmpty
+            ? "-"
+            : formatDate(rowData.expired_material_date)}
+        </span>
+      </div>
+    );
+  };
 
   const packagingBodyTemplate = (rowData) => {
     const isEmpty = !rowData.after_parkaging_date;
@@ -214,7 +328,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
       </div>
     );
   };
-
 
   const productCodeBody = (rowData) => {
     if (rowData.stage_code === 8) {
@@ -1283,19 +1396,33 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
+         
+              // 'plan_master.blending_before_date',
+              // 'plan_master.coating_before_date',
+    
+
   const allColumns = [
       { field: "month", header: "tháng", sortable: true,  filter: false, filterField: "month" },
       { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" , style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
       { field: "permisson_room", header: "Phòng SX", sortable: true, body: roomBody, filter: false, filterField: "permisson_room",style: { minWidth: '3%', maxWidth: '3%', ...longTextStyle } },
       { field: "name", header: "Sản Phẩm", sortable: true, body: naBody("name"), filter: false,  filterField: "name" , style: { width: '20%', maxWidth: '20%', ...longTextStyle }},
       { field: "batch", header: "Số Lô", sortable: true, body: naBody("batch"), filter: false, filterField: "batch" , style: { width: '10%', maxWidth: '15%', ...longTextStyle }},
-      { field: "market", header: "Thị Trường", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle }},
+      { field: "market", header: "TT", sortable: true, body: naBody("market"), filter: false, filterField: "market", style: { width: '8rem', maxWidth: '8rem', ...longTextStyle }},
       { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date") , filter: false, filterField: "expected_date", style: { width: '5%', maxWidth: '7.5%', ...longTextStyle }},
       { field: "responsed_date", header: "Ngày đáp ứng", body: naBody("responsed_date") ,  filter: false, filterField: "responsed_date", style: { width: '5%', maxWidth: '7.5%', ...longTextStyle}},
       { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate, style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
       { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
-      { field: "weight_dates", header: "Cân NL", sortable: true, body: weightPBodyTemplate },
-      { field: "pakaging_dates", header: "Đóng gói", sortable: true, body: packagingBodyTemplate },
+      
+      { field: "weight_dates", header: "Ngày có NL", sortable: true, body: weightPBodyTemplate },
+      { field: "allow_weight_before_date", header: "Ngày Được Cân", sortable: true, body: allowWeightBeforeDateTemplate },
+      { field: "expired_material_date", header: "Ngày HH NL", sortable: true, body: expiredMaterialDateTemplate ,  filter: false},
+      
+      { field: "preperation_before_date", header: "PC trước", sortable: true, body: preperationBeforeDateTemplate ,  filter: false},
+      { field: "blending_before_date", header: "THT trước", sortable: true, body: blendingBeforeDateTemplate ,  filter: false},
+      { field: "coating_before_date", header: "BP trước", sortable: true, body: coatingBeforeDateTemplate ,  filter: false},
+
+      { field: "pakaging_dates", header: "Ngày có BB", sortable: true, body: packagingBodyTemplate },
+
       { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"), style: { width: '25rem', maxWidth: '25rem', ...longTextStyle } },
       { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
       { field: "immediately", header: (<><i className="fa fa-bolt me-1"></i></>), body: ImmediatelyBodyTemplate, style: {width: '5rem', maxWidth: '5rem', ...longTextStyle }},
