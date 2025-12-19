@@ -202,7 +202,7 @@ class DailyReportController extends Controller
 
                 //dd ($order_action_full);
                     
-            // 6) ROOM_STATUS_partial       
+            // 6) ROOM_STATUS_parti      
             $order_action_partial = DB::table("room_status as sp")
                 ->whereNotNull('sp.start')
                 ->whereNotNull('sp.end')
