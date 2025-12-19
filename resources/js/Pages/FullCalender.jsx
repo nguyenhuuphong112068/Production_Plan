@@ -122,7 +122,7 @@ const ScheduleTest = () => {
           setReasons(data.reason)
           setLines(data.Lines)
           setAllLines (data.allLines)
-
+        
         
         if (!authorization){
           setPlan(data.plan);
@@ -673,11 +673,6 @@ const ScheduleTest = () => {
           }
  
             
-
-            
-            
-           
-           
 
           event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
 
