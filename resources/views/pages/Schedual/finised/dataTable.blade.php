@@ -385,10 +385,6 @@
             const now = new Date();
             let actionType = "";
 
-
-           
-       
-
             if (btn.classList.contains('btn-finised')) {
                 actionType = "finised"; 
 
@@ -418,7 +414,7 @@
                     if (input && input.value) {
                         let valTime = new Date(input.value);
                         
-                        if (valTime > now || input.value == "") {
+                        if (valTime > now || input.value == "" || input.value == null) {
                             Swal.fire({
                                 icon: "warning",
                                 title: "Thời gian không hợp lệ",
@@ -458,7 +454,7 @@
                     if (input && input.value == "") {
                         let valTime = new Date(input.value);
 
-                        if (valTime > now || input.value == "") {
+                        if (valTime > now || input.value == "" || input.value == null) {
                             Swal.fire({
                                 icon: "warning",
                                 title: "Thời gian không hợp lệ",

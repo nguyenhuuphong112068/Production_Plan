@@ -8,14 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 class SchedualReportController extends Controller
 {
-    
-    
-
-
 
     public function list(Request $request){
-               
-
+            
                 $fromDate = $request->from_date ?? Carbon::now()->toDateString();
                 $toDate   = $request->to_date   ?? Carbon::now()->addMonth(2)->toDateString(); 
                 $stage_code = $request->stage_code??3;

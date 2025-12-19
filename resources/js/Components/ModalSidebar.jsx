@@ -93,7 +93,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     let visibleCols = [];
 
     if (percentShow === "100%") {
-      if (stageFilter === 1) {
+
+      if (stageFilter === 1 || stageFilter === 3 ) {
         visibleCols = allColumns.filter(col => !["pakaging_dates"].includes(col.field));
       } else if (stageFilter === 7) {
         visibleCols = allColumns.filter(col => !["weight_dates"].includes(col.field));
@@ -163,6 +164,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const ImmediatelyBodyTemplate = (rowData) => (
     <Checkbox checked={rowData.immediately ? true : false}/>
   );
+
   const clearningValidationBodyTemplate = (rowData) => (
     <Checkbox checked={rowData.clearning_validation ? true : false}/>
   );
@@ -174,19 +176,45 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     return date.toLocaleDateString("vi-VN"); // sẽ thành dd/MM/yyyy
   };
 
-  const weightPBodyTemplate = (rowData) => (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <span>{formatDate(rowData.after_weigth_date) || ''}</span>
-      <span>{formatDate(rowData.before_weigth_date) || ''}</span>
-    </div>
-  );
+  const weightPBodyTemplate = (rowData) => {
+    const isEmpty = !rowData.after_weigth_date;
 
-  const packagingBodyTemplate = (rowData) => (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <span>{formatDate(rowData.after_parkaging_date) || ''}</span>
-      <span>{formatDate(rowData.before_parkaging_date) || ''}</span>
-    </div>
-  );
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span
+          style={{
+            color: isEmpty ? "red" : "inherit",
+            fontWeight: isEmpty ? 600 : 400,
+          }}
+        >
+          {isEmpty
+            ? "Chưa xác định"
+            : formatDate(rowData.after_weigth_date)}
+        </span>
+      </div>
+    );
+  };
+
+
+  const packagingBodyTemplate = (rowData) => {
+    const isEmpty = !rowData.after_parkaging_date;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span
+          style={{
+            color: isEmpty ? "red" : "inherit",
+            fontWeight: isEmpty ? 600 : 400,
+          }}
+        >
+          {isEmpty
+            ? "Chưa xác định"
+            : formatDate(rowData.after_parkaging_date)}
+        </span>
+      </div>
+    );
+  };
+
 
   const productCodeBody = (rowData) => {
     if (rowData.stage_code === 8) {
@@ -1474,6 +1502,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
             "finished_product_code",
             "month"
           ]}
+
+             
+    
         >
            {percentShow === "100%" ? (
             <Column
