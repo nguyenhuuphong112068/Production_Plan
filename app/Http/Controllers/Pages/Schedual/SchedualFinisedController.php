@@ -111,68 +111,186 @@ class SchedualFinisedController extends Controller
                 ]);
         }
 
-        public function store(Request $request) {
+        public function store(Request $request){
+                Log::info($request->all());
 
-                
-                $yields_batch_qty = null;
-                if ($request->stage_code == 4){
-                        $stage_plan = DB::table('stage_plan')->where('id', $request->id)->first();
-                        $batch_qty = DB::table('finished_product_category')->where('id', $stage_plan->product_caterogy_id)->value('batch_qty');
-                        $yields_batch_qty = round(($request->yields/$stage_plan->Theoretical_yields) * $batch_qty,2);
-                }else
+                /* ===============================
+                1. FORMAT DATE TIME (LUÔN Ở ĐẦU)
+                =============================== */
+                $actualStart = $request->start
+                ? Carbon::parse($request->start)->format('Y-m-d H:i:s')
+                : null;
 
-                
+                $actualEnd = $request->end
+                ? Carbon::parse($request->end)->format('Y-m-d H:i:s')
+                : null;
 
-                if ($request->actionType == 'finised') {
-                        DB::table('stage_plan')
-                        ->where('id', $request->id)
-                        ->update([
-                                   
-                        //'start'           => $request->start,
-                        //'end'             => $request->end,
-                        //'start_clearning' => $request->start_clearning,
-                        //'end_clearning'   => $request->end_clearning,
-                        'title'                  => $request->title,
-                        'resourceId'            => $request->resourceId,
-                        'actual_start'           => $request->start,
-                        'actual_end'             => $request->end,
-                        'actual_start_clearning' => $request->start_clearning,
-                        'actual_end_clearning'   => $request->end_clearning,
-                        'yields_batch_qty'        => $yields_batch_qty??null,
-                        'yields'   => $request->yields,
-                        'number_of_boxes'   => $request->number_of_boxes??1,
-                        'note'   => $request->note??"NA",
-                        'finished'        => 1,
-                        'finished_by'   => session('user')['fullName'],
-                        'finished_date'   => now(),
-                        ]);
+                $actualStartCleaning = $request->start_clearning
+                ? Carbon::parse($request->start_clearning)->format('Y-m-d H:i:s')
+                : null;
 
-                }else {
+                $actualEndCleaning = $request->end_clearning
+                ? Carbon::parse($request->end_clearning)->format('Y-m-d H:i:s')
+                : null;
 
-                        DB::table('stage_plan')
-                        ->where('id', $request->id)
-                        ->update([
-                                   
-                        'actual_start'           => $request->start,
-                        'actual_end'             => $request->end,
-                        //'actual_start_clearning' => $request->start_clearning,
-                        //'actual_end_clearning'   => $request->end_clearning,
-                        'title'                  => $request->title,
-                        'resourceId'            => $request->resourceId,        
-                        'yields'   => $request->yields,
-                        'yields_batch_qty'        => $yields_batch_qty??null,
-                        'number_of_boxes'   => $request->number_of_boxes??1,
-                        'note'   => $request->note??"NA",
-                        'finished'        => 1,
-                        'finished_by'   => session('user')['fullName'],
-                        'finished_date'   => now(),
-                        ]);
-
+                /* ===============================
+                2. VALIDATE TIME LOGIC
+                =============================== */
+                if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
+                return back()->withErrors('❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu');
                 }
+
+                /* ===============================
+                3. TÍNH YIELDS BATCH QTY (STAGE 4)
+                =============================== */
+                $yields_batch_qty = null;
+
+                if ((int)$request->stage_code === 4) {
+
+                $stagePlan = DB::table('stage_plan')
+                        ->where('id', $request->id)
+                        ->first();
+
+                if ($stagePlan && $stagePlan->Theoretical_yields > 0) {
+
+                        $batch_qty = DB::table('finished_product_category')
+                        ->where('id', $stagePlan->product_caterogy_id)
+                        ->value('batch_qty');
+
+                        $yields_batch_qty = round(
+                        ($request->yields / $stagePlan->Theoretical_yields) * $batch_qty,
+                        2
+                        );
+                }
+                }
+
+                /* ===============================
+                4. DATA UPDATE CHUNG
+                =============================== */
+                $updateData = [
+                'title'            => $request->title,
+                'resourceId'       => $request->resourceId,
+                'actual_start'     => $actualStart,
+                'actual_end'       => $actualEnd,
+                'yields'           => $request->yields,
+                'yields_batch_qty' => $yields_batch_qty,
+                'number_of_boxes'  => $request->number_of_boxes ?? 1,
+                'note'             => $request->note ?? 'NA',
+                'finished_by'      => session('user')['fullName'],
+                'finished_date'    => now(),
+                ];
+
+                /* ===============================
+                5. PHÂN BIỆT FINISHED / SEMI
+                =============================== */
+                if ($request->actionType === 'finised') {
+
+                $updateData = array_merge($updateData, [
+                        'actual_start_clearning' => $actualStartCleaning,
+                        'actual_end_clearning'   => $actualEndCleaning,
+                        'finished'               => 1,
+                ]);
+
+                } elseif ($request->actionType === 'semi-finised') {
+
+                $updateData = array_merge($updateData, [
+                        'finished' => 0,
+                ]);
+
+                } else {
+                return back()->withErrors('❌ actionType không hợp lệ');
+                }
+
+                /* ===============================
+                6. UPDATE DB
+                =============================== */
+                DB::table('stage_plan')
+                ->where('id', $request->id)
+                ->update($updateData);
+
+                return back()->with('success', '✅ Cập nhật công đoạn thành công!');
+        }
+
+
+        // public function store(Request $request) {
+
+        //         Log::info ($request->all());
+                
+        //         $yields_batch_qty = null;
+        //         if ($request->stage_code == 4){
+        //                 $stage_plan = DB::table('stage_plan')->where('id', $request->id)->first();
+        //                 $batch_qty = DB::table('finished_product_category')->where('id', $stage_plan->product_caterogy_id)->value('batch_qty');
+        //                 $yields_batch_qty = round(($request->yields/$stage_plan->Theoretical_yields) * $batch_qty,2);
+        //         }else
+
+        //         $actualStart = $request->start
+        //         ? Carbon::parse($request->start)->format('Y-m-d H:i:s')
+        //         : null;
+
+        //         $actualEnd = $request->end
+        //         ? Carbon::parse($request->end)->format('Y-m-d H:i:s')
+        //         : null;
+
+        //         $actualStartCleaning = $request->start_clearning
+        //         ? Carbon::parse($request->start_clearning)->format('Y-m-d H:i:s')
+        //         : null;
+
+        //         $actualEndCleaning = $request->end_clearning
+        //         ? Carbon::parse($request->end_clearning)->format('Y-m-d H:i:s')
+        //         : null;
+
+
+
+        //         if ($request->actionType == 'finised') {
+        //                 DB::table('stage_plan')
+        //                 ->where('id', $request->id)
+        //                 ->update([
+                                   
+        //                 //'start'           => $request->start,
+        //                 //'end'             => $request->end,
+        //                 //'start_clearning' => $request->start_clearning,
+        //                 //'end_clearning'   => $request->end_clearning,
+        //                 'title'                  => $request->title,
+        //                 'resourceId'            => $request->resourceId,
+
+        //                 'actual_start'           => $actualStart,
+        //                 'actual_end'             => $actualEnd,
+        //                 'actual_start_clearning' => $actualStartCleaning,
+        //                 'actual_end_clearning'   => $actualEndCleaning,
+        //                 'yields_batch_qty'        => $yields_batch_qty??null,
+        //                 'yields'   => $request->yields,
+        //                 'number_of_boxes'   => $request->number_of_boxes??1,
+        //                 'note'   => $request->note??"NA",
+        //                 'finished'        => 1,
+        //                 'finished_by'   => session('user')['fullName'],
+        //                 'finished_date'   => now(),
+        //                 ]);
+
+        //         }else {
+
+        //                 DB::table('stage_plan')
+        //                 ->where('id', $request->id)
+        //                 ->update([
+                                   
+        //                 'actual_start'        => $actualStart,
+        //                 'actual_end'           => $actualEnd,
+       
+        //                 'title'                  => $request->title,
+        //                 'resourceId'            => $request->resourceId,        
+        //                 'yields'   => $request->yields,
+        //                 'yields_batch_qty'        => $yields_batch_qty??null,
+        //                 'number_of_boxes'   => $request->number_of_boxes??1,
+        //                 'note'   => $request->note??"NA",
+        //                 'finished'        => 1,
+        //                 'finished_by'   => session('user')['fullName'],
+        //                 'finished_date'   => now(),
+        //                 ]);
+
+        //         }
                 
 
-                 return redirect()->back()->with('success', 'Đã thêm thành công!');   
-        }
+        //          return redirect()->back()->with('success', 'Đã thêm thành công!');   
+        // }
 
 
 }

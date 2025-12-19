@@ -503,9 +503,15 @@ class SchedualController extends Controller
                         'plan_master.note',
                         'plan_master.level',
                         'plan_master.after_weigth_date',
-                        'plan_master.before_weigth_date',
                         'plan_master.after_parkaging_date',
-                        'plan_master.before_parkaging_date',
+
+                        'plan_master.allow_weight_before_date',
+                        'plan_master.preperation_before_date',
+                        'plan_master.blending_before_date',
+                        'plan_master.coating_before_date',
+                        'plan_master.expired_material_date',        
+
+                        
                         'plan_master.material_source_id',
                         'plan_master.only_parkaging',
                         'plan_master.percent_parkaging',
@@ -2668,6 +2674,10 @@ class SchedualController extends Controller
                                 ->where('sp.finished',0)
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
+                                ->whereNotNull('plan_master.after_weigth_date')
+                                ->when($stageCode == 7, function ($q) {
+                                        $q->whereNotNull('plan_master.after_parkaging_date');
+                                })
                                 ->where('sp.deparment_code', session('user')['production_code'])
                                 ->orderBy('prev.start', 'asc')
 
@@ -2712,6 +2722,10 @@ class SchedualController extends Controller
                                 ->where('sp.finished',0)
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
+                                ->whereNotNull('plan_master.after_weigth_date')
+                                ->when($stageCode == 7, function ($q) {
+                                        $q->whereNotNull('plan_master.after_parkaging_date');
+                                })
                                 ->where('sp.deparment_code', session('user')['production_code'])
                                 ->orderBy('order_by','asc')
                         ->get();
@@ -2789,6 +2803,10 @@ class SchedualController extends Controller
                                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                                 ->whereNotNull('prev.start')
                                 ->whereIn('sp.id', $stage_plan_ids)
+                                ->whereNotNull('plan_master.after_weigth_date')
+                                ->when($stageCode == 7, function ($q) {
+                                        $q->whereNotNull('plan_master.after_parkaging_date');
+                                })
                                 ->where('sp.deparment_code', session('user')['production_code'])
                                 ->orderBy('prev.start', 'asc')
                         ->get();
@@ -2830,6 +2848,10 @@ class SchedualController extends Controller
                                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
 
                                 ->whereIn('sp.id', $stage_plan_ids)
+                                ->whereNotNull('plan_master.after_weigth_date')
+                                ->when($stageCode == 7, function ($q) {
+                                        $q->whereNotNull('plan_master.after_parkaging_date');
+                                })
                                 ->when($stageCode >= 4, function ($query) {
                                 $query->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                                         ->whereNotNull('prev.start');
@@ -3477,6 +3499,7 @@ class SchedualController extends Controller
                 foreach ($planMasters as $planId) {
 
                         $check_plan_master_id_complete =  DB::table("stage_plan as sp")
+                        ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
                         ->where ('plan_master_id', $planId)
                         ->whereNull ('sp.start')
                         ->where ('sp.active', 1)
@@ -3529,15 +3552,23 @@ class SchedualController extends Controller
                                 'mk.code as market',
                                 'pn.name',
                         )
-                ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
-                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-                ->leftJoin('product_name as pn', 'fc.product_name_id', '=', 'pn.id')
-                ->leftJoin('market as mk', 'fc.market_id', '=', 'mk.id')
-                ->whereNull('start')
-                ->where('plan_master_id', $planId)
-                ->where('sp.finished', 0)
-                ->where('stage_code',">=",3)
-                ->where('stage_code',"<=",7)
+                        ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')
+                        ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                        ->leftJoin('product_name as pn', 'fc.product_name_id', '=', 'pn.id')
+                        ->leftJoin('market as mk', 'fc.market_id', '=', 'mk.id')
+                        ->whereNull('start')
+                        ->where('plan_master_id', $planId)
+                        ->where('sp.finished', 0)
+                        ->where('stage_code',">=",3)
+                        ->where('stage_code',"<=",7)
+                        ->whereNotNull('pm.after_weigth_date')
+                        ->where(function ($q) {
+                                $q->where('sp.stage_code', '!=', 7)
+                                ->orWhere(function ($q2) {
+                                $q2->where('sp.stage_code', 7)
+                                        ->whereNotNull('pm.after_parkaging_date');
+                                });
+                        })
                 ->orderBy('stage_code', 'asc') // chạy thuận
                 ->get(); // 1 lô gồm tất cả các stage
                 
