@@ -150,7 +150,7 @@ class ProductionPlanController extends Controller
         }
 
         public function store(Request $request){
-
+                
 
                 try {
 
@@ -304,13 +304,9 @@ class ProductionPlanController extends Controller
                                 "version" => 1,
                                 "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
                         ]);
+
                         $i++;
-                        }
-
-
-
-                return redirect()->back()->with('success', 'Đã thêm thành công!');
-
+                }
                 } catch (\Throwable $e) {
 
                         Log::error('Lỗi store plan_master', [
@@ -324,6 +320,7 @@ class ProductionPlanController extends Controller
                         return redirect()->back()
                         ->with('error', 'Có lỗi xảy ra, vui lòng kiểm tra log!');
                 }
+                return redirect()->back()->with('success', 'Đã thêm thành công!');
         }
 
         public function store_source(Request $request){

@@ -254,6 +254,15 @@ class UploadDataController extends Controller
                 ],
                 'extra' => [],
             ],
+
+            'off_days' => [
+                'columns' => [
+                    'id',
+                    'off_date',
+                    'reason'
+                ],
+                'extra' => [],
+            ],
         ];
 
         $table = $request->table;

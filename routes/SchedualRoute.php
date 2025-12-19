@@ -55,6 +55,9 @@ use Illuminate\Support\Facades\Route;
                 Route::put('immediately','immediately')->name('immediately');
                 Route::put('clearningValidation','clearningValidation')->name('clearningValidation');
 
+                Route::put('updateOffdays','updateOffdays')->name('updateOffdays');
+                
+
 
                 Route::get('test','test')->name('test');
 
