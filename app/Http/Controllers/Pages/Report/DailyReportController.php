@@ -103,7 +103,7 @@ class DailyReportController extends Controller
                 ->select(
                     "sp.$group_By",
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
-                    DB::raw("CONCAT(sp.title_clearning, '->', sp.title) AS title"),
+                    DB::raw("CONCAT(sp.title_clearning, ' (', sp.title, ') ') AS title"),
                    // "sp.title_clearning as title",
                     "sp.actual_start_clearning",
                     "sp.actual_end_clearning",
@@ -174,8 +174,8 @@ class DailyReportController extends Controller
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->select(
                     "sp.$group_By",
-                    "sp.title_clearning as title",
-                    
+                    //"sp.title_clearning as title",
+                    DB::raw("CONCAT(sp.title_clearning, ' (', sp.title, ') ') AS title"),
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
                     DB::raw("CASE WHEN sp.actual_start_clearning < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start_clearning END AS actual_start_clearning"),
                     DB::raw("CASE WHEN sp.actual_end_clearning   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end_clearning   END AS actual_end_clearning")
