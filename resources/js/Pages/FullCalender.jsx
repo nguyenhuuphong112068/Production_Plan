@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 
 import '@fullcalendar/daygrid/index.js';
 import '@fullcalendar/resource-timeline/index.js';
@@ -122,12 +122,13 @@ const ScheduleTest = () => {
           setReasons(data.reason)
           setLines(data.Lines)
           setAllLines (data.allLines)
-        
+
         
         if (!authorization){
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
+          setOffDays (data.off_days);
 
         }
 
@@ -1003,6 +1004,7 @@ const ScheduleTest = () => {
   };
 
 
+
   /// Xử lý Chạy Lịch Tư Động
   let emptyPermission = null;
 
@@ -1028,7 +1030,8 @@ const ScheduleTest = () => {
       return matched; // some() sẽ dừng ngay khi true
     });
 
-    let selectedDates = [];
+    let selectedDates = [...offDays];
+
     Swal.fire({
       title: 'Cấu Hình Chung Sắp Lịch',
       html: `
@@ -1118,7 +1121,7 @@ const ScheduleTest = () => {
 
         <!-- Cột phải -->
         <div class="cfg-card cfg-right">
-          <div class="cfg-row">
+          <div class="cfg-row" style="display:none;">
             <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
             <label class="switch">
               <input id="work-sunday" type="checkbox">
@@ -1164,21 +1167,64 @@ const ScheduleTest = () => {
         const calendarContainer = document.getElementById("calendar-container");
         const calendarRoot = ReactDOM.createRoot(calendarContainer);
 
+        // const CalendarPopup = () => {
+        //   const [localDates, setLocalDates] = React.useState(offDays);
+        //   const handleChange = (e) => {
+        //     const selected = e.value.map(d => {
+        //       const date = new Date(d);
+        //       const year = date.getFullYear();
+        //       const month = String(date.getMonth() + 1).padStart(2, "0");
+        //       const day = String(date.getDate()).padStart(2, "0");
+        //       return `${year}-${month}-${day}`;
+        //     });
+
+        //     setLocalDates(e.value);
+        //     selectedDates = selected;
+        //     setOffDays(selected);
+        //   };
+
+        //   return (
+        //     <div className="card flex justify-content-center">
+        //       <Calendar
+        //         value={localDates}
+        //         onChange={handleChange}
+        //         selectionMode="multiple"
+        //         inline
+        //         readOnlyInput
+        //       />
+        //     </div>
+        //   );
+        // };
+
         const CalendarPopup = () => {
-          const [localDates, setLocalDates] = React.useState([]);
+
+          // convert string yyyy-mm-dd -> Date
+          const parseToDate = (str) => {
+            const [y, m, d] = str.split("-");
+            return new Date(y, m - 1, d);
+          };
+
+          // convert Date -> yyyy-mm-dd
+          const formatDate = (date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+          };
+
+          // state hiển thị cho Calendar (Date[])
+          const [localDates, setLocalDates] = React.useState(
+            offDays.map(parseToDate)
+          );
+
+          
 
           const handleChange = (e) => {
-            const selected = e.value.map(d => {
-              const date = new Date(d);
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, "0");
-              const day = String(date.getDate()).padStart(2, "0");
-              return `${year}-${month}-${day}`;
-            });
-
-            setLocalDates(e.value);
+            const dates = e.value || [];
+            const selected = dates.map(formatDate);
+            setLocalDates(dates);   
+            setOffDays(selected); 
             selectedDates = selected;
-            setOffDays(selected);
           };
 
           return (
@@ -1194,6 +1240,7 @@ const ScheduleTest = () => {
           );
         };
 
+        
         calendarRoot.render(<CalendarPopup />);
 
         // ------------------ Stepper ------------------
@@ -1272,8 +1319,6 @@ const ScheduleTest = () => {
         }
 
         // ------------------ Disable Confirm if missing permission ------------------
-        
-
         if (emptyPermission != null && emptyPermission.stage_code < 4) {
           const confirmBtn = Swal.getConfirmButton();
           confirmBtn.disabled = false;
@@ -1354,7 +1399,8 @@ const ScheduleTest = () => {
         setWorkingSunday (workSunday);
       }
 
-    }).then((result) => {
+    })
+    .then((result) => {
       if (result.isConfirmed) {
         Swal.fire({
           title: 'Đang chạy Auto Scheduler...',

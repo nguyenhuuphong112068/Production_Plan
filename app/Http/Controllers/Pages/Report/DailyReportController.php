@@ -281,7 +281,6 @@ class DailyReportController extends Controller
         // ------------------------------
         $stage_plan_100 = DB::table("stage_plan as sp")
             ->whereNotNull('sp.actual_start')
-            ->whereNotNull('sp.actual_start')
             ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
@@ -297,13 +296,43 @@ class DailyReportController extends Controller
             ->groupBy("sp.$group_By", "unit")
             ->get();
 
-        //dd ($stage_plan_100);
+
+        $stage_plan_over = DB::table("stage_plan as sp")
+            ->whereNotNull('sp.actual_start')
+            ->whereRaw(
+                '(sp.actual_start < ? AND sp.actual_end > ?)',[$startDate, $endDate]
+            )
+            ->where('sp.deparment_code', session('user')['production_code'])
+            ->select(
+                "sp.$group_By",
+                DB::raw('
+                    SUM(
+                        sp.yields *
+                        TIME_TO_SEC(
+                            TIMEDIFF(
+                                LEAST(sp.actual_end, "'.$endDate.'"),
+                                GREATEST(sp.actual_start, "'.$startDate.'")
+                            )
+                        ) /
+                        TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+                    ) as total_qty
+                '),
+                DB::raw('
+                    CASE
+                        WHEN sp.stage_code <= 4 THEN "Kg"
+                        ELSE "ĐVL"
+                    END as unit
+                ')
+            )
+            ->groupBy("sp.$group_By", "unit")
+            ->get();
+
+
 
         // ------------------------------
         // 2️⃣ Giai đoạn giao nhau 1 phần trong 1 ngày
         // ------------------------------
         $stage_plan_part = DB::table("stage_plan as sp")
-            ->whereNotNull('sp.actual_start')
             ->whereNotNull('sp.actual_start')
             ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
             ->whereRaw('NOT (sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
@@ -390,7 +419,6 @@ class DailyReportController extends Controller
         $totalForDay = DB::table("stage_plan as sp")
             ->join('room as r', 'sp.resourceId', '=', 'r.id')
             ->where('sp.deparment_code', session('user')['production_code'])
-            //->whereNotNull('sp.start')
             ->whereNotNull('sp.actual_start')
             ->whereRaw('(sp.actual_start <= ? AND sp.actual_end >= ?)', [$endDate, $startDate])
             ->select(
