@@ -401,6 +401,58 @@
                     return;
                 }
 
+               const startProdInput = row.querySelector('#start');
+                const endProdInput   = row.querySelector('#end');
+
+                const startCleanInput = row.querySelector('#start_clearning');
+                const endCleanInput   = row.querySelector('#end_clearning');
+
+                if (
+                    !startProdInput.value ||
+                    !endProdInput.value ||
+                    !startCleanInput.value ||
+                    !endCleanInput.value
+                ) return;
+
+                const startProd  = new Date(startProdInput.value);
+                const endProd    = new Date(endProdInput.value);
+                const startClean = new Date(startCleanInput.value);
+                const endClean   = new Date(endCleanInput.value);
+
+                // 1️⃣ SX: start < end
+                if (startProd >= endProd) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Thời gian không hợp lệ",
+                        text: "Thời gian bắt đầu sản xuất phải nhỏ hơn thời gian kết thúc!",
+                        timer: 2000
+                    });
+                    return;
+                }
+
+                // 2️⃣ Cleaning: start < end
+                if (startClean >= endClean) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Thời gian không hợp lệ",
+                        text: "Thời gian bắt đầu vệ sinh phải nhỏ hơn thời gian kết thúc vệ sinh!",
+                        timer: 2000
+                    });
+                    return;
+                }
+
+                // 3️⃣ Cleaning phải sau SX
+                if (startClean < endProd) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Thời gian không hợp lệ",
+                        text: "Thời gian bắt đầu vệ sinh phải lớn hơn hoặc bằng thời gian kết thúc sản xuất!",
+                        timer: 2000
+                    });
+                    return;
+                }
+
+
 
 
                 const inputs = [
@@ -444,8 +496,18 @@
                     return;
                 }
 
-                const start = row.querySelector('#start');
-                const end = row.querySelector('#end');
+                const start = row.querySelector('#start').value;
+                const end   = row.querySelector('#end').value;
+
+                if (start && end && start >= end) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Thời gian không hợp lệ",
+                        text: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc!",
+                        timer: 2000
+                    });
+                    return;
+                }
 
                 const inputs = [start, end];
                 
