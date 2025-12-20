@@ -102,6 +102,7 @@
                             <div> {{ "(1) Này có đủ NL" }}  </div>
                             <div> {{ "(2) Này có đủ BB" }}  </div>
                             <div> {{ "(3) Ngày được phép cân" }}  </div>
+                            <div> {{ "(4) Ngày HH NL chính" }}  </div>
                         </th>
 
                         <th>
@@ -237,6 +238,13 @@
                                     <span>(3):</span>
                                     <input {{ $auth_update }} type="date" class="updateInput" name="allow_weight_before_date"
                                         value="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(4):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="expired_material_date"
+                                        value="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
                          
