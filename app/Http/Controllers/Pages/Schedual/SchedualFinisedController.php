@@ -194,11 +194,11 @@ class SchedualFinisedController extends Controller
                 } elseif ($request->actionType === 'semi-finised') {
 
                 $updateData = array_merge($updateData, [
-                        'finished' => 0,
+                        'finished' => 1,
                 ]);
 
                 } else {
-                return back()->withErrors('❌ actionType không hợp lệ');
+                        return back()->withErrors('❌ actionType không hợp lệ');
                 }
 
                 /* ===============================
