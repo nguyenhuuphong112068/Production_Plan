@@ -20,7 +20,6 @@ class DailyReportController extends Controller
             $reportedDate = $request->reportedDate ?? Carbon::yesterday()->format('Y-m-d');
         }
        
-
         $reportedDate = Carbon::parse($reportedDate)->setTime (6,0,0);
         
         $startDate =  $reportedDate->copy();
@@ -31,7 +30,7 @@ class DailyReportController extends Controller
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
         $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
       
-        
+        //dd ($startDate, $endDate, $yield_actual_detial);
 
 
         $sum_by_next_room = DB::table('stage_plan as t')
@@ -111,7 +110,6 @@ class DailyReportController extends Controller
             )->get();
 
             // 3) PARTIAL PRODUCTION
- 
             $production_partial = DB::table("stage_plan as sp")
                 ->whereNotNull('sp.actual_start')
                 ->whereNotNull('sp.actual_end')
@@ -163,10 +161,7 @@ class DailyReportController extends Controller
                     DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit')
                 )
             ->get();
-
-            
-            
-                // 4) PARTIAL CLEANING
+            // 4) PARTIAL CLEANING
             $cleaning_partial = DB::table("stage_plan as sp")
                 ->whereNotNull('sp.actual_start_clearning')
                 ->whereNotNull('sp.actual_end_clearning')
@@ -175,13 +170,14 @@ class DailyReportController extends Controller
                 ->select(
                     "sp.$group_By",
                     //"sp.title_clearning as title",
-                    DB::raw("CONCAT(sp.title_clearning, ' (', sp.title, ') ') AS title"),
+                    DB::raw("CONCAT(sp.title_clearning, ' (', sp.title,') ') AS title"),
                     DB::raw("CONCAT(sp.id, '-clearning') AS id"),
                     DB::raw("CASE WHEN sp.actual_start_clearning < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start_clearning END AS actual_start_clearning"),
                     DB::raw("CASE WHEN sp.actual_end_clearning   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end_clearning   END AS actual_end_clearning")
                 )->get();
 
             // 5) ROOM_STATUS
+
             $order_action_full = DB::table("room_status as sp")
                 ->whereNotNull('sp.start')
                 ->whereNotNull('sp.end')
@@ -230,18 +226,12 @@ class DailyReportController extends Controller
                     "sp.in_production as title",
                     'sp.is_daily_report'
                 )
-                ->get();
+            ->get();
                 
 
-                //dd ($startDate,$endDate );
+            //dd ($startDate,$endDate );
 
-            
-               
-           
-
-            // ------------------------------
-            // ACTUAL DETAIL (chuẩn)
-            // ------------------------------
+  
             $actual_detail = collect()
                 ->concat($production_full)
                 ->concat($cleaning_full)
@@ -266,7 +256,7 @@ class DailyReportController extends Controller
                     ];
                 })
                 ->sortBy('start')
-                ->values();
+            ->values();
 
                  
 
@@ -298,35 +288,7 @@ class DailyReportController extends Controller
             ->get();
 
 
-        $stage_plan_over = DB::table("stage_plan as sp")
-            ->whereNotNull('sp.actual_start')
-            ->whereRaw(
-                '(sp.actual_start < ? AND sp.actual_end > ?)',[$startDate, $endDate]
-            )
-            ->where('sp.deparment_code', session('user')['production_code'])
-            ->select(
-                "sp.$group_By",
-                DB::raw('
-                    SUM(
-                        sp.yields *
-                        TIME_TO_SEC(
-                            TIMEDIFF(
-                                LEAST(sp.actual_end, "'.$endDate.'"),
-                                GREATEST(sp.actual_start, "'.$startDate.'")
-                            )
-                        ) /
-                        TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
-                    ) as total_qty
-                '),
-                DB::raw('
-                    CASE
-                        WHEN sp.stage_code <= 4 THEN "Kg"
-                        ELSE "ĐVL"
-                    END as unit
-                ')
-            )
-            ->groupBy("sp.$group_By", "unit")
-            ->get();
+  
 
 
 

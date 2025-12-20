@@ -27,6 +27,7 @@ class SchedualController extends Controller
               //$this->createAutoCampain();
               //$this->view (null);
              // $this->Sorted (null);
+             $this->getEvents ('PXV1', '2025-12-15','2025-12-21', false ,false);
         }
 
         public function index (){
@@ -242,24 +243,17 @@ class SchedualController extends Controller
                         ->orderBy('sp.stage_code')
                 ->get();
 
-        
-
-              
-                
-                if ($event_plans->isEmpty()) {
-                        return collect();
-                }
-
-
                 // 4️⃣ Gom nhóm theo plan_master_id
                 $groupedPlans = $event_plans->groupBy('plan_master_id');
                 $events = collect();
 
+        
                 // 5️⃣ Duyệt từng nhóm (theo batch sản xuất)
                 foreach ($groupedPlans as $plans) {
-                        $plans = $plans->values(); // sắp sẵn theo stage_code ở query
 
-                        for ($i = 0, $n = $plans->count(); $i < $n; $i++) {
+                $plans = $plans->values(); // sắp sẵn theo stage_code ở query
+
+                for ($i = 0, $n = $plans->count(); $i < $n; $i++) {
 
                         $plan = $plans[$i];
                         $subtitle = null;
@@ -281,7 +275,6 @@ class SchedualController extends Controller
                                 $color_event = '#40E0D0';
                                 $textColor= '#fefefee2';
                         }
-
 
 
                         // ⏱ Kiểm tra biệt trữ giữa các công đoạn
@@ -435,7 +428,8 @@ class SchedualController extends Controller
                                 ]);
                         }
 
-                        }
+                }
+
                 }
 
                 return $events;
