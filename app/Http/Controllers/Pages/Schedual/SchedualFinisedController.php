@@ -134,7 +134,7 @@ class SchedualFinisedController extends Controller
                 : null;
 
                 if ($request->actionType === 'finised') {
-                        if ($actualStart == null || $actualEnd  == null || $actualStartCleaning == null || $actualEndCleaning == null){
+                        if ( $actualStartCleaning == null || $actualEndCleaning == null || $actualStart == null || $actualEnd  == null){
                                 return response()->json([
                                 'message' => '❌ Thời gian Sản Xuất Không Hợp Lệ'
                                 ], 422);

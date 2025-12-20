@@ -165,7 +165,7 @@
                                 </td>
                             @else
                                 <td> 
-                                <select class="form-control" name="resourceId" >
+                                <select class="form-control" name="resourceId" id ="room_id" >
                                     <option value="">-- Phòng Sản Xuất --</option>
                                         @foreach ($room_stages as $room_stage)
                                             <option value="{{ $room_stage->id}}" 
@@ -382,7 +382,8 @@
 
             if (btn.classList.contains('btn-finised')) {
                 actionType = "finised"; 
-
+                
+                //const resourceInput = row.querySelector('[name="resourceId"]');
                 const resourceInput = row.querySelector('[name="resourceId"]');
                 const resourceId = resourceInput ? resourceInput.value : null;
                 
@@ -395,8 +396,8 @@
                     });
                     return;
                 }
-
-               const startProdInput = row.querySelector('#start');
+                
+                const startProdInput = row.querySelector('#start');
                 const endProdInput   = row.querySelector('#end');
 
                 const startCleanInput = row.querySelector('#start_clearning');
@@ -407,7 +408,17 @@
                     !endProdInput.value ||
                     !startCleanInput.value ||
                     !endCleanInput.value
-                ) return;
+                ) {
+
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Thời gian không hợp lệ",
+                        text: "Thời Gian Không Được Để Trống!",
+                        timer: 2000
+                    });
+
+                    return;
+                }
 
                 const startProd  = new Date(startProdInput.value);
                 const endProd    = new Date(endProdInput.value);
