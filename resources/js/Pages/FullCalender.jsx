@@ -7,6 +7,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
+import { useHotkeys } from "react-hotkeys-hook";
 import { Calendar } from 'primereact/calendar';
 import { Stepper } from 'primereact/stepper';
 import { StepperPanel } from 'primereact/stepperpanel';
@@ -22,6 +23,7 @@ import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
 import NoteModal from '../Components/NoteModal';
+
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
 
@@ -162,6 +164,42 @@ const ScheduleTest = () => {
       );
 
   }, [loading]);
+
+
+
+  useHotkeys("alt+q",(e) => {
+      e.preventDefault();
+     
+      handleViewChange("resourceTimelineDay");
+    },
+    { enableOnFormTags: false }
+  );
+
+    useHotkeys("alt+w",(e) => {
+      e.preventDefault();
+    
+      handleViewChange("resourceTimelineWeek");
+    },
+    { enableOnFormTags: false }
+  );
+
+  useHotkeys("alt+e",(e) => {
+      e.preventDefault();
+     
+      handleViewChange("resourceTimelineMonth");
+    },
+    { enableOnFormTags: false }
+  );
+
+  useHotkeys("alt+r",(e) => {
+      e.preventDefault();
+    
+      handleViewChange("resourceTimelineQuarter");
+    },
+    { enableOnFormTags: false }
+  );
+
+  
 
   /// Get dư liệu row được chọn
   useEffect(() => {
@@ -994,8 +1032,6 @@ const ScheduleTest = () => {
       )
       .map(p => p.id);
   };
-
-
 
   /// Xử lý Chạy Lịch Tư Động
   let emptyPermission = null;
@@ -1837,7 +1873,7 @@ const ScheduleTest = () => {
           ` : ''}
         </div>
     `;
-
+            
       // Badge ngày cần hàng
         // if (props.expected_date && showRenderBadge) {
         //   const colors = {1: 'red', 2: 'orange', 3: 'green'};
