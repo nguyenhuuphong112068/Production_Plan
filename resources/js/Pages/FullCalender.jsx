@@ -132,9 +132,6 @@ const ScheduleTest = () => {
 
         }
 
-
-        console.log ("ok");
-
         switch (data.production) {
           case "PXV1":
             setHeightResource('1px');
@@ -1804,12 +1801,12 @@ const ScheduleTest = () => {
     const isSelected = arg.selectedEvents?.some(ev => ev.id === event.id);
     //const showRenderBadge = false; // nếu bạn có điều kiện riêng thì thay vào
 
-    const getBadge = (text, color, left) => `
-      <div
-        class="absolute top-[-15px]"
-        style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
-      >${text}</div>
-    `;
+    // const getBadge = (text, color, left) => `
+    //   <div
+    //     class="absolute top-[-15px]"
+    //     style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
+    //   >${text}</div>
+    // `;
 
     let html = `
       <div class="relative group custom-event-content" data-event-id="${event.id}">
@@ -1831,68 +1828,68 @@ const ScheduleTest = () => {
             </span>
           ` : ''}
 
-          <b style="color: ${props.textColor};">${props.is_clearning ? event.title.split('-')[1] : event.title}</b>
+          <b style="color: ${props.textColor};">${props.is_clearning ? event.title.split('-')[1] : event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle:''} </b>
           ${!isTimelineMonth ? `
             <br/>
             ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
-              `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm')} - ${moment(event.end).format('HH:mm')}</div>`
+              `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
             : ''}
           ` : ''}
         </div>
     `;
 
-    // Badge ngày cần hàng
-    if (props.expected_date && showRenderBadge) {
-      const colors = {1: 'red', 2: 'orange', 3: 'green'};
-      const color = colors[props.level] || 'blue';
-      html += getBadge(props.expected_date, color, 50);
-    }
+      // Badge ngày cần hàng
+        // if (props.expected_date && showRenderBadge) {
+        //   const colors = {1: 'red', 2: 'orange', 3: 'green'};
+        //   const color = colors[props.level] || 'blue';
+        //   html += getBadge(props.expected_date, color, 50);
+        // }
 
-    // Badge % biệt trữ
-    if (!props.is_clearning && showRenderBadge) {
-    html += `
-        <button 
-          class="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
-          title="% biệt trữ"
-        ><b>${props.storage_capacity ?? ''}</b></button>
-      `;
-    }
-    // Trang thai submit
+        // // Badge % biệt trữ
+        // if (!props.is_clearning && showRenderBadge) {
+        // html += `
+        //     <button 
+        //       class="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
+        //       title="% biệt trữ"
+        //     ><b>${props.storage_capacity ?? ''}</b></button>
+        //   `;
+        // }
+        // Trang thai submit
 
 
-    // // Nút chọn
-    // html += `
-    //   <button
-    //     data-select-event="${event.id}"
-    //     class="absolute top-0 left-0 text-xs px-1 rounded shadow
-    //     ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}"
-    //     title="${isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}"
-    //   >${isSelected ? '✓' : '+'}</button>
-    // `;
+        // // Nút chọn
+        // html += `
+        //   <button
+        //     data-select-event="${event.id}"
+        //     class="absolute top-0 left-0 text-xs px-1 rounded shadow
+        //     ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}"
+        //     title="${isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}"
+        //   >${isSelected ? '✓' : '+'}</button>
+        // `;
 
-    // // Nút Hoàn thành
-    // if (props.finished === 0 && !props.is_clearning  && event.end < now) {
-    //   html += `
-    //     <button
-    //       data-finish-event="${event.id}"
-    //       class="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-    //       title="Xác Nhận Hoàn Thành Lô Sản Xuất"
-         
-    //     >🎯</button>
-    //   `;
-    // }
+        // // Nút Hoàn thành
+        // if (props.finished === 0 && !props.is_clearning  && event.end < now) {
+        //   html += `
+        //     <button
+        //       data-finish-event="${event.id}"
+        //       class="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
+        //       title="Xác Nhận Hoàn Thành Lô Sản Xuất"
+            
+        //     >🎯</button>
+        //   `;
+        // }
 
-  
-    // Nút xem lịch sử
-    // if (showRenderBadge && props.number_of_history) {
-    //   html += `
-    //     <button
-    //       data-show-history="${event.id}"
-    //       class="absolute top-[-15px] left-[150px] text-xs px-1 rounded shadow bg-red-500 text-white"
-    //       title="Xem Lịch Sử Thay Đổi"
-    //     >${props.number_of_history}</button>
-    //   `;
-    // }
+    
+        // Nút xem lịch sử
+        // if (showRenderBadge && props.number_of_history) {
+        //   html += `
+        //     <button
+        //       data-show-history="${event.id}"
+        //       class="absolute top-[-15px] left-[150px] text-xs px-1 rounded shadow bg-red-500 text-white"
+        //       title="Xem Lịch Sử Thay Đổi"
+        //     >${props.number_of_history}</button>
+        //   `;
+      // }
     
     html += `</div>`;
     return { html };
