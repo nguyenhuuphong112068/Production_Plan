@@ -20,7 +20,14 @@ class SchedualController extends Controller
         protected $reason = null;
         protected $theory = false;
         protected $prev_orderBy = false;
-        
+        protected $stage_Name = [
+                1 => "Cân NL",
+                3 => "PC",
+                4 => "THT",
+                5 => "ĐH",
+                6 => "BP",
+                7 => "ĐG",
+        ];
 
         public function test(){
               //$this->scheduleAll (null);
@@ -146,6 +153,8 @@ class SchedualController extends Controller
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate   = Carbon::parse($endDate)->toDateTimeString();
 
+                $room_code = DB::table('room')->where('deparment_code', $production)->pluck('code', 'id');
+
                 // 2️⃣ Lấy danh sách stage_plan (gộp toàn bộ join)
                 $event_plans = DB::table("stage_plan as sp")
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
@@ -202,6 +211,14 @@ class SchedualController extends Controller
                         'plan_master.expected_date',
                         'plan_master.after_weigth_date',
                         'plan_master.after_parkaging_date',
+
+                        'plan_master.expired_material_date',       
+                        'plan_master.allow_weight_before_date',
+                        
+                        'plan_master.preperation_before_date',
+                        'plan_master.blending_before_date',
+                        'plan_master.coating_before_date',
+                        
                         'plan_master.is_val',
                         'plan_master.level',
                         'intermediate_category.quarantine_total',
@@ -237,7 +254,7 @@ class SchedualController extends Controller
                                         THEN intermediate_category.quarantine_coating * 24
                                         ELSE intermediate_category.quarantine_coating END
                                 ELSE 0
-                                END as quarantine_time_limit")
+                                END as quarantine_time_limit_hour")
                         )
                         ->orderBy('sp.plan_master_id')
                         ->orderBy('sp.stage_code')
@@ -254,93 +271,11 @@ class SchedualController extends Controller
                 $plans = $plans->values(); // sắp sẵn theo stage_code ở query
 
                 for ($i = 0, $n = $plans->count(); $i < $n; $i++) {
-
+                        $storage_capacity = null;
                         $plan = $plans[$i];
                         $subtitle = null;
 
-                        // 🎨 Màu mặc định
-                        if ($plan->stage_code <= 7 ) {
-                                $color_event = '#4CAF50';
-                                $textColor= '#fefefee2';
-                        } elseif ($plan->stage_code == 8) {
-                                $color_event = '#003A4F';
-                                $textColor= '#fefefee2';
-                        } else {
-                                $color_event = '#eb0cb3ff';
-                                $textColor= '#fefefee2';
-                        }
-
-                        // ✅ Nếu hoàn thành
-                        if ($plan->is_val == 1) {
-                                $color_event = '#40E0D0';
-                                $textColor= '#fefefee2';
-                        }
-
-
-                        // ⏱ Kiểm tra biệt trữ giữa các công đoạn
-                        $storage_capacity = 0;
-                        if ($i > 0) {
-                                if ($plan->quarantine_total == 0) {
-                                $prev = $plans[$i - 1];
-                                        if ($plan->stage_code > 2 && $plan->stage_code < 7) {
-                                                $diff = round((strtotime($plan->start) - strtotime($prev->end)) / 3600,1);
-                                                if ($prev->quarantine_time_limit > 0){
-                                                        $storage_capacity =  round($diff/$prev->quarantine_time_limit, 2);
-                                                }
-                                                if ($diff > $prev->quarantine_time_limit) {
-                                                        $color_event = '#bda124ff';
-                                                        $textColor= '#fefefee2';
-                                                        //$subtitle = "Quá Hạn Biệt Trữ: {$diff}h / {$prev->quarantine_time_limit}h";
-                                                }
-                                        }
-                                }
-
-                        }
-
-                        // ⚠️ Kiểm tra nguyên liệu / bao bì
-                        if ($plan->stage_code === 1 && $plan->after_weigth_date > $plan->start) {
-                                $color_event = '#f99e02ff';
-                                $textColor= '#fefefee2';
-                                //$subtitle = "Nguyên Liệu Không Đáp Ứng: {$plan->after_weigth_date} - {$plan->before_weigth_date}";
-                        } elseif ($plan->stage_code === 7 && $plan->after_parkaging_date > $plan->start) {
-                                $color_event = '#f99e02ff';
-                                $textColor= '#fefefee2';
-                                //$subtitle = "Bao Bì Không Đáp Ứng: {$plan->after_parkaging_date} - {$plan->before_parkaging_date}";
-                        }
-
-                        // ⏰ Hạn cần hàng / bảo trì
-                        if ($plan->expected_date < $plan->end && $plan->stage_code < 9 && $color_event != '#bda124ff') {
-                                $color_event = '#f90202ff';
-                                $textColor= '#fefefee2';
-                                //$subtitle = $plan->stage_code == 8
-                                //? "Không Đáp Ứng Hạn Bảo Trì: {$plan->expected_date}"
-                                //: "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
-                        }
-
-                        if ($plan->clearning_validation == 1) {
-                                $color_event = '#e4e405e2';
-                                $textColor= '#fb0101e2';
-                        }
-
-
-                        // 🔗 Kiểm tra predecessor / successor
-                        if ($plan->predecessor_code) {
-                                $prePlan = $plans->firstWhere('code', $plan->predecessor_code);
-                                if ($prePlan && $plan->start < $prePlan->end) {
-                                        $color_event = '#4d4b4bff';
-                                        $textColor= '#fefefee2';
-                                        //$subtitle = 'Vi phạm: Start < End công đoạn trước';
-                                }
-                        }
-
-                        if ($plan->nextcessor_code) {
-                                $nextPlan = $plans->firstWhere('code', $plan->nextcessor_code);
-                                if ($nextPlan && $plan->end > $nextPlan->start) {
-                                        $color_event = '#4d4b4bff';
-                                        $textColor= '#fefefee2';
-                                        //$subtitle = 'Vi phạm: End > Start công đoạn sau';
-                                }
-                        }
+                        [$color_event, $textColor, $subtitle] = $this->colorEvent($plan, $plans, $i, $room_code);
 
                         // 🎯 Push event chính
                         if ($plan->start || $plan->actual_start) {
@@ -351,7 +286,7 @@ class SchedualController extends Controller
                                 'start' => $plan->actual_start ?? $plan->start,
                                 'end' => $plan->actual_end ?? $plan->end,
                                 'resourceId' => $plan->resourceId,
-                                'color' => $plan->finished == 1? '#002af9ff': $color_event,
+                                'color' =>  $color_event,
                                 'textColor' => $textColor,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
@@ -363,7 +298,8 @@ class SchedualController extends Controller
                                 'tank' => $plan->tank,
                                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
                                 'submit' => $plan->submit,
-                                'storage_capacity' => $storage_capacity
+                                'storage_capacity' => $storage_capacity,
+                                'subtitle' => $subtitle
                                 ]);
                         }
 
@@ -376,7 +312,7 @@ class SchedualController extends Controller
                                 'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
                                 'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
-                                'color' => $plan->finished == 1? '#002af9ff':'#a1a2a2ff',
+                                'color' => $plan->finished == 1?'#002af9ff':'#a1a2a2ff',
                                 'textColor' => $textColor,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
@@ -433,6 +369,135 @@ class SchedualController extends Controller
                 }
 
                 return $events;
+        }
+
+        protected function colorEvent($plan, $plans, $i, $room_code){
+                
+                $subtitle   = '';
+                $textColor  = '#fefefee2';
+                $color_event = '#eb0cb3ff'; // default fallback
+
+                /* 1️⃣ FINISHED */
+                if ($plan->finished == 1) {
+                        return ['#002af9ff', $textColor, $subtitle];
+                }
+
+                /* 2️⃣ MÀU MẶC ĐỊNH THEO STAGE */
+                if ($plan->stage_code <= 7) {
+                        $color_event = '#4CAF50';
+                } elseif ($plan->stage_code == 8) {
+                        $color_event = '#003A4F';
+                }
+
+                /* 3️⃣ VALIDATION OK */
+                if ($plan->is_val == 1) {
+                        $color_event = '#40E0D0';
+                }
+
+                /* 4️⃣ CLEARNING */
+                if ($plan->clearning_validation == 1) {
+                        return ['#e4e405e2', '#fb0101e2', $subtitle];
+                }
+
+                /* 5️⃣ BIỆT TRỮ */
+                if ($i > 0 && $plan->quarantine_total == 0 && $plan->stage_code > 3 && $plan->stage_code < 7) {
+                        $prev = $plans->firstWhere('code', $plan->predecessor_code);
+                        if ($prev && $plan->start) {
+                              $diffMinutes = Carbon::parse($prev->end)
+                                ->diffInMinutes(Carbon::parse($plan->start), false);
+                                $limitMinutes = $prev->quarantine_time_limit_hour * 60;
+
+                                if ($limitMinutes > 0 && $diffMinutes > $limitMinutes) {
+
+                                $h = minutesToDayHoursMinutesString($diffMinutes);
+                                $lh = minutesToDayHoursMinutesString($limitMinutes);
+
+                                $subtitle =
+                                        "➡️ (KT {$this->stage_Name[$prev->stage_code]}: "
+                                        . Carbon::parse($prev->end)->format('H:i d/m/y')
+                                        . " || TGTB thực tế: $h"
+                                        . " || TGTB cho phép: $lh";
+
+                                return ['#bda124ff', $textColor, $subtitle];
+                                }
+                        }
+                }
+
+                /* 6️⃣ HẠN CẦN HÀNG */
+                $Stage_plan_7 = $plans->firstWhere('stage_code', 7);
+
+                $overExpected = ($Stage_plan_7 && $plan->expected_date < $Stage_plan_7->end) || $plan->expected_date < $plan->end;
+
+                if ($overExpected && $plan->stage_code < 9) {
+                        $color_event = '#e54a4aff';
+                        $endStage7 = $Stage_plan_7 && $Stage_plan_7->end ? Carbon::parse($Stage_plan_7->end)->format('d/m/y') : 'Chưa xác định';
+                        $subtitle = "➡️ Ngày dự kiến KCS: " . Carbon::parse($plan->expected_date)->format('d/m/y') . " | Ngày KT ĐG: " . $endStage7;
+                }
+
+                /* 7️⃣ PREDECESSOR / SUCCESSOR */
+                if ($plan->predecessor_code) {
+                        $pre = $plans->firstWhere('code', $plan->predecessor_code);
+                        if ($pre && $plan->start < $pre->end) {
+                                $subtitle = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
+                                        . Carbon::parse($pre->end)->format('H:i d/m/y') . ")";
+                                return ['#4d4b4bff', $textColor, $subtitle];
+                        }
+                }
+
+                if ($plan->nextcessor_code) {
+                        $next = $plans->firstWhere('code', $plan->nextcessor_code);
+                        if ($next && $plan->end > $next->start) {
+                                $subtitle = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
+                                        . Carbon::parse($next->start)->format('H:i d/m/y') . ")";
+                                return ['#4d4b4bff', $textColor, $subtitle];
+                        }
+                }
+
+                /* 8️⃣ NGUYÊN LIỆU / BAO BÌ */
+                $criticalChecks = [
+                        [1, 3, 'after_weigth_date',        '➡️ Ngày có đủ NL' , ">"],
+                        [1, 3, 'allow_weight_before_date', '➡️ Ngày được phép cân', ">"],
+                        [1, 3, 'expired_material_date',    '➡️ Ngày hết hạn NL chính', "<"],
+                        [3, 3, 'preperation_before_date','➡️ Phải PC trước ngày', "<"],
+                        [4, 4, 'blending_before_date',   '➡️ Phải pha THT', "<"],
+                        [6, 6, 'coating_before_date',    '➡️ Phải pha BP', "<"],
+                        [7, 7, 'after_parkaging_date',   '➡️ Ngày có đủ BB', ">"],
+                ];
+
+                foreach ($criticalChecks as [$from, $to, $field, $label, $operator]) {
+
+                        if (
+                                $plan->stage_code < $from ||
+                                $plan->stage_code > $to ||
+                                empty($plan->$field)
+                        ) {
+                                continue;
+                        }
+
+                        $left  = Carbon::parse($plan->$field);
+                        $right = Carbon::parse($plan->start);
+
+                        $matched = match ($operator) {
+                                '<'  => $left->lt($right),
+                                '<=' => $left->lte($right),
+                                '>'  => $left->gt($right),
+                                '>=' => $left->gte($right),
+                                '==' => $left->eq($right),
+                                default => false,
+                        };
+
+                        if ($matched) {
+                                $subtitle = "{$label}: "
+                                . $left->format('d/m/y')
+                                . " {$operator} "
+                                . $right->format('d/m/y');
+
+                                return ['#920000ff', $textColor, $subtitle];
+                        }
+                }
+
+
+                return [$color_event, $textColor, $subtitle];
         }
 
         // Hàm lấy quota
@@ -3971,6 +4036,23 @@ class SchedualController extends Controller
                 return ((int)$hours) * 60 + (int)$minutes;
         }
 
+        function minutesToDayHoursMinutesString(int $minutes): string{
+                $days    = intdiv($minutes, 1440); // 60 * 24
+                $remain  = $minutes % 1440;
+
+                $hours   = intdiv($remain, 60);
+                $mins    = $remain % 60;
+
+                return ($days > 0 ? "{$days}d " : "")
+                        . ($hours > 0 ? "{$hours}h" : "")
+                        . "{$mins}p";
+        }
+
+        function minutesToHoursMinutes(int $minutes): array{
+                                $hours = intdiv($minutes, 60);
+                                $mins  = $minutes % 60;
+                                return [$hours, $mins];
+        }
 
 
 
@@ -4169,7 +4251,8 @@ class SchedualController extends Controller
         //         // }
         // }
 
-/**Load room_status để lấy các slot đã bận*/
+        /**Load room_status để lấy các slot đã bận*/
+
         // protected function loadRoomAvailability(string $sort, int $roomId){
         //         $this->roomAvailability[$roomId] = []; // reset
 
@@ -4332,3 +4415,123 @@ class SchedualController extends Controller
         //         }
         //                 return Carbon::parse($current_start);
         // }
+               // if ($plan->finished == 1){
+                        //         $color_event = '#002af9ff';
+                        //         $textColor= '#fefefee2';
+                        // }else{
+                        //         // 🎨 Màu mặc định
+                        //         if ($plan->stage_code <= 7 ) {
+                        //                 $color_event = '#4CAF50';
+                        //                 $textColor= '#fefefee2';
+                        //         } elseif ($plan->stage_code == 8) {
+                        //                 $color_event = '#003A4F';
+                        //                 $textColor= '#fefefee2';
+                        //         } else {
+                        //                 $color_event = '#eb0cb3ff';
+                        //                 $textColor= '#fefefee2';
+                        //         }
+
+                        //         // ✅ Nếu hoàn thành
+                        //         if ($plan->is_val == 1) {
+                        //                 $color_event = '#40E0D0';
+                        //                 $textColor= '#fefefee2';
+                        //         }
+
+
+                        //         // ⏱ Kiểm tra biệt trữ giữa các công đoạn
+                               
+                        //         if ($i > 0) {
+                        //                 if ($plan->quarantine_total == 0) {
+                        //                 $prev = $plans[$i - 1];
+                        //                         if ($plan->stage_code > 2 && $plan->stage_code < 7) {
+                        //                                 $diff = round((strtotime($plan->start) - strtotime($prev->end)) / 3600,1);
+                        //                                 if ($prev->quarantine_time_limit > 0){
+                        //                                         $storage_capacity =  round($diff/$prev->quarantine_time_limit, 2);
+                        //                                 }
+                        //                                 if ($diff > $prev->quarantine_time_limit) {
+                        //                                         $color_event = '#bda124ff';
+                        //                                         $textColor= '#fefefee2';
+                        //                                         //$subtitle = "Quá Hạn Biệt Trữ: {$diff}h / {$prev->quarantine_time_limit}h";
+                        //                                 }
+                        //                         }
+                        //                 }
+
+                        //         }
+
+  
+
+                        //         // ⏰ Hạn cần hàng / bảo trì
+                        //         if ($plan->expected_date < $plan->end && $plan->stage_code < 9 && $color_event != '#bda124ff') {
+                        //                 $color_event = '#e54a4aff';
+                        //                 $textColor= '#fefefee2';
+                        //                 //$subtitle = $plan->stage_code == 8
+                        //                 //? "Không Đáp Ứng Hạn Bảo Trì: {$plan->expected_date}"
+                        //                 //: "Không Đáp Ứng Ngày Cần Hàng: {$plan->expected_date}";
+                        //         }
+
+                        //         if ($plan->clearning_validation == 1) {
+                        //                 $color_event = '#e4e405e2';
+                        //                 $textColor= '#fb0101e2';
+                        //         }
+
+
+                        //         // 🔗 Kiểm tra predecessor / successor
+                        //         if ($plan->predecessor_code) {
+                        //                 $prePlan = $plans->firstWhere('code', $plan->predecessor_code);
+                        //                 if ($prePlan && $plan->start < $prePlan->end) {
+                        //                         $color_event = '#4d4b4bff';
+                        //                         $textColor= '#fefefee2';
+                        //                         $subtitle = "  ===> (KT " . $this->stage_Name [$prePlan->stage_code] . " tại ". $room_code[$prePlan->resourceId] .": " . Carbon::parse($prePlan->end)->format('H:i d/m/y')  .")";
+                        //                 }
+                        //         }
+
+                        //         if ($plan->nextcessor_code) {
+                        //                 $nextPlan = $plans->firstWhere('code', $plan->nextcessor_code);
+                        //                 if ($nextPlan && $plan->end > $nextPlan->start) {
+                        //                         $color_event = '#4d4b4bff';
+                        //                         $textColor= '#fefefee2';
+                        //                         $subtitle = " ===> (BĐ " .  $this->stage_Name [$nextPlan->stage_code] . " tại ". $room_code[$nextPlan->resourceId] .": ". Carbon::parse($nextPlan->start)->format('H:i d/m/y')  .")";
+                        //                 }
+                        //         }
+
+                        //         // ⚠️ Kiểm tra nguyên liệu / bao bì
+                        //         if (($plan->stage_code === 1 || $plan->stage_code === 3)  && $plan->after_weigth_date > $plan->start) {
+                        //                 $color_event = '#920000ff';
+                        //                 $textColor= '#fefefee2';
+                        //                 $subtitle = $subtitle . "Ngày có đủ NL: $plan->after_weigth_date < $plan->start";}
+
+                        //         if (($plan->stage_code === 1 || $plan->stage_code === 3)  && $plan->allow_weight_before_date > $plan->start) {
+                        //                 $color_event = '#920000ff';
+                        //                 $textColor= '#fefefee2';
+                        //                 $subtitle = $subtitle . "Ngày có đủ NL: $plan->allow_weight_before_date < $plan->start";}
+
+                        //         if (($plan->stage_code === 1 || $plan->stage_code === 3)  && $plan->expired_material_date > $plan->start) {
+                        //                 $color_event = '#920000ff';
+                        //                 $textColor= '#fefefee2';
+                        //                 $subtitle = $subtitle . "Ngày có đủ NL: $plan->expired_material_date < $plan->start";}
+
+                        //         if ($plan->stage_code === 3 && $plan->preperation_before_date > $plan->start) {
+                        //                 $color_event = '#920000ff';
+                        //                 $textColor= '#fefefee2';
+                        //                 $subtitle = "Phải PCTrước Ngày: $plan->preperation_before_date";}
+
+                        //         if ($plan->stage_code === 4 && $plan->blending_before_date > $plan->start) {
+                        //                 $color_event = '#920000ff';
+                        //                 $textColor= '#fefefee2';
+                        //                 $subtitle = "Phải Pha THT: $plan->blending_before_date";
+                        //         }
+
+                        //         if ($plan->stage_code === 6 && $plan->coating_before_date > $plan->start) {
+                        //                 $color_event = '#920000ff';
+                        //                 $textColor= '#fefefee2';
+                        //                 $subtitle = "Phải Pha BP: $plan->coating_before_date";
+                        //         }
+                                
+                        //         if ($plan->stage_code === 7 && $plan->after_parkaging_date > $plan->start) {
+                        //                 $color_event = '#920000ff';
+                        //                 $textColor= '#fefefee2';
+                        //                 $subtitle = "Ngày có đủ BB: $plan->after_parkaging_date < $plan->start";
+                        //         }
+
+
+                        // }
