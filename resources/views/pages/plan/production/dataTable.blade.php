@@ -99,8 +99,8 @@
                         <th>Lô Thẩm định</th>
                         <th>Nguồn</th>
                         <th>
-                            <div> {{ "(1) Này có đủ NL" }}  </div>
-                            <div> {{ "(2) Này có đủ BB" }}  </div>
+                            <div> {{ "(1) Ngày có đủ NL" }}  </div>
+                            <div> {{ "(2) Ngày có đủ BB" }}  </div>
                             <div> {{ "(3) Ngày được phép cân" }}  </div>
                             <div> {{ "(4) Ngày HH NL chính" }}  </div>
                         </th>
