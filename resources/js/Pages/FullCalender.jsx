@@ -1903,7 +1903,7 @@ const ScheduleTest = () => {
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
-        initialView="resourceTimelineWeek"
+        initialView="resourceTimelineMonth1d"
         firstDay={1}
         events={events}
         eventResourceEditable={true}
@@ -1919,7 +1919,7 @@ const ScheduleTest = () => {
         selectable={true}
         eventResizableFromStart={true}
 
-        slotDuration="01:00:00"
+        //slotDuration="01:00:00"
         eventDurationEditable={true}
 
        
