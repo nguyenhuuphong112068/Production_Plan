@@ -133,11 +133,29 @@ class SchedualFinisedController extends Controller
                 ? Carbon::parse($request->end_clearning)->format('Y-m-d H:i:s')
                 : null;
 
+                if ($request->actionType === 'finised') {
+                        if ($actualStart == null || $actualEnd  == null || $actualStartCleaning == null || $actualEndCleaning == null){
+                                return response()->json([
+                                'message' => '❌ Thời gian Sản Xuất Không Hợp Lệ'
+                                ], 422);
+                        }
+
+                } else {
+                        if ($actualStart == null || $actualEnd  == null){
+                                return response()->json([
+                                'message' => '❌ Thời gian Sản Xuất / Vệ Sinh Không Hợp Lệ'
+                                ], 422);
+                        }
+                
+                }
+
                 /* ===============================
                 2. VALIDATE TIME LOGIC
                 =============================== */
                 if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
-                return back()->withErrors('❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu');
+                        return response()->json([
+                                'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
+                                ], 422);
                 }
 
                 /* ===============================
@@ -168,16 +186,16 @@ class SchedualFinisedController extends Controller
                 4. DATA UPDATE CHUNG
                 =============================== */
                 $updateData = [
-                'title'            => $request->title,
-                'resourceId'       => $request->resourceId,
-                'actual_start'     => $actualStart,
-                'actual_end'       => $actualEnd,
-                'yields'           => $request->yields,
-                'yields_batch_qty' => $yields_batch_qty,
-                'number_of_boxes'  => $request->number_of_boxes ?? 1,
-                'note'             => $request->note ?? 'NA',
-                'finished_by'      => session('user')['fullName'],
-                'finished_date'    => now(),
+                        'title'            => $request->title,
+                        'resourceId'       => $request->resourceId,
+                        'actual_start'     => $actualStart,
+                        'actual_end'       => $actualEnd,
+                        'yields'           => $request->yields,
+                        'yields_batch_qty' => $yields_batch_qty,
+                        'number_of_boxes'  => $request->number_of_boxes ?? 1,
+                        'note'             => $request->note ?? 'NA',
+                        'finished_by'      => session('user')['fullName'],
+                        'finished_date'    => now(),
                 ];
 
                 /* ===============================
@@ -185,20 +203,24 @@ class SchedualFinisedController extends Controller
                 =============================== */
                 if ($request->actionType === 'finised') {
 
-                $updateData = array_merge($updateData, [
-                        'actual_start_clearning' => $actualStartCleaning,
-                        'actual_end_clearning'   => $actualEndCleaning,
-                        'finished'               => 1,
-                ]);
+                        $updateData = array_merge($updateData, [
+                                'actual_start_clearning' => $actualStartCleaning,
+                                'actual_end_clearning'   => $actualEndCleaning,
+                                'finished'               => 1,
+                        ]);
 
                 } elseif ($request->actionType === 'semi-finised') {
 
-                $updateData = array_merge($updateData, [
-                        'finished' => 1,
-                ]);
+                        $updateData = array_merge($updateData, [
+                                'finished' => 1,
+                        ]);
 
                 } else {
-                        return back()->withErrors('❌ actionType không hợp lệ');
+                       
+                        return response()->json([
+                                'message' => '❌ actionType không hợp lệ'
+                                ], 422);
+                        
                 }
 
                 /* ===============================

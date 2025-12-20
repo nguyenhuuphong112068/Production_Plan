@@ -547,6 +547,8 @@
                     stage_code: stage_code
                 },
                 success: function(res) {
+                    console.log (res)
+
                     Swal.fire({
                         icon: 'success',
                         title: 'Hoàn Thành',
@@ -564,10 +566,20 @@
                     }
                     
                 },
-                error: function() {
-                    alert("Lỗi khi gửi dữ liệu");
-                    // Nếu lỗi → bật lại nút
-                    btn.disabled = false;
+                error: function(xhr) {
+                     btn.disabled = false;
+
+                    let message = 'Có lỗi xảy ra';
+
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Không thể hoàn thành',
+                        text: message
+                    });
                 }
             });
         });
