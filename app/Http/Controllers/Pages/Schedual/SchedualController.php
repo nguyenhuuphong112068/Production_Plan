@@ -2497,10 +2497,8 @@ class SchedualController extends Controller
                 $busyList    = $this->roomAvailability[$roomId];
                 $offDateList = $this->offDate?? [];
                 $current_start = Carbon::parse($Earliest);
-
        
                 $current_start = $this->skipOffTime($current_start, $offDateList);
-
                 // =========================================================
                 foreach ($busyList as $busy) {
 
@@ -2516,9 +2514,7 @@ class SchedualController extends Controller
                                 $current_end = $current_start->copy()->addMinutes($need + $offTime);
                                 $newOffTime = 0;
 
-                                foreach ($offDateList as $off) {
-                                
-                                                                
+                                foreach ($offDateList as $off) {                 
                                         if ($off['end'] <= $current_start || $off['start'] >= $current_end) {
                                                 continue;
                                         }
@@ -2737,9 +2733,9 @@ class SchedualController extends Controller
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
                                 ->whereNotNull('plan_master.after_weigth_date')
-                                ->when($stageCode == 7, function ($q) {
-                                        $q->whereNotNull('plan_master.after_parkaging_date');
-                                })
+                                //->when($stageCode == 7, function ($q) {
+                                //        $q->whereNotNull('plan_master.after_parkaging_date');
+                                //})
                                 ->where('sp.deparment_code', session('user')['production_code'])
                                 ->orderBy('prev.start', 'asc')
 
@@ -3289,10 +3285,17 @@ class SchedualController extends Controller
                 }
                 // Lấy max
                 $earliestStart = collect($candidates)->max();
-                //Log::info([
-                //        'candidates' =>$candidates,
-                //        'earliestStart' =>$earliestStart,
-                //]);
+
+                if ($campaignTask->id == 30875){
+                        Log::info([
+                        'candidates' =>$candidates,
+                        'earliestStart' =>$earliestStart,
+                        'offDate' => $this->offDate
+                        ]);
+
+                }
+
+
                 // phòng phù hợp (quota)
                 if ($firstTask->required_room_code != null || $Line != null ){
                         if ($firstTask->required_room_code != null){
@@ -3468,6 +3471,13 @@ class SchedualController extends Controller
                                 $bestRoom = $room;
                                 $bestStart = $candidateStart;
                         }
+                }
+
+                if ($campaignTask->id == 30875){
+                        Log::info([
+                        'candidateStart' =>$candidateStart,
+                        ]);
+
                 }
 
                
