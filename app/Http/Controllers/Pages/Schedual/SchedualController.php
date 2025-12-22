@@ -1451,7 +1451,8 @@ class SchedualController extends Controller
                         foreach ($items as $item) {
                         $rowId = explode('-', $item['id'])[0];   // lấy id trước dấu -
                         $stageCode = $item['stage_code'];
-                        if ($stageCode <= 2) {
+                        
+                        if ($stageCode <= 2 || $stageCode >= 8 ) {
                                         // chỉ cóa cân k xóa các công đoạn khác
                                        
 
