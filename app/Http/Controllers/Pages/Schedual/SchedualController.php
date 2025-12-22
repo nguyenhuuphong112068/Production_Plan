@@ -1752,8 +1752,6 @@ class SchedualController extends Controller
 
         public function clearningValidation(Request $request){
 
-                Log::info ($request->all());
-
                 $datas = $request->input('data', []);
              
                 try {
@@ -1851,7 +1849,7 @@ class SchedualController extends Controller
         }
 
         public function createAutoCampain(Request $request){
-                Log::info( $request->all());
+   
                 try {
                 // Lấy toàn bộ stage_plan chưa hoàn thành và active
                 DB::table('stage_plan')
@@ -2289,7 +2287,7 @@ class SchedualController extends Controller
         }
 
         public function updateOffdays(Request $request){
-                Log::info ($request->all());
+             
 
                 $added = $request->input('added', []);
                 $removed = $request->input('removed', []);
@@ -2687,8 +2685,6 @@ class SchedualController extends Controller
 
                 
                 if ($this->prev_orderBy && $stageCode >= 4) {
-
-                    
                         $tasks = DB::table("stage_plan as sp")
                                 ->select(
                                         'sp.id',
@@ -3286,14 +3282,7 @@ class SchedualController extends Controller
                 // Lấy max
                 $earliestStart = collect($candidates)->max();
 
-                if ($campaignTask->id == 30875){
-                        Log::info([
-                        'candidates' =>$candidates,
-                        'earliestStart' =>$earliestStart,
-                        'offDate' => $this->offDate
-                        ]);
-
-                }
+             
 
 
                 // phòng phù hợp (quota)
@@ -3463,21 +3452,11 @@ class SchedualController extends Controller
                                 2,
                                 60
                         );
-                        // Log::info([
-                        //         'candidateStart' =>$candidateStart,
-                        // ]);
-
+            
                         if ($bestStart === null || $candidateStart->lt($bestStart)) {
                                 $bestRoom = $room;
                                 $bestStart = $candidateStart;
                         }
-                }
-
-                if ($campaignTask->id == 30875){
-                        Log::info([
-                        'candidateStart' =>$candidateStart,
-                        ]);
-
                 }
 
                
