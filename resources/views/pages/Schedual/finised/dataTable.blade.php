@@ -183,15 +183,15 @@
                             </td>
                             <td>
                                 @if (!empty($data->actual_start) || !empty($data->start))
-                                    <input type="datetime-local" class="time" id = "start" {{ $semi_finished }}
+                                    <input type="datetime-local" class="time" name="start" id = "start" {{ $semi_finished }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_start??$data->start)->format('Y-m-d\TH:i') }}">
                                     <input type="datetime-local" class="time" name="end" id = "end" {{ $semi_finished }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
                                 @else
-                                 <input type="datetime-local" class="time" id = "start" {{ $semi_finished }}
-                                        name="start">
-                                    <input type="datetime-local" class="time" id = "end" {{ $semi_finished }}
-                                         name="end">
+                                 <input type="datetime-local" class="time" id = "start"  name="start" {{ $semi_finished }}
+                                       >
+                                    <input type="datetime-local" class="time" id = "start" name="start" {{ $semi_finished }}
+                                         >
                                 @endif
                                 
                             </td>
