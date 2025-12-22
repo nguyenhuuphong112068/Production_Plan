@@ -1428,8 +1428,11 @@ class SchedualController extends Controller
                         $stageCode = $item['stage_code'];
                         if ($stageCode <= 2) {
                                         // chỉ cóa cân k xóa các công đoạn khác
+                                       
+
                                         DB::table('stage_plan')
                                         ->where('id', $rowId)
+                                        ->where('finished', 0)
                                         ->where('stage_code', '=', $stageCode)
                                         ->update([
                                                 'start'            => null,
@@ -1450,6 +1453,7 @@ class SchedualController extends Controller
                                         $plan = DB::table('stage_plan')->where('id', $rowId)->first();
 
                                         DB::table('stage_plan')
+                                        ->where('finished', 0)
                                         ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)
                                         ->update([
                                                 'start'            => null,
