@@ -152,11 +152,11 @@ class SchedualFinisedController extends Controller
                 /* ===============================
                 2. VALIDATE TIME LOGIC
                 =============================== */
-                if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
-                        return response()->json([
-                                'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
-                                ], 422);
-                }
+                // if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
+                //         return response()->json([
+                //                 'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
+                //                 ], 422);
+                // }
 
                 /* ===============================
                 3. TÍNH YIELDS BATCH QTY (STAGE 4)
