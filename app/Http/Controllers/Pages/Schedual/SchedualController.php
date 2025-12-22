@@ -3275,7 +3275,7 @@ class SchedualController extends Controller
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
                                         }else  {
                                   
-                                                if ($campaignTask->immediately == false && $campaignTask->stage_code != 4){
+                                                if ($campaignTask->immediately == false && $stageCode != 4){
                                                         $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
                                                         $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
                                                 }    
