@@ -160,6 +160,7 @@ class SchedualController extends Controller
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
                         ->where('sp.active', 1)
                         ->whereNotNull('sp.resourceId')
                         ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
@@ -178,8 +179,15 @@ class SchedualController extends Controller
                         ->select(
                         'sp.id',
                         'sp.code',
-                        'sp.title',
-
+                        //'sp.title',
+                        //DB::raw("CONCAT(product_name.name, '-', plan_master.batch) AS title"),
+                        DB::raw("
+                        CASE
+                                WHEN sp.stage_code = 9 THEN sp.title
+                                ELSE CONCAT(product_name.name, '-', plan_master.batch)
+                        END AS title
+                        "),
+                                
                         'sp.start',
                         'sp.end',
                         'sp.start_clearning',
@@ -2352,13 +2360,18 @@ class SchedualController extends Controller
                 // 1. Lấy lịch bận thực tế
                 // ===============================
                 $schedules = DB::table('stage_plan')
-                ->where('start', '>=', now())
                 ->where('resourceId', $roomId)
+                ->where(function ($q) {
+                        $q->where('end', '>=', now())
+                        ->orWhere('end_clearning', '>=', now());
+                })
                 ->select(
+                        'id',
                         'resourceId',
                         'start',
                         DB::raw('COALESCE(end_clearning, end) as end')
                 )
+                ->distinct()
                 ->orderBy('start')
                 ->get();
 
@@ -3431,12 +3444,47 @@ class SchedualController extends Controller
                         }
                 }
 
+                if (
+                $stageCode == 4 &&
+                $firstTask->predecessor_code &&
+                explode('_', $firstTask->predecessor_code)[1] == 3 &&
+                $rooms->count() > 1
+                ) {
+                $rooms_bkc = $rooms;
 
+                $resourceId_prev = DB::table('stage_plan')
+                        ->where('code', $firstTask->predecessor_code)
+                        ->value('resourceId');
+
+                $rooms = $rooms->filter(function ($room) use ($resourceId_prev) {
+
+                        if (in_array($resourceId_prev, [6, 7])) {
+                        return in_array($room->room_id, [13, 14]);
+                        }
+
+                        if ($resourceId_prev == 10) {
+                        return $room->room_id == 17;
+                        }
+
+                        return true;
+
+                })->values();
+
+                // ✅ rollback nếu filter làm rỗng
+                if ($rooms->isEmpty()) {
+                        $rooms = $rooms_bkc;
+                }
+                }
 
                 $bestRoom = null;
                 $bestStart = null;
                 //Tim phòng tối ưu
+
+
                 foreach ($rooms as $room) {
+
+
+
                         $totalMunites = $room->p_time_minutes + ($campaignTasks->count() * $room->m_time_minutes)
                                 + ($campaignTasks->count()-1) * ($room->C1_time_minutes)
                                 + $room->C2_time_minutes;

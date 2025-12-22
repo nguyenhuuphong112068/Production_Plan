@@ -2240,8 +2240,10 @@ const ScheduleTest = () => {
           }
 
           info.el.addEventListener("dblclick", (e) => {
+            
             e.stopPropagation();
             handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
+            console.log (info.event)
           });
         }}
 

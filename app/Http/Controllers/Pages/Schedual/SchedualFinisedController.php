@@ -112,7 +112,7 @@ class SchedualFinisedController extends Controller
         }
 
         public function store(Request $request){
-              
+                Log::info($request->all());
                 /* ===============================
                 1. FORMAT DATE TIME (LUÔN Ở ĐẦU)
                 =============================== */
@@ -151,11 +151,11 @@ class SchedualFinisedController extends Controller
                 /* ===============================
                 2. VALIDATE TIME LOGIC
                 =============================== */
-                // if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
-                //         return response()->json([
-                //                 'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
-                //                 ], 422);
-                // }
+                if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
+                        return response()->json([
+                                'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
+                                ], 422);
+                }
 
                 /* ===============================
                 3. TÍNH YIELDS BATCH QTY (STAGE 4)
