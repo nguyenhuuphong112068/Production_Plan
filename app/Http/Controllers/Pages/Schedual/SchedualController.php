@@ -1851,7 +1851,7 @@ class SchedualController extends Controller
         }
 
         public function createAutoCampain(Request $request){
-
+                Log::info( $request->all());
                 try {
                 // Lấy toàn bộ stage_plan chưa hoàn thành và active
                 DB::table('stage_plan')
@@ -1881,7 +1881,7 @@ class SchedualController extends Controller
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
                         ->where('sp.stage_code',"=", $request->stage_code)
-                        ->orderBy('order_by', 'asc')
+                        ->orderBy('sp.order_by', 'asc')
                 ->get();
 
                 for ($i=3; $i<=7; $i++){
