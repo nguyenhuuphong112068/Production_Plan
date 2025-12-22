@@ -917,7 +917,7 @@ class SchedualController extends Controller
 
                         // Sắp xếp products theo batch
                         $products = collect($request->products)->sortBy('batch')->values();
-
+                        Log::info($products);
                         // Thời gian bắt đầu ban đầu
                         $current_start = Carbon::parse($request->start);
 
@@ -1016,7 +1016,22 @@ class SchedualController extends Controller
                         | LƯU stage_plan
                         |--------------------------------------------------------------------------
                         */
-                        DB::table('stage_plan')
+                        if ($product['stage_code'] === 9) {
+                                 DB::table('stage_plan')
+                                ->where('id', $product['id'])
+                                ->update([
+                                'start'           => $current_start,
+                                'end'             => $end_man,
+                                'start_clearning' => $end_man,
+                                'end_clearning'   => $end_clearning,
+                                'resourceId'      => $request->room_id,
+                                //'title_clearning' => $clearning_type,
+                                'schedualed'      => 1,
+                                'schedualed_by'   => session('user')['fullName'],
+                                'schedualed_at'   => now(),
+                                ]);
+                        }else{
+                                DB::table('stage_plan')
                                 ->where('id', $product['id'])
                                 ->update([
                                 'start'           => $current_start,
@@ -1032,6 +1047,8 @@ class SchedualController extends Controller
                                 'schedualed_by'   => session('user')['fullName'],
                                 'schedualed_at'   => now(),
                                 ]);
+                        }
+                       
 
                         /*
                         |--------------------------------------------------------------------------
