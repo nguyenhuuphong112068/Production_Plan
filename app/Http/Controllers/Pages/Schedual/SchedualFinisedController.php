@@ -112,8 +112,7 @@ class SchedualFinisedController extends Controller
         }
 
         public function store(Request $request){
-                Log::info($request->all());
-
+              
                 /* ===============================
                 1. FORMAT DATE TIME (LUÔN Ở ĐẦU)
                 =============================== */
