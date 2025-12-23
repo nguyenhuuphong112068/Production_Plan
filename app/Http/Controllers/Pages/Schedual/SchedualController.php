@@ -678,7 +678,7 @@ class SchedualController extends Controller
                         )
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
-                //->where('room.stage_code', '<=', 4)
+                ->where('room.id', '>=', 4)
                 ->orderBy('order_by', 'asc')
                 ->get()
                 ->map(function ($room) use ($statsMap, $yieldMap) {
@@ -927,7 +927,7 @@ class SchedualController extends Controller
 
                         // Sắp xếp products theo batch
                         $products = collect($request->products)->sortBy('batch')->values();
-                        Log::info($products);
+                       
                         // Thời gian bắt đầu ban đầu
                         $current_start = Carbon::parse($request->start);
 
@@ -2591,6 +2591,7 @@ class SchedualController extends Controller
 
                 $notCampaign = DB::table('stage_plan')
                 ->where('resourceId', $roomId)
+                ->where('finished', 0)
                 ->whereNull('campaign_code')
                 ->where(function ($q) {
                         $q->where('end', '>=', now())
@@ -2604,6 +2605,7 @@ class SchedualController extends Controller
                 ->get();
 
                 $campaign = DB::table('stage_plan')
+                        ->where('finished', 0)
                         ->where('resourceId', $roomId)
                         ->whereNotNull('campaign_code')
                         ->where(function ($q) {
@@ -2833,7 +2835,7 @@ class SchedualController extends Controller
                         // ==== nếu rơi vào busy → nhảy qua ====
                         if ($current_start->lt($busy['end'])) {
                                 $current_start = $busy['end']->copy();
-                               // $current_start = $this->skipOffTime($current_start, $offDateList);
+                               $current_start = $this->skipOffTime($current_start, $offDateList);
                         }
                 }
                 
@@ -3780,7 +3782,7 @@ class SchedualController extends Controller
 
                 foreach ($campaignTasks as $index => $task) {
                       
-                        $nextTask = null;
+                       
                         if ($this->work_sunday == false) {
                                 $startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(6, 0, 0);
                                 $endOfPeriod   = (clone $startOfSunday)->addDay()->setTime(6, 0, 0);
@@ -3800,22 +3802,7 @@ class SchedualController extends Controller
                                 $start_clearning = $bestEnd->copy();
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô đâu tiên chiến dịch
                                 $clearningType = 1;
-                                // $nextTask = $campaignTasks[$index + 1] ?? null;
-                                
-                                // if ($nextTask && $nextTask->predecessor_code) {
-                                       
-                                //         $next_pred_end = DB::table('stage_plan')
-                                //                 ->where('code', $nextTask->predecessor_code)
-                                //                 ->value('end');
-                                        
-                                //         if ($next_pred_end && Carbon::parse($next_pred_end)->gt($bestEndCleaning)) {
-                                //                 $bestEndCleaning = Carbon::parse($next_pred_end);
-
-                                //         }
-                                // }
-
-                                
-
+          
                         }elseif ($counter == $campaignTasks->count()){
                            
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
