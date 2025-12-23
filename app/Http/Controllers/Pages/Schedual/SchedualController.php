@@ -711,8 +711,11 @@ class SchedualController extends Controller
 
                         if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
                                 $plan_waiting = $this->getPlanWaiting($production);
+                                $bkc_code = DB::table('stage_plan_bkc')->select('bkc_code')->distinct()->orderByDesc('bkc_code')->get();
+                                $reason = DB::table('reason')->where('deparment_code', $production)->pluck('name');
+                                $quota = $this->getQuota($production);
                         }
-                        $quota = $this->getQuota($production);
+                       
 
                         $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
 
@@ -722,7 +725,8 @@ class SchedualController extends Controller
 
                         $resources = $this->getResources($production, $startDate, $endDate);
 
-                        $reason = DB::table('reason')->where('deparment_code', $production)->pluck('name');
+                        
+                        
 
                         $title = 'LỊCH SẢN XUẤT';
                         $type = true;
@@ -775,7 +779,8 @@ class SchedualController extends Controller
                                 'currentPassword' => session('user')['passWord']??'',
                                 'Lines'       => $Lines,
                                 'allLines' => $allLines,
-                                'off_days' => DB::table('off_days')->where ('off_date','>=',now())->get()->pluck('off_date')
+                                'off_days' => DB::table('off_days')->where ('off_date','>=',now())->get()->pluck('off_date'),
+                                'bkc_code' => $bkc_code
                         ]);
 
                 } catch (\Throwable $e) {
@@ -2312,34 +2317,213 @@ class SchedualController extends Controller
                 ]);
         }
 
-        public function updateOffdays(Request $request){
+        function backup_schedualer(){
+                $bkcCode = Carbon::now()->format('d/m/Y_H:i');
+
+                DB::table('stage_plan_bkc')->insertUsing(
+                        [
+                        'stage_plan_id',
+                        'bkc_code',
+                        'plan_list_id',
+                        'plan_master_id',
+                        'product_caterogy_id',
+                        'predecessor_code',
+                        'nextcessor_code',
+                        'campaign_code',
+                        'code',
+                        'order_by',
+                        'order_by_line',
+                        'clearning_validation',
+                        'schedualed',
+                        'finished',
+                        'active',
+                        'stage_code',
+                        'title',
+                        'start',
+                        'end',
+                        'resourceId',
+                        'required_room_code',
+                        'title_clearning',
+                        'start_clearning',
+                        'end_clearning',
+                        'scheduling_direction',
+                        'tank',
+                        'keep_dry',
+                        'immediately',
+                        'submit',
+                        'AHU_group',
+                        'quarantine_time',
+                        'schedualed_by',
+                        'schedualed_at',
+                        'actual_start',
+                        'actual_end',
+                        'actual_start_clearning',
+                        'actual_end_clearning',
+                        'note',
+                        'yields',
+                        'yields_batch_qty',
+                        'number_of_boxes',
+                        'Theoretical_yields',
+                        'quarantine_room_code',
+                        'deparment_code',
+                        'created_date',
+                        'created_by',
+                        'finished_date',
+                        'finished_by',
+                        'quarantined_by',
+                        'quarantined_date'
+                        ],
+                        DB::table('stage_plan')
+                        ->select([
+                                'id as stage_plan_id',
+                                DB::raw("'" . $bkcCode . "' as bkc_code"),
+                                'plan_list_id',
+                                'plan_master_id',
+                                'product_caterogy_id',
+                                'predecessor_code',
+                                'nextcessor_code',
+                                'campaign_code',
+                                'code',
+                                'order_by',
+                                'order_by_line',
+                                'clearning_validation',
+                                'schedualed',
+                                'finished',
+                                'active',
+                                'stage_code',
+                                'title',
+                                'start',
+                                'end',
+                                'resourceId',
+                                'required_room_code',
+                                'title_clearning',
+                                'start_clearning',
+                                'end_clearning',
+                                'scheduling_direction',
+                                'tank',
+                                'keep_dry',
+                                'immediately',
+                                'submit',
+                                'AHU_group',
+                                'quarantine_time',
+                                'schedualed_by',
+                                'schedualed_at',
+                                'actual_start',
+                                'actual_end',
+                                'actual_start_clearning',
+                                'actual_end_clearning',
+                                'note',
+                                'yields',
+                                'yields_batch_qty',
+                                'number_of_boxes',
+                                'Theoretical_yields',
+                                'quarantine_room_code',
+                                'deparment_code',
+                                'created_date',
+                                'created_by',
+                                'finished_date',
+                                'finished_by',
+                                'quarantined_by',
+                                'quarantined_date'
+                        ])
+                        ->where('finished', 0)
+                );
+                return response()->json([
+                        'bkcCode' => $bkcCode
+                ]);
+               
+        }
+
+        public function restore_schedualer(Request $request){
+                $bkcCode = $request->input('bkc_code'); // ⚠️ dùng đúng key axios gửi
+
+                if (!$bkcCode) {
+                        Log::warning('Restore scheduler failed: missing bkc_code', [
+                        'payload' => $request->all()
+                        ]);
+
+                        return response()->json([
+                        'success' => false,
+                        'message' => 'Thiếu mã bản sao lưu'
+                        ], 422);
+                }
+
+                try {
+                        DB::beginTransaction();
+
+                        $affected = DB::table('stage_plan as sp')
+                        ->join('stage_plan_bkc as bkc', 'bkc.stage_plan_id', '=', 'sp.id')
+                        ->where('sp.finished', 0)
+                        ->where('bkc.bkc_code', $bkcCode)
+                        ->update([
+                                'sp.start'                  => DB::raw('bkc.start'),
+                                'sp.end'                    => DB::raw('bkc.end'),
+                                'sp.resourceId'             => DB::raw('bkc.resourceId'),
+                                'sp.start_clearning'        => DB::raw('bkc.start_clearning'),
+                                'sp.end_clearning'          => DB::raw('bkc.end_clearning'),
+                                'sp.schedualed'             => DB::raw('bkc.schedualed'),
+                                'sp.actual_start'           => DB::raw('bkc.actual_start'),
+                                'sp.actual_end'             => DB::raw('bkc.actual_end'),
+                                'sp.actual_start_clearning' => DB::raw('bkc.actual_start_clearning'),
+                                'sp.actual_end_clearning'   => DB::raw('bkc.actual_end_clearning'),
+                                'sp.note'                   => DB::raw('bkc.note'),
+                                'sp.yields'                 => DB::raw('bkc.yields'),
+                                'sp.yields_batch_qty'       => DB::raw('bkc.yields_batch_qty'),
+                                'sp.number_of_boxes'        => DB::raw('bkc.number_of_boxes'),
+                        ]);
+
+                        DB::commit();
+
+                        return response()->json([
+                        'success' => true,
+                        'affected' => $affected
+                        ]);
+
+                } catch (\Throwable $e) {
+
+                        DB::rollBack();
+
+                        Log::error('Restore scheduler error', [
+                        'bkc_code' => $bkcCode,
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                        ]);
+
+                        return response()->json([
+                        'success' => false,
+                        'message' => 'Khôi phục thất bại, vui lòng kiểm tra log'
+                        ], 500);
+                }
+        }
+
+        // public function updateOffdays(Request $request){
              
 
-                $added = $request->input('added', []);
-                $removed = $request->input('removed', []);
+        //         $added = $request->input('added', []);
+        //         $removed = $request->input('removed', []);
 
-                DB::transaction(function () use ($added, $removed) {
+        //         DB::transaction(function () use ($added, $removed) {
 
-                        if ($added) {
-                        foreach ($added as $d) {
-                                DB::table('off_days')->updateOrInsert(
-                                ['off_date' => $d],
-                                ['is_fixed' => 0]
-                                );
-                        }
-                        }
+        //                 if ($added) {
+        //                 foreach ($added as $d) {
+        //                         DB::table('off_days')->updateOrInsert(
+        //                         ['off_date' => $d],
+        //                         ['is_fixed' => 0]
+        //                         );
+        //                 }
+        //                 }
 
-                        if ($removed) {
-                        DB::table('off_days')
-                        ->whereIn('off_date', $removed)
-                        ->delete();
-                        }
-                });
+        //                 if ($removed) {
+        //                 DB::table('off_days')
+        //                 ->whereIn('off_date', $removed)
+        //                 ->delete();
+        //                 }
+        //         });
 
-                return response()->json([
-                        'off_days' => DB::table('off_days')->get()->pluck('off_date')
-                ]);
-        }
+        //         return response()->json([
+        //                 'off_days' => DB::table('off_days')->get()->pluck('off_date')
+        //         ]);
+        // }
 
         protected function skipOffTime(Carbon $time, array $offDateList): Carbon {
                 foreach ($offDateList as $off) {

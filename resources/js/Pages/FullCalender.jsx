@@ -65,6 +65,7 @@ const ScheduleTest = () => {
   const [authorization, setAuthorization] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
   const [reasons, setReasons] = useState([]);
+  const [bkcCode, setBkcCode] = useState([]);
   const [lines, setLines] = useState(['S16']);
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
@@ -131,7 +132,8 @@ const ScheduleTest = () => {
           setCurrentPassword (data.currentPassword??'')
           setQuota(data.quota);
           setOffDays (data.off_days);
-
+          setBkcCode (data.bkc_code);
+         
         }
 
         switch (data.production) {
@@ -1178,6 +1180,24 @@ const ScheduleTest = () => {
                   placeholder="Nhập lý do..."
                   required>
           </div>
+
+          
+          <div class="cfg-row">
+             
+
+              <button id="btn-backup" class="btn btn-primary mx-2">Tạo bản sao lưu</button>
+              <button id="btn-restore" class="btn btn-success mx-2">Khôi phục</button>
+
+              <div class="response-date-wrap text-center" style="display:block;">
+                <label class="cfg-label">Chọn Mã bản sao lưu </label>
+                <select id="retoreList" class="swal2-input response-date-input" name="bkc_code">
+                  <option value="">-- Chọn mã cần khôi phục --</option>
+                </select>
+              </div>
+          </div>
+
+
+
         </div>
       </div>
       `,
@@ -1194,35 +1214,6 @@ const ScheduleTest = () => {
         // ------------------ Calendar ------------------
         const calendarContainer = document.getElementById("calendar-container");
         const calendarRoot = ReactDOM.createRoot(calendarContainer);
-
-        // const CalendarPopup = () => {
-        //   const [localDates, setLocalDates] = React.useState(offDays);
-        //   const handleChange = (e) => {
-        //     const selected = e.value.map(d => {
-        //       const date = new Date(d);
-        //       const year = date.getFullYear();
-        //       const month = String(date.getMonth() + 1).padStart(2, "0");
-        //       const day = String(date.getDate()).padStart(2, "0");
-        //       return `${year}-${month}-${day}`;
-        //     });
-
-        //     setLocalDates(e.value);
-        //     selectedDates = selected;
-        //     setOffDays(selected);
-        //   };
-
-        //   return (
-        //     <div className="card flex justify-content-center">
-        //       <Calendar
-        //         value={localDates}
-        //         onChange={handleChange}
-        //         selectionMode="multiple"
-        //         inline
-        //         readOnlyInput
-        //       />
-        //     </div>
-        //   );
-        // };
 
         const CalendarPopup = () => {
 
@@ -1267,8 +1258,6 @@ const ScheduleTest = () => {
             </div>
           );
         };
-
-        
         calendarRoot.render(<CalendarPopup />);
 
         // ------------------ Stepper ------------------
@@ -1373,7 +1362,7 @@ const ScheduleTest = () => {
         });
         
 
-         // ------------- Thêm soure cho Lines ------------- //
+        // ------------- Thêm soure cho Lines ------------- //
         const linesSelect = document.getElementById("lines");
         if (allLines && allLines?.length) {
             allLines.forEach(r => {
@@ -1384,6 +1373,107 @@ const ScheduleTest = () => {
             });
         }
 
+        // ------------- Thêm soure cho Phục hồi ------------- //
+        const retoreList = document.getElementById("retoreList");
+        if (bkcCode && bkcCode?.length) {
+            bkcCode.forEach(r => {
+              const opt = document.createElement("option");
+              opt.value = r.bkc_code;
+              opt.textContent = r.bkc_code;
+              retoreList.appendChild(opt);
+            });
+        }
+
+        // ================= Backup =================
+        const btnBackup = document.getElementById('btn-backup');
+        const bkcSelect = document.getElementById('retoreList');
+
+        if (btnBackup) {
+          btnBackup.addEventListener('click', () => {
+
+            Swal.fire({
+              title: 'Đang tạo bản sao lưu...',
+              allowOutsideClick: false,
+              didOpen: () => Swal.showLoading()
+            });
+
+            axios.post('/Schedual/backup_schedualer')
+              .then(res => {
+             
+                const opt = document.createElement('option');
+                opt.value = res.data.bkcCode;
+                opt.textContent = res.data.bkcCode;
+                opt.selected = true;
+                bkcSelect.appendChild(opt);
+
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Đã sao lưu',
+                  timer: 1500,
+                  showConfirmButton: false
+                });
+              })
+              .catch(err => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Lỗi sao lưu',
+                  text: err.response?.data?.message || err.message
+                });
+              });
+
+
+          });
+        }
+
+        // ================= Restore =================
+        const btnRestore = document.getElementById('btn-restore');
+
+        if (btnRestore) {
+          btnRestore.addEventListener('click', () => {
+            const bkcCode = bkcSelect.value;
+
+            if (!bkcCode) {
+              Swal.fire('Vui lòng chọn mã sao lưu!');
+              return;
+            }
+
+            Swal.fire({
+              title: 'Xác nhận khôi phục?',
+              text: `Khôi phục theo mã: ${bkcCode}`,
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Khôi phục'
+            }).then(r => {
+              if (!r.isConfirmed) return;
+
+              Swal.fire({
+                title: 'Đang khôi phục...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+              });
+
+              axios.post('/Schedual/restore_schedualer', { bkc_code: bkcCode })
+                .then(() => {
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Khôi phục thành công',
+                    timer: 1500,
+                    showConfirmButton: false
+                  });
+
+                  setLoading(v => !v); // reload calendar
+                })
+                .catch(err => {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Khôi phục thất bại',
+                    text: err.response?.data?.message || err.message
+                  });
+              });
+
+            });
+          });
+        }
       }
       ,
       preConfirm: () => {
