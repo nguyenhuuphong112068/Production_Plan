@@ -201,6 +201,15 @@ const ScheduleTest = () => {
     { enableOnFormTags: false }
   );
 
+
+  useHotkeys("ctrl+c",(e) => {
+      e.preventDefault();
+    
+      handleSaveChanges();
+    },
+    { enableOnFormTags: false }
+  );
+
   
 
   /// Get dư liệu row được chọn
