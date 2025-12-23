@@ -132,6 +132,32 @@ class SchedualFinisedController extends Controller
                 ? Carbon::parse($request->end_clearning)->format('Y-m-d H:i:s')
                 : null;
 
+                if ($actualStart > now()) {
+                        return response()->json([
+                        'message' => '❌ Thời gian bắt đầu sản xuất lớn hơn hiện tại'
+                        ], 422);
+                } 
+
+                if ($actualEnd > now()) {
+                        return response()->json([
+                        'message' => '❌ Thời gian kết thúc sản xuất lớn hơn hiện tại'
+                        ], 422);
+                } 
+
+                if ($actualStartCleaning > now() && $request->actionType === 'finised') {
+                        return response()->json([
+                        'message' => '❌ Thời gian bắt đầu vệ sinh lớn hơn hiện tại'
+                        ], 422);
+                } 
+
+                if ($actualEndCleaning > now() && $request->actionType === 'finised') {
+                        return response()->json([
+                        'message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'
+                        ], 422);
+                } 
+
+
+
                 if ($request->actionType === 'finised') {
                         if ( $actualStartCleaning == null || $actualEndCleaning == null || $actualStart == null || $actualEnd  == null){
                                 return response()->json([
