@@ -554,13 +554,18 @@ class SchedualController extends Controller
                         ->select(
                         'sp.id',
                         'sp.code',
+                        'sp.plan_master_id',
                         'sp.campaign_code',
                         'sp.stage_code',
                         'sp.order_by',
                         'sp.order_by_line',
                         'sp.clearning_validation',
                         'sp.required_room_code',
-
+                        'sp.predecessor_code',
+                        'sp.nextcessor_code',
+                        'sp.immediately',
+                      
+                       
                         'plan_master.id as plan_master_id',       
                         'plan_master.batch',
                         'plan_master.expected_date',
@@ -1697,7 +1702,7 @@ class SchedualController extends Controller
 
         public function createManualCampain(Request $request){
 
-             
+                Log::info ($request->all());
                 $datas = $request->input ('data');
                 $modeCreate = true;
                 $firstCode = null;
