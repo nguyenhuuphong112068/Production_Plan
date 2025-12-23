@@ -202,7 +202,7 @@ const ScheduleTest = () => {
   );
 
 
-  useHotkeys("ctrl+c",(e) => {
+  useHotkeys("ctrl+s",(e) => {
       e.preventDefault();
     
       handleSaveChanges();
