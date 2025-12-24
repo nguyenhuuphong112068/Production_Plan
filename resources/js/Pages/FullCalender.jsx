@@ -2331,7 +2331,7 @@ const ScheduleTest = () => {
           // gắn data-event-id để tìm kiếm
           info.el.setAttribute("data-event-id", info.event.id);
           info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
-
+          
           // cho select evetn => pendingChanges
           const isPending = pendingChanges.some(e => e.id === info.event.id);
           if (isPending) {
