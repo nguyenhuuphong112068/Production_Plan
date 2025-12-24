@@ -30,7 +30,7 @@ class SchedualController extends Controller
         ];
 
         public function test(){
-              //$this->scheduleAll (null);
+              $this->createAutoCampain (null);
               //$this->createAutoCampain();
               //$this->view (null);
              // $this->Sorted (null);
@@ -1885,14 +1885,16 @@ class SchedualController extends Controller
         }
 
         public function createAutoCampain(Request $request){
-   
+                $stage_code = $request->stage_code ?? 3;
+                $stage_code = ($stage_code == 3) ? [3, 4] : [$stage_code];
+
                 try {
                 // Lấy toàn bộ stage_plan chưa hoàn thành và active
                 DB::table('stage_plan')
                         ->where('finished', 0)
                         ->where('start', null)
                         ->where('active', 1)
-                        ->where('stage_code',"=", $request->stage_code)
+                        ->whereIn('stage_code', $stage_code)
                         
                 ->update(['campaign_code' => null]);
 
@@ -1901,6 +1903,7 @@ class SchedualController extends Controller
                                 'sp.id',
                                 'sp.stage_code',
                                 'sp.predecessor_code',
+                                'sp.nextcessor_code',
                                 'sp.campaign_code',
                                 'sp.code',
                                 'plan_master.expected_date',
@@ -1914,9 +1917,11 @@ class SchedualController extends Controller
                         ->where('sp.finished', 0)
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
-                        ->where('sp.stage_code',"=", $request->stage_code)
+                        ->whereIn('sp.stage_code', $stage_code)
                         ->orderBy('sp.order_by', 'asc')
                 ->get();
+               
+                
 
                 for ($i=3; $i<=7; $i++){
                         $stage_plans_stage = $stage_plans->where('stage_code',$i);
@@ -1935,10 +1940,10 @@ class SchedualController extends Controller
                                 ->groupBy(function ($item) use ($product_code) {
                                         // tách code_val
                                         if ($item->code_val === null) {
-                                        $cvFlag = 'NULL';
+                                                $cvFlag = 'NULL';
                                         } else {
-                                        $parts = explode('_', $item->code_val);
-                                        $cvFlag = $parts[0]; // chỉ lấy phần yy (trước dấu "_")
+                                                $parts = explode('_', $item->code_val);
+                                                $cvFlag = $parts[0]; // chỉ lấy phần yy (trước dấu "_")
                                         }
 
                                         return $item->expected_date . '|' . $item->$product_code . '|' . $cvFlag;
@@ -1962,66 +1967,80 @@ class SchedualController extends Controller
                                 });
                         }
 
+                       
+
                         foreach ($groups as $groupKey => $items) {
                                 [$expected_date, $code] = explode('|', $groupKey);
                                 $quota = DB::table('quota')->where($product_code, $code)->where('stage_code',$i)->first();
                                 $maxBatch = $quota->maxofbatch_campaign ?? 0;
 
-                        if ($i != 3) {
+                                if ($i != 3) {
 
-                                $maxPrevCampaignBatch = 0;
+                                        $maxPrevCampaignBatch = 0;
+                                        foreach ($items as $item) {
 
-                                foreach ($items as $item) {
+                                                if (!$item->predecessor_code) {
+                                                        continue;
+                                                }
 
-                                        if (!$item->predecessor_code) {
-                                        continue;
+                                                // Lấy campaign của predecessor
+                                                $prevCampaignCode = DB::table('stage_plan')
+                                                ->where('code', $item->predecessor_code)
+                                                ->value('campaign_code');
+
+                                                if (!$prevCampaignCode) {
+                                                continue;
+                                                }
+
+                                                // Đếm số batch của campaign trước
+                                                $countPrevCampaign = DB::table('stage_plan')
+                                                ->where('campaign_code', $prevCampaignCode)
+                                                ->count();
+
+                                                if ($countPrevCampaign > $maxPrevCampaignBatch) {
+                                                        $maxPrevCampaignBatch = $countPrevCampaign;
+                                                }
                                         }
 
-                                        // Lấy campaign của predecessor
-                                        $prevCampaignCode = DB::table('stage_plan')
-                                        ->where('code', $item->predecessor_code)
-                                        ->value('campaign_code');
-
-                                        if (!$prevCampaignCode) {
-                                        continue;
-                                        }
-
-                                        // Đếm số batch của campaign trước
-                                        $countPrevCampaign = DB::table('stage_plan')
-                                        ->where('campaign_code', $prevCampaignCode)
-                                        ->count();
-
-                                        if ($countPrevCampaign > $maxPrevCampaignBatch) {
-                                        $maxPrevCampaignBatch = $countPrevCampaign;
+                                        if ($maxPrevCampaignBatch > 0 && $maxBatch > $maxPrevCampaignBatch) {
+                                                        $maxBatch = $maxPrevCampaignBatch;
                                         }
                                 }
 
-                                if ($maxPrevCampaignBatch > 0 && $maxBatch > $maxPrevCampaignBatch) {
-                                                $maxBatch = $maxPrevCampaignBatch;
-                                }
-                        }
+                                        if ($maxBatch <= 1) {continue;}
+                                        
+                                        $items = $items->values(); // reset index
+                                        $countInBatch = 0;
+                                        $first = $items[0];
+                                        $campaignCode = $first->predecessor_code ?? ("0_" . $first->code);
+                                        $campaignCode_nextStage = $first->code;
+                                       
+                                        foreach ($items as $item) {
 
-                                if ($maxBatch <= 1) {continue;}
+                                                if ($countInBatch >= $maxBatch) {
+                                                        $campaignCode = $item->predecessor_code ?? ("0_" . $item->code);
+                                                        $campaignCode_nextStage = $item->code;
+                                                        $countInBatch = 1;
+                                                }
 
-                                $items = $items->values(); // reset index
-                                $countInBatch = 0;
-                                $first = $items[0];
-                                $campaignCode = $first->predecessor_code ?? ("0_" . $first->code);
+                                                $updates[] = [
+                                                        'id' => $item->id,
+                                                        'campaign_code' => $campaignCode,
+                                                ];
 
-                                foreach ($items as $item) {
+                                                if ($item->nextcessor_code && explode ("_", $item->nextcessor_code)[1] && explode ("_", $item->nextcessor_code)[1] == 4){
+                                                        $next_stage_plan_id = DB::table('stage_plan')->where('code',$item->nextcessor_code)->value('id');
+                                                        $updates[] = [
+                                                                'id' => $next_stage_plan_id,
+                                                                'campaign_code' => $campaignCode_nextStage,
+                                                        ];     
+                                                }
 
-                                        if ($countInBatch >= $maxBatch) {
-                                                $campaignCode = $item->predecessor_code ?? ("0_" . $item->code);
-                                                $countInBatch = 1;
+
+                                                $countInBatch++;
                                         }
-
-                                        $updates[] = [
-                                                'id' => $item->id,
-                                                'campaign_code' => $campaignCode,
-                                        ];
-
-                                        $countInBatch++;
-                                }
+                                         
+                                        
                         }
 
                         if (!empty($updates)) {
@@ -2049,12 +2068,13 @@ class SchedualController extends Controller
         }
 
         public function DeleteAutoCampain (Request $request){  
-              
+                $stage_code = $request->stage_code ?? 3;
+                $stage_code = ($stage_code == 3) ? [3, 4] : [$stage_code];
                 DB::table('stage_plan')
                         ->where('finished', 0)
                         ->where('start', null)
                         ->where('active', 1)
-                        ->where('stage_code',"=", $request->stage_code)
+                        ->where('stage_code',"=", $stage_code)
                         
                 ->update(['campaign_code' => null]);    
                 return response()->json([
@@ -2357,7 +2377,7 @@ class SchedualController extends Controller
                 ]);
         }
 
-        function backup_schedualer(){
+        public function backup_schedualer(){
                 $bkcCode = Carbon::now()->format('d/m/Y_H:i');
 
                 DB::table('stage_plan_bkc')->insertUsing(
@@ -3485,7 +3505,7 @@ class SchedualController extends Controller
         }
 
         /** Scheduler lô chiến dịch*/
-        protected function scheduleCampaign( $campaignTasks, $stageCode, int $waite_time = 0, ?Carbon $start_date = null , ?string $Line = null){
+        protected function scheduleCampaign( $campaignTasks, $stageCode, int $waite_time = 0, ?Carbon $start_date = null , ?string $Line = null, ?bool $imtemediatlyNextStage = false, ?float $totalTimeCampaign = 0){
 
 
                 $firstTask = $campaignTasks->first();
@@ -3560,7 +3580,7 @@ class SchedualController extends Controller
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
                                         }else  {
                                   
-                                                if ($campaignTask->immediately == false){
+                                                if ($campaignTask->immediately == false && !$imtemediatlyNextStage){
                                                         $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
                                                         $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
                                                 }    
@@ -3757,6 +3777,10 @@ class SchedualController extends Controller
                                 + ($campaignTasks->count()-1) * ($room->C1_time_minutes)
                                 + $room->C2_time_minutes;
 
+                        if ($imtemediatlyNextStage && $totalTimeCampaign > 0 && $totalTimeCampaign > $totalMunites){
+                                $totalMunites = $totalTimeCampaign;
+                        }
+
                         $candidateStart = $this->findEarliestSlot2(
                                 $room->room_id,
                                 $earliestStart,
@@ -3779,6 +3803,13 @@ class SchedualController extends Controller
                 // Lưu từng batch
                 $counter = 1;
                 // Lưu Sự Kiện
+
+
+                $firstBatachStart = null;
+                //$firstBatachEnd = null;
+                $lastBatachEnd = null; // dung cho chạy công đoạn tiếp theo
+                $totalTimeCampaign = 0;// dung cho chạy công đoạn tiếp theo
+
                 foreach ($campaignTasks as $task) {
                       
                        
@@ -3801,7 +3832,10 @@ class SchedualController extends Controller
                                 $start_clearning = $bestEnd->copy();
                                 $bestEndCleaning = $bestEnd->copy()->addMinutes((float)$bestRoom->C1_time_minutes); //Lô đâu tiên chiến dịch
                                 $clearningType = 1;
-          
+
+                                $firstBatachStart = $bestEnd->copy();
+                                //$firstBatachEnd = $bestEnd->copy();
+
                         }elseif ($counter == $campaignTasks->count()){
                            
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
@@ -3816,6 +3850,7 @@ class SchedualController extends Controller
                                 }
 
                                 $clearningType = 2;
+                                $lastBatachEnd = $bestEnd->copy();
                         }else {
                                 $bestEnd = $bestStart->copy()->addMinutes((float) $bestRoom->m_time_minutes);
                                 if ($bestEnd->between($startOfSunday, $endOfPeriod)) {
@@ -3844,64 +3879,76 @@ class SchedualController extends Controller
                         $counter++;
                         $bestStart = $bestEndCleaning->copy();
                 }
+                $totalTimeCampaign = abs($firstBatachStart->diffInMinutes($lastBatachEnd));
 
                 // Làm ngay THT
-                // if ($stageCode == 3){
-                //         $nextcessor_code = explode ("_",$firstTask->nextcessor_code)[1]??null;
+                if ($stageCode == 3){
+                        $nextcessor_codes = collect();
+                        $nextTasks = collect();
+
+                        $nextcessor_code = explode ("_",$firstTask->nextcessor_code)[1]??null;
                        
-                //         if ($nextcessor_code == 4){
+                        if ($nextcessor_code == 4){
+                                $nextcessor_codes = $campaignTasks->pluck('nextcessor_code');
 
-                //                 $plan_master_ids = $campaignTasks->pluck ('plan_master_id');
+                                $nextTasks =  DB::table("stage_plan as sp")
+                                ->select('sp.id',
+                                'sp.plan_master_id',
+                                'sp.product_caterogy_id',
+                                'sp.predecessor_code',
+                                'sp.nextcessor_code',
+                                'sp.campaign_code',
+                                'sp.code',
+                                'sp.stage_code',
+                                'sp.campaign_code',
+                                'sp.tank',
+                                'sp.keep_dry',
+                                'sp.order_by',
+                                'sp.required_room_code',
+                                'sp.immediately',
+                                'plan_master.batch',
+                                'plan_master.is_val',
+                                'plan_master.code_val',
+                                'plan_master.expected_date',
+                                'plan_master.batch',
+                                'plan_master.after_weigth_date',
+                                'plan_master.after_parkaging_date',
+                                'finished_product_category.product_name_id',
+                                'finished_product_category.market_id',
+                                'finished_product_category.finished_product_code',
+                                'finished_product_category.intermediate_code',
+                                'product_name.name',
+                                'market.code as market',
+                                'prev.start as prev_start' 
+                                )
+                                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
+                                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                                ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                                ->whereIn('sp.code', $nextcessor_codes)
+                                //->where('sp.stage_code', $nextcessor_code)
+                                ->where('sp.active',1)
+                                ->whereNotNull('plan_master.after_weigth_date')
+                                ->where('sp.deparment_code', session('user')['production_code'])
+                                ->orderBy('prev.start', 'asc')
+                                ->get();
+                        }
 
-                //                 $nextCampaignTasks =  DB::table("stage_plan as sp")
-                //                 ->select('sp.id',
-                //                 'sp.plan_master_id',
-                //                 'sp.product_caterogy_id',
-                //                 'sp.predecessor_code',
-                //                 'sp.nextcessor_code',
-                //                 'sp.campaign_code',
-                //                 'sp.code',
-                //                 'sp.stage_code',
-                //                 'sp.campaign_code',
-                //                 'sp.tank',
-                //                 'sp.keep_dry',
-                //                 'sp.order_by',
-                //                 'sp.required_room_code',
-                //                 'sp.immediately',
-                //                 'plan_master.batch',
-                //                 'plan_master.is_val',
-                //                 'plan_master.code_val',
-                //                 'plan_master.expected_date',
-                //                 'plan_master.batch',
-                //                 'plan_master.after_weigth_date',
-                //                 'plan_master.after_parkaging_date',
-                //                 'finished_product_category.product_name_id',
-                //                 'finished_product_category.market_id',
-                //                 'finished_product_category.finished_product_code',
-                //                 'finished_product_category.intermediate_code',
-                //                 'product_name.name',
-                //                 'market.code as market'
-                //                 )
-                //                 ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-                //                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
-                //                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                //                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                //                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
-                //                 ->whereIn('sp.stage_code', $plan_master_ids)
-                //                 ->where('sp.stage_code', $stageCode)
-                //                 ->where('sp.active',1)
-                //                 ->whereNotNull('plan_master.after_weigth_date')
-                //                 ->where('sp.deparment_code', session('user')['production_code'])
-                //                 ->orderBy('prev.start', 'asc')
-                //                 ->get();
-                //         }
-
-                //         if ($nextCampaignTasks){
-                //                 $this->scheduleCampaign( $nextCampaignTasks, $nextcessor_code, $waite_time,  $start_date, null);
-                //         }
+                       if ($nextTasks->isNotEmpty()) {
+                                $this->scheduleCampaign(
+                                        $nextTasks,
+                                        $nextcessor_code,
+                                        $waite_time,
+                                        $start_date,
+                                        null,
+                                        true,
+                                        $totalTimeCampaign,
+                                );
+                        }
 
                         
-                // }
+                }
 
                 
         }
