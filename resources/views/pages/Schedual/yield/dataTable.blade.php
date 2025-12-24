@@ -137,18 +137,25 @@
                             <td class="text-center align-middle" rowspan="2">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
                             <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
 
-                            @php $sumLT = 0; @endphp
+                            @php 
+                                $sumLT = 0; 
+                                $sumLT_unit = 0;
+                            @endphp
                             @foreach ($allDates as $date)
                                 @php
                                     $dayLT = $theory['yield_day'][$date] ?? collect();
                                     $item = $dayLT->firstWhere('resourceId', $resourceId);
                                     $qty = $item['total_qty'] ?? 0;
-                                    $sumLT += $qty;
-                                @endphp
-                                <td class="text-end" style="background:#93f486;" >{{ number_format($qty, 2) }}</td>
-                            @endforeach
+                                    $qty_unit = $item['total_qty_unit'] ?? 0;
 
-                            <td class="text-end fw-bold" style="background:#93f486;">{{ number_format($sumLT, 2) }}</td>
+                                    $sumLT += $qty;
+                                    $sumLT_unit += $qty_unit;
+                                    
+                                @endphp
+                                <td class="text-end" style="background:#93f486;" >{{ number_format($qty, 2)}}   {{ $roomLT->stage_code == 4 ? " # " . number_format($qty_unit, 2) : ''}}</td>
+                            @endforeach
+                  
+                            <td class="text-end fw-bold" style="background:#93f486;">{{ number_format($sumLT, 2) }} {{ $roomLT->stage_code == 4 ? " # " .number_format($sumLT_unit, 2) :''}} </td>
                             <td class="text-center" style="background:#93f486;">{{ $unit }}</td>
                         </tr>
 
@@ -196,9 +203,11 @@
                                 foreach ($allDates as $date) {
                                     $dayLT = $theory['yield_day'][$date] ?? collect();
                                     $stageLT[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
+                                    $stageLT_unit[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty_unit');
 
                                     $dayTT = $actual['yield_day'][$date] ?? collect();
                                     $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
+                                   
                                 }
                             @endphp
 
@@ -208,10 +217,10 @@
                                 <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
 
                                 @foreach ($allDates as $date)
-                                    <td class="text-end" >{{ number_format($stageLT[$date], 2) }}</td>
+                                    <td class="text-end" >{{ number_format($stageLT[$date], 2) }} {{$roomLT->stage_code == 4 ? " # " . number_format($stageLT_unit[$date], 2) : '' }} </td>
                                 @endforeach
 
-                                <td class="text-end" >{{ number_format(array_sum($stageLT), 2) }}</td>
+                                <td class="text-end" >{{ number_format(array_sum($stageLT), 2) }} {{$roomLT->stage_code == 4 ? " # " . number_format(array_sum($stageLT_unit), 2) : '' }} </td>
                                 <td class="text-center">{{ $unit }}</td>
                             </tr>
 
