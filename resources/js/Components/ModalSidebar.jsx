@@ -82,7 +82,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     if (waitPlan && waitPlan.length > 0) {
 
       const filtered = waitPlan.filter(event => Number(event.stage_code) === stageFilter)
-      //.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
       setTableData(filtered);
       setUnQuota (tableData.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
     }
@@ -691,24 +690,58 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
   const handleCreateAutoCampain = async () => {
 
-     const { value: password } = await Swal.fire({
-        title: "Nhập Mật Khẩu",
-        width: "500px",
-        text: "Bạn Muốn Tạo Lại Toạn Bộ Mã Chiến Dich, Chiến Dịch Cũ Sẽ Mất",
-        input: "password",
-        inputPlaceholder: "Nhập mật khẩu...",
-        showCancelButton: true,
-        confirmButtonText: "Xác nhận",
-        cancelButtonText: "Hủy",
-        customClass: {
-          input: 'passWord-swal-input'
-        },
-        inputValidator: (value) => {
-          if (!value) return "Bạn phải nhập mật khẩu!";
-        },
+ 
+    const { value } = await Swal.fire({
+      title: "Tạo Mã Chiến Dịch Tự Động",
+      width: "500px",
+      html: `
+        <div style="text-align:center">
+
+          <div class="sort-option">
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="kcs" checked>
+              <span>📅 Theo ngày KCS</span>
+            </label>
+
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="response">
+              <span>📦 Theo ngày đáp ứng</span>
+            </label>
+          </div>
+
+          <hr/>
+
+          <input
+            id="swal-password"
+            type="password"
+            class="swal2-input passWord-swal-input"
+            placeholder="Nhập mật khẩu..."
+          />
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Xác nhận",
+      cancelButtonText: "Hủy",
+
+      preConfirm: () => {
+        const password = document.getElementById('swal-password').value;
+        const sortType = document.querySelector('input[name="sortType"]:checked')?.value;
+
+        if (!password) {
+          Swal.showValidationMessage('Bạn phải nhập mật khẩu!');
+          return false;
+        }
+
+        return {
+          password,
+          sortType
+        };
+      }
     });
 
-    if (!password) return;
+
+    if (!value) return;
+    const { password, sortType } = value;
     
     if (password !== currentPassword) {
       Swal.fire({
@@ -732,7 +765,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               },
       });
 
-      axios.put('/Schedual/createAutoCampain', {stage_code: stageFilter})
+      axios.put('/Schedual/createAutoCampain', {stage_code: stageFilter, mode :sortType})
       . then (res => {
                     let data = res.data;
                     if (typeof data === "string") {
@@ -741,6 +774,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     }
 
                     setPlan(data.plan);
+                    const filtered = data.plan.filter(event => Number(event.stage_code) === stageFilter)
+                    setTableData(filtered);
 
                     setTimeout(() => {
                       Swal.close();
