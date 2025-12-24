@@ -30,7 +30,7 @@ class SchedualController extends Controller
         ];
 
         public function test(){
-              $this->createAutoCampain (null);
+              //$this->createAutoCampain (null);
               //$this->createAutoCampain();
               //$this->view (null);
              // $this->Sorted (null);
@@ -1885,8 +1885,18 @@ class SchedualController extends Controller
         }
 
         public function createAutoCampain(Request $request){
+                
+
                 $stage_code = $request->stage_code ?? 3;
                 $stage_code = ($stage_code == 3) ? [3, 4] : [$stage_code];
+
+                $mode_date = 'expected_date';
+                $mode_order_by = 'order_by';
+
+                if ($request->mode == 'response'){
+                        $mode_date = 'responsed_date';
+                        $mode_order_by = 'order_by_line';
+                }
 
                 try {
                 // Lấy toàn bộ stage_plan chưa hoàn thành và active
@@ -1907,6 +1917,7 @@ class SchedualController extends Controller
                                 'sp.campaign_code',
                                 'sp.code',
                                 'plan_master.expected_date',
+                                'plan_master.responsed_date',
                                 'plan_master.is_val',
                                 'plan_master.code_val',
                                 'finished_product_category.intermediate_code',
@@ -1918,7 +1929,7 @@ class SchedualController extends Controller
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
                         ->whereIn('sp.stage_code', $stage_code)
-                        ->orderBy('sp.order_by', 'asc')
+                        ->orderBy("sp.$mode_order_by", 'asc')
                 ->get();
                
                 
@@ -1937,7 +1948,7 @@ class SchedualController extends Controller
                                 });
 
                                 $groups = $stage_plans_stage
-                                ->groupBy(function ($item) use ($product_code) {
+                                ->groupBy(function ($item) use ($product_code, $mode_date) {
                                         // tách code_val
                                         if ($item->code_val === null) {
                                                 $cvFlag = 'NULL';
@@ -1946,7 +1957,7 @@ class SchedualController extends Controller
                                                 $cvFlag = $parts[0]; // chỉ lấy phần yy (trước dấu "_")
                                         }
 
-                                        return $item->expected_date . '|' . $item->$product_code . '|' . $cvFlag;
+                                        return $item->$mode_date . '|' . $item->$product_code . '|' . $cvFlag;
                                 })
                                 ->filter(function ($group) {
                                         return $group->count() > 1; // chỉ giữ group có > 1 phần tử
@@ -1959,8 +1970,9 @@ class SchedualController extends Controller
                                 });
                                 // Group theo expected_date + product_code
                                 $groups = $stage_plans_stage
-                                ->groupBy(function ($item) use ($product_code) {
-                                        return $item->expected_date . '|' . $item->$product_code;
+                                ->groupBy(function ($item) use ($product_code, $mode_date) {
+                                     
+                                        return $item->$mode_date . '|' . $item->$product_code;
                                 })
                                 ->filter(function ($group) {
                                         return $group->count() > 1;
@@ -1970,7 +1982,7 @@ class SchedualController extends Controller
                        
 
                         foreach ($groups as $groupKey => $items) {
-                                [$expected_date, $code] = explode('|', $groupKey);
+                                [$mode_date, $code] = explode('|', $groupKey);
                                 $quota = DB::table('quota')->where($product_code, $code)->where('stage_code',$i)->first();
                                 $maxBatch = $quota->maxofbatch_campaign ?? 0;
 
@@ -2056,15 +2068,16 @@ class SchedualController extends Controller
                         }
                 }
 
-
+                 return response()->json([
+                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
+                ]);
 
                 } catch (\Exception $e) {
                         Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
                         return response()->json(['error' => 'Lỗi hệ thống'], 500);
                 }
-                return response()->json([
-                        'plan' => $this->getPlanWaiting(session('user')['production_code'])
-                ]);
+
+         
         }
 
         public function DeleteAutoCampain (Request $request){  
@@ -2556,7 +2569,13 @@ class SchedualController extends Controller
                 }
         }
 
-        protected function skipOffTime(Carbon $time, array $offDateList): Carbon {
+        protected function skipOffTime(Carbon $time, array $offDateList,?int $roomId = null ): Carbon {
+                
+                $busyList = [];
+                if ($roomId){
+                        $busyList = $this->loadRoomAvailability('asc', $roomId);
+                }
+                
                 foreach ($offDateList as $off) {
 
                         // đảm bảo kiểu Carbon
@@ -2578,6 +2597,31 @@ class SchedualController extends Controller
                         break;
                         }
                 }
+                
+                if (!empty($busyList)){
+                        foreach ($busyList as $off) {
+
+                        // đảm bảo kiểu Carbon
+                        $start = $off['start'] instanceof Carbon
+                        ? $off['start']
+                        : Carbon::parse($off['start']);
+
+                        $end = $off['end'] instanceof Carbon
+                        ? $off['end']
+                        : Carbon::parse($off['end']);
+
+                        // nếu time nằm trong khoảng off
+                        if ($time->gte($start) && $time->lt($end)) {
+                        return $end->copy(); // nhảy tới cuối off
+                        }
+
+                        // vì offDateList đã sort theo start
+                        if ($time->lt($start)) {
+                        break;
+                        }
+                        }
+                }
+
 
                 return $time;
         }
@@ -3020,8 +3064,10 @@ class SchedualController extends Controller
                                         'plan_master.code_val',
                                         'plan_master.expected_date',
                                         'plan_master.batch',
+
                                         'plan_master.after_weigth_date',
                                         'plan_master.after_parkaging_date',
+                                        'plan_master.allow_weight_before_date',
 
                                         'finished_product_category.product_name_id',
                                         'finished_product_category.market_id',
@@ -3072,8 +3118,11 @@ class SchedualController extends Controller
                                 'plan_master.code_val',
                                 'plan_master.expected_date',
                                 'plan_master.batch',
+
                                 'plan_master.after_weigth_date',
                                 'plan_master.after_parkaging_date',
+                                'plan_master.allow_weight_before_date',
+                  
                                 'finished_product_category.product_name_id',
                                 'finished_product_category.market_id',
                                 'finished_product_category.finished_product_code',
@@ -3151,8 +3200,10 @@ class SchedualController extends Controller
                                         'plan_master.code_val',
                                         'plan_master.expected_date',
                                         'plan_master.batch',
+
                                         'plan_master.after_weigth_date',
                                         'plan_master.after_parkaging_date',
+                                        'plan_master.allow_weight_before_date',
 
                                         'finished_product_category.product_name_id',
                                         'finished_product_category.market_id',
@@ -3200,8 +3251,11 @@ class SchedualController extends Controller
                                 'plan_master.code_val',
                                 'plan_master.expected_date',
                                 'plan_master.batch',
+
                                 'plan_master.after_weigth_date',
                                 'plan_master.after_parkaging_date',
+                                'plan_master.allow_weight_before_date',
+
                                 'finished_product_category.product_name_id',
                                 'finished_product_category.market_id',
                                 'finished_product_category.finished_product_code',
@@ -3268,6 +3322,7 @@ class SchedualController extends Controller
                         // Nếu có after_weigth_date
                         if ($stageCode <=6){
                                 if ($task->after_weigth_date) {$candidates[] = Carbon::parse($task->after_weigth_date);}
+                                if (!empty($task->allow_weight_before_date)) {$candidates[] = Carbon::parse($task->allow_weight_before_date);}
                         }else {
                                 if ($task->after_parkaging_date) {$candidates[] = Carbon::parse($task->after_parkaging_date);}
                         }
@@ -3461,12 +3516,14 @@ class SchedualController extends Controller
                         }
                         
 
-                        if ($this->work_sunday == false) {
+                        //if ($this->work_sunday == false) {
                                 //Giả sử $bestStart là Carbon instance
 
                                 $startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(6, 0, 0); // CN 6h sáng
                                 $endOfPeriod   = (clone $startOfSunday)->addDay()->setTime(6, 0, 0);   // T2 tuần kế tiếp 6h sáng
-                               
+
+                                $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom);
+
                                 if ($bestStart->between($startOfSunday, $endOfPeriod)) {
                                         $bestStart = $endOfPeriod->copy();
                                         $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
@@ -3488,7 +3545,7 @@ class SchedualController extends Controller
                                                 $end_clearning =  $end_clearning->copy()->addMinutes(1440);
                                 }
 
-                        }
+                        //}
 
                         $this->saveSchedule(
                                         $title,
@@ -3526,6 +3583,7 @@ class SchedualController extends Controller
                 // Nếu có after_weigth_date
                 if ($stageCode <=6){
                         if ($firstTask->after_weigth_date) {$candidates[] = Carbon::parse($firstTask->after_weigth_date);}
+                        if (!empty($task->allow_weight_before_date))  {$candidates[] = Carbon::parse($firstTask->allow_weight_before_date);}
                 }else {
                         if ($firstTask->after_parkaging_date ) {$candidates[] = Carbon::parse($firstTask->after_parkaging_date);}
                 }
@@ -3818,7 +3876,7 @@ class SchedualController extends Controller
                                 $endOfPeriod   = (clone $startOfSunday)->addDay()->setTime(6, 0, 0);
                         }
 
-                        $bestStart = $this->skipOffTime($bestStart, $this->offDate);
+                        $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom->room_id);
                         
                         $pred_end = DB::table('stage_plan')->where('code', $task->predecessor_code)->value('end');
 
@@ -4023,6 +4081,7 @@ class SchedualController extends Controller
                                 'pm.code_val',
                                 'pm.expected_date',
                                 'pm.batch',
+                                'pm.allow_weight_before_date',
                                 'pm.after_weigth_date',
                                 'pm.before_weigth_date',
                                 'pm.after_parkaging_date',
@@ -4088,6 +4147,7 @@ class SchedualController extends Controller
                                         'pm.after_weigth_date',
                                         'pm.before_weigth_date',
                                         'pm.after_parkaging_date',
+                                        'pm.allow_weight_before_date',
                                         'pm.before_parkaging_date',
                                         'mk.code as market',
                                         'pn.name')
