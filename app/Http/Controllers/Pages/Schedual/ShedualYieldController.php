@@ -44,6 +44,7 @@ class ShedualYieldController extends Controller
             ->select(
                 "sp.$group_By",
                 DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
+                DB::raw('SUM(sp.Theoretical_yields_qty) as total_qty_unit'),
                 DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
@@ -69,6 +70,13 @@ class ShedualYieldController extends Controller
                     ) as total_qty
                 '),
                 DB::raw('
+                    SUM(
+                        sp.Theoretical_yields_qty *
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
+                        TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
+                    ) as total_qty_unit
+                '),
+                DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
@@ -86,6 +94,7 @@ class ShedualYieldController extends Controller
             ->map(function ($items) use ($group_By) {
                 $first = $items->first();
                 $total_qty = round($items->sum('total_qty'), 2);
+                $total_qty_unit = round($items->sum('total_qty_unit'), 2);
 
                 // Nếu group_By là room_id hoặc resourceId → lấy thêm thông tin phòng
                 if ($group_By === 'room_id' || $group_By === 'resourceId') {
@@ -102,6 +111,7 @@ class ShedualYieldController extends Controller
                         'room_name' => $room->name ?? null,
                         'unit' => $first->unit,
                         'total_qty' => $total_qty,
+                        'total_qty_unit' => $total_qty_unit
 
                     ];
                 }
@@ -123,6 +133,7 @@ class ShedualYieldController extends Controller
                 return (object)[
                     'stage_code' => $group->first()->stage_code,
                     'total_qty'  => round($group->sum('total_qty'), 2),
+                    'total_qty_unit'  => round($group->sum('total_qty_unit'), 2),
                     'details'    => $group->values(), // nếu muốn giữ danh sách chi tiết
                 ];
             })
@@ -156,6 +167,13 @@ class ShedualYieldController extends Controller
                         ) as total_qty
                     '),
                     DB::raw('
+                        SUM(
+                            sp.Theoretical_yields_qty *
+                            TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$dayEnd.'"), GREATEST(sp.start, "'.$dayStart.'"))) /
+                            TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
+                        ) as total_qty_unit
+                    '),
+                    DB::raw('
                         CASE
                             WHEN sp.stage_code <= 4 THEN "Kg"
                             ELSE "ĐVL"
@@ -174,6 +192,7 @@ class ShedualYieldController extends Controller
                     "unit" => $item->unit,
                     "date" => $date->format('Y-m-d'),
                     "total_qty" => round($item->total_qty ?? 0, 2),
+                    "total_qty_unit" => round($item->total_qty_unit ?? 0, 2),
                 ]);
             }
         }
