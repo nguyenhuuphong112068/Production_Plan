@@ -782,10 +782,10 @@ class SchedualController extends Controller
                                 'production' => $production,
                                 'department' => $department,
                                 'currentPassword' => session('user')['passWord']??'',
-                                'Lines'       => $Lines,
-                                'allLines' => $allLines,
-                                'off_days' => DB::table('off_days')->where ('off_date','>=',now())->get()->pluck('off_date'),
-                                'bkc_code' => $bkc_code
+                                'Lines'       => $Lines ?? [],
+                                'allLines' => $allLines ?? [],
+                                'off_days' => DB::table('off_days')->where ('off_date','>=',now())->get()->pluck('off_date') ?? [],
+                                'bkc_code' => $bkc_code ?? []
                         ]);
 
                 } catch (\Throwable $e) {
@@ -3507,7 +3507,7 @@ class SchedualController extends Controller
                 if ($stageCode <=6){
                         if ($firstTask->after_weigth_date) {$candidates[] = Carbon::parse($firstTask->after_weigth_date);}
                 }else {
-                        if ($firstTask->after_parkaging_date) {$candidates[] = Carbon::parse($firstTask->after_parkaging_date);}
+                        if ($firstTask->after_parkaging_date ) {$candidates[] = Carbon::parse($firstTask->after_parkaging_date);}
                 }
 
                 //$pre_campaign_first_batch_end = [];
@@ -3560,7 +3560,7 @@ class SchedualController extends Controller
                                                 $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
                                         }else  {
                                   
-                                                if ($campaignTask->immediately == false && $stageCode != 4){
+                                                if ($campaignTask->immediately == false){
                                                         $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
                                                         $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
                                                 }    
@@ -3749,6 +3749,7 @@ class SchedualController extends Controller
 
                 $bestRoom = null;
                 $bestStart = null;
+
                 //Tim phòng tối ưu
                 foreach ($rooms as $room) {
 
@@ -3774,13 +3775,11 @@ class SchedualController extends Controller
                         }
                 }
 
-                //Log::info (['candidateStart' => $candidateStart]);
-               
 
                 // Lưu từng batch
                 $counter = 1;
-
-                foreach ($campaignTasks as $index => $task) {
+                // Lưu Sự Kiện
+                foreach ($campaignTasks as $task) {
                       
                        
                         if ($this->work_sunday == false) {
@@ -3845,6 +3844,66 @@ class SchedualController extends Controller
                         $counter++;
                         $bestStart = $bestEndCleaning->copy();
                 }
+
+                // Làm ngay THT
+                // if ($stageCode == 3){
+                //         $nextcessor_code = explode ("_",$firstTask->nextcessor_code)[1]??null;
+                       
+                //         if ($nextcessor_code == 4){
+
+                //                 $plan_master_ids = $campaignTasks->pluck ('plan_master_id');
+
+                //                 $nextCampaignTasks =  DB::table("stage_plan as sp")
+                //                 ->select('sp.id',
+                //                 'sp.plan_master_id',
+                //                 'sp.product_caterogy_id',
+                //                 'sp.predecessor_code',
+                //                 'sp.nextcessor_code',
+                //                 'sp.campaign_code',
+                //                 'sp.code',
+                //                 'sp.stage_code',
+                //                 'sp.campaign_code',
+                //                 'sp.tank',
+                //                 'sp.keep_dry',
+                //                 'sp.order_by',
+                //                 'sp.required_room_code',
+                //                 'sp.immediately',
+                //                 'plan_master.batch',
+                //                 'plan_master.is_val',
+                //                 'plan_master.code_val',
+                //                 'plan_master.expected_date',
+                //                 'plan_master.batch',
+                //                 'plan_master.after_weigth_date',
+                //                 'plan_master.after_parkaging_date',
+                //                 'finished_product_category.product_name_id',
+                //                 'finished_product_category.market_id',
+                //                 'finished_product_category.finished_product_code',
+                //                 'finished_product_category.intermediate_code',
+                //                 'product_name.name',
+                //                 'market.code as market'
+                //                 )
+                //                 ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                //                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
+                //                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                //                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                //                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                //                 ->whereIn('sp.stage_code', $plan_master_ids)
+                //                 ->where('sp.stage_code', $stageCode)
+                //                 ->where('sp.active',1)
+                //                 ->whereNotNull('plan_master.after_weigth_date')
+                //                 ->where('sp.deparment_code', session('user')['production_code'])
+                //                 ->orderBy('prev.start', 'asc')
+                //                 ->get();
+                //         }
+
+                //         if ($nextCampaignTasks){
+                //                 $this->scheduleCampaign( $nextCampaignTasks, $nextcessor_code, $waite_time,  $start_date, null);
+                //         }
+
+                        
+                // }
+
+                
         }
 
         ///////// Sắp Lịch Theo Plan_Master_ID ////////
