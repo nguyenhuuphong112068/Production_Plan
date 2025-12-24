@@ -1477,15 +1477,19 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 {isSaving === false ? <i className="fa fa-bolt"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
 
-              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
-                onClick={handleCreateAutoCampain}>
-                {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
-              </div> 
+               {stageFilter != 4 && (
+                <>
+                <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
+                  onClick={handleCreateAutoCampain}>
+                  {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
+                </div>
 
-              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn"
-                onClick={handleDeleteCampainStage}>
-                {isSaving === false ? <i className="fas fa-trash"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
-              </div> 
+                <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn"
+                  onClick={handleDeleteCampainStage}>
+                  {isSaving === false ? <i className="fas fa-trash"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
+                </div> 
+                </>
+               )}
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
                 onClick={handleSorted}>
