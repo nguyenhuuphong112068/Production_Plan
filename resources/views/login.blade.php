@@ -159,12 +159,12 @@
         const oldDomain = "http://khsx.stellapharm.int/";
         const newUrl = "http://pms.stellapharm.int/";
 
-        if (currentHost == oldDomain) {
+        if (true) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Thông báo quan trọng',
                 html: `
-                    Hệ thống <b>KHSX</b> đã được chuyển sang địa chỉ mới.<br><br>
+                    Hệ thống <b>KHSX</b> đã được chuyển sang địa chỉ mới. (Từ 18:05 25/12/2025)<br><br>
                     Vui lòng truy cập hệ thống qua đường dẫn:<br>
                     <b style="color:#003A4F">${newUrl}</b>
                 `,
