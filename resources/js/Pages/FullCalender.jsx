@@ -685,9 +685,11 @@ const ScheduleTest = () => {
             let process_code =  event._def.extendedProps.process_code +"_"+ event._def.resourceIds[0]
             let stage_code = event._def.extendedProps.stage_code
             let is_clearning = event._def.extendedProps.is_clearning
-            let quota_event = quota.find(q => q.process_code == process_code && q.stage_code == stage_code);
+           let quota_event = quota.find(q =>
+                                      q.process_code.startsWith(process_code) &&
+                                      q.stage_code == stage_code
+                                    );
             
-           
             if (quota_event === undefined){
 
                 Swal.fire({
