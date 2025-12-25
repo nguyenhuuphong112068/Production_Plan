@@ -3886,19 +3886,15 @@ class SchedualController extends Controller
                                 2,
                                 60
                         );
-            
                         if ($bestStart === null || $candidateStart->lt($bestStart)) {
                                 $bestRoom = $room;
                                 $bestStart = $candidateStart;
                         }
                 }
 
-
                 // Lưu từng batch
                 $counter = 1;
                 // Lưu Sự Kiện
-
-
                 $firstBatachStart = null;
                 //$firstBatachEnd = null;
                 $lastBatachEnd = null; // dung cho chạy công đoạn tiếp theo

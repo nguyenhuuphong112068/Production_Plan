@@ -152,6 +152,7 @@ class ShedualYieldController extends Controller
             $totalForDay = DB::table("stage_plan as sp")
                 ->join('room as r', 'sp.resourceId', '=', 'r.id') // 👈 JOIN thêm bảng room
                 ->where('sp.deparment_code', session('user')['production_code'])
+                ->where('r.deparment_code', session('user')['production_code'])
                 ->whereNotNull('sp.start')
                 ->whereRaw('(sp.start <= ? AND sp.end >= ?)', [$dayEnd, $dayStart])
                 ->select(
