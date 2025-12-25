@@ -8,6 +8,8 @@
         width: 100%;
         table-layout: auto;
     }
+
+
 </style>
 
 <div class="content-wrapper">
@@ -90,6 +92,7 @@
             </form>
 
             {{-- ============================= TABLE ============================= --}}
+       
             <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
                 <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
                     <tr style="background-color: #CDC717; color:#003A4F; font-size: 20px; font-weight: bold;">
@@ -118,6 +121,10 @@
                 </thead>
 
                 <tbody style="font-size: 20px;">
+                     @php
+                                
+                                dd ($theory['yield_room']);
+                    @endphp
 
                     @foreach ($theory['yield_room'] as $index => $roomLT)
                         @php
@@ -134,6 +141,7 @@
 
                         {{-- ------------------- LÝ THUYẾT ------------------- --}}
                         <tr >
+                           
                             <td class="text-center align-middle" rowspan="2">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
                             <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
 
@@ -253,28 +261,10 @@
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
         document.body.style.overflowX = "auto";
-        $('#data_table_Schedual_list').DataTable({
-            paging: true,
-            lengthChange: true,
-            searching: true,
-            ordering: true,
-            info: true,
-            autoWidth: false,
-            pageLength: 10,
-            lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "Tất cả"]
-            ],
-            language: {
-                search: "Tìm kiếm:",
-                lengthMenu: "Hiển thị _MENU_ dòng",
-                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-                paginate: {
-                    previous: "Trước",
-                    next: "Sau"
-                }
-            },
-        });
+        const cardBody = document.querySelector('.card-body');
+        cardBody.style.overflowX = "auto";
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        cardBody.scrollTop = 0;
     });
 </script>
 
