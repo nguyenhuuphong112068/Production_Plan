@@ -1344,6 +1344,7 @@ class SchedualController extends Controller
                                         'start_clearning' => $change['start'],
                                         'end_clearning'   => $change['end'],
                                         'resourceId'      => $change['resourceId'],
+                                        
                                         'schedualed_by'   => session('user')['fullName'],
                                         'schedualed_at'   => now(),
                                 ]);
@@ -1356,6 +1357,7 @@ class SchedualController extends Controller
                                         'resourceId'      => $change['resourceId'],
                                         'schedualed_by'   => session('user')['fullName'],
                                         'schedualed_at'   => now(),
+                                        'accept_quarantine'=> 0,
                                 ]);
                                 
                                 $update_row = DB::table('stage_plan')->where('id',$realId)->first();
@@ -1483,6 +1485,7 @@ class SchedualController extends Controller
                                                 'resourceId'       => null,
                                                 'title'            => null,
                                                 'title_clearning'  => null,
+                                                'accept_quarantine'=> 0,
                                                 'schedualed'       => 0,
                                                 'AHU_group' => 0,
                                                 'schedualed_by'    => session('user')['fullName'],
@@ -1504,6 +1507,7 @@ class SchedualController extends Controller
                                                 'resourceId'       => null,
                                                 'title'            => null,
                                                 'title_clearning'  => null,
+                                                'accept_quarantine'=> 0,
                                                 'schedualed'       => 0,
                                                 'schedualed_by'    => session('user')['fullName'],
                                                 'schedualed_at'    => now(),
@@ -1600,6 +1604,7 @@ class SchedualController extends Controller
                                         'end_clearning' => null,
                                         'resourceId' => null,
                                         'title_clearning' => null,
+                                        'accept_quarantine'=> 0,
                                         'schedualed' => 0,
                                         'AHU_group' => 0,
                                         'schedualed_by' =>  session('user')['fullName'],
