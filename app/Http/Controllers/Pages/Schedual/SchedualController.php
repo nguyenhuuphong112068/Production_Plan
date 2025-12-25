@@ -216,6 +216,8 @@ class SchedualController extends Controller
                         'sp.nextcessor_code',
                         'sp.immediately',
                         'sp.submit',
+                        'sp.accept_quarantine',
+                        
 
                         
                         'finished_product_category.intermediate_code',
@@ -411,7 +413,7 @@ class SchedualController extends Controller
                 }
 
                 /* 5️⃣ BIỆT TRỮ */
-                if ($i > 0 && $plan->quarantine_total == 0 && $plan->stage_code > 3 && $plan->stage_code < 7) {
+                if ($i > 0 && $plan->quarantine_total == 0 && $plan->stage_code > 3 && $plan->stage_code < 7 && $plan->accept_quarantine ) {
                         $prev = $plans->firstWhere('code', $plan->predecessor_code);
                         if ($prev && $plan->start) {
                               $diffMinutes = Carbon::parse($prev->end)
@@ -2333,14 +2335,12 @@ class SchedualController extends Controller
                 try {
 
                         foreach ($items as $item) {
-                        $rowId = explode('-', $item['id'])[0];   // lấy id trước dấu -
-                        $stageCode = $item['stage_code'];
-                
+                                $rowId = explode('-', $item['id'])[0];   // lấy id trước dấu - 
                                 DB::table('stage_plan')
-                                ->where('id', $rowId)
-                                ->where('finished', 0)
-                                ->update([
-                                        'accept_quarantine'=> null,
+                                        ->where('id', $rowId)
+                                        ->where('finished', 0)
+                                        ->update([
+                                                'accept_quarantine'=> 1,
                                 ]);
                         }
                 } catch (\Exception $e) {
@@ -2348,17 +2348,11 @@ class SchedualController extends Controller
                         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
                 }
 
-
-
-                $production = session('user')['production_code'];
-                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
-                $plan_waiting = $this->getPlanWaiting($production);
-                $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
+                $events = $this->getEvents(session('user')['prodction_code'], $request->startDate, $request->endDate , true, $this->theory);
 
                 return response()->json([
-                                'events' => $events,
-                                'plan' => $plan_waiting,
-                                'sumBatchByStage' => $sumBatchByStage,
+                                'events' => $events
+                                
                 ]);
 
 
