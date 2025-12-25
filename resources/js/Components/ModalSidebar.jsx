@@ -1603,10 +1603,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
                   </>
                 )}
-
-
-              
-
             </div>
           </Col>
           <Col md={3} className='d-flex justify-content-end'>

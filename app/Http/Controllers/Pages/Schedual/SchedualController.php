@@ -1982,8 +1982,6 @@ class SchedualController extends Controller
                                 });
                         }
 
-                       
-
                         foreach ($groups as $groupKey => $items) {
                                 [$mode_date, $code] = explode('|', $groupKey);
                                 $quota = DB::table('quota')->where($product_code, $code)->where('stage_code',$i)->first();
@@ -2037,7 +2035,6 @@ class SchedualController extends Controller
                                                         $campaignCode_nextStage = $item->code;
                                                         $countInBatch = 1;
                                                 }
-
                                                 $updates[] = [
                                                         'id' => $item->id,
                                                         'campaign_code' => $campaignCode,
@@ -2050,8 +2047,6 @@ class SchedualController extends Controller
                                                                 'campaign_code' => $campaignCode_nextStage,
                                                         ];     
                                                 }
-
-
                                                 $countInBatch++;
                                         }
                                          
@@ -2330,6 +2325,43 @@ class SchedualController extends Controller
                 });
 
                 return response()->json(['message' => "Đã submit " . $updatedRows->count() . " lịch."]);
+        }
+
+        public function accpectQuarantine(Request $request){
+                
+                $items = collect($request->input('ids'));
+                try {
+
+                        foreach ($items as $item) {
+                        $rowId = explode('-', $item['id'])[0];   // lấy id trước dấu -
+                        $stageCode = $item['stage_code'];
+                
+                                DB::table('stage_plan')
+                                ->where('id', $rowId)
+                                ->where('finished', 0)
+                                ->update([
+                                        'accept_quarantine'=> null,
+                                ]);
+                        }
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+                }
+
+
+
+                $production = session('user')['production_code'];
+                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
+                $plan_waiting = $this->getPlanWaiting($production);
+                $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
+
+                return response()->json([
+                                'events' => $events,
+                                'plan' => $plan_waiting,
+                                'sumBatchByStage' => $sumBatchByStage,
+                ]);
+
+
         }
 
         public function required_room (Request $request) {

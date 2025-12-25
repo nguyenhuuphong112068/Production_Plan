@@ -687,8 +687,9 @@ const ScheduleTest = () => {
             let is_clearning = event._def.extendedProps.is_clearning
             let quota_event = quota.find(q => q.process_code == process_code && q.stage_code == stage_code);
             
-
-            if (!quota_event){
+           
+            if (quota_event === undefined){
+              alert ("sa")
                 Swal.fire({
                   icon: 'warning',
                   title: 'Thiếu Định Mức',
@@ -1927,6 +1928,66 @@ const ScheduleTest = () => {
       }})
   }
 
+  const handleAcceptQuanrantine = (e) => {
+      return;
+      if (!authorization) { return };
+      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+      if (!selectedEvents || selectedEvents.length === 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Chọn Lịch Cần Chấp Nhận',
+          showConfirmButton: false,
+          timer: 1000
+        });
+        return; // Dừng hàm ở đây
+      }
+      e.stopPropagation();
+      Swal.fire({
+        title: 'Bạn có chắc muốn chấp nhận thời gian biệt trữ hiện tại?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Chấp Nhận',
+        cancelButtonText: 'Hủy',
+        confirmButtonColor: 'rgba(94, 221, 51, 1)',
+        cancelButtonColor: '#3085d6',
+
+      }).then((result) => {
+        if (result.isConfirmed) {
+          axios.put('/Schedual/accpectQuarantine', {
+            ids: selectedEvents,
+            startDate: toLocalISOString(activeStart),
+            endDate: toLocalISOString(activeEnd)
+          })
+            .then((res) => {
+              let data = res.data;
+              if (typeof data === "string") {
+                data = data.replace(/^<!--.*?-->/, "").trim();
+                data = JSON.parse(data);
+              }
+              setEvents(data.events);
+
+              Swal.fire({
+                icon: 'success',
+                title: 'Hoàn Thành',
+                showConfirmButton: false,
+                timer: 1500
+              });
+            })
+
+            .catch((error) => {
+              Swal.fire({
+                icon: 'error',
+                title: 'Chấp Nhận lịch thất bại',
+                text: 'Vui lòng thử lại sau.',
+              });
+              console.error("API error:", error.response?.data || error.message);
+            });
+        }
+       
+      });
+  }
+
+
   const EventContent = (arg) => {
     const event = arg.event;
     const props = event._def.extendedProps;
@@ -2184,7 +2245,7 @@ const ScheduleTest = () => {
         }}
         
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -2322,6 +2383,11 @@ const ScheduleTest = () => {
             click: handleSubmit
           },
 
+          AcceptQuarantine: {
+            text: '✅',
+            click: handleAcceptQuanrantine
+          },
+
         }}
 
         eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
@@ -2342,7 +2408,7 @@ const ScheduleTest = () => {
             
             e.stopPropagation();
             handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
-            console.log (info.event)
+           
           });
         }}
 
