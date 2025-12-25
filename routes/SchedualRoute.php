@@ -59,8 +59,9 @@ use Illuminate\Support\Facades\Route;
 
                 Route::post('backup_schedualer','backup_schedualer')->name('backup_schedualer');
                 Route::post('restore_schedualer','restore_schedualer')->name('restore_schedualer');
+                Route::post('accpectQuarantine','accpectQuarantine')->name('accpectQuarantine');
                 
-
+                
 
                 Route::get('test','test')->name('test');
 
