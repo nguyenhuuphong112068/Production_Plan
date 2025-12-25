@@ -689,7 +689,7 @@ const ScheduleTest = () => {
             
            
             if (quota_event === undefined){
-              alert ("sa")
+
                 Swal.fire({
                   icon: 'warning',
                   title: 'Thiếu Định Mức',
@@ -1929,7 +1929,7 @@ const ScheduleTest = () => {
   }
 
   const handleAcceptQuanrantine = (e) => {
-      return;
+    
       if (!authorization) { return };
       const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
       if (!selectedEvents || selectedEvents.length === 0) {
