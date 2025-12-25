@@ -162,9 +162,9 @@
         if (true) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Thông báo quan trọng',
+                title: 'Thông báo',
                 html: `
-                    Hệ thống <b>KHSX</b> đã được chuyển sang địa chỉ mới. (Từ 18:05 25/12/2025)<br><br>
+                    Hệ thống <b>KHSX</b> đã được chuyển sang địa chỉ mới. <br>(Từ 18:05 25/12/2025)<br>
                     Vui lòng truy cập hệ thống qua đường dẫn:<br>
                     <b style="color:#003A4F">${newUrl}</b>
                 `,
@@ -183,9 +183,6 @@
 </script>
 
 <script>
-
-
-
     // 🔁 Chuyển form login <-> đổi mật khẩu
     function toggleForms(showChangePass = false) {
         const loginForm = document.getElementById('loginForm');
