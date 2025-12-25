@@ -2349,7 +2349,7 @@ class SchedualController extends Controller
                         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
                 }
 
-                $events = $this->getEvents(session('user')['prodction_code'], $request->startDate, $request->endDate , true, $this->theory);
+                $events = $this->getEvents(session('user')['production_code'], $request->startDate, $request->endDate , true, $this->theory);
 
                 return response()->json([
                                 'events' => $events
