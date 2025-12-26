@@ -1894,11 +1894,200 @@ class SchedualController extends Controller
                 ]);
         }
 
+        // public function createAutoCampain(Request $request){
+                
+
+        //         $stage_code = $request->stage_code ?? 3;
+        //         $stage_code = ($stage_code == 3) ? [3, 4] : [$stage_code];
+
+        //         $mode_date = 'expected_date';
+        //         $mode_order_by = 'order_by';
+
+        //         if ($request->mode == 'response'){
+        //                 $mode_date = 'responsed_date';
+        //                 $mode_order_by = 'order_by_line';
+        //         }
+
+        //         try {
+        //         // Lấy toàn bộ stage_plan chưa hoàn thành và active
+        //         DB::table('stage_plan')
+        //                 ->where('finished', 0)
+        //                 ->where('start', null)
+        //                 ->where('active', 1)
+        //                 ->whereIn('stage_code', $stage_code)
+        //         ->update(['campaign_code' => null]);
+
+        //         $stage_plans = DB::table("stage_plan as sp")
+        //                 ->select(
+        //                         'sp.id',
+        //                         'sp.stage_code',
+        //                         'sp.predecessor_code',
+        //                         'sp.nextcessor_code',
+        //                         'sp.campaign_code',
+        //                         'sp.code',
+        //                         'plan_master.expected_date',
+        //                         'plan_master.responsed_date',
+        //                         'plan_master.is_val',
+        //                         'plan_master.code_val',
+        //                         'finished_product_category.intermediate_code',
+        //                         'finished_product_category.finished_product_code'
+        //                 )
+        //                 ->leftJoin('plan_master', 'sp.plan_master_id' , '=', 'plan_master.id')
+        //                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+        //                 ->where('sp.finished', 0)
+        //                 ->whereNull('sp.start')
+        //                 ->where('sp.active', 1)
+        //                 ->whereIn('sp.stage_code', $stage_code)
+        //                 ->orderBy("sp.$mode_order_by", 'asc')
+        //         ->get();
+               
+                
+
+        //         for ($i=3; $i<=7; $i++){
+        //                 $stage_plans_stage = $stage_plans->where('stage_code',$i);
+        //                 if ($stage_plans_stage->isEmpty()) {continue;}
+        //                 if ($i <=6) {$product_code = "intermediate_code";} else {$product_code = "finished_product_code";}
+        //                 $updates = [];
+
+        //                 // Lọc dữ liệu theo điều kiện code_val
+        //                 if ($i == 3) {
+
+        //                         $stage_plans_stage = $stage_plans_stage->filter(function($item) {
+        //                                 return $item->code_val === null || explode("_", $item->code_val)[1] > 1;
+        //                         });
+
+        //                         $groups = $stage_plans_stage
+        //                         ->groupBy(function ($item) use ($product_code, $mode_date) {
+        //                                 // tách code_val
+        //                                 if ($item->code_val === null) {
+        //                                         $cvFlag = 'NULL';
+        //                                 } else {
+        //                                         $parts = explode('_', $item->code_val);
+        //                                         $cvFlag = $parts[0]; // chỉ lấy phần yy (trước dấu "_")
+        //                                 }
+
+        //                                 return $item->$mode_date . '|' . $item->$product_code . '|' . $cvFlag;
+        //                         })
+        //                         ->filter(function ($group) {
+        //                                 return $group->count() > 1; // chỉ giữ group có > 1 phần tử
+        //                         });
+
+        //                 } else {
+        //                         // i > 3 thì loại bỏ những record có code_val (chỉ giữ code_val == null)
+        //                         $stage_plans_stage = $stage_plans_stage->filter(function($item){
+        //                                 return empty($item->code_val);
+        //                         });
+        //                         // Group theo expected_date + product_code
+        //                         $groups = $stage_plans_stage
+        //                         ->groupBy(function ($item) use ($product_code, $mode_date) {
+                                     
+        //                                 return $item->$mode_date . '|' . $item->$product_code;
+        //                         })
+        //                         ->filter(function ($group) {
+        //                                 return $group->count() > 1;
+        //                         });
+        //                 }
+
+        //                 foreach ($groups as $groupKey => $items) {
+        //                         [$mode_date, $code] = explode('|', $groupKey);
+        //                         $quota = DB::table('quota')->where($product_code, $code)->where('stage_code',$i)->first();
+        //                         $maxBatch = $quota->maxofbatch_campaign ?? 0;
+
+        //                         if ($i != 3) {
+
+        //                                 $maxPrevCampaignBatch = 0;
+        //                                 foreach ($items as $item) {
+
+        //                                         if (!$item->predecessor_code) {
+        //                                                 continue;
+        //                                         }
+
+        //                                         // Lấy campaign của predecessor
+        //                                         $prevCampaignCode = DB::table('stage_plan')
+        //                                         ->where('code', $item->predecessor_code)
+        //                                         ->value('campaign_code');
+
+        //                                         if (!$prevCampaignCode) {
+        //                                         continue;
+        //                                         }
+
+        //                                         // Đếm số batch của campaign trước
+        //                                         $countPrevCampaign = DB::table('stage_plan')
+        //                                         ->where('campaign_code', $prevCampaignCode)
+        //                                         ->count();
+
+        //                                         if ($countPrevCampaign > $maxPrevCampaignBatch) {
+        //                                                 $maxPrevCampaignBatch = $countPrevCampaign;
+        //                                         }
+        //                                 }
+
+        //                                 if ($maxPrevCampaignBatch > 0 && $maxBatch > $maxPrevCampaignBatch) {
+        //                                                 $maxBatch = $maxPrevCampaignBatch;
+        //                                 }
+        //                         }
+
+        //                                 if ($maxBatch <= 1) {continue;}
+                                        
+        //                                 $items = $items->values(); // reset index
+        //                                 $countInBatch = 0;
+        //                                 $first = $items[0];
+        //                                 $campaignCode = $first->predecessor_code ?? ("0_" . $first->code);
+        //                                 $campaignCode_nextStage = $first->code;
+                                       
+        //                                 foreach ($items as $item) {
+
+        //                                         if ($countInBatch >= $maxBatch) {
+        //                                                 $campaignCode = $item->predecessor_code ?? ("0_" . $item->code);
+        //                                                 $campaignCode_nextStage = $item->code;
+        //                                                 $countInBatch = 1;
+        //                                         }
+        //                                         $updates[] = [
+        //                                                 'id' => $item->id,
+        //                                                 'campaign_code' => $campaignCode,
+        //                                         ];
+
+        //                                         if ($item->nextcessor_code && explode ("_", $item->nextcessor_code)[1] && explode ("_", $item->nextcessor_code)[1] == 4){
+        //                                                 $next_stage_plan_id = DB::table('stage_plan')->where('code',$item->nextcessor_code)->value('id');
+        //                                                 $updates[] = [
+        //                                                         'id' => $next_stage_plan_id,
+        //                                                         'campaign_code' => $campaignCode_nextStage,
+        //                                                 ];     
+        //                                         }
+        //                                         $countInBatch++;
+        //                                 }
+                                         
+                                        
+        //                 }
+
+        //                 if (!empty($updates)) {
+        //                         $ids = collect($updates)->pluck('id')->implode(',');
+
+        //                         $caseSql = "CASE id ";
+        //                         foreach ($updates as $row) {
+        //                         $caseSql .= "WHEN {$row['id']} THEN '{$row['campaign_code']}' ";
+        //                         }
+        //                         $caseSql .= "END";
+
+        //                         DB::update("UPDATE stage_plan SET campaign_code = $caseSql WHERE id IN ($ids)");
+        //                 }
+        //         }
+
+        //          return response()->json([
+        //                 'plan' => $this->getPlanWaiting(session('user')['production_code'])
+        //         ]);
+
+        //         } catch (\Exception $e) {
+        //                 Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+        //                 return response()->json(['error' => 'Lỗi hệ thống'], 500);
+        //         }
+
+         
+        // }
         public function createAutoCampain(Request $request){
                 
 
                 $stage_code = $request->stage_code ?? 3;
-                $stage_code = ($stage_code == 3) ? [3, 4] : [$stage_code];
+                //$stage_code = ($stage_code == 3) ? [3, 4] : [$stage_code];
 
                 $mode_date = 'expected_date';
                 $mode_order_by = 'order_by';
@@ -1914,39 +2103,41 @@ class SchedualController extends Controller
                         ->where('finished', 0)
                         ->where('start', null)
                         ->where('active', 1)
-                        ->whereIn('stage_code', $stage_code)
-                        
+                        //->whereIn('stage_code', $stage_code)
                 ->update(['campaign_code' => null]);
 
-                $stage_plans = DB::table("stage_plan as sp")
-                        ->select(
-                                'sp.id',
-                                'sp.stage_code',
-                                'sp.predecessor_code',
-                                'sp.nextcessor_code',
-                                'sp.campaign_code',
-                                'sp.code',
-                                'plan_master.expected_date',
-                                'plan_master.responsed_date',
-                                'plan_master.is_val',
-                                'plan_master.code_val',
-                                'finished_product_category.intermediate_code',
-                                'finished_product_category.finished_product_code'
-                        )
-                        ->leftJoin('plan_master', 'sp.plan_master_id' , '=', 'plan_master.id')
-                        ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-                        ->where('sp.finished', 0)
-                        ->whereNull('sp.start')
-                        ->where('sp.active', 1)
-                        ->whereIn('sp.stage_code', $stage_code)
-                        ->orderBy("sp.$mode_order_by", 'asc')
-                ->get();
+
                
                 
 
                 for ($i=3; $i<=7; $i++){
-                        $stage_plans_stage = $stage_plans->where('stage_code',$i);
-                        if ($stage_plans_stage->isEmpty()) {continue;}
+
+                        $stage_plans_stage = DB::table("stage_plan as sp")
+                                ->select(
+                                        'sp.id',
+                                        'sp.stage_code',
+                                        'sp.predecessor_code',
+                                        'sp.nextcessor_code',
+                                        'sp.campaign_code',
+                                        'sp.code',
+                                        'plan_master.expected_date',
+                                        'plan_master.responsed_date',
+                                        'plan_master.is_val',
+                                        'plan_master.code_val',
+                                        'finished_product_category.intermediate_code',
+                                        'finished_product_category.finished_product_code'
+                                )
+                                ->leftJoin('plan_master', 'sp.plan_master_id' , '=', 'plan_master.id')
+                                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                                ->where('sp.finished', 0)
+                                ->whereNull('sp.start')
+                                ->where('sp.active', 1)
+                                ->whereIn('sp.stage_code', 3)
+                                ->orderBy("sp.$mode_order_by", 'asc')
+                        ->get();
+
+                        //$stage_plans_stage = $stage_plans->where('stage_code',$i);
+                        //if ($stage_plans_stage->isEmpty()) {continue;}
                         if ($i <=6) {$product_code = "intermediate_code";} else {$product_code = "finished_product_code";}
                         $updates = [];
 
