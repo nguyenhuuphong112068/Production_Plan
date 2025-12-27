@@ -16,6 +16,7 @@
                         <th>Người Tạo</th>
                         <th>Người Tạo</th>
                         <th>Tình Trạng</th>
+                        <th>Sản Lượng Lý Thuyết (ĐVL)</th>
                         <th>Người Gửi</th>
                         <th>Ngày Gửi</th>
                         <th>Xem</th>
@@ -48,8 +49,9 @@
                                     {{ $status[$data->send] }}
                                 </span>
                             </td>
-
+                            <td>{{ number_format($data->total_batch_qty) }}</td>
                             <td>{{ $data->send_by }}</td>
+
                             <td>{{ \Carbon\Carbon::parse($data->send_date)->format('d/m/Y H:i') }}</td>
 
 
