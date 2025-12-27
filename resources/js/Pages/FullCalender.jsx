@@ -2094,6 +2094,13 @@ const ScheduleTest = () => {
   };
 
 
+  const isDayOff = useCallback((date) => {
+    return offDays.includes(
+      date.toLocaleDateString('en-CA') // yyyy-mm-dd theo local
+    );
+  }, [offDays]);
+
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
@@ -2131,6 +2138,13 @@ const ScheduleTest = () => {
         resourceGroupField="stage_name"
         resourceOrder='order_by'
 
+        slotLaneClassNames={(arg) => {
+          const day = arg.date.getDay();
+          // Ngày nghỉ từ state
+          if (isDayOff(arg.date)) return ['fc-ngay-nghi'];
+
+          return [];
+        }}
         // stage
         resourceGroupLabelContent={(arg) => {
 
