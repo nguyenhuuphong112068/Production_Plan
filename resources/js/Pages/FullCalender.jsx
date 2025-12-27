@@ -127,7 +127,6 @@ const ScheduleTest = () => {
           setLines(data.Lines)
           setAllLines (data.allLines)
         
-        
         if (!authorization){
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
