@@ -2342,8 +2342,6 @@ class SchedualController extends Controller
 
         public function required_room (Request $request) {
 
-                
-                
                 $campaign_code = DB::table('stage_plan')->where('id', $request->stage_plan_id)->value('campaign_code');
                 $room_id = DB::table('room')->where ('code', $request->room_code)->value('id');
                 
@@ -2365,38 +2363,40 @@ class SchedualController extends Controller
                         ->get();
 
 
-                        foreach ($plans as $p) {
+                        // foreach ($plans as $p) {
+                        //         //$quota
+                        //         // Tạo process_code đúng tiêu chí
+                        //         if ($p->stage_code < 7) {
+                        //                 //$process_code = $p->intermediate_code . "_NA_" . $room_id;
+                        //                 $quota = DB::table('quota')
+                        //                 ->where('room_id', $room_id )
+                        //                 ->where('intermediate_code', $p->intermediate_code)
+                        //                 ->first();
+                        //         } else {
+                        //                 //$process_code = $p->intermediate_code . "_" . $p->finished_product_code . "_" . $room_id;
+                        //                 $quota = DB::table('quota')
+                        //                 ->where('room_id', $room_id )
+                        //                 ->where('intermediate_code', $p->intermediate_code)
+                        //                 ->where('finished_product_code', $p->finished_product_code)
+                        //                 ->first();
+                        //         }
 
-                                // Tạo process_code đúng tiêu chí
-                                if ($p->stage_code < 7) {
-                                        //$process_code = $p->intermediate_code . "_NA_" . $room_id;
-                                        $quota = DB::table('quota')
-                                        ->where('room_id', $room_id )
-                                        ->where('intermediate_code', $p->intermediate_code)
-                                        ->first();
-                                } else {
-                                        //$process_code = $p->intermediate_code . "_" . $p->finished_product_code . "_" . $room_id;
-                                        $quota = DB::table('quota')
-                                        ->where('room_id', $room_id )
-                                        ->where('intermediate_code', $p->intermediate_code)
-                                        ->where('finished_product_code', $p->finished_product_code)
-                                        ->first();
-                                }
+                        //         Log::info ($quota);
 
-                        
-                                if (!$quota) {
-                                        return response()->json([
-                                        'status' => 'error',
-                                        'message' => "Lô ID {$p->id} không có định mức cho phòng {$room_id}. Không thể yêu cầu phòng!"
-                                        ], 422);
-                                }
-                        }
+                        //         if (!$quota) {
+                        //                 return response()->json([
+                        //                 'status' => 'error',
+                        //                 'message' => "Lô ID {$p->id} không có định mức cho phòng {$room_id}. Không thể yêu cầu phòng!"
+                        //                 ], 422);
+                        //         }
+                        // }
 
 
 
                         DB::table('stage_plan')
                         ->where('campaign_code', $campaign_code)
                         ->update(['required_room_code' => $request->room_code]);
+
                 }else{
                         DB::table('stage_plan')
                         ->where('id', $request->stage_plan_id)
