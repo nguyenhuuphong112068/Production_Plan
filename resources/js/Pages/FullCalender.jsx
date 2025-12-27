@@ -2419,14 +2419,14 @@ const ScheduleTest = () => {
           if (!activePlanMasterId) return [];
 
           if (pm === activePlanMasterId) {
-            return ['fc-event-focus'];
+            
           }
-
-          return ['fc-event-hidden'];
+          return ['fc-event-focus'];
+          //return ['fc-event-hidden'];
         }}
         
 
-        eventDidMount={(info) => {
+        eventDidMount={(info, selectedEvents) => {
 
           // gắn data-event-id để tìm kiếm
           info.el.setAttribute("data-event-id", info.event.id);
@@ -2439,7 +2439,7 @@ const ScheduleTest = () => {
           }
 
           info.el.addEventListener("dblclick", (e, selectedEvents) => {
-  
+            console.log (selectedEvents)
             e.stopPropagation();
             //handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
             const pm = info.event.extendedProps.plan_master_id;
