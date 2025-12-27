@@ -13,17 +13,46 @@ class ProductionPlanController extends Controller
 {
         public function index(){
            
+               // 1. Lấy plan_list
                 $datas = DB::table('plan_list')
-                ->where ('active',1)
-                ->where ('deparment_code',session('user')['production_code'])
-                ->where ('type',1)
-                ->orderBy('id','desc')
+                ->where('active', 1)
+                ->where('deparment_code', session('user')['production_code'])
+                ->where('type', 1)
+                ->orderBy('id', 'desc')
                 ->get();
+
+                // 2. Lấy tổng batch theo plan_list_id
+                $total_batch_qtys = DB::table('plan_master as pm')
+                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                ->where('pm.active', 1)
+                ->where('pm.only_parkaging', 0)
+                ->where('fpc.active', 1)
+                ->where('pm.deparment_code', session('user')['production_code'])
+                ->groupBy('pm.plan_list_id')
+                ->select(
+                        'pm.plan_list_id',
+                        DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
+                )
+                ->get()
+                ->keyBy('plan_list_id');   // 🔥 KEY THEO plan_list_id
+
+                // 3. Merge vào plan_list
+                $datas = $datas->map(function ($item) use ($total_batch_qtys) {
+                $item->total_batch_qty = $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
+                return $item;
+                });
+
+
+                
+ 
+
+           
         
                 session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
         
                 return view('pages.plan.production.plan_list',[
-                        'datas' => $datas
+                        'datas' => $datas,
+                        'total_batch_qtys' => $total_batch_qtys
                 ]);
         }
 
