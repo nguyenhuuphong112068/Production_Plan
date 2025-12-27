@@ -2342,10 +2342,11 @@ class SchedualController extends Controller
 
         public function required_room (Request $request) {
 
-        
+                
+                
                 $campaign_code = DB::table('stage_plan')->where('id', $request->stage_plan_id)->value('campaign_code');
                 $room_id = DB::table('room')->where ('code', $request->room_code)->value('id');
-
+                
                 if ($campaign_code && !$request->checked ){
                         DB::table('stage_plan')
                         ->where('id', $request->stage_plan_id)
@@ -2366,17 +2367,23 @@ class SchedualController extends Controller
 
                         foreach ($plans as $p) {
 
-                        // Tạo process_code đúng tiêu chí
+                                // Tạo process_code đúng tiêu chí
                                 if ($p->stage_code < 7) {
-                                        $process_code = $p->intermediate_code . "_NA_" . $room_id;
+                                        //$process_code = $p->intermediate_code . "_NA_" . $room_id;
+                                        $quota = DB::table('quota')
+                                        ->where('room_id', $room_id )
+                                        ->where('intermediate_code', $p->intermediate_code)
+                                        ->first();
                                 } else {
-                                        $process_code = $p->intermediate_code . "_" . $p->finished_product_code . "_" . $room_id;
+                                        //$process_code = $p->intermediate_code . "_" . $p->finished_product_code . "_" . $room_id;
+                                        $quota = DB::table('quota')
+                                        ->where('room_id', $room_id )
+                                        ->where('intermediate_code', $p->intermediate_code)
+                                        ->where('finished_product_code', $p->finished_product_code)
+                                        ->first();
                                 }
 
-                                $quota = DB::table('quota')
-                                        ->where('process_code', 'like', $process_code . '%')
-                                        ->first();
-
+                        
                                 if (!$quota) {
                                         return response()->json([
                                         'status' => 'error',
@@ -3192,7 +3199,6 @@ class SchedualController extends Controller
 
 
                 if ($this->prev_orderBy && $stageCode >= 4){
-                        
                         $tasks = DB::table("stage_plan as sp")
                                 ->select(
                                         'sp.id',
@@ -3957,12 +3963,7 @@ class SchedualController extends Controller
                 $totalTimeCampaign = 0;// dung cho chạy công đoạn tiếp theo
 
                 foreach ($campaignTasks as $task) {
-                        if (!$bestStart){
-                        Log::info ([
-                               'rooms' => $rooms,
-                               'firstTask' => $firstTask,
-                        ]);
-                }
+
                        
                 if ($this->work_sunday == false) {
                         $startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(6, 0, 0);
@@ -4150,7 +4151,6 @@ class SchedualController extends Controller
 
         protected function schedulePlanForwardPlanMasterId($planId,  $waite_time,  ?Carbon $start_date = null) {
 
-           
                 $now = Carbon::now();
                 $minute = $now->minute;
                 $roundedMinute = ceil($minute / 15) * 15;
