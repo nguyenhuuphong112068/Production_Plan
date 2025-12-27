@@ -13,10 +13,10 @@ class ShedualYieldController extends Controller
     
     
     public function index (Request $request){
-       
+        //dd ($request->all());
         $startDate = $request->from_date
             ? Carbon::parse($request->from_date)
-            : Carbon::now()->startOfMonth();
+            : Carbon::now()->addDays(1)->startOfMonth();
 
         $endDate = $request->to_date
             ? Carbon::parse($request->to_date)
@@ -38,11 +38,14 @@ class ShedualYieldController extends Controller
         
         // --- 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
         $stage_plan_100 = DB::table("stage_plan as sp")
-            ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [$startDate, $endDate])
+            ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [$startDate->toDateTimeString(), $endDate->toDateTimeString()])
+            //->where('sp.start', '>=', $endDate->toDateTimeString())
+            //->where('sp.end', '<=', $startDate->toDateTimeString())
             ->whereNotNull('sp.start')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
+                //'sp.start',
                 DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
                 DB::raw('SUM(sp.Theoretical_yields_qty) as total_qty_unit'),
                 DB::raw('
@@ -55,6 +58,8 @@ class ShedualYieldController extends Controller
             ->groupBy("sp.$group_By", "unit")
             ->get();
 
+
+        
         // --- 2️⃣ Giai đoạn chỉ giao nhau 1 phần
         $stage_plan_part = DB::table("stage_plan as sp")
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
@@ -199,7 +204,7 @@ class ShedualYieldController extends Controller
         }
         $dailyTotals = $dailyTotals->groupBy("date");
         $merged = $merged->sortBy('stage_code')->values();
-       // dd ($merged,$dailyTotals, $merged_by_stage);
+        //dd ($merged,$dailyTotals, $merged_by_stage);
         // --- 5️⃣ Trả về cả 2 phần
         return [
             'yield_room' => $merged,
