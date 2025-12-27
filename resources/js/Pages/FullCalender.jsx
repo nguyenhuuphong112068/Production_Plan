@@ -2094,12 +2094,23 @@ const ScheduleTest = () => {
   };
 
 
-  const isDayOff = useCallback((date) => {
-    return offDays.includes(
-      date.toLocaleDateString('en-CA') // yyyy-mm-dd theo local
-    );
-  }, [offDays]);
 
+  const buildOffDayEvents = (offDays) => {
+    return offDays.map(dateStr => ({
+      id: `off-${dateStr}`,
+      start: `${dateStr}T06:00:00`,
+      end: dayjs(dateStr).add(1, 'day').format('YYYY-MM-DD') + 'T06:00:00',
+      display: 'background',
+      className: 'fc-ngay-nghi'
+    }));
+  };
+
+  const calendarEvents = useMemo(() => {
+    return [
+      ...events,                     // event sản xuất
+      ...buildOffDayEvents(offDays), // background ngày nghỉ
+    ];
+  }, [events, offDays]);
 
   return (
 
@@ -2110,11 +2121,11 @@ const ScheduleTest = () => {
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineMonth1d"
         firstDay={1}
-        events={events}
+        events={calendarEvents}
         eventResourceEditable={true}
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
-
+        timeZone="Asia/Ho_Chi_Minh"
         locale="vi"
         resourceAreaWidth="250px"
         expandRows={false}
@@ -2126,7 +2137,7 @@ const ScheduleTest = () => {
 
         //slotDuration="01:00:00"
         eventDurationEditable={true}
-
+        
        
         eventClick={authorization? handleEventClick: false}
         eventResize={authorization? handleEventChange: false}
@@ -2137,15 +2148,8 @@ const ScheduleTest = () => {
 
         resourceGroupField="stage_name"
         resourceOrder='order_by'
-
-        slotLaneClassNames={(arg) => {
-          const day = arg.date.getDay();
-          // Ngày nghỉ từ state
-          if (isDayOff(arg.date)) return ['fc-ngay-nghi'];
-
-          return [];
-        }}
-        // stage
+     
+        
         resourceGroupLabelContent={(arg) => {
 
           const stage_code = stageMap[arg.groupValue] || {};
