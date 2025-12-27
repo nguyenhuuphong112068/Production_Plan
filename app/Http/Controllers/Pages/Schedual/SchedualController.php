@@ -2311,7 +2311,7 @@ class SchedualController extends Controller
         }
 
         public function accpectQuarantine(Request $request){
-                Log::info ($request->all());
+                //Log::info ($request->all());
                 $items = collect($request->input('ids'));
 
                 try {
