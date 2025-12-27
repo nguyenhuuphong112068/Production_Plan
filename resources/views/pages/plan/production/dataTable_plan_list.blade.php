@@ -8,20 +8,33 @@
                 </button>
             @endif
             <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
-                <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
+               <thead>
                     <tr>
-                        <th>STT</th>
-                        <th>Kế Hoạch</th>
-                        <th>Phân Xưởng</th>
-                        <th>Người Tạo</th>
-                        <th>Người Tạo</th>
-                        <th>Tình Trạng</th>
-                        <th>Sản Lượng Lý Thuyết (ĐVL)</th>
-                        <th>Người Gửi</th>
-                        <th>Ngày Gửi</th>
-                        <th>Xem</th>
+                        <th rowspan="2">STT</th>
+                        <th rowspan="2">Kế Hoạch</th>
+                        <th rowspan="2">Phân Xưởng</th>
+                        <th rowspan="2">Người Tạo</th>
+                        <th rowspan="2">Ngày Tạo</th> <!-- ✅ SỬA -->
+                        <th rowspan="2">Tình Trạng</th>
+                        <th rowspan="2">Sản Lượng Lý Thuyết (ĐVL)</th>
+
+                        <th colspan="4" style="text-align:center;">
+                            Tình Trạng Sản Xuất
+                        </th>
+
+                        <th rowspan="2">Người Gửi</th>
+                        <th rowspan="2">Ngày Gửi</th>
+                        <th rowspan="2">Xem</th>
+                    </tr>
+
+                    <tr>
+                        <th>Tổng Lô</th>
+                        <th>Đã làm</th>
+                        <th>Chưa làm</th>
+                        <th>Hủy</th>
                     </tr>
                 </thead>
+
                 <tbody>
 
                     @foreach ($datas as $data)
@@ -50,6 +63,12 @@
                                 </span>
                             </td>
                             <td>{{ number_format($data->total_batch_qty) }}</td>
+
+                            <td>{{ $data->tong_lo }}</td>
+                            <td>{{ $data->so_lo_da_lam }}</td>
+                            <td>{{ $data->so_lo_chua_lam }}</td>
+                            <td>{{ $data->so_lo_huy }}</td>
+
                             <td>{{ $data->send_by }}</td>
 
                             <td>{{ \Carbon\Carbon::parse($data->send_date)->format('d/m/Y H:i') }}</td>

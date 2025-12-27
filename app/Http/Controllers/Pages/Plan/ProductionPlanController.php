@@ -15,39 +15,110 @@ class ProductionPlanController extends Controller
            
                // 1. Lấy plan_list
                 $datas = DB::table('plan_list')
-                ->where('active', 1)
-                ->where('deparment_code', session('user')['production_code'])
-                ->where('type', 1)
-                ->orderBy('id', 'desc')
+                        ->where('active', 1)
+                        ->where('deparment_code', session('user')['production_code'])
+                        ->where('type', 1)
+                        ->orderBy('id', 'desc')
                 ->get();
 
                 // 2. Lấy tổng batch theo plan_list_id
                 $total_batch_qtys = DB::table('plan_master as pm')
-                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                        ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                        ->where('pm.active', 1)
+                        ->where('pm.only_parkaging', 0)
+                        ->where('fpc.active', 1)
+                        ->where('pm.deparment_code', session('user')['production_code'])
+                        ->groupBy('pm.plan_list_id')
+                        ->select(
+                                'pm.plan_list_id',
+                                DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
+                        )
+                        ->get()
+                        ->keyBy('plan_list_id');   // 🔥 KEY THEO plan_list_id
+
+                        // 3. Merge vào plan_list
+                        $datas = $datas->map(function ($item) use ($total_batch_qtys) {
+                        $item->total_batch_qty = $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
+                        return $item;
+                });
+
+                $batch_status = DB::table('plan_master as pm')
+                ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
                 ->where('pm.active', 1)
                 ->where('pm.only_parkaging', 0)
-                ->where('fpc.active', 1)
                 ->where('pm.deparment_code', session('user')['production_code'])
-                ->groupBy('pm.plan_list_id')
+                ->groupBy('pm.plan_list_id', 'pm.id')
                 ->select(
                         'pm.plan_list_id',
-                        DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
-                )
-                ->get()
-                ->keyBy('plan_list_id');   // 🔥 KEY THEO plan_list_id
 
-                // 3. Merge vào plan_list
-                $datas = $datas->map(function ($item) use ($total_batch_qtys) {
-                $item->total_batch_qty = $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
-                return $item;
+                        DB::raw("
+                        CASE
+                                WHEN 
+                                SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) = 0
+                                AND
+                                SUM(CASE WHEN sp.finished = 1 THEN 1 ELSE 0 END) >= 1
+                                THEN 1 ELSE 0
+                        END AS da_lam
+                        "),
+
+                        DB::raw("
+                        CASE
+                                WHEN 
+                                SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) = 0
+                                AND
+                                SUM(CASE WHEN sp.finished = 1 THEN 1 ELSE 0 END) = 0
+                                THEN 1 ELSE 0
+                        END AS chua_lam
+                        "),
+
+                        DB::raw("
+                        CASE
+                                WHEN 
+                                SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) >= 1
+                                THEN 1 ELSE 0
+                        END AS huy
+                        ")
+                )
+                ->get();
+
+
+
+                $batch_summary = $batch_status
+                ->groupBy('plan_list_id')
+                ->map(function ($rows) {
+                        return (object)[
+                        'tong_lo'        => $rows->count(),       // ✅ TỔNG LÔ
+                        'so_lo_da_lam'   => $rows->sum('da_lam'),
+                        'so_lo_chua_lam' => $rows->sum('chua_lam'),
+                        'so_lo_huy'      => $rows->sum('huy'),
+                        ];
                 });
 
 
-                
- 
+                $datas = $datas->map(function ($item) use ($total_batch_qtys, $batch_summary) {
 
-           
-        
+                // Tổng batch
+                $item->total_batch_qty =
+                        $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
+
+                // Thống kê lô
+                $item->tong_lo =
+                        $batch_summary[$item->id]->tong_lo ?? 0;
+
+                $item->so_lo_da_lam =
+                        $batch_summary[$item->id]->so_lo_da_lam ?? 0;
+
+                $item->so_lo_chua_lam =
+                        $batch_summary[$item->id]->so_lo_chua_lam ?? 0;
+
+                $item->so_lo_huy =
+                        $batch_summary[$item->id]->so_lo_huy ?? 0;
+
+                return $item;
+                });
+
+                //dd ($datas);
+
                 session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
         
                 return view('pages.plan.production.plan_list',[
