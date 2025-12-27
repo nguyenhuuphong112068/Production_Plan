@@ -69,7 +69,8 @@ const ScheduleTest = () => {
   const [lines, setLines] = useState(['S16']);
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
-  
+
+  const [activePlanMasterId, setActivePlanMasterId] = useState(null);
 
   function toLocalISOString(date) {
       const pad = (n) => String(n).padStart(2, '0');
@@ -2106,10 +2107,10 @@ const ScheduleTest = () => {
   };
 
   const calendarEvents = useMemo(() => {
-    return [
-      ...events,                     // event sản xuất
-      ...buildOffDayEvents(offDays), // background ngày nghỉ
-    ];
+        return [
+                ...events,                     // event sản xuất
+                ...buildOffDayEvents(offDays), // background ngày nghỉ
+                ];
   }, [events, offDays]);
 
   return (
@@ -2410,7 +2411,20 @@ const ScheduleTest = () => {
 
         }}
 
-        eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
+        //eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
+        eventClassNames={(arg) => {
+
+          const pm = arg.event.extendedProps.plan_master_id;
+
+          if (!activePlanMasterId) return [];
+
+          if (pm === activePlanMasterId) {
+            return ['fc-event-focus'];
+          }
+
+          return ['fc-event-hidden'];
+        }}
+        
 
         eventDidMount={(info) => {
 
@@ -2424,11 +2438,15 @@ const ScheduleTest = () => {
             info.el.style.border = '2px dashed orange';
           }
 
-          info.el.addEventListener("dblclick", (e) => {
-            
+          info.el.addEventListener("dblclick", (e, selectedEvents) => {
+  
             e.stopPropagation();
-            handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
-            
+            //handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
+            const pm = info.event.extendedProps.plan_master_id;
+            setActivePlanMasterId(prev =>
+              prev === pm ? null : pm   // dbl click lần nữa → reset
+            );
+                      
           });
         }}
 

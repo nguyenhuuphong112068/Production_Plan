@@ -375,5 +375,15 @@ input:checked + .slider:before {
 
 
 .fc-ngay-nghi {
-    background-color: #b6b6b6 !important;
+    background-color: #e2f4f8 !important;
+}
+
+
+.fc-event-hidden {
+  display: none !important;
+}
+
+.fc-event-focus {
+  opacity: 1;
+  z-index: 5;
 }
