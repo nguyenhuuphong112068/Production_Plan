@@ -852,7 +852,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               },
       });
 
-      axios.put('/Schedual/DeleteAutoCampain', {stage_code: stageFilter})
+      const filteredRows = selectedRows.map(row => ({
+        id: row.id,
+        plan_master_id: row.plan_master_id,
+      }));
+
+      axios.put('/Schedual/DeleteAutoCampain', {data: filteredRows})
       . then (res => {
                     let data = res.data;
                     if (typeof data === "string") {
@@ -1430,10 +1435,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
 
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
-
-         
-              // 'plan_master.blending_before_date',
-              // 'plan_master.coating_before_date',
     
 
   const allColumns = [
@@ -1497,34 +1498,37 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 {unQuota} Lô Thiếu Định Mức 
               </div>)}
 
-              <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn Ở Công Đoạn Hiện Tại"
+              {/* <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn Ở Công Đoạn Hiện Tại"
                 onClick={handleCreateManualCampain}>
                  {isSaving === false ?<i className="fas fa-cube"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
-              </div>
+              </div> */}
 
               <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn Ở Tất Cả Các Công Đoạn"
                 onClick={handleCreateManualCampainStage}>
                  {isSaving === false ?<i className="fas fa-cubes"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
               </div>
 
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn"
+                  onClick={handleDeleteCampainStage}>
+                  {isSaving === false ? <i className="fas fa-trash"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
+              </div> 
+
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Lệnh Sắp Ngay Sau Kết Thúc Công Đoạn Trước"
                 onClick={handleImmediately}>
                 {isSaving === false ? <i className="fa fa-bolt"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div>
 
-               {stageFilter != 4 && (
+               {stageFilter == 3 && (
                 <>
                 <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
                   onClick={handleCreateAutoCampain}>
                   {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
                 </div>
-
-                <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn"
-                  onClick={handleDeleteCampainStage}>
-                  {isSaving === false ? <i className="fas fa-trash"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
-                </div> 
                 </>
                )}
+
+
+                
 
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
                 onClick={handleSorted}>

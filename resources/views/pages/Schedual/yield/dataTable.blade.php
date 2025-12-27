@@ -25,8 +25,8 @@
                     <div class="col-md-4 d-flex gap-2">
 
                         @php
-                            $defaultFrom = \Carbon\Carbon::now()->subMonth(1)->toDateString();
-                            $defaultTo = \Carbon\Carbon::now()->addMonth(1)->toDateString();
+                            $defaultFrom = \Carbon\Carbon::now()->addDays(2)->startOfMonth()->toDateString();
+                            $defaultTo   = \Carbon\Carbon::now()->endOfMonth()->toDateString();
                             $defaultWeek = \Carbon\Carbon::parse($defaultTo)->weekOfYear;
                             $defaultMonth = \Carbon\Carbon::parse($defaultTo)->month;
                             $defaultYear = \Carbon\Carbon::parse($defaultTo)->year;
@@ -121,10 +121,7 @@
                 </thead>
 
                 <tbody style="font-size: 20px;">
-                     @php
-                                
-                                dd ($theory['yield_room']);
-                    @endphp
+                   
 
                     @foreach ($theory['yield_room'] as $index => $roomLT)
                         @php
@@ -261,13 +258,152 @@
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
         document.body.style.overflowX = "auto";
-        const cardBody = document.querySelector('.card-body');
-        cardBody.style.overflowX = "auto";
-        window.scrollTo({ top: 0, behavior: 'smooth' }); 
-        cardBody.scrollTop = 0;
+        // const cardBody = document.querySelector('.card-body');
+        // cardBody.style.overflowX = "auto";
+        // window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        // cardBody.scrollTop = 0;
     });
 </script>
 
+
+{{-- <script>
+    const form = document.getElementById('filterForm');
+    const fromInput = document.getElementById('from_date');
+    const toInput = document.getElementById('to_date');
+    const weekInput = document.getElementById('week_number');
+    const monthInput = document.getElementById('month');
+    const yearInput = document.getElementById('year');
+
+    // Submit form với kiểm tra From/To
+    function submitForm() {
+        const fromDate = new Date(fromInput.value);
+        const toDate = new Date(toInput.value);
+
+        if (fromDate > toDate) {
+            Swal.fire({
+                icon: "warning",
+                title: "Ngày không hợp lệ",
+                text: "⚠️ Ngày bắt đầu (From) không được lớn hơn ngày kết thúc (To).",
+                confirmButtonText: "OK"
+            });
+            return;
+        }
+        form.requestSubmit();
+    }
+
+    // Khi thay đổi From/To => cập nhật tháng/năm theo From
+    function updateMonthYearFromDates() {
+        const fromDate = new Date(fromInput.value);
+        if (isNaN(fromDate)) return;
+        monthInput.value = fromDate.getMonth() + 1;
+        yearInput.value = fromDate.getFullYear();
+    }
+
+    // Tính tuần ISO dựa trên ngày
+    function getWeekNumber(date) {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // Khi thay đổi tuần => cập nhật From/To dựa trên tuần/month/year
+    function updateDatesFromWeekMonthYear() {
+        const year = parseInt(yearInput.value);
+        const week = parseInt(weekInput.value);
+        if (!year || !week) return;
+
+        // ISO tuần: ngày đầu tuần là thứ 2
+        const simple = new Date(year, 0, 1 + (week - 1) * 7);
+        const dayOfWeek = simple.getDay();
+        // điều chỉnh để ngày đầu tuần là thứ 2
+        const diff = simple.getDay() <= 0 ? 1 : 2 - dayOfWeek; // Chủ nhật=0
+        const fromDate = new Date(simple);
+        fromDate.setDate(simple.getDate() + diff);
+
+        const toDate = new Date(fromDate);
+        toDate.setDate(fromDate.getDate() + 6);
+
+        fromInput.value = fromDate.toISOString().slice(0, 10);
+        toInput.value = toDate.toISOString().slice(0, 10);
+    }
+
+    // Khi thay đổi tháng => cập nhật From/To dựa trên tháng
+    function updateDatesFromMonth() {
+        const year = parseInt(yearInput.value);
+        const month = parseInt(monthInput.value);
+        if (!year || !month) return;
+
+        const fromDate = new Date(year, month - 1, 1);
+        const toDate = new Date(year, month, 0);
+
+        fromInput.value = fromDate.toISOString().slice(0, 10);
+        toInput.value = toDate.toISOString().slice(0, 10);
+
+        weekInput.value = getWeekNumber(toDate);
+    }
+
+    function updateDatesFromYear() {
+        const year = parseInt(yearInput.value);
+        if (!year) return;
+
+        // Ngày đầu năm
+        const fromDate = new Date(year, 0, 1);
+        // Ngày cuối năm
+        const toDate = new Date(year, 11, 31);
+
+        fromInput.value = fromDate.toISOString().slice(0, 10);
+        toInput.value = toDate.toISOString().slice(0, 10);
+
+        // Tuần cuối năm theo ISO week
+        weekInput.value = getWeekNumber(toDate);
+    }
+
+    // Hàm lấy số tuần ISO
+    function getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // Lắng nghe event
+    [fromInput, toInput].forEach(input => {
+        input.addEventListener('change', () => {
+            updateMonthYearFromDates();
+            submitForm();
+        });
+    });
+
+    weekInput.addEventListener('change', () => {
+        updateDatesFromWeekMonthYear();
+        submitForm();
+    });
+
+    monthInput.addEventListener('change', () => {
+        updateDatesFromMonth();
+        submitForm();
+    });
+
+    yearInput.addEventListener('change', () => {
+        updateDatesFromYear();
+        submitForm();
+    });
+</script> --}}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Init tất cả stepper
+        document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
+            new Stepper(stepperEl, {
+                linear: false,
+                animation: true
+            });
+        });
+    });
+</script>
 
 <script>
     const form = document.getElementById('filterForm');
@@ -396,14 +532,3 @@
     });
 </script>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Init tất cả stepper
-        document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
-            new Stepper(stepperEl, {
-                linear: false,
-                animation: true
-            });
-        });
-    });
-</script>

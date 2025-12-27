@@ -2410,7 +2410,7 @@ const ScheduleTest = () => {
             
             e.stopPropagation();
             handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
-           
+            
           });
         }}
 
