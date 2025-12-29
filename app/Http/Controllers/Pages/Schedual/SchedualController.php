@@ -674,6 +674,10 @@ class SchedualController extends Controller
                 ->select(
                         'id',
                         'code',
+                        'sheet_1',
+                        'sheet_2',
+                        'sheet_3',
+                        'sheet_regular',
                         DB::raw("CONCAT(code,'-', name) as title"),
                         'main_equiment_name',
                         'order_by',
@@ -726,7 +730,7 @@ class SchedualController extends Controller
 
                         if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')){
                                 $plan_waiting = $this->getPlanWaiting($production);
-                                $bkc_code = DB::table('stage_plan_bkc')->select('bkc_code')->distinct()->orderByDesc('bkc_code')->get();
+                                $bkc_code = DB::table('stage_plan_bkc')->where('deparment_code', session('user')['production_code'])->select('bkc_code')->distinct()->orderByDesc('bkc_code')->get();
                                 $reason = DB::table('reason')->where('deparment_code', $production)->pluck('name');
                                 $quota = $this->getQuota($production);
                         }
@@ -2521,6 +2525,7 @@ class SchedualController extends Controller
                                 'quarantined_date'
                         ])
                         ->where('finished', 0)
+                        ->where('deparment_code', session('user')['production_code'])
                 );
                 return response()->json([
                         'bkcCode' => $bkcCode
@@ -2548,6 +2553,7 @@ class SchedualController extends Controller
                         $affected = DB::table('stage_plan as sp')
                         ->join('stage_plan_bkc as bkc', 'bkc.stage_plan_id', '=', 'sp.id')
                         ->where('sp.finished', 0)
+                        ->where('sp.deparment_code', session('user')['production_code'])
                         ->where('bkc.bkc_code', $bkcCode)
                         ->update([
                                 'sp.start'                  => DB::raw('bkc.start'),
@@ -2925,7 +2931,6 @@ class SchedualController extends Controller
                 return $current_start->copy();
         }
 
-        /** Ghi kết quả vào stage_plan + log vào room_status*/
         protected function saveSchedule($title, $stageId, $roomId,  $start,  $end, $start_clearning,  $endCleaning, string $cleaningType, bool $direction) {
 
                 DB::transaction(function() use ($title, $stageId, $roomId, $start, $end, $start_clearning,  $endCleaning, $cleaningType, $direction) {
@@ -2969,7 +2974,6 @@ class SchedualController extends Controller
                 });
         }
 
-        /** Scheduler cho tất cả stage Request */
         public function scheduleAll( Request $request) {
 
               
@@ -3243,7 +3247,7 @@ class SchedualController extends Controller
                 }
         }
 
-        /** Scheduler cho 1 stage*/
+
         public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0,  ?Carbon $start_date = null) {
 
                 if ($this->prev_orderBy && $stageCode > 3 ) {
@@ -4302,8 +4306,95 @@ class SchedualController extends Controller
                 
         }
 
-        // public function scheduleStartBackward( $start_date, $waite_time) {
+        public function addWorkingMinutes(Carbon $start,int $minutes,int $roomId,bool $workSunday = false): Carbon {
 
+                $room = DB::table('room')->where('id', $roomId)->first();
+                if (!$room) return $start;
+
+                $current = $start->copy();
+                $remain  = $minutes;
+
+                // ===== Khai báo ca làm việc =====
+                $shifts = [];
+
+                if ($room->sheet_regular == 1) {
+                        // Ca hành chánh
+                        $shifts[] = ['start' => 7, 'end' => 16];
+                } else {
+                        if ($room->sheet_1 == 1) $shifts[] = ['start' => 6,  'end' => 14];
+                        if ($room->sheet_2 == 1) $shifts[] = ['start' => 14, 'end' => 22];
+                        if ($room->sheet_3 == 1) $shifts[] = ['start' => 22, 'end' => 30]; // qua ngày
+                }
+
+                if (empty($shifts)) return $current;
+
+                while ($remain > 0) {
+
+                        // ===== Chủ nhật =====
+                        if (!$workSunday && $current->isSunday()) {
+                                $current = $current->addDay()
+                                        ->setTime($shifts[0]['start'] % 24, 0, 0);
+                                continue;
+                        }
+
+                        $hour = $current->hour + ($current->hour < 6 ? 24 : 0);
+
+                        // ===== Tìm ca hiện tại =====
+                        $currentShift = null;
+                        foreach ($shifts as $shift) {
+                                if ($hour >= $shift['start'] && $hour < $shift['end']) {
+                                        $currentShift = $shift;
+                                        break;
+                                }
+                        }
+
+                        // ===== Ngoài ca → nhảy ca kế =====
+                        if (!$currentShift) {
+                                $jumped = false;
+
+                                foreach ($shifts as $shift) {
+                                        if ($hour < $shift['start']) {
+                                        $current = $current->setTime($shift['start'] % 24, 0, 0);
+                                        $jumped = true;
+                                        break;
+                                        }
+                                }
+
+                                if (!$jumped) {
+                                        $current = $current->addDay()
+                                        ->setTime($shifts[0]['start'] % 24, 0, 0);
+                                }
+
+                                continue;
+                        }
+
+                        // ===== Trong ca =====
+                        $endOfShift = $current->copy()->setTime(
+                        $currentShift['end'] % 24,
+                        0,
+                        0
+                        );
+
+                        if ($currentShift['end'] >= 24) {
+                        $endOfShift->addDay();
+                        }
+
+                        $canWork = $current->diffInMinutes($endOfShift);
+
+                        // ===== Làm chưa hết ca =====
+                        if ($remain <= $canWork) {
+                        return $current->addMinutes($remain);
+                        }
+
+                        // ===== Làm hết ca =====
+                        $remain  -= $canWork;
+                        $current = $endOfShift;
+                }
+
+                return $current;
+        }
+
+        // public function scheduleStartBackward( $start_date, $waite_time) {
         //         $planMasters = DB::table('plan_master as pm')
         //                 ->leftJoin('finished_product_category', 'pm.product_caterogy_id', 'finished_product_category.id')
         //                 ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
@@ -4799,93 +4890,7 @@ class SchedualController extends Controller
         //         }
         // }
 
-        public function addWorkingMinutes(Carbon $start,int $minutes,int $roomId,bool $workSunday = false): Carbon {
 
-                $room = DB::table('room')->where('id', $roomId)->first();
-                if (!$room) return $start;
-
-                $current = $start->copy();
-                $remain  = $minutes;
-
-                // ===== Khai báo ca làm việc =====
-                $shifts = [];
-
-                if ($room->sheet_regular == 1) {
-                        // Ca hành chánh
-                        $shifts[] = ['start' => 7, 'end' => 16];
-                } else {
-                        if ($room->sheet_1 == 1) $shifts[] = ['start' => 6,  'end' => 14];
-                        if ($room->sheet_2 == 1) $shifts[] = ['start' => 14, 'end' => 22];
-                        if ($room->sheet_3 == 1) $shifts[] = ['start' => 22, 'end' => 30]; // qua ngày
-                }
-
-                if (empty($shifts)) return $current;
-
-                while ($remain > 0) {
-
-                        // ===== Chủ nhật =====
-                        if (!$workSunday && $current->isSunday()) {
-                                $current = $current->addDay()
-                                        ->setTime($shifts[0]['start'] % 24, 0, 0);
-                                continue;
-                        }
-
-                        $hour = $current->hour + ($current->hour < 6 ? 24 : 0);
-
-                        // ===== Tìm ca hiện tại =====
-                        $currentShift = null;
-                        foreach ($shifts as $shift) {
-                                if ($hour >= $shift['start'] && $hour < $shift['end']) {
-                                        $currentShift = $shift;
-                                        break;
-                                }
-                        }
-
-                        // ===== Ngoài ca → nhảy ca kế =====
-                        if (!$currentShift) {
-                                $jumped = false;
-
-                                foreach ($shifts as $shift) {
-                                        if ($hour < $shift['start']) {
-                                        $current = $current->setTime($shift['start'] % 24, 0, 0);
-                                        $jumped = true;
-                                        break;
-                                        }
-                                }
-
-                                if (!$jumped) {
-                                        $current = $current->addDay()
-                                        ->setTime($shifts[0]['start'] % 24, 0, 0);
-                                }
-
-                                continue;
-                        }
-
-                        // ===== Trong ca =====
-                        $endOfShift = $current->copy()->setTime(
-                        $currentShift['end'] % 24,
-                        0,
-                        0
-                        );
-
-                        if ($currentShift['end'] >= 24) {
-                                $endOfShift->addDay();
-                        }
-
-                        $canWork = $current->diffInMinutes($endOfShift);
-
-                        // ===== Làm chưa hết ca =====
-                        if ($remain <= $canWork) {
-                                return $current->addMinutes($remain);
-                        }
-
-                        // ===== Làm hết ca =====
-                        $remain  -= $canWork;
-                        $current = $endOfShift;
-                }
-
-                return $current;
-        }
 }
         function toMinutes($time) {
                 [$hours, $minutes] = explode(':', $time);

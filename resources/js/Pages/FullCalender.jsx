@@ -2261,8 +2261,94 @@ const ScheduleTest = () => {
             </div>
           `;
 
-          return { html }; // 🔹 FullCalendar sẽ render nội dung này trực tiếp
+          return { html }; 
         }}
+
+// resourceLabelContent={(arg) => {
+//   const res = arg.resource.extendedProps;
+
+//   // 🔥 CHECK CA
+//   const allowRender =
+//     (shiftFilter.sheet_1 && res.sheet_1 == 1) ||
+//     (shiftFilter.sheet_2 && res.sheet_2 == 1) ||
+//     (shiftFilter.sheet_3 && res.sheet_3 == 1) ||
+//     (shiftFilter.sheet_regular && res.sheet_regular == 1);
+
+//   if (!allowRender) {
+//     return { html: "" };
+//   }
+
+//   const busy = parseFloat(res.busy_hours) || 0;
+//   const yields = parseFloat(res.yield) || 0;
+//   const unit = res.unit || "";
+//   const total = parseFloat(res.total_hours) || 1;
+//   const efficiency = ((busy / total) * 100).toFixed(1);
+
+//   const highlight = selectedRows.some(row => {
+//     if (!row.permisson_room) return false;
+
+//     if (Array.isArray(row.permisson_room)) {
+//       return row.permisson_room.includes(res.code);
+//     } else if (typeof row.permisson_room === "object") {
+//       return Object.values(row.permisson_room).includes(res.code);
+//     } else {
+//       return row.permisson_room == arg.resource.id;
+//     }
+//   });
+
+//   const bgColor = highlight ? "#c6f7d0" : "transparent";
+//   const busyWidth = ((busy / total) * 100).toFixed(1);
+//   const heightResourcePx = heightResource || 40;
+
+//   const html = `
+//     <div style="
+//       background-color:${bgColor};
+//       border-radius:6px;
+//       height:${heightResourcePx}px;
+//       position:relative;
+//     ">
+//       <div style="
+//         font-size:22px;
+//         font-weight:bold;
+//         width:8%;
+//         position:relative;
+//         top:-26px;
+//       ">
+//         ${arg.resource.title} - ${res.main_equiment_name ?? ""}
+//       </div>
+
+//       <div style="
+//         position:relative;
+//         top:-26px;
+//         height:15px;
+//         background:#eee;
+//         border-radius:20px;
+//         overflow:hidden;
+//       ">
+//         <div style="
+//           width:${busyWidth}%;
+//           background:red;
+//           height:100%;
+//         "></div>
+
+//         <b style="
+//           position:absolute;
+//           top:50%;
+//           left:50%;
+//           transform:translate(-50%,-50%);
+//           font-size:70%;
+//         ">
+//           ${efficiency}% - ${formatNumberWithComma(yields)} ${unit}
+//         </b>
+//       </div>
+//     </div>
+//   `;
+
+//   return { html };
+// }}
+
+
+ 
         
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine',
