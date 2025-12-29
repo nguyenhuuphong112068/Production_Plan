@@ -60,6 +60,7 @@ use Illuminate\Support\Facades\Route;
                 Route::post('backup_schedualer','backup_schedualer')->name('backup_schedualer');
                 Route::post('restore_schedualer','restore_schedualer')->name('restore_schedualer');
                 Route::put('accpectQuarantine','accpectQuarantine')->name('accpectQuarantine');
+                Route::put('change_sheet','change_sheet')->name('change_sheet');
                 
                 
 
