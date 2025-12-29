@@ -1546,12 +1546,16 @@ class SchedualController extends Controller
         }
 
         public function deActiveAll(Request $request){
+
+                Log::info ($request->all());
+               
         
                 $production = session('user')['production_code'];
                 try {   
                        if ($request->mode == "step"){
                                 $Step = ["PC" => 3, "THT" => 4,"ĐH" => 5,"BP" => 6,"ĐG" => 7,];
                                 $stage_code = $Step[$request->selectedStep];
+
                                 $ids = DB::table('stage_plan')
                                 ->where('deparment_code', $production)
                                 ->whereNotNull('start')
@@ -1574,23 +1578,31 @@ class SchedualController extends Controller
                        
 
                         if ($ids->isNotEmpty()) {
-                                // Lấy danh sách campain_code của các dòng bị xoá
-                                $campainCodes = DB::table('stage_plan')
-                                ->where('deparment_code', $production)
-                                ->whereIn('id', $ids)
-                                ->pluck('campaign_code')
-                                ->unique();
+                                // Lấy danh sách campaign_code + stage_code của các dòng bị xoá
+                                $deletedRows = DB::table('stage_plan')
+                                        ->where('deparment_code', $production)
+                                        ->whereIn('id', $ids)
+                                        ->select('campaign_code', 'stage_code')
+                                        ->get();
 
-                                // Lấy thêm các id khác có cùng campain_code, nhưng start < start_date
+                                // Lấy thêm các id khác cùng campaign_code & stage_code, start < start_date
                                 $relatedIds = DB::table('stage_plan')
-                                ->where('deparment_code', $production)
-                                ->whereIn('campaign_code', $campainCodes)
-                                ->where('start', '<', $request->start_date)
-                                ->pluck('id');
+                                        ->where('deparment_code', $production)
+                                        ->where(function($query) use ($deletedRows) {
+                                        foreach ($deletedRows as $row) {
+                                                $query->orWhere(function($q) use ($row) {
+                                                $q->where('campaign_code', $row->campaign_code)
+                                                ->where('stage_code', $row->stage_code);
+                                                });
+                                        }
+                                        })
+                                        ->where('start', '<', $request->start_date)
+                                        ->pluck('id');
 
                                 // Gộp danh sách id lại
                                 $ids = $ids->merge($relatedIds)->unique();
                         }
+
 
                         if ($ids->isEmpty()) {
                                 $production = session('user')['production_code'];
@@ -2414,7 +2426,6 @@ class SchedualController extends Controller
                         'plan' => $this->getPlanWaiting(session('user')['production_code'])
                 ]);
         }
-
 
         public function change_sheet(Request $request){
              
