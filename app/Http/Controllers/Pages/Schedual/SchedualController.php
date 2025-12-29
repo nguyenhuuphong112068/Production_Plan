@@ -31,7 +31,7 @@ class SchedualController extends Controller
         ];
 
         public function test(){
-                $this->scheduleSensitiveProduct(3, 0, 0, Carbon::parse('2026-01-05'));
+                //$this->scheduleSensitiveProduct(3, 0, 0, Carbon::parse('2026-01-05'));
                 //$this->createAutoCampain (null);
                 //$this->createAutoCampain();
                 //$this->view (null);
@@ -220,6 +220,7 @@ class SchedualController extends Controller
                         'sp.immediately',
                         'sp.submit',
                         'sp.accept_quarantine',
+                        'sp.campaign_code',
                         
 
                         
@@ -315,7 +316,8 @@ class SchedualController extends Controller
                                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
                                 'submit' => $plan->submit,
                                 'storage_capacity' => $storage_capacity,
-                                'subtitle' => $subtitle
+                                'subtitle' => $subtitle,
+                                'campaign_code' => $plan->campaign_code
                                 ]);
                         }
 
@@ -1947,7 +1949,7 @@ class SchedualController extends Controller
                         // ------------------------------------------------
                         $stage_plans_stage = $stage_plans_stage->filter(function ($item) {
                                 if ($item->code_val === null) {
-                                return true;
+                                        return true;
                                 }
 
                                 $parts = explode('_', $item->code_val);
@@ -1964,13 +1966,14 @@ class SchedualController extends Controller
                         $groups = $stage_plans_stage
                                 ->groupBy(function ($item) use ($product_code, $mode_date) {
 
-                                if ($item->code_val === null) {
-                                        $cvFlag = 'NULL';
-                                } else {
-                                        $cvFlag = explode('_', $item->code_val)[0];
-                                }
+                                /// đanh dấu nếu muốn tách lô thẩm định 2 và 3
+                                // if ($item->code_val === null || explode('_', $item->code_val)[0] > 1) {
+                                //         $cvFlag = 'NULL';
+                                // } else {
+                                //         $cvFlag = 1; //explode('_', $item->code_val)[0];
+                                // }
 
-                                return $item->$mode_date . '|' . $item->$product_code . '|' . $cvFlag;
+                                return $item->$mode_date . '|' . $item->$product_code; //. '|' . $cvFlag;
                                 })
                                 ->filter(fn ($group) => $group->count() > 1);
 
@@ -4181,7 +4184,6 @@ class SchedualController extends Controller
                                 $bestEndCleaning =  $start_clearning->copy()->addMinutes((float)$bestRoom->C2_time_minutes);
                                 ///
 
-
                                 // if ($bestEnd->between($startOfSunday, $endOfPeriod)) {
                                 //         $bestEnd = $bestEnd->addMinutes(1440);
                                 //         $start_clearning =  $bestEnd->copy();
@@ -4299,8 +4301,6 @@ class SchedualController extends Controller
                 
                 
         }
-
-        
 
         // public function scheduleStartBackward( $start_date, $waite_time) {
 
@@ -4798,6 +4798,7 @@ class SchedualController extends Controller
         //                 }
         //         }
         // }
+
         public function addWorkingMinutes(Carbon $start,int $minutes,int $roomId,bool $workSunday = false): Carbon {
 
                 $room = DB::table('room')->where('id', $roomId)->first();
@@ -4885,8 +4886,6 @@ class SchedualController extends Controller
 
                 return $current;
         }
-
-
 }
         function toMinutes($time) {
                 [$hours, $minutes] = explode(':', $time);
