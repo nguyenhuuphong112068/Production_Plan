@@ -152,7 +152,7 @@
 <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
-{{-- <script>
+<script>
     document.addEventListener("DOMContentLoaded", function () {
 
         const currentHost = window.location.host;
@@ -180,7 +180,7 @@
             });
         }
     });
-</script> --}}
+</script>
 
 <script>
     // 🔁 Chuyển form login <-> đổi mật khẩu
