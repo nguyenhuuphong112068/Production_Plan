@@ -1317,7 +1317,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
         }
 
         const handleRoomChange = (room, id , checked) => {
-          axios.put('/Schedual/required_room', {room_code: room, stage_plan_id: id, checked: checked})
+          axios.put('/Schedual/required_room', {room_code: room, stage_plan_id: id, checked: checked, stage_code: stageFilter })
           . then (res => {
               let data = res.data;
               if (typeof data === "string") {
