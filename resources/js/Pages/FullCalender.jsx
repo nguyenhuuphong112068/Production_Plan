@@ -1999,12 +1999,12 @@ const ScheduleTest = () => {
     const isSelected = arg.selectedEvents?.some(ev => ev.id === event.id);
     //const showRenderBadge = false; // nếu bạn có điều kiện riêng thì thay vào
 
-    // const getBadge = (text, color, left) => `
-    //   <div
-    //     class="absolute top-[-15px]"
-    //     style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
-    //   >${text}</div>
-    // `;
+    const getBadge = (text, color, left) => `
+      <div
+        class="absolute top-[-15px]"
+        style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
+      >${text}</div>
+    `;
 
     let html = `
       <div class="relative group custom-event-content" data-event-id="${event.id}">
@@ -2037,21 +2037,21 @@ const ScheduleTest = () => {
     `;
             
       // Badge ngày cần hàng
-        // if (props.expected_date && showRenderBadge) {
+        // if (props.campaign_code && showRenderBadge) {
         //   const colors = {1: 'red', 2: 'orange', 3: 'green'};
         //   const color = colors[props.level] || 'blue';
-        //   html += getBadge(props.expected_date, color, 50);
+        //   html += getBadge(props.campaign_code, color, 50);
         // }
 
         // // Badge % biệt trữ
-        // if (!props.is_clearning && showRenderBadge) {
-        // html += `
-        //     <button 
-        //       class="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
-        //       title="% biệt trữ"
-        //     ><b>${props.storage_capacity ?? ''}</b></button>
-        //   `;
-        // }
+        if (!props.is_clearning && showRenderBadge) {
+        html += `
+            <button 
+              class="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
+              title="% biệt trữ"
+            ><b>${props.campaign_code ?? ''}</b></button>
+          `;
+        }
         // Trang thai submit
 
 
