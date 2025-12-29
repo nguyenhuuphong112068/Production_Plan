@@ -4825,9 +4825,9 @@ class SchedualController extends Controller
 
                         // ===== Chủ nhật =====
                         if (!$workSunday && $current->isSunday()) {
-                        $current = $current->addDay()
-                                ->setTime($shifts[0]['start'] % 24, 0, 0);
-                        continue;
+                                $current = $current->addDay()
+                                        ->setTime($shifts[0]['start'] % 24, 0, 0);
+                                continue;
                         }
 
                         $hour = $current->hour + ($current->hour < 6 ? 24 : 0);
@@ -4835,30 +4835,30 @@ class SchedualController extends Controller
                         // ===== Tìm ca hiện tại =====
                         $currentShift = null;
                         foreach ($shifts as $shift) {
-                        if ($hour >= $shift['start'] && $hour < $shift['end']) {
-                                $currentShift = $shift;
-                                break;
-                        }
+                                if ($hour >= $shift['start'] && $hour < $shift['end']) {
+                                        $currentShift = $shift;
+                                        break;
+                                }
                         }
 
                         // ===== Ngoài ca → nhảy ca kế =====
                         if (!$currentShift) {
-                        $jumped = false;
+                                $jumped = false;
 
-                        foreach ($shifts as $shift) {
-                                if ($hour < $shift['start']) {
-                                $current = $current->setTime($shift['start'] % 24, 0, 0);
-                                $jumped = true;
-                                break;
+                                foreach ($shifts as $shift) {
+                                        if ($hour < $shift['start']) {
+                                        $current = $current->setTime($shift['start'] % 24, 0, 0);
+                                        $jumped = true;
+                                        break;
+                                        }
                                 }
-                        }
 
-                        if (!$jumped) {
-                                $current = $current->addDay()
-                                ->setTime($shifts[0]['start'] % 24, 0, 0);
-                        }
+                                if (!$jumped) {
+                                        $current = $current->addDay()
+                                        ->setTime($shifts[0]['start'] % 24, 0, 0);
+                                }
 
-                        continue;
+                                continue;
                         }
 
                         // ===== Trong ca =====
@@ -4869,14 +4869,14 @@ class SchedualController extends Controller
                         );
 
                         if ($currentShift['end'] >= 24) {
-                        $endOfShift->addDay();
+                                $endOfShift->addDay();
                         }
 
                         $canWork = $current->diffInMinutes($endOfShift);
 
                         // ===== Làm chưa hết ca =====
                         if ($remain <= $canWork) {
-                        return $current->addMinutes($remain);
+                                return $current->addMinutes($remain);
                         }
 
                         // ===== Làm hết ca =====
