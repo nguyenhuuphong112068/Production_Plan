@@ -1274,6 +1274,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     .finally(() => {
       setIsSaving(false);
     });
+    
   };
 
   const handleDragOver = (e) => {

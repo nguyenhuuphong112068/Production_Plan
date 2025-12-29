@@ -126,7 +126,8 @@ const ScheduleTest = () => {
           setReasons(data.reason)
           setLines(data.Lines)
           setAllLines (data.allLines)
-        
+
+         
         if (!authorization){
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
@@ -166,7 +167,6 @@ const ScheduleTest = () => {
       );
 
   }, [loading]);
-
 
 
   useHotkeys("alt+q",(e) => {
@@ -2112,6 +2112,8 @@ const ScheduleTest = () => {
                 ];
   }, [events, offDays]);
 
+
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
@@ -2125,7 +2127,7 @@ const ScheduleTest = () => {
         eventResourceEditable={true}
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
-        timeZone="Asia/Ho_Chi_Minh"
+     
         locale="vi"
         resourceAreaWidth="250px"
         expandRows={false}
@@ -2190,12 +2192,11 @@ const ScheduleTest = () => {
             } else {
               return row.permisson_room == arg.resource.id;
             }
-        });
+          });
 
           const bgColor = highlight ? "#c6f7d0" : "transparent";
           const busyWidth = ((busy / total) * 100).toFixed(1);
           const heightResourcePx = heightResource || 40; // fallback nếu thiếu
-
           const html = `
             <div 
               style="
@@ -2258,98 +2259,112 @@ const ScheduleTest = () => {
                   ${efficiency}% - ${formatNumberWithComma(yields)} ${unit}
                 </b>
               </div>
+
+
+              <div style="display:flex; gap:12px; margin-top:4px; font-size:11px;">
+                <label>
+                  <input
+                    type="checkbox"
+                    data-room="${res.code}"
+                    data-sheet="sheet_1"
+                    ${res.sheet_1 == 1 ? "checked" : ""}
+                  /> Ca 1
+                </label>
+
+                <label>
+                  <input
+                    type="checkbox"
+                    data-room="${res.code}"
+                    data-sheet="sheet_2"
+                    ${res.sheet_2 == 1 ? "checked" : ""}
+                  /> Ca 2
+                </label>
+
+                <label>
+                  <input
+                    type="checkbox"
+                    data-room="${res.code}"
+                    data-sheet="sheet_3"
+                    ${res.sheet_3 == 1 ? "checked" : ""}
+                  /> Ca 3
+                </label>
+
+                <label>
+                  <input
+                    type="checkbox"
+                    data-room="${res.code}"
+                    data-sheet="sheet_regular"
+                    ${res.sheet_regular == 1 ? "checked" : ""}
+                  /> HC
+                </label>
+              </div>
+
+
             </div>
           `;
 
           return { html }; 
         }}
 
-// resourceLabelContent={(arg) => {
-//   const res = arg.resource.extendedProps;
+        resourceLabelDidMount={(info) => {
+          const handler = (e) => {
+            const target = e.target;
+            if (
+              target.tagName !== "INPUT" ||
+              target.type !== "checkbox" ||
+              !target.dataset.room
+            ) return;
 
-//   // 🔥 CHECK CA
-//   const allowRender =
-//     (shiftFilter.sheet_1 && res.sheet_1 == 1) ||
-//     (shiftFilter.sheet_2 && res.sheet_2 == 1) ||
-//     (shiftFilter.sheet_3 && res.sheet_3 == 1) ||
-//     (shiftFilter.sheet_regular && res.sheet_regular == 1);
+            const room = target.dataset.room;
+            const sheet = target.dataset.sheet;
+            const checked = target.checked;
 
-//   if (!allowRender) {
-//     return { html: "" };
-//   }
+            axios.put('/Schedual/change_sheet', {
+              room_code: room,
+              sheet,
+              checked
+            })
+            .then(res => {
+              const updated = res.data.update;
 
-//   const busy = parseFloat(res.busy_hours) || 0;
-//   const yields = parseFloat(res.yield) || 0;
-//   const unit = res.unit || "";
-//   const total = parseFloat(res.total_hours) || 1;
-//   const efficiency = ((busy / total) * 100).toFixed(1);
+              setResources(prev =>
+                prev.map(r =>
+                  r.code !== room
+                    ? r
+                    : { ...r, ...updated }
+                )
+              );
 
-//   const highlight = selectedRows.some(row => {
-//     if (!row.permisson_room) return false;
+              Swal.fire({
+                icon: 'success',
+                title: 'Hoàn Thành',
+                timer: 600,
+                showConfirmButton: false,
+              });
+            })
+            .catch(err => {
+              Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                timer: 1500,
+                showConfirmButton: false,
+              });
+              console.error(err);
+            });
+          };
 
-//     if (Array.isArray(row.permisson_room)) {
-//       return row.permisson_room.includes(res.code);
-//     } else if (typeof row.permisson_room === "object") {
-//       return Object.values(row.permisson_room).includes(res.code);
-//     } else {
-//       return row.permisson_room == arg.resource.id;
-//     }
-//   });
+          info.el.addEventListener("change", handler);
 
-//   const bgColor = highlight ? "#c6f7d0" : "transparent";
-//   const busyWidth = ((busy / total) * 100).toFixed(1);
-//   const heightResourcePx = heightResource || 40;
+          // ✅ cleanup để tránh leak
+          info.el._sheetHandler = handler;
+        }}
 
-//   const html = `
-//     <div style="
-//       background-color:${bgColor};
-//       border-radius:6px;
-//       height:${heightResourcePx}px;
-//       position:relative;
-//     ">
-//       <div style="
-//         font-size:22px;
-//         font-weight:bold;
-//         width:8%;
-//         position:relative;
-//         top:-26px;
-//       ">
-//         ${arg.resource.title} - ${res.main_equiment_name ?? ""}
-//       </div>
-
-//       <div style="
-//         position:relative;
-//         top:-26px;
-//         height:15px;
-//         background:#eee;
-//         border-radius:20px;
-//         overflow:hidden;
-//       ">
-//         <div style="
-//           width:${busyWidth}%;
-//           background:red;
-//           height:100%;
-//         "></div>
-
-//         <b style="
-//           position:absolute;
-//           top:50%;
-//           left:50%;
-//           transform:translate(-50%,-50%);
-//           font-size:70%;
-//         ">
-//           ${efficiency}% - ${formatNumberWithComma(yields)} ${unit}
-//         </b>
-//       </div>
-//     </div>
-//   `;
-
-//   return { html };
-// }}
-
-
- 
-        
+        resourceLabelWillUnmount={(info) => {
+          if (info.el._sheetHandler) {
+            info.el.removeEventListener("change", info.el._sheetHandler);
+          }
+        }}
+          
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine',
           center: 'title',
