@@ -2363,8 +2363,9 @@ class SchedualController extends Controller
         public function required_room (Request $request) {
                 //Log::info ($request->all());
                 $campaign_code = DB::table('stage_plan')->where('id', $request->stage_plan_id)->value('campaign_code');
-                $room_id = DB::table('room')->where ('code', $request->room_code)->value('id');
-                
+                $room = DB::table('room')->where ('code', $request->room_code)->first();
+                //$room_id = DB::table('room')->where ('code', $request->room_code)->value('id');
+                //Log::info (['request' => $request->all(),'stage_code' => $stage_code]);
                 if ($campaign_code && !$request->checked ){
                         DB::table('stage_plan')
                         ->where('id', $request->stage_plan_id)
@@ -2380,7 +2381,7 @@ class SchedualController extends Controller
                                 'finished_product_category.finished_product_code'
                                 )
                         ->where('stage_plan.campaign_code', $campaign_code)
-                        ->where('stage_plan.stage_code', $request->stage_code)
+                        ->where('stage_plan.stage_code', $room->stage_code)
                         ->get();
                         
                         foreach ($plans as $p) {
@@ -2389,13 +2390,13 @@ class SchedualController extends Controller
                                 if ($p->stage_code < 7) {
                                         //$process_code = $p->intermediate_code . "_NA_" . $room_id;
                                         $quota = DB::table('quota')
-                                        ->where('room_id', $room_id )
+                                        ->where('room_id', $room->id )
                                         ->where('intermediate_code', $p->intermediate_code)
                                         ->first();
                                 } else {
                                         //$process_code = $p->intermediate_code . "_" . $p->finished_product_code . "_" . $room_id;
                                         $quota = DB::table('quota')
-                                        ->where('room_id', $room_id )
+                                        ->where('room_id', $room->id )
                                         ->where('intermediate_code', $p->intermediate_code)
                                         ->where('finished_product_code', $p->finished_product_code)
                                         ->first();
@@ -2406,14 +2407,14 @@ class SchedualController extends Controller
                                 if (!$quota) {
                                         return response()->json([
                                         'status' => 'error',
-                                        'message' => "Lô ID {$p->id} không có định mức cho phòng {$room_id}. Không thể yêu cầu phòng!"
+                                        'message' => "Lô ID {$p->id} không có định mức cho phòng {$room->id}. Không thể yêu cầu phòng!"
                                         ], 422);
                                 }
                         }
 
                         DB::table('stage_plan')
                         ->where('campaign_code', $campaign_code)
-                        ->where('stage_plan.stage_code', $request->stage_code)
+                        ->where('stage_plan.stage_code', $room->stage_code)
                         ->update(['required_room_code' => $request->room_code]);
 
                 }else{
