@@ -152,12 +152,12 @@
 <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
-{{-- <script>
+<script>
     document.addEventListener("DOMContentLoaded", function () {
 
         const currentHost = window.location.host;
         const oldDomain = "http://khsx.stellapharm.int/";
-        const newUrl = "http://pms.stellapharm.int/";
+        const newUrl = "http://s-pms.stellapharm.int/";
 
         if (true) {
             Swal.fire({
@@ -180,7 +180,7 @@
             });
         }
     });
-</script> --}}
+</script>
 
 <script>
     // 🔁 Chuyển form login <-> đổi mật khẩu
