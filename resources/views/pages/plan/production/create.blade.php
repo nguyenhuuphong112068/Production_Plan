@@ -1,8 +1,8 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <style>
     .createModal-modal-size {
-        max-width: 50% !important;
-        width: 50% !important;
+        max-width: 70% !important;
+        width: 70% !important;
     }
 
     .bootstrap-switch {
@@ -86,7 +86,7 @@
                         <input type="hidden" name="plan_list_id" readonly value="{{ old('plan_list_id') }}" />
                     </div>
 
-                    <div class="row">
+                    <div class="row mt-0">
                         <div class="col-md-9">
                             <div class="form-group">
                                 <label>Tên Sản Phẩm</label>

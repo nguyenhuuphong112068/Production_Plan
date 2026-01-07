@@ -12,6 +12,7 @@
   <div class="modal-dialog custom-modal-size" role="document">
    
     <form 
+      id="createQuotaForm"
       action="{{route('pages.quota.production.store')}}" 
       method="POST">
       @csrf
@@ -252,7 +253,11 @@
           } else {
               $('#check_result').html('');
           }
-      });
-                
+      }); 
+    
+
   });
+
+
+
 </script>
