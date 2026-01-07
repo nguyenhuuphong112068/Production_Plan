@@ -263,7 +263,7 @@
 
                     {{--  Ngày được phép cân - hết hạn nguyên liệu --}}
                     <div class="row mt-2">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                         <label>Ngày được phép cân (Mặc định theo ngày có đủ NL)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
@@ -272,7 +272,7 @@
                             </div>
                         </div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label> Ngày hết hạn nguyên liệu (Nếu có) </label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
@@ -280,11 +280,20 @@
                                     value="{{ old('expired_material_date') }}">
                             </div>
                         </div>
+
+                        <div class="col-md-4">
+                            <label> Ngày hết hạn bao bì (Nếu có) </label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "expired_packing_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('expired_packing_date') }}">
+                            </div>
+                        </div>
                     </div>      
                     
                     {{-- Cân Trước ngày --}}
                     <div class="row mt-2">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label>Pha chế trước ngày (Nếu có)</label>
                                 <div class="input-group">
                                     <input type="date" class="form-control" data-inputmask-alias="datetime"
@@ -292,7 +301,7 @@
                                         value="{{ old('preperation_before_date') }}">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label>Trộn hoàn tất trước ngày (Nếu có)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
@@ -300,12 +309,20 @@
                                     value="{{ old('blending_before_date') }}">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label>Bao Phim trước ngày (nếu có)</label>
                             <div class="input-group">
                                 <input type="date" class="form-control" data-inputmask-alias="datetime"
                                     name = "coating_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
                                     value="{{ old('coating_before_date') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Đóng Gói Trước Ngày (nếu có)</label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                    name = "parkaging_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                    value="{{ old('parkaging_before_date') }}">
                             </div>
                         </div>
                     </div>  

@@ -103,12 +103,14 @@
                             <div> {{ "(2) Ngày có đủ BB" }}  </div>
                             <div> {{ "(3) Ngày được phép cân" }}  </div>
                             <div> {{ "(4) Ngày HH NL chính" }}  </div>
+                            <div> {{ "(5) Ngày HH BB" }}  </div>
                         </th>
 
                         <th>
                             <div> {{ "(1) PC trước" }}  </div>
                             <div> {{ "(2) THT trước" }}  </div>
                             <div> {{ "(3) BP trước" }}  </div>
+                            <div> {{ "(4) ĐG trước" }}  </div>
                         </th>
                        
                         <th>Ghi Chú</th>
@@ -160,9 +162,7 @@
                                         data-expected_date="{{ $data->expected_date }}" data-is_val="{{ $data->is_val }}"
                                         data-source_material_name="{{ $data->source_material_name }}"
                                         data-after_weigth_date="{{ $data->after_weigth_date}}"
-                                        data-before_weigth_date="{{ $data->before_weigth_date}}"
                                         data-after_parkaging_date="{{ $data->after_parkaging_date }}"
-                                        data-before_parkaging_date="{{ $data->before_parkaging_date }}"
                                         data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
                                         data-unit_batch_qty="{{ $data->unit_batch_qty}}"
                                         data-material_source_id="{{ $data->material_source_id}}"
@@ -247,6 +247,13 @@
                                         value="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(5):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="expired_packing_date"
+                                        value="{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
                          
                             </td>
 
@@ -269,6 +276,13 @@
                                     <span>(3):</span>
                                     <input {{ $auth_update }} type="date" class="updateInput" name="coating_before_date"
                                         value="{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+
+                                 <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(4):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput" name="parkaging_before_date"
+                                        value="{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
                          
@@ -301,9 +315,9 @@
                                     data-code_val="{{ $data->code_val}}"
                                     data-source_material_name="{{ $data->source_material_name }}"
                                     data-after_weigth_date="{{ $data->after_weigth_date }}"
-                                    data-before_weigth_date="{{ $data->before_weigth_date }}"
+               
                                     data-after_parkaging_date="{{ $data->after_parkaging_date }}"
-                                    data-before_parkaging_date="{{ $data->before_parkaging_date }}"
+ 
                                     data-note="{{ $data->note }}" 
                                     data-batch_qty="{{ $data->batch_qty }}"
                                     data-unit_batch_qty="{{ $data->unit_batch_qty }}"
@@ -408,9 +422,9 @@
 
                 modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
                 modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
-                modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
+                //modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
                 modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
-                modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
+                //modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
                 modal.find('textarea[name="note"]').val(button.data('note'));
 
                 modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
@@ -458,9 +472,9 @@
 
                     modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
                     modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
-                    modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
+                    //modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
                     modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
-                    modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
+                    //modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
                     modal.find('textarea[name="note"]').val(button.data('note'));
 
                     modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
