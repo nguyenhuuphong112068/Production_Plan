@@ -152,16 +152,31 @@
                                 <input type="hidden" name="title" value = "{{$data->product_name ."-". $data->batch}}">
 
                             </td>
-                            <td>{{ $data->batch }}
+
+
+                            <td>
+                                @if (!$data->actual_start && $stageCode == 1)
+                                    <input style="color: red"  type="text" class="time actual_batch" id = "actual_batch" name="actual_batch"  value = "{{ $data->batch }}">
+                                @else
+                                    @if ( $data->actual_batch)
+                                        <div style="color: blue"> {{ $data->batch }} </div>
+                                    @else
+                                        <div style="color: rgb(0, 0, 0)"> {{ $data->batch }} </div>
+                                    @endif
+                                @endif
+
                                 @if ($data->is_val)
-                                    <i class="fas fa-check-circle text-primary fs-4"></i>
+                                        <i class="fas fa-check-circle text-primary fs-4"></i>
                                 @endif
                             </td>
+
+
                             <td>
                                 @if ($data->actual_start)
                                     <span>
                                         {{ $data->room_name . ' - ' . $data->room_code }}
                                     </span>
+                                    <input type="hidden" name="resourceId" value="{{ $data->resourceId  }}">
                                 @else
                                     <select class="form-control" name="resourceId" id ="room_id" >
                                         <option value="">-- Phòng Sản Xuất --</option>
@@ -383,6 +398,7 @@
                 const resourceInput = row.querySelector('[name="resourceId"]');
                 const resourceId = resourceInput ? resourceInput.value : null;
                 
+                
                 if (!resourceId || resourceId == "") {
                     Swal.fire({
                         icon: "warning",
@@ -565,11 +581,14 @@
 
                     // Giữ nút ở trạng thái disabled sau khi hoàn thành
                     $(btn).addClass('disabled').text('✓ Đã hoàn thành');
+                    
+                    $(row).find('.actual_batch').addClass('text-primary');
 
                     if (actionType === 'finised') {
                         $(row).find('.btn-semi-finised')
                             .addClass('disabled')
                             .text('✓ Đã hoàn thành');
+                        
                     }
                     
                 },
