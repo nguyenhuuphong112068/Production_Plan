@@ -157,25 +157,23 @@
                                     <i class="fas fa-check-circle text-primary fs-4"></i>
                                 @endif
                             </td>
+                            <td>
+                                @if ($data->actual_start)
+                                    <span>
+                                        {{ $data->room_name . ' - ' . $data->room_code }}
+                                    </span>
+                                @else
+                                    <select class="form-control" name="resourceId" id ="room_id" >
+                                        <option value="">-- Phòng Sản Xuất --</option>
+                                            @foreach ($room_stages as $room_stage)
+                                                <option value="{{ $room_stage->id}}" 
+                                                    {{ ($data->resourceId ?? null) == $room_stage->id ? 'selected' : '' }}
+                                                    >{{ $room_stage->code . ' - ' .  $room_stage->name}}</option>
+                                            @endforeach
+                                    </select>
+                                @endif 
+                            </td>
 
-                            @if ($data->room_name)
-                                
-                                <td> {{ $data->room_name . ' - ' . $data->room_code }} 
-                                    <input type="hidden" name="resourceId" value = "{{$data->resourceId}}">
-                                </td>
-                            @else
-                                <td> 
-                                <select class="form-control" name="resourceId" id ="room_id" >
-                                    <option value="">-- Phòng Sản Xuất --</option>
-                                        @foreach ($room_stages as $room_stage)
-                                            <option value="{{ $room_stage->id}}" 
-                                               >
-                                                {{ $room_stage->code }}
-                                            </option>
-                                        @endforeach
-                                </select>
-                                </td>
-                            @endif
                         
                             <td>
                                 <div>BD: </div>

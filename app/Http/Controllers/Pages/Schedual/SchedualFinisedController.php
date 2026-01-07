@@ -45,7 +45,8 @@ class SchedualFinisedController extends Controller
                 ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
                 ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
                 ->where('sp.stage_code', $stage_code)
                 ->where('sp.deparment_code', $production)
 
