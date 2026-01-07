@@ -358,7 +358,10 @@ class ProductionPlanController extends Controller
                                 "preperation_before_date" => $request->preperation_before_date,
                                 "blending_before_date" => $request->blending_before_date,
                                 "coating_before_date" => $request->coating_before_date,
-                        
+
+                                "parkaging_before_date" => $request->parkaging_before_date,
+                                "expired_packing_date" => $request->expired_packing_date,
+
                                 "material_source_id" => $request->material_source_id,
                                 "percent_parkaging" => 1,
                                 "number_parkaging" => $request->max_number_of_unit,

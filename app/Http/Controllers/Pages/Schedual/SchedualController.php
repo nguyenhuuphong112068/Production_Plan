@@ -235,6 +235,9 @@ class SchedualController extends Controller
                         'plan_master.preperation_before_date',
                         'plan_master.blending_before_date',
                         'plan_master.coating_before_date',
+
+                        'plan_master.parkaging_before_date',
+                        'plan_master.expired_packing_date',
                         
                         'plan_master.is_val',
                         'plan_master.level',
@@ -476,10 +479,13 @@ class SchedualController extends Controller
                         [1, 3, 'after_weigth_date',        '➡️ Ngày có đủ NL' , ">"],
                         [1, 3, 'allow_weight_before_date', '➡️ Ngày được phép cân', ">"],
                         [1, 3, 'expired_material_date',    '➡️ Ngày hết hạn NL chính', "<"],
+                        [7, 7, 'expired_packing_date',    '➡️ Ngày hết hạn BB', "<"],
                         [3, 3, 'preperation_before_date','➡️ Phải PC trước ngày', "<"],
-                        [4, 4, 'blending_before_date',   '➡️ Phải pha THT', "<"],
-                        [6, 6, 'coating_before_date',    '➡️ Phải pha BP', "<"],
+                        [4, 4, 'blending_before_date',   '➡️ Phải THT trước ngày', "<"],
+                        [6, 6, 'coating_before_date',    '➡️ Phải BP trước ngày', "<"],
+                        [7, 7, 'parkaging_before_date',    '➡️ Phải ĐG trước ngày ', "<"],
                         [7, 7, 'after_parkaging_date',   '➡️ Ngày có đủ BB', ">"],
+                       
                 ];
 
                 foreach ($criticalChecks as [$from, $to, $field, $label, $operator]) {
