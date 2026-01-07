@@ -10,7 +10,8 @@ class HistoryController extends Controller{
        public function index(Request $request){
                 
                 $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
-                $toDate   = $request->to_date   ?? Carbon::now()->toDateString(); 
+                $toDate   = $request->to_date ?? Carbon::now()->addDays(1)->toDateString(); 
+                //dd ($fromDate, $toDate  );
                 $stage_code = $request->stage_code??1;
                 $production = session('user')['production_code'];
       
@@ -38,6 +39,7 @@ class HistoryController extends Controller{
                 ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->get();

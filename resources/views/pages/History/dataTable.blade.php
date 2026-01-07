@@ -15,7 +15,7 @@
                             @php
                                 use Carbon\Carbon;
                                 $defaultFrom = Carbon::now()->subMonth(1)->toDateString();
-                                $defaultTo   = Carbon::now()->toDateString();
+                                $defaultTo   = Carbon::now()->addDays(1)->toDateString();
                             @endphp
                             <div class="form-group d-flex align-items-center">
                                 <label for="from_date" class="mr-2 mb-0">From:</label>

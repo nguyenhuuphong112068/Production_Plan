@@ -51,6 +51,7 @@ class SchedualFinisedController extends Controller
                 ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
                 ->where('sp.stage_code', $stage_code)
+                ->where('sp.active', 1)
                 ->where('sp.deparment_code', $production)
 
                 // 🔹 finished logic
@@ -181,6 +182,13 @@ class SchedualFinisedController extends Controller
                 if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
                         return response()->json([
                                 'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
+                                ], 422);
+                }
+
+
+                if ($request->resourceId == null) {
+                        return response()->json([
+                                'message' => '❌ Chọn Phòng Sản Xuất!'
                                 ], 422);
                 }
 

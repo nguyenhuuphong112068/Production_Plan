@@ -176,7 +176,7 @@
                                     <span>
                                         {{ $data->room_name . ' - ' . $data->room_code }}
                                     </span>
-                                    <input type="hidden" name="resourceId" value="{{ $data->resourceId  }}">
+                                    <input type="hidden" name="resourceId" value="{{ $data->resourceId}}">
                                 @else
                                     <select class="form-control" name="resourceId" id ="room_id" >
                                         <option value="">-- Phòng Sản Xuất --</option>
