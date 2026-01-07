@@ -12,7 +12,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualController;
 class ProductionQuotaController extends Controller
 {
         public function index(Request $request){
-
+             
                 $stage_code = $request->stage_code ?? 1;
                 $production = session('user')['production_code'];
 
@@ -63,7 +63,7 @@ class ProductionQuotaController extends Controller
                                 'quota.campaign_index',
                                 'quota.note',
                                 'quota.prepared_by',
-                                'quota.created_at',
+                                DB::raw("DATE_FORMAT(quota.created_at, '%d/%m/%Y') as created_at"),
                                 'quota.id',
                                 'quota.active',
                                 'quota.tank'
@@ -80,9 +80,7 @@ class ProductionQuotaController extends Controller
                                 ->where('quota.deparment_code', '=', $production);
                         })
                         ->leftJoin('room', 'quota.room_id', '=', 'room.id')
-                        // đặt room NULL lên trước (hoặc đổi DESC/ASC tuỳ muốn)
-                        ->orderByRaw('ISNULL(room.name) DESC')
-                        ->orderBy('room.name', 'asc')
+                        ->orderBy('quota.id', 'desc')
                         ->get();
 
                 
@@ -110,7 +108,7 @@ class ProductionQuotaController extends Controller
                                 'quota.campaign_index',
                                 'quota.note',
                                 'quota.prepared_by',
-                                'quota.created_at',
+                                DB::raw("DATE_FORMAT(quota.created_at, '%d/%m/%Y') as created_at"),
                                 'quota.id',
                                 'quota.active',
                                 'quota.keep_dry'
@@ -124,17 +122,15 @@ class ProductionQuotaController extends Controller
                         ->leftJoin('room', 'quota.room_id', '=', 'room.id')
                         ->where("{$category}.active", true)
                         ->where("{$category}.deparment_code", $production)
-                        ->orderByRaw('ISNULL(room.name) DESC')
-                        ->orderBy('room.name', 'asc');
+                        ->orderBy('quota.id', 'desc');
 
                         $datas = $query->get();
                 } else {
                         $datas = collect(); // an toàn nếu stage_code ngoài dự kiến
                 }
 
-                session()->put(['title' => 'Định Mức Sản Xuất']);
-
                 
+                //dd ($datas);
                 return view('pages.quota.production.list', [
                         'datas' => $datas,
                         'stage_code' => $stage_code,
@@ -214,7 +210,7 @@ class ProductionQuotaController extends Controller
                 $dataToInsert = [];
                  foreach ($selectedRooms as $selectedRoom) {
                         $dataToInsert[] = [
-                                'process_code' => $process_code ."_". $selectedRoom ."_". $process_code_index,
+                                'process_code' => $process_code ."_". $selectedRoom . $process_code_index,
                                 'intermediate_code' => $request->intermediate_code,                       
                                 'finished_product_code' => $finished_product_code,
                                 'room_id'=> $selectedRoom,
@@ -239,6 +235,7 @@ class ProductionQuotaController extends Controller
                                 'plan' => $SchedualController->getPlanWaiting(session('user')['production_code'])
                         ]);
                 }
+
         
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
@@ -298,7 +295,11 @@ class ProductionQuotaController extends Controller
                         'updated_at' => now(), 
                         ]);
                 }
-                return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
+                return response()->json([
+                        'success' => true,
+                        'active' => $quota->active
+                ]);
+                //return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
         public function tank_keepDry(Request $request){
                 DB::table('quota')
