@@ -33,7 +33,10 @@ class SchedualFinisedController extends Controller
                         'room.name as room_name',
                         'room.code as room_code',
                         'room.stage as stage',
-                        'plan_master.batch',
+                        DB::raw("
+                                COALESCE(plan_master.actual_batch, plan_master.batch) AS batch
+                                "),
+                        'plan_master.actual_batch',
                         'plan_master.expected_date',
                         'plan_master.is_val',
                         'finished_product_category.intermediate_code',
@@ -68,9 +71,6 @@ class SchedualFinisedController extends Controller
 
                 ->orderBy('sp.start')
                 ->get();
-
-
-                  
         
                 $stages = DB::table('stage_plan')
                 ->select(
@@ -230,6 +230,7 @@ class SchedualFinisedController extends Controller
                 if ($request->actionType === 'finised') {
 
                         $updateData = array_merge($updateData, [
+                                
                                 'actual_start_clearning' => $actualStartCleaning,
                                 'actual_end_clearning'   => $actualEndCleaning,
                                 'finished'               => 1,
@@ -238,6 +239,7 @@ class SchedualFinisedController extends Controller
                 } elseif ($request->actionType === 'semi-finised') {
 
                         $updateData = array_merge($updateData, [
+                                
                                 'finished' => 1,
                         ]);
 
@@ -255,6 +257,16 @@ class SchedualFinisedController extends Controller
                 DB::table('stage_plan')
                 ->where('id', $request->id)
                 ->update($updateData);
+
+                if ($request->actual_batch) {
+                        $plan_master_id = DB::table('stage_plan')
+                        ->where('id', $request->id)
+                        ->value('plan_master_id');
+
+                        DB::table('plan_master')
+                        ->where('id', $plan_master_id)
+                        ->update(['actual_batch' => $request->actual_batch]);
+                }
 
                 return back()->with('success', '✅ Cập nhật công đoạn thành công!');
         }
