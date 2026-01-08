@@ -24,13 +24,14 @@ class SchedualAuditController extends Controller
                     'room.name as room_name',
                     'room.code as room_code',
                     'room.stage as stage',
-                    'plan_master.batch',
+                    DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
                     'plan_master.expected_date',
                     'plan_master.is_val',
                     'finished_product_category.intermediate_code',
                     'finished_product_category.finished_product_code',
                     'finished_product_category.batch_qty',
                     'finished_product_category.unit_batch_qty',
+                    'product_name.name as product_name',
                     'market.name as name'
                 )
                 ->leftJoin('stage_plan as sp', 'h.stage_plan_id', '=', 'sp.id')
