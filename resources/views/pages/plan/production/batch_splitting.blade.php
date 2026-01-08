@@ -199,13 +199,7 @@
                                 </div>
                         </div>
                         
-                        {{-- <div class="col-md-3">
-                            <label>Cân Trước ngày</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_weigth_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}" readonly>
-                                </div>
-                        </div> --}}
+       
                         <div class="col-md-6">
                             <label>Ngày có đủ BB</label>
                                 <div class="input-group">
@@ -213,13 +207,7 @@
                                         data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_parkaging_date', date('Y-m-d')) }}" readonly>
                                 </div>
                         </div>
-                        {{-- <div class="col-md-3">
-                            <label>Đóng gói trước ngày</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_parkaging_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}" readonly>
-                                </div>
-                        </div> --}}
+     
                     </div>
                     {{-- Ghi chú --}}
                     <div class="row mt-3" >

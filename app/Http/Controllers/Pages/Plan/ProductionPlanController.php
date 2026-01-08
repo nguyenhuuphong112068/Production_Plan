@@ -261,10 +261,7 @@ class ProductionPlanController extends Controller
                         'batch' => 'required',
                         'expected_date' => 'required',
                         'level' => 'required',
-                        //'after_weigth_date' => 'required',
-                        //'before_weigth_date' => 'required',
-                        //'after_parkaging_date' => 'required',
-                        //'before_parkaging_date' => 'required',
+
                         'material_source_id' => 'required',
                        
                 ], [
@@ -273,10 +270,6 @@ class ProductionPlanController extends Controller
                         'batch' => 'Vui lòng nhập số lô',
                         'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level' => 'vui lòng chọn mức độ ưu tiên',
-                        //'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
-                        //'before_weigth_date' => 'vui lòng chọn ngày cân trước',
-                        //'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
-                        //'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
                         'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
 
@@ -461,9 +454,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => 'required',
                         'level' => 'required',
                         'after_weigth_date' => 'required',
-                        //'before_weigth_date' => 'required',
+                        
                         'after_parkaging_date' => 'required',
-                        //'before_parkaging_date' => 'required',
+                       
                         'material_source_id' => 'required',
                        
                 ], [
@@ -472,9 +465,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level' => 'vui lòng chọn mức độ ưu tiên',
                         'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
-                        //'before_weigth_date' => 'vui lòng chọn ngày cân trước',
+                        
                         'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
-                        //'before_parkaging_date' => 'vui lòng chọn ngày có đóng gói trước',
+                        
                         'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
 
@@ -510,9 +503,9 @@ class ProductionPlanController extends Controller
                         "is_val" => $is_val,
                         "code_val" => $code_val,
                         "after_weigth_date" => $request->after_weigth_date,
-                        //"before_weigth_date" => $request->before_weigth_date,
+                       
                         "after_parkaging_date" => $request->after_parkaging_date,
-                        //"before_parkaging_date" => $request->before_parkaging_date,
+                        
                         "material_source_id" => $request->material_source_id,
                         "note" => $request->note ?? "NA",
                         'prepared_by' => session('user')['fullName'],
@@ -541,9 +534,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => $request->expected_date,
                         'is_val' => $request->is_val == null ? 0 : 1,
                         'after_weigth_date' => $request->after_weigth_date,
-                        //'before_weigth_date' => $request->before_weigth_date,
+                      
                         'after_parkaging_date' => $request->after_parkaging_date,
-                        //'before_parkaging_date' => $request->before_parkaging_date,
+                      
                         'material_source_id' => $request->material_source_id,
                         'percent_parkaging' => $plan->percent_parkaging,
                         'only_parkaging' => $plan->only_parkaging,
@@ -604,9 +597,9 @@ class ProductionPlanController extends Controller
                         "is_val" => $mainPlanMaster->is_val,
                         "code_val" => $mainPlanMaster->code_val,
                         "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                        //"before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                        
                         "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                        //"before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                        
                         "material_source_id" => $mainPlanMaster->material_source_id,
                         "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,4),
                         "number_parkaging" => $request->number_of_unit,
@@ -638,9 +631,9 @@ class ProductionPlanController extends Controller
                         "level" => $request->level,
                         "is_val" => $mainPlanMaster->is_val,
                         "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                        //"before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                       
                         "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                        //"before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                        
                         "material_source_id" => $mainPlanMaster->material_source_id,
                         "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,2),
                         "number_parkaging" =>  $request->number_of_unit,
@@ -710,9 +703,9 @@ class ProductionPlanController extends Controller
                         "level" => $request->level,
                         "is_val" => $mainPlanMaster->is_val,
                         "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                        "before_weigth_date" => $mainPlanMaster->before_weigth_date,
+                        
                         "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                        "before_parkaging_date" => $mainPlanMaster->before_parkaging_date,
+                       
                         "material_source_id" => $mainPlanMaster->material_source_id,
                         "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,2),
                         "number_parkaging" =>  $request->number_of_unit,

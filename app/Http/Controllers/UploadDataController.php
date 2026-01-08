@@ -134,9 +134,9 @@ class UploadDataController extends Controller
                     'is_val',
                     'code_val',
                     'after_weigth_date',
-                    'before_weigth_date',
+                    
                     'after_parkaging_date',
-                    'before_parkaging_date',
+                   
                     'material_source_id',
                     'only_parkaging',
                     'percent_parkaging',
