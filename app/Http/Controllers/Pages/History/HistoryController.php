@@ -20,7 +20,7 @@ class HistoryController extends Controller{
                         'room.name as room_name',
                         'room.code as room_code',
                         'room.stage as stage',
-                        'plan_master.batch',
+                        DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
                         'plan_master.expected_date',
                         'plan_master.is_val',
                         'finished_product_category.intermediate_code',

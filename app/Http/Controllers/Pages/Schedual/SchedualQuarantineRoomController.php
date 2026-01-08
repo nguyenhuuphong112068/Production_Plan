@@ -15,7 +15,7 @@ class SchedualQuarantineRoomController extends Controller
 
                 //$fromDate = $request->from_date ?? Carbon::now()->toDateString();
                 //$toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
-                $stage_code = $request->stage_code??3;
+                $stage_code = $request->stage_code??1;
                 $production = session('user')['production_code'];
       
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
@@ -41,7 +41,7 @@ class SchedualQuarantineRoomController extends Controller
                     ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
                     ->where('sp.stage_code', $stage_code)
                     ->where('sp.deparment_code', $production)
-                    ->whereNotNull('sp.start')
+                    ->whereNotNull('sp.actual_start')
                     ->where('sp.finished',1)
                     ->whereNotNull('sp.yields')
                     ->whereNull('sp.quarantine_room_code')
@@ -55,18 +55,26 @@ class SchedualQuarantineRoomController extends Controller
                         ->where('active', true)
                 ->get();
 
-                  
-        
+                
+
                 $stages = DB::table('stage_plan')
-                    ->select('stage_plan.stage_code', 'room.stage')
-                    ->where('stage_plan.deparment_code', $production)
-                    ->where('stage_plan.stage_code','<',7)
-                    ->whereNotNull('stage_plan.start')
-                    ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
-                    ->distinct()
-                    ->orderby ('stage_code')
+                ->select(
+                        'stage_plan.stage_code',
+                        DB::raw("
+                        CASE 
+                                WHEN stage_plan.stage_code = 2 THEN 'Cân Nguyên Liệu Khác'
+                                ELSE room.stage
+                        END AS stage
+                        ")
+                )
+                ->leftJoin('room', 'stage_plan.stage_code', '=', 'room.stage_code')
+                ->where('stage_plan.deparment_code', $production)
+                ->where('stage_plan.stage_code','<',7)
+                ->distinct()
+                ->orderBy('stage_plan.stage_code')
                 ->get();
 
+                
                  $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                 
                 //dd ($stages);

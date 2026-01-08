@@ -31,6 +31,7 @@ class SchedualController extends Controller
         ];
 
         public function test(){
+                $this->scheduleWeightStage ();
                 //$this->scheduleSensitiveProduct(3, 0, 0, Carbon::parse('2026-01-05'));
                 //$this->createAutoCampain (null);
                 //$this->createAutoCampain();
@@ -221,8 +222,6 @@ class SchedualController extends Controller
                         'sp.submit',
                         'sp.accept_quarantine',
                         'sp.campaign_code',
-                        
-
                         
                         'finished_product_category.intermediate_code',
                         'plan_master.expected_date',
@@ -3306,7 +3305,6 @@ class SchedualController extends Controller
                 }
         }
 
-
         public function scheduleStage(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0,  ?Carbon $start_date = null) {
 
                 if ($this->prev_orderBy && $stageCode > 3 ) {
@@ -3441,6 +3439,82 @@ class SchedualController extends Controller
                                 $processedCampaigns[] = $task->campaign_code;
                         }
                         //$this->order_by++;
+                }
+        }
+
+        public function scheduleWeightStage( ?Carbon $start_date = null) {
+
+                $start_date = $start_date?? now();
+
+                $tasks = DB::table("stage_plan as sp")
+                                ->select(
+                                        'sp.id',
+                                        'sp.plan_master_id',
+                                        'sp.product_caterogy_id',
+                                        'sp.predecessor_code',
+                                        'sp.nextcessor_code',
+                                        'sp.campaign_code',
+                                        'sp.code',
+                                        'sp.stage_code',
+                                        'sp.campaign_code',
+                                        'sp.tank',
+                                        'sp.keep_dry',
+                                        'sp.order_by',
+                                        'sp.required_room_code',
+                                        'sp.immediately',
+                                        
+                                        'plan_master.batch',
+                                        'plan_master.is_val',
+                                        'plan_master.code_val',
+                                        'plan_master.expected_date',
+                                        'plan_master.batch',
+
+                                        'plan_master.after_weigth_date',
+                                        'plan_master.after_parkaging_date',
+                                        'plan_master.allow_weight_before_date',
+
+                                        'finished_product_category.product_name_id',
+                                        'finished_product_category.market_id',
+                                        'finished_product_category.finished_product_code',
+                                        'finished_product_category.intermediate_code',
+                                        'product_name.name',
+                                        'market.code as market',
+
+                                        'prev.start as prev_start',
+
+                                )
+                                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
+                                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                                ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                                ->whereIn('sp.stage_code', [1])
+                                ->where('sp.finished',0)
+                                ->where('sp.active',1)
+                                ->whereNull('sp.start')
+                                ->whereNotNull('plan_master.after_weigth_date')
+                                ->where('sp.deparment_code', session('user')['production_code'])
+                                ->orderBy('prev.start', 'asc')
+
+                ->get();
+              
+
+                $processedCampaigns = []; // campaign đã xử lý
+
+                //dd ($tasks);
+
+                foreach ($tasks as $task) {
+                        if ($task->campaign_code === null) {
+                                $this->scheduleweight ($task, 0 , false , $start_date, );
+                        }else {
+                                if (in_array($task->campaign_code, $processedCampaigns)) {continue;}
+                                // Gom nhóm campaign
+                                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->sortBy('batch');;
+                                $this->scheduleweight( $campaignTasks,  0 , true , $start_date);
+                                // Đánh dấu campaign đã xử lý
+                                $processedCampaigns[] = $task->campaign_code;
+                        }
+               
                 }
         }
 
@@ -4371,6 +4445,225 @@ class SchedualController extends Controller
                 
                 
                 
+        }
+
+        protected function scheduleweight ($tasks,  int $waite_time = 0, $mode = false,  ?Carbon $start_date = null, ){
+                if ($mode){
+                        $task =  $tasks->first();
+                } else {
+                        $task = $tasks;
+                }     
+                
+                
+                        $now = Carbon::now();
+                        $minute = $now->minute;
+                        $roundedMinute = ceil($minute / 15) * 15;
+                        if ($roundedMinute == 60) {
+                                $now->addHour();
+                                $roundedMinute = 0;
+                        }
+                        $now->minute($roundedMinute)->second(0)->microsecond(0);
+
+                        // Gom tất cả candidate time vào 1 mảng
+                        $candidates [] = $now;
+                        $candidates[] = $start_date;
+
+                        // Nếu có after_weigth_date
+         
+                        if (!empty($task->after_weigth_date)) {$candidates[] = Carbon::parse($task->after_weigth_date);}
+                        if (!empty($task->allow_weight_before_date)) {$candidates[] = Carbon::parse($task->allow_weight_before_date);}
+                        
+
+                        // Lấy max
+                        $earliestStart = collect($candidates)->max();
+
+                        // Chọn Phòng SX
+                        if ($task->required_room_code != null ){
+
+                                if ($task->required_room_code != null){
+                                        $room_code = $task->required_room_code;
+                                }
+
+                                $room_id =  DB::table('room')->where('code', $room_code)->value('id');
+                                
+                                $rooms = DB::table('quota')->select('room_id',
+                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'))
+                                        ->where('intermediate_code', $task->intermediate_code)
+                                        ->where('stage_code', $task->stage_code)
+                                        ->where('room_id', $room_id)
+                                        ->get();
+                        }else{
+                                        if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
+                                        $code_val_first = $parts[0] . '_1';
+
+                                        $room_id_first = DB::table("stage_plan as sp")
+                                                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                                ->where('code_val', $code_val_first)
+                                                ->where('stage_code', $task->stage_code)
+                                                ->first();
+
+                                        if ($room_id_first) {
+                                                $rooms = DB::table('quota')
+                                                ->select(
+                                                        'room_id',
+                                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                )
+                                                ->where('intermediate_code', $task->intermediate_code)
+                                                ->where('stage_code', $task->stage_code)
+                                                ->where('active', 1)
+                                                ->where('room_id', $room_id_first->resourceId)
+                                                ->get();
+
+                                        } else {
+
+                                                $rooms = DB::table('quota')->select('room_id',
+                                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                        )
+                                                ->where('intermediate_code', $task->intermediate_code)
+                                                ->where('stage_code', $task->stage_code)
+                                                ->where('active', 1)
+                                                ->get();
+
+                                        }
+                                        }
+                                        elseif ($task->code_val !== null && $task->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
+                                                $code_val_first = $parts[0];
+
+                                                $room_id_first = DB::table("stage_plan as sp")
+                                                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                                ->where(DB::raw("SUBSTRING_INDEX(pm.code_val, '_', 1)"), '=', $parts[0])
+                                                ->where('sp.stage_code', $task->stage_code)
+                                                ->whereNotNull('start')
+                                                ->get();
+
+                                                if ($room_id_first) {
+
+                                                        $rooms = DB::table('quota')
+                                                        ->select(
+                                                                'room_id',
+                                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                                )
+                                                                ->where('intermediate_code', $task->intermediate_code)
+                                                                ->where('stage_code', $task->stage_code)
+                                                                ->where('active', 1)
+                                                        ->get();
+
+
+                                                        if ($rooms->count () > $room_id_first->count ()) {
+                                                                foreach ($room_id_first as $first) {
+                                                                        $rooms->where('room_id', '!=', $first->resourceId);
+                                                                }
+                                                        }
+
+                                                } else {
+                                                        $rooms = DB::table('quota')->select('room_id',
+                                                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                                )
+                                                        ->where('intermediate_code', $task->intermediate_code)
+                                                        ->where('stage_code', $task->stage_code)
+                                                        ->where('active', 1)
+                                                        ->get();
+                                                }
+
+                                        }else {
+                                                $rooms = DB::table('quota')->select('room_id',
+                                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                                        )
+                                                ->where('intermediate_code', $task->intermediate_code)
+                                                ->where('stage_code', $task->stage_code)
+                                                ->where('active', 1)
+                                                ->get();
+                                        }
+                        }
+                        // phòng phù hợp (quota)
+                        
+
+                        $bestRoom = null;
+                        $bestStart = null;
+
+                        //Tim phòng tối ưu
+                        foreach ($rooms as $room) {
+                                $intervalTimeMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes;
+                                $C2_time_minutes =  (float) $room->C2_time_minutes;
+
+
+                                $candidateStart = $this->findEarliestSlot2(
+                                        $room->room_id,
+                                        $earliestStart,
+                                        $intervalTimeMinutes,
+                                        $C2_time_minutes,
+                                        $task->tank,
+                                        $task->keep_dry,
+                                        "stage_plan",
+                                        2,
+                                        60
+                                );
+
+                                if ($bestStart === null || $candidateStart->lt($bestStart)) {
+                                        $bestRoom = $room->room_id;
+                                        $bestStart = $candidateStart;
+                                        $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
+                                        $start_clearning =  $bestEnd->copy();
+                                        $end_clearning =  $bestStart->copy()->addMinutes($intervalTimeMinutes +  $C2_time_minutes);
+                                }
+
+                        }
+                        
+
+                        $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom);
+
+        
+                        $bestEnd = $this->addWorkingMinutes ( $bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
+                        $start_clearning = $bestEnd->copy();
+                        $end_clearning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $C2_time_minutes, $bestRoom, $this->work_sunday);                       
+                        if ($mode){
+                                foreach ($tasks as $task){
+                                        $this->saveSchedule(
+                                                null,
+                                                $task->id,
+                                                $bestRoom,
+                                                $bestStart,
+                                                $bestEnd,
+                                                $start_clearning,
+                                                $end_clearning,
+                                                2,
+                                                1,           
+                                        );
+                                }
+                        }else {
+                                        $this->saveSchedule(
+                                                null,
+                                                $task->id,
+                                                $bestRoom,
+                                                $bestStart,
+                                                $bestEnd,
+                                                $start_clearning,
+                                                $end_clearning,
+                                                2,
+                                                1,           
+                                        );
+                        }
+                        
+                        
+
         }
 
         public function addWorkingMinutes(Carbon $start,int $minutes,int $roomId,bool $workSunday = false): Carbon {
