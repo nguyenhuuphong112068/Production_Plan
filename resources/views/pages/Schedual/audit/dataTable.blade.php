@@ -82,7 +82,7 @@
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code }} </div>
                             </td>
-                            <td>{{ $data->product_name . ' ' . $data->batch }}</td>
+                            <td>{{ $data->product_name . '-' . $data->batch }}</td>
                             <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
                             <td>{{ $data->batch }} </td>
 
