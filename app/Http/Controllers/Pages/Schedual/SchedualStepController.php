@@ -51,9 +51,9 @@ class SchedualStepController extends Controller
                     'plan_master.batch',
                     'plan_master.expected_date',
                     'plan_master.after_weigth_date',
-                    'plan_master.before_weigth_date',
+                    
                     'plan_master.after_parkaging_date',
-                    'plan_master.before_parkaging_date',
+       
                     'plan_master.only_parkaging',
                     'plan_master.main_parkaging_id',
                     'plan_master.percent_parkaging',
@@ -105,9 +105,9 @@ class SchedualStepController extends Controller
                     'plan_master.batch',
                     'plan_master.expected_date',
                     'plan_master.after_weigth_date',
-                    'plan_master.before_weigth_date',
+             
                     'plan_master.after_parkaging_date',
-                    'plan_master.before_parkaging_date',
+                   
                     'plan_master.only_parkaging',
                     'plan_master.main_parkaging_id',
                     'finished_product_category.batch_qty',

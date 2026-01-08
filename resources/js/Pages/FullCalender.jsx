@@ -1615,7 +1615,7 @@ const ScheduleTest = () => {
                 <select 
                   id="resource-select" 
                   class="swal2-select" 
-                  style="width:80%; max-width:400px; padding:5px; margin:auto; display:block;">
+                  style="width:90%; max-width:600px; padding:5px; margin:auto; display:block;">
                   <option value="">-- Tất cả --</option>
                 </select>
               </div>
@@ -1670,6 +1670,14 @@ const ScheduleTest = () => {
                     <div className={getClass("ĐG")}>Đóng Gói</div>
                   </div>
                 </StepperPanel>
+
+                <StepperPanel header="CNL">
+                  <div className="flex flex-column h-12rem">
+                    <div className={getClass("CNL")}>Cân</div>
+                  </div>
+                </StepperPanel>
+
+
               </Stepper>
             );
           };

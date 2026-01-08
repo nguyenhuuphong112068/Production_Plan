@@ -698,7 +698,7 @@ class SchedualController extends Controller
                         )
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
-                ->where('room.id', '>=', 4)
+                //->where('room.id', '>=', 4)
                 ->orderBy('order_by', 'asc')
                 ->get()
                 ->map(function ($room) use ($statsMap, $yieldMap) {
@@ -1553,13 +1553,13 @@ class SchedualController extends Controller
 
         public function deActiveAll(Request $request){
 
-                Log::info ($request->all());
+                // Log::info ($request->all());
                
-        
+                // dd ("sa");
                 $production = session('user')['production_code'];
                 try {   
                        if ($request->mode == "step"){
-                                $Step = ["PC" => 3, "THT" => 4,"ĐH" => 5,"BP" => 6,"ĐG" => 7,];
+                                $Step = ["PC" => 3, "THT" => 4,"ĐH" => 5,"BP" => 6,"ĐG" => 7, "CNL" =>8];
                                 $stage_code = $Step[$request->selectedStep];
 
                                 $ids = DB::table('stage_plan')
@@ -3481,25 +3481,28 @@ class SchedualController extends Controller
                                         'product_name.name',
                                         'market.code as market',
 
-                                        'prev.start as prev_start',
+                                        'next.start as next_start',
+                                        
 
                                 )
                                 ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
                                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
                                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                                ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                                ->leftJoin('stage_plan as next', 'next.code', '=', 'sp.nextcessor_code')
                                 ->whereIn('sp.stage_code', [1])
                                 ->where('sp.finished',0)
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
                                 ->whereNotNull('plan_master.after_weigth_date')
+                                ->where('next.finished', 0)
+                                ->where('next.start','>',now())
                                 ->where('sp.deparment_code', session('user')['production_code'])
-                                ->orderBy('prev.start', 'asc')
+                                ->orderBy('next.start', 'asc')
 
                 ->get();
               
-
+                //dd ($tasks);
                 $processedCampaigns = []; // campaign đã xử lý
 
                 //dd ($tasks);
@@ -4823,9 +4826,9 @@ class SchedualController extends Controller
         //                         'pm.batch',
         //                         'pm.allow_weight_before_date',
         //                         'pm.after_weigth_date',
-        //                         'pm.before_weigth_date',
+        //                      
         //                         'pm.after_parkaging_date',
-        //                         'pm.before_parkaging_date',
+        //                         
         //                         'mk.code as market',
         //                         'pn.name',
         //                 )
@@ -4885,10 +4888,10 @@ class SchedualController extends Controller
         //                                 'pm.level',
         //                                 'pm.batch',
         //                                 'pm.after_weigth_date',
-        //                                 'pm.before_weigth_date',
+        //                                
         //                                 'pm.after_parkaging_date',
         //                                 'pm.allow_weight_before_date',
-        //                                 'pm.before_parkaging_date',
+        //                                
         //                                 'mk.code as market',
         //                                 'pn.name')
         //                         ->leftJoin('finished_product_category as fc', 'sp.product_caterogy_id', '=', 'fc.id')

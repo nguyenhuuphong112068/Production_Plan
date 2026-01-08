@@ -58,9 +58,9 @@ return new class extends Migration {
             $table->boolean ('is_val');
             $table->string ('code_val',10)->nullable();
             $table->date ('after_weigth_date')->nullable();
-            $table->date ('before_weigth_date')->nullable();
+            
             $table->date ('after_parkaging_date')->nullable();
-            $table->date ('before_parkaging_date')->nullable();
+            
             $table->unsignedInteger ('material_source_id')->nullable();
             $table->boolean ('only_parkaging');
             $table->float ('percent_parkaging');
