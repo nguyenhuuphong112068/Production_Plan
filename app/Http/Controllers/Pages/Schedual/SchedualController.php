@@ -185,14 +185,15 @@ class SchedualController extends Controller
                         ->select(
                         'sp.id',
                         'sp.code',
-                        //'sp.title',
-                        //DB::raw("CONCAT(product_name.name, '-', plan_master.batch) AS title"),
-                        
                         DB::raw("
-                        CASE
-                                WHEN sp.stage_code = 9 THEN sp.title
-                                ELSE CONCAT(product_name.name, '-', plan_master.batch)
-                        END AS title
+                                CASE
+                                        WHEN sp.stage_code = 9 THEN sp.title
+                                        ELSE CONCAT(
+                                        product_name.name,
+                                        '-',
+                                        COALESCE(plan_master.actual_batch, plan_master.batch)
+                                        )
+                                END AS title
                         "),
                                 
                         'sp.start',
