@@ -698,7 +698,7 @@ class SchedualController extends Controller
                         )
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
-                ->where('room.id', '>=', 4)
+                //->where('room.id', '>=', 4)
                 ->orderBy('order_by', 'asc')
                 ->get()
                 ->map(function ($room) use ($statsMap, $yieldMap) {
@@ -1554,23 +1554,34 @@ class SchedualController extends Controller
         public function deActiveAll(Request $request){
 
                 // Log::info ($request->all());
-               
                 // dd ("sa");
+
                 $production = session('user')['production_code'];
                 try {   
                        if ($request->mode == "step"){
-                                $Step = ["PC" => 3, "THT" => 4,"ĐH" => 5,"BP" => 6,"ĐG" => 7, "CNL" =>8];
-                                $stage_code = $Step[$request->selectedStep];
+                                if ($request->selectedStep == "CNL" ){
+                                        $ids = DB::table('stage_plan')
+                                        ->where('deparment_code', $production)
+                                        ->whereNotNull('start')
+                                        ->where ('start', '>=', $request->start_date)
+                                        ->where('active', 1)
+                                        ->where('finished', 0)
+                                        ->where('stage_code', "<=",2)
+                                        ->pluck('id');
+                                }else {
+                                        $Step = ["PC" => 3, "THT" => 4,"ĐH" => 5,"BP" => 6,"ĐG" => 7];
+                                        $stage_code = $Step[$request->selectedStep];
 
-                                $ids = DB::table('stage_plan')
-                                ->where('deparment_code', $production)
-                                ->whereNotNull('start')
-                                ->where ('start', '>=', $request->start_date)
-                                ->where('active', 1)
-                                ->where('finished', 0)
-                                ->where('stage_code', ">=", $stage_code)
-                                ->pluck('id');
-                                
+                                        $ids = DB::table('stage_plan')
+                                        ->where('deparment_code', $production)
+                                        ->whereNotNull('start')
+                                        ->where ('start', '>=', $request->start_date)
+                                        ->where('active', 1)
+                                        ->where('finished', 0)
+                                        ->where('stage_code', ">=", $stage_code)
+                                        ->pluck('id');
+                                }
+
                         }else if ($request->mode == "resource"){
                                 $ids = DB::table('stage_plan')
                                 ->where('deparment_code', $production)
@@ -3035,14 +3046,20 @@ class SchedualController extends Controller
 
         public function scheduleAll( Request $request) {
 
-              
                 $this->selectedDates = $request->selectedDates??[];
                 $this->work_sunday = $request->work_sunday??false;
                 $this->reason = $request->reason??"NA";
                 $this->prev_orderBy =  $request->prev_orderBy??false;
                 $this->loadOffDate('asc');
+                $today = Carbon::now()->toDateString();
+                $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? $today)->setTime(6, 0, 0);
+                
+                /// Chạy công đoạn cân NL
+                if ($request->selectedStep == "CNL" ){
+                        $this->scheduleWeightStage ( $start_date);
+                        return response()->json([]);
+                }
 
-           
                 $Step = [
                         "PC" => 3,
                         "THT" => 4,
@@ -3053,8 +3070,7 @@ class SchedualController extends Controller
 
                 $selectedStep = $Step[$request->selectedStep??"ĐG"];
                 $this->max_Step =  $selectedStep;
-                $today = Carbon::now()->toDateString();
-                $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date?? $today)->setTime(6, 0, 0);
+                
                
                 $stageCodes = DB::table("stage_plan as sp")
                         ->distinct()
@@ -3072,8 +3088,6 @@ class SchedualController extends Controller
                 $waite_time[7] = ['waite_time_nomal_batch' => (($request->wt_blitering ?? 0) * 24 * 60) ,'waite_time_val_batch'   => (($request->wt_blitering_val ?? 5) * 24 * 60)];
 
 
-                /// Chạy các sản phẩm có tổng thời gian biệt trữ
-                //$this->scheduleStartBackward($start_date, $waite_time);
 
                 /// Chạy Theo Line
                 if ($request->runType == 'line'){
@@ -3483,7 +3497,6 @@ class SchedualController extends Controller
 
                                         'next.start as next_start',
                                         
-
                                 )
                                 ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
                                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
@@ -3502,10 +3515,7 @@ class SchedualController extends Controller
 
                 ->get();
               
-                //dd ($tasks);
                 $processedCampaigns = []; // campaign đã xử lý
-
-                //dd ($tasks);
 
                 foreach ($tasks as $task) {
                         if ($task->campaign_code === null) {
@@ -4452,6 +4462,7 @@ class SchedualController extends Controller
         }
 
         protected function scheduleweight ($tasks,  int $waite_time = 0, $mode = false,  ?Carbon $start_date = null, ){
+                
                 if ($mode){
                         $task =  $tasks->first();
                 } else {
@@ -4467,7 +4478,7 @@ class SchedualController extends Controller
                                 $roundedMinute = 0;
                         }
                         $now->minute($roundedMinute)->second(0)->microsecond(0);
-
+                        $candidates[] =  Carbon::parse($task->next_start)->subDays(3)->setTime(6,0,0);
                         // Gom tất cả candidate time vào 1 mảng
                         $candidates [] = $now;
                         $candidates[] = $start_date;

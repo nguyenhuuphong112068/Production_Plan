@@ -37,20 +37,12 @@ class SchedualAuditController extends Controller
                 ->leftJoin('room', 'h.resourceId', '=', 'room.id')
                 ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-                //->where('h.version', '>=', 1)
                 ->whereBetween('h.start', [$fromDate, $toDate])
-                ->where('h.stage_code', $stage_code)
-                ->where('h.deparment_code', $production)
-                //->whereNotNull('h.start')
-                // ->whereIn('h.stage_plan_id', function ($query) {
-                //     $query->select('stage_plan_id')
-                //         ->from('stage_plan_history')
-                //         ->groupBy('stage_plan_id')
-                //         ->havingRaw('COUNT(*) > 1');
-                // })
-                //->orderBy('h.plan_master_id')
+                ->where('sp.stage_code', $stage_code)
+                ->where('sp.deparment_code', $production)
                 ->orderBy('h.start', 'desc')
                 ->get();
 
