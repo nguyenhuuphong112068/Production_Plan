@@ -13,7 +13,7 @@
 
     <style>
         body {
-            background: url('{{ asset('img/Map.jpg') }}') no-repeat center center fixed;
+            background: url('{{ asset('img/Stella_Icon_Main.jpg') }}') no-repeat center center fixed;
             background-size: cover;
             background-size: 100% 100%;
         }
