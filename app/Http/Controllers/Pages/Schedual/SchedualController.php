@@ -698,7 +698,7 @@ class SchedualController extends Controller
                         )
                 ->where('active', 1)
                 ->where('room.deparment_code', $production)
-                //->where('room.id', '>=', 4)
+                ->where('room.id', '>=', 4)
                 ->orderBy('order_by', 'asc')
                 ->get()
                 ->map(function ($room) use ($statsMap, $yieldMap) {
