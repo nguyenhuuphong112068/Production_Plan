@@ -1340,6 +1340,18 @@ const ScheduleTest = () => {
                     </div>
                   </StepperPanel>)}
 
+
+                {/* {(emptyPermission == null || emptyPermission.stage_code >= 8) && (
+                  <StepperPanel header="CNL">
+                    <div className="flex flex-column h-12rem">
+                      <div
+                        className={getClass("CNL")}
+                      >
+                        Cân NL ➡ Cân NL Khác
+                      </div>
+                    </div>
+                  </StepperPanel>)} */}
+
               </Stepper>
             );
           };
