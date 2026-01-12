@@ -148,7 +148,8 @@
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code }} </div>
                             </td>
-                            <td>{{ $data->product_name }}
+                            <td> 
+                                {{ $data->product_name }} {{$stageCode == 7? "- ". $data->market:'' }}
                                 <input type="hidden" name="title" value = "{{$data->product_name ."-". $data->batch}}">
 
                             </td>
