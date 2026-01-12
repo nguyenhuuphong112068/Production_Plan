@@ -41,13 +41,15 @@ class SchedualFinisedController extends Controller
                         'finished_product_category.finished_product_code',
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
-                        'product_name.name as product_name'
+                        'product_name.name as product_name',
+                        'market.code as market'
                 )
                 ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
                 ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
                 ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                 ->where('sp.stage_code', $stage_code)
                 ->where('sp.active', 1)
                 ->where('sp.deparment_code', $production)
