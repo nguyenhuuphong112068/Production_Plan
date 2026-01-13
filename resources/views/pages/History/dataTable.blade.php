@@ -11,7 +11,7 @@
                     @csrf
                     <div class="row w-100 align-items-center">
                         <!-- Filter From/To -->
-                        <div class="col-md-4 d-flex gap-2">
+                        <div class="col-md-6 d-flex gap-2">
                             @php
                                 use Carbon\Carbon;
                                 $defaultFrom = Carbon::now()->subMonth(1)->toDateString();
@@ -28,18 +28,29 @@
                         </div>
 
                         <!-- Stage Selector -->
-                        <div class="col-md-4 d-flex justify-content-center align-items-center" style="gap: 10px; height: 40px;">
+                        {{-- <div class="col-md-4 d-flex justify-content-center align-items-center" style="gap: 10px; height: 40px;">
                             <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
                             <button type="button" id="prevStage" class="btn btn-link stage-btn" style="font-size: 25px;">&laquo;</button>
                             <span id="stageName" class="fw-bold text-center" style="font-size: 25px;">
                                 {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
                             </span>
                             <button type="button" id="nextStage" class="btn btn-link stage-btn" style="font-size: 25px;">&raquo;</button>
-                        </div>
-
+                        </div> --}}
+   
                         <!-- Optional Right Side -->
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <!-- Bạn có thể thêm nút submit hoặc button khác ở đây -->
+                        <div class="col-md-6 d-flex justify-content-end">
+                            <div class="form-group" style="width: 177px">
+                                    <select class="form-control" name="stage_code" style="text-align-last: center;"
+                                        onchange="document.getElementById('filterForm').submit();">
+                                        <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
+                                        <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
+                                        <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
+                                        <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
+                                        <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
+                                        <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
+                                        <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
+                                    </select>
+                            </div>
                         </div>
 
                     </div>

@@ -34,7 +34,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   const [isShowLine, setIsShowLine] = useState(false);
   const [selectedLine, setSelectedLine] = useState("S16");
  
-  
 
   const columnWidths100 = {
     code: '8%',                // Mã sản phẩm
@@ -374,9 +373,20 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
   };
   
   const stageNames = {
-    1: 'Cân', 2: 'NL Khác', 3: 'Pha Chế', 4: 'Trộn Hoàn Tất',
-    5: 'Định Hình', 6: 'Bao Phim', 7: 'ĐGSC-ĐGTC', 8: 'Hiệu Chuẩn - Bảo Trì', 9: 'Sự Kiện Khác',
+    1: 'Cân', 
+    2: 'NL Khác', 
+    3: 'Pha Chế', 
+    4: 'Trộn Hoàn Tất',
+    5: 'Định Hình', 
+    6: 'Bao Phim', 
+    7: 'ĐGSC-ĐGTC', 
+    8: 'Hiệu Chuẩn - Bảo Trì', 
+    9: 'Sự Kiện Khác',
   };
+  const stageOptions = Object.keys(stageNames).map(key => ({
+    label: `${key}. ${stageNames[key]}`,
+    value: Number(key),
+  }));
 
   const handleSelectionChange = (e) => {
     const currentSelection = e.value ?? null;
@@ -434,40 +444,54 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
     }
   };
 
-  const handlePrevStage = () =>  {
+  const handleChangeStage = (selected_stage) =>  {
+   
     if (isSaving) return;
     setIsSaving(true);
+    let stage_plan = waitPlan.filter(event => Number(event.stage_code) === selected_stage)
+    setTableData(stage_plan);
+    setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
 
-    setStageFilter((prev) => {
-      const nextStage = prev === 1 ? 9 : prev - 1;
+    setStageFilter(selected_stage);
 
-      let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
-      //let stage_plan2 = stage_plan.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
-      setTableData(stage_plan);
-      setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
-      return nextStage;
-    });
     setSelectedRows([]);
     setIsSaving(false);
   }
 
-  const handleNextStage = () => {
-    if (isSaving) return;
-    setIsSaving(true);
+  // const handlePrevStage = () =>  {
+  //   if (isSaving) return;
+  //   setIsSaving(true);
 
-    setStageFilter((prev) => {
-      const nextStage = prev === 9 ? 1 : prev + 1;
+  //   setStageFilter((prev) => {
+  //     const nextStage = prev === 1 ? 9 : prev - 1;
 
-      let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
-      //let stage_plan2 = stage_plan.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+  //     let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
+  //     //let stage_plan2 = stage_plan.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+  //     setTableData(stage_plan);
+  //     setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
+  //     return nextStage;
+  //   });
+  //   setSelectedRows([]);
+  //   setIsSaving(false);
+  // }
 
-      setTableData(stage_plan);
-      setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
-      return nextStage;
-    });
-    setSelectedRows([]);
-    setIsSaving(false);
-  }
+  // const handleNextStage = () => {
+  //   if (isSaving) return;
+  //   setIsSaving(true);
+
+  //   setStageFilter((prev) => {
+  //     const nextStage = prev === 9 ? 1 : prev + 1;
+
+  //     let stage_plan = waitPlan.filter(event => Number(event.stage_code) === nextStage)
+  //     //let stage_plan2 = stage_plan.map(event => ({...event,permisson_room_filter: Object.values(event.permisson_room || {}).join(", ")}));
+
+  //     setTableData(stage_plan);
+  //     setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
+  //     return nextStage;
+  //   });
+  //   setSelectedRows([]);
+  //   setIsSaving(false);
+  // }
 
   const handleRowReorder = (e) => {
     
@@ -1436,8 +1460,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
 
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
-    
-
+  
   const allColumns = [
       { field: "month", header: "tháng", sortable: true,  filter: false, filterField: "month" },
       { field: "code", header: "Mã Sản Phẩm", sortable: true, body: productCodeBody, filter: false, filterField: "code" , style: { width: '5%', maxWidth: '5%', ...longTextStyle }},
@@ -1575,14 +1598,19 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
               
               {percentShow === "100%" && !isShowLine ? (
                   <>
-                    <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
-                    <InputText
-                      value={`${stageFilter}. Công Đoạn ${stageNames[stageFilter]} - ${tableData.length} Mục Chờ Sắp Lịch`}
-                      className="text-center fw-bold rounded"
-                      style={{ fontSize: '25px', color: '#CDC171' }}
-                      readOnly
-                    />
-                    <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
+                      <Dropdown
+                        value={stageFilter}
+                        options={stageOptions}
+                        onChange={(e) => handleChangeStage(e.value)}
+                        className="stage-dropdown"
+                        panelClassName="stage-dropdown-panel"
+                        itemTemplate={(option) => (
+                          <div className="d-flex justify-content-between w-100">
+                            <span>{option.label}</span>
+                            <span className="badge bg-secondary"></span>
+                          </div>
+                        )}
+                      />
                   </>
                 ) : percentShow === "100%" && isShowLine? (
                     <Dropdown
@@ -1598,7 +1626,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     />
                 ) : (
                   <>
-                    <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
+                    {/* <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
                     <InputText
                       value={stageNames[stageFilter]}
                       className="text-center fw-bold"
@@ -1606,6 +1634,24 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                       readOnly
                     />
                     <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
+                   */}
+                      
+                      <Dropdown
+                        value={stageFilter}
+                        options={stageOptions}
+                        onChange={(e) => handleChangeStage(e.value)}
+                        className="stage-dropdown"
+                        panelClassName="stage-dropdown-panel"
+                        itemTemplate={(option) => (
+                          <div className="d-flex justify-content-between w-100">
+                            <span>{option.label}</span>
+                            <span className="badge bg-secondary"></span>
+                          </div>
+                        )}
+                      />
+
+                   
+                  
                   </>
                 )}
             </div>
