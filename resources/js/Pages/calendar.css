@@ -387,3 +387,5 @@ input:checked + .slider:before {
   opacity: 1;
   z-index: 5;
 }
+
+

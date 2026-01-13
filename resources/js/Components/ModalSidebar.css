@@ -76,3 +76,47 @@
   min-width: unset !important;
   max-width: 100% !important;
 }
+
+
+
+/* Chữ hiển thị trong ô dropdown (đã chọn) */
+.stage-dropdown .p-dropdown-label {
+  font-size: 25px;
+  font-weight: bold;
+  color: #CDC171;
+}
+
+/* Icon mũi tên */
+.stage-dropdown .p-dropdown-trigger {
+  color: #CDC171;
+}
+
+/* Panel danh sách xổ xuống */
+.stage-dropdown-panel .p-dropdown-item {
+  font-size: 25px;
+  color: #CDC171;
+}
+
+/* Item được hover */
+.stage-dropdown-panel .p-dropdown-item:hover {
+  background-color: rgba(205, 193, 113, 0.15);
+}
+
+/* Item đang được chọn */
+.stage-dropdown-panel .p-dropdown-item.p-highlight {
+  background-color: rgba(205, 193, 113, 0.25);
+  color: #CDC171;
+}
+
+.stage-dropdown .p-dropdown-label {
+  text-align: center;
+}
+
+
+.stage-dropdown {
+  height: 60px;
+}
+
+.stage-dropdown .p-dropdown-label {
+  line-height: 60px;
+}
