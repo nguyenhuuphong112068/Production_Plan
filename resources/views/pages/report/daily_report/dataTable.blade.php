@@ -112,7 +112,13 @@
                                             $dayTT = $actual['yield_day'][$date] ?? collect();
                                             $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
 
-                                            $stagePercent[$date] = $stageLT[$date] > 0 ? ($stageTT[$date] / $stageLT[$date] * 100) : 0;
+                                             if ($stageLT[$date] == 0 ){
+                                                 $stagePercent[$date] = 100;
+                                             }else{
+                                                 $stagePercent[$date] = $stageLT[$date] > 0 ? ($stageTT[$date] / $stageLT[$date] * 100) : 0;
+                                             }
+
+                                            
                                         }
                                     @endphp
 
@@ -134,6 +140,7 @@
                                                 style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
 
                                                 {{ number_format($stagePercent[$date], 2) }}%
+
                                                 @if (number_format($stagePercent[$date], 2) < 90)
                                                     <button type="button" class="btn btn-sm btn-explain"
                                                         data-stage_code="{{ $stage_code }}"
