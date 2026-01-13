@@ -97,7 +97,7 @@
                                     $roomsByStage = $theory['yield_room']->groupBy('stage_code');
                                 @endphp
 
-                                @foreach ($roomsByStage as $stage_code => $rooms)
+                            @foreach ($roomsByStage as $stage_code => $rooms)
                                     {{-- Tính tổng công đoạn trước --}}
                                     @php
                                         
@@ -155,7 +155,7 @@
                                             </td>
                                         @endforeach
 
-                                        <td class="text-center">{{ $rooms->first()->unit }}</td>
+                                        <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
                                     </tr>
 
                                 {{-- ⭐ Lặp các phòng trong stage --}}
@@ -363,7 +363,6 @@
                                                     <span class="text-muted">—</span>
                                                 @endif
 
-
                                             </td>
 
                                             {{-- TT --}}
@@ -378,13 +377,13 @@
                                             </td>
                                         @endforeach
 
-                                        <td class="text-center">{{ $unit }}</td>
+                                        <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
                                     </tr>
 
                                 @endforeach
 
 
-                                @endforeach
+                            @endforeach
                             </tbody>
                         </table>
                     </div>
