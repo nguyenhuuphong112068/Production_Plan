@@ -185,23 +185,22 @@
                                 <div>BD: </div>
                                 <div>KT: </div>
                             </td>
+                            {{-- {{ $semi_finished }} --}}
                             <td>
                                 @if (!empty($data->actual_start) || !empty($data->start))
-                                    <input type="datetime-local" class="time" id = "start" name="start"  {{ $semi_finished }}
+                                    <input type="datetime-local" class="time" id = "start" name="start"    {{ $semi_finished }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_start??$data->start)->format('Y-m-d\TH:i') }}">
-                                    <input type="datetime-local" class="time" id = "end" name="end"  {{ $semi_finished }}
+                                    <input type="datetime-local" class="time" id = "end" name="end"  
                                         value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
                                 @else
-                                    <input type="datetime-local" class="time" id = "start"  name="start" {{ $semi_finished }}
-                                       >
-                                    <input type="datetime-local" class="time" id = "end" name="end" {{ $semi_finished }}
-                                         >
+                                    <input type="datetime-local" class="time" id = "start"  name="start"  {{ $semi_finished }}>
+                                    <input type="datetime-local" class="time" id = "end" name="end">
                                 @endif
                                 
                             </td>
                             <td>
 
-                                <input type="text" class="time" name="yields" {{ $semi_finished }}
+                                <input type="text" class="time" name="yields" 
                                     data-max="{{ $data->Theoretical_yields }}"
                                     value="{{ $data->yields ?? ($data->Theoretical_yields ?? '') }}"
                                     oninput="
@@ -216,16 +215,14 @@
                                         ">
 
                             </td>
+                            
                             <td>
-                                <input type="text" class="time" name="number_of_boxes" {{ $semi_finished }}
+                                <input type="text" class="time" name="number_of_boxes" 
                                     value="{{ $data->number_of_boxes ?? 1 }}"
                                     oninput="
                                         // Chỉ cho nhập số nguyên
                                         this.value = this.value.replace(/[^0-9]/g, '');
-
-                                      
                                         let val = parseInt(this.value);
-
                                         // Nếu nhỏ hơn 1 thì xóa
                                         if (!isNaN(val) && val <= 1) {
                                             this.value = '';
@@ -241,18 +238,17 @@
                         
 
                             <td class="text-center align-middle">
-                                @if ($semi_finished == 'disabled' || $data->actual_start_clearning)
+                                {{-- @if ($semi_finished == 'disabled' || $data->actual_start_clearning)
                                     <button type="button" class="btn btn-success" disabled>
                                         ✓ Đã hoàn thành
                                     </button>  
-                                @else
-                                    <button type="button" class="btn btn-success btn-semi-finised position-relative" 
-                                        {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
-                                        data-toggle="modal" data-target="#finisedModal">
-                                        <i class="fas fa-check"></i>
-                                    </button>  
-                                @endif
-
+                                @else --}}
+                                <button type="button" class="btn btn-success btn-semi-finised position-relative" 
+                                    {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
+                                    data-toggle="modal" data-target="#finisedModal">
+                                    <i class="fas fa-check"></i>
+                                </button>  
+                                {{-- @endif --}}
                             </td>
 
                             <td>
