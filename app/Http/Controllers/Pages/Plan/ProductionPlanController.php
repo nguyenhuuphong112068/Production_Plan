@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 class ProductionPlanController extends Controller
 {
         public function index(){
-           
+               
                // 1. Lấy plan_list
                 $datas = DB::table('plan_list')
                         ->where('active', 1)
@@ -117,13 +117,13 @@ class ProductionPlanController extends Controller
                 return $item;
                 });
 
-                //dd ($datas);
+               // dd ($datas, $total_batch_qtys);
 
                 session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
         
                 return view('pages.plan.production.plan_list',[
                         'datas' => $datas,
-                        'total_batch_qtys' => $total_batch_qtys
+                        //'total_batch_qtys' => $total_batch_qtys
                 ]);
         }
 
@@ -251,9 +251,9 @@ class ProductionPlanController extends Controller
 
         public function store(Request $request){
                 
-
+               
                 try {
-
+              
                 
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
@@ -280,7 +280,7 @@ class ProductionPlanController extends Controller
                         ->withErrors($validator, 'create_Errors')
                         ->withInput();
                 }
-               
+                
                 $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
                 $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
                 $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
@@ -783,18 +783,11 @@ class ProductionPlanController extends Controller
         }
 
         public function send(Request $request){
-                
+                       
                 $exists = DB::table('stage_plan')->where('plan_list_id', $request->plan_list_id)->exists();
                 if ($exists){
-
-                        $datas = DB::table('plan_list')
-                        ->where ('active',1)
-                        ->where ('type',1)
-                        ->where ('deparment_code',session('user')['production_code'])
-                        ->orderBy('created_at','desc')->get();
-
-                        session()->put(['title'=> 'Kế Hoạch Sản Xuất Tháng']);
-                        return view('pages.plan.production.plan_list',['datas' => $datas ]);
+                        return redirect()->route('pages.plan.production.list');
+                
                 }
 
                 // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
@@ -880,7 +873,7 @@ class ProductionPlanController extends Controller
                 ];
                 
                 $dataToInsert = [];
-
+                
                 foreach ($plans_main as $plan) {
                         $stageList = [];
 
@@ -983,22 +976,13 @@ class ProductionPlanController extends Controller
 
                 DB::table('stage_plan')->insert($dataToInsert);
 
-
                 DB::table('plan_list')->where ('id', $request->plan_list_id)->update([
                         'send' => 1,
                         'send_by' => session('user')['fullName'],
                         'send_date' => now(),
-                 ]);
+                ]);
 
-
-                $datas = DB::table('plan_list')
-                ->where ('active',1)
-                ->where ('type',1)
-                ->where ('deparment_code',session('user')['production_code'])
-                ->orderBy('created_at','desc')->get();
-
-                 session()->put(['title'=> 'Kế Hoạch Sản Xuất Tháng']);
-                 return view('pages.plan.production.plan_list',['datas' => $datas ]);
+                return redirect()->route('pages.plan.production.list');
         }
 
         public function updateInput(Request $request){
