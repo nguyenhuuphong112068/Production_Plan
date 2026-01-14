@@ -121,24 +121,15 @@
                 </thead>
 
                 <tbody style="font-size: 20px;">
-                   
-
                     @foreach ($theory['yield_room'] as $index => $roomLT)
                         @php
                             $resourceId = $roomLT->resourceId;
                             $unit = $roomLT->unit;
-
                             $roomTT = $actual['yield_room']->firstWhere('resourceId', $resourceId);
-                        
-                            $allDates = $theory['yield_day']->keys()   // lấy tất cả key từ collection
-                            ->merge($actual['yield_day']->keys())  // merge với actual
-                            ->unique()
-                            ->sort();
                         @endphp
 
                         {{-- ------------------- LÝ THUYẾT ------------------- --}}
                         <tr >
-                           
                             <td class="text-center align-middle" rowspan="2">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
                             <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
 
@@ -194,13 +185,6 @@
                         @if ($nextStage != $roomLT->stage_code)
                             @php
                                 $stage_code = $roomLT->stage_code;
-
-                                // Lấy allDates giống hàng chi tiết
-                                $allDates = $theory['yield_day']->keys()
-                                    ->merge($actual['yield_day']->keys())
-                                    ->unique()
-                                    ->sort();
-
                                 // Tính tổng LT/TT theo công đoạn
                                 $stageLT = [];
                                 $stageTT = [];

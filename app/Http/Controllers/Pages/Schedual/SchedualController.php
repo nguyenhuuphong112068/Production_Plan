@@ -31,7 +31,7 @@ class SchedualController extends Controller
         ];
 
         public function test(){
-                $this->scheduleWeightStage ();
+                $this->getPlanWaiting ("PXV1");
                 //$this->scheduleSensitiveProduct(3, 0, 0, Carbon::parse('2026-01-05'));
                 //$this->createAutoCampain (null);
                 //$this->createAutoCampain();
@@ -526,7 +526,7 @@ class SchedualController extends Controller
 
         // Hàm lấy quota
         protected function getQuota($production){
-                return DB::table('quota')
+                $result = DB::table('quota')
                 ->leftJoin('room', 'quota.room_id', '=', 'room.id')
                 ->where('quota.active', 1)
                 ->where('quota.deparment_code', $production)
@@ -537,6 +537,9 @@ class SchedualController extends Controller
                         $item->PM = $toTime($toSeconds($item->p_time) + $toSeconds($item->m_time));
                         return $item;
                 });
+
+                
+                return $result;
         }
 
         public function getPlanWaiting($production, $order_by_type = false){
@@ -555,17 +558,17 @@ class SchedualController extends Controller
                         ->leftJoin('plan_list', 'sp.plan_list_id', '=', 'plan_list.id')
                         ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
                         ->leftJoin('finished_product_category', function ($join) {
-                        $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                                ->where('sp.stage_code', '<=', 7);
-                        })
+                                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                                        ->where('sp.stage_code', '<=', 7);
+                                })
                         ->leftJoin('product_name', function ($join) {
-                        $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
-                                ->where('sp.stage_code', '<=', 7);
-                        })
+                                $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
+                                        ->where('sp.stage_code', '<=', 7);
+                                })
                         ->leftJoin('maintenance_category', function ($join) {
-                        $join->on('sp.product_caterogy_id', '=', 'maintenance_category.id')
-                                ->where('sp.stage_code', '=', 8);
-                        })
+                                $join->on('sp.product_caterogy_id', '=', 'maintenance_category.id')
+                                        ->where('sp.stage_code', '=', 8);
+                                })
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                         ->select(
                         'sp.id',
@@ -617,35 +620,46 @@ class SchedualController extends Controller
                 if ($plan_waiting->isEmpty()) {
                         return $plan_waiting;
                 }
-
+  
                 // 3️⃣ Lấy dữ liệu liên quan chỉ 1 lần
                 $maintenance_category = DB::table('maintenance_category')
                         ->where('active', 1)
                         ->where('deparment_code', $production)
                         ->get(['id', 'code', 'room_id']);
 
-                // preload quota (tối đa chỉ 1 query)
-                $quota = $this->getQuota($production);
+                $quota = DB::table('quota')
+                ->leftJoin('room', 'quota.room_id', '=', 'room.id')
+                ->where('quota.active', 1)
+                ->where('quota.deparment_code', $production)
+                ->select (
+                        'quota.*',
+                        'room.name',
+                        'room.code'
+                )
+                ->get();
 
+  
                 // Tạo map tra cứu nhanh
                 $quotaByIntermediate = $quota->groupBy(function ($q) {
-                        return $q->intermediate_code . '-' . $q->stage_code;
+                        return $q->intermediate_code . '_' . $q->stage_code;
                 });
 
+        
                 $quotaByFinished = $quota->groupBy(function ($q) {
-                        return  $q->intermediate_code . '-' . $q->finished_product_code . '-' . $q->stage_code;
+                        return  $q->intermediate_code . '_' . $q->finished_product_code . '_' . $q->stage_code;
                 });
+
 
                 $quotaByRoom = $quota->groupBy('room_id');
                 $roomIdByInstrument = $maintenance_category->pluck('room_id', 'code');
 
                 // 4️⃣ Map dữ liệu permission_room (cực nhanh)
                 $plan_waiting->transform(function ($plan) use ($quotaByIntermediate, $quotaByFinished, $quotaByRoom, $roomIdByInstrument) {
-                        if ($plan->stage_code <= 6) {
-                                $key = $plan->intermediate_code . '-' . $plan->stage_code;
+                     if ($plan->stage_code <= 6) {
+                                $key = $plan->intermediate_code . '_' . $plan->stage_code;
                                 $matched = $quotaByIntermediate[$key] ?? collect();
                         } elseif ($plan->stage_code == 7) {
-                                $key = $plan->intermediate_code . '-' .  $plan->finished_product_code . '-' . $plan->stage_code;
+                                $key = $plan->intermediate_code . '_' .  $plan->finished_product_code . '_' . $plan->stage_code;
                                 $matched = $quotaByFinished[$key] ?? collect();
                         } elseif ($plan->stage_code == 8) {
                                 $room_id = $roomIdByInstrument[$plan->instrument_code] ?? null;
