@@ -150,9 +150,9 @@
                                     <input style="color: red"  type="text" class="time actual_batch" id = "actual_batch" name="actual_batch"  value = "{{ $data->batch }}">
                                 @else
                                     @if ( $data->actual_batch)
-                                        <div style="color: blue"> {{ $data->batch }} </div>
+                                        <div style="color: blue" class = "text-center"> {{ $data->batch }} </div>
                                     @else
-                                        <div style="color: rgb(0, 0, 0)"> {{ $data->batch }} </div>
+                                        <div style="color: rgb(0, 0, 0)" class = "text-center"> {{ $data->batch }} </div>
                                     @endif
                                 @endif
 
@@ -242,9 +242,9 @@
                                     <button type="button" class="btn btn-success" disabled>
                                         ✓ Đã hoàn thành
                                     </button>  
-                                @else --}}
+                                @else  {{ $finisedRow ? 'disabled' : '' }} --}} 
                                 <button type="button" class="btn btn-success btn-semi-finised position-relative" 
-                                    {{ $finisedRow ? 'disabled' : '' }} data-id="{{ $data->id }}"
+                                    data-id="{{ $data->id }}"
                                     data-toggle="modal" data-target="#finisedModal">
                                     <i class="fas fa-check"></i>
                                 </button>  
