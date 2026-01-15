@@ -66,7 +66,7 @@
                                             </td>
                                             <td>{{ $stage_name[$data->next_stage] ?? '' }}</td>
                                             <td>
-                                                {{ \Carbon\Carbon::parse($data->next_start)->format('d/m/Y H:i') }}
+                                                {{ $data->next_start? \Carbon\Carbon::parse($data->next_start)->format('d/m/Y H:i') :"Chưa có lịch sản xuất tiếp theo" }}
                                             </td>
                                              <td>
                                                 {{$data->finished_by ." - ". \Carbon\Carbon::parse($data->finished_date)->format('d/m/Y H:i') }}

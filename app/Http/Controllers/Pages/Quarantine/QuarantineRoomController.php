@@ -122,12 +122,19 @@ class QuarantineRoomController extends Controller
             ->leftJoin('product_name','fc.product_name_id','product_name.id')
             ->leftJoin('quarantine_room','t.quarantine_room_code','quarantine_room.code')
             ->leftJoin('room','t2.resourceId','room.id')
-            ->whereNotNull('t.start')
+            ->whereNotNull('t.actual_start')
             ->whereNotNull('t.yields')
             ->whereNotNull('t.quarantine_room_code')
-            ->where('t2.start','>',now())
+            ->where(function ($q) {
+                $q->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
+                ->orWhere(function ($q2) {
+                    $q2->whereNull('t2.start')
+                        ->whereNull('t2.actual_start');
+                });
+            })
             ->where('t.active', 1)
             ->where('t.finished', 1)
+            ->where('t2.finished', 0)
             ->where('quarantine_room.deparment_code', session('user')['production_code'])
             ->select(
                 'fc.finished_product_code',
@@ -173,9 +180,17 @@ class QuarantineRoomController extends Controller
             ->leftJoin('room','t2.resourceId','room.id')
             ->whereNotNull('t.start')
             ->whereNotNull('t.yields')
-            ->where('t2.start','>',now())
+            //->where('t2.start','>',now())
+            ->where(function ($q) {
+                $q->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
+                ->orWhere(function ($q2) {
+                    $q2->whereNull('t2.start')
+                        ->whereNull('t2.actual_start');
+                });
+            })
             ->where('t.active', 1)
             ->where('t.finished', 1)
+            ->where('t2.finished', 0)
             ->select(
                 DB::raw("SUM(t.yields) as sum_yields"),
                 DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
@@ -193,7 +208,7 @@ class QuarantineRoomController extends Controller
 
         //dd ($datas);
         
-
+        //dd ($datas);
         session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
 
         return view('pages.quarantine.actual.list', [
@@ -219,9 +234,16 @@ class QuarantineRoomController extends Controller
             ->whereNotNull('t.yields')
             ->where('t2.resourceId',$request->room_id)
             //->where('t2.start','>',now())
-            ->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
+            ->where(function ($q) {
+                $q->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
+                ->orWhere(function ($q2) {
+                    $q2->whereNull('t2.start')
+                        ->whereNull('t2.actual_start');
+                });
+            })
             ->where('t.active', 1)
             ->where('t.finished', 1)
+            ->where('t2.finished', 0)
             ->select(
                 'fc.finished_product_code',
                 'fc.intermediate_code',
@@ -242,6 +264,8 @@ class QuarantineRoomController extends Controller
             ->orderBy('t.plan_master_id')
             ->orderBy('t.stage_code')
             ->get();
+
+
 
             return response()->json($detial);
         
