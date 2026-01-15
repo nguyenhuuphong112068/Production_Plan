@@ -115,7 +115,10 @@ class QuarantineRoomController extends Controller
         // 1) Lấy toàn bộ dữ liệu gốc
         $datasRaw = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
-                $join->on('t2.code','=','t.nextcessor_code') ;
+                $join->on('t2.code','=','t.nextcessor_code')
+                ->where('t.active', 1)
+                ->where('t.finished', 1)
+                ->where('t2.finished', 0) ;
             })
             ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
             ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
@@ -132,9 +135,7 @@ class QuarantineRoomController extends Controller
                         ->whereNull('t2.actual_start');
                 });
             })
-            ->where('t.active', 1)
-            ->where('t.finished', 1)
-            ->where('t2.finished', 0)
+            
             ->where('quarantine_room.deparment_code', session('user')['production_code'])
             ->select(
                 'fc.finished_product_code',
@@ -175,7 +176,10 @@ class QuarantineRoomController extends Controller
 
        $sum_by_next_room = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
-                $join->on('t2.code','=','t.nextcessor_code');
+                $join->on('t2.code','=','t.nextcessor_code')
+                ->where('t.active', 1)
+                ->where('t.finished', 1)
+                ->where('t2.finished', 0) ;
             })
             ->leftJoin('room','t2.resourceId','room.id')
             ->whereNotNull('t.start')
@@ -187,9 +191,6 @@ class QuarantineRoomController extends Controller
                         ->whereNull('t2.actual_start');
                 });
             })
-            ->where('t.active', 1)
-            ->where('t.finished', 1)
-            ->where('t2.finished', 0)
             ->select(
                 DB::raw("SUM(t.yields) as sum_yields"),
                 DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
@@ -221,7 +222,9 @@ class QuarantineRoomController extends Controller
         $detial = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
                 $join->on('t2.code','=','t.nextcessor_code')
-                    ;
+                ->where('t.active', 1)
+                ->where('t.finished', 1)
+                ->where('t2.finished', 0)    ;
             })
             ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
             ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
@@ -239,9 +242,6 @@ class QuarantineRoomController extends Controller
                         ->whereNull('t2.actual_start');
                 });
             })
-            ->where('t.active', 1)
-            ->where('t.finished', 1)
-            ->where('t2.finished', 0)
             ->select(
                 'fc.finished_product_code',
                 'fc.intermediate_code',
