@@ -134,7 +134,7 @@ class QuarantineRoomController extends Controller
                 'fc.intermediate_code',
                 't.plan_master_id',
                 'product_name.name as product_name',
-                'plan_master.batch',
+                DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
                 't.quarantine_room_code',
                 'quarantine_room.name',
                 't.yields',
@@ -218,14 +218,15 @@ class QuarantineRoomController extends Controller
             ->whereNotNull('t.start')
             ->whereNotNull('t.yields')
             ->where('t2.resourceId',$request->room_id)
-            ->where('t2.start','>',now())
+            //->where('t2.start','>',now())
+            ->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
             ->where('t.active', 1)
             ->where('t.finished', 1)
             ->select(
                 'fc.finished_product_code',
                 'fc.intermediate_code',
                 'product_name.name as product_name',
-                'plan_master.batch',
+                DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
                 't.quarantine_room_code',
                 'quarantine_room.name',
                 't.yields',
