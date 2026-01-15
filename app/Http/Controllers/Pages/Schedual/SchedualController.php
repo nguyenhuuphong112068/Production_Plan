@@ -29,9 +29,10 @@ class SchedualController extends Controller
                 6 => "BP",
                 7 => "ĐG",
         ];
+        protected $processed_stage_code_Id = [];
 
         public function test(){
-                $this->getPlanWaiting ("PXV1");
+                $this->scheduleWeightStage (Carbon::parse(now()));
                 //$this->scheduleSensitiveProduct(3, 0, 0, Carbon::parse('2026-01-05'));
                 //$this->createAutoCampain (null);
                 //$this->createAutoCampain();
@@ -167,11 +168,11 @@ class SchedualController extends Controller
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                         ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
+                        ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
                         ->where('sp.active', 1)
                         ->whereNotNull('sp.resourceId')
                         ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
                         ->where('sp.deparment_code', $production)
-                        //->whereRaw('(sp.start <= ? OR sp.end >= ? OR sp.start_clearning <= ? OR sp.end_clearning >= ?)',[$endDate, $startDate, $endDate, $startDate])
                         ->where(function ($q) {
                         $q->whereNotNull('sp.start')
                         ->orWhereNotNull('sp.actual_start');
@@ -194,6 +195,13 @@ class SchedualController extends Controller
                                         COALESCE(plan_master.actual_batch, plan_master.batch)
                                         )
                                 END AS title
+                        "),
+                        DB::raw("
+                                CASE
+                                        WHEN sp.stage_code = 2 AND dosage.name LIKE '%phim%' THEN 'Tá dược BP'
+                                        WHEN sp.stage_code = 2 AND dosage.name LIKE '%nang%' THEN 'Nang Rỗng'
+                                        ELSE NULL
+                                END AS w2
                         "),
                                 
                         'sp.start',
@@ -302,7 +310,7 @@ class SchedualController extends Controller
                                 $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-main",
-                                'title' => trim($plan->title ?? '') ,
+                                'title' => $plan->title ."-". $plan->w2,
                                 'start' => $plan->actual_start ?? $plan->start,
                                 'end' => $plan->actual_end ?? $plan->end,
                                 'resourceId' => $plan->resourceId,
@@ -3472,7 +3480,7 @@ class SchedualController extends Controller
         }
 
         public function scheduleWeightStage( ?Carbon $start_date = null) {
-
+                
                 $start_date = $start_date?? now();
 
                 $tasks = DB::table("stage_plan as sp")
@@ -3517,7 +3525,7 @@ class SchedualController extends Controller
                                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                                 ->leftJoin('stage_plan as next', 'next.code', '=', 'sp.nextcessor_code')
-                                ->whereIn('sp.stage_code', [1])
+                                ->whereIn('sp.stage_code', [1,2])
                                 ->where('sp.finished',0)
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
@@ -3529,18 +3537,20 @@ class SchedualController extends Controller
 
                 ->get();
               
-                $processedCampaigns = []; // campaign đã xử lý
-
+                
+                $this->processed_stage_code_Id = [];
                 foreach ($tasks as $task) {
                         if ($task->campaign_code === null) {
-                                $this->scheduleweight ($task, 0 , false , $start_date, );
+                                $this->scheduleweight ($task, 0 , false , $start_date );
                         }else {
-                                if (in_array($task->campaign_code, $processedCampaigns)) {continue;}
+                                if (in_array($task->id, $this->processed_stage_code_Id)) {continue;}
                                 // Gom nhóm campaign
-                                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->sortBy('batch');;
+                                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->whereNotIn('id', $this->processed_stage_code_Id)->where('stage_code', $task->stage_code)->sortBy('batch');;
+                            
                                 $this->scheduleweight( $campaignTasks,  0 , true , $start_date);
+
                                 // Đánh dấu campaign đã xử lý
-                                $processedCampaigns[] = $task->campaign_code;
+                                //$processed_stage_code_Id[] = $task->campaign_code;
                         }
                
                 }
@@ -4492,7 +4502,7 @@ class SchedualController extends Controller
                                 $roundedMinute = 0;
                         }
                         $now->minute($roundedMinute)->second(0)->microsecond(0);
-                        $candidates[] =  Carbon::parse($task->next_start)->subDays(3)->setTime(6,0,0);
+                        $candidates[] =  Carbon::parse($task->next_start)->subDays(2)->setTime(6,0,0);
                         // Gom tất cả candidate time vào 1 mảng
                         $candidates [] = $now;
                         $candidates[] = $start_date;
@@ -4515,7 +4525,7 @@ class SchedualController extends Controller
 
                                 $room_id =  DB::table('room')->where('code', $room_code)->value('id');
                                 
-                                $rooms = DB::table('quota')->select('room_id',
+                                $rooms = DB::table('quota')->select('room_id', 'campaign_index',
                                         DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
                                         DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
                                         DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
@@ -4525,102 +4535,18 @@ class SchedualController extends Controller
                                         ->where('room_id', $room_id)
                                         ->get();
                         }else{
-                                        if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
-                                        $code_val_first = $parts[0] . '_1';
 
-                                        $room_id_first = DB::table("stage_plan as sp")
-                                                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-                                                ->where('code_val', $code_val_first)
-                                                ->where('stage_code', $task->stage_code)
-                                                ->first();
-
-                                        if ($room_id_first) {
-                                                $rooms = DB::table('quota')
-                                                ->select(
-                                                        'room_id',
-                                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                                                )
-                                                ->where('intermediate_code', $task->intermediate_code)
-                                                ->where('stage_code', $task->stage_code)
-                                                ->where('active', 1)
-                                                ->where('room_id', $room_id_first->resourceId)
-                                                ->get();
-
-                                        } else {
-
-                                                $rooms = DB::table('quota')->select('room_id',
-                                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                                                        )
-                                                ->where('intermediate_code', $task->intermediate_code)
-                                                ->where('stage_code', $task->stage_code)
-                                                ->where('active', 1)
-                                                ->get();
-
-                                        }
-                                        }
-                                        elseif ($task->code_val !== null && $task->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
-                                                $code_val_first = $parts[0];
-
-                                                $room_id_first = DB::table("stage_plan as sp")
-                                                ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-                                                ->where(DB::raw("SUBSTRING_INDEX(pm.code_val, '_', 1)"), '=', $parts[0])
-                                                ->where('sp.stage_code', $task->stage_code)
-                                                ->whereNotNull('start')
-                                                ->get();
-
-                                                if ($room_id_first) {
-
-                                                        $rooms = DB::table('quota')
-                                                        ->select(
-                                                                'room_id',
-                                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                                                                )
-                                                                ->where('intermediate_code', $task->intermediate_code)
-                                                                ->where('stage_code', $task->stage_code)
-                                                                ->where('active', 1)
-                                                        ->get();
-
-
-                                                        if ($rooms->count () > $room_id_first->count ()) {
-                                                                foreach ($room_id_first as $first) {
-                                                                        $rooms->where('room_id', '!=', $first->resourceId);
-                                                                }
-                                                        }
-
-                                                } else {
-                                                        $rooms = DB::table('quota')->select('room_id',
-                                                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                                                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                                                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                                                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                                                                )
-                                                        ->where('intermediate_code', $task->intermediate_code)
-                                                        ->where('stage_code', $task->stage_code)
-                                                        ->where('active', 1)
-                                                        ->get();
-                                                }
-
-                                        }else {
-                                                $rooms = DB::table('quota')->select('room_id',
-                                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                                                        )
-                                                ->where('intermediate_code', $task->intermediate_code)
-                                                ->where('stage_code', $task->stage_code)
-                                                ->where('active', 1)
-                                                ->get();
-                                        }
+                                $rooms = DB::table('quota')->select('room_id', 'campaign_index',
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                        )
+                                ->where('intermediate_code', $task->intermediate_code)
+                                ->where('stage_code', $task->stage_code)
+                                ->where('active', 1)
+                                ->get();
+                                        
                         }
                         // phòng phù hợp (quota)
                         
@@ -4630,7 +4556,7 @@ class SchedualController extends Controller
 
                         //Tim phòng tối ưu
                         foreach ($rooms as $room) {
-                                $intervalTimeMinutes = (float) $room->p_time_minutes + (float) $room->m_time_minutes;
+                                $intervalTimeMinutes = (float) $room->p_time_minutes + ((float) $room->m_time_minutes) * (float)$room->campaign_index;
                                 $C2_time_minutes =  (float) $room->C2_time_minutes;
 
 
@@ -4658,13 +4584,12 @@ class SchedualController extends Controller
                         
 
                         $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom);
-
-        
                         $bestEnd = $this->addWorkingMinutes ( $bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
                         $start_clearning = $bestEnd->copy();
                         $end_clearning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $C2_time_minutes, $bestRoom, $this->work_sunday);                       
+                        
                         if ($mode){
-                                foreach ($tasks as $task){
+                                foreach ($tasks as $index => $task){
                                         $this->saveSchedule(
                                                 null,
                                                 $task->id,
@@ -4675,7 +4600,11 @@ class SchedualController extends Controller
                                                 $end_clearning,
                                                 2,
                                                 1,           
-                                        );
+                                        ); 
+                                        $this->processed_stage_code_Id [] =  $task->id ;
+                                        if ($index > 3){
+                                                return;
+                                        }
                                 }
                         }else {
                                         $this->saveSchedule(
