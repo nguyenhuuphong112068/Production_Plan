@@ -1341,7 +1341,7 @@ const ScheduleTest = () => {
                   </StepperPanel>)}
 
 
-                {/* {(emptyPermission == null || emptyPermission.stage_code >= 8) && (
+                 {(emptyPermission == null || emptyPermission.stage_code >= 8) && (
                   <StepperPanel header="CNL">
                     <div className="flex flex-column h-12rem">
                       <div
@@ -1350,7 +1350,7 @@ const ScheduleTest = () => {
                         Cân NL ➡ Cân NL Khác
                       </div>
                     </div>
-                  </StepperPanel>)} */}
+                  </StepperPanel>)} 
 
               </Stepper>
             );
@@ -2009,7 +2009,6 @@ const ScheduleTest = () => {
       });
   }
 
-
   const EventContent = (arg) => {
     const event = arg.event;
     const props = event._def.extendedProps;
@@ -2112,8 +2111,6 @@ const ScheduleTest = () => {
     html += `</div>`;
     return { html };
   };
-
-
 
   const buildOffDayEvents = (offDays) => {
     return offDays.map(dateStr => ({

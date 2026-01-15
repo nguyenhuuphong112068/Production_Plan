@@ -798,6 +798,7 @@ class ProductionPlanController extends Controller
                 ->where('plan_master.only_parkaging', 0)
                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                 ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
+                ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
                 ->select(
                         'plan_master.id',
                         'plan_master.plan_list_id',
@@ -818,12 +819,21 @@ class ProductionPlanController extends Controller
                         'finished_product_category.primary_parkaging',
                         'finished_product_category.intermediate_code',
                         'finished_product_category.finished_product_code',
-                        'finished_product_category.batch_qty'
+                        'finished_product_category.batch_qty',
+                        DB::raw("
+                                CASE
+                                        WHEN dosage.name LIKE '%phim%' THEN 1
+                                        WHEN dosage.name LIKE '%nang%' THEN 0
+                                        ELSE NULL
+                                END AS w2
+                                ")
                 )
                 ->orderBy('expected_date', 'asc')
                 ->orderBy('level', 'asc')
                 ->orderByRaw('batch + 0 ASC')
                 ->get();
+
+              
                 
                 // Phần 2: Các plan chỉ đóng gói (only_parkaging = 1)
                 $plans_packaging = DB::table('plan_master')
@@ -863,13 +873,13 @@ class ProductionPlanController extends Controller
 
                 $stages = ['weight_1','weight_2', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging'];
                 $stage_code = [
-                        'weight_1' => 1,
-                        'weight_2' => 2,
-                        'prepering' => 3,
-                        'blending'=> 4,
-                        'forming'=> 5,
-                        'coating'=> 6,
-                        'primary_parkaging'=> 7,
+                        'weight_1'              => 1,
+                        'weight_2'              => 2,
+                        'prepering'             => 3,
+                        'blending'              => 4,
+                        'forming'               => 5,
+                        'coating'               => 6,
+                        'primary_parkaging'     => 7,
                 ];
                 
                 $dataToInsert = [];
@@ -880,11 +890,12 @@ class ProductionPlanController extends Controller
                         // Vòng 1: gom các stage có tồn tại cho plan này
                         foreach ($stages as $index => $stage) {
                                 if ($plan->$stage) {
-                                $stageList[] = [
-                                        'code'       => $plan->id . "_" . $stage_code[$stage],
-                                        'stage_code' => $stage_code[$stage],
-                                        'order_by'   => $index,
-                                ];
+                                        $stageList[] = [
+                                                'w2'            => $plan->w2,
+                                                'code'          => $plan->id . "_" . $stage_code[$stage],
+                                                'stage_code'    => $stage_code[$stage],
+                                                'order_by'      => $index,
+                                        ];
                                 }
                         }
                         
@@ -897,7 +908,7 @@ class ProductionPlanController extends Controller
                                 // ✅ set prevCode
                                 if ($i > 0) {
                                         $prevItem = $stageList[$i - 1];
-                                        // nếu stage hiện tại >=3 và prev là 2 thì bỏ qua, tìm lại stage_code = 1
+                                    
                                         if ($stageItem['stage_code'] >= 3 && $prevItem['stage_code'] == 2) {
                                                 $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
                                         } else {
@@ -905,17 +916,27 @@ class ProductionPlanController extends Controller
                                         }
                                 }
 
+                                
+
                                 // ✅ set nextCode
                                 if ($i < count($stageList) - 1) {
                                         $nextItem = $stageList[$i + 1];
                                         // nếu stage hiện tại = 1 và next là 2 thì bỏ qua, tìm stage_code >= 3
-                                        if ($stageItem['stage_code'] == 1 && $nextItem['stage_code'] == 2) {
-                                        $nextCode = collect($stageList)
-                                                ->first(fn($s) => $s['stage_code'] >= 3)['code'] ?? null;
-                                        } else {
-                                        $nextCode = $nextItem['code'];
+                                        if ($stageItem['stage_code'] == 1 && ($nextItem['stage_code'] == 2)) {
+                                                $nextCode = collect($stageList)->first(fn($s) => $s['stage_code'] >= 3)['code'] ?? null;
+                                        }elseif ($stageItem['stage_code'] == 2) {
+                                                if ($stageItem['w2'] == 1){
+                                                        $nextCode = explode ("_",$nextItem['code'])[0] ."_". "6";
+                                                }else {
+                                                        $nextCode = explode ("_",$nextItem['code'])[0] ."_". "5";
+                                                }
+                                               // dd ($i, $stageItem, $prevCode, $nextCode);
+                                        }       
+                                        else {
+                                                $nextCode = $nextItem['code'];
                                         }
                                 }
+                                
 
 
                                 $tank = DB::table('quota')
@@ -931,7 +952,7 @@ class ProductionPlanController extends Controller
                                         ->first();
                              
                                 
-                                        $dataToInsert[] = [
+                                $dataToInsert[] = [
                                         'plan_list_id'        => $plan->plan_list_id,
                                         'plan_master_id'      => $plan->id,
                                         'product_caterogy_id' => $plan->product_caterogy_id,
@@ -945,8 +966,8 @@ class ProductionPlanController extends Controller
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
                                         'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan->batch_size:$plan->batch_qty,
-                                        
-                                        ];
+                                        'Theoretical_yields_qty'	=> $plan->batch_qty
+                                ];
 
                                 if ($plan->percent_parkaging  < 1 && $stageItem['stage_code'] == 7){
                                         $plan_packagings = $plans_packaging->where ('main_parkaging_id',$plan->id);
@@ -965,7 +986,7 @@ class ProductionPlanController extends Controller
                                                         'deparment_code'      => session('user')['production_code'],
                                                         'created_date'        => now(),
                                                         'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan_packaging->batch_size:$plan_packaging->batch_qty,
-                                                       
+                                                        'Theoretical_yields_qty'	=> $plan->batch_qty
                                                 ];
                                         }
 
