@@ -111,14 +111,11 @@ class QuarantineRoomController extends Controller
     }
 
     public function index_actual(Request $request) {
-        Log::info (
-               ['start' => now()] 
-        );
+
         // 1) Lấy toàn bộ dữ liệu gốc
         $datasRaw = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
-                $join->on('t2.code','=','t.nextcessor_code')
-                    ->where('t2.finished', 0);
+                $join->on('t2.code','=','t.nextcessor_code') ;
             })
             ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
             ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
@@ -137,7 +134,7 @@ class QuarantineRoomController extends Controller
             })
             ->where('t.active', 1)
             ->where('t.finished', 1)
-            //->where('t2.finished', 0)
+            ->where('t2.finished', 0)
             ->where('quarantine_room.deparment_code', session('user')['production_code'])
             ->select(
                 'fc.finished_product_code',
@@ -178,13 +175,11 @@ class QuarantineRoomController extends Controller
 
        $sum_by_next_room = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
-                $join->on('t2.code','=','t.nextcessor_code')
-                    ->where('t2.finished', 0);
+                $join->on('t2.code','=','t.nextcessor_code');
             })
             ->leftJoin('room','t2.resourceId','room.id')
             ->whereNotNull('t.start')
             ->whereNotNull('t.yields')
-            //->where('t2.start','>',now())
             ->where(function ($q) {
                 $q->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
                 ->orWhere(function ($q2) {
@@ -194,7 +189,7 @@ class QuarantineRoomController extends Controller
             })
             ->where('t.active', 1)
             ->where('t.finished', 1)
-            //->where('t2.finished', 0)
+            ->where('t2.finished', 0)
             ->select(
                 DB::raw("SUM(t.yields) as sum_yields"),
                 DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
@@ -210,13 +205,9 @@ class QuarantineRoomController extends Controller
             ->orderBy('group_code')   // sắp xếp theo stage
             ->get();
 
-        //dd ($datas);
-        
-        //dd ($datas);
+
         session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
-        Log::info (
-               ['end' => now()] 
-        );
+
         return view('pages.quarantine.actual.list', [
             'datas' => $datas,
             'sum_by_next_room' => $sum_by_next_room ,
@@ -230,7 +221,7 @@ class QuarantineRoomController extends Controller
         $detial = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
                 $join->on('t2.code','=','t.nextcessor_code')
-                    ->where('t2.finished', 0);
+                    ;
             })
             ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
             ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
@@ -250,7 +241,7 @@ class QuarantineRoomController extends Controller
             })
             ->where('t.active', 1)
             ->where('t.finished', 1)
-            //->where('t2.finished', 0)
+            ->where('t2.finished', 0)
             ->select(
                 'fc.finished_product_code',
                 'fc.intermediate_code',
