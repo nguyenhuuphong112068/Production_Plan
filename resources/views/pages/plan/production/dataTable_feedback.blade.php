@@ -282,7 +282,7 @@
                                 @if ($department == "QC" && $plan_feedback)
                                     <input type= "date" class="updateInput" name="actual_CoA_date"  value="{{$data->actual_CoA_date}}" data-id = {{ $data->id }} ></input>
                                 @else
-                                    <b> {{ $data->actual_CoA_date? \Carbon\Carbon::parse($data->actual_CoA_date)->format('d/m/Y'): "Chưa có ngày ra phiếu"}} </b>
+                                    <b class="{{$data->actual_CoA_date?'text-green':''}}"> {{ $data->actual_CoA_date? \Carbon\Carbon::parse($data->actual_CoA_date)->format('d/m/Y'): "Chưa có ngày ra phiếu"}} </b>
                                 @endif
                                 <br>
                                 <b> {{"(2):"}}</b>
@@ -309,7 +309,7 @@
                                 @if (!$data->actual_KCS && $department == "QA" && $Record_KCS_Date)
                                     <input type= "date" class="updateInput" name="actual_KCS"  value="{{$data->actual_KCS}}" data-id = {{ $data->id }} ></input>
                                 @else
-                                    <b> {{$data->actual_KCS? \Carbon\Carbon::parse($data->actual_KCS)->format('d/m/Y') : "Chưa có ngày KCS"}} </b>
+                                    <b class="{{$data->actual_KCS?'text-green':''}}"> {{$data->actual_KCS? \Carbon\Carbon::parse($data->actual_KCS)->format('d/m/Y') : "Chưa có ngày KCS"}} </b>
                                 @endif
 
                                 <div> {{"Updated_by: " . $data->kcs_record_by }} </div>
