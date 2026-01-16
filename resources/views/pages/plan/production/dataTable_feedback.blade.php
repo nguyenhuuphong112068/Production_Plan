@@ -139,7 +139,7 @@
                                     <div>{{"Updated_date: "}} {{$data->order_date ? \Carbon\Carbon::parse($data->pro_feedback_date)->format('d/m/Y') : '' }}</div>   
                                 @endif
 
-
+                                {{-- 
                                 <b> {{"(2):"}}</b>
                                 @if ($department == "PL" && $plan_feedback && !$data->order_number)
                                     <div class="text-center">
@@ -158,7 +158,7 @@
                                     {{ $data->order_number }}
                                     <div> {{"Updated_by: " . $data->order_by }} </div>
                                     <div>{{"Updated_date: "}} {{$data->order_date ? \Carbon\Carbon::parse($data->pro_feedback_date)->format('d/m/Y') : '' }}</div>  
-                                @endif
+                                @endif --}}
 
  
 
@@ -309,7 +309,7 @@
                                 @if (!$data->actual_KCS && $department == "QA" && $Record_KCS_Date)
                                     <input type= "date" class="updateInput" name="actual_KCS"  value="{{$data->actual_KCS}}" data-id = {{ $data->id }} ></input>
                                 @else
-                                    <b> {{$data->actual_KCS}} </b>
+                                    <b class="text-green"> {{\Carbon\Carbon::parse($data->actual_KCS)->format('d/m/Y')}} </b>
                                 @endif
 
                                 <div> {{"Updated_by: " . $data->kcs_record_by }} </div>
@@ -328,7 +328,7 @@
                         <th >
                             <div>{{"KẾ HOẠCH"}}</div>
                             <div>{{"(1) Ngày dự kiến KCS"}}</div>
-                            <div>{{ "(2) Số lệnh" }} <span class ="text-red"> {{"(chưa có:  $missingOrders lô)"}} </span> </div>
+                            {{-- <div>{{ "(2) Số lệnh" }} <span class ="text-red"> {{"(chưa có:  $missingOrders lô)"}} </span> </div> --}}
                             
                         </th>
                         <th>
