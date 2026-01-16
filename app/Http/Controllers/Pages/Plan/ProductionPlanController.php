@@ -1011,6 +1011,8 @@ class ProductionPlanController extends Controller
                 $user = session('user')['fullName'];
 
                 Log::info  ($request->all());
+                
+                
                 $updateData = [
                         $request->name => $request->updateValue
                 ];
@@ -1063,6 +1065,9 @@ class ProductionPlanController extends Controller
                         break;
                 }
 
+
+                Log::info  ($updateData);
+              
                
                 DB::table('plan_master')
                         ->where('id', $request->id)
