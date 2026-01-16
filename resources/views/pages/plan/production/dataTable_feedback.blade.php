@@ -279,7 +279,7 @@
                             <td class="text-left"> 
                               
                                 <b> {{"(1):"}}</b>
-                                @if ($department == "QC" && $plan_feedback)
+                                @if (!$data->actual_CoA_date && $department == "QC" && $plan_feedback)
                                     <input type= "date" class="updateInput" name="actual_CoA_date"  value="{{$data->actual_CoA_date}}" data-id = {{ $data->id }} ></input>
                                 @else
                                     <b class="{{$data->actual_CoA_date?'text-green':''}}"> {{ $data->actual_CoA_date? \Carbon\Carbon::parse($data->actual_CoA_date)->format('d/m/Y'): "Chưa có ngày ra phiếu"}} </b>
