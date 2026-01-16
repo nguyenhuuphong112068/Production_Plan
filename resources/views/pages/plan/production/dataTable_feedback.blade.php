@@ -107,7 +107,7 @@
                             @endif
 
                             <td>
-                                <div> {{ $data->name ."-". $data->batch  ."-". $data->market}} </div>
+                                <div> {{ $data->name }} - {{ $data->actual_batch ??$data->batch }} - {{$data->market}} </div>
                                 <div>  {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
                                 <div>  {{ $data->specification }} </div>
                             </td>

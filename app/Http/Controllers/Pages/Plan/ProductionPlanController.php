@@ -1156,8 +1156,6 @@ class ProductionPlanController extends Controller
                         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
                         ->where('stage_plan.stage_code', 7)
                         ->where('stage_plan.active', 1)
-                       // ->where('stage_plan.plan_list_id', '=', $request->plan_list_id)
-                        //->where('stage_plan.deparment_code', '=', session('user')['production_code'])
                         ;
                 })
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
@@ -1171,8 +1169,6 @@ class ProductionPlanController extends Controller
 
 
                // dd ($datas);
-
-                
 
 
                 $production_name  =  session('user')['production_name'];
