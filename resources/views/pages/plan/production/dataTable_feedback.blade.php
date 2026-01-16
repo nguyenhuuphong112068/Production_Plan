@@ -369,7 +369,7 @@
                         </th>
                         <th>
                             <div>{{"KIỂM TRA CHẤT LƯỢNG"}}</div>
-                            <div>{{"(1) Ngày yêu cầu ra phiếu TP"}} <span class ="text-red"> {{"(chưa có:  $actual_CoA_Count lô)"}} </span></div>
+                            <div>{{"(1) Ngày ra phiếu TP"}} <span class ="text-red"> {{"(chưa có:  $actual_CoA_Count lô)"}} </span></div>
                             <div>{{"(2) Phản hồi"}} </div>
                             {{-- @if ($department == "QC")
                                 <button class = "btn btn-success"
