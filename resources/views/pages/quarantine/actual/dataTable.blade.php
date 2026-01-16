@@ -14,9 +14,6 @@
               @endphp 
               <!-- /.card-Body -->
               <div class="card-body">
-
-
-
                 <!-- Sản Lượng thực tế đang lưu ở từng phòng biệt trữ -->
                 @foreach (collect($datas)->sortKeys() as $quarantine_room_code => $details)
                     <div class="card card-success mb-4">
@@ -73,7 +70,7 @@
                                             </td>
                                         </tr>
                                     @endforeach
-                                </tbody>
+                                </tbody> 
                             </table>
                         </div>
                     </div>
