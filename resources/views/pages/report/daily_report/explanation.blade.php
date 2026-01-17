@@ -22,7 +22,7 @@
           </a>
 
           <h4 class="modal-title w-100 text-center" style="color: #CDC717">
-              {{'Ghi Chú Sản Lượng Không Đạt 90 %' }}
+              {{'Ghi Chú' }}
           </h4>
 
           <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">

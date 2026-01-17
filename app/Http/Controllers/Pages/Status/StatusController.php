@@ -37,19 +37,19 @@ class StatusController extends Controller
                 ->groupBy('r2.production_group');
 
                 $lasestupdate = DB::table('room_status as rs')
-                ->where ('rs.is_daily_report',0)
-                ->join('room as r', 'rs.room_id', '=', 'r.id')
-                ->joinSub($latest, 'latest', function ($join) {
-                        $join->on('r.production_group', '=', 'latest.production_group')
-                        ->on('rs.created_at', '=', 'latest.latest_created_at');
-                })
-                ->select(
-                        'r.deparment_code',
-                        'r.production_group',
-                        DB::raw("CONCAT(rs.created_by, '_', DATE_FORMAT(rs.created_at, '%Y-%m-%d %H:%i:%s')) as info")
-                )
-                ->where('r.deparment_code', $production)
-                ->orderBy('r.production_group', 'asc')
+                        ->where ('rs.is_daily_report',0)
+                        ->join('room as r', 'rs.room_id', '=', 'r.id')
+                        ->joinSub($latest, 'latest', function ($join) {
+                                $join->on('r.production_group', '=', 'latest.production_group')
+                                ->on('rs.created_at', '=', 'latest.latest_created_at');
+                        })
+                        ->select(
+                                'r.deparment_code',
+                                'r.production_group',
+                                DB::raw("CONCAT(rs.created_by, '_', DATE_FORMAT(rs.created_at, '%Y-%m-%d %H:%i:%s')) as info")
+                        )
+                        ->where('r.deparment_code', $production)
+                        ->orderBy('r.production_group', 'asc')
                 ->pluck('info', 'r.production_group');
 
 
@@ -92,8 +92,6 @@ class StatusController extends Controller
                                 DB::raw("COALESCE(rs.status, 0) as status"),
                                 DB::raw("COALESCE(rs.in_production, 'KSX') as in_production"),
                                 DB::raw("COALESCE(rs.notification, 'NA') as notification"),
-                                //DB::raw("COALESCE(rs.sheet, '') as sheet"),
-                                //DB::raw("COALESCE(rs.step_batch, '') as step_batch"),
                                 DB::raw("COALESCE(rs.start_realtime, '') as start_realtime"),
                                 DB::raw("COALESCE(rs.end_realtime, '') as end_realtime"),
                         )

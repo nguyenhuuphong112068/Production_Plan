@@ -201,7 +201,7 @@
                             <td>
 
                                 <input type="text" class="time" name="yields" 
-                                    data-max="{{ $data->Theoretical_yields }}"
+                                    data-max="{{ $data->Theoretical_yields * 1.1 }}"
                                     value="{{ $data->yields ?? ($data->Theoretical_yields ?? '') }}"
                                     oninput="
                                             this.value = this.value
