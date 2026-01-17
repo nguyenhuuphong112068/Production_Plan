@@ -134,14 +134,24 @@
 
                                         @foreach ($allDates as $date)
                                             <td class="text-center">{{ number_format($stageLT[$date], 2) }}</td>
-                                            <td class="text-center">{{ "-" }}</td>
+                                            <td class="text-left">
+                                                    {{ $explanation[$stage_code]?? "-" }} 
+                                                    
+                                                    <button type="button" class="btn btn-sm btn-explain"
+                                                        data-stage_code="{{ $stage_code }}"
+                                                        data-reported_date="{{ $defaultFrom }}"
+                                                        data-toggle="modal" 
+                                                        data-target="#explanation"
+                                                        >📝
+                                                    </button> 
+                                            </td>
                                             <td class="text-center">{{ number_format($stageTT[$date], 2) }}</td>
                                            <td class="text-center " 
                                                 style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
 
                                                 {{ number_format($stagePercent[$date], 2) }}%
 
-                                                @if (number_format($stagePercent[$date], 2) < 90)
+                                                {{-- @if (number_format($stagePercent[$date], 2) < 90)
                                                     <button type="button" class="btn btn-sm btn-explain"
                                                         data-stage_code="{{ $stage_code }}"
                                                         data-reported_date="{{ $defaultFrom }}"
@@ -150,7 +160,7 @@
                                                         
                                                         >📝
                                                     </button>  
-                                                @endif
+                                                @endif --}}
 
                                             </td>
                                         @endforeach

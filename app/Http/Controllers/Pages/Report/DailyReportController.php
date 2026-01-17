@@ -57,6 +57,8 @@ class DailyReportController extends Controller
             ->orderBy('group_code')   // sắp xếp theo stage
             ->get();
 
+            $explanation = DB::table('explanation')->where('reported_date', $reportedDate->toDateString())->pluck('content','stage_code');
+         
             $displayDate = $reportedDate->format('d/m/Y');
             session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
                 
@@ -65,7 +67,8 @@ class DailyReportController extends Controller
                 'yield_actual_detial' => $yield_actual_detial,
                 'theory' => $theory,
                 'sum_by_next_room' => $sum_by_next_room ,
-                'reportedDate'    => $displayDate
+                'reportedDate'    => $displayDate,
+                'explanation' => $explanation
             ]);
 
     }
