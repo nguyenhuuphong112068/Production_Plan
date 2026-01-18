@@ -21,6 +21,7 @@ class StatusController extends Controller
         ];
 
         public function show(){
+                
                 $production =  session('user')['production_code']??"PXV1";
 
                 $now = Carbon::now();

@@ -224,7 +224,7 @@
                                         this.value = this.value.replace(/[^0-9]/g, '');
                                         let val = parseInt(this.value);
                                         // Nếu nhỏ hơn 1 thì xóa
-                                        if (!isNaN(val) && val <= 1) {
+                                        if (!isNaN(val) && val <= 0) {
                                             this.value = '';
                                             return;
                                         }

@@ -1722,7 +1722,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
            {percentShow === "100%" ? (
             <Column
             header="STT"
-            body={(rowData, options) => options.rowIndex + 1}
+            body={(rowData, options) => (
+              <div style={{ textAlign: "center" }}>
+                <div>{options.rowIndex + 1}</div>
+                <div>{rowData.id}</div>
+              </div>
+            )}
             style={{ width: "60px", textAlign: "center" }}
           />):""}
           
