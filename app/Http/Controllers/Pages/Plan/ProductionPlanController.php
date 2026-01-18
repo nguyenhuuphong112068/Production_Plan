@@ -911,7 +911,9 @@ class ProductionPlanController extends Controller
                                     
                                         if ($stageItem['stage_code'] >= 3 && $prevItem['stage_code'] == 2) {
                                                 $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
-                                        } else {
+                                        }elseif ($stageItem['stage_code'] == 2){
+                                                $prevCode = null;
+                                        }else {
                                                 $prevCode = $prevItem['code'];
                                         }
                                 }
@@ -930,7 +932,6 @@ class ProductionPlanController extends Controller
                                                 }else {
                                                         $nextCode = explode ("_",$nextItem['code'])[0] ."_". "5";
                                                 }
-                                               // dd ($i, $stageItem, $prevCode, $nextCode);
                                         }       
                                         else {
                                                 $nextCode = $nextItem['code'];

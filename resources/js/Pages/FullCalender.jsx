@@ -1806,10 +1806,6 @@ const ScheduleTest = () => {
   const handleDeleteScheduale = (e) => {
 
     if (!authorization) { return };
-
-
-
-
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
     if (!selectedEvents || selectedEvents.length === 0) {
       Swal.fire({
@@ -2012,18 +2008,22 @@ const ScheduleTest = () => {
   const EventContent = (arg) => {
     const event = arg.event;
     const props = event._def.extendedProps;
-    const now = new Date();
+    //const now = new Date();
 
     const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
-    const isSelected = arg.selectedEvents?.some(ev => ev.id === event.id);
+    //const isSelected = arg.selectedEvents?.some(ev => ev.id === event.id);
     //const showRenderBadge = false; // nếu bạn có điều kiện riêng thì thay vào
 
-    const getBadge = (text, color, left) => `
-      <div
-        class="absolute top-[-15px]"
-        style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
-      >${text}</div>
-    `;
+    // const getBadge = (text, color, left) => `
+    //   <div
+    //     class="absolute top-[-15px]"
+    //     style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
+    //   >${text}</div>
+    // `;
+    
+    if (event.title == undefined){
+      console.log (event)
+    }
 
     let html = `
       <div class="relative group custom-event-content" data-event-id="${event.id}">
@@ -2045,7 +2045,7 @@ const ScheduleTest = () => {
             </span>
           ` : ''}
 
-          <b style="color: ${props.textColor};">${props.is_clearning ? event.title.split('-')[1] : event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle:''} </b>
+          <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle:''} </b>
           ${!isTimelineMonth ? `
             <br/>
             ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
@@ -2054,7 +2054,7 @@ const ScheduleTest = () => {
           ` : ''}
         </div>
     `;
-            
+            //${props.is_clearning ? event.title.split('-')[1] : event.title}
       // Badge ngày cần hàng
         // if (props.campaign_code && showRenderBadge) {
         //   const colors = {1: 'red', 2: 'orange', 3: 'green'};
@@ -2129,7 +2129,38 @@ const ScheduleTest = () => {
                 ];
   }, [events, offDays]);
 
-
+ const handleConfirmClearningValidation = (e) => {
+      const ids = selectedEvents.map(row =>
+          Number(row.id.split('-')[0])
+      );
+         
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    axios.put('/Schedual/clearningValidation', { 
+      ids: ids,
+      startDate: toLocalISOString(activeStart),
+      endDate: toLocalISOString(activeEnd)
+     })
+      . then (res => {
+                    let data = res.data;
+                    if (typeof data === "string") {
+                      data = data.replace(/^<!--.*?-->/, "").trim();
+                      data = JSON.parse(data);
+                    }
+                    setEvents(data.events);
+                    setSelectedEvents ([]);
+                  }
+      ).catch (err => {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'Lỗi',
+                      timer: 1500
+                    });
+                    console.error("API error:", err.response?.data || err.message);
+                }
+      );
+     
+      return;
+  }
 
   return (
 
@@ -2383,7 +2414,7 @@ const ScheduleTest = () => {
         }}
           
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -2526,6 +2557,11 @@ const ScheduleTest = () => {
             click: handleAcceptQuanrantine
           },
 
+          clearningValidation: {
+            text: '🚿',
+            click: handleConfirmClearningValidation
+          },
+
         }}
 
         //eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
@@ -2556,7 +2592,7 @@ const ScheduleTest = () => {
           }
 
           info.el.addEventListener("dblclick", (e, selectedEvents) => {
-            console.log (selectedEvents)
+            //console.log (selectedEvents)
             e.stopPropagation();
             //handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
             const pm = info.event.extendedProps.plan_master_id;
