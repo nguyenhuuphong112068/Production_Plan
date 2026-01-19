@@ -3515,7 +3515,7 @@ class SchedualController extends Controller
 
         
                 $this->processed_stage_code_Id =  [];
-                $processedCampaigns = [];
+                //$processedCampaigns = [];
                 foreach ($tasks as $task) {
                         if ($task->campaign_code === null) {
                                 $this->scheduleweight ($task, 0 , false , $start_date );
@@ -4529,6 +4529,7 @@ class SchedualController extends Controller
                                 ->where('intermediate_code', $task->intermediate_code)
                                 ->where('stage_code', $task->stage_code)
                                 ->where('active', 1)
+                                ->orderBy('room_id', 'desc')
                                 ->get();
                                         
                         }
@@ -4542,12 +4543,15 @@ class SchedualController extends Controller
                         foreach ($rooms as $room) {
 
                                  if ($mode){
-                                        $campaign_index = 1 + (1 - $room->campaign_index) * $tasks->count();
+                                        $campaign_index = 1 + ($room->campaign_index - 1) * $tasks->count();
                                  }else{
                                         $campaign_index = 1;
                                  }
+
+             
                                 
                                 $intervalTimeMinutes = (float) $room->p_time_minutes + ((float) $room->m_time_minutes) * (float)$campaign_index;
+                                
                                 if ((float) $room->C2_time_minutes  > 0){
                                          $C2_time_minutes =   (float) $room->C2_time_minutes;
                                          $clearning_type = 2;
@@ -4555,6 +4559,8 @@ class SchedualController extends Controller
                                         $C2_time_minutes =  (float) $room->C1_time_minutes;
                                         $clearning_type = 1;
                                 }
+
+        
                                
                                 $candidateStart = $this->findEarliestSlot2(
                                         $room->room_id,
