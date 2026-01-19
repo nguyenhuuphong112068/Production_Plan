@@ -59,10 +59,9 @@
                         <th>STT</th>
                         <th>Mã Sản Phẩm</th>
                         <th>Sản Phẩm</th>
+                        <th>Số Lô/ TĐ</th>
                         <th>Cỡ lô</th>
-                        <th>Số Lô</th>
                         <th>Ngày Dự Kiến KCS</th>
-                        <th>Lô Thẩm Định</th>
                         <th>Phòng Sản Xuất</th>
                         <th>Thới Gian Sản Xuất</th>
                         <th>Thời Gian Vệ Sinh</th>
@@ -80,17 +79,16 @@
                           <div> {{ $data->finished_product_code}} </div>
                       </td>
                       <td>{{$data->product_name}}</td>
-                      <td>{{$data->batch_qty . " " .  $data->unit_batch_qty}}</td>
-                      <td>{{$data->batch}}  </td>
-                     
-                      <td>
-                          <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
-                      </td>
-                      <td class="text-center align-middle">
+                      <td>{{$data->batch}}  
                           @if ($data->is_val)
                             <i class="fas fa-check-circle text-primary fs-4"></i>
                           @endif
                       </td>
+                      <td>{{$data->batch_qty . " " .  $data->unit_batch_qty}}</td>
+                      <td>
+                          <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
+                      </td>
+             
                       <td> {{ $data->room_name ." - ". $data->room_code}} </td>
                       <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td>
                       <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }} </td>
