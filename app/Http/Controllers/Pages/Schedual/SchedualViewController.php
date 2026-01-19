@@ -28,7 +28,8 @@ class SchedualViewController extends Controller
                         'finished_product_category.finished_product_code',
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
-                        'market.name as name'
+                        'market.name as name',
+                        'product_name.name as product_name'
                 )
                 ->whereBetween('stage_plan.start', [$fromDate, $toDate])
                 ->where('stage_plan.active', 1)->where ('stage_plan.stage_code', $stage_code)
@@ -37,8 +38,10 @@ class SchedualViewController extends Controller
                 ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
                 ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
+                ->orderBy('start')
                 ->get();
 
                 $stages = DB::table('stage_plan')
