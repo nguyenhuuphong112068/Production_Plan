@@ -144,28 +144,96 @@ class ProductionPlanController extends Controller
 
         public function open(Request  $request){
          
+                // $datas = DB::table('plan_master')
+                // ->select('plan_master.*', 
+                //         'finished_product_category.intermediate_code', 
+                //         'finished_product_category.finished_product_code', 
+                //         DB::raw('fp_name.name AS finished_product_name'),
+                //         DB::raw('im_name.name AS intermediate_product_name'),
+                //         'market.name as market', 
+                //         'specification.name as specification', 
+                //         'finished_product_category.batch_qty',
+                //         'finished_product_category.unit_batch_qty',
+                //         'finished_product_category.deparment_code',
+                //         'source_material.name as source_material_name'
+                //         )
+                // ->where ('plan_list_id',$request->plan_list_id)->where('plan_master.active',1)
+                // ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
+                // ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id') 
+                // ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', 'product_name.id')
+                // ->leftJoin('product_name as im_name', 'intermediate_category.product_name_id', 'product_name.id')
+                // ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                // ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id') 
+                // ->orderBy('expected_date','asc')
+                // ->orderBy('level','asc')
+                // ->orderBy('batch','asc')
+                // ->get();
+                
                 $datas = DB::table('plan_master')
-                ->select('plan_master.*', 
-                        'finished_product_category.intermediate_code', 
-                        'finished_product_category.finished_product_code', 
-                        'product_name.name',
-                        'market.name as market', 
-                        'specification.name as specification', 
+                ->select(
+                        'plan_master.*',
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.finished_product_code',
+
+                        DB::raw('fp_name.name AS finished_product_name'),
+                        DB::raw('im_name.name AS intermediate_product_name'),
+
+                        'market.name as market',
+                        'specification.name as specification',
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
                         'finished_product_category.deparment_code',
                         'source_material.name as source_material_name'
-                        )
-                ->where ('plan_list_id',$request->plan_list_id)->where('plan_master.active',1)
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id') 
-                ->orderBy('expected_date','asc')
-                ->orderBy('level','asc')
-                ->orderBy('batch','asc')
+                )
+                ->where('plan_master.plan_list_id', $request->plan_list_id)
+                ->where('plan_master.active', 1)
+
+                ->leftJoin(
+                        'finished_product_category',
+                        'plan_master.product_caterogy_id',
+                        '=',
+                        'finished_product_category.id'
+                )
+
+                ->leftJoin(
+                        'intermediate_category',
+                        'finished_product_category.intermediate_code',
+                        '=',
+                        'intermediate_category.intermediate_code'
+                )
+
+                ->leftJoin(
+                        'source_material',
+                        'plan_master.material_source_id',
+                        '=',
+                        'source_material.id'
+                )
+
+                // 👇 alias 1
+                ->leftJoin(
+                        'product_name as fp_name',
+                        'finished_product_category.product_name_id',
+                        '=',
+                        'fp_name.id'
+                )
+
+                // 👇 alias 2
+                ->leftJoin(
+                        'product_name as im_name',
+                        'intermediate_category.product_name_id',
+                        '=',
+                        'im_name.id'
+                )
+
+                ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
+
+                ->orderBy('expected_date', 'asc')
+                ->orderBy('level', 'asc')
+                ->orderBy('batch', 'asc')
                 ->get();
+
 
                 $planMasterIds = $datas->pluck('id')->toArray();
 
