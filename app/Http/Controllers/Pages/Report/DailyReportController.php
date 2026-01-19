@@ -29,8 +29,7 @@ class DailyReportController extends Controller
         $actual = $this->yield_actual($startDate, $endDate, 'resourceId');
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
         $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
-      
-        //dd ($startDate, $endDate, $yield_actual_detial);
+    
 
 
         $sum_by_next_room = DB::table('stage_plan as t')
@@ -80,6 +79,10 @@ class DailyReportController extends Controller
 
             // 1) FULL PRODUCTION
             $production_full = DB::table("stage_plan as sp")
+                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->whereNotNull('sp.actual_start')
                 ->whereNotNull('sp.actual_end')
                 ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
@@ -87,7 +90,7 @@ class DailyReportController extends Controller
                 ->select(
                     "sp.$group_By",
                     DB::raw("CONCAT(sp.id, '-main') AS id"),
-                    "sp.title",
+                    DB::raw("CONCAT(product_name.name,'-',COALESCE(plan_master.actual_batch, plan_master.batch)) AS title"),
                     "sp.actual_start",
                     "sp.actual_end",
                     "sp.yields",
@@ -98,6 +101,10 @@ class DailyReportController extends Controller
 
             // 2) FULL CLEANING
             $cleaning_full = DB::table("stage_plan as sp")
+                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->whereNotNull('sp.actual_start_clearning')
                 ->whereNotNull('sp.actual_end_clearning')
                 ->whereRaw('(sp.actual_start_clearning >= ? AND sp.actual_end_clearning <= ?)', [$startDate, $endDate])
@@ -114,13 +121,17 @@ class DailyReportController extends Controller
 
             // 3) PARTIAL PRODUCTION
             $production_partial = DB::table("stage_plan as sp")
+                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->whereNotNull('sp.actual_start')
                 ->whereNotNull('sp.actual_end')
                 ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->select(
                     "sp.$group_By",
-                    "sp.title",
+                    DB::raw("CONCAT(product_name.name,'-',COALESCE(plan_master.actual_batch, plan_master.batch)) AS title"),
                     "sp.note",
                     DB::raw("CONCAT(sp.id, '-main') AS id"),
 
