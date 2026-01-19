@@ -143,7 +143,8 @@
                             @endif
 
                             <td>
-                                <div> {{ $data->name }} </div>
+                                <div> {{ $data->intermediate_product_name }} </div>
+                                <div> {{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '':trim($data->finished_product_name)}} </div>
                                 <div>  {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
                             </td>
                             <td style="text-align: center;" >
@@ -154,7 +155,7 @@
                                     @if ($auth_update != 'disabled')
                                     <div  class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
                                         {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
-                                        data-name="{{ $data->name }}"
+                                        data-name="{{ $data->finished_product_name }}"
                                         data-intermediate_code="{{ $data->intermediate_code }}"
                                         data-finished_product_code="{{ $data->finished_product_code }}"
                                         data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
@@ -303,7 +304,7 @@
                                 <button type="button"  class="btn btn-warning btn-edit" 
                                     {{ $auth_update }}
                                     {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
-                                    data-name="{{ $data->name }}"
+                                    data-name="{{ $data->finished_product_name }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"
                                     data-finished_product_code="{{ $data->finished_product_code }}"
                                     data-batch="{{ $data->batch }}" 
@@ -341,19 +342,19 @@
                                     @if ($data->active == true && $send == false)
                                         <button type="submit" class="btn btn-danger" data-type="delete" 
                                             {{ $auth_deActive }}
-                                            data-name="{{ $data->name . ' - ' . $data->batch }}">
+                                            data-name="{{ $data->finished_product_name . ' - ' . $data->batch }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     @elseif ($data->cancel == false && $send == true)
                                         <button type="submit" class="btn btn-danger" data-type="cancel" 
                                             {{ $auth_deActive }}
-                                            data-name="{{ $data->name . ' - ' . $data->batch }}">
+                                            data-name="{{ $data->finished_product_name . ' - ' . $data->batch }}">
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @elseif ($data->cancel == true && $send == true)
                                         <button type="submit" class="btn btn-success" data-type="restore" 
                                             {{ $auth_deActive }}
-                                            data-name="{{ $data->name . ' - ' . $data->batch }}">
+                                            data-name="{{ $data->finished_product_name . ' - ' . $data->batch }}">
                                             <i class="fas fa-unlock"></i>
                                         </button>
                                     @endif
