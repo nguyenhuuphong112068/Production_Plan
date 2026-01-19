@@ -4767,7 +4767,7 @@ class SchedualController extends Controller
 
         // } 
 
-        protected function schedulePlanBackwardPlanMasterId($plan_master_id,bool $working_sunday = false,int $bufferDate, $waite_time, Carbon $start_date) {
+       // protected function schedulePlanBackwardPlanMasterId($plan_master_id,bool $working_sunday = false,int $bufferDate, $waite_time, Carbon $start_date) {
 
         //         $stage_plan_ids = [];
         //         //$stage_plan_ids_null = [];
