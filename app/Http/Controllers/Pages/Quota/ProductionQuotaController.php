@@ -129,7 +129,7 @@ class ProductionQuotaController extends Controller
                         $datas = collect(); // an toàn nếu stage_code ngoài dự kiến
                 }
 
-                
+                session()->put(['title' => "ĐỊNH MỨC THỜI GIAN SẢN XUẤT"]);
                 //dd ($datas);
                 return view('pages.quota.production.list', [
                         'datas' => $datas,
