@@ -11,27 +11,22 @@ class WeeklyReportController extends Controller
         public function index(Request $request) {
 
            
-            $reportedWeek = $request->reported_week
-                ? Carbon::parse($request->reported_week)->weekOfYear
-                : Carbon::now()->weekOfYear;
+            $reportedWeek = (int) ($request->week_number ?? now()->weekOfYear);
+            $reportedYear = (int) ($request->year ?? now()->year);
 
-            $reportedYear = $request->reported_year ?? Carbon::now()->year;
-
-            // 06:00 ngày đầu tuần (thứ 2 – ISO)
-            $start = Carbon::create()
-                ->setISODate($reportedYear, $reportedWeek, 1) // 1 = Thứ 2
+            $start = Carbon::now()
+                ->setISODate($reportedYear, $reportedWeek)
+                ->startOfWeek()
                 ->setTime(6, 0, 0);
 
-            //$start->subWeek(3);
-            // 06:00 ngày đầu tuần kế tiếp
             $end = (clone $start)->addWeek();
-           
-
+        
             $check = DB::table('room_sheet')->where('reported_week', $reportedWeek)->where('reported_year', $reportedYear)->exists();
             
             if (!$check){
                     $rooms = DB::table('room')
                         ->where('active', 1)
+                        ->whereNotNull('capacity')
                         ->select(
                             'id as room_id',
                             'capacity',
