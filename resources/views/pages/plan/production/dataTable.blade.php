@@ -90,6 +90,7 @@
 
                     <tr>
                         <th>STT</th>
+                        <th>Tình Trạng</th>
                         <th >Mã Sản Phẩm</th>
                         <th style="width:10%" >Sản Phẩm</th>
                         <th>Số Lô/Số lượng ĐG</th>
@@ -129,6 +130,19 @@
                                 <div> {{ $loop->iteration }} </div>
                                 @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
                             </td>
+                            <td>
+                                @php
+                                    $stutus_colors = [
+                                        "Chưa làm" => 'background-color: green; color: white;', // đỏ
+                                        "Đã làm" => 'background-color: blue; color: white;', // cam
+                                        'Hủy' => 'background-color: red; color: white;'// vàng
+                                      
+                                    ];
+                                @endphp
+                                <div class ="text-center" style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 20px; {{ $stutus_colors[$data->status] ?? '' }}"
+                                    > {{ $data->status }} </div>
+                            </td>
+
 
                             @if (!$data->cancel)
                                 <td class="text-success">
