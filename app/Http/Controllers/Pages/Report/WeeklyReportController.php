@@ -21,6 +21,7 @@ class WeeklyReportController extends Controller
             $start = Carbon::create()
                 ->setISODate($reportedYear, $reportedWeek, 1) // 1 = Thứ 2
                 ->setTime(6, 0, 0);
+
             //$start->subWeek(3);
             // 06:00 ngày đầu tuần kế tiếp
             $end = (clone $start)->addWeek();
@@ -34,8 +35,8 @@ class WeeklyReportController extends Controller
                         ->select(
                             'id as room_id',
                             'capacity',
-                            DB::raw($reported_week . ' as reported_week'),
-                            DB::raw("'" . $reported_year . "' as reported_year")
+                            DB::raw($reportedWeek . ' as reported_week'),
+                            DB::raw("'" . $reportedYear . "' as reported_year")
                         )
                         ->get();
 
