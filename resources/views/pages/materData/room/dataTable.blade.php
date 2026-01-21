@@ -31,6 +31,8 @@
                         <th>STT</th>
                         <th>Mã Phòng</th>
                         <th>Tên Phòng</th>
+                        <th>Thiết Bị Chính</th>
+                        <th>Công Suất (ĐVL/Giờ)</th>
                         <th>Công Đoạn</th>
                         <th>Tổ Quản Lý</th>
                         <th>Phân Xưởng</th>
@@ -51,6 +53,8 @@
                                 <td class="text-danger"> {{ $data->code }}</td>
                             @endif
                             <td>{{ $data->name }}</td>
+                            <td>{{ $data->main_equiment_name }}</td>
+                            <td>{{ $data->capacity}}</td>
                             <td>{{ $data->stage }}</td>
                             <td>{{ $data->production_group }}</td>
                             <td>{{ $data->deparment_code }}</td>
@@ -60,9 +64,14 @@
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
-                                    data-code="{{ $data->code }}" data-name="{{ $data->name }}"
+                                    data-code="{{ $data->code }}" 
+                                    data-name="{{ $data->name }}"
                                     data-stage_code="{{ $data->stage_code }}"
-                                    data-production_group="{{ $data->production_group }}" data-toggle="modal"
+                                    data-production_group="{{ $data->production_group }}" 
+                                    data-capacity="{{ $data->capacity }}"
+                                    data-main_equiment_name="{{ $data->main_equiment_name }}"
+
+                                    data-toggle="modal"
                                     data-target="#updateModal"
                                     {{$auth_update}}
                                     >
@@ -139,6 +148,8 @@
             modal.find('input[name="name"]').val(button.data('name'));
             modal.find('select[name="stage_code"]').val(button.data('stage_code'));
             modal.find('select[name="production_group"]').val(button.data('production_group'));
+            modal.find('input[name="main_equiment_name"]').val(button.data('main_equiment_name'));
+            modal.find('input[name="capacity"]').val(button.data('capacity'));
 
 
         });
