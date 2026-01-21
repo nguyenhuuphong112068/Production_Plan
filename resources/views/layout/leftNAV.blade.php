@@ -365,7 +365,7 @@
           </li>
 
           <!-- Droplist Menu Báo Cáo Ngày -->
-           @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
+          @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
 
             <li class="nav-item has-treeview">
               <a href="#" class="nav-link">
@@ -384,13 +384,19 @@
                   </a>
                 </li>
 
-                {{-- 
                 <li class="nav-item">
-                  <a href="{{ route ('pages.quarantine.actual.index_actual') }}" class="nav-link">
+                  <a href="{{ route ('pages.report.weekly_report.index') }}" class="nav-link">
                     <i class="far fa-circle nav-icon"></i>
-                    <p> Báo Cáo Kiểm Tra Lịch Sản Xuất </p>
+                    <p> Báo Cáo Tuần </p>
                   </a>
-                </li> --}}
+                </li>
+
+                <li class="nav-item">
+                  <a href="{{ route ('pages.report.monthly_report.index') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p> Báo Cáo Tháng </p>
+                  </a>
+                </li>
 
               </ul>
             </li>

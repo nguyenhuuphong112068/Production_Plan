@@ -50,7 +50,7 @@ class ProductionPlanController extends Controller
                 ->groupBy('pm.plan_list_id', 'pm.id')
                 ->select(
                         'pm.plan_list_id',
-
+                        
                         DB::raw("
                         CASE
                                 WHEN 
@@ -80,8 +80,7 @@ class ProductionPlanController extends Controller
                         ")
                 )
                 ->get();
-
-
+                
 
                 $batch_summary = $batch_status
                 ->groupBy('plan_list_id')
@@ -159,56 +158,36 @@ class ProductionPlanController extends Controller
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
                         'finished_product_category.deparment_code',
-                        'source_material.name as source_material_name'
+                        'source_material.name as source_material_name',
+                         DB::raw("
+                                CASE
+                                        WHEN stage_plan.active = 0 THEN 'Hủy'
+                                        WHEN stage_plan.active = 1 AND stage_plan.finished = 0 THEN 'Chưa làm'
+                                        WHEN stage_plan.active = 1 AND stage_plan.finished = 1 THEN 'Đã làm'
+                                        ELSE NULL
+                                END AS status
+                                ")
                 )
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
                 ->where('plan_master.active', 1)
 
-                ->leftJoin(
-                        'finished_product_category',
-                        'plan_master.product_caterogy_id',
-                        '=',
-                        'finished_product_category.id'
-                )
-
-                ->leftJoin(
-                        'intermediate_category',
-                        'finished_product_category.intermediate_code',
-                        '=',
-                        'intermediate_category.intermediate_code'
-                )
-
-                ->leftJoin(
-                        'source_material',
-                        'plan_master.material_source_id',
-                        '=',
-                        'source_material.id'
-                )
-
-                // 👇 alias 1
-                ->leftJoin(
-                        'product_name as fp_name',
-                        'finished_product_category.product_name_id',
-                        '=',
-                        'fp_name.id'
-                )
-
-                // 👇 alias 2
-                ->leftJoin(
-                        'product_name as im_name',
-                        'intermediate_category.product_name_id',
-                        '=',
-                        'im_name.id'
-                )
-
+                ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
+                ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
+                ->leftJoin('source_material', 'plan_master.material_source_id','=','source_material.id')
+                ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
+                ->leftJoin('product_name as im_name','intermediate_category.product_name_id', '=','im_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                 ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
-
+                ->leftJoin('stage_plan', function ($join) {
+                                $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                                        ->where('stage_plan.stage_code', 1);
+                        })
                 ->orderBy('expected_date', 'asc')
                 ->orderBy('level', 'asc')
                 ->orderBy('batch', 'asc')
                 ->get();
 
+               
 
                 $planMasterIds = $datas->pluck('id')->toArray();
 
