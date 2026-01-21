@@ -375,28 +375,31 @@
                   <i class="right fas fa-angle-left"></i>
                 </p>
               </a>
+              
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="{{ route ('pages.report.daily_report.index') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p> Báo Cáo Ngày </p>
+                    </a>
+                  </li>
+                  @if (user_has_permission(session('user')['userId'], 'layout_weekly_report', 'boolean'))
+                  <li class="nav-item">
+                    <a href="{{ route ('pages.report.weekly_report.index') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p> Báo Cáo Tuần </p>
+                    </a>
+                  </li>
+                  @if (user_has_permission(session('user')['userId'], 'layout_monthly_report', 'boolean'))
 
-              <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="{{ route ('pages.report.daily_report.index') }}" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p> Báo Cáo Ngày </p>
-                  </a>
-                </li>
-
-                <li class="nav-item">
-                  <a href="{{ route ('pages.report.weekly_report.index') }}" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p> Báo Cáo Tuần </p>
-                  </a>
-                </li>
-
-                <li class="nav-item">
-                  <a href="{{ route ('pages.report.monthly_report.index') }}" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p> Báo Cáo Tháng </p>
-                  </a>
-                </li>
+                  @endif
+                  <li class="nav-item">
+                    <a href="{{ route ('pages.report.monthly_report.index') }}" class="nav-link">
+                      <i class="far fa-circle nav-icon"></i>
+                      <p> Báo Cáo Tháng </p>
+                    </a>
+                  </li>
+                @endif
 
               </ul>
             </li>
