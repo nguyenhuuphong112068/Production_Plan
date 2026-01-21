@@ -139,40 +139,59 @@
                
                         </thead>
 
+                        @php $current_Stage = 0 ;@endphp
+
                         <tbody>
-                            @foreach ($datas as $data)
-                                <tr>
-                                    <td> {{$loop->iteration  }}
-                                        @if (session('user')['userGroup'] == 'Admin')
-                                            <div> {{ $data->id }} </div>
-                                        @endif
-                                    </td>
+                           
+                                @foreach ($datas as $data)
+                                    @if ($current_Stage != $data->stage_code)
+                                        
+                                        <tr style="background:#CDC717; color:#003A4F; font-weight:bold; cursor: pointer;"
+                                            class="stage-total" data-stage="{{ $data->stage_code }}">
+                                            <td colspan="14"  class="text-end">
+                                                <button type="button" class="btn btn-sm btn-info toggle-stage" 
+                                                style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                data-stage="{{ $data->stage_code }}">+</button>
+                                                Công Đoạn {{ $stage_name[$data->stage_code] }}
+                                            </td>
+                                        </tr>
 
-                                    <td> {{$data->room_code . " - " . $data->room_name}} {{ "(" .$data->main_equiment_name ." )"}} </td>
-                                    <td> {{$data->capacity }} </td>
+                                        @php $current_Stage = $data->stage_code ;@endphp
+                                    @endif
 
-                                    <td> {{$data->work_hours }} </td>
-                                    <td> {{$data->cleaning_hours }} </td>
-                                    <td> {{$data->busy_hours }} </td>
-                                    <td> {{$data->output_thery }} </td>
-                                    <td> {{$data->yield_actual }} </td>
-                                    <td> {{$data->OEE }} </td>
+                                    <tr class="stage-child stage-{{$data->stage_code}}">
+                                        <td> {{$loop->iteration  }}
+                                            @if (session('user')['userGroup'] == 'Admin')
+                                                <div> {{ $data->id }} </div>
+                                            @endif
+                                        </td>
 
-                                    {{-- shift --}}
-                                    <td> 
-                                        <input type= "text" class="time" name="shift" value = "{{ $data->shift }}" data-id={{ $data->id }} {{ $auth_update }}>
-                                    </td> 
+                                        <td> {{$data->room_code . " - " . $data->room_name}} {{ "(" .$data->main_equiment_name ." )"}} </td>
+                                        <td> {{$data->capacity }} </td>
 
-                                    {{-- day in week --}}
-                                    <td> 
-                                        <input type= "text" class="time" name="day_in_week" value = "{{ $data->day_in_week }}" data-id={{ $data->id }} {{ $auth_update }}>
-                                    </td> 
-                                    <td> {{$data->H_in_month }} </td>
+                                        <td> {{$data->work_hours }} </td>
+                                        <td> {{$data->cleaning_hours }} </td>
+                                        <td> {{$data->busy_hours }} </td>
+                                        <td> {{$data->output_thery }} </td>
+                                        <td> {{$data->yield_actual }} </td>
+                                        <td> {{$data->OEE }} </td>
 
-                                    <td> {{$data->loading }} </td>
-                                    <td> {{$data->TEEP }} </td>
-                            </tr>    
-                            @endforeach
+                                        {{-- shift --}}
+                                        <td> 
+                                            <input type= "text" class="time" name="shift" value = "{{ $data->shift }}" data-id={{ $data->id }} {{ $auth_update }}>
+                                        </td> 
+
+                                        {{-- day in week --}}
+                                        <td> 
+                                            <input type= "text" class="time" name="day_in_week" value = "{{ $data->day_in_week }}" data-id={{ $data->id }} {{ $auth_update }}>
+                                        </td> 
+                                        <td> {{$data->H_in_month }} </td>
+
+                                        <td> {{$data->loading }} </td>
+                                        <td> {{$data->TEEP }} </td>
+                                    </tr>    
+                                @endforeach
+                            
                         </tbody>
                     </table>
                 </div>
@@ -262,6 +281,7 @@
     document.querySelectorAll('.toggle-stage').forEach(btn => {
         btn.addEventListener('click', function() {
             const stage = this.getAttribute('data-stage');
+           
             const rows = document.querySelectorAll('.stage-' + stage);
             rows.forEach(row => {
                 row.style.display = row.style.display === 'none' ? '' : 'none';

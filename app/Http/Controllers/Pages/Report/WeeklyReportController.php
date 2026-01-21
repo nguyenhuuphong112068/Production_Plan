@@ -58,6 +58,7 @@ class WeeklyReportController extends Controller
                         'room_sheet.*',
                         'room.name as room_name',
                         'room.code as room_code',
+                        'room.stage_code',
                         'room.main_equiment_name as main_equiment_name',
                     )
             ->get();
@@ -104,7 +105,7 @@ class WeeklyReportController extends Controller
             });
 
             session()->put(['title' => "BÁO CÁO TUẤN "]);
-                
+            //dd ($datas);
             return view('pages.report.weekly_report.list', [
                     'datas' => $datas
             ]);
