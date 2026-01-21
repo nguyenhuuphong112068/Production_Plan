@@ -31,7 +31,7 @@
           {{-- CODE --}}
             <div class="form-group">
               <label for="code">Mã Phòng</label>
-              <input type="text" class="form-control" name="code" 
+              <input type="text" class="form-control" name="code"  readonly
                 value="{{ old('code') }}">
             </div>
             @error('code', 'updateErrors')
@@ -41,18 +41,37 @@
             {{-- NAME --}}
             <div class="form-group">
               <label for="name">Tên Phòng</label>
-              <input type="text" class="form-control" name="name" 
+              <input type="text" class="form-control" name="name"  disabled
                 value="{{ old('name') }}">
             </div>
             @error('name', 'updateErrors')
                 <div class="alert alert-danger">{{ $message }}</div>
             @enderror
 
+            {{-- Equiment --}}
+            <div class="form-group">
+              <label for="main_equiment_name">Tên Thiết Bị Chính</label>
+              <input type="text" class="form-control" name="main_equiment_name" 
+                value="{{ old('main_equiment_name') }}">
+            </div>
+            @error('main_equiment_name', 'updateErrors')
+                <div class="alert alert-danger">{{ $message }}</div>
+            @enderror
+
+            {{-- Capacity --}}
+            <div class="form-group">
+              <label for="capacity">Công Suất (ĐVL/giờ)</label>
+              <input type="text" class="form-control" name="capacity" 
+                value="{{ old('capacity') }}">
+            </div>
+            @error('capacity', 'updateErrors')
+                <div class="alert alert-danger">{{ $message }}</div>
+            @enderror
 
             {{-- Stage --}}
             <div class="form-group">
                 <label for="belongGroup_id">Công Đoạn</label>
-                <select class="form-control" name="stage_code" >
+                <select class="form-control" name="stage_code" disabled>
                     <option value="">-- Chọn Công Đoạn --</option>
                     @foreach ($stages as $stage)
                         <option value="{{ $stage->code }}" 
@@ -70,7 +89,7 @@
             {{-- Stage_groups --}}
             <div class="form-group">
                 <label for="belongGroup_id">Tổ Quản Lý</label>
-                <select class="form-control" name="production_group" >
+                <select class="form-control" name="production_group" disabled>
                     <option value="">-- Chọn nhóm --</option>
 
                     @foreach ($stage_groups as $stage_group)

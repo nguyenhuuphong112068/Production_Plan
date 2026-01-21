@@ -212,7 +212,7 @@
                                       >
                                 </div>
 
-                                <div class="input-group mx-4">
+                                {{-- <div class="input-group mx-4">
                                     <label for="{{ $data->id }}"> : HSTT </label>
                                     <input class="form-check-input step-checkbox"
                                       type="checkbox"
@@ -222,7 +222,7 @@
                                       data-permission="{{ $department == "QA" && $plan_feedback?'1': "0" }}"
                                       {{ $data->actual_record ? 'checked' : '' }}
                                       >
-                                </div>
+                                </div> --}}
 
                                 <div>
                                     @if ($department == "QA" && $plan_feedback)
@@ -348,8 +348,8 @@
                         <th>
                             <div>{{"ĐẢM BẢO CHẤT LƯỢNG"}}</div>
                             <div>{{"(1) Tình hình hồ sơ lô" }} <span class ="text-red"> {{"(chưa có:  $has_BMR lô)"}} </span></div>
-                            <div>{{"(2) Hồ sơ thực tế?"}} </div>
-                            <div>{{"(3) Phản hồi"}} </div>
+                            {{-- <div>{{"(2) Hồ sơ thực tế?"}} </div> --}}
+                            <div>{{"(2) Phản hồi"}} </div>
                             {{-- @if ($department == "QA" && $plan_feedback)
                                 <button class = "btn btn-success"
                                         data-toggle="modal"

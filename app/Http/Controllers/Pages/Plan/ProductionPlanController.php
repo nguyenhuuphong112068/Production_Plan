@@ -1209,7 +1209,7 @@ class ProductionPlanController extends Controller
                 })
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
                 ->where('plan_master.active', 1)
-                ->where('only_parkaging', 0)
+                //->where('only_parkaging', 0)
                 ->orderBy('expected_date', 'asc')
                 ->orderBy('level', 'asc')
                 ->orderBy('batch', 'asc')

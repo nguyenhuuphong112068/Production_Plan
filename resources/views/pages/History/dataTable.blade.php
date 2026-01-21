@@ -144,6 +144,7 @@
 
 <script>
   $(document).ready(function() {
+    document.body.style.overflowY = "auto";
     $('#data_table_hisory').DataTable({
       paging: true,
       lengthChange: true,
