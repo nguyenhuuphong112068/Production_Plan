@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Route;
         ->group(function(){
         
             Route::get('','index')->name('index');
-            // Route::post('detail','detail')->name('detail');
+            Route::post('updateInput','updateInput')->name('updateInput');
             // Route::post('explain','explain')->name('explain');
             // Route::post('getExplainationContent','getExplainationContent')->name('getExplainationContent');
             // Route::post('store','store')->name('store');

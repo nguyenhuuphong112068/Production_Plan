@@ -336,8 +336,6 @@ class DailyReportController extends Controller
         // ------------------------------
         // 3️⃣ Gom 2 phần lại
         // ------------------------------
-            
-        
 
         $merged = $stage_plan_100->merge($stage_plan_part)
             ->groupBy(function ($item) use ($group_By) {
@@ -745,7 +743,6 @@ class DailyReportController extends Controller
                 ]);
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
     }
-
 
     public function update (Request $request) {
                 //dd ($request->all());

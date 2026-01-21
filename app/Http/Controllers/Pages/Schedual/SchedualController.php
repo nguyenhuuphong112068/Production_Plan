@@ -54,7 +54,7 @@ class SchedualController extends Controller
                 $start = Carbon::parse($startDate)->format('Y-m-d H:i:s') ?? '2026-01-01 00:00:00';
                 $end   = Carbon::parse($endDate)->format('Y-m-d H:i:s')?? '2026-01-31 00:00:00';
 
-                $totalSeconds = Carbon::parse($startDate)->diffInSeconds(Carbon::parse($endDate));
+                $totalSeconds = Carbon::parse($start)->diffInSeconds(Carbon::parse($end));
 
                 $selectRaw = '
                         sp.resourceId,
