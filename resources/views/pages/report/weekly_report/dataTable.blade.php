@@ -292,3 +292,16 @@
         });
     });
 </script>
+
+<script>
+    const form = document.getElementById('filterForm');
+    const weekInput = document.getElementById('week_number');
+    const yearInput = document.getElementById('year');
+
+    function submitForm() {
+        form.requestSubmit();
+    }
+
+    weekInput.addEventListener('change', submitForm);
+    yearInput.addEventListener('change', submitForm);
+</script>
