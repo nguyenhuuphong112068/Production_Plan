@@ -105,9 +105,9 @@ class MonthlyReportController extends Controller
 
                 $row->H_in_month = $row->shift *  $row->day_in_week * 8;
 
-                $row->loading = $row->H_in_month *  $row->cleaning_hours * 100;
+                $row->loading = $row->H_in_month > 0 ? round($row->work_hours /  $row->H_in_month * 100,2) : 0;
 
-                $row->TEEP = $row->loading * $row->OEE / 100;
+                $row->TEEP =round( $row->loading * $row->OEE / 100 ,2);
 
                 return $row;
             });
