@@ -10,10 +10,10 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.quota.production.dataTable')
+  @include('pages.assignment.production.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.quota.production.create')
-  @include('pages.quota.production.update') 
+  {{-- @include('pages.assignment.production.create')
+  @include('pages.assignment.production.update')  --}}
 @endsection
