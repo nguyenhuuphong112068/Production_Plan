@@ -82,8 +82,14 @@
                                             ->merge($actual['yield_day']->keys())
                                             ->unique()
                                             ->sort();
+                                            
+                                            if ($allDates->isEmpty()) {
+                                                    $allDates = collect([$defaultFrom]);
+                                            }
+                                        
                                     @endphp
                                     <th class="text-center" style="width: 3% " >ĐV</th>
+                                    
                                     @foreach ($allDates as $date)
                                         <th class="text-center" style="width: 5% ">Sản lượng lý thuyết</th>
                                         <th class="text-center" style="width: 5% ">Sản lượng thực tế</th>
@@ -91,7 +97,6 @@
                                         <th class="text-center">Chi tiết</th>
                                     @endforeach
 
-                                    
                                 </tr>
                             </thead>
 
