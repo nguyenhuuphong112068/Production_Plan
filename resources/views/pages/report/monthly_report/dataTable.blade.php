@@ -172,8 +172,17 @@
                                         <td class="text-end"> {{number_format($data->output_thery) }} </td>
                                         <td class="text-end"> {{number_format($data->yield_actual) }} </td>
                                         <td> {{$data->OEE }} </td>
-                                        <td> {{ $data->shift }}</td> 
-                                        <td> {{ $data->day_in_week }}</td> 
+
+                                        {{-- shift --}}
+                                        <td> 
+                                            <input type= "text" class="time" name="shift" value = "{{ $data->shift }}" data-id={{ $data->id }} {{ $auth_update }}>
+                                        </td> 
+
+                                        {{-- day in week --}}
+                                        <td> 
+                                            <input type= "text" class="time" name="day_in_month" value = "{{ $data->day_in_month }}" data-id={{ $data->id }} {{ $auth_update }}>
+                                        </td>  
+
                                         <td> {{$data->H_in_month }} </td>
                                         <td> {{$data->loading }} </td>
                                         <td> {{$data->TEEP }} </td>
@@ -201,66 +210,66 @@
 
     });
 
-    // $(document).on('focus', '.time', function() {
-    //     $(this).data('old-value', $(this).val());
-    // });
+    $(document).on('focus', '.time', function() {
+        $(this).data('old-value', $(this).val());
+    });
 
-    // $(document).on('blur', '.time', function() {
+    $(document).on('blur', '.time', function() {
        
-    //     let id = $(this).data('id');
-    //     let name = $(this).attr('name');
-    //     let time = $(this).val();
-    //     let oldValue = $(this).data('old-value');
+        let id = $(this).data('id');
+        let name = $(this).attr('name');
+        let time = $(this).val();
+        let oldValue = $(this).data('old-value');
 
-    //     if (time === oldValue) return;
-    //     if (name === "shift") {
-    //         const pattern = /^[1-3]$/;
+        if (time === oldValue) return;
+        if (name === "shift") {
+            const pattern = /^[1-3]$/;
 
-    //         if (time && !pattern.test(time)) {
-    //             Swal.fire({
-    //                 title: 'Lỗi định dạng!',
-    //                 text: 'Ca (shift) chỉ được nhập số 1, 2 hoặc 3',
-    //                 icon: 'error',
-    //                 timer: 2000,
-    //                 showConfirmButton: false
-    //             });
-    //             $(this).focus();
-    //             $(this).css('border', '1px solid red');
-    //             return;
-    //         } else {
-    //             $(this).css('border', '');
-    //         }
-    //     }else if (name === "day_in_week"){
-    //         const pattern = /^[1-7]$/;
+            if (time && !pattern.test(time)) {
+                Swal.fire({
+                    title: 'Lỗi định dạng!',
+                    text: 'Ca (shift) chỉ được nhập số 1, 2 hoặc 3',
+                    icon: 'error',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                $(this).focus();
+                $(this).css('border', '1px solid red');
+                return;
+            } else {
+                $(this).css('border', '');
+            }
+        }else if (name === "day_in_month"){
+            const pattern = /^[1-31]$/;
 
-    //         if (time && !pattern.test(time)) {
-    //             Swal.fire({
-    //                 title: 'Lỗi định dạng!',
-    //                 text: 'Số ngày trong tuần phải nhỏ hơn hoặc bằng 7',
-    //                 icon: 'error',
-    //                 timer: 2000,
-    //                 showConfirmButton: false
-    //             });
-    //             $(this).focus();
-    //             $(this).css('border', '1px solid red');
-    //             return;
-    //         } else {
-    //             $(this).css('border', '');
-    //         }
-    //     }
+            if (time && !pattern.test(time)) {
+                Swal.fire({
+                    title: 'Lỗi định dạng!',
+                    text: 'Số ngày trong tuần phải nhỏ hơn hoặc bằng 7',
+                    icon: 'error',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                $(this).focus();
+                $(this).css('border', '1px solid red');
+                return;
+            } else {
+                $(this).css('border', '');
+            }
+        }
 
-    //     $.ajax({
-    //         url: "{{ route('pages.report.weekly_report.updateInput') }}",
-    //         type: 'POST',
-    //         dataType: 'json',
-    //         data: {
-    //             _token: '{{ csrf_token() }}',
-    //             id: id,
-    //             name: name,
-    //             time: time
-    //         }
-    //     });
-    // });
+        $.ajax({
+            url: "{{ route('pages.report.monthly_report.updateInput') }}",
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                _token: '{{ csrf_token() }}',
+                id: id,
+                name: name,
+                time: time
+            }
+        });
+    });
     
 </script>
 

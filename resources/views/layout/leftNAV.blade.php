@@ -39,9 +39,6 @@
   </style>
 
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
-
-
-
    <!-- Sidebar user (optional) -->
     {{-- <div class="user-panel mt-3 pb-3 mb-3 container d-flex justify-content-center align-items-center">
 
@@ -363,8 +360,35 @@
               @endif
             </ul>
           </li>
+          
+          <!-- Droplist ABCD -->
+          @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
+          <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
 
-          <!-- Droplist Menu Báo Cáo Ngày -->
+              <i class="nav-icon fas fa-user-check"></i>
+              <p>
+                Phân Công
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ route ('pages.assignment.production.index') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>ABCD</p>
+                </a>
+              </li>
+
+
+
+            </ul>
+          </li>
+          @endif
+
+
+          <!-- Droplist Menu Báo Cáo  -->
           @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
 
             <li class="nav-item has-treeview">
@@ -406,6 +430,7 @@
 
 
           @endif
+
           <!-- Droplist Menu Biệt Trữ -->
           @if (user_has_permission(session('user')['userId'], 'layout_quarantine', 'boolean'))
             <!-- Droplist Menu Biệt Trữ -->

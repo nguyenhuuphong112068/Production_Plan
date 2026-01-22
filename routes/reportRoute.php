@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\Route;
         ->name('pages.report.monthly_report.')
         ->group(function(){
             Route::get('','index')->name('index');
+            Route::post('updateInput','updateInput')->name('updateInput');
         
     });
 

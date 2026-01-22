@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\DB;
 class MonthlyReportController extends Controller
 {
     public function index(Request $request) {
-
-           
             $reportedMonth = (int) ($request->month ?? now()->month);
             $reportedYear  = (int) ($request->year ?? now()->year);
 
@@ -20,46 +18,57 @@ class MonthlyReportController extends Controller
                 ->setTime(6, 0, 0);
 
             $end = (clone $start)->addMonth();
-          
-            $weeks = [];
-            $current = $start->copy();
 
-            while ($current <= $end) {
-                $weeks[$current->isoWeek()] = $current->isoWeek();
-                $current->addWeek();
+            $check = DB::table('room_sheet_month')->where('reported_month', $reportedMonth)->where('reported_year', $reportedYear)->exists();
+            
+            if (!$check){
+                    $rooms = DB::table('room')
+                        ->where('active', 1)
+                        //->whereNotNull('capacity')
+                        ->select(
+                            'id as room_id',
+                            'capacity',
+                            DB::raw($reportedMonth . ' as reported_month'),
+                            DB::raw("'" . $reportedYear . "' as reported_year")
+                        )
+                        ->get();
+
+                    DB::table('room_sheet_month')->insert(
+                        $rooms->map(fn ($r) => (array) $r)->toArray()
+                    );
             }
+          
 
-            $weeks = array_values($weeks);
          
             $time = $this->getOperatedTime ($start, $end);
             $yield_actual =    $this->yield_actual ($start, $end);
             $yield_theory =   $this->yield_theory ($start, $end);
 
-            $datas = DB::table('room_sheet')
-                ->whereNotNull('room_sheet.capacity')
+            $datas = DB::table('room_sheet_month')
+                ->whereNotNull('room_sheet_month.capacity')
                 ->where('deparment_code', session('user')['production_code'])
                 ->where('reported_year', $reportedYear)
-                ->whereIn('reported_week', $weeks)
-                ->leftJoin('room', 'room_sheet.room_id', '=', 'room.id')
+                ->where('reported_month', $reportedMonth)
+                ->leftJoin('room', 'room_sheet_month.room_id', '=', 'room.id')
                 ->select(
-                    'room_sheet.id',    
-                    'room_sheet.room_id',
-                    'room_sheet.reported_week',
-                    'room_sheet.reported_year',
+                    'room_sheet_month.id',    
+                    'room_sheet_month.room_id',
+                    'room_sheet_month.reported_month',
+                    'room_sheet_month.reported_year',
                     'room.name as room_name',
                     'room.code as room_code',
                     'room.stage_code',
                     'room.main_equiment_name',
 
-                    DB::raw('AVG(room_sheet.capacity) as capacity'),
-                    DB::raw('AVG(room_sheet.shift) as shift'),
-                    DB::raw('AVG(room_sheet.day_in_week) as day_in_week')
+                    DB::raw('AVG(room_sheet_month.capacity) as capacity'),
+                    DB::raw('AVG(room_sheet_month.shift) as shift'),
+                    DB::raw('AVG(room_sheet_month.day_in_month) as day_in_month')
                 )
                 ->groupBy(
-                    'room_sheet.id',    
-                    'room_sheet.room_id',
-                    'room_sheet.reported_week',
-                    'room_sheet.reported_year',
+                    'room_sheet_month.id',    
+                    'room_sheet_month.room_id',
+                    'room_sheet_month.reported_month',
+                    'room_sheet_month.reported_year',
                     'room.name',
                     'room.code',
                     'room.stage_code',
@@ -103,7 +112,7 @@ class MonthlyReportController extends Controller
 
                 $row->OEE = $row->output_thery > 0? round(($row->yield_actual/$row->output_thery) *100):0;
 
-                $row->H_in_month = $row->shift *  $row->day_in_week * 8;
+                $row->H_in_month = $row->shift *  $row->day_in_month * 8;
 
                 $row->loading = $row->H_in_month > 0 ? round($row->work_hours /  $row->H_in_month * 100,2) : 0;
 
@@ -357,5 +366,15 @@ class MonthlyReportController extends Controller
             
             return collect($merged); 
                 
+        }
+
+        
+        public function updateInput(Request $request){
+                DB::table('room_sheet_month')
+                        ->where('id', $request->id)
+                        ->update([
+                                $request->name => $request->time
+                        ]);
+                return response()->json(['success' => true]);
         }
 }
