@@ -167,13 +167,13 @@
                                         </td>
 
                                         <td> {{$data->room_code . " - " . $data->room_name}} {{ "(" .$data->main_equiment_name ." )"}} </td>
-                                        <td> {{$data->capacity }} </td>
+                                        <td> {{number_format($data->capacity) }} </td>
 
                                         <td> {{$data->work_hours }} </td>
                                         <td> {{$data->cleaning_hours }} </td>
                                         <td> {{$data->busy_hours }} </td>
-                                        <td> {{$data->output_thery }} </td>
-                                        <td> {{$data->yield_actual }} </td>
+                                        <td class="text-end"> {{number_format($data->output_thery) }} </td>
+                                        <td class="text-end"> {{number_format($data->yield_actual) }} </td>
                                         <td> {{$data->OEE }} </td>
 
                                         {{-- shift --}}

@@ -46,8 +46,9 @@ class WeeklyReportController extends Controller
 
             $datas = DB::table('room_sheet')
                     ->whereNotNull('room_sheet.capacity')
-                    ->where('reported_week', $reportedWeek)
+                    ->where('deparment_code', session ('user')['production_code'])
                     ->where('reported_year', $reportedYear)
+                    ->where('reported_week', $reportedWeek)
                     ->leftJoin('room','room_sheet.room_id','room.id')
                     ->select (
                         'room_sheet.*',
@@ -56,6 +57,8 @@ class WeeklyReportController extends Controller
                         'room.stage_code',
                         'room.main_equiment_name as main_equiment_name',
                     )
+            ->orderBy('stage_code')
+            ->orderBy('order_by')
             ->get();
 
             $timeByResource = collect($time)->keyBy('resourceId');
@@ -96,10 +99,15 @@ class WeeklyReportController extends Controller
                 $row->loading = $row->H_in_month *  $row->cleaning_hours * 100;
 
                 $row->TEEP = $row->loading * $row->OEE / 100;
+
                 return $row;
             });
-
-            session()->put(['title' => "BÁO CÁO TUẤN "]);
+            $datas = $datas->sortBy('stage_code');
+            session()->put([
+                'title' => "BÁO CÁO TUẦN $reportedWeek (" .
+                    $start->format('H:i d/m/Y') . " - " .
+                    $end->format('H:i d/m/Y') . ")"
+            ]);
             //dd ($datas);
             return view('pages.report.weekly_report.list', [
                     'datas' => $datas
@@ -341,8 +349,6 @@ class WeeklyReportController extends Controller
             return collect($merged); 
                 
         }
-
-
 
         public function updateInput(Request $request){
                 DB::table('room_sheet')

@@ -13,9 +13,3 @@
   @include('pages.report.monthly_report.dataTable')
 @endsection
 
-@section('model')
-  @include('pages.report.monthly_report.create')
-  @include('pages.report.monthly_report.update')
-  @include('pages.report.monthly_report.detail')
-  @include('pages.report.monthly_report.explanation')
-@endsection
