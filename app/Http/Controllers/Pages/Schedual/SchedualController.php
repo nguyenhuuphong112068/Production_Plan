@@ -32,7 +32,7 @@ class SchedualController extends Controller
         protected $processed_stage_code_Id = [];
 
         public function test(){
-                $this->Auto_scheduler_Stage_Backward (7,0,0,Carbon::parse(now()));
+                //$this->Auto_scheduler_Stage_Backward (7,0,0,Carbon::parse(now()));
                 //$this->scheduleSensitiveProduct(3, 0, 0, Carbon::parse('2026-01-05'));
                 //$this->createAutoCampain (null);
                 //$this->createAutoCampain();
@@ -3004,9 +3004,13 @@ class SchedualController extends Controller
                                              
                         if ($cleaningType == 2){$titleCleaning = "VS-II";} else {$titleCleaning = "VS-I";}
                         $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group')?? 0;
-
+                        
+                        $code = DB::table('stage_plan')->where('id', $stageId)->value('code');
+                        
+                        //$ids = DB::table('stage_plan')->where('code', $code)->pluck('id');
+                        
                         DB::table('stage_plan')
-                                ->where('id', $stageId)
+                                ->where('code', $code)
                                 ->update([
                                 'title'           => $title,
                                 'resourceId'      => $roomId,
@@ -3371,10 +3375,11 @@ class SchedualController extends Controller
                                 ->where('sp.finished',0)
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
+                                ->where('plan_master.only_parkaging',0)
                                 ->whereNotNull('plan_master.after_weigth_date')
-                                //->when($stageCode == 7, function ($q) {
+                                // ->when($stageCode == 7, function ($q) {
                                 //        $q->whereNotNull('plan_master.after_parkaging_date');
-                                //})
+                                // })
                                 ->where('sp.deparment_code', session('user')['production_code'])
                                 ->orderBy('prev.start', 'asc')
 
@@ -3426,6 +3431,7 @@ class SchedualController extends Controller
                                 ->where('sp.finished',0)
                                 ->where('sp.active',1)
                                 ->whereNull('sp.start')
+                                ->where('plan_master.only_parkaging',0)
                                 ->whereNotNull('plan_master.after_weigth_date')
                                 ->when($stageCode == 7, function ($q) {
                                         $q->whereNotNull('plan_master.after_parkaging_date');
@@ -3442,7 +3448,6 @@ class SchedualController extends Controller
                         if ($task->is_val === 1) { $waite_time = $waite_time_val_batch; }else {$waite_time = $waite_time_nomal_batch;}
 
                         if ($task->campaign_code === null) {
-
                                 $this->sheduleNotCampaing ($task, $stageCode, $waite_time, $start_date, null);
                         }else {
                                 if (in_array($task->campaign_code, $processedCampaigns)) {continue;}
@@ -3972,10 +3977,12 @@ class SchedualController extends Controller
                                         }
                         }
                         // phòng phù hợp (quota)
-                        
+                        if (!$rooms ) return;
 
                         $bestRoom = null;
                         $bestStart = null;
+                        
+                        
 
                         //Tim phòng tối ưu
                         foreach ($rooms as $room) {
@@ -4005,46 +4012,12 @@ class SchedualController extends Controller
 
                         }
                         
+                        $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom);
 
-                        //if ($this->work_sunday == false) {
-                                //Giả sử $bestStart là Carbon instance
+                        $bestEnd = $this->addWorkingMinutes ( $bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
+                        $start_clearning = $bestEnd->copy();
+                        $end_clearning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $C2_time_minutes, $bestRoom, $this->work_sunday);                       
 
-                                //$startOfSunday = (clone $bestStart)->startOfWeek()->addDays(6)->setTime(6, 0, 0); // CN 6h sáng
-                                //$endOfPeriod   = (clone $startOfSunday)->addDay()->setTime(6, 0, 0);   // T2 tuần kế tiếp 6h sáng
-
-                                // if ()
-                                // $pred_end = DB::table('stage_plan')->where('code', $task->predecessor_code)->value('end');
-                                // if (isset($pred_end) && $pred_end != null && $pred_end > $bestStart) {$bestStart = Carbon::parse($pred_end);}
-
-                                $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom);
-
-                                // if ($bestStart->between($startOfSunday, $endOfPeriod)) {
-                                //         $bestStart = $endOfPeriod->copy();
-                                //         $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
-                                //         $start_clearning =  $bestEnd->copy();
-                                //         $end_clearning =  $bestStart->copy()->addMinutes($intervalTimeMinutes +  $C2_time_minutes);
-
-
-                                // }else if ($bestEnd->between($startOfSunday, $endOfPeriod)) {
-                                //         $bestEnd = $bestEnd->copy()->addMinutes(1440);
-                                //         $start_clearning =  $bestEnd->copy();
-                                //         $end_clearning =  $bestStart->copy()->addMinutes($intervalTimeMinutes +  $C2_time_minutes);
-                                // }
-
-                                $bestEnd = $this->addWorkingMinutes ( $bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
-                                $start_clearning = $bestEnd->copy();
-                                $end_clearning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $C2_time_minutes, $bestRoom, $this->work_sunday);                       
-
-
-                                // if (isset($start_clearning) &&  $start_clearning->between($startOfSunday, $endOfPeriod)) {
-                                //         $start_clearning =  $endOfPeriod->copy();
-                                //         $end_clearning =  $start_clearning->copy()->addMinutes($C2_time_minutes);
-
-                                // }else if ($end_clearning->between($startOfSunday, $endOfPeriod)) {
-                                //                 $end_clearning =  $end_clearning->copy()->addMinutes(1440);
-                                // }
-
-                        //}
 
                         $this->saveSchedule(
                                         null,
@@ -4055,16 +4028,13 @@ class SchedualController extends Controller
                                         $start_clearning,
                                         $end_clearning,
                                         2,
-                                        1,
-                                      
+                                        1,    
                         );
+
 
                 // Làm liên tục các công cộng sau
                 $nextTasks = collect();
-                $next_stage_code = isset($task->nextcessor_code)
-                                ? (int) (explode('_', $task->nextcessor_code)[1] ?? 0)
-                                : 0;
-
+                $next_stage_code = isset($task->nextcessor_code)? (int) (explode('_', $task->nextcessor_code)[1] ?? 0): 0;
                 if ($task->nextcessor_code && $next_stage_code &&  $next_stage_code <= $this->max_Step && $task->immediately ){     
 
                         $nextTasks = DB::table("stage_plan as sp")
@@ -4369,6 +4339,8 @@ class SchedualController extends Controller
                         }
                 }
 
+                if (!$rooms) return;
+
                 // Liên hê giữa PC và THT 
                 if ( $stageCode == 4 &&  $firstTask->predecessor_code &&  explode('_', $firstTask->predecessor_code)[1] == 3 && $rooms->count() > 1) {
                         $rooms_bkc = $rooms;
@@ -4400,7 +4372,7 @@ class SchedualController extends Controller
                 $bestRoom = null;
                 $bestStart = null;
 
-        
+                
                 //Tim phòng tối ưu
                 foreach ($rooms as $room) {
 
