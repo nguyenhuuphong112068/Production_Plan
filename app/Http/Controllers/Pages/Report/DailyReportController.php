@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 class DailyReportController extends Controller
 {
     public function index(Request $request) {
+
         $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
 
         if ($department == session('user')['production_code']){{
@@ -30,8 +31,6 @@ class DailyReportController extends Controller
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
         $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
     
-
-
         $sum_by_next_room = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
                 $join->on('t2.code','=','t.nextcessor_code');
@@ -56,7 +55,9 @@ class DailyReportController extends Controller
             ->orderBy('group_code')   // sắp xếp theo stage
             ->get();
 
-            $explanation = DB::table('explanation')->where('reported_date', $reportedDate->toDateString())->pluck('content','stage_code');
+            $explanation = DB::table('explanation')
+            ->where('deparment_code', session('user')['production_code'])
+            ->where('reported_date', $reportedDate->toDateString())->pluck('content','stage_code');
          
             $displayDate = $reportedDate->format('d/m/Y');
             session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
