@@ -1,9 +1,12 @@
-
+<style>
+.note-content {
+    white-space: pre-line;
+}
+</style>
 <div class="content-wrapper">
     <!-- Main content -->
           <div class="card">
               <div class="card-header mt-4"></div>
-           
               @php
 
                 $update_daily_report = user_has_permission(session('user')['userId'], 'update_daily_report', 'boolean');
@@ -72,7 +75,7 @@
                         <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
                             <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
                                 <tr style="color:#003A4F; font-size: 20px; font-weight: bold;">
-                                    <th class="text-center" style="min-width: 200px;">Phòng SX</th>
+                                    <th class="text-center" style="max-width: 200px;">Phòng SX</th>
 
                                     @php
                                         $allDates = $theory['yield_day']->keys()
@@ -80,15 +83,15 @@
                                             ->unique()
                                             ->sort();
                                     @endphp
-
+                                    <th class="text-center" style="width: 3% " >ĐV</th>
                                     @foreach ($allDates as $date)
-                                        <th class="text-center">Sản lượng lý thuyết</th>
+                                        <th class="text-center" style="width: 5% ">Sản lượng lý thuyết</th>
+                                        <th class="text-center" style="width: 5% ">Sản lượng thực tế</th>
+                                        <th class="text-center" style="width: 5% ">Phần trăm đáp ứng</th>
                                         <th class="text-center">Chi tiết</th>
-                                        <th class="text-center">Sản lượng thực tế</th>
-                                        <th class="text-center">Phần trăm đáp ứng</th>
                                     @endforeach
 
-                                    <th class="text-center">ĐV</th>
+                                    
                                 </tr>
                             </thead>
 
@@ -133,264 +136,263 @@
                                         </td>
 
                                         @foreach ($allDates as $date)
+                                            <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
                                             <td class="text-center">{{ number_format($stageLT[$date], 2) }}</td>
-                                            <td class="text-left">
-                                                    {{ $explanation[$stage_code]?? "-" }} 
-                                                    
-                                                    <button type="button" class="btn btn-sm btn-explain"
-                                                        data-stage_code="{{ $stage_code }}"
-                                                        data-reported_date="{{ $defaultFrom }}"
-                                                        data-toggle="modal" 
-                                                        data-target="#explanation"
-                                                        >📝
-                                                    </button> 
-                                            </td>
                                             <td class="text-center">{{ number_format($stageTT[$date], 2) }}</td>
-                                           <td class="text-center " 
+                                            <td class="text-center " 
                                                 style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
-
-                                                {{ number_format($stagePercent[$date], 2) }}%
-
-                                                {{-- @if (number_format($stagePercent[$date], 2) < 90)
-                                                    <button type="button" class="btn btn-sm btn-explain"
-                                                        data-stage_code="{{ $stage_code }}"
-                                                        data-reported_date="{{ $defaultFrom }}"
-                                                        data-toggle="modal" 
-                                                        data-target="#explanation"
-                                                        
-                                                        >📝
-                                                    </button>  
-                                                @endif --}}
-
+                                                {{ number_format($stagePercent[$date], 2) }}%                            
                                             </td>
+
+                                        <td class="text-left note-content">
+                                                {{ trim($explanation[$stage_code] ?? '-') }}
+                                                <button type="button" class="btn btn-sm btn-explain"
+                                                    data-stage_code="{{ $stage_code }}"
+                                                    data-reported_date="{{ $defaultFrom }}"
+                                                    data-toggle="modal" 
+                                                    data-target="#explanation">
+                                                    📝
+                                                </button>
+                                        </td>
                                         @endforeach
 
-                                        <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
+                                        
                                     </tr>
 
-                                {{-- ⭐ Lặp các phòng trong stage --}}
-                                @foreach ($rooms as $roomLT)
-                                    @php
-                                        $resourceId = $roomLT->resourceId;
-                                        $unit = $roomLT->unit;
-                                    @endphp
+                                    {{-- ⭐ Lặp các phòng trong stage --}}
+                                    @foreach ($rooms as $roomLT)
+                                        @php
+                                            $resourceId = $roomLT->resourceId;
+                                            $unit = $roomLT->unit;
+                                        @endphp
 
-                                    <tr class="stage-child stage-{{ $stage_code }}">
-                                        <td class="align-middle">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
+                                        <tr class="stage-child stage-{{ $stage_code }}">
+                                            <td class="align-middle">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
 
-                                        @foreach ($allDates as $date)
-                                            @php
-                                                // LT
-                                                $dayLT = $theory['yield_day'][$date] ?? collect();
-                                                $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
-                                                $qtyLT = $itemLT['total_qty'] ?? 0;
-
-                                                // TT
-                                                $dayTT = $actual['yield_day'][$date] ?? collect();
-                                                $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
-                                                $qtyTT = $itemTT['total_qty'] ?? 0;
-
-                                                // %
-                                                //$percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
-
-                                                if ($qtyTT > 0 && $qtyLT > 0){
-                                                    $percent = $qtyTT / $qtyLT * 100;
-                                                }elseif ($qtyTT == 0 && $qtyLT == 0){
-                                                    $percent = 0;
-                                                }elseif ($qtyTT > 0 && $qtyLT == 0){
-                                                    $percent = 100;
-                                                }else{
-                                                    $percent = 0;
-                                                }
-
-                                                // Chi tiết đúng chuẩn
-                                                $detail = $detail = collect($yield_actual_detial['actual_detail'] ?? [])
-                                                            ->where('resourceId', $resourceId);
-                                                           // ->where('reported_date', $date);
-                                            @endphp
-
-                                            {{-- LT --}}
-                                            <td class="text-center" style="background:#93f486;">
-                                                {{ number_format($qtyLT, 2) }}
-                                            </td>
-
-                                            {{-- CHI TIẾT --}}
-                                            <td class="text-left" style="background:#d7eaff; font-size:14px;">
-                                                @if ($update_daily_report)
-                                                    <button class="btn btn-success btn-sm btn-plus float-right" 
-                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                                        data-room_code = "{{$roomLT->room_code}}" 
-                                                        data-room_name = "{{$roomLT->room_name}}" 
-                                                        data-room_id = "{{$roomLT->resourceId}}"     
-                                                        data-toggle="modal"
-                                                        data-target="#Modal"
-                                                        title = "Tạo mới Báo Cáo Hoạt Động Khác"
-                                                    
-                                                    >+</button>
-                                                @endif
-
+                                            @foreach ($allDates as $date)
                                                 @php
-                                                    // --- Cấu hình ca ---
-                                                    $shiftStart = Carbon::parse($date . ' 06:00:00');
-                                                    $shiftEnd   = $shiftStart->copy()->addDay();
+                                                    // LT
+                                                    $dayLT = $theory['yield_day'][$date] ?? collect();
+                                                    $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
+                                                    $qtyLT = $itemLT['total_qty'] ?? 0;
 
-                                                    // Lưu các đoạn đã chuẩn hóa
-                                                    $intervals = [];
+                                                    // TT
+                                                    $dayTT = $actual['yield_day'][$date] ?? collect();
+                                                    $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
+                                                    $qtyTT = $itemTT['total_qty'] ?? 0;
 
-                                                    foreach ($detail as $d) {
-                                                        $start = Carbon::parse($d->start);
-                                                        $end   = Carbon::parse($d->end);
+                                                    // %
+                                                    //$percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
 
-                                                        if ($end < $start) {
-                                                            $end->addDay();
-                                                        }
-
-                                                        // Giới hạn trong ca
-                                                        $realStart = $start->max($shiftStart);
-                                                        $realEnd   = $end->min($shiftEnd);
-
-                                                        if ($realEnd > $realStart) {
-                                                            $intervals[] = [
-                                                                'start' => $realStart,
-                                                                'end' => $realEnd,
-                                                            ];
-                                                        }
+                                                    if ($qtyTT > 0 && $qtyLT > 0){
+                                                        $percent = $qtyTT / $qtyLT * 100;
+                                                    }elseif ($qtyTT == 0 && $qtyLT == 0){
+                                                        $percent = 0;
+                                                    }elseif ($qtyTT > 0 && $qtyLT == 0){
+                                                        $percent = 100;
+                                                    }else{
+                                                        $percent = 0;
                                                     }
 
-                                                    // Nếu không có khoảng nào
-                                                    if (count($intervals) === 0) {
-                                                        $totalActiveSeconds = 0;
-                                                    } else {
-                                                        // 1. Sắp xếp theo thời gian bắt đầu
-                                                        usort($intervals, function ($a, $b) {
-                                                            return $a['start']->timestamp <=> $b['start']->timestamp;
-                                                        });
-
-                                                        // 2. Gộp khoảng
-                                                        $merged = [];
-                                                        $current = $intervals[0];
-
-                                                        foreach ($intervals as $int) {
-                                                            if ($int['start'] <= $current['end']) {
-                                                                // chồng nhau → kéo dài đoạn hiện tại
-                                                                $current['end'] = $int['end']->max($current['end']);
-                                                            } else {
-                                                                // không chồng → add vào list
-                                                                $merged[] = $current;
-                                                                $current = $int;
-                                                            }
-                                                        }
-                                                        $merged[] = $current;
-
-                                                        // 3. Tính tổng thời gian
-                                                        $totalActiveSeconds = 0;
-                                                        foreach ($merged as $m) {
-                                                            $totalActiveSeconds += $m['start']->diffInSeconds($m['end']);
-                                                        }
-                                                    }
-
-                                                    // Tổng ca
-                                                    $totalShiftSeconds = $shiftStart->diffInSeconds($shiftEnd);
-
-                                                    // Thời gian chết
-                                                    $totalDeadSeconds = $totalShiftSeconds - $totalActiveSeconds;
-
-                                                    // Giờ phút
-                                                    $activityHours   = floor($totalActiveSeconds / 3600);
-                                                    $activityMinutes = floor(($totalActiveSeconds % 3600) / 60);
-
-                                                    $deadHours   = floor($totalDeadSeconds / 3600);
-                                                    $deadMinutes = floor(($totalDeadSeconds % 3600) / 60);
+                                                    // Chi tiết đúng chuẩn
+                                                    $detail = $detail = collect($yield_actual_detial['actual_detail'] ?? [])
+                                                                ->where('resourceId', $resourceId);
+                                                            // ->where('reported_date', $date);
                                                 @endphp
 
-                                                @if($detail->count())
-                                                    @php $i = 1; @endphp
-                                                   @foreach ($detail as  $d)
-                                                        <div style="display: flex; flex-direction: row; gap: 3px;">
-                                                            @php
-                                                                $start = \Carbon\Carbon::parse($d->start);
-                                                                $end   = \Carbon\Carbon::parse($d->end);
 
-                                                                // Nếu end nhỏ hơn start => qua ngày hôm sau
-                                                                if ($end->lessThan($start)) {
-                                                                    $end->addDay();
+                                                {{-- ĐV --}}
+                                                <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
+
+                                                {{-- LT --}}
+                                                <td class="text-center" style="background:#93f486;">
+                                                    {{ number_format($qtyLT, 2) }}
+                                                </td>
+
+
+
+                                                {{-- TT --}}
+                                                <td class="text-center" style="background:#69b8f4;">
+                                                    {{ number_format($qtyTT, 2) }}
+                                                </td>
+
+                                                {{-- % --}}
+                                                <td class="text-center"
+                                                    style="background: {{ $percent < 90 ? 'red' : 'none' }}">
+                                                    {{ number_format($percent, 2) }}%
+                                                </td>
+
+                                                
+                                                
+                                                {{-- CHI TIẾT --}}
+                                                <td class="text-left" style="background:#d7eaff; font-size:14px;">
+                                                    @if ($update_daily_report)
+                                                        <button class="btn btn-success btn-sm btn-plus float-right" 
+                                                        style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                            data-room_code = "{{$roomLT->room_code}}" 
+                                                            data-room_name = "{{$roomLT->room_name}}" 
+                                                            data-room_id = "{{$roomLT->resourceId}}"     
+                                                            data-toggle="modal"
+                                                            data-target="#Modal"
+                                                            title = "Tạo mới Báo Cáo Hoạt Động Khác"
+                                                        
+                                                        >+</button>
+                                                    @endif
+
+                                                    @php
+                                                        // --- Cấu hình ca ---
+                                                        $shiftStart = Carbon::parse($date . ' 06:00:00');
+                                                        $shiftEnd   = $shiftStart->copy()->addDay();
+
+                                                        // Lưu các đoạn đã chuẩn hóa
+                                                        $intervals = [];
+
+                                                        foreach ($detail as $d) {
+                                                            $start = Carbon::parse($d->start);
+                                                            $end   = Carbon::parse($d->end);
+
+                                                            if ($end < $start) {
+                                                                $end->addDay();
+                                                            }
+
+                                                            // Giới hạn trong ca
+                                                            $realStart = $start->max($shiftStart);
+                                                            $realEnd   = $end->min($shiftEnd);
+
+                                                            if ($realEnd > $realStart) {
+                                                                $intervals[] = [
+                                                                    'start' => $realStart,
+                                                                    'end' => $realEnd,
+                                                                ];
+                                                            }
+                                                        }
+
+                                                        // Nếu không có khoảng nào
+                                                        if (count($intervals) === 0) {
+                                                            $totalActiveSeconds = 0;
+                                                        } else {
+                                                            // 1. Sắp xếp theo thời gian bắt đầu
+                                                            usort($intervals, function ($a, $b) {
+                                                                return $a['start']->timestamp <=> $b['start']->timestamp;
+                                                            });
+
+                                                            // 2. Gộp khoảng
+                                                            $merged = [];
+                                                            $current = $intervals[0];
+
+                                                            foreach ($intervals as $int) {
+                                                                if ($int['start'] <= $current['end']) {
+                                                                    // chồng nhau → kéo dài đoạn hiện tại
+                                                                    $current['end'] = $int['end']->max($current['end']);
+                                                                } else {
+                                                                    // không chồng → add vào list
+                                                                    $merged[] = $current;
+                                                                    $current = $int;
                                                                 }
+                                                            }
+                                                            $merged[] = $current;
 
-                                                                $minutes = $start->diffInMinutes($end);
-                                                                $hours = intdiv($minutes, 60);
-                                                                $mins  = $minutes % 60;
-                                                            @endphp
+                                                            // 3. Tính tổng thời gian
+                                                            $totalActiveSeconds = 0;
+                                                            foreach ($merged as $m) {
+                                                                $totalActiveSeconds += $m['start']->diffInSeconds($m['end']);
+                                                            }
+                                                        }
 
-                                                            {{$i++ .". "}}  {{$d->title == null && $d->yields == null  ?"VS":$d->title}}
-                                                            ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} = <b> {{ $hours }}h{{ $mins }}p </b>)
+                                                        // Tổng ca
+                                                        $totalShiftSeconds = $shiftStart->diffInSeconds($shiftEnd);
 
-                                                            @if ($d->yields)
-                                                                || <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }} {{ $d->yields_batch_qty? "# $d->yields_batch_qty  ĐVL" : "" }}</b>
-                                                            @endif
+                                                        // Thời gian chết
+                                                        $totalDeadSeconds = $totalShiftSeconds - $totalActiveSeconds;
 
-                                                            @if ($d->note && $d->note <> "NA" )
-                                                                || <b>{{"Ghi Chú: ". $d->note }} </b>
-                                                            @endif
+                                                        // Giờ phút
+                                                        $activityHours   = floor($totalActiveSeconds / 3600);
+                                                        $activityMinutes = floor(($totalActiveSeconds % 3600) / 60);
 
-                                                            @if ($d->is_order_action && $update_daily_report)
-                                                                <button class="btn btn-warning btn-sm btn-edit" 
-                                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                                                    data-id = "{{$d->id}}" 
-                                                                    data-title = "{{$d->title}}"
-                                                                    data-start = "{{$d->start}}"
-                                                                    data-end = "{{$d->end}}"
-                                                                    data-note = "{{$d->note}}"
-                                                                    data-room_id = "{{$roomLT->resourceId}}"
-                                                                    data-room_code = "{{$roomLT->room_code}}" 
-                                                                    data-room_name = "{{$roomLT->room_name}}" 
-                                                                    title = "Cập Nhật Báo Cáo Hoạt Động Khác"
-                                                                    data-toggle="modal"
-                                                                    data-target="#updateModal"
-                                                                >
-                                                                    <i class="fas fa-pen"></i>
-                                                                </button>
+                                                        $deadHours   = floor($totalDeadSeconds / 3600);
+                                                        $deadMinutes = floor(($totalDeadSeconds % 3600) / 60);
+                                                    @endphp
 
-                                                                <form class="form-deActive" action="{{ route('pages.report.daily_report.deActive') }}" method="post">
-                                                                    @csrf
-                                                                    <input type="hidden" name="id" value="{{ $d->id }}">
-                                                                    <button class="btn btn-danger btn-sm btn-deactive" 
-                                                                        title = "Hủy Báo Cáo Hoạt Động Khác"
+                                                    @if($detail->count())
+                                                    @php $i = 1; @endphp
+                                                    @foreach ($detail as  $d)
+                                                    
+                                                            <div style="display: flex; flex-direction: row; gap: 3px;">
+                                                                @php
+                                                                    $start = \Carbon\Carbon::parse($d->start);
+                                                                    $end   = \Carbon\Carbon::parse($d->end);
+
+                                                                    // Nếu end nhỏ hơn start => qua ngày hôm sau
+                                                                    if ($end->lessThan($start)) {
+                                                                        $end->addDay();
+                                                                    }
+
+                                                                    $minutes = $start->diffInMinutes($end);
+                                                                    $hours = intdiv($minutes, 60);
+                                                                    $mins  = $minutes % 60;
+                                                                @endphp
+
+                                                                {{$i++ .". "}}  {{$d->title == null && $d->yields == null  ?"VS":$d->title}}
+                                                                ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} = <b> {{ $hours }}h{{ $mins }}p </b>)
+
+                                                                @if ($d->yields)
+                                                                    || <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }} {{ $d->yields_batch_qty? "# $d->yields_batch_qty  ĐVL" : "" }}</b>
+                                                                @endif
+
+                                                                @if ($d->note && $d->note <> "NA" )
+                                                                    || <b>{{"Ghi Chú: ". $d->note }} </b>
+                                                                @endif
+
+                                                                @if ($d->is_order_action && $update_daily_report)
+                                                                    <button class="btn btn-warning btn-sm btn-edit" 
                                                                         style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                                        data-id = "{{$d->id}}" 
+                                                                        data-title = "{{$d->title}}"
+                                                                        data-start = "{{$d->start}}"
+                                                                        data-end = "{{$d->end}}"
+                                                                        data-note = "{{$d->note}}"
+                                                                        data-room_id = "{{$roomLT->resourceId}}"
+                                                                        data-room_code = "{{$roomLT->room_code}}" 
+                                                                        data-room_name = "{{$roomLT->room_name}}" 
+                                                                        title = "Cập Nhật Báo Cáo Hoạt Động Khác"
+                                                                        data-toggle="modal"
+                                                                        data-target="#updateModal"
                                                                     >
-                                                                        <i class="fas fa-trash"></i>
+                                                                        <i class="fas fa-pen"></i>
                                                                     </button>
-                                                                </form>
-                                                            @endif
+
+                                                                    <form class="form-deActive" action="{{ route('pages.report.daily_report.deActive') }}" method="post">
+                                                                        @csrf
+                                                                        <input type="hidden" name="id" value="{{ $d->id }}">
+                                                                        <button class="btn btn-danger btn-sm btn-deactive" 
+                                                                            title = "Hủy Báo Cáo Hoạt Động Khác"
+                                                                            style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                                        >
+                                                                            <i class="fas fa-trash"></i>
+                                                                        </button>
+                                                                    </form>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach 
+                                                        <div>   
+                                                            <b>Tổng thời gian xác định:</b> {{ $activityHours }} giờ {{ $activityMinutes }} phút
+                                                            <br>
+                                                            <b>Tổng thời gian không xác định:</b> {{ $deadHours }} giờ {{ $deadMinutes }} phút
                                                         </div>
-                                                    @endforeach 
-                                                    <div>   
-                                                        <b>Tổng thời gian xác định:</b> {{ $activityHours }} giờ {{ $activityMinutes }} phút
-                                                        <br>
-                                                        <b>Tổng thời gian không xác định:</b> {{ $deadHours }} giờ {{ $deadMinutes }} phút
-                                                    </div>
 
-                                                @else
-                                                    <span class="text-muted">—</span>
-                                                @endif
+                                                    @else
+                                                        <span class="text-muted">—</span>
+                                                    @endif
 
-                                            </td>
+                                                </td>
 
-                                            {{-- TT --}}
-                                            <td class="text-center" style="background:#69b8f4;">
-                                                {{ number_format($qtyTT, 2) }}
-                                            </td>
 
-                                            {{-- % --}}
-                                            <td class="text-center"
-                                                style="background: {{ $percent < 90 ? 'red' : 'none' }}">
-                                                {{ number_format($percent, 2) }}%
-                                            </td>
-                                        @endforeach
+                                            @endforeach
+                                            
+                                        
+                                        </tr>
 
-                                        <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
-                                    </tr>
-
-                                @endforeach
+                                    @endforeach
 
 
                             @endforeach
