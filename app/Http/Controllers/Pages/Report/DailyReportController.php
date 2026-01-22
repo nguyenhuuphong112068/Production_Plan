@@ -706,6 +706,7 @@ class DailyReportController extends Controller
             ->where ('stage_code', $request->stage_code)
             ->update([
                     'content' => $request->note,
+                    'deparment_code' => session ('user')['production_code'],
                     'created_by' => session ('user')['fullName'],
                     'updated_at' => now(),
                     'created_at' => now(),

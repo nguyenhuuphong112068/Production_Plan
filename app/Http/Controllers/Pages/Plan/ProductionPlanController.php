@@ -74,7 +74,7 @@ class ProductionPlanController extends Controller
                         DB::raw("
                         CASE
                                 WHEN 
-                                SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) >= 1
+                                SUM(CASE WHEN pm.cancel = 0  THEN 0 ELSE 1 END) >= 1
                                 THEN 1 ELSE 0
                         END AS huy
                         ")
