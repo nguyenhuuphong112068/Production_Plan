@@ -9,10 +9,10 @@ class ABCDController extends Controller
 {
         public function index(Request $request) {
 
-            dd ("sa");
-            session()->put(['title' => "BÁO CÁO NGÀY"]);
+           
+            session()->put(['title' => "PHÂN CÔNG CÔNG VIỆC"]);
                 
-            return view('pages.report.daily_report.list', [
+            return view('pages.assignment.production.list', [
                 
             ]);
 
