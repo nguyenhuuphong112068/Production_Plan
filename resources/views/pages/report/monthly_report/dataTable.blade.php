@@ -222,13 +222,15 @@
         let oldValue = $(this).data('old-value');
 
         if (time === oldValue) return;
-        if (name === "shift") {
-            const pattern = /^[1-3]$/;
+        
 
-            if (time && !pattern.test(time)) {
+        if (name === "shift") {
+            const value = Number(time);
+
+            if (!Number.isInteger(value) || value < 0 || value > 3) {
                 Swal.fire({
                     title: 'Lỗi định dạng!',
-                    text: 'Ca (shift) chỉ được nhập số 1, 2 hoặc 3',
+                    text: 'Ngày phải là số nguyên từ 0 đến 3',
                     icon: 'error',
                     timer: 2000,
                     showConfirmButton: false
@@ -239,13 +241,13 @@
             } else {
                 $(this).css('border', '');
             }
-        }else if (name === "day_in_month"){
-            const pattern = /^[1-31]$/;
+        }else if (name === "day_in_month") {
+            const value = Number(time);
 
-            if (time && !pattern.test(time)) {
+            if (!Number.isInteger(value) || value < 0 || value > 31) {
                 Swal.fire({
                     title: 'Lỗi định dạng!',
-                    text: 'Số ngày trong tuần phải nhỏ hơn hoặc bằng 7',
+                    text: 'Ngày phải là số nguyên từ 0 đến 31',
                     icon: 'error',
                     timer: 2000,
                     showConfirmButton: false
