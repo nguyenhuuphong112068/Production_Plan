@@ -26,7 +26,7 @@ class WeeklyReportController extends Controller
             if (!$check){
                     $rooms = DB::table('room')
                         ->where('active', 1)
-                        ->whereNotNull('capacity')
+                        //->whereNotNull('capacity')
                         ->select(
                             'id as room_id',
                             'capacity',
@@ -94,9 +94,9 @@ class WeeklyReportController extends Controller
 
                 $row->OEE = $row->output_thery > 0? round(($row->yield_actual/$row->output_thery) *100):0;
 
-                $row->H_in_month = $row->shift *  $row->day_in_week * 8;
+                $row->H_in_week = $row->shift *  $row->day_in_week * 8;
 
-                $row->loading = $row->H_in_month > 0 ? round($row->work_hours /  $row->H_in_month * 100,2) : 0;
+                $row->loading = $row->H_in_week > 0 ? round($row->work_hours /  $row->H_in_week * 100,2) : 0;
 
                 $row->TEEP =round( $row->loading * $row->OEE / 100 ,2);
 

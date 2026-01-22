@@ -185,7 +185,7 @@
                                         <td> 
                                             <input type= "text" class="time" name="day_in_week" value = "{{ $data->day_in_week }}" data-id={{ $data->id }} {{ $auth_update }}>
                                         </td> 
-                                        <td> {{$data->H_in_month }} </td>
+                                        <td> {{$data->H_in_week }} </td>
 
                                         <td> {{$data->loading }} </td>
                                         <td> {{$data->TEEP }} </td>
@@ -227,7 +227,7 @@
 
         if (time === oldValue) return;
         if (name === "shift") {
-            const pattern = /^[1-3]$/;
+            const pattern = /^[0-3]$/;
 
             if (time && !pattern.test(time)) {
                 Swal.fire({
@@ -244,7 +244,7 @@
                 $(this).css('border', '');
             }
         }else if (name === "day_in_week"){
-            const pattern = /^[1-7]$/;
+            const pattern = /^[0-7]$/;
 
             if (time && !pattern.test(time)) {
                 Swal.fire({

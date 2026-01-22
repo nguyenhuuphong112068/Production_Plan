@@ -15,6 +15,7 @@
     require_once (__DIR__.'/statusRoute.php');
     require_once (__DIR__.'/quarantineRoute.php');
     require_once (__DIR__.'/reportRoute.php');
+    require_once (__DIR__.'/AssignmentRoute.php');
 
 ?>
 
