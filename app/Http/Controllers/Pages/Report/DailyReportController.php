@@ -700,17 +700,20 @@ class DailyReportController extends Controller
     }
 
     public function explain (Request $request) {
-
-         DB::table('explanation')
-            ->where ('reported_date', $request->reported_date)
-            ->where ('stage_code', $request->stage_code)
-            ->update([
-                    'content' => $request->note,
-                    'deparment_code' => session ('user')['production_code'],
-                    'created_by' => session ('user')['fullName'],
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]);
+       //dd ($request->all(), session('user')['production_code']);
+        DB::table('explanation')->updateOrInsert(
+            [
+                'reported_date'   => $request->reported_date,
+                'stage_code'      => $request->stage_code,
+                'deparment_code'  => session('user')['production_code'],
+            ],
+            [
+                'content'     => $request->note,
+                'created_by'  => session('user')['fullName'],
+                'updated_at'  => now(),
+                'created_at'  => now(),
+            ]
+        );
         return redirect()->back()->with('success', 'Đã thêm thành công!');    
     }
 
