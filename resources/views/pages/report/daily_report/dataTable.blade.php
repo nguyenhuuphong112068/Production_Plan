@@ -545,7 +545,7 @@
         });
 
         $('.btn-explain').on('click', function() {
-
+            //alert ("sa")
             const button = $(this);
             const modal = $('#explanation')
             let stage_code = button.data('stage_code')
