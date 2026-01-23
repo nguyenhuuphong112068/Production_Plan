@@ -133,13 +133,18 @@
                             <td>
                                 @php
                                     $stutus_colors = [
-                                        "Chưa làm" => 'background-color: green; color: white;', // đỏ
-                                        "Đã làm" => 'background-color: blue; color: white;', // cam
-                                        'Hủy' => 'background-color: red; color: white;'// vàng
+                                        "Chưa làm" => 'background-color: green; color: white;', 
+                                        "Đã Cân"        => 'background-color: #e3f2fd; color: #0d47a1;', // xanh rất nhạt
+                                        "Đã Pha chế"    => 'background-color: #bbdefb; color: #0d47a1;',
+                                        "Đã THT"        => 'background-color: #90caf9; color: #0d47a1;',
+                                        "Đã định hình"  => 'background-color: #64b5f6; color: white;',
+                                        "Đã Bao phim"   => 'background-color: #1e88e5; color: white;',
+                                        "Hoàn Tất ĐG"   => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
+                                        'Hủy' => 'background-color: red; color: white;'
                                       
                                     ];
                                 @endphp
-                                <div class ="text-center" style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 20px; {{ $stutus_colors[$data->status] ?? '' }}"
+                                <div class ="text-center" style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
                                     > {{ $data->status }} </div>
                             </td>
 

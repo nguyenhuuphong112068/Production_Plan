@@ -143,51 +143,64 @@ class ProductionPlanController extends Controller
 
         public function open(Request  $request){
          
+                $maxStageFinished = DB::table('stage_plan')
+                ->where('stage_plan.plan_list_id', $request->plan_list_id)
+                ->where('finished', 1)
+                ->select(
+                        'plan_master_id',
+                        DB::raw('MAX(stage_code) as max_stage_code')
+                )
+                ->groupBy('plan_master_id');
 
                 $datas = DB::table('plan_master')
-                ->select(
-                        'plan_master.*',
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
+                        ->select(
+                                'plan_master.*',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                DB::raw('fp_name.name AS finished_product_name'),
+                                DB::raw('im_name.name AS intermediate_product_name'),
+                                'market.name as market',
+                                'specification.name as specification',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'finished_product_category.deparment_code',
+                                'source_material.name as source_material_name',
 
-                        DB::raw('fp_name.name AS finished_product_name'),
-                        DB::raw('im_name.name AS intermediate_product_name'),
-
-                        'market.name as market',
-                        'specification.name as specification',
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'finished_product_category.deparment_code',
-                        'source_material.name as source_material_name',
-                         DB::raw("
+                                DB::raw("
                                 CASE
-                                        WHEN stage_plan.active = 0 THEN 'Hủy'
-                                        WHEN stage_plan.active = 1 AND stage_plan.finished = 0 THEN 'Chưa làm'
-                                        WHEN stage_plan.active = 1 AND stage_plan.finished = 1 THEN 'Đã làm'
-                                        ELSE NULL
-                                END AS status
+                                        WHEN plan_master.cancel = 1 THEN 'Hủy'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
+                                        ELSE 'Chưa làm'
+                                        END AS status
                                 ")
-                )
-                ->where('plan_master.plan_list_id', $request->plan_list_id)
-                ->where('plan_master.active', 1)
+                        )
+                        ->where('plan_master.plan_list_id', $request->plan_list_id)
+                        ->where('plan_master.active', 1)
 
-                ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
-                ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
-                ->leftJoin('source_material', 'plan_master.material_source_id','=','source_material.id')
-                ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
-                ->leftJoin('product_name as im_name','intermediate_category.product_name_id', '=','im_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
-                ->leftJoin('stage_plan', function ($join) {
-                                $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id')
-                                        ->where('stage_plan.stage_code', 1);
+                        ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
+                        ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
+                        ->leftJoin('source_material', 'plan_master.material_source_id','=','source_material.id')
+                        ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
+                        ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
+                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
                         })
-                ->orderBy('expected_date', 'asc')
-                ->orderBy('level', 'asc')
-                ->orderBy('batch', 'asc')
+                        ->leftJoin('stage_plan', function ($join) {
+                                $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                                ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                        })
+                        ->orderBy('expected_date', 'asc')
+                        ->orderBy('level', 'asc')
+                        ->orderBy('batch', 'asc')
                 ->get();
 
-               
 
                 $planMasterIds = $datas->pluck('id')->toArray();
 
