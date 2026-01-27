@@ -17,5 +17,8 @@
     require_once (__DIR__.'/reportRoute.php');
     require_once (__DIR__.'/AssignmentRoute.php');
 
+    
+    require_once (__DIR__.'/exportExcelRoute.php');
+
 ?>
 
