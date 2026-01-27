@@ -144,31 +144,32 @@ class ProductCategoryController extends Controller
                 ->select(
                         'intermediate_category.intermediate_code',
                         'finished_product_category.deparment_code',
+
                         DB::raw("
                         GROUP_CONCAT(
                                 DISTINCT finished_product_category.finished_product_code
-                                SEPARATOR CHAR(10)
+                                SEPARATOR '\n'
                         ) AS finished_product_codes
                         "),
 
                         DB::raw("
                         GROUP_CONCAT(
                                 DISTINCT product_name.name
-                                SEPARATOR CHAR(10)
+                                SEPARATOR '\n'
                         ) AS product_names
                         "),
 
                         DB::raw("
                         GROUP_CONCAT(
                                 DISTINCT market.code
-                                SEPARATOR CHAR(10)
+                                SEPARATOR '\n'
                         ) AS markets
                         "),
 
                         DB::raw("
                         GROUP_CONCAT(
                                 DISTINCT specification.name
-                                SEPARATOR CHAR(10)
+                                SEPARATOR '\n'
                         ) AS specifications
                         "),
 
@@ -181,6 +182,7 @@ class ProductCategoryController extends Controller
                 ->leftJoin('specification','finished_product_category.specification_id','specification.id')
                 ->groupBy('intermediate_category.intermediate_code', 'finished_product_category.deparment_code')
                 ->get();
+
 
 
 
