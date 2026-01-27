@@ -48,6 +48,7 @@ class ProductCategoryController extends Controller
                         'specifications' => $specifications        
                 ]);
         }
+
     
 
         public function store (Request $request) {
@@ -134,4 +135,31 @@ class ProductCategoryController extends Controller
                 ]);
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
+
+
+        
+        public function getJsonFPCategogy(){
+
+                $datas = DB::table('finished_product_category')
+                ->select('finished_product_category.*', 
+                        'product_name.name as product_name', 
+                        'intermediate_category.intermediate_code',
+                        'intermediate_category.batch_size',
+                        'intermediate_category.unit_batch_size',
+                        'market.code as market',
+                        'specification.name as specification'
+                )
+                ->where('finished_product_category.deparment_code', session('user')['production_code'])
+                ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
+                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
+                ->leftJoin('market','finished_product_category.market_id','market.id')
+                ->leftJoin('specification','finished_product_category.specification_id','specification.id')
+                ->orderBy('product_name.name','asc')->get();
+
+                return response()->json([
+                                'datas' => $datas
+                ]);
+
+        }
+    
 }
