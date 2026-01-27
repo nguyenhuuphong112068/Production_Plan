@@ -35,7 +35,7 @@ Route::prefix('/category')
             Route::post('update', 'update')->name('update');
             Route::post('deActive','deActive')->name('deActive'); 
 
-            Route::post('getJsonFPCategogy','getJsonFPCategogy')->name('getJsonFPCategogy'); 
+            Route::get('getJsonFPCategogy','getJsonFPCategogy')->name('getJsonFPCategogy'); 
     });
 
 
