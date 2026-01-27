@@ -138,7 +138,7 @@ class ProductCategoryController extends Controller
 
 
         
-        public function getJsonFPCategogy(){
+        public function getJsonFPCategory(){
 
                 $datas = DB::table('finished_product_category')
                 ->select('finished_product_category.*', 
