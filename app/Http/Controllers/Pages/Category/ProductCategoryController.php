@@ -141,20 +141,25 @@ class ProductCategoryController extends Controller
         public function getJsonFPCategory(){
 
                 $datas = DB::table('finished_product_category')
-                ->select('finished_product_category.*', 
-                        'product_name.name as product_name', 
+                ->select(
                         'intermediate_category.intermediate_code',
-                        'intermediate_category.batch_size',
-                        'intermediate_category.unit_batch_size',
-                        'market.code as market',
-                        'specification.name as specification'
+
+                        DB::raw("GROUP_CONCAT(DISTINCT finished_product_category.finished_product_code SEPARATOR ', ') AS finished_product_codes"),
+                        DB::raw("GROUP_CONCAT(DISTINCT product_name.name SEPARATOR ' | ') AS product_names"),
+                        DB::raw("GROUP_CONCAT(DISTINCT market.code SEPARATOR ', ') AS markets"),
+                        DB::raw("GROUP_CONCAT(DISTINCT specification.name SEPARATOR ' | ') AS specifications"),
+
+                        DB::raw("MAX(intermediate_category.batch_size) AS batch_size"),
+                        DB::raw("MAX(intermediate_category.unit_batch_size) AS unit_batch_size")
                 )
-              
-                ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
-                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
-                ->leftJoin('market','finished_product_category.market_id','market.id')
-                ->leftJoin('specification','finished_product_category.specification_id','specification.id')
-                ->orderBy('product_name.name','asc')->get();
+                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                ->groupBy('intermediate_category.intermediate_code')
+                ->orderBy('intermediate_category.intermediate_code')
+                ->get();
+
 
                 return response()->json([
                                 'datas' => $datas
