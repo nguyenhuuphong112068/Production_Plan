@@ -43,7 +43,7 @@ const ScheduleTest = () => {
   const searchResultsRef = useRef([]);
   const currentIndexRef = useRef(-1);
   const lastQueryRef = useRef("");
-  const slotViewWeeks = ['resourceTimelineWeek15', 'resourceTimelineWeek30', 'resourceTimelineWeek60', 'resourceTimelineWeek4h'];
+  const slotViewWeeks = ['resourceTimelineWeek1day',  'resourceTimelineWeek4h', 'resourceTimelineWeek15' ];
   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
   const [slotIndex, setSlotIndex] = useState(0);
   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
@@ -2426,7 +2426,7 @@ const ScheduleTest = () => {
             titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
           },
           resourceTimelineWeek: {
-            slotDuration: '00:15:00',
+            slotDuration: { days: 1 },
             slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Tuần',
@@ -2454,9 +2454,8 @@ const ScheduleTest = () => {
             titleFormat: { year: 'numeric' }
           },
           resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
-          resourceTimelineWeek30: { type: 'resourceTimelineWeek', slotDuration: '00:30:00' },
-          resourceTimelineWeek60: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
           resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
+          resourceTimelineWeek1day: { type: 'resourceTimelineWeek', slotDuration: { days: 1 } },
 
           resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00' },
           resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00' },
@@ -2464,7 +2463,7 @@ const ScheduleTest = () => {
         }}
 
          customButtons={{
-          
+
           customNext: {
             text: '⏵',
             click: () => handleViewChange(null, 'next'),
