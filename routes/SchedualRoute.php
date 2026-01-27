@@ -62,12 +62,17 @@ use Illuminate\Support\Facades\Route;
                 Route::put('accpectQuarantine','accpectQuarantine')->name('accpectQuarantine');
                 Route::put('change_sheet','change_sheet')->name('change_sheet');
                 
-                
 
                 Route::get('test','test')->name('test');
 
                 
         });
+
+        Route::get('/Schedual/{any?}', function () {
+                        session()->put(['title'=> 'LỊCH SẢN XUẤT']);
+                        return view('app');
+        })->where('any', '.*')
+        ->middleware(CheckLogin::class); 
 
 
 
