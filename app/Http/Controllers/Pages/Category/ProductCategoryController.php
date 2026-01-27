@@ -149,7 +149,7 @@ class ProductCategoryController extends Controller
                         'market.code as market',
                         'specification.name as specification'
                 )
-                ->where('finished_product_category.deparment_code', session('user')['production_code'])
+              
                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
                 ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
