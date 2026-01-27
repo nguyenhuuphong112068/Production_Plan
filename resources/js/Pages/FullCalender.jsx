@@ -2464,6 +2464,7 @@ const ScheduleTest = () => {
         }}
 
          customButtons={{
+          
           customNext: {
             text: '⏵',
             click: () => handleViewChange(null, 'next'),
