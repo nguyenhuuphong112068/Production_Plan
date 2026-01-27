@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Pages\Category\ProductCategoryController;
 
-use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
 
 
