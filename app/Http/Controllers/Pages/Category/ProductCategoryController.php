@@ -143,7 +143,7 @@ class ProductCategoryController extends Controller
                 $datas = DB::table('finished_product_category')
                 ->select(
                         'intermediate_category.intermediate_code',
-
+                        'finished_product_category.deparment_code',
                         DB::raw("
                         GROUP_CONCAT(
                                 DISTINCT finished_product_category.finished_product_code
@@ -179,7 +179,7 @@ class ProductCategoryController extends Controller
                 ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->leftJoin('specification','finished_product_category.specification_id','specification.id')
-                ->groupBy('intermediate_category.intermediate_code')
+                ->groupBy('intermediate_category.intermediate_code', 'finished_product_category.deparment_code')
                 ->get();
 
 
