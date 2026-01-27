@@ -141,6 +141,7 @@ class ProductCategoryController extends Controller
         public function getJsonFPCategory(){
 
                 $datas = DB::table('finished_product_category')
+                ->where ('finished_product_category.active', 1)
                 ->select(
                         'intermediate_category.intermediate_code',
                         'finished_product_category.deparment_code',
