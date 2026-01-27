@@ -43,7 +43,6 @@ class SchedualController extends Controller
         }
 
         public function index (){
-
                 session()->put(['title'=> 'LỊCH SẢN XUẤT']);
                 return view('app');
         }
@@ -739,7 +738,7 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-           
+                //Log::info($request->all());
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";

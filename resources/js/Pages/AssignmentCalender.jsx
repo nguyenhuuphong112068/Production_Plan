@@ -29,7 +29,7 @@ import NoteModal from '../Components/NoteModal';
 
 
 
-const ScheduleTest = () => {
+const AssignmentCalender = () => {
   
   const calendarRef = useRef(null);
   const selectoRef = useRef(null);
@@ -2718,6 +2718,6 @@ const ScheduleTest = () => {
   );
 };
 
-export default ScheduleTest;
+export default AssignmentCalender;
 
   

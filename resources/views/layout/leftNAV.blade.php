@@ -1,4 +1,4 @@
-  {{-- css cho nút về đầu trang --}}
+
   <style>
     #backToTopBtn {
       display: none; /* Ẩn ban đầu */
@@ -37,16 +37,8 @@
 
   
   </style>
-
   <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
-   <!-- Sidebar user (optional) -->
-    {{-- <div class="user-panel mt-3 pb-3 mb-3 container d-flex justify-content-center align-items-center">
-
-    </div> --}}
-
-    <!-- Sidebar -wrapper-->
     <div class="sidebar" >
-
        <!-- Brand Logo -->
     <a href="{{ route ('pages.general.home')}}" class="brand-link container d-flex justify-content-center align-items-center">
       <img src="{{ asset('img/iconstella.svg') }}"
@@ -106,7 +98,6 @@
               </li>
             </ul>
           </li>
-
 
           <!-- Droplist Menu Dữ Liệu Gốc  -->
           <li class="nav-item has-treeview">
@@ -171,7 +162,6 @@
 
             </ul>
           </li>
-
 
             <!-- Droplist Menu Danh Muc  -->
           <li class="nav-item has-treeview">
@@ -298,6 +288,7 @@
                   <p> Lịch Sản Xuất </p>
                 </a>
               </li>
+
               @if (user_has_permission(session('user')['userId'], 'layout_report', 'boolean'))
               <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.report.list') }}" class="nav-link">
@@ -366,7 +357,7 @@
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
 
-              <i class="nav-icon fas fa-user-check"></i>
+            <i class="nav-icon fas fa-user-check"></i>
               <p>
                 Phân Công
                 <i class="right fas fa-angle-left"></i>
@@ -374,13 +365,20 @@
             </a>
 
             <ul class="nav nav-treeview">
+              
+              <li class="nav-item">
+                <a href="/Schedual/assignment" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p> ABCD </p>
+                </a>
+              </li>
+
               <li class="nav-item">
                 <a href="{{ route ('pages.assignment.production.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>ABCD</p>
                 </a>
               </li>
-
 
 
             </ul>
