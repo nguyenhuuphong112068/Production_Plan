@@ -1215,6 +1215,8 @@ class ProductionPlanController extends Controller
                 $production_name  =  session('user')['production_name'];
                 $production =  session('user')['production_code'];
 
+                $send_date = DB::table('plan_list')->where ('id',  $request->plan_list_id)-> value('send_date');
+
                 session()->put(['title'=> "Phản Hồi $request->name - $production_name"]);
                 
                 return view('pages.plan.production.feedback_list',[
@@ -1222,7 +1224,8 @@ class ProductionPlanController extends Controller
                         'plan_list_id' => $request->plan_list_id,
                         'send'=> $request->send??1,
                         'department' => $department,
-                        'production' => $production
+                        'production' => $production,
+                        'send_date' => $send_date
                 ]);
         }
 
@@ -1346,6 +1349,51 @@ class ProductionPlanController extends Controller
                         ]);
 
                 return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công!']);
+        }
+
+        public function open_feedback_API (Request $request){
+
+                $deparment_code = $request->deparment_code?? 'PXV1';
+                $month = $request->month ?? now()->month;
+
+                $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('month',$month)->pluck('id');
+
+               $datas = DB::table('plan_master')
+                ->select(
+                        'plan_master.*',
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.finished_product_code',
+                        'product_name.name',
+                        'market.code as market',
+                        'specification.name as specification',
+                        'finished_product_category.batch_qty',
+                        'finished_product_category.unit_batch_qty',
+                        'finished_product_category.deparment_code',
+                        'source_material.name as source_material_name',
+                        'stage_plan.end as end'
+                )
+                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                ->leftJoin('stage_plan', function ($join) use ($request) {
+                        $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                        ->where('stage_plan.stage_code', 7)
+                        ->where('stage_plan.active', 1)
+                        ;
+                })
+                ->whereIn('plan_master.plan_list_id', $plan_list_id)
+                ->where('plan_master.active', 1)
+                ->orderBy('expected_date', 'asc')
+                ->orderBy('level', 'asc')
+                ->orderBy('batch', 'asc')
+                ->get();
+
+                return response()->json([
+                        'datas' => $datas
+                ]);
+
         }
 
 }
