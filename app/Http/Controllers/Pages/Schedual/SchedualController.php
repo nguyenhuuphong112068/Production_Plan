@@ -187,7 +187,7 @@ class SchedualController extends Controller
                         
                         ->where('sp.active', 1)
                         ->whereNotNull('sp.resourceId')
-                        ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
+                        ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('sp.submit', 1))
                         ->where('sp.deparment_code', $production)
                         ->where(function ($q) {
                         $q->whereNotNull('sp.start')
