@@ -19,7 +19,7 @@ class SchedualController extends Controller
         protected $work_sunday = true;
         protected $max_Step = 3;
         protected $reason = null;
-        protected $theory = false;
+        protected $theory = 0;
         protected $prev_orderBy = false;
         protected $stage_Name = [
                 1 => "Cân NL",
@@ -154,8 +154,8 @@ class SchedualController extends Controller
 
         }
 
-        protected function getEvents($production, $startDate, $endDate, $clearning, bool $theory = false){
-                 
+        protected function getEvents($production, $startDate, $endDate, $clearning, int $theory){
+
                 $startDate = Carbon::parse($startDate)->toDateTimeString();
                 $endDate   = Carbon::parse($endDate)->toDateTimeString();
 
@@ -294,108 +294,231 @@ class SchedualController extends Controller
         
                 // 5️⃣ Duyệt từng nhóm (theo batch sản xuất)
                 foreach ($groupedPlans as $plans) {
+                        $plans = $plans->values(); // sắp sẵn theo stage_code ở query
+                        for ($i = 0, $n = $plans->count(); $i < $n; $i++) {
+                                $storage_capacity = null;
+                                $plan = $plans[$i];
+                                $subtitle = null;
 
-                $plans = $plans->values(); // sắp sẵn theo stage_code ở query
+                                [$color_event, $textColor, $subtitle] = $this->colorEvent($plan, $plans, $i, $room_code);
+                
+                                // 🎯 Lịch chưa hoàn thành
+                                if (($plan->start && !$plan->actual_start && $plan->finished == 0) ) {
+                                        $events->push([
+                                                'plan_id' => $plan->id,
+                                                'id' => "{$plan->id}-main",
+                                                'title' => $plan->title ."-". $plan->w2,
+                                                'start' =>  $plan->start,
+                                                'end' =>  $plan->end,
+                                                'resourceId' => $plan->resourceId,
+                                                'color' =>  $plan->finished == 1?'#002af9ff': $color_event,
+                                                'textColor' => $textColor,
+                                                'plan_master_id' => $plan->plan_master_id,
+                                                'stage_code' => $plan->stage_code,
+                                                'is_clearning' => false,
+                                                'finished' => $plan->finished,
+                                                'level' => $plan->level,
+                                                'process_code' => $plan->process_code,
+                                                'keep_dry' => $plan->keep_dry,
+                                                'tank' => $plan->tank,
+                                                'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
+                                                'submit' => $plan->submit,
+                                                'storage_capacity' => $storage_capacity,
+                                                'subtitle' => $subtitle,
+                                                'campaign_code' => $plan->campaign_code
+                                        ]);
+                                }
+                                // 🎯 Lịch đã hoàn thành
+                                if (($clearning && $plan->start_clearning  && !$plan->actual_start_clearning  && $plan->yields >= 0  && $plan->finished == 0) || 
+                                        ($clearning && $plan->actual_start_clearning  && !$plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0)  ) {
+                                        $events->push([
+                                                'plan_id' => $plan->id,
+                                                'id' => "{$plan->id}-cleaning",
+                                                'title' => $plan->title_clearning ?? 'VS',
+                                                'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
+                                                'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
+                                                'resourceId' => $plan->resourceId,
+                                                'color' => '#a1a2a2ff',
+                                                'textColor' => $textColor,
+                                                'plan_master_id' => $plan->plan_master_id,
+                                                'stage_code' => $plan->stage_code,
+                                                'is_clearning' => true,
+                                                'finished' => $plan->finished,
+                                                'process_code' => $plan->process_code,
+                                        ]);
+                                }
 
-                for ($i = 0, $n = $plans->count(); $i < $n; $i++) {
-                        $storage_capacity = null;
-                        $plan = $plans[$i];
-                        $subtitle = null;
+                                if ($plan->actual_start && $plan->finished == 1) {
 
-                        [$color_event, $textColor, $subtitle] = $this->colorEvent($plan, $plans, $i, $room_code);
+                                        if ($theory == 0) {
+                                                //Lich thực tế
+                                                $events->push([
+                                                        'plan_id' => $plan->id,
+                                                        'id' => "{$plan->id}-main",
+                                                        'title' =>$plan->title ,
+                                                        'start' =>  $plan->actual_start,
+                                                        'end' =>  $plan->actual_end,
+                                                        'resourceId' => $plan->resourceId,
+                                                        'color' => '#002af9ff',
+                                                        'textColor' => $textColor,
+                                                        'plan_master_id' => $plan->plan_master_id,
+                                                        'stage_code' => $plan->stage_code,
+                                                        'is_clearning' => false,
+                                                        'finished' => $plan->finished,
+                                                        'level' => $plan->level,
+                                                        'process_code' => $plan->process_code,
+                                                        'keep_dry' => $plan->keep_dry,
+                                                        'tank' => $plan->tank,
+                                                        'storage_capacity' => $storage_capacity
+                                                        ]);
+                                                                                                        // event Lich VS thực tế
+                                                if ($clearning  && $plan->yields >= 0) {
+                                                        $events->push([
+                                                        'plan_id' => $plan->id,
+                                                        'id' => "{$plan->id}-cleaning",
+                                                        'title' => $plan->title_clearning,
+                                                        'start' => $plan->actual_start_clearning,
+                                                        'end' =>  $plan->actual_end_clearning,
+                                                        'resourceId' => $plan->resourceId,
+                                                        'color' => '#002af9ff',
+                                                        'textColor' => $textColor,
+                                                        'plan_master_id' => $plan->plan_master_id,
+                                                        'stage_code' => $plan->stage_code,
+                                                        'is_clearning' => true,
+                                                        'finished' => $plan->finished,
+                                                        'process_code' => $plan->process_code,
+                                                        ]);
+                                                }
+                                                
+                                        }else if ($theory == 1){
+                                                if ($plan->start) {
+                                                        $events->push([
+                                                        'plan_id' => $plan->id,
+                                                        'id' => "{$plan->id}-main-theory",
+                                                        'title' => trim($plan->title . "- Lịch Lý Thuyết"?? '') ,
+                                                        'start' =>  $plan->start,
+                                                        'end' =>  $plan->end,
+                                                        'resourceId' => $plan->resourceId,
+                                                        'color' => '#8397faff',
+                                                        'textColor' => $textColor,
+                                                        'plan_master_id' => $plan->plan_master_id,
+                                                        'stage_code' => $plan->stage_code,
+                                                        'is_clearning' => false,
+                                                        'finished' => $plan->finished,
+                                                        'level' => $plan->level,
+                                                        'process_code' => $plan->process_code,
+                                                        'keep_dry' => $plan->keep_dry,
+                                                        'tank' => $plan->tank,
+                                                        'storage_capacity' => $storage_capacity
+                                                        ]);
+                                                }
+                                                // event Lich VS lý thuyết
+                                                if ($clearning && $plan->yields >= 0 && $plan->start_clearning) {
+                                                        $events->push([
+                                                        'plan_id' => $plan->id,
+                                                        'id' => "{$plan->id}-cleaning-theory",
+                                                        'title' => $plan->title_clearning . " - Lịch Lý Thuyết" ?? 'Vệ sinh',
+                                                        'start' => $plan->start_clearning,
+                                                        'end' =>  $plan->end_clearning,
+                                                        'resourceId' => $plan->resourceId,
+                                                        'color' => '#8397faff',
+                                                        'textColor' => $textColor,
+                                                        'plan_master_id' => $plan->plan_master_id,
+                                                        'stage_code' => $plan->stage_code,
+                                                        'is_clearning' => true,
+                                                        'finished' => $plan->finished,
+                                                        'process_code' => $plan->process_code,
+                                                        ]);
+                                                }
 
-                        // 🎯 Push event chính
-                        if (($plan->start || $plan->actual_start) ) {
-                                $events->push([
-                                'plan_id' => $plan->id,
-                                'id' => "{$plan->id}-main",
-                                'title' => $plan->title ."-". $plan->w2,
-                                'start' => $plan->actual_start ?? $plan->start,
-                                'end' => $plan->actual_end ?? $plan->end,
-                                'resourceId' => $plan->resourceId,
-                                'color' =>  $color_event,
-                                'textColor' => $textColor,
-                                'plan_master_id' => $plan->plan_master_id,
-                                'stage_code' => $plan->stage_code,
-                                'is_clearning' => false,
-                                'finished' => $plan->finished,
-                                'level' => $plan->level,
-                                'process_code' => $plan->process_code,
-                                'keep_dry' => $plan->keep_dry,
-                                'tank' => $plan->tank,
-                                'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
-                                'submit' => $plan->submit,
-                                'storage_capacity' => $storage_capacity,
-                                'subtitle' => $subtitle,
-                                'campaign_code' => $plan->campaign_code
-                                ]);
+                                        }else if ($theory == 2) {
+                                              
+                                                $events->push([
+                                                        'plan_id' => $plan->id,
+                                                        'id' => "{$plan->id}-main",
+                                                        'title' =>$plan->title ,
+                                                        'start' =>  $plan->actual_start,
+                                                        'end' =>  $plan->actual_end,
+                                                        'resourceId' => $plan->resourceId,
+                                                        'color' => '#002af9ff',
+                                                        'textColor' => $textColor,
+                                                        'plan_master_id' => $plan->plan_master_id,
+                                                        'stage_code' => $plan->stage_code,
+                                                        'is_clearning' => false,
+                                                        'finished' => $plan->finished,
+                                                        'level' => $plan->level,
+                                                        'process_code' => $plan->process_code,
+                                                        'keep_dry' => $plan->keep_dry,
+                                                        'tank' => $plan->tank,
+                                                        'storage_capacity' => $storage_capacity
+                                                ]);
+                                                                                                        // event Lich VS thực tế
+                                                if ($clearning  && $plan->yields >= 0) {
+                                                        $events->push([
+                                                        'plan_id' => $plan->id,
+                                                        'id' => "{$plan->id}-cleaning",
+                                                        'title' => $plan->title_clearning,
+                                                        'start' => $plan->actual_start_clearning,
+                                                        'end' =>  $plan->actual_end_clearning,
+                                                        'resourceId' => $plan->resourceId,
+                                                        'color' => '#002af9ff',
+                                                        'textColor' => $textColor,
+                                                        'plan_master_id' => $plan->plan_master_id,
+                                                        'stage_code' => $plan->stage_code,
+                                                        'is_clearning' => true,
+                                                        'finished' => $plan->finished,
+                                                        'process_code' => $plan->process_code,
+                                                        ]);
+                                                }
+                
+
+                                                if ($plan->start) {
+                                                        $events->push([
+                                                                'plan_id' => $plan->id,
+                                                                'id' => "{$plan->id}-main-theory",
+                                                                'title' => trim($plan->title . "- Lịch Lý Thuyết"?? '') ,
+                                                                'start' =>  $plan->start,
+                                                                'end' =>  $plan->end,
+                                                                'resourceId' => $plan->resourceId,
+                                                                'color' => '#8397faff',
+                                                                'textColor' => $textColor,
+                                                                'plan_master_id' => $plan->plan_master_id,
+                                                                'stage_code' => $plan->stage_code,
+                                                                'is_clearning' => false,
+                                                                'finished' => $plan->finished,
+                                                                'level' => $plan->level,
+                                                                'process_code' => $plan->process_code,
+                                                                'keep_dry' => $plan->keep_dry,
+                                                                'tank' => $plan->tank,
+                                                                'storage_capacity' => $storage_capacity
+                                                                ]);
+                                                }
+                                                        // event Lich VS lý thuyết
+                                                if ($clearning && $plan->yields >= 0 && $plan->start_clearning) {
+                                                                $events->push([
+                                                                'plan_id' => $plan->id,
+                                                                'id' => "{$plan->id}-cleaning-theory",
+                                                                'title' => $plan->title_clearning . " - Lịch Lý Thuyết" ?? 'Vệ sinh',
+                                                                'start' => $plan->start_clearning,
+                                                                'end' =>  $plan->end_clearning,
+                                                                'resourceId' => $plan->resourceId,
+                                                                'color' => '#8397faff',
+                                                                'textColor' => $textColor,
+                                                                'plan_master_id' => $plan->plan_master_id,
+                                                                'stage_code' => $plan->stage_code,
+                                                                'is_clearning' => true,
+                                                                'finished' => $plan->finished,
+                                                                'process_code' => $plan->process_code,
+                                                                ]);
+                                                }
+                                        }
+                                }
+
                         }
-
-                        // 🧽 Push event vệ sinh
-                        if (($clearning && $plan->start_clearning  && $plan->yields >= 0 ) || ($clearning && $plan->actual_start_clearning && $plan->yields >= 0 )  ) {
-                                $events->push([
-                                'plan_id' => $plan->id,
-                                'id' => "{$plan->id}-cleaning",
-                                'title' => $plan->title_clearning ?? 'VS',
-                                'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
-                                'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
-                                'resourceId' => $plan->resourceId,
-                                'color' => $plan->finished == 1?'#002af9ff':'#a1a2a2ff',
-                                'textColor' => $textColor,
-                                'plan_master_id' => $plan->plan_master_id,
-                                'stage_code' => $plan->stage_code,
-                                'is_clearning' => true,
-                                'finished' => $plan->finished,
-                                'process_code' => $plan->process_code,
-                                ]);
-                        }
-                        
-                        // event Lich chính lý thuyết
-                        if ($plan->actual_start && $theory) {
-                               
-                                $events->push([
-                                'plan_id' => $plan->id,
-                                'id' => "{$plan->id}-main-theory",
-                                'title' => trim($plan->title . "- Lịch Lý Thuyết"?? '') ,
-                                'start' =>  $plan->start,
-                                'end' =>  $plan->end,
-                                'resourceId' => $plan->resourceId,
-                                'color' => '#8397faff',
-                                'textColor' => $textColor,
-                                'plan_master_id' => $plan->plan_master_id,
-                                'stage_code' => $plan->stage_code,
-                                'is_clearning' => false,
-                                'finished' => $plan->finished,
-                                'level' => $plan->level,
-                                'process_code' => $plan->process_code,
-                                'keep_dry' => $plan->keep_dry,
-                                'tank' => $plan->tank,
-                                'storage_capacity' => $storage_capacity
-                                ]);
-                        }
-                        // event Lich VS lý thuyết
-                        if ($clearning && $plan->actual_start && $plan->yields >= 0 && $theory) {
-                                $events->push([
-                                'plan_id' => $plan->id,
-                                'id' => "{$plan->id}-cleaning-theory",
-                                'title' => $plan->title_clearning . " - Lịch Lý Thuyết" ?? 'Vệ sinh',
-                                'start' => $plan->start_clearning,
-                                'end' =>  $plan->end_clearning,
-                                'resourceId' => $plan->resourceId,
-                                'color' => '#8397faff',
-                                'textColor' => $textColor,
-                                'plan_master_id' => $plan->plan_master_id,
-                                'stage_code' => $plan->stage_code,
-                                'is_clearning' => true,
-                                'finished' => $plan->finished,
-                                'process_code' => $plan->process_code,
-                                ]);
-                        }
-
+                
                 }
 
-                }
-
+ 
                 return $events;
         }
 
@@ -738,11 +861,12 @@ class SchedualController extends Controller
 
         // Hàm view gọn hơn Request
         public function view(Request $request){
-                //Log::info($request->all());
+                
+                //Log::info ($request->all());
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";
-                $this->theory = $request->theory ?? false;
+                $this->theory = (int)$request->theory ?? 0;
                 
                 try {
                         $production = session('user')['production_code'];
@@ -6811,4 +6935,88 @@ class SchedualController extends Controller
 
 
 
-     
+                        //      if (($plan->start || $plan->actual_start) ) {
+                        //         $events->push([
+                        //                 'plan_id' => $plan->id,
+                        //                 'id' => "{$plan->id}-main",
+                        //                 'title' => $plan->title ."-". $plan->w2,
+                        //                 'start' => $plan->actual_start ?? $plan->start,
+                        //                 'end' => $plan->actual_end ?? $plan->end,
+                        //                 'resourceId' => $plan->resourceId,
+                        //                 'color' =>  $color_event,
+                        //                 'textColor' => $textColor,
+                        //                 'plan_master_id' => $plan->plan_master_id,
+                        //                 'stage_code' => $plan->stage_code,
+                        //                 'is_clearning' => false,
+                        //                 'finished' => $plan->finished,
+                        //                 'level' => $plan->level,
+                        //                 'process_code' => $plan->process_code,
+                        //                 'keep_dry' => $plan->keep_dry,
+                        //                 'tank' => $plan->tank,
+                        //                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
+                        //                 'submit' => $plan->submit,
+                        //                 'storage_capacity' => $storage_capacity,
+                        //                 'subtitle' => $subtitle,
+                        //                 'campaign_code' => $plan->campaign_code
+                        //         ]);
+                        // }
+
+                        // if (($clearning && $plan->start_clearning  && $plan->yields >= 0 ) || ($clearning && $plan->actual_start_clearning && $plan->yields >= 0 )  ) {
+                        //         $events->push([
+                        //                 'plan_id' => $plan->id,
+                        //                 'id' => "{$plan->id}-cleaning",
+                        //                 'title' => $plan->title_clearning ?? 'VS',
+                        //                 'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
+                        //                 'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
+                        //                 'resourceId' => $plan->resourceId,
+                        //                 'color' => $plan->finished == 1?'#002af9ff':'#a1a2a2ff',
+                        //                 'textColor' => $textColor,
+                        //                 'plan_master_id' => $plan->plan_master_id,
+                        //                 'stage_code' => $plan->stage_code,
+                        //                 'is_clearning' => true,
+                        //                 'finished' => $plan->finished,
+                        //                 'process_code' => $plan->process_code,
+                        //         ]);
+                        // }
+                
+                        // // event Lich chính lý thuyết
+                        // if ($plan->actual_start && $theory  == true) {
+                               
+                        //         $events->push([
+                        //         'plan_id' => $plan->id,
+                        //         'id' => "{$plan->id}-main-theory",
+                        //         'title' => trim($plan->title . "- Lịch Lý Thuyết"?? '') ,
+                        //         'start' =>  $plan->start,
+                        //         'end' =>  $plan->end,
+                        //         'resourceId' => $plan->resourceId,
+                        //         'color' => '#8397faff',
+                        //         'textColor' => $textColor,
+                        //         'plan_master_id' => $plan->plan_master_id,
+                        //         'stage_code' => $plan->stage_code,
+                        //         'is_clearning' => false,
+                        //         'finished' => $plan->finished,
+                        //         'level' => $plan->level,
+                        //         'process_code' => $plan->process_code,
+                        //         'keep_dry' => $plan->keep_dry,
+                        //         'tank' => $plan->tank,
+                        //         'storage_capacity' => $storage_capacity
+                        //         ]);
+                        // }
+                        // // event Lich VS lý thuyết
+                        // if ($clearning && $plan->actual_start && $plan->yields >= 0 && $theory == true) {
+                        //         $events->push([
+                        //         'plan_id' => $plan->id,
+                        //         'id' => "{$plan->id}-cleaning-theory",
+                        //         'title' => $plan->title_clearning . " - Lịch Lý Thuyết" ?? 'Vệ sinh',
+                        //         'start' => $plan->start_clearning,
+                        //         'end' =>  $plan->end_clearning,
+                        //         'resourceId' => $plan->resourceId,
+                        //         'color' => '#8397faff',
+                        //         'textColor' => $textColor,
+                        //         'plan_master_id' => $plan->plan_master_id,
+                        //         'stage_code' => $plan->stage_code,
+                        //         'is_clearning' => true,
+                        //         'finished' => $plan->finished,
+                        //         'process_code' => $plan->process_code,
+                        //         ]);
+                        // }
