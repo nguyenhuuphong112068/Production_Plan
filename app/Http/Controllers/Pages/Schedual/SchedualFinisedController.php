@@ -114,7 +114,7 @@ class SchedualFinisedController extends Controller
         }
 
         public function store(Request $request){
-                Log::info($request->all());
+                //Log::info($request->all());
                 /* ===============================
                 1. FORMAT DATE TIME (LUÔN Ở ĐẦU)
                 =============================== */
@@ -197,7 +197,9 @@ class SchedualFinisedController extends Controller
                 =============================== */
                 $yields_batch_qty = null;
 
-                if ((int)$request->stage_code === 4) {
+                $stage_code =  DB::table('room')->where ('id', $request->resourceId)->value('stage_code');
+
+                if ((int)$stage_code === 4) {
 
                 $stagePlan = DB::table('stage_plan')
                         ->where('id', $request->id)
@@ -259,6 +261,13 @@ class SchedualFinisedController extends Controller
                         
                 }
 
+                if ((int)$stage_code <= 2){
+                         $updateData = array_merge($updateData, [
+                                'quarantine_room_code' => 'W14'
+                        ]);
+                }
+
+                Log::info($updateData);
                 /* ===============================
                 6. UPDATE DB
                 =============================== */

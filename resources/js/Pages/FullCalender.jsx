@@ -2069,19 +2069,19 @@ const ScheduleTest = () => {
               `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
             : ''}
           ` : ''}
-        </div>
+      </div>
     `;
 
-        if (!props.is_clearning && showRenderBadge  && authorization) {
+    if (!props.is_clearning && showRenderBadge  && authorization) {
           html += `
               <div 
                 class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
                 title="% biệt trữ"
               ><b>${props.campaign_code  ?? ''}</b></div>`;
-        } 
+    } 
 
 
-        if (!props.is_clearning && showRenderBadge && props.status) {
+    if (!props.is_clearning && showRenderBadge && props.status) {
           const style = getStatusStyleString(props.status);
 
           html += `
@@ -2093,7 +2093,7 @@ const ScheduleTest = () => {
               <b>${props.status ?? ''}</b>
             </div>
           `;
-        }
+    }
 
         
 

@@ -324,7 +324,7 @@
     });
 </script>
 
-<script>
+{{-- <script>
     let stages = @json($stages);
     let currentIndex = stages.findIndex(s => s.stage_code == {{ $stageCode ?? 'null' }});
    
@@ -349,10 +349,10 @@
         updateStage();
         filterForm.submit();
     });
-</script>
+</script> --}}
 
 
-<script>
+{{-- <script>
     document.addEventListener('DOMContentLoaded', function() {
       
         document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
@@ -362,7 +362,7 @@
             });
         });
     });
-</script>
+</script> --}}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
