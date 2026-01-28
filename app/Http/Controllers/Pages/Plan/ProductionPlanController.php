@@ -216,19 +216,19 @@ class ProductionPlanController extends Controller
                         });
                
                 $finished_product_category = DB::table('finished_product_category')
-                ->select('finished_product_category.*', 'product_name.name', 'market.name as market', 'specification.name as specification',)
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->where ('finished_product_category.active',1)
-                ->where ('finished_product_category.deparment_code',session ('user')['production_code'])
-                ->orderBy('name','asc')
+                        ->select('finished_product_category.*', 'product_name.name', 'market.name as market', 'specification.name as specification',)
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                        ->where ('finished_product_category.active',1)
+                        ->where ('finished_product_category.deparment_code',session ('user')['production_code'])
+                        ->orderBy('name','asc')
                 ->get();
                 
                 $source_material_list = DB::table('source_material')
-                ->select('source_material.*', 'product_name.name as product_name')
-                ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
-                ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
+                        ->select('source_material.*', 'product_name.name as product_name')
+                        ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
+                        ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
                 ->where ('source_material.active',1)->orderBy('source_material.name','asc')->get();
 
                 $production  =  session('user')['production_name'];

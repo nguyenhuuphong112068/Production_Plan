@@ -161,6 +161,14 @@ class SchedualController extends Controller
 
                 $room_code = DB::table('room')->where('deparment_code', $production)->pluck('code', 'id');
 
+                $maxFinishedStage = DB::table('stage_plan')
+                ->where('finished', 1)
+                ->select(
+                        'plan_master_id',
+                        DB::raw('MAX(stage_code) as max_finished_stage')
+                )
+                ->groupBy('plan_master_id');
+
                 // 2️⃣ Lấy danh sách stage_plan (gộp toàn bộ join)
                 $event_plans = DB::table("stage_plan as sp")
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
@@ -168,6 +176,15 @@ class SchedualController extends Controller
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                         ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
                         ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
+
+                        ->leftJoinSub($maxFinishedStage, 'sp_max', function ($join) {
+                        $join->on('sp.plan_master_id', '=', 'sp_max.plan_master_id');
+                        })
+                        ->leftJoin('stage_plan as sp_last', function ($join) {
+                        $join->on('sp.plan_master_id', '=', 'sp_last.plan_master_id')
+                                ->on('sp_last.stage_code', '=', 'sp_max.max_finished_stage');
+                        })
+                        
                         ->where('sp.active', 1)
                         ->whereNotNull('sp.resourceId')
                         ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']),fn($query) => $query->where('submit', 1))
@@ -185,6 +202,20 @@ class SchedualController extends Controller
                         ->select(
                         'sp.id',
                         'sp.code',
+
+                        DB::raw("
+                                CASE
+                                        WHEN sp_max.max_finished_stage IS NULL THEN 'Chưa làm'
+                                        WHEN sp_max.max_finished_stage = 1 THEN 'Đã Cân'
+                                        WHEN sp_max.max_finished_stage = 3 THEN 'Đã PC'
+                                        WHEN sp_max.max_finished_stage = 4 THEN 'Đã THT'
+                                        WHEN sp_max.max_finished_stage = 5 THEN 'Đã ĐH'
+                                        WHEN sp_max.max_finished_stage = 6 THEN 'Đã BP'
+                                        WHEN sp_max.max_finished_stage = 7 THEN 'Hoàn Tất'
+                                        ELSE 'Chưa làm'
+                                END AS status
+                                "),
+
                         DB::raw("
                                 CASE
                                         WHEN sp.stage_code = 9 THEN sp.title
@@ -287,6 +318,8 @@ class SchedualController extends Controller
                         ->orderBy('sp.stage_code')
                 ->get();
 
+                
+
                 // 4️⃣ Gom nhóm theo plan_master_id
                 $groupedPlans = $event_plans->groupBy('plan_master_id');
                 $events = collect();
@@ -325,7 +358,8 @@ class SchedualController extends Controller
                                                 'submit' => $plan->submit,
                                                 'storage_capacity' => $storage_capacity,
                                                 'subtitle' => $subtitle,
-                                                'campaign_code' => $plan->campaign_code
+                                                'campaign_code' => $plan->campaign_code,
+                                                'status'  => $plan->status
                                         ]);
                                 }
                                 // 🎯 Lịch đã hoàn thành
@@ -452,7 +486,8 @@ class SchedualController extends Controller
                                                         'tank' => $plan->tank,
                                                         'storage_capacity' => $storage_capacity
                                                 ]);
-                                                                                                        // event Lich VS thực tế
+
+                                                 // event Lich VS thực tế
                                                 if ($clearning  && $plan->yields >= 0) {
                                                         $events->push([
                                                         'plan_id' => $plan->id,

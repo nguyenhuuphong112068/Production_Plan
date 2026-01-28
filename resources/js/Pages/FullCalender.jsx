@@ -117,7 +117,7 @@ const ScheduleTest = () => {
         if (data.department == 'BOD'){
           setAuthorization (true);
         }
-        
+          //console.log (data.events)
           setEvents(data.events);
           setResources(data.resources);
           setType(data.type)
@@ -2011,22 +2011,33 @@ const ScheduleTest = () => {
       });
   }
 
+  const statusColors = {
+      "Chưa làm":        { backgroundColor: "white", color: "black" },
+      "Đã Cân":          { backgroundColor: "#e3f2fd", color: "#0d47a1" },
+      "Đã PC":      { backgroundColor: "#bbdefb", color: "#0d47a1" },
+      "Đã THT":          { backgroundColor: "#90caf9", color: "#0d47a1" },
+      "Đã ĐH":    { backgroundColor: "#64b5f6", color: "white" },
+      "Đã BP":     { backgroundColor: "#1e88e5", color: "white" },
+      "Hoàn Tất":     { backgroundColor: "#0d47a1", color: "white" }
+    
+  };
+
+  const getStatusStyleString = (status) => {
+      const style = statusColors[status];
+      if (!style) return '';
+
+      return `
+        background-color: ${style.backgroundColor};
+        color: ${style.color};
+      `;
+    };
+
+
   const EventContent = (arg) => {
     const event = arg.event;
     const props = event._def.extendedProps;
-    //const now = new Date();
-
     const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
-    //const isSelected = arg.selectedEvents?.some(ev => ev.id === event.id);
-    //const showRenderBadge = false; // nếu bạn có điều kiện riêng thì thay vào
-
-    // const getBadge = (text, color, left) => `
-    //   <div
-    //     class="absolute top-[-15px]"
-    //     style="left:${left}px; font-size:11px; padding:1px 4px; border-radius:3px; color:white; box-shadow:0 1px 2px rgba(0,0,0,0.2); background:${color}"
-    //   >${text}</div>
-    // `;
-    
+  
     if (event.title == undefined){
       console.log (event)
     }
@@ -2035,7 +2046,7 @@ const ScheduleTest = () => {
       <div class="relative group custom-event-content" data-event-id="${event.id}">
         <div style="font-size:${arg.eventFontSize || 12}px;">
           
-        ${!props.is_clearning ? `
+        ${!props.is_clearning && props.finished == 0 ? `
             <span 
               style="
                 position:absolute;
@@ -2060,59 +2071,32 @@ const ScheduleTest = () => {
           ` : ''}
         </div>
     `;
-            //${props.is_clearning ? event.title.split('-')[1] : event.title}
-      // Badge ngày cần hàng
-        // if (props.campaign_code && showRenderBadge) {
-        //   const colors = {1: 'red', 2: 'orange', 3: 'green'};
-        //   const color = colors[props.level] || 'blue';
-        //   html += getBadge(props.campaign_code, color, 50);
-        // }
 
-        // // Badge % biệt trữ
-        if (!props.is_clearning && showRenderBadge) {
-        html += `
-            <button 
-              class="absolute top-[-15px] right-5 text-15 px-1 rounded shadow bg-white text-red-600"
-              title="% biệt trữ"
-            ><b>${props.campaign_code ?? ''}</b></button>
+        if (!props.is_clearning && showRenderBadge  && authorization) {
+          html += `
+              <div 
+                class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
+                title="% biệt trữ"
+              ><b>${props.campaign_code  ?? ''}</b></div>`;
+        } 
+
+
+        if (!props.is_clearning && showRenderBadge && props.status) {
+          const style = getStatusStyleString(props.status);
+
+          html += `
+            <div 
+              class="absolute top-[-20px] right-5 px-1 rounded shadow"
+              style="${style}"
+              title="Trạng Thái SX"
+            >
+              <b>${props.status ?? ''}</b>
+            </div>
           `;
         }
-        // Trang thai submit
 
+        
 
-        // // Nút chọn
-        // html += `
-        //   <button
-        //     data-select-event="${event.id}"
-        //     class="absolute top-0 left-0 text-xs px-1 rounded shadow
-        //     ${isSelected ? 'block bg-blue-500 text-white' : 'hidden group-hover:block bg-white text-blue-500 border border-blue-500'}"
-        //     title="${isSelected ? 'Bỏ chọn' : 'Chọn sự kiện'}"
-        //   >${isSelected ? '✓' : '+'}</button>
-        // `;
-
-        // // Nút Hoàn thành
-        // if (props.finished === 0 && !props.is_clearning  && event.end < now) {
-        //   html += `
-        //     <button
-        //       data-finish-event="${event.id}"
-        //       class="absolute bottom-0 left-0 hidden group-hover:block text-blue-500 text-sm bg-white px-1 rounded shadow"
-        //       title="Xác Nhận Hoàn Thành Lô Sản Xuất"
-            
-        //     >🎯</button>
-        //   `;
-        // }
-
-    
-        // Nút xem lịch sử
-        // if (showRenderBadge && props.number_of_history) {
-        //   html += `
-        //     <button
-        //       data-show-history="${event.id}"
-        //       class="absolute top-[-15px] left-[150px] text-xs px-1 rounded shadow bg-red-500 text-white"
-        //       title="Xem Lịch Sử Thay Đổi"
-        //     >${props.number_of_history}</button>
-        //   `;
-      // }
     
     html += `</div>`;
     return { html };
