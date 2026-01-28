@@ -49,11 +49,10 @@
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
         </div>
         @php
-
-            //$auth_update = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled') ?? false;
             $plan_feedback = user_has_permission(session('user')['userId'], 'plan_feedback', 'boolean');
+            $plan_feedback_leader = user_has_permission(session('user')['userId'], 'plan_feedback_leader', 'boolean');
             $Record_KCS_Date = user_has_permission(session('user')['userId'], 'Record_KCS_Date', 'boolean');
-            //dd ($department, $plan_feedback );
+           
             $colors = [
                 1 => 'background-color: #f44336; color: white;', // đỏ
                 2 => 'background-color: #ff9800; color: white;', // cam
@@ -200,6 +199,7 @@
 
                             {{-- QA Phản hồi --}}
                             <td class="text-left"> 
+
                                 <div class="input-group mx-4">
                                     <label for="{{ $data->id }}"> : Hồ sơ lô</label>
                                     <input class="form-check-input step-checkbox"
@@ -207,25 +207,15 @@
                                         name ="has_BMR"
                                         id="{{ $data->id }}"
                                         data-id="{{ $data->id }}"
-                                        data-permission="{{ $department == "QA" && $plan_feedback?'1': "0" }}"
+                                        data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(7)->gt(now()) && $department == "QA" && $plan_feedback) 
+                                        || ($department == "QA" && $plan_feedback_leader) ?'1': "0" }}"
                                         {{ $data->has_BMR ? 'checked' : '' }}
                                       >
                                 </div>
 
-                                {{-- <div class="input-group mx-4">
-                                    <label for="{{ $data->id }}"> : HSTT </label>
-                                    <input class="form-check-input step-checkbox"
-                                      type="checkbox"
-                                      name ="actual_record"
-                                      data-id="{{ $data->id }}"
-                                      id="{{ $data->id }}"
-                                      data-permission="{{ $department == "QA" && $plan_feedback?'1': "0" }}"
-                                      {{ $data->actual_record ? 'checked' : '' }}
-                                      >
-                                </div> --}}
-
                                 <div>
-                                    @if ($department == "QA" && $plan_feedback)
+                                    @if ($department == "QA" && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(7)->gt(now()) ||
+                                        $department == "QA" && $plan_feedback_leader)
                                         <textarea class="updateInput text-left"
                                             name="qa_feedback"
                                             data-id="{{ $data->id }}"
@@ -234,8 +224,8 @@
                                     @else
                                         {{empty($data->qa_feedback)?  "Chưa có phản hồi" : $data->qa_feedback }}
                                     @endif
-                                </div>
 
+                                </div>
                                 <div> {{"Updated_by: " . $data->qa_feedback_by }} </div>
                                 <div>{{"Updated_date: "}} {{$data->qa_feedback_date ? \Carbon\Carbon::parse($data->qa_feedback_date)->format('d/m/Y') : '' }}</div>
 
