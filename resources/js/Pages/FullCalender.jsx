@@ -439,13 +439,21 @@ const ScheduleTest = () => {
     handleViewChange(null, null);
   };
 
-  const toggleTheoryEvents = () => {
+  // const toggleTheoryEvents = () => {
     
-    const current = JSON.parse(sessionStorage.getItem('theoryHidden'));
-    const newTheory = !current;
-    sessionStorage.setItem('theoryHidden', JSON.stringify(newTheory));
-   
-  handleViewChange(null, null);
+  //   const current = JSON.parse(sessionStorage.getItem('theoryHidden'));
+  //   const newTheory = !current;
+  //   sessionStorage.setItem('theoryHidden', JSON.stringify(newTheory));
+  //   handleViewChange(null, null);
+  // };
+
+  const toggleTheoryEvents = () => {
+    const current = Number(sessionStorage.getItem('theoryHidden')) || 0;
+    const next = (current + 1) % 3; // 0 → 1 → 2 → 0
+
+    sessionStorage.setItem('theoryHidden', next);
+
+    handleViewChange(null, null);
   };
 
   /// Tô màu các event trùng khớp
@@ -2462,7 +2470,7 @@ const ScheduleTest = () => {
           resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
         }}
 
-         customButtons={{
+        customButtons={{
 
           customNext: {
             text: '⏵',
