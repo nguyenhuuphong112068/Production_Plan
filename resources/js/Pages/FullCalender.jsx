@@ -126,7 +126,7 @@ const ScheduleTest = () => {
           setReasons(data.reason)
           setLines(data.Lines)
           setAllLines (data.allLines)
-
+          sessionStorage.setItem('theoryHidden', 0);
          
         if (!authorization){
           setPlan(data.plan);
