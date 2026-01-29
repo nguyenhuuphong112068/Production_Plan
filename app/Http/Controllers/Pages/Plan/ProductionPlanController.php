@@ -1352,23 +1352,68 @@ class ProductionPlanController extends Controller
         }
 
         public function open_feedback_API (Request $request){
-                Log::info ($request->all());
-                $deparment_code = $request->department_code?? 'PXV1';
+               
+                $deparment_code = $request->deparment_code?? 'PXV1';
                 $month = $request->month ?? now()->month;
                 $year = $request->year ?? now()->year;
 
                 $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
-                Log::info ([
-                        'request' => $request->all(),
-                        'deparment_code' => $deparment_code,
-                        'month' => $month,
-                        'year' => $year,
-                        'plan_list_id' => $plan_list_id
-                        
-                        ]);
+    
                $datas = DB::table('plan_master')
                 ->select(
-                        'plan_master.*',
+            
+                        "plan_master.id",
+                        "plan_master.plan_list_id",
+                        "plan_master.product_caterogy_id",
+                        "plan_master.level",
+                        "plan_master.batch",
+                        "plan_master.actual_batch",
+                        "plan_master.order_number",
+                        "plan_master.expected_date",
+                        "plan_master.responsed_date",
+                        "plan_master.actual_KCS",
+                        "plan_master.is_val",
+                        "plan_master.code_val",
+                        "plan_master.after_weigth_date",
+                        "plan_master.parkaging_before_date",
+                        "plan_master.after_parkaging_date",
+                        "plan_master.expired_packing_date",
+                        "plan_master.preperation_before_date",
+                        "plan_master.blending_before_date",
+                        "plan_master.coating_before_date",
+                        "plan_master.allow_weight_before_date",
+                        "plan_master.expired_material_date",
+                        "plan_master.material_source_id",
+                        "plan_master.only_parkaging",
+                        "plan_master.percent_parkaging",
+                        "plan_master.main_parkaging_id",
+                        "plan_master.number_parkaging",
+                        "plan_master.note",
+                        "plan_master.pro_feedback",
+                        "plan_master.qc_feedback",
+                        "plan_master.en_feedback",
+                        DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
+                        DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
+                        "plan_master.actual_record",
+                        "plan_master.actual_CoA_date",
+                        "plan_master.actual_record_date",
+                        "plan_master.has_punch_die_mold",
+                        "plan_master.qa_feedback_by",
+                        "plan_master.qa_feedback_date",
+                        "plan_master.qc_feedback_by",
+                        "plan_master.qc_feedback_date",
+                        "plan_master.pro_feedback_by",
+                        "plan_master.pro_feedback_date",
+                        "plan_master.en_feedback_by",
+                        "plan_master.en_feedback_date",
+                        "plan_master.kcs_record_by",
+                        "plan_master.kcs_record_date",
+                        "plan_master.accept_expectedDate_by",
+                        "plan_master.accept_expectedDate_date",
+                        "plan_master.deparment_code",
+                        "plan_master.active",
+                        "plan_master.cancel",
+                      
                         'finished_product_category.intermediate_code',
                         'finished_product_category.finished_product_code',
                         'product_name.name',
