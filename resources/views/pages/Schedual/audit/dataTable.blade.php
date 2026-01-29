@@ -10,7 +10,7 @@
         <div class="card-body">
 
 
-            <form id="filterForm" method="GET" action="{{ route('pages.Schedual.audit.index') }}"
+            {{-- <form id="filterForm" method="GET" action="{{ route('pages.Schedual.audit.index') }}"
                 class="d-flex flex-wrap gap-2">
                 @csrf
                 <div class="row w-100 align-items-center">
@@ -50,6 +50,71 @@
                 
 
                 </div>
+            </form> --}}
+            
+            <form id="filterForm" method="GET" action="{{ route('pages.Schedual.audit.index') }}"
+                    class="d-flex flex-wrap gap-2">
+                    @csrf
+                    {{-- <div class="row w-100 align-items-center">
+                        <!-- Stage Selector -->
+                        <div class="col-md-4 d-flex justify-content-center align-items-center"
+                            style="gap: 10px; height: 40px;">
+                            <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
+                            <button type="button" id="prevStage" class="btn btn-link stage-btn"
+                                style="font-size: 25px;">&laquo;</button>
+                            <span id="stageName" class="fw-bold text-center" style="font-size: 25px;">
+                                {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
+                            </span>
+                            <button type="button" id="nextStage" class="btn btn-link stage-btn"
+                                style="font-size: 25px;">&raquo;</button>
+                        </div>
+                    </div> --}}
+
+                <div class="row w-100 align-items-center">
+
+                    <!-- Filter From/To -->
+                    <div class="col-md-4 d-flex gap-2">
+                        @php
+                            use Carbon\Carbon;
+                            $defaultFrom = Carbon::now()->toDateString();
+                            $defaultTo = Carbon::now()->addMonth(2)->toDateString();
+                        @endphp
+                        <div class="form-group d-flex align-items-center">
+                            <label for="from_date" class="mr-2 mb-0">From:</label>
+                            <input type="date" id="from_date" name="from_date"
+                                value="{{ request('from_date') ?? $defaultFrom }}" class="form-control" />
+                        </div>
+                        <div class="form-group d-flex align-items-center">
+                            <label for="to_date" class="mr-2 mb-0">To:</label>
+                            <input type="date" id="to_date" name="to_date"
+                                value="{{ request('to_date') ?? $defaultTo }}" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex gap-2"></div>
+
+                    <!-- Stage Selector -->
+                    <div class="col-md-4 d-flex justify-content-end"
+                        style="gap: 10px; height: 40px;">
+                        <div class="form-group" style="width: 177px">
+                                <select class="form-control" name="stage_code" style="text-align-last: center;"
+                                    onchange="document.getElementById('filterForm').submit();">
+                                    <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
+                                    <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
+                                    <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
+                                    <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
+                                    <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
+                                    <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
+                                    <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
+                                </select>
+                        </div>
+                        
+                    </div>
+                
+
+                </div>
+
+
+         
             </form>
 
             <table id="data_table_Schedual_list" class="table table-bordered table-striped" style="font-size: 20px">
@@ -166,92 +231,6 @@
             },
         });
 
-        // $('.btn-history').on('click', function() {
-        //         //const id = $(this).data('id');
-        //         const id = $(this).data('id');
-        //         const history_modal = $('#data_table_history_body')
-               
-        //         // Xóa dữ liệu cũ
-        //         history_modal.empty();
-              
-        //         // Gọi Ajax lấy dữ liệu history
-        //         $.ajax({
-        //             url: "{{ route('pages.Schedual.audit.history') }}",
-        //             type: 'post',
-        //             data: {
-        //                 id: id,
-        //                 _token: "{{ csrf_token() }}"
-        //             },
-        //             success: function(res) {
-        //                 console.log (res)
-        //                 if (res.length === 0) {
-        //                     history_modal.append(
-        //                         `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
-        //                     );
-        //                 } else {
-        //                     res.forEach((item, index) => {
-                              
-        //                     history_modal.append(`
-        //                         <tr>
-        //                             <td>${index + 1}</td>
-
-        //                             <td>
-        //                                 <div>${item.intermediate_code ?? ''}</div>
-        //                                 <div>${item.finished_product_code ?? ''}</div>
-        //                             </td>
-
-        //                             <td>${item.title ?? ''}</td>
-
-        //                             <td>${item.batch_qty ? item.batch_qty + ' ' + (item.unit_batch_qty ?? '') : ''}</td>
-        //                             <td>${item.batch ?? ''}</td>
-
-
-
-        //                             <td>${(item.room_name ?? '') + ' - ' + (item.room_code ?? '')}</td>
-
-        //                             <td>
-        //                                 ${
-        //                                     item.start && item.end
-        //                                         ?`<div> ${moment(item.start).format('DD/MM/YYYY HH:mm')} </div> 
-        //                                          <div> ${moment(item.end).format('DD/MM/YYYY HH:mm') }</div> `
-        //                                         : ''
-        //                                 }
-        //                             </td>
-
-        //                             <td>
-        //                                 ${
-        //                                     item.start_clearning && item.end_clearning
-        //                                         ? `<div> ${moment(item.start_clearning).format('DD/MM/YYYY HH:mm')} </div>
-        //                                          <div> ${ moment(item.end_clearning).format('DD/MM/YYYY HH:mm')} </div>`
-        //                                         : ''
-        //                                 }
-        //                             </td>
-
-        //                             <td>${item.type_of_change ?? ''}</td>
-
-        //                             <td>
-        //                                 <div>${item.schedualed_by ?? ''}</div>
-        //                                 <div>${item.schedualed_at ? moment(item.schedualed_at).format('DD/MM/YYYY') : ''}</div>
-        //                             </td>
-        //                             <td>
-        //                             <div>${item.version ?? ''}</div>
-        //                             </td>
-        //                         </tr>
-        //                     `);
-
-
-
-        //                     });
-        //                 }
-        //             },
-        //             error: function() {
-        //                 history_modal.append(
-        //                     `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-        //                 );
-        //             }
-        //         });
-        // });
-
     
     });
 </script>
@@ -297,7 +276,7 @@
     });
 </script>
 
-<script>
+{{-- <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Init tất cả stepper
         document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
@@ -307,11 +286,5 @@
             });
         });
     });
-</script>
-                                    {{-- <td>
-                                        <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
-                                    </td>
-
-                                    <td class="text-center align-middle">
-                                        ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
-                                    </td> --}}
+</script> --}}
+                             
