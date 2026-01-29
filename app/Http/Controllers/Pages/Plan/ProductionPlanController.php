@@ -1355,8 +1355,9 @@ class ProductionPlanController extends Controller
 
                 $deparment_code = $request->deparment_code?? 'PXV1';
                 $month = $request->month ?? now()->month;
+                $year = $request->month ?? now()->year;
 
-                $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('month',$month)->pluck('id');
+                $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
 
                $datas = DB::table('plan_master')
                 ->select(
@@ -1385,9 +1386,7 @@ class ProductionPlanController extends Controller
                 })
                 ->whereIn('plan_master.plan_list_id', $plan_list_id)
                 ->where('plan_master.active', 1)
-                ->orderBy('expected_date', 'asc')
-                ->orderBy('level', 'asc')
-                ->orderBy('batch', 'asc')
+                ->orderBy('id', 'asc')
                 ->get();
 
                 return response()->json([
