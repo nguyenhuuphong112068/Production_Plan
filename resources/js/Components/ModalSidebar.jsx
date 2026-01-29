@@ -1527,12 +1527,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                  {isSaving === false ?<i className="fas fa-cube"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
               </div> */}
 
-              <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Đã Chọn Ở Tất Cả Các Công Đoạn"
+              <div className="fc-event px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch Với Các Sản Phẩm Được Chọn Ở Tất Cả Các Công Đoạn"
                 onClick={handleCreateManualCampainStage}>
                  {isSaving === false ?<i className="fas fa-cubes"></i> :<i className="fas fa-spinner fa-spin fa-lg"></i>} ({selectedRows.length})
               </div>
 
-              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn"
+              <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn Của Các Dòng Được Chọn"
                   onClick={handleDeleteCampainStage}>
                   {isSaving === false ? <i className="fas fa-trash"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
               </div> 
@@ -1544,7 +1544,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
                {stageFilter == 3 && (
                 <>
-                <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động"
+                <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Mã Chiến Dịch tự Động Cho Tất Cả Công Đoạn"
                   onClick={handleCreateAutoCampain}>
                   {isSaving === false ? <i className="fas fa-flag-checkered"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
                 </div>
