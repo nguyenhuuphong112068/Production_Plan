@@ -1352,13 +1352,20 @@ class ProductionPlanController extends Controller
         }
 
         public function open_feedback_API (Request $request){
-
-                $deparment_code = $request->deparment_code?? 'PXV1';
+                Log::info ($request->all());
+                $deparment_code = $request->department_code?? 'PXV1';
                 $month = $request->month ?? now()->month;
-                $year = $request->month ?? now()->year;
+                $year = $request->year ?? now()->year;
 
                 $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
-
+                Log::info ([
+                        'request' => $request->all(),
+                        'deparment_code' => $deparment_code,
+                        'month' => $month,
+                        'year' => $year,
+                        'plan_list_id' => $plan_list_id
+                        
+                        ]);
                $datas = DB::table('plan_master')
                 ->select(
                         'plan_master.*',
