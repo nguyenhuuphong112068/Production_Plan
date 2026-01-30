@@ -43,7 +43,7 @@ const ScheduleTest = () => {
   const searchResultsRef = useRef([]);
   const currentIndexRef = useRef(-1);
   const lastQueryRef = useRef("");
-  const slotViewWeeks = ['resourceTimelineWeek1day',  'resourceTimelineWeek4h', 'resourceTimelineWeek15' ];
+  const slotViewWeeks = ['resourceTimelineWeek1day',  'resourceTimelineWeek4h', 'resourceTimelineWeek1h', 'resourceTimelineWeek15' ];
   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
   const [slotIndex, setSlotIndex] = useState(0);
   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
@@ -2446,6 +2446,7 @@ const ScheduleTest = () => {
             titleFormat: { year: 'numeric' }
           },
           resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
+          resourceTimelineWeek1h: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
           resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
           resourceTimelineWeek1day: { type: 'resourceTimelineWeek', slotDuration: { days: 1 } },
 

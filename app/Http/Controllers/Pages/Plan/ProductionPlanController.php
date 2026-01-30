@@ -1358,8 +1358,17 @@ class ProductionPlanController extends Controller
                 $year = $request->year ?? now()->year;
 
                 $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
-    
-               $datas = DB::table('plan_master')
+                
+                // $maxStageFinished = DB::table('stage_plan')
+                // ->whereIn('stage_plan.plan_list_id', $plan_list_id)
+                // ->where('finished', 1)
+                // ->select(
+                //         'plan_master_id',
+                //         DB::raw('MAX(stage_code) as max_stage_code')
+                // )
+                // ->groupBy('plan_master_id');
+
+                $datas = DB::table('plan_master')
                 ->select(
             
                         "plan_master.id",
@@ -1391,13 +1400,18 @@ class ProductionPlanController extends Controller
                         "plan_master.note",
                         "plan_master.pro_feedback",
                         "plan_master.qc_feedback",
-                        "plan_master.en_feedback",
+                        
+
                         DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
                         DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
-                        "plan_master.actual_record",
+
+                        DB::raw("IF(plan_master.en_feedback IS NOT NULL, plan_master.en_feedback, 'NA') AS en_feedback"),
+                        DB::raw("IF(plan_master.has_punch_die_mold = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_punch_die_mold"),
+
+      
                         "plan_master.actual_CoA_date",
                         "plan_master.actual_record_date",
-                        "plan_master.has_punch_die_mold",
+                  
                         "plan_master.qa_feedback_by",
                         "plan_master.qa_feedback_date",
                         "plan_master.qc_feedback_by",

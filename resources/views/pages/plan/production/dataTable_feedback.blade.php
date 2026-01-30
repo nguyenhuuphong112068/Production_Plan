@@ -73,8 +73,6 @@
             <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
 
                 <tbody>
-                    
-
                     @foreach ($datas as $data)
                         @php
                             if ($data->actual_CoA_date == null) {$actual_CoA_Count++;}
@@ -107,7 +105,7 @@
 
                             <td>
                                 <div> {{ $data->name }} - {{ $data->actual_batch ??$data->batch }} - {{$data->market}} </div>
-                                <div>  {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
+                                <div>  {{'('. $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
                                 <div>  {{ $data->specification }} </div>
                             </td>
 
@@ -242,22 +240,24 @@
                                       name ="has_punch_die_mold" 
                                       data-id="{{ $data->id }}"
                                       id="{{ $data->id }}"
-                                      data-permission="{{ $department == "EN" && $plan_feedback?'1': "0" }}"
+                                      data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(10)->gt(now()) && $department == "EN" && $plan_feedback) 
+                                        || ($department == "EN" && $plan_feedback_leader) ?'1': "0" }}"
+
                                       {{ $data->has_punch_die_mold ? 'checked' : '' }}
                                       >
-
                                 </div>
            
 
                                  <div>
-                                    @if ($department == "EN" && $plan_feedback)
+                                    @if ($department == "EN" && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(10)->gt(now()) ||
+                                        $department == "EN" && $plan_feedback_leader)
                                         <textarea class="updateInput text-left"
                                             name="en_feedback"
                                             data-id="{{ $data->id }}"
                                             placeholder="EN Phản Hồi Tại Đây"
                                         >@if(!empty($data->en_feedback)){{ $data->en_feedback }}@endif</textarea>
                                     @else
-                                        {{empty($data->en_feedback)?  "Chưa có phản hồi" : $data->qa_feedback }}
+                                        {{empty($data->en_feedback)?  "Chưa có phản hồi" : $data->qa_feedback}}
                                     @endif
                                 </div>
 
@@ -350,12 +350,12 @@
                             <div>{{"KỸ THUẬT BẢO TRÌ"}}</div>
                             <div>{{"(1) Tình hình CC - KM"}} <span class ="text-red"> {{"(chưa có:  $actual_Mod_Count lô)"}} </span> </div>
                             <div>{{"(2) Phản hồi"}} </div>
-                            @if ($department == "EN" && $plan_feedback)
+                            {{-- @if ($department == "EN" && $plan_feedback)
                                 <button class = "btn btn-success btn-en-feedback"
                                     data-toggle="modal"
                                     data-target="#en_feedback_modal"
                                 >Phản hồi toàn bộ</button>
-                            @endif
+                            @endif --}}
                         </th>
                         <th>
                             <div>{{"KIỂM TRA CHẤT LƯỢNG"}}</div>
