@@ -41,7 +41,7 @@
               @php
 
                 //$update_daily_report = user_has_permission(session('user')['userId'], 'update_daily_report', 'boolean');
-                $auth_update = user_has_permission(session('user')['userId'], 'quota_production_update', 'disabled');
+                $auth_update = user_has_permission(session('user')['userId'], 'report_update_sheets', 'disabled');
 
                 $stage_name = [
                       1 => "Cân Nguyên Liệu",
