@@ -1347,7 +1347,7 @@ const ScheduleTest = () => {
                   </StepperPanel>)}
 
 
-                 {(emptyPermission == null || emptyPermission.stage_code >= 8) && (
+                 {(emptyPermission == null || emptyPermission.stage_code >= 7) && (
                   <StepperPanel header="CNL">
                     <div className="flex flex-column h-12rem">
                       <div
