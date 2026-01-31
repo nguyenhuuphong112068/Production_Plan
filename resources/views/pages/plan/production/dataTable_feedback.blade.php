@@ -257,7 +257,7 @@
                                             placeholder="EN Phản Hồi Tại Đây"
                                         >@if(!empty($data->en_feedback)){{ $data->en_feedback }}@endif</textarea>
                                     @else
-                                        {{empty($data->en_feedback)?  "Chưa có phản hồi" : $data->qa_feedback}}
+                                        {{empty($data->en_feedback)?  "Chưa có phản hồi" : $data->en_feedback}}
                                     @endif
                                 </div>
 
