@@ -52,7 +52,7 @@ class DailyReportController extends Controller
 
             )
             ->groupBy('next_room')
-            ->orderBy('group_code')   // sắp xếp theo stage
+            ->orderBy('stage_code')   // sắp xếp theo stage
             ->get();
 
             $explanation = DB::table('explanation')

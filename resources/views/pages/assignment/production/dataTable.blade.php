@@ -104,22 +104,16 @@
                     <table id="data_table_quota" class="table table-bordered table-striped" style="font-size: 20px">
                         <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                             <tr>
-                                <th rowspan="2" class="text-center">STT</th>
-                                <th rowspan="2" class="text-center">Tên Máy</th>
-                                <th rowspan="2" class="text-center">Công Suất (1)</th>
-                                <th colspan="3" class="text-center">Thời Gian Làm Việc TT Trong Tuần (2)</th>
+                                <th class="text-center">STT</th>
+                                <th class="text-center">Phòng Sản Xuất</th>
+                                <th class="text-center">Ca làm việc</th>
+                                <th class="text-center">Nội dung công việc</th>
+                                <th class="text-center" >Người thực hiện</th>
+                                <th class="text-center">Ghi chú</th>
 
-                                <th rowspan="2" class="text-center" >Sản lượng lý thuyết (3)</th>
-                                <th rowspan="2" class="text-center">Sản lượng thực tế (4)</th>
-
-                                <th rowspan="2" class="text-center">OEE %
-                                     (5)</th>
-                                
-                                <th colspan="3" class="text-center">Thời gian làm việc LT tối đã trong tuần (6)</th>
-                                <th rowspan="2" class="text-center">Loading % (7)</th>
-                                <th rowspan="2" class="text-center">TEEP % (8)</th>
+                            
                             </tr>
-                            <tr>
+                            {{-- <tr>
                                 <th>Thời Gian Sản Xuất (a)</th>
                                 <th>Thời Gian Vệ Sinh (b)</th>
                                 <th>Tổng Thời Gian (c) = (a) + (b)</th>
@@ -129,7 +123,7 @@
                                 <th>Số ngày trong tuần (b)</th>
                                 <th>(6c)=(6a)x(6b)x8</th>
                                
-                            </tr>
+                            </tr> --}}
 
                
                         </thead>
