@@ -1135,167 +1135,181 @@ class SchedualController extends Controller
 
                         foreach ($products as $index => $product) {
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | LẤY QUOTA
-                        |--------------------------------------------------------------------------
-                        */
-                        if ($index === 0 && $product['stage_code'] !== 9) {
+                                /*
+                                |--------------------------------------------------------------------------
+                                | LẤY QUOTA
+                                |--------------------------------------------------------------------------
+                                */
+                                if ($index === 0 && $product['stage_code'] !== 9) {
 
-                                if ($product['stage_code'] < 7) {
-                                $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;
-                                } else if ($product['stage_code'] === 7) {
-                                $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;
+                                        if ($product['stage_code'] < 7) {
+                                        $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;
+                                        } else if ($product['stage_code'] === 7) {
+                                        $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;
+                                        }
+
+                                        $quota = DB::table('quota')
+                                        ->select(
+                                                'room_id', 'campaign_index',
+                                                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
+                                        )
+                                        ->where('process_code', 'like',  $process_code . '%')
+                                        ->first();
+
+                                        $p_time_minutes  = $quota->p_time_minutes ?? 0;
+                                        $m_time_minutes  = $quota->m_time_minutes ?? 0;
+                                        $C1_time_minutes = $quota->C1_time_minutes ?? 0;
+                                        $C2_time_minutes = $quota->C2_time_minutes ?? 0;
+
+                                } elseif ($index === 0 && $product['stage_code'] === 9) {
+                                        $p_time_minutes  = 30;
+                                        $m_time_minutes  = 60;
+                                        $C1_time_minutes = 30;
+                                        $C2_time_minutes = 60;
                                 }
 
-                                $quota = DB::table('quota')
-                                ->select(
-                                        'room_id', 'campaign_index',
-                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
-                                )
-                                ->where('process_code', 'like',  $process_code . '%')
-                                ->first();
+                                /*
+                                |--------------------------------------------------------------------------
+                                | TÍNH THỜI GIAN SẢN XUẤT + VỆ SINH
+                                |--------------------------------------------------------------------------
+                                */
+                                if ($product['stage_code'] <= 2) {
 
-                                $p_time_minutes  = $quota->p_time_minutes ?? 0;
-                                $m_time_minutes  = $quota->m_time_minutes ?? 0;
-                                $C1_time_minutes = $quota->C1_time_minutes ?? 0;
-                                $C2_time_minutes = $quota->C2_time_minutes ?? 0;
+                                        $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes * $quota->campaign_index);
 
-                        } elseif ($index === 0 && $product['stage_code'] === 9) {
-                                $p_time_minutes  = 30;
-                                $m_time_minutes  = 60;
-                                $C1_time_minutes = 30;
-                                $C2_time_minutes = 60;
-                        }
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | TÍNH THỜI GIAN SẢN XUẤT + VỆ SINH
-                        |--------------------------------------------------------------------------
-                        */
-                        if ($product['stage_code'] <= 2) {
-
-                                $end_man = $current_start->copy()->addMinutes(
-                                (float)$p_time_minutes + (float)$m_time_minutes * $quota->campaign_index
-                                );
-
-                                $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
-                                $clearning_type = "VS-II";
-
-                        } else {
-
-                                if ($products->count() === 1) {
-
-                                $end_man = $current_start->copy()->addMinutes(
-                                        (float)$p_time_minutes + (float)$m_time_minutes
-                                );
-
-                                $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
-                                $clearning_type = "VS-II";
+                                        $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
+                                        $clearning_type = "VS-II";
 
                                 } else {
 
-                                if ($index === 0) {
-                                        $end_man = $current_start->copy()->addMinutes(
-                                        (float)$p_time_minutes + (float)$m_time_minutes
-                                        );
-                                        $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
-                                        $clearning_type = "VS-I";
-                                }
+                                        if ($products->count() === 1) {
 
-                                elseif ($index === $products->count() - 1) {
-                                        $end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
+                                        $end_man = $current_start->copy()->addMinutes(
+                                                (float)$p_time_minutes + (float)$m_time_minutes
+                                        );
+
                                         $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
                                         $clearning_type = "VS-II";
+
+                                        } else {
+
+                                        if ($index === 0) {
+                                                $end_man = $current_start->copy()->addMinutes(
+                                                (float)$p_time_minutes + (float)$m_time_minutes
+                                                );
+                                                $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
+                                                $clearning_type = "VS-I";
+                                        }
+
+                                        elseif ($index === $products->count() - 1) {
+                                                $end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
+                                                $clearning_type = "VS-II";
+                                        }
+
+                                        else {
+                                                $end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
+                                                $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
+                                                $clearning_type = "VS-I";
+                                        }
+                                        }
                                 }
 
-                                else {
-                                        $end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
-                                        $end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
-                                        $clearning_type = "VS-I";
+                                /*
+                                |--------------------------------------------------------------------------
+                                | LƯU stage_plan
+                                |--------------------------------------------------------------------------
+                                */
+                                if ($product['stage_code'] === 9) {
+                                        DB::table('stage_plan')
+                                        ->where('id', $product['id'])
+                                        ->update([
+                                        'start'           => $current_start,
+                                        'end'             => $end_man,
+                                        'start_clearning' => $end_man,
+                                        'end_clearning'   => $end_clearning,
+                                        'resourceId'      => $request->room_id,
+                                        //'title_clearning' => $clearning_type,
+                                        'schedualed'      => 1,
+                                        'schedualed_by'   => session('user')['fullName'],
+                                        'schedualed_at'   => now(),
+                                        ]);
+                                }else{
+                                        DB::table('stage_plan')
+                                        ->where('id', $product['id'])
+                                        ->update([
+                                        'start'           => $current_start,
+                                        'end'             => $end_man,
+                                        'start_clearning' => $end_man,
+                                        'end_clearning'   => $end_clearning,
+                                        'resourceId'      => $request->room_id,
+                                        'title'           => $product['stage_code'] === 9
+                                                ? ($product['title'] . "-" . $product['batch'])
+                                                : ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
+                                        'title_clearning' => $clearning_type,
+                                        'schedualed'      => 1,
+                                        'schedualed_by'   => session('user')['fullName'],
+                                        'schedualed_at'   => now(),
+                                        ]);
                                 }
+                        
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | LƯU LỊCH SỬ
+                                |--------------------------------------------------------------------------
+                                */
+                                $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
+
+                                if ($submit == 1) {
+                                        $last_version = DB::table('stage_plan_history')
+                                        ->where('stage_plan_id', $product['id'])
+                                        ->max('version') ?? 0;
+
+                                        DB::table('stage_plan_history')->insert([
+                                        'stage_plan_id'  => $product['id'],
+                                        'version'        => $last_version + 1,
+                                        'start'          => $current_start,
+                                        'end'            => $end_man,
+                                        'resourceId'     => $request->room_id,
+                                        'schedualed_by'  => session('user')['fullName'],
+                                        'schedualed_at'  => now(),
+                                        'deparment_code' => session('user')['production_code'],
+                                        'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
+                                        ]);
                                 }
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | TÍNH current_start CHO SẢN PHẨM TIẾP THEO
+                                |--------------------------------------------------------------------------
+                                */
+                                if ($product['stage_code'] > 2) {
+                                        $current_start = $end_clearning;
+                                }
+
+                                // 🔥 SAU KHI TĂNG current_start → KIỂM TRA NGÀY OFF
+                                $current_start = $this->check_offdate($current_start, $offdate);
                         }
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | LƯU stage_plan
-                        |--------------------------------------------------------------------------
-                        */
-                        if ($product['stage_code'] === 9) {
-                                 DB::table('stage_plan')
-                                ->where('id', $product['id'])
-                                ->update([
-                                'start'           => $current_start,
-                                'end'             => $end_man,
-                                'start_clearning' => $end_man,
-                                'end_clearning'   => $end_clearning,
-                                'resourceId'      => $request->room_id,
-                                //'title_clearning' => $clearning_type,
-                                'schedualed'      => 1,
-                                'schedualed_by'   => session('user')['fullName'],
-                                'schedualed_at'   => now(),
-                                ]);
-                        }else{
+                        //// Set lại mã chiến dịch
+                        if ($product['stage_code'] == 3 ) {
+                                $campaign_code = $products->first()['plan_master_id'];
+
                                 DB::table('stage_plan')
-                                ->where('id', $product['id'])
-                                ->update([
-                                'start'           => $current_start,
-                                'end'             => $end_man,
-                                'start_clearning' => $end_man,
-                                'end_clearning'   => $end_clearning,
-                                'resourceId'      => $request->room_id,
-                                'title'           => $product['stage_code'] === 9
-                                        ? ($product['title'] . "-" . $product['batch'])
-                                        : ($product['name'] . "-" . $product['batch'] . "-" . $product['market']),
-                                'title_clearning' => $clearning_type,
-                                'schedualed'      => 1,
-                                'schedualed_by'   => session('user')['fullName'],
-                                'schedualed_at'   => now(),
+                                  ->whereIn('plan_master_id', $products->pluck('plan_master_id'))
+                                  ->update([
+                                        'campaign_code'  => $campaign_code,
                                 ]);
-                        }
-                       
+                        }                       
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | LƯU LỊCH SỬ
-                        |--------------------------------------------------------------------------
-                        */
-                        $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
+             
 
-                        if ($submit == 1) {
-                                $last_version = DB::table('stage_plan_history')
-                                ->where('stage_plan_id', $product['id'])
-                                ->max('version') ?? 0;
+   
 
-                                DB::table('stage_plan_history')->insert([
-                                'stage_plan_id'  => $product['id'],
-                                'version'        => $last_version + 1,
-                                'start'          => $current_start,
-                                'end'            => $end_man,
-                                'resourceId'     => $request->room_id,
-                                'schedualed_by'  => session('user')['fullName'],
-                                'schedualed_at'  => now(),
-                                'deparment_code' => session('user')['production_code'],
-                                'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
-                                ]);
-                        }
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | TÍNH current_start CHO SẢN PHẨM TIẾP THEO
-                        |--------------------------------------------------------------------------
-                        */
-                        if ($product['stage_code'] !== 1) {
-                                $current_start = $end_clearning;
-                        }
-
-                        // 🔥 SAU KHI TĂNG current_start → KIỂM TRA NGÀY OFF
-                        $current_start = $this->check_offdate($current_start, $offdate);
-                        }
 
                         DB::commit();
 

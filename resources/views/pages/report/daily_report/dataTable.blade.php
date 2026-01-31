@@ -429,7 +429,6 @@
                                     <th>STT</th>
                                     <th>Tên Phòng - Thiết Bị Chính</th>
                                     <th>Công Đoạn Tiếp Theo</th>
-                                    <th>Tổ Quản Lý</th>
                                     <th>Tồn Thực Tế Công Đoạn trước</th>
                                     <th class ="text-center">Chi Tiết</th>
                                 </tr>
@@ -450,7 +449,6 @@
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->next_room }}</td>
                                             <td>{{ $data->stage }}</td>
-                                            <td>{{ $data->production_group }}</td>
                                             <td>{{ $data->sum_yields }} {{$data->stage_code<=5?"Kg":"ĐVL"}}  </td>
 
                                            <td class="text-center align-middle">

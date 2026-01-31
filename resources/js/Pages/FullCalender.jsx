@@ -177,7 +177,7 @@ const ScheduleTest = () => {
     { enableOnFormTags: false }
   );
 
-    useHotkeys("alt+w",(e) => {
+  useHotkeys("alt+w",(e) => {
       e.preventDefault();
     
       handleViewChange("resourceTimelineWeek");
