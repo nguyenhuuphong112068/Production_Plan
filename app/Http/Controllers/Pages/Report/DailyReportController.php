@@ -48,12 +48,13 @@ class DailyReportController extends Controller
                 DB::raw("MIN(room.stage) as stage"),
                 DB::raw("MIN(room.stage_code) as stage_code"),
                 DB::raw("MIN(room.group_code) as group_code"),
-                DB::raw("MIN(room.id) as room_id")
+                DB::raw("MIN(room.id) as room_id"),
+                
 
             )
             ->groupBy('next_room')
             ->orderBy('group_code') 
-            ->orderBy('stage_code')   // sắp xếp theo stage
+            ->orderBy('next_room')   // sắp xếp theo stage
             ->get();
        
             $explanation = DB::table('explanation')
