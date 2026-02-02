@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
+
 use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class SchedualController extends Controller
@@ -6983,89 +6983,3 @@ class SchedualController extends Controller
         }
 
 
-
-                        //      if (($plan->start || $plan->actual_start) ) {
-                        //         $events->push([
-                        //                 'plan_id' => $plan->id,
-                        //                 'id' => "{$plan->id}-main",
-                        //                 'title' => $plan->title ."-". $plan->w2,
-                        //                 'start' => $plan->actual_start ?? $plan->start,
-                        //                 'end' => $plan->actual_end ?? $plan->end,
-                        //                 'resourceId' => $plan->resourceId,
-                        //                 'color' =>  $color_event,
-                        //                 'textColor' => $textColor,
-                        //                 'plan_master_id' => $plan->plan_master_id,
-                        //                 'stage_code' => $plan->stage_code,
-                        //                 'is_clearning' => false,
-                        //                 'finished' => $plan->finished,
-                        //                 'level' => $plan->level,
-                        //                 'process_code' => $plan->process_code,
-                        //                 'keep_dry' => $plan->keep_dry,
-                        //                 'tank' => $plan->tank,
-                        //                 'expected_date' => Carbon::parse($plan->expected_date)->format('d/m/y'),
-                        //                 'submit' => $plan->submit,
-                        //                 'storage_capacity' => $storage_capacity,
-                        //                 'subtitle' => $subtitle,
-                        //                 'campaign_code' => $plan->campaign_code
-                        //         ]);
-                        // }
-
-                        // if (($clearning && $plan->start_clearning  && $plan->yields >= 0 ) || ($clearning && $plan->actual_start_clearning && $plan->yields >= 0 )  ) {
-                        //         $events->push([
-                        //                 'plan_id' => $plan->id,
-                        //                 'id' => "{$plan->id}-cleaning",
-                        //                 'title' => $plan->title_clearning ?? 'VS',
-                        //                 'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
-                        //                 'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
-                        //                 'resourceId' => $plan->resourceId,
-                        //                 'color' => $plan->finished == 1?'#002af9ff':'#a1a2a2ff',
-                        //                 'textColor' => $textColor,
-                        //                 'plan_master_id' => $plan->plan_master_id,
-                        //                 'stage_code' => $plan->stage_code,
-                        //                 'is_clearning' => true,
-                        //                 'finished' => $plan->finished,
-                        //                 'process_code' => $plan->process_code,
-                        //         ]);
-                        // }
-                
-                        // // event Lich chính lý thuyết
-                        // if ($plan->actual_start && $theory  == true) {
-                               
-                        //         $events->push([
-                        //         'plan_id' => $plan->id,
-                        //         'id' => "{$plan->id}-main-theory",
-                        //         'title' => trim($plan->title . "- Lịch Lý Thuyết"?? '') ,
-                        //         'start' =>  $plan->start,
-                        //         'end' =>  $plan->end,
-                        //         'resourceId' => $plan->resourceId,
-                        //         'color' => '#8397faff',
-                        //         'textColor' => $textColor,
-                        //         'plan_master_id' => $plan->plan_master_id,
-                        //         'stage_code' => $plan->stage_code,
-                        //         'is_clearning' => false,
-                        //         'finished' => $plan->finished,
-                        //         'level' => $plan->level,
-                        //         'process_code' => $plan->process_code,
-                        //         'keep_dry' => $plan->keep_dry,
-                        //         'tank' => $plan->tank,
-                        //         'storage_capacity' => $storage_capacity
-                        //         ]);
-                        // }
-                        // // event Lich VS lý thuyết
-                        // if ($clearning && $plan->actual_start && $plan->yields >= 0 && $theory == true) {
-                        //         $events->push([
-                        //         'plan_id' => $plan->id,
-                        //         'id' => "{$plan->id}-cleaning-theory",
-                        //         'title' => $plan->title_clearning . " - Lịch Lý Thuyết" ?? 'Vệ sinh',
-                        //         'start' => $plan->start_clearning,
-                        //         'end' =>  $plan->end_clearning,
-                        //         'resourceId' => $plan->resourceId,
-                        //         'color' => '#8397faff',
-                        //         'textColor' => $textColor,
-                        //         'plan_master_id' => $plan->plan_master_id,
-                        //         'stage_code' => $plan->stage_code,
-                        //         'is_clearning' => true,
-                        //         'finished' => $plan->finished,
-                        //         'process_code' => $plan->process_code,
-                        //         ]);
-                        // }

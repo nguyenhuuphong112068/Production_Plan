@@ -52,9 +52,10 @@ class DailyReportController extends Controller
 
             )
             ->groupBy('next_room')
+            ->orderBy('group_code') 
             ->orderBy('stage_code')   // sắp xếp theo stage
             ->get();
-
+       
             $explanation = DB::table('explanation')
             ->where('deparment_code', session('user')['production_code'])
             ->where('reported_date', $reportedDate->toDateString())->pluck('content','stage_code');
