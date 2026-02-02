@@ -18,8 +18,18 @@
                       5 => "Định Hình",
                       6 => "Bao Phim",
                       7 => "ĐGSC - ĐGTC",
-                  ]
-              @endphp ---
+                  ];
+
+                $group_name = [
+                      1 => "Cân Nguyên Liệu",
+                      3 => "Pha Chế",
+                      4 => "Sủi",
+                      5 => "Định Hình",
+                      6 => "Bao Phim",
+                      7 => "ĐGSC - ĐGTC",
+                  ];
+
+              @endphp
               <!-- /.card-Body -->
               <div class="card-body">
                  <!-- Tiêu đề -->
@@ -434,15 +444,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                    @php $stage_code_current = null; @endphp
+                                    @php $group_code_current = null; @endphp
 
                                     @foreach ($sum_by_next_room as $key_room => $data)
 
-                                        @if ($stage_code_current != $data->stage_code)
+                                        @if ($group_code_current != $data->group_code)
                                             <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
-                                                <td class="text-center" colspan="6">Công Đoạn {{ $stage_name[$data->stage_code] }}</td>
+                                                <td class="text-center" colspan="6">Tổ {{ $group_name[$data->group_code] }}</td>
                                             </tr>
-                                             @php $stage_code_current = $data->stage_code; @endphp
+                                             @php $group_code_current = $data->group_code; @endphp
                                         @endif
 
                                         <tr>

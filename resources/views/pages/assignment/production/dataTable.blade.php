@@ -111,7 +111,7 @@
                                 <th class="text-center">Phòng Sản Xuất</th>
                                 <th class="text-center">Ca làm việc</th>
                                 <th class="text-center">Nội dung công việc</th>
-                                <th class="text-center" >Người thực hiện</th>
+                                <th class="text-center" >Nhân Sự</th>
                                 <th class="text-center">Ghi chú</th>
 
                             
@@ -132,11 +132,21 @@
                         </thead>
 
                         @php $current_Stage = 0 ;@endphp
-                            {{-- 
+                          
                         <tbody>
                            
                                 @foreach ($datas as $data)
-                                    @if ($current_Stage != $data->stage_code)
+
+                                <tr>
+                                    <td> {{$loop->iteration  }}
+                                            {{-- @if (session('user')['userGroup'] == 'Admin')
+                                                <div> {{ $data->id }} </div>
+                                            @endif --}}
+                                    </td>
+                                    <td> {{$data->room_name }} </td>
+                                </tr>
+
+                                    {{-- @if ($current_Stage != $data->stage_code)
                                         
                                         <tr style="background:#CDC717; color:#003A4F; font-weight:bold; cursor: pointer;"
                                             class="stage-total" data-stage="{{ $data->stage_code }}">
@@ -149,9 +159,9 @@
                                         </tr>
 
                                         @php $current_Stage = $data->stage_code ;@endphp
-                                    @endif
+                                    @endif --}}
 
-                                    <tr class="stage-child stage-{{$data->stage_code}}">
+                                    {{-- <tr class="stage-child stage-{{$data->stage_code}}">
                                         <td> {{$loop->iteration  }}
                                             @if (session('user')['userGroup'] == 'Admin')
                                                 <div> {{ $data->id }} </div>
@@ -180,10 +190,10 @@
 
                                         <td> {{$data->loading }} </td>
                                         <td> {{$data->TEEP }} </td>
-                                    </tr>    
+                                    </tr>     --}}
                                 @endforeach
                             
-                        </tbody> --}}
+                        </tbody> 
                     </table>
                 </div>
 

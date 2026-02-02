@@ -14,11 +14,12 @@ import AssignmentCalender from './Pages/AssignmentCalender.jsx';
 
 
 createRoot(document.getElementById("root")).render(
-  <BrowserRouter basename="/Schedual">
+  <BrowserRouter>
     <Routes>
-      <Route index element={<ScheduleTest />} />
-      <Route path="assignment" element={<AssignmentCalender />} />
+      <Route path="/Schedual" element={<ScheduleTest />} />
+      <Route path="/assignment" element={<AssignmentCalender />} />
     </Routes>
   </BrowserRouter>
+  
 );
 

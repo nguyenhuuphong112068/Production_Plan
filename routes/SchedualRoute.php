@@ -68,11 +68,11 @@ use Illuminate\Support\Facades\Route;
                 
         });
 
-        // Route::get('/Schedual/{any?}', function () {
-        //                 session()->put(['title'=> 'LỊCH SẢN XUẤT']);
-        //                 return view('app');
-        // })->where('any', '.*')
-        // ->middleware(CheckLogin::class); 
+        Route::get('/assignment/{any?}', function () {
+                        session()->put(['title'=> 'PHÂN CÔNG CÔNG VIỆC']);
+                        return view('app');
+        })->where('any', '.*')
+        ->middleware(CheckLogin::class); 
 
 
 

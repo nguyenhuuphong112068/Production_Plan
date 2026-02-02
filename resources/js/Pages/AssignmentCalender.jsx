@@ -97,7 +97,7 @@ const AssignmentCalender = () => {
     });
 
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-    axios.post("/Schedual/view", {
+    axios.post("/assignemnt/production/view", {
       startDate: toLocalISOString(activeStart),
       endDate: toLocalISOString(activeEnd),
       viewtype: viewName,
