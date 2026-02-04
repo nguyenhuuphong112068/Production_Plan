@@ -161,8 +161,9 @@
                             <td>{{ $data->deparment_code }}</td>
                             <td>
                                 <div> {{ $data->prepared_by }} </div>
-                                <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
+                                <div>{{ $data->created_at?\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</div>
                             </td>
+                            
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"

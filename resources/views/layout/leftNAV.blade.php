@@ -152,6 +152,13 @@
                 </a>
               </li>
 
+               <li class="nav-item">
+                <a href="{{ route ('pages.materData.source_material.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Nguồn Hoạt chất Chính</p>
+                </a>
+              </li>
+
               {{-- <li class="nav-item">
                 <a href="{{ route ('pages.materData.Instrument.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>

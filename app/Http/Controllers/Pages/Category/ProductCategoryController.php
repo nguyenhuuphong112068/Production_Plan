@@ -25,19 +25,23 @@ class ProductCategoryController extends Controller
 
                 $datas = DB::table('finished_product_category')
                 ->select('finished_product_category.*', 
-                        'product_name.name as product_name', 
+                        //'product_name.name as product_name', 
                         'intermediate_category.intermediate_code',
                         'intermediate_category.batch_size',
                         'intermediate_category.unit_batch_size',
                         'market.code as market',
-                        'specification.name as specification'
+                        'specification.name as specification',
+                        DB::raw('fp_name.name AS finished_product_name'),
+                        DB::raw('im_name.name AS intermediate_product_name'),
                 )
                 ->where('finished_product_category.deparment_code', session('user')['production_code'])
                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
-                ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
+                ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
+                ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->leftJoin('specification','finished_product_category.specification_id','specification.id')
-                ->orderBy('product_name.name','asc')->get();
+                ->orderBy('finished_product_name','asc')
+                ->get();
 
                 session()->put(['title'=> 'DANH MỤC THÀNH PHẨM']);
                 return view('pages.category.product.list',[
@@ -48,8 +52,6 @@ class ProductCategoryController extends Controller
                         'specifications' => $specifications        
                 ]);
         }
-
-    
 
         public function store (Request $request) {
 
@@ -136,8 +138,6 @@ class ProductCategoryController extends Controller
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
 
-
-        
         public function getJsonFPCategory(){
 
                 $datas = DB::table('finished_product_category')

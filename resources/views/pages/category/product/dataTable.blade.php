@@ -49,13 +49,21 @@
                                     <div>{{ $data->finished_product_code }} </div>
                                     <div>{{ $data->intermediate_code }} </div>
                                 </td>
+                                <td>
+                                    <div>{{ $data->finished_product_name }} </div>
+                                    <div>{{ $data->intermediate_product_name }} </div>
+                                </td>
                             @else
                                 <td class="text-danger">
                                     <div>{{ $data->finished_product_code }} </div>
                                     <div>{{ $data->intermediate_code }} </div>
                                 </td>
+                                <td>
+                                    <div>{{ $data->finished_product_name }} </div>
+                                    <div>{{ $data->intermediate_product_name }} </div>
+                                </td>
                             @endif
-                            <td>{{ $data->product_name }}</td>
+                            
                             <td>
                                 <div> {{ $data->batch_size . ' ' . $data->unit_batch_size . '#' }} </div>
                                 <div> {{ $data->batch_qty . ' ' . $data->unit_batch_qty }} </div>
@@ -75,7 +83,7 @@
                             <td>{{ $data->deparment_code }}</td>
                             <td>
                                 <div> {{ $data->prepared_by }} </div>
-                                <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
+                                <div>{{ $data->created_at?\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</div>
                             </td>
 
                             <td class="text-center align-middle">
@@ -103,13 +111,13 @@
                                     <input type="hidden" name="active" value="{{ $data->active }}">
                                     @if ($data->active)
                                         <button type="submit" class="btn btn-danger" {{ $auth_deActive }} data-type="{{ $data->active }}"
-                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->product_name }}"
+                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->finished_product_name }}"
                                             >
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @else
                                         <button type="submit" class="btn btn-success" {{ $auth_deActive }} data-type="{{ $data->active }}" 
-                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->product_name }}"
+                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->finished_product_name }}"
                                             >
                                             <i class="fas fa-unlock"></i>
                                         </button>

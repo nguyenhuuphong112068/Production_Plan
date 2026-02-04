@@ -16,20 +16,19 @@
             @endif
 
             @php
-                $auth_update = user_has_permission(session('user')['userId'], 'materData_productName_update', 'disabled');
-                $auth_deActive = user_has_permission(session('user')['userId'], 'materData_productName_deActive', 'disabled');
+                $auth_update = user_has_permission(session('user')['userId'], 'materData_source_material_update', 'disabled');
+                $auth_deActive = user_has_permission(session('user')['userId'], 'materData_source_material_deActive', 'disabled');
             @endphp
 
-            <table id="data_table_Product_Name" class="table table-bordered table-striped">
+            <table id="data_table" class="table table-bordered table-striped">
 
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
 
                     <tr>
                         <th style = "width: 15px">STT</th>
 
-                        <th>Tên Sản Phẩm</th>
-                        <th>Tên Viết Tắt</th>
-                        <th>Loại Sản Phẩm</th>
+                        <th>Mã Bán Thánh Phẩm Liên Quan</th>
+                        <th>Nguồn</th>
                         <th>Người Tạo</th>
                         <th>Ngày Tạo</th>
                         <th style = "width: 15px">Edit</th>
@@ -43,20 +42,24 @@
                             <td>{{ $loop->iteration }} </td>
 
                             @if ($data->active)
-                                <td class="text-success"> {{ $data->name }}</td>
+                                <td class="text-success"> {{ $data->intermediate_code }}</td>
+                                <td class="text-success">{{ $data->name }}</td>
                             @else
-                                <td class="text-danger"> {{ $data->name }}</td>
+                                <td class="text-danger"> {{ $data->intermediate_code }}</td>
+                                <td class="text-danger">{{ $data->name }}</td>
                             @endif
 
-                            <td>{{ $data->shortName }}</td>
-                            <td>{{ $data->productType }}</td>
-                            <td>{{ $data->prepareBy }}</td>
+            
+
+                            <td>{{ $data->prepared_by??'' }}</td>
                             <td>{{ $data->created_at?\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</td>
 
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}" 
-                                    {{-- data-code="{{ $data->code }}" --}} data-name="{{ $data->name }}"
-                                    data-shortname="{{ $data->shortName }}" data-producttype="{{ $data->productType }}"
+                                <button type="button" class="btn btn-warning btn-edit" 
+                                    data-id="{{ $data->id }}" 
+                                    data-name="{{ $data->name }}"
+                                    data-intermediate_code="{{ $data->intermediate_code }}"
+                                   
                                     data-toggle="modal" data-target="#productNameUpdateModal"
                                     {{$auth_update }}
                                     >
@@ -64,11 +67,10 @@
                                 </button>
                             </td>
 
-
-                            <td class="text-center align-middle">
+                            {{-- <td class="text-center align-middle">
 
                                 <form class="form-deActive"
-                                    action="{{ route('pages.materData.productName.deActive') }}" method="post">
+                                    action="{{ route('pages.materData.source_material.deActive') }}" method="post">
 
                                     @csrf
                                     <input type="hidden" name="id" value = "{{ $data->id }}">
@@ -90,7 +92,18 @@
 
                                 </form>
 
+                            </td> --}}
+
+                            <td class="text-center align-middle">
+                                <button type="button"
+                                    class="btn btn-toggle-active {{ $data->active ? 'btn-danger' : 'btn-success' }}"
+                                    data-id="{{ $data->id }}" 
+                                    data-active="{{ $data->active }}"
+                                    {{ $auth_deActive }} >
+                                    <i class="fas {{ $data->active ? 'fa-lock' : 'fa-unlock' }}"></i>
+                                </button>
                             </td>
+
                         </tr>
                     @endforeach
 
@@ -127,13 +140,10 @@
         $('.btn-edit').click(function() {
             const button = $(this);
             const modal = $('#productNameUpdateModal');
-
-            // Gán dữ liệu vào input
-            // modal.find('input[name="code"]').val(button.data('code'));
             modal.find('input[name="name"]').val(button.data('name'));
-            modal.find('input[name="shortName"]').val(button.data('shortname'));
-            modal.find('input[name="productType"]').val(button.data('producttype'));
             modal.find('input[name="id"]').val(button.data('id'));
+            modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+            
             const id = button.data('id');
 
         });
@@ -142,34 +152,7 @@
             const modal = $('#productNameModal');
         });
 
-        $('.form-deActive').on('submit', function(e) {
-            e.preventDefault(); // chặn submit mặc định
-            const form = this;
-            const productName = $(form).find('button[type="submit"]').data('name');
-            const active = $(form).find('button[type="submit"]').data('active');
-            let title = 'Bạn chắc chắn muốn vô hiệu hóa danh mục?'
-            if (!active) {
-                title = 'Bạn chắc chắn muốn phục hồi tên sản phẩm?'
-            }
-
-
-            Swal.fire({
-                title: title,
-                text: ` ${productName}`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Đồng ý',
-                cancelButtonText: 'Hủy'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit(); // chỉ submit sau khi xác nhận
-                }
-            });
-        });
-
-        $('#data_table_Product_Name').DataTable({
+        $('#data_table').DataTable({
             paging: true,
             lengthChange: true,
             searching: true,
@@ -193,4 +176,71 @@
         });
         
     });
+
+    $(document).on('click', '.btn-toggle-active', function () {
+
+        const btn = $(this);
+        const url = "{{ route('pages.materData.source_material.deActive') }}";
+        const id = btn.data('id');
+        let active = parseInt(btn.data('active'));
+
+        let title = active === 1
+            ? 'Bạn chắc chắn muốn vô hiệu hóa nguồn API?'
+            : 'Bạn chắc chắn muốn phục hồi nguồn API?';
+
+        Swal.fire({
+            title: title,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Đồng ý',
+            cancelButtonText: 'Hủy'
+        }).then((result) => {
+
+            if (!result.isConfirmed) return;
+
+            btn.prop('disabled', true);
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    active: active
+                },
+                success: function (res) {
+
+                    if (!res.success) {
+                        Swal.fire('Lỗi', res.message || 'Có lỗi xảy ra', 'error');
+                        return;
+                    }
+                    
+                    const newActive = res.active;
+                    btn.data('active', !newActive);
+
+                    if (newActive === 0) {
+                        btn.removeClass('btn-success').addClass('btn-danger');
+                        btn.html('<i class="fas fa-lock"></i>');
+                    } else {
+                        btn.removeClass('btn-danger').addClass('btn-success');
+                        btn.html('<i class="fas fa-unlock"></i>');
+                    }
+
+                    Swal.fire('Thành công!', 'Cập nhật thành công', 'success');
+                },
+                error: function (xhr) {
+                    console.error(xhr);
+                    Swal.fire('Lỗi server', 'Không thể xử lý yêu cầu', 'error');
+                },
+                complete: function () {
+                    btn.prop('disabled', false);
+                }
+            });
+        });
+    });
+
+
 </script>
