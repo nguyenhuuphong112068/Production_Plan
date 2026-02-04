@@ -53,6 +53,7 @@ const ScheduleTest = () => {
   const [showRenderBadge, setShowRenderBadge] = useState(false);
   const [workingSunday, setWorkingSunday] = useState(false);
   const [offDays, setOffDays] = useState([]);
+  const [multiStage, setMultiStage] = useState(false);
 
   const [events, setEvents] = useState([]);
   const [resources, setResources] = useState([]);
@@ -497,7 +498,7 @@ const ScheduleTest = () => {
 
   // Nhân Dữ liệu để tạo mới event
   const handleEventReceive = (info) => {
-   
+    
     // chưa chọn row
     //if (!info?.event || !calendarRef?.current) return;
 
@@ -561,8 +562,9 @@ const ScheduleTest = () => {
       return false;
     }
 
+    
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
+  
     if (selectedRows[0].stage_code !== 8) {
       axios.put('/Schedual/store', {
         room_id: resourceId,
@@ -571,7 +573,8 @@ const ScheduleTest = () => {
         products: selectedRows,
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
-        offdate: offDays
+        offdate: offDays,
+        multiStage: multiStage
       })
         .then(res => {
           let data = res.data;
@@ -625,27 +628,41 @@ const ScheduleTest = () => {
     return (h * 3600 + m * 60) * 1000;
   };
 
-  const isInSundayToMondayWindow = (date) => {
-  const day = date.getDay();     // 0 = Sunday, 1 = Monday
-  const hour = date.getHours();  // 0–23
-  const minutes = date.getMinutes();
 
-  // Tạo thời điểm 06:00
-  const timeInMinutes = hour * 60 + minutes;
-  const sixAM = 6 * 60;
 
-  // Chủ Nhật từ 06:00 → hết ngày
-  if (day === 0 && timeInMinutes >= sixAM) {
-    return true;
-  }
+  const buildOffRanges = (offDays) => {
+    if (!Array.isArray(offDays)) return [];
 
-  // Thứ Hai từ 00:00 → 06:00
-  if (day === 1 && timeInMinutes < sixAM) {
-    return true;
-  }
+    return offDays.map(d => {
+      const start = new Date(`${d}T06:00:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
 
-  return false;
+      return { start, end };
+    }).sort((a, b) => a.start - b.start);
   };
+
+  const skipOffDays = (date, offRanges) => {
+    let current = new Date(date);
+
+    for (const off of offRanges) {
+
+      // nếu current nằm trong khoảng nghỉ
+      if (current >= off.start && current < off.end) {
+        current = new Date(off.end);
+        break;
+      }
+
+      // vì đã sort
+      if (current < off.start) break;
+    }
+
+    return current;
+  };
+
+  const offRanges = useMemo(
+      () => buildOffRanges(offDays),
+      [offDays]
+  );
 
   /// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
@@ -659,6 +676,7 @@ const ScheduleTest = () => {
     const delta = info.delta;
     const calendarApi = info.view.calendar;
     
+
 
     // Nếu chưa được chọn thì tự động chọn
     if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
@@ -685,13 +703,13 @@ const ScheduleTest = () => {
           const event_start = event.start.getTime()
           const newStart = new Date(event_start + offset);
           let newEnd = null;
-          // Kiêm tra điều chinh đinh mức ngày chủ nhật
 
+          // Kiêm tra điều chinh đinh mức ngày chủ nhật
           if (!workingSunday){
             let process_code =  event._def.extendedProps.process_code +"_"+ event._def.resourceIds[0]
             let stage_code = event._def.extendedProps.stage_code
             let is_clearning = event._def.extendedProps.is_clearning
-           let quota_event = quota.find(q =>
+            let quota_event = quota.find(q =>
                                       q.process_code.startsWith(process_code) &&
                                       q.stage_code == stage_code
                                     );
@@ -709,6 +727,14 @@ const ScheduleTest = () => {
             }
 
             let quota_event_m_time_seconds = timeToMilliseconds(quota_event.m_time)
+            
+            let quota_event_p_time_seconds = 0 ;
+
+            if (event._def.extendedProps.first_in_campaign){
+              quota_event_p_time_seconds = timeToMilliseconds(quota_event.p_time)
+            }
+            
+            
             if (is_clearning){
               if(event._def.title == "VS-II"){
                   quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
@@ -717,17 +743,22 @@ const ScheduleTest = () => {
                 }
                 
             }
-            newEnd = new Date(event_start + offset + quota_event_m_time_seconds);
+            newEnd = new Date(event_start + offset + quota_event_m_time_seconds + quota_event_p_time_seconds);
+            
+            let safeEnd;
+            do {
+              safeEnd = newEnd;
+              newEnd = skipOffDays(newEnd, offRanges);
+            } while (newEnd.getTime() !== safeEnd.getTime());
 
-            if (isInSundayToMondayWindow (newEnd)){
-                    newEnd = new Date(event_start + offset + quota_event_m_time_seconds + 86400000)
-            }
+            // if (isInSundayToMondayWindow (newEnd)){
+            //   newEnd = new Date(event_start + offset + quota_event_m_time_seconds + 86400000)
+            // }
 
           }else{
               newEnd = new Date(event.end.getTime() + offset);
           }
- 
-            
+
 
           event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
 
@@ -1567,6 +1598,7 @@ const ScheduleTest = () => {
           endDate: toLocalISOString(activeEnd),
           stage_plan_ids: handleShowLine (result.value['lines']),
           room_code: result.value['lines']
+
         }, { timeout: 300000 })
           .then(res => {
             let data = res.data;
@@ -2652,6 +2684,8 @@ const ScheduleTest = () => {
           type={type}
           currentPassword = {currentPassword}
           lines = {lines}
+          multiStage = {multiStage}
+          setMultiStage = {setMultiStage}
         />)}
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
