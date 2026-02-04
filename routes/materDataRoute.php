@@ -5,6 +5,7 @@ use App\Http\Controllers\Pages\MaterData\InstrumentController;
 use App\Http\Controllers\Pages\MaterData\MarketController;
 use App\Http\Controllers\Pages\MaterData\ProductNameController;
 use App\Http\Controllers\Pages\MaterData\RoomController;
+use App\Http\Controllers\Pages\MaterData\SourceMaterialController;
 use App\Http\Controllers\Pages\MaterData\SpecificationController;
 use App\Http\Controllers\Pages\MaterData\UnitController;
 use App\Http\Controllers\UploadDataController;
@@ -84,6 +85,17 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                
+        });
+
+
+        Route::prefix('/source_material')
+        ->name('source_material.')
+        ->controller(SourceMaterialController::class)
+        ->group(function(){
+                Route::get('','index')->name('list');
+                Route::post('store','store')->name('store');
+                Route::post('update', 'update')->name('update');
+               Route::post('deActive','deActive')->name('deActive');          
         });
 
        

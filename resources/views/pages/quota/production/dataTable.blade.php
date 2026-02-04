@@ -113,18 +113,26 @@
 
                 <tbody>
                     @foreach ($datas as $data)
+                    @php
+                        if ($data->active) {
+                            $class_bkg="";  
+                        }else {
+                            $class_bkg="text-danger"; 
+                        }
+                    @endphp
                         <tr>
-                            <td>  {{$loop->iteration  }}
+
+                            <td class = {{$class_bkg}}>  {{$loop->iteration  }}
                                 @if (session('user')['userGroup'] == 'Admin')
                                     <div> {{ $data->id }} </div>
                                 @endif
                             </td>
-                            <td>
+                            <td class = {{$class_bkg}}>
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code ?? '' }} </div>
                             </td>
-                            <td>{{ $data->product_name }} </td>
-                            <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
+                            <td class = {{$class_bkg}}>{{ $data->product_name }} </td>
+                            <td class = {{$class_bkg}}>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
 
                             @php
                                 $field =
@@ -136,7 +144,7 @@
                             @endphp
 
                             @if ($field)
-                                <td class="text-center align-middle">
+                                <td class="text-center align-middle " >
                                     <div class="form-check form-switch text-center">
                                         <input class="form-check-input step-checkbox" type="checkbox" role="switch"
                                             data-id="{{ $data->id }}" data-stage_code="{{ $stage_code }}"
@@ -145,7 +153,7 @@
                                 </td>
                             @endif
 
-                            <td>
+                            <td class = {{$class_bkg}}>
                                 @if ($data->room_name == null)
                                     <span class="px-2 py-1 rounded-pill"
                                         style="background-color:red; color:white; font-size: 14px">
@@ -158,42 +166,42 @@
                                 @endif
                             </td>
 
-                            <td>
-                                <input type= "{{ $typeInput }}" class="time" name="p_time"
+                            <td >
+                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="p_time"
                                     value = "{{ $data->p_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
 
-                            <td>
-                                <input type= "{{ $typeInput }}" class="time" name="m_time"
+                            <td >
+                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="m_time"
                                     value = "{{ $data->m_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
-                            <td>
-                                <input type= "{{ $typeInput }}" class="time" name="C1_time"
+                            <td >
+                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="C1_time"
                                     value = "{{ $data->C1_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
-                            <td>
-                                <input type= "{{ $typeInput }}" class="time" name="C2_time"
+                            <td >
+                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="C2_time"
                                     value = "{{ $data->C2_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
                             <td>
-                                <input type= "{{ $typeInput }}" class="time" name="maxofbatch_campaign"
+                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="maxofbatch_campaign"
                                     value = "{{ $data->maxofbatch_campaign }}" data-id={{ $data->id }}
                                     {{ $auth_update }}>
                             </td>
 
                             @if ($stage_code <= 2)
-                                <td>
-                                    <input type= "{{ $typeInput }}" class="time" name="campaign_index"
+                                <td >
+                                    <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="campaign_index"
                                         value = "{{ $data->campaign_index }}" data-id={{ $data->id }}
                                         {{ $auth_update }}>
                                 </td>
                             @endif
-                            <td>
+                            <td class = {{$class_bkg}}>
                                 <input type= "{{ $typeInput }}" class="time" name="note"
                                     value = "{{ $data->note }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
 
-                            <td>
+                            <td class = {{$class_bkg}}>
 
                             <div> {{ $data->prepared_by }} </div>
 
@@ -224,18 +232,7 @@
                                 </button>
                             </td>
 
-                            {{-- <td class="text-center align-middle">
-                            <button type="button" class="btn btn-primary btn-history position-relative" 
-                                data-id="{{ $data->id }}"
-                                data-toggle="modal"
-                                data-target="#historyModal">
-                                <i class="fas fa-history"></i>
-                                <span class="badge badge-danger" style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
-                                   1 //{{ $data->history_count ?? 0 }} 
-                                </span>
-                            </button>
-                        </td>
-                      </tr>     --}}
+                           
                     @endforeach
                 </tbody>
             </table>
