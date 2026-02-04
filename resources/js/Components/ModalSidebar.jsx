@@ -13,7 +13,9 @@ import Swal from 'sweetalert2';
 import axios from "axios";
 
 
-const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPercentShow,  selectedRows, setSelectedRows, resources, type, currentPassword, lines }) => {
+const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, 
+                      setPercentShow, selectedRows, setSelectedRows, resources, 
+                      type, currentPassword, lines , multiStage, setMultiStage }) => {
 
    const wrapperRef = useRef(null);
 
@@ -1551,9 +1553,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                 </>
                )}
 
-
-                
-
               <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
                 onClick={handleSorted}>
                 {isSaving === false ? <i className="fas fa-sort"></i>:<i className="fas fa-spinner fa-spin fa-lg"></i>}
@@ -1571,9 +1570,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                   </div>)
                 :<></>}
 
-              </>):<></>}
+            </>):<></>}
 
-              {percentShow === "100%" && stageFilter === 9 && type ? (
+            {percentShow === "100%" && stageFilter === 9 && type ? (
                 <>
                   <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Sự Kiện Khác"
                     onClick={ () => setShowModalCreate (true)}>
@@ -1585,7 +1584,24 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     <i className="fas fa-trash"></i> 
                   </div> 
                 </>
-              ):<></>}
+            ):<>
+              
+                <div
+                  className={`fc-event px-3 py-1 border rounded text-md text-center cursor-pointer mr-3
+                    ${multiStage
+                      ? 'bg-green-100 border-green-800 text-green-700'
+                      : 'bg-gray-200 border-gray-400 text-gray-600'
+                    }`}
+                  title="Bật / Tắt chế độ sắp liên tục các công đoạn sau"
+                  onClick={() => setMultiStage(prev => !prev)}
+                >
+                  {isSaving === false
+                    ? <i className="fas fa-project-diagram"></i>
+                    : <i className="fas fa-spinner fa-spin fa-lg"></i>
+                  }
+                </div>
+            
+            </>}
 
               
 
@@ -1593,9 +1609,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
 
           <Col md={6}>
             <div className="p-inputgroup flex-1">
-              
-              
-              
               {percentShow === "100%" && !isShowLine ? (
                   <>
                       <Dropdown
@@ -1626,16 +1639,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                     />
                 ) : (
                   <>
-                    {/* <Button icon="pi pi-angle-double-left" className="p-button-success rounded" onClick={handlePrevStage}  title="Chuyển Công Đoạn"/>
-                    <InputText
-                      value={stageNames[stageFilter]}
-                      className="text-center fw-bold"
-                      style={{ fontSize: '15px', color: '#CDC171' }}
-                      readOnly
-                    />
-                    <Button icon="pi pi-angle-double-right" className="p-button-success rounded" onClick={handleNextStage}  title="Chuyển Công Đoạn" />
-                   */}
-                      
                       <Dropdown
                         value={stageFilter}
                         options={stageOptions}
@@ -1649,9 +1652,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, setPer
                           </div>
                         )}
                       />
-
-                   
-                  
                   </>
                 )}
             </div>
