@@ -1132,54 +1132,54 @@ class SchedualController extends Controller
                                         if ($products->count() === 1) {
                                                 $current_start = $this->skipOffTime($current_start, $this->offDate, $request->room_id);
 
-                                                $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
-                                                $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
-                                                $clearning_type = "VS-II";
+                                                //$end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
+                                                //$end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
 
-                                                $start_date =  $end_man;
-                                                $firstBatachStart = $current_start;
-                                                $lastBatachEnd =  $end_clearning;
-
-                                        } else {
-
-                                        if ($index === 0) {
-                                               
                                                 $end_man = $this->addWorkingMinutes ( $current_start->copy(), (float)$p_time_minutes + (float)$m_time_minutes , $request->room_id, $this->work_sunday);
                                                 $start_clearning = $end_man ->copy();
-                                                $end_clearning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
-                                                
-                                                // $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
-                                                //$end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
+                                                $end_clearning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $C2_time_minutes, $request->room_id, $this->work_sunday);
+                                                $clearning_type = "VS-II";
 
                                                 $start_date =  $end_man;
-                                                $clearning_type = "VS-I";
                                                 $firstBatachStart = $current_start;
-                                        }
-
-                                        elseif ($index === $products->count() - 1) {
-
-                                                $end_man = $this->addWorkingMinutes ($current_start->copy(), (float)$m_time_minutes , $request->room_id, $this->work_sunday);
-                                                $start_clearning = $end_man ->copy();
-                                                $end_clearning = $this->addWorkingMinutes ($start_clearning->copy(), (float) $C2_time_minutes, $request->room_id, $this->work_sunday);
-                                                
-
-                                                //$end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
-                                                //$end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
-                                                
-                                                $clearning_type = "VS-II";
                                                 $lastBatachEnd =  $end_clearning;
-                                        }
 
-                                        else {
+                                        }else {
 
-                                                $end_man = $this->addWorkingMinutes ($current_start->copy(), (float)$m_time_minutes , $request->room_id, $this->work_sunday);
-                                                $start_clearning = $end_man ->copy();
-                                                $end_clearning = $this->addWorkingMinutes ($start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
-                                                                                       
-                                                //$end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
-                                                //$end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
-                                                $clearning_type = "VS-I";
-                                        }
+                                                if ($index === 0) {
+                                                
+                                                        $end_man = $this->addWorkingMinutes ( $current_start->copy(), (float)$p_time_minutes + (float)$m_time_minutes , $request->room_id, $this->work_sunday);
+                                                        $start_clearning = $end_man ->copy();
+                                                        $end_clearning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
+                                                        
+                                                        // $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
+                                                        //$end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
+
+                                                        $start_date =  $end_man;
+                                                        $clearning_type = "VS-I";
+                                                        $firstBatachStart = $current_start;
+                                                }elseif ($index === $products->count() - 1) {
+
+                                                        $end_man = $this->addWorkingMinutes ($current_start->copy(), (float)$m_time_minutes , $request->room_id, $this->work_sunday);
+                                                        $start_clearning = $end_man ->copy();
+                                                        $end_clearning = $this->addWorkingMinutes ($start_clearning->copy(), (float) $C2_time_minutes, $request->room_id, $this->work_sunday);
+                                                        
+
+                                                        //$end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
+                                                        //$end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
+                                                        
+                                                        $clearning_type = "VS-II";
+                                                        $lastBatachEnd =  $end_clearning;
+                                                }else {
+
+                                                        $end_man = $this->addWorkingMinutes ($current_start->copy(), (float)$m_time_minutes , $request->room_id, $this->work_sunday);
+                                                        $start_clearning = $end_man ->copy();
+                                                        $end_clearning = $this->addWorkingMinutes ($start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
+                                                                                        
+                                                        //$end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
+                                                        //$end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
+                                                        $clearning_type = "VS-I";
+                                                }
                                         }
                                 }
 
@@ -4634,8 +4634,6 @@ class SchedualController extends Controller
                                 if ($campaignTasks->count() == 1) {
                                         $bestEndCleaning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $bestRoom->C2_time_minutes, $bestRoom->room_id, $this->work_sunday);
                                         $clearningType = 2;
-                                        
-
                                 }else {
                                         $bestEndCleaning = $this->addWorkingMinutes ( $start_clearning->copy(), (float) $bestRoom->C1_time_minutes, $bestRoom->room_id, $this->work_sunday);
                                         $clearningType = 1;
