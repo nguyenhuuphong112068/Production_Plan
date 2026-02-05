@@ -11,10 +11,12 @@
 @endsection
  
 @section('mainContent')
-  @include('pages.category.intermediate.dataTable')
+  @include('pages.MMS.packaging.dataTable')
 @endsection
+
 @section('model')
-  @include('pages.category.intermediate.create')
-  @include('pages.category.intermediate.update') 
-  @include('pages.category.intermediate.recipe')
+
+  {{-- @include('pages.materData.source_material.update') 
+  @include('pages.materData.source_material.create') --}}
+  
 @endsection

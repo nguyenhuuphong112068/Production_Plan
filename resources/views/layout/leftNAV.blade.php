@@ -233,6 +233,50 @@
             </ul>
           </li>
 
+          <!-- Droplist MMS-->
+          <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
+
+              <i class="nav-icon fas fa-warehouse"></i>
+              <p>
+                MMS
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+
+            <ul class="nav nav-treeview">
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.MMS.material.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Tồn Kho Nguyên Liệu</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.MMS.packaging.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Tồn Kho Bao Bì</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="{{ route ('pages.MMS.finished_product.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Tồn Kho Thành Phẩm</p>
+                </a>
+              </li>
+
+               <li class="nav-item">
+                <a href="{{ route ('pages.MMS.BOM.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Công Thức Sản Phẩm</p>
+                </a>
+              </li>
+
+            </ul>
+          </li>
+
             <!-- Droplist Kế Hoạch-->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
@@ -392,10 +436,8 @@
           </li>
           @endif
 
-
           <!-- Droplist Menu Báo Cáo  -->
           @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
-
             <li class="nav-item has-treeview">
               <a href="#" class="nav-link">
                 <i class="nav-icon fas fa-crosshairs"></i>
@@ -432,8 +474,6 @@
 
               </ul>
             </li>
-
-
           @endif
 
           <!-- Droplist Menu Biệt Trữ -->
@@ -606,9 +646,7 @@
               </a>
             </li>
           @endif
-
         </ul>
-
 
       </nav>
 

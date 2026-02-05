@@ -25,6 +25,7 @@ class ProductionPlanController extends Controller
                 $total_batch_qtys = DB::table('plan_master as pm')
                         ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
                         ->where('pm.active', 1)
+                        ->where('pm.cancel', 0)
                         ->where('pm.only_parkaging', 0)
                         ->where('fpc.active', 1)
                         ->where('pm.deparment_code', session('user')['production_code'])
@@ -43,13 +44,13 @@ class ProductionPlanController extends Controller
                 });
 
                 $batch_status = DB::table('plan_master as pm')
-                ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
-                ->where('pm.active', 1)
-                ->where('pm.only_parkaging', 0)
-                ->where('pm.deparment_code', session('user')['production_code'])
-                ->groupBy('pm.plan_list_id', 'pm.id')
-                ->select(
-                        'pm.plan_list_id',
+                        ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
+                        ->where('pm.active', 1)
+                        ->where('pm.only_parkaging', 0)
+                        ->where('pm.deparment_code', session('user')['production_code'])
+                        ->groupBy('pm.plan_list_id', 'pm.id')
+                        ->select(
+                                'pm.plan_list_id',
                         
                         DB::raw("
                         CASE
@@ -83,14 +84,14 @@ class ProductionPlanController extends Controller
                 
 
                 $batch_summary = $batch_status
-                ->groupBy('plan_list_id')
-                ->map(function ($rows) {
-                        return (object)[
-                        'tong_lo'        => $rows->count(),       // ✅ TỔNG LÔ
-                        'so_lo_da_lam'   => $rows->sum('da_lam'),
-                        'so_lo_chua_lam' => $rows->sum('chua_lam'),
-                        'so_lo_huy'      => $rows->sum('huy'),
-                        ];
+                        ->groupBy('plan_list_id')
+                        ->map(function ($rows) {
+                                return (object)[
+                                'tong_lo'        => $rows->count(),       // ✅ TỔNG LÔ
+                                'so_lo_da_lam'   => $rows->sum('da_lam'),
+                                'so_lo_chua_lam' => $rows->sum('chua_lam'),
+                                'so_lo_huy'      => $rows->sum('huy'),
+                                ];
                 });
 
 
