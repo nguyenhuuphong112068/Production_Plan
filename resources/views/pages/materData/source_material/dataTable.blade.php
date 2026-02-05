@@ -8,7 +8,7 @@
 
         <!-- /.card-Body -->
         <div class="card-body ">
-            @if (user_has_permission(session('user')['userId'], 'materData_productName_store', 'boolean'))
+            @if (user_has_permission(session('user')['userId'], 'materData_source_material_create', 'boolean'))
                 <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#productNameModal"
                     style="width: 155px">
                     <i class="fas fa-plus"></i> Thêm
