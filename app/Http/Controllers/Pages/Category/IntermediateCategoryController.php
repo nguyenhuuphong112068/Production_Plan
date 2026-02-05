@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pages\Category;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 class IntermediateCategoryController extends Controller
@@ -33,7 +34,6 @@ class IntermediateCategoryController extends Controller
                     
                 ]);
         }
-    
 
         public function store (Request $request) {
                 //dd ($request->all());
@@ -161,4 +161,19 @@ class IntermediateCategoryController extends Controller
                 ]);
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
+
+        public function recipe(Request $request){
+                
+                $datas = DB::connection('sqlsrv_mms')
+                ->table('yfBOM_BOMItemHP')
+                ->where('PrdID', $request->intermediate_code)
+                ->where('Revno1', function ($q) use ($request) {
+                        $q->selectRaw('MAX(Revno1)')
+                        ->from('yfBOM_BOMItemHP')
+                        ->where('PrdID', $request->intermediate_code);
+                })
+                ->get();
+                return response()->json($datas);
+        }
+
 }

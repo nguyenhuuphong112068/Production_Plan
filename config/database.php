@@ -112,6 +112,42 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'sqlsrv_mms' => [
+            'driver' => 'sqlsrv',
+            'host' => env('DB_MMS_HOST'),
+            'port' => env('DB_MMS_PORT', 1433),
+            'database' => env('DB_MMS_DATABASE'),
+            'username' => env('DB_MMS_USERNAME'),
+            'password' => env('DB_MMS_PASSWORD'),
+            'charset' => 'utf8',
+            'encrypt' => env('DB_MMS_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_MMS_TRUST_SERVER_CERTIFICATE', 'yes'),
+        ],
+
+        'sqlsrv_cal1' => [
+            'driver' => 'sqlsrv',
+            'host' => env('DB_CAL1_HOST'),
+            'port' => env('DB_CAL1_PORT', 1433),
+            'database' => env('DB_CAL1_DATABASE'),
+            'username' => env('DB_CAL1_USERNAME'),
+            'password' => env('DB_CAL1_PASSWORD'),
+            'charset' => 'utf8',
+            'encrypt' => env('DB_CAL1_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_CAL1_TRUST_SERVER_CERTIFICATE', 'yes'),
+        ],
+
+        'sqlsrv_cal2' => [
+            'driver' => 'sqlsrv',
+            'host' => env('DB_CAL2_HOST'),
+            'port' => env('DB_CAL2_PORT', 1433),
+            'database' => env('DB_CAL2_DATABASE'),
+            'username' => env('DB_CAL2_USERNAME'),
+            'password' => env('DB_CAL2_PASSWORD'),
+            'charset' => 'utf8',
+            'encrypt' => env('DB_CAL2_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_CAL2_TRUST_SERVER_CERTIFICATE', 'yes'),
+        ],
+
     ],
 
     /*

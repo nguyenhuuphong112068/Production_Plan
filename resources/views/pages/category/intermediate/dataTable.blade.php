@@ -38,6 +38,7 @@
                         <th rowspan="2">Người Tạo/ Ngày Tạo</th>
                         <th rowspan="2">Cập Nhật</th>
                         <th rowspan="2">Vô Hiệu</th>
+                        <th rowspan="2">Công Thức</th>
                     </tr>
                     <tr>
                         <th>Cân NL</th>
@@ -181,7 +182,8 @@
                                     data-quarantine_blending="{{ $data->quarantine_blending }}"
                                     data-quarantine_forming="{{ $data->quarantine_forming }}"
                                     data-quarantine_coating="{{ $data->quarantine_coating }}"
-                                    data-quarantine_time_unit="{{ $data->quarantine_time_unit }}" data-toggle="modal"
+                                    data-quarantine_time_unit="{{ $data->quarantine_time_unit }}" 
+                                    data-toggle="modal"
                                     data-target="#update_modal"
                                     {{ $auth_update }}>
                                     <i class="fas fa-edit"></i>
@@ -190,7 +192,6 @@
 
 
                             <td class="text-center align-middle">
-
                                 <form class="form-deActive"
                                     action="{{ route('pages.category.intermediate.deActive') }}" method="post">
                                     @csrf
@@ -215,6 +216,20 @@
                                 </form>
 
                             </td>
+
+                            <td class="text-center align-middle">
+                                <button type="button"
+                                    class="btn btn-recipe btn-primary "
+                                    data-intermediate_code="{{ $data->intermediate_code }}"
+                                    data-product_name="{{ $data->product_name}} - {{$data->batch_size}} {{$data->unit_batch_size }}"
+                                   
+                                    data-toggle="modal"
+                                    data-target="#intermediateRecipeModal"
+                                    >
+                                    <i class="fas fa-list-alt"></i>
+                                </button>
+                            </td>
+
                         </tr>
                     @endforeach
 
@@ -306,8 +321,6 @@
 
         });
 
-
-
         $('.form-deActive').on('submit', function(e) {
             e.preventDefault(); // chặn submit mặc định
             const form = this;
@@ -334,8 +347,6 @@
                 }
             });
         });
-
-
 
         $('#data_table_intermediate_category').DataTable({
             paging: true,
@@ -379,6 +390,69 @@
             }
         });
 
+        $('.btn-recipe').on('click', function() {
+                const history_modal = $('#data_table_recipe_body')
+                const intermediate_code = $(this).data('intermediate_code');
+                const product_name = $(this).data('product_name');
+
+                $('#recipe_intermediate_code').text(`${intermediate_code} - ${product_name}`);
+
+                // Xóa dữ liệu cũ
+                history_modal.empty();
+
+                // Gọi Ajax lấy dữ liệu history
+                $.ajax({
+                    url: "{{ route('pages.category.intermediate.recipe') }}",
+                    type: 'post',
+                    data: {
+                        intermediate_code: intermediate_code,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                        if (res.length === 0) {
+                            history_modal.append(
+                                `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                                // map màu level
+                       
+                                history_modal.append(`
+                              <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${item.MatID ?? ''}</td>
+                                    <td>${item.MaterialName ?? ''}</td>
+                                    <td style="text-align:center">
+                                        ${
+                                            item.MatQty != null
+                                            ? Number(item.MatQty).toLocaleString(undefined, {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 3
+                                            })
+                                            : ''
+                                        }
+                                    </td>
+
+                                    <td style="text-align:center">
+                                        ${item.uom ?? ''}
+                                    </td>
+
+                                    <td>${Math.round(item.Revno1 ?? 0)}</td>
+                              </tr>
+                          `);
+                            });
+                        }
+                    },
+                    error: function() {
+                        history_modal.append(
+                            `<tr><td colspan="5" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                        );
+                    }
+                });
+            });
+
 
     });
+
+
 </script>
