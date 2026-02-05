@@ -1569,23 +1569,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                     {isShowLine === false ? "Line":"Stage"}
                   </div>)
                 :<></>}
+            </>):<>
 
-            </>):<></>}
-
-            {percentShow === "100%" && stageFilter === 9 && type ? (
-                <>
-                  <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Sự Kiện Khác"
-                    onClick={ () => setShowModalCreate (true)}>
-                    <i className="fas fa-plus"></i>
-                  </div> 
-
-                  <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Sự Kiện Khác"
-                    onClick={handleDeActiveOrderPlan}>
-                    <i className="fas fa-trash"></i> 
-                  </div> 
-                </>
-            ):<>
-              
                 <div
                   className={`fc-event px-3 py-1 border rounded text-md text-center cursor-pointer mr-3
                     ${multiStage
@@ -1601,7 +1586,22 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                   }
                 </div>
             
+            
             </>}
+
+            {percentShow === "100%" && stageFilter === 9 && type ? (
+                <>
+                  <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Tạo Sự Kiện Khác"
+                    onClick={ () => setShowModalCreate (true)}>
+                    <i className="fas fa-plus"></i>
+                  </div> 
+
+                  <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Sự Kiện Khác"
+                    onClick={handleDeActiveOrderPlan}>
+                    <i className="fas fa-trash"></i> 
+                  </div> 
+                </>
+            ):<></>}
 
               
 
