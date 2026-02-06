@@ -36,6 +36,7 @@
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th>Cập Nhật</th>
                         <th>Vô Hiệu</th>
+                        <th>Công Thức</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -124,6 +125,19 @@
                                     @endif
                                 </form>
                             </td>
+
+                            <td class="text-center align-middle">
+                                <button type="button"
+                                    class="btn btn-recipe btn-primary "
+                                    data-finished_product_code="{{ $data->finished_product_code }}"
+                                    data-product_name="{{ $data->finished_product_name}} - {{$data->batch_qty}} {{$data->unit_batch_qty }}"
+                                   
+                                    data-toggle="modal"
+                                    data-target="#intermediateRecipeModal"
+                                    >
+                                    <i class="fas fa-list-alt"></i>
+                                </button>
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -174,8 +188,6 @@
 
         });
 
-
-
         $('.form-deActive').on('submit', function(e) {
             e.preventDefault(); // chặn submit mặc định
             const form = this;
@@ -202,8 +214,6 @@
                 }
             });
         });
-
-
 
         $('#data_table_product_category').DataTable({
             paging: true,
@@ -246,6 +256,68 @@
                 return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
             }
         });
+
+        $('.btn-recipe').on('click', function() {
+                const history_modal = $('#data_table_recipe_body')
+                const intermediate_code = $(this).data('finished_product_code');
+                const product_name = $(this).data('product_name');
+
+            $('#recipe_intermediate_code').text(`${intermediate_code} - ${product_name}`);
+
+                // Xóa dữ liệu cũ
+                history_modal.empty();
+
+                // Gọi Ajax lấy dữ liệu history
+                $.ajax({
+                    url: "{{ route('pages.category.intermediate.recipe') }}",
+                    type: 'post',
+                    data: {
+                        intermediate_code: intermediate_code,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                        if (res.length === 0) {
+                            history_modal.append(
+                                `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                                // map màu level
+                       
+                                history_modal.append(`
+                              <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${item.MatID ?? ''}</td>
+                                    <td>${item.MaterialName ?? ''}</td>
+                                    <td style="text-align:center">
+                                        ${
+                                            item.MatQty != null
+                                            ? Number(item.MatQty).toLocaleString(undefined, {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 3
+                                            })
+                                            : ''
+                                        }
+                                    </td>
+
+                                    <td style="text-align:center">
+                                        ${item.uom ?? ''}
+                                    </td>
+
+                                    <td>${Math.round(item.Revno1 ?? 0)}</td>
+                              </tr>
+                          `);
+                            });
+                        }
+                    },
+                    error: function() {
+                        history_modal.append(
+                            `<tr><td colspan="5" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                        );
+                    }
+                });
+        });
+
 
 
     });

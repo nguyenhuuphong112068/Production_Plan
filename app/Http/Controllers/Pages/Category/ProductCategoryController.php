@@ -192,5 +192,21 @@ class ProductCategoryController extends Controller
                 ]);
 
         }
+
+        public function recipe(Request $request){
+                
+                $datas = DB::connection('sqlsrv_mms')
+                ->table('yfBOM_BOMItemHP')
+                ->where('PrdID', $request->intermediate_code)
+                ->where('Revno1', function ($q) use ($request) {
+                        $q->selectRaw('MAX(Revno1)')
+                        ->from('yfBOM_BOMItemHP')
+                        ->where('PrdID', $request->intermediate_code);
+                })
+                ->orderBy('PrdStage')
+                ->orderBy('MatID')
+                ->get();
+                return response()->json($datas);
+        }
     
 }
