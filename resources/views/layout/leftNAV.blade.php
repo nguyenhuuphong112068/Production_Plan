@@ -234,6 +234,7 @@
           </li>
 
           <!-- Droplist MMS-->
+           @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
 
@@ -271,7 +272,7 @@
 
             </ul>
           </li>
-
+          @endif
             <!-- Droplist Kế Hoạch-->
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
