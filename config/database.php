@@ -121,7 +121,7 @@ return [
             'password' => env('DB_MMS_PASSWORD'),
             'charset' => 'utf8',
             'encrypt' => 'no',
-            'trust_server_certificate' => 'yes',
+            'trust_server_certificate' => true,
         ],
 
         'sqlsrv_cal1' => [
@@ -133,7 +133,7 @@ return [
             'password' => env('DB_CAL1_PASSWORD'),
             'charset' => 'utf8',
             'encrypt' => 'no',
-            'trust_server_certificate' => 'yes',
+            'trust_server_certificate' => true,
         ],
 
         'sqlsrv_cal2' => [
@@ -145,7 +145,7 @@ return [
             'password' => env('DB_CAL2_PASSWORD'),
             'charset' => 'utf8',
             'encrypt' => 'no',
-            'trust_server_certificate' => 'yes',
+            'trust_server_certificate' => true,
         ],
 
     ],
