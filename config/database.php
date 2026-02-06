@@ -120,8 +120,8 @@ return [
             'username' => env('DB_MMS_USERNAME'),
             'password' => env('DB_MMS_PASSWORD'),
             'charset' => 'utf8',
-            'encrypt' => 'yes',
-            'trust_server_certificate' => true,
+            //'encrypt' => 'yes',
+            //'trust_server_certificate' => true,
         ],
 
         'sqlsrv_cal1' => [
@@ -132,8 +132,8 @@ return [
             'username' => env('DB_CAL1_USERNAME'),
             'password' => env('DB_CAL1_PASSWORD'),
             'charset' => 'utf8',
-            'encrypt' => 'yes',
-            'trust_server_certificate' => true,
+            //'encrypt' => 'yes',
+            //'trust_server_certificate' => true,
         ],
 
         'sqlsrv_cal2' => [
@@ -144,8 +144,8 @@ return [
             'username' => env('DB_CAL2_USERNAME'),
             'password' => env('DB_CAL2_PASSWORD'),
             'charset' => 'utf8',
-            'encrypt' => 'yes',
-            'trust_server_certificate' => true,
+            //'encrypt' => 'yes',
+            //'trust_server_certificate' => true,
         ],
 
     ],
