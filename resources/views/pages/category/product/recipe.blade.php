@@ -20,7 +20,7 @@
 
         <h4 class="modal-title w-100 text-center" id="createModal"
             style="color: #CDC717; font-size: 30px">
-            Công Thức Nguyên Liệu Pha Chế
+            Công Thức Bao Bì Đóng Gói
             <br>
             <span id="recipe_intermediate_code" class="ml-2" ></span>
         </h4>
@@ -38,9 +38,9 @@
                   <thead >
                     <tr>
                       <th>STT</th>
-                      <th>Mã Nguyên Liệu</th>
-                      <th>Tên Nguyên Liệu</th>
-                      <th>Khối Lượng Nguyên Liệu</th>
+                      <th>Mã Bao Bì</th>
+                      <th>Tên Bao Bì</th>
+                      <th>Số Lượng Bao Bì</th>
                       <th>Đơn Vị</th>
                       <th>Version</th>
                     </tr>

@@ -172,6 +172,8 @@ class IntermediateCategoryController extends Controller
                         ->from('yfBOM_BOMItemHP')
                         ->where('PrdID', $request->intermediate_code);
                 })
+                ->orderBy('PrdStage')
+                ->orderBy('MatID')
                 ->get();
                 return response()->json($datas);
         }

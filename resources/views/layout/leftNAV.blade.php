@@ -267,12 +267,7 @@
                 </a>
               </li>
 
-               <li class="nav-item">
-                <a href="{{ route ('pages.MMS.BOM.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Công Thức Sản Phẩm</p>
-                </a>
-              </li>
+              
 
             </ul>
           </li>

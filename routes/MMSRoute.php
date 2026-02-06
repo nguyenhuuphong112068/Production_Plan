@@ -37,13 +37,7 @@ Route::prefix('/MMS')
         
         });
 
-        Route::prefix('/BOM')
-        ->name('BOM.')
-        ->controller(BOMController::class)
-        ->group(function(){
-                Route::get('','index')->name('list');
-        
-        });
+  
 
 
 
