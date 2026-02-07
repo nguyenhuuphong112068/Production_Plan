@@ -10,7 +10,7 @@ class MaterialController extends Controller
 {
         public function index(){
               
-                $datas = DB::connection('sqlsrv_mms')->table('yf_RMPMStockOverview')->where ('MatTY1', 'RA')->get();
+                $datas = DB::connection('mms')->table('yf_RMPMStockOverview')->where ('MatTY1', 'RA')->get();
                
                 session()->put(['title'=> 'TỒN KHO NGUYÊN LIỆU']);
             

@@ -10,7 +10,7 @@ class PackagingController extends Controller
 {
         public function index(){
               
-                $datas = DB::connection('dblib_mms')->table('yf_RMPMStockOverview')->where ('MatTY1', 'PS')->get();
+                $datas = DB::connection('mms')->table('yf_RMPMStockOverview')->where ('MatTY1', 'PS')->get();
                 //dd ($datas->first());
                 session()->put(['title'=> 'TỒN KHO BAO Bì']);
             
