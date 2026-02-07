@@ -10,7 +10,7 @@ class FinishedProductController extends Controller
 {
         public function index(){
               
-                $datas = DB::connection('dblib_mms')->table('yfFG_StockOverview')->get();
+                $datas = DB::connection('mms')->table('yfFG_StockOverview')->get();
                 //dd ($datas);
                 session()->put(['title'=> 'TỒN KHO THÀNH PHẨM']);
             

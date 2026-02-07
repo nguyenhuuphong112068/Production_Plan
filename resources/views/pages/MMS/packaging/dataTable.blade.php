@@ -115,6 +115,7 @@
                                 ">
                                     {{ $label['text'] }}
                                 </span>
+                                <br>
                                 {{ $data->ARNO }}
 
                                 

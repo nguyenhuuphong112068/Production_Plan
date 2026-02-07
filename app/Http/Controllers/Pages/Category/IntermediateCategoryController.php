@@ -164,7 +164,7 @@ class IntermediateCategoryController extends Controller
 
         public function recipe(Request $request){
                 
-                $datas = DB::connection('dblib_mms')
+                $datas = DB::connection('mms')
                 ->table('yfBOM_BOMItemHP')
                 ->where('PrdID', $request->intermediate_code)
                 ->where('Revno1', function ($q) use ($request) {
