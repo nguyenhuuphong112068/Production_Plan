@@ -16,16 +16,13 @@ class DblibConnector extends Connector
             $config['database']
         );
 
-        $pdo = new PDO(
+        return new PDO(
             $dsn,
             $config['username'],
             $config['password'],
-            $config['options'] ?? []
+            $config['options'] ?? [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]
         );
-
-        // Fix charset
-        $pdo->exec("SET NAMES 'UTF8'");
-
-        return $pdo;
     }
 }
