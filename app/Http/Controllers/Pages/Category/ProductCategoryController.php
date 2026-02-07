@@ -195,7 +195,7 @@ class ProductCategoryController extends Controller
 
         public function recipe(Request $request){
                 
-                $datas = DB::connection('sqlsrv_mms')
+                $datas = DB::connection('dblib_mms')
                 ->table('yfBOM_BOMItemHP')
                 ->where('PrdID', $request->intermediate_code)
                 ->where('Revno1', function ($q) use ($request) {
