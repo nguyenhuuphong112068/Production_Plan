@@ -112,7 +112,7 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
-        'sqlsrv_mms' => [
+        'dblib_mms' => [
             'driver' => 'dblib',
             'host' => env('DB_MMS_HOST'),
             'port' => env('DB_MMS_PORT', 1433),
@@ -128,7 +128,7 @@ return [
             //'trust_server_certificate' => 'yes',
         ],
 
-        'sqlsrv_cal1' => [
+        'dblib_cal1' => [
             'driver' => 'dblib',
             'host' => env('DB_CAL1_HOST'),
             'port' => env('DB_CAL1_PORT', 1433),
@@ -145,16 +145,20 @@ return [
             //'trust_server_certificate' => 'yes',
         ],
 
-        'sqlsrv_cal2' => [
-            'driver' => 'sqlsrv',
+        'dblib_cal2' => [
+            'driver' => 'dblib',
             'host' => env('DB_CAL2_HOST'),
             'port' => env('DB_CAL2_PORT', 1433),
             'database' => env('DB_CAL2_DATABASE'),
             'username' => env('DB_CAL2_USERNAME'),
             'password' => env('DB_CAL2_PASSWORD'),
             'charset' => 'utf8',
-            'encrypt' => 'no',
-            'trust_server_certificate' => 'yes',
+            'prefix'   => '',
+            'options'  => [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
+            //'encrypt' => 'no',
+            //'trust_server_certificate' => 'yes',
         ],
 
     ],
