@@ -23,6 +23,7 @@ Route::prefix('/plan')
 
             // các hàm xử lý plan_master
             Route::get('open','open')->name('open');
+            Route::get('open_stock','open_stock')->name('open_stock');
             Route::post('store','store')->name('store');
             Route::post('update', 'update')->name('update');
             Route::post('splitting', 'splitting')->name('splitting');

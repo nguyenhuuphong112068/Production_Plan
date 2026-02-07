@@ -51,8 +51,6 @@
                         'color' =>  '#facc15', // vàng nhạt
                     ];
             }
-
-
             @endphp
 
             <table id="data_table" class="table table-bordered table-striped">

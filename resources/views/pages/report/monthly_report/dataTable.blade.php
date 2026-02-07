@@ -114,8 +114,7 @@
                                 <th rowspan="2" class="text-center" >Sản lượng lý thuyết (3)</th>
                                 <th rowspan="2" class="text-center">Sản lượng thực tế (4)</th>
 
-                                <th rowspan="2" class="text-center">OEE %
-                                     (5)</th>
+                                <th rowspan="2" class="text-center">OEE %(5)</th>
                                 
                                 <th colspan="3" class="text-center">Thời gian làm việc LT tối đã trong tuần (6)</th>
                                 <th rowspan="2" class="text-center">Loading % (7)</th>
