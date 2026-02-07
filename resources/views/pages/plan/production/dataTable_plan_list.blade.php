@@ -24,7 +24,8 @@
 
                         <th rowspan="2">Người Gửi</th>
                         <th rowspan="2">Ngày Gửi</th>
-                        <th rowspan="2">Xem</th>
+                        <th rowspan="2">Chi Tiết</th>
+                        <th rowspan="2">Tạm tính NL/BB</th>
                     </tr>
 
                     <tr>
@@ -83,6 +84,19 @@
                                     <input type="hidden" name="name" value="{{ $data->name }}">
                                     <button type="submit" class="btn btn-success">
                                         <i class="fas fa-eye"></i>
+                                    </button>
+                                </form>
+                            </td>
+
+                             <td class="text-center align-middle">
+                                <form action="{{ route('pages.plan.production.open_stock') }}" method="get">
+                                    @csrf
+                                    <input type="hidden" name="plan_list_id" value="{{ $data->id }}">
+                                    <input type="hidden" name="month" value="{{ $data->month }}">
+                                    <input type="hidden" name="send" value="{{ $data->send }}">
+                                    <input type="hidden" name="name" value="{{ $data->name }}">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-table"></i>
                                     </button>
                                 </form>
                             </td>
