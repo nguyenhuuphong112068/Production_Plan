@@ -1352,116 +1352,6 @@ class ProductionPlanController extends Controller
                 return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công!']);
         }
 
-        public function open_feedback_API (Request $request){
-               
-                $deparment_code = $request->deparment_code?? 'PXV1';
-                $month = $request->month ?? now()->month;
-                $year = $request->year ?? now()->year;
-
-                $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
-                
-                // $maxStageFinished = DB::table('stage_plan')
-                // ->whereIn('stage_plan.plan_list_id', $plan_list_id)
-                // ->where('finished', 1)
-                // ->select(
-                //         'plan_master_id',
-                //         DB::raw('MAX(stage_code) as max_stage_code')
-                // )
-                // ->groupBy('plan_master_id');
-
-                $datas = DB::table('plan_master')
-                ->select(
-            
-                        "plan_master.id",
-                        "plan_master.plan_list_id",
-                        "plan_master.product_caterogy_id",
-                        "plan_master.level",
-                        "plan_master.batch",
-                        "plan_master.actual_batch",
-                        "plan_master.order_number",
-                        "plan_master.expected_date",
-                        "plan_master.responsed_date",
-                        "plan_master.actual_KCS",
-                        "plan_master.is_val",
-                        "plan_master.code_val",
-                        "plan_master.after_weigth_date",
-                        "plan_master.parkaging_before_date",
-                        "plan_master.after_parkaging_date",
-                        "plan_master.expired_packing_date",
-                        "plan_master.preperation_before_date",
-                        "plan_master.blending_before_date",
-                        "plan_master.coating_before_date",
-                        "plan_master.allow_weight_before_date",
-                        "plan_master.expired_material_date",
-                        "plan_master.material_source_id",
-                        "plan_master.only_parkaging",
-                        "plan_master.percent_parkaging",
-                        "plan_master.main_parkaging_id",
-                        "plan_master.number_parkaging",
-                        "plan_master.note",
-                        "plan_master.pro_feedback",
-                        "plan_master.qc_feedback",
-                        
-
-                        DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
-                        DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
-
-                        DB::raw("IF(plan_master.en_feedback IS NOT NULL, plan_master.en_feedback, 'NA') AS en_feedback"),
-                        DB::raw("IF(plan_master.has_punch_die_mold = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_punch_die_mold"),
-
-      
-                        "plan_master.actual_CoA_date",
-                        "plan_master.actual_record_date",
-                  
-                        "plan_master.qa_feedback_by",
-                        "plan_master.qa_feedback_date",
-                        "plan_master.qc_feedback_by",
-                        "plan_master.qc_feedback_date",
-                        "plan_master.pro_feedback_by",
-                        "plan_master.pro_feedback_date",
-                        "plan_master.en_feedback_by",
-                        "plan_master.en_feedback_date",
-                        "plan_master.kcs_record_by",
-                        "plan_master.kcs_record_date",
-                        "plan_master.accept_expectedDate_by",
-                        "plan_master.accept_expectedDate_date",
-                        "plan_master.deparment_code",
-                        "plan_master.active",
-                        "plan_master.cancel",
-                      
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
-                        'product_name.name',
-                        'market.code as market',
-                        'specification.name as specification',
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'finished_product_category.deparment_code',
-                        'source_material.name as source_material_name',
-                        'stage_plan.end as end'
-                )
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->leftJoin('stage_plan', function ($join) use ($request) {
-                        $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                        ->where('stage_plan.stage_code', 7)
-                        ->where('stage_plan.active', 1)
-                        ;
-                })
-                ->whereIn('plan_master.plan_list_id', $plan_list_id)
-                ->where('plan_master.active', 1)
-                ->orderBy('id', 'asc')
-                ->get();
-
-                return response()->json([
-                        'datas' => $datas
-                ]);
-
-        }
-
         public function open_stock(Request  $request){
                 
         
@@ -1584,5 +1474,117 @@ class ProductionPlanController extends Controller
                         'send'=> $request->send??1,      
                 ]);
         }
+
+
+        public function open_feedback_API (Request $request){
+               
+                $deparment_code = $request->deparment_code?? 'PXV1';
+                $month = $request->month ?? now()->month;
+                $year = $request->year ?? now()->year;
+
+                $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
+                
+                // $maxStageFinished = DB::table('stage_plan')
+                // ->whereIn('stage_plan.plan_list_id', $plan_list_id)
+                // ->where('finished', 1)
+                // ->select(
+                //         'plan_master_id',
+                //         DB::raw('MAX(stage_code) as max_stage_code')
+                // )
+                // ->groupBy('plan_master_id');
+
+                $datas = DB::table('plan_master')
+                ->select(
+            
+                        "plan_master.id",
+                        "plan_master.plan_list_id",
+                        "plan_master.product_caterogy_id",
+                        "plan_master.level",
+                        "plan_master.batch",
+                        "plan_master.actual_batch",
+                        "plan_master.order_number",
+                        "plan_master.expected_date",
+                        "plan_master.responsed_date",
+                        "plan_master.actual_KCS",
+                        "plan_master.is_val",
+                        "plan_master.code_val",
+                        "plan_master.after_weigth_date",
+                        "plan_master.parkaging_before_date",
+                        "plan_master.after_parkaging_date",
+                        "plan_master.expired_packing_date",
+                        "plan_master.preperation_before_date",
+                        "plan_master.blending_before_date",
+                        "plan_master.coating_before_date",
+                        "plan_master.allow_weight_before_date",
+                        "plan_master.expired_material_date",
+                        "plan_master.material_source_id",
+                        "plan_master.only_parkaging",
+                        "plan_master.percent_parkaging",
+                        "plan_master.main_parkaging_id",
+                        "plan_master.number_parkaging",
+                        "plan_master.note",
+                        "plan_master.pro_feedback",
+                        "plan_master.qc_feedback",
+                        
+
+                        DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
+                        DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
+
+                        DB::raw("IF(plan_master.en_feedback IS NOT NULL, plan_master.en_feedback, 'NA') AS en_feedback"),
+                        DB::raw("IF(plan_master.has_punch_die_mold = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_punch_die_mold"),
+
+      
+                        "plan_master.actual_CoA_date",
+                        "plan_master.actual_record_date",
+                  
+                        "plan_master.qa_feedback_by",
+                        "plan_master.qa_feedback_date",
+                        "plan_master.qc_feedback_by",
+                        "plan_master.qc_feedback_date",
+                        "plan_master.pro_feedback_by",
+                        "plan_master.pro_feedback_date",
+                        "plan_master.en_feedback_by",
+                        "plan_master.en_feedback_date",
+                        "plan_master.kcs_record_by",
+                        "plan_master.kcs_record_date",
+                        "plan_master.accept_expectedDate_by",
+                        "plan_master.accept_expectedDate_date",
+                        "plan_master.deparment_code",
+                        "plan_master.active",
+                        "plan_master.cancel",
+                      
+                        'finished_product_category.intermediate_code',
+                        'finished_product_category.finished_product_code',
+                        'product_name.name',
+                        'market.code as market',
+                        'specification.name as specification',
+                        'finished_product_category.batch_qty',
+                        'finished_product_category.unit_batch_qty',
+                        'finished_product_category.deparment_code',
+                        'source_material.name as source_material_name',
+                        'stage_plan.end as end'
+                )
+                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                ->leftJoin('stage_plan', function ($join) use ($request) {
+                        $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                        ->where('stage_plan.stage_code', 7)
+                        ->where('stage_plan.active', 1)
+                        ;
+                })
+                ->whereIn('plan_master.plan_list_id', $plan_list_id)
+                ->where('plan_master.active', 1)
+                ->orderBy('id', 'asc')
+                ->get();
+
+                return response()->json([
+                        'datas' => $datas
+                ]);
+
+        }
+
 
 }

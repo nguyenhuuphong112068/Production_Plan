@@ -100,9 +100,13 @@
 
         <!-- /.card-Body -->
         <div class="card-body">
+            <div class = >
             <input id="globalSearch"
                 class="form-control mb-2"
-                placeholder="🔍 Tìm theo mã NL / tên / lô / SP">
+                placeholder="🔍 Tìm theo mã NL / tên / lô / SP"
+            >
+            </div>
+
             @if (!$send)
                 <div class="row">
                     <div class="col-md-2">
