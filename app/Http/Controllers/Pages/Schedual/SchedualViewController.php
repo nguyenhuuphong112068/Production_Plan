@@ -73,8 +73,14 @@ class SchedualViewController extends Controller
         public function list_API (Request $request){
                 //Log::info ($request->all());
 
-                $fromDate = $request->from_date ?? Carbon::now()->toDateString();
-                $toDate   = $request->to_date   ?? Carbon::now()->toDateString(); 
+                $fromDate = $request->from_date
+                ? Carbon::parse($request->from_date)->startOfDay()
+                : Carbon::now()->startOfDay();
+
+                $toDate = $request->to_date
+                ? Carbon::parse($request->to_date)->endOfDay()
+                : Carbon::now()->endOfDay(); 
+
                 $stage_code = $request->stage_code??7;
                 $production = $request->deparment_code??'PXV1';
       
