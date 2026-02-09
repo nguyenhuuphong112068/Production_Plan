@@ -1,6 +1,9 @@
 <div class="content-wrapper" >
     <div class="card">
         <div class="card-body mt-5" style="min-height: 96vh">
+            @php
+                $auth_view_material = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
+            @endphp
             @if (user_has_permission(session('user')['userId'], 'plan_production_create_plan_list', 'boolean'))
                 <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_plan_list_modal"
                     style="width: 155px">
@@ -95,7 +98,7 @@
                                     <input type="hidden" name="month" value="{{ $data->month }}">
                                     <input type="hidden" name="send" value="{{ $data->send }}">
                                     <input type="hidden" name="name" value="{{ $data->name }}">
-                                    <button type="submit" class="btn btn-success">
+                                    <button type="submit" class="btn btn-success" {{ $auth_view_material }}>
                                         <i class="fas fa-table"></i>
                                     </button>
                                 </form>
