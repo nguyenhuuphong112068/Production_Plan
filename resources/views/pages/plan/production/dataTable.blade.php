@@ -52,7 +52,7 @@
         @php
             $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
             $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
-            $auth_view_material = = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
+            $auth_view_material = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
         @endphp
         <!-- /.card-Body -->
         <div class="card-body">
