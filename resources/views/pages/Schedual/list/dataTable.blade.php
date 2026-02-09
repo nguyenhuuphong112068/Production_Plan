@@ -13,7 +13,6 @@
               <!-- /.card-Body -->
               <div class="card-body">
                 
-                
                 <form id="filterForm" method="GET" action="{{ route('pages.Schedual.list.list') }}" class="d-flex flex-wrap gap-2">
                     @csrf
                     <div class="row w-100 align-items-center">
@@ -37,21 +36,33 @@
 
                         <!-- Stage Selector -->
                         <div class="col-md-4 d-flex justify-content-center align-items-center" style="gap: 10px; height: 40px;">
-                            <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
+                            {{-- <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
                             <button type="button" id="prevStage" class="btn btn-link stage-btn" style="font-size: 25px;">&laquo;</button>
                             <span id="stageName" class="fw-bold text-center" style="font-size: 25px;">
                                 {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
                             </span>
-                            <button type="button" id="nextStage" class="btn btn-link stage-btn" style="font-size: 25px;">&raquo;</button>
+                            <button type="button" id="nextStage" class="btn btn-link stage-btn" style="font-size: 25px;">&raquo;</button> --}}
                         </div>
 
                         <!-- Optional Right Side -->
                         <div class="col-md-4 d-flex justify-content-end">
-                            <!-- Bạn có thể thêm nút submit hoặc button khác ở đây -->
+                            <div class="form-group " style="width: 200px">
+                                <select class="form-control" name="stage_code" style="text-align-last: center;"
+                                    onchange="document.getElementById('filterForm').submit();">
+                                    <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
+                                    <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
+                                    <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
+                                    <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
+                                    <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
+                                    <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
+                                </select>
+                        </div>
                         </div>
 
                     </div>
                 </form>
+
+
                 
                 <table id="data_table_Schedual_list" class="table table-bordered table-striped" style="font-size: 20px">
                   <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
@@ -162,7 +173,7 @@
     });
   });
 </script> 
-
+{{-- 
 <script>
     let stages = @json($stages);
     let currentIndex = stages.findIndex(s => s.stage_code == {{ $stageCode ?? 'null' }});
@@ -188,7 +199,7 @@
         updateStage();
         filterForm.submit();
     });
-</script> 
+</script>  --}}
 
 
 
@@ -203,7 +214,7 @@
         });
     });
 </script>
-
+{{-- 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
       // Init tất cả stepper
@@ -212,5 +223,5 @@
       });
   });
 
-</script>
+</script> --}}
 
