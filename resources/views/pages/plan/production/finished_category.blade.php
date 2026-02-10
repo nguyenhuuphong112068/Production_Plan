@@ -76,6 +76,7 @@
                           data-plan_list_id="{{ $plan_list_id }}"
                         
                           data-dismiss="modal"
+                         
                           >
                           <i class="fas fa-plus"></i>
 
@@ -121,7 +122,7 @@
       });
 
       // Click nút +
-        $('#finished_category').on('click', '.btn-plus', function () {
+      $('#finished_category').on('click', '.btn-plus', function () {
           const button = $(this);
           
           let target_modal = $('#selectedModalId').val() ?? '#createModal';
@@ -148,12 +149,12 @@
           modal.find("#add_source_material").data("intermediate_code", button.data('intermediate_code'));
 
           modal.modal('show');
-
           modal_source.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
           modal_source.find('input[name="product_name"]').val(button.data('name'));
 
 
       });
+
 
       // Mở modal nếu có query openModal
       @if (request()->get('openModal'))
