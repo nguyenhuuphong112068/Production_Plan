@@ -11,7 +11,7 @@ class MaterialController extends Controller
         public function index(){
               
                 $datas = DB::connection('mms')->table('yf_RMPMStockOverview')->where ('MatTY1', 'RA')->get();
-               
+              
                 session()->put(['title'=> 'TỒN KHO NGUYÊN LIỆU']);
             
                 return view('pages.MMS.material.list',['datas' => $datas]);

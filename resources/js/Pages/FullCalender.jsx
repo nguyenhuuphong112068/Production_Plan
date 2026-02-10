@@ -973,24 +973,21 @@ const ScheduleTest = () => {
   const handleEventClick = (clickInfo) => {
   
     const event = clickInfo.event;
-    // ALT + CLICK
- if (clickInfo.jsEvent.altKey) {
+    // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
+    if (clickInfo.jsEvent.altKey) {
 
-    if (!authorization) {
-      clickInfo.revert();
-      return false;
-    }
+      if (!authorization) {
+        clickInfo.revert();
+        return false;
+      }
 
-    if (selectedEvents.length === 0) {
-      return;
-    }
+      if (selectedEvents.length === 0) {
+        return;
+      }
+      // Lấy instance calendar
+      const calendar = clickInfo.view.calendar;
 
-
-
-    // Lấy instance calendar
-    const calendar = clickInfo.view.calendar;
-
-    selectedEvents.forEach(sel => {
+      selectedEvents.forEach(sel => {
       const mainId = sel.id;                // "28217-main"
       const cleanId = mainId.replace("-main", "-cleaning");
 
@@ -1009,10 +1006,22 @@ const ScheduleTest = () => {
 
       // trigger pending changes
       handleEventChange({ event: cleanEvent });
-    });
+      });
 
-    return;
-  }
+      return;
+    }
+    /// Copy nội dung event
+    if (clickInfo.jsEvent.shiftKey) {
+      const e = clickInfo.event;
+
+      const text =
+        `Product: ${e.title}\t` +
+        `start: ${e.start?.toLocaleString()}\t` +
+        `end: ${e.end?.toLocaleString()}`;
+
+      navigator.clipboard.writeText(text)
+      return;
+    }
 
     
     toggleEventSelect(event);

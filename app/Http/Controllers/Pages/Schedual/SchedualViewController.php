@@ -115,7 +115,7 @@ class SchedualViewController extends Controller
                 ->orderBy('start')
                 ->get();
 
-                Log::info (['data' => $datas]);
+              
                 return response()->json(['data' => $datas]);
 
         }

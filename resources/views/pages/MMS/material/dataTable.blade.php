@@ -20,9 +20,9 @@
                     7 => "Chờ Tái Kiểm",
                ];
 
-              function lable_status(int $GRNSts, ?string $ARNO): array{
+              function lable_status(int $GRNSts, ?string $IntBatchNo): array{
                     // Chờ tái kiểm
-                    if (!empty($ARNO) && $GRNSts == 7) {
+                    if (!empty($IntBatchNo) && $GRNSts == 7) {
                         return [
                             'text'  => 'Chờ Tái Kiểm',
                             'color' => '#dc2626', // đỏ đậm
@@ -30,7 +30,7 @@
                     }
 
                     // Chấp nhận
-                    if (!empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
+                    if (!empty($IntBatchNo) && $GRNSts >= 2 && $GRNSts <= 5) {
                         return [
                             'text'  => 'Chấp Nhận',
                             'color' => '#166534', // xanh lá đậm
@@ -38,7 +38,7 @@
                     }
 
                     // Đã lấy mẫu
-                    if (empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
+                    if (empty($IntBatchNo) && $GRNSts >= 2 && $GRNSts <= 5) {
                         return [
                             'text'  => 'Đã Lấy Mẫu',
                             'color' => '#ca8a04', // vàng đậm
@@ -97,7 +97,7 @@
                             <td>{{ $material_status[$data->GRNSts] }} </td>
                           
                             @php
-                                $label = lable_status($data->GRNSts, $data->ARNO);
+                                $label = lable_status($data->GRNSts, $data->IntBatchNo);
                             @endphp
 
                             <td class="text-center">
@@ -105,7 +105,7 @@
                                         background-color: {{ $label['color'] }};
                                         color: white;
                                         padding: 4px 12px;
-                                        border-radius: 14px;
+                                        border-radius: 0px;
                                         font-size: 0.85rem;
                                         font-weight: 600;
                                         white-space: nowrap;
@@ -113,7 +113,7 @@
                                     {{ $label['text'] }}
                                 </span>
                                 <br>
-                                {{ $data->ARNO }}
+                                {{ $data->IntBatchNo }}
 
                                 
                                 @if (session('user')['userGroup'] == 'Admin')
