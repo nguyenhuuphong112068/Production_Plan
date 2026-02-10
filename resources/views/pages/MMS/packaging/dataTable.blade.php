@@ -100,7 +100,7 @@
                             <td>{{ $material_status[$data->GRNSts] }} </td>
                           
                             @php
-                                $label = lable_status($data->GRNSts, $data->ARNO);
+                                $label = lable_status($data->GRNSts, $data->IntBatchNo);
                             @endphp
 
                             <td class="text-center">
@@ -116,7 +116,7 @@
                                     {{ $label['text'] }}
                                 </span>
                                 <br>
-                                {{ $data->ARNO }}
+                                {{ $data->IntBatchNo }}
 
                                 
                                 @if (session('user')['userGroup'] == 'Admin')

@@ -1,22 +1,13 @@
+
+
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <style>
     .step-checkbox {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    accent-color: #007bff; /* màu xanh bootstrap */
-    }
-
-    .step-checkbox2 {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    accent-color: #007bff; /* màu xanh bootstrap */
-    }
-
-    .step-checkbox:checked {
-        box-shadow: 0 0 5px #007bff;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff;
     }
     .updateInput {
         width: 100%;
@@ -24,156 +15,108 @@
         outline: none;
         background: transparent;
         text-align: center;
-        height: 100%;
-        padding: 2px 4px;
-        box-sizing: border-box;
     }
-
-  /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
     .updateInput:focus {
         border: 1px solid #007bff;
-        border-radius: 2px;
-        background-color: #fff;
+        background: #fff;
     }
 
-  /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
-    td input.updateInput {
-        display: block;
-        margin: auto;
+    /* CUỘN TABLE */
+    .table-scroll-wrapper {
+        max-height: 86vh;
+        overflow-y: auto;
+        overflow-x: auto;
     }
+    #data_table_raw_material {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    table th, table td {
+        white-space: normal;     /* cho phép xuống dòng */
+        word-break: break-word;  /* tự bẻ chữ dài */
+        vertical-align: middle;
+    }
+
+    #data_table_raw_material {
+        font-size: 14px; /* từ 16 → 14 là vừa đẹp */
+    }
+
+    #data_table_raw_material th,
+    #data_table_raw_material td {
+        padding: 6px 6px;
+    }
+
+
 </style>
 
+@php
+function lable_status(int $GRNSts, ?string $ARNO): array {
+    if (!empty($ARNO) && $GRNSts == 7) {
+        return ['text'=>'Chờ Tái Kiểm','color'=>'#dc2626'];
+    }
+    if (!empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
+        return ['text'=>'Chấp Nhận','color'=>'#166534'];
+    }
+    if (empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
+        return ['text'=>'Đã Lấy Mẫu','color'=>'#ca8a04'];
+    }
+    return ['text'=>'Biệt Trữ','color'=>'#facc15'];
+}
+@endphp
+
 <div class="content-wrapper">
-    <div class="card" style="min-height: 100vh">
+    <div class="card" style="min-height:100vh">
+        <div class="card-body mt-5">
 
-        <div class="card-header mt-4" >
-            {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-            
-        </div>
-        @php
-            $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
-            $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
-
-                        $material_status = [
-                                0 => "Biệt Trữ",
-                                1 => "Approver Bởi Thủ Kho",
-                                2 => "Đã Lấy Mẫu Gọp",
-                                3 => "3 ??",
-                                4 => "Chờ Lấy Mẫu ĐT",
-                                5 => "Đã Lấy Mẫu ĐT",
-                                6 => "6 ??",
-                                7 => "Chờ Tái Kiểm",
-                        ];
-
-                        function lable_status(int $GRNSts, ?string $ARNO): array{
-                                // Chờ tái kiểm
-                                if (!empty($ARNO) && $GRNSts == 7) {
-                                    return [
-                                        'text'  => 'Chờ Tái Kiểm',
-                                        'color' => '#dc2626', // đỏ đậm
-                                    ];
-                                }
-
-                                // Chấp nhận
-                                if (!empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
-                                    return [
-                                        'text'  => 'Chấp Nhận',
-                                        'color' => '#166534', // xanh lá đậm
-                                    ];
-                                }
-
-                                // Đã lấy mẫu
-                                if (empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
-                                    return [
-                                        'text'  => 'Đã Lấy Mẫu',
-                                        'color' => '#ca8a04', // vàng đậm
-                                    ];
-                                }
-
-                                // Biệt trữ
-                                return [
-                                    'text'  => 'Biệt Trữ',
-                                    'color' =>  '#facc15', // vàng nhạt
-                                ];
-                        }
-                @endphp
-
-        <!-- /.card-Body -->
-        <div class="card-body">
-            <div class = >
-            <input id="globalSearch"
-                class="form-control mb-2"
-                placeholder="🔍 Tìm theo mã NL / tên / lô / SP"
-            >
+            {{-- SEARCH --}}
+            <div class="row mb-2">
+                <div class="col-md-9"></div>
+                <div class="col-md-3">
+                    <input id="globalSearch"
+                           class="form-control"
+                           placeholder="🔍 Tìm kiếm nguyên liệu / sản phẩm / lô">
+                </div>
             </div>
 
-            @if (!$send)
-                <div class="row">
-                    <div class="col-md-2">
-                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
-                                data-target="#selectProductModal" style="width: 155px;">
-                                <i class="fas fa-plus"></i> Thêm
-                            </button>
-                        @endif
-                    </div>
+            <div class="table-scroll-wrapper mt-1">
+                <table id="data_table_raw_material"
+                       class="table table-bordered table-striped"
+                       style="font-size:16px;width:100%">
 
-                    <div class="col-md-8"></div>
-                    <div class="col-md-2" style="text-align: right;">
+                    <thead style="position:sticky;top:0;background:#fff;z-index:10">
+                        <tr>
+                            <th rowspan="2" style="width: 40px">STT</th>
+                            <th rowspan="2" >Mã NL</th>
+                            <th rowspan="2" style="width: 15%">Tên NL</th>
+                            <th rowspan="2">Mã SP</th>
+                            <th rowspan="2">Tên SP</th>
+                            <th rowspan="2">KL CT</th>
+                            <th rowspan="2">Số Lô</th>
+                            <th rowspan="2">KL Cần Dùng</th>
+                            <th colspan="7" class="text-center">Tồn Kho</th>
+                        </tr>
+                        <tr>
+                            <th>Lô NSX</th>
+                            <th>Lô NB</th>
+                            <th>HSD / Retest</th>
+                            <th>Nhà SX</th>
+                            <th>Nhập</th>
+                            <th>Tồn</th>
+                            <th>Trạng Thái</th>
+                        </tr>
+                    </thead>
 
-                        <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
-
-                            @csrf
-                            <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
-                            <input type="hidden" name="month" value="{{ $month }}">
-                            <input type="hidden" name="production" value="{{ $production }}">
-                            @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean'))
-                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;">
-                                <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
-                            </button>
-                            @endif
-                        </form>
-
-                    </div>
-                </div>
-            @endif
-
-            <table id="data_table_raw_material"
-                class="table table-bordered table-striped"
-                style="font-size:16px; width:100%">
-
-                <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020">
-                    <tr>
-                        <th rowspan="2" class="text-center">STT</th>
-                        <th rowspan="2" class="text-center">Mã Nguyên Liệu</th>
-                        <th rowspan="2" class="text-center">Tên Nguyên Liệu</th>
-                        <th rowspan="2" class="text-center">Mã Sản Phẩm</th>
-                        <th rowspan="2" class="text-center">Tên Sản Phẩm</th>
-                        <th rowspan="2" class="text-center">Khối Lượng Công Thức</th>
-                        <th rowspan="2" class="text-center">Số Lượng Lô</th>
-                        <th rowspan="2" class="text-center">Khối Lượng Cần Dùng</th>
-                        <th colspan="7" class="text-center">Tồn Kho</th>
-                    </tr>
-                    <tr>
-                        <th>Số Lô NSX</th>
-                        <th>Số Lô NB</th>
-                        <th>Hạn Dùng / Retest</th>
-                        <th>Nhà SX</th>
-                        <th>Nhập</th>
-                        <th>Tồn</th>
-                        <th>Tình Trạng Nhãn / PKN</th>
-                    </tr>
-                </thead>
-
-                <tbody>
+                    <tbody>
                     @foreach ($datas as $data)
                         @php
-                            $stocks  = $data->stock ?? collect();
+                            $stocks = $data->stock ?? collect();
                             $rowspan = max($stocks->count(), 1);
+                            $groupId = 'grp_'.$loop->iteration;
                         @endphp
 
-                        {{-- DÒNG ĐẦU TIÊN --}}
-                        <tr>
+                        {{-- ROW CHÍNH --}}
+                        <tr data-group="{{ $groupId }}">
                             <td rowspan="{{ $rowspan }}">{{ $loop->iteration }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->MatID }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->MaterialName }}</td>
@@ -184,8 +127,22 @@
                             <td rowspan="{{ $rowspan }}">{{ round($data->TotalMatQty,5) }} {{ $data->uom }}</td>
 
                             @if ($stocks->count())
-                                @php $stock = $stocks->first(); @endphp
-                                @include('pages.plan.production.stock_row', ['stock' => $stock])
+                                @php $s = $stocks->first(); $lb = lable_status($s->GRNSts,$s->IntBatchNo); @endphp
+                                <td>{{ $s->Mfgbatchno }}</td>
+                                <td>{{ $s->ARNO }}</td>
+                                <td>
+                                    {{ $s->Expirydate ? \Carbon\Carbon::parse($s->Expirydate)->format('d/m/Y') : '' }}<br>
+                                    {{ $s->Retestdate ? \Carbon\Carbon::parse($s->Retestdate)->format('d/m/Y') : '' }}
+                                </td>
+                                <td>{{ $s->Mfg }}</td>
+                                <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
+                                <td>{{ round($s->{'Total Qty'},4) }} {{ $s->MatUOM }}</td>
+                                <td class="text-center">
+                                    <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
+                                        {{ $lb['text'] }}
+                                    </span>
+                                    {{ $s->IntBatchNo }}
+                                </td>
                             @else
                                 <td colspan="7" class="text-center text-danger fw-bold">
                                     Không có tồn kho
@@ -193,46 +150,84 @@
                             @endif
                         </tr>
 
-                        {{-- CÁC DÒNG STOCK TIẾP THEO --}}
-                        @foreach ($stocks->skip(1) as $stock)
-                            <tr>
-                                @include('pages.plan.production.stock_row', ['stock' => $stock])
+                        {{-- ROW STOCK --}}
+                        @foreach ($stocks->skip(1) as $s)
+                            @php $lb = lable_status($s->GRNSts,$s->IntBatchNo); @endphp
+                            <tr data-group="{{ $groupId }}">
+                                <td>{{ $s->Mfgbatchno }}</td>
+                                <td>{{ $s->ARNO }}</td>
+                                <td>
+                                    {{ $s->Expirydate ? \Carbon\Carbon::parse($s->Expirydate)->format('d/m/Y') : '' }}<br>
+                                    {{ $s->Retestdate ? \Carbon\Carbon::parse($s->Retestdate)->format('d/m/Y') : '' }}
+                                </td>
+                                <td>{{ $s->Mfg }}</td>
+                                <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
+                                <td>{{ round($s->{'Total Qty'},4) }} {{ $s->MatUOM }}</td>
+                                <td class="text-center">
+                                    <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
+                                        {{ $lb['text'] }}
+                                    </span>
+                                    {{ $s->IntBatchNo }}
+                                </td>
                             </tr>
                         @endforeach
+
+
                     @endforeach
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- PAGINATION --}}
+            <div class=" fw-bold text-muted">
+                Hiển thị: <span id="visibleCount"></span> / <span id="totalCount"></span>
+            </div>
 
         </div>
     </div>
+</div>
 
+<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
+<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
-    <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-    <script src="{{ asset('js/popper.min.js') }}"></script>
-    <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-    <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script>
+$(document).ready(function () {
 
-    @if (session('success'))
-        <script>
-            Swal.fire({
-                title: 'Thành công!',
-                text: '{{ session('success') }}',
-                icon: 'success',
-                timer: 1000, // tự đóng sau 2 giây
-                showConfirmButton: false
+    /* GROUP ROWS */
+    let groups = {};
+
+    $('#data_table_raw_material tbody tr').each(function () {
+        let g = $(this).data('group');
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(this);
+    });
+
+    const totalGroups = Object.keys(groups).length;
+    $('#totalCount').text(totalGroups);
+
+    /* SEARCH + COUNT */
+    $('#globalSearch').on('keyup', function () {
+        let keyword = $(this).val().toLowerCase();
+        let visibleGroups = 0;
+
+        $.each(groups, function (_, rows) {
+            let match = false;
+
+            rows.forEach(r => {
+                if ($(r).text().toLowerCase().includes(keyword)) {
+                    match = true;
+                }
             });
-        </script>
-    @endif
 
-    <script>
+            rows.forEach(r => $(r).toggle(match));
 
-        $(document).ready(function() {
-            document.body.style.overflowY = "auto";
-            $('#globalSearch').on('keyup', function () {
-                $('#data_table_raw_material').DataTable().search(this.value).draw();
-            });
-
+            if (match) visibleGroups++;
         });
 
-        
-    </script>
+        $('#visibleCount').text(visibleGroups);
+    });
+
+    /* INIT COUNT */
+    $('#visibleCount').text(totalGroups);
+});
+</script>
