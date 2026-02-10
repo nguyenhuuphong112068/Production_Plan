@@ -72,6 +72,14 @@ const ScheduleTest = () => {
   const [currentPassword, setCurrentPassword] = useState(null);
 
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
+  const stageName = {
+    1: 'Cân Nguyên Liệu',
+    3: 'Pha Chế',
+    4: 'Trộn Hoàn Tất',
+    5: 'Định Hình',
+    6: 'Bao Phim',
+    7: 'ĐGSC-ĐGTC'
+  };
 
   function toLocalISOString(date) {
       const pad = (n) => String(n).padStart(2, '0');
@@ -128,7 +136,7 @@ const ScheduleTest = () => {
           setLines(data.Lines)
           setAllLines (data.allLines)
           sessionStorage.setItem('theoryHidden', 0);
-         
+        
         if (!authorization){
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
@@ -952,6 +960,7 @@ const ScheduleTest = () => {
   };
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
+  const selectedEventsRef = useRef([]);
   const toggleEventSelect = (event) => {
     setSelectedEvents((prevSelected) => {
       const exists = prevSelected.some(ev => ev.id === event.id);
@@ -964,14 +973,14 @@ const ScheduleTest = () => {
       if (el) {
         el.style.border = exists ? 'none' : '5px solid yellow';
       }
-
+      selectedEventsRef.current = newSelected;
       return newSelected;
     });
   };
 
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
-  
+   
     const event = clickInfo.event;
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey) {
@@ -1010,22 +1019,41 @@ const ScheduleTest = () => {
 
       return;
     }
+   
     /// Copy nội dung event
     if (clickInfo.jsEvent.shiftKey) {
-      const e = clickInfo.event;
+      const calendar = clickInfo.view.calendar;
 
-      const text =
-        `Product: ${e.title}\t` +
-        `start: ${e.start?.toLocaleString()}\t` +
-        `end: ${e.end?.toLocaleString()}`;
+      let eventsToCopy = selectedEventsRef.current;
 
-      navigator.clipboard.writeText(text)
+      if (!eventsToCopy || eventsToCopy.length === 0) {
+        eventsToCopy = [{ id: event.id }];
+      }
+
+      const rows = eventsToCopy.map(sel => {
+        const ev = calendar.getEventById(sel.id);
+        if (!ev) return null;
+
+        return [
+          ev.title,
+          ev.start?.toLocaleString(),
+          ev.end?.toLocaleString(),
+          stageName[ev.extendedProps.stage_code] || ''
+        ].join('\t');
+      }).filter(Boolean);
+
+      const clipboardText = [
+        ['Title','Start','End','Stage'].join('\t'),
+        ...rows
+      ].join('\n');
+
+      navigator.clipboard.writeText(clipboardText)
+        .then(() => alert(`Đã copy ${rows.length} event`));
+
       return;
     }
 
-    
     toggleEventSelect(event);
-    
     // if ( clickInfo.jsEvent.ctrlKey) {
     //   setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
     // } else {
@@ -1033,7 +1061,6 @@ const ScheduleTest = () => {
     // }
 
   };
-
   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
   const handleClear = () => {
 
@@ -1069,7 +1096,6 @@ const ScheduleTest = () => {
   const handleEventUnHightLine = () => {
     document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
   };
-
 
   const hasAnyRoom = (filterStr, userRoomStr) => {
     if (!filterStr || !userRoomStr) return false;
