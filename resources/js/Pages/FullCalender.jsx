@@ -981,6 +981,7 @@ const ScheduleTest = () => {
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
    
+      
     const event = clickInfo.event;
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey) {
