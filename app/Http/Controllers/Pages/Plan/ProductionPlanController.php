@@ -1475,7 +1475,6 @@ class ProductionPlanController extends Controller
                 ]);
         }
 
-
         public function open_feedback_API (Request $request){
                
                 $deparment_code = $request->deparment_code?? 'PXV1';
