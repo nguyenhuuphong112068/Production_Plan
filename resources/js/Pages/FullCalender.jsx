@@ -981,7 +981,7 @@ const ScheduleTest = () => {
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
    
-      
+
     const event = clickInfo.event;
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey) {
@@ -1048,10 +1048,25 @@ const ScheduleTest = () => {
         ...rows
       ].join('\n');
 
-      navigator.clipboard.writeText(clipboardText)
-        .then(() => alert(`Đã copy ${rows.length} event`));
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(clipboardText);
+      } else {
+        fallbackCopy(clipboardText);
+      }
+
+      // navigator.clipboard.writeText(clipboardText)
+      //   .then(() => alert(`Đã copy ${rows.length} event`));
 
       return;
+    }
+
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
     }
 
     toggleEventSelect(event);
