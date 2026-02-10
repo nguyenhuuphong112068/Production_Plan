@@ -91,7 +91,7 @@
                                         {{-- <input type="text" class="form-control" name="unit_batch_size" value="Kg" readonly> --}}
                                          <select class="form-control" name="unit_batch_size" >
                                             <option value="Kg" {{ old('unit_batch_size') == "Kg" ? 'selected' : '' }}>Kg</option>
-                                            <option value="L" {{ old('unit_batch_size') == "L" ? 'selected' : '' }}>L</option>
+                                            <option value="Lít" {{ old('unit_batch_size') == "Lít" ? 'selected' : '' }}>Lít</option>
                                         </select>
                                     </div>
                                 </div>
