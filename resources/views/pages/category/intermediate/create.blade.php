@@ -88,7 +88,11 @@
                                     
                                     <div class="col-md-4">
                                         <label for="unit_batch_size">Đơn Vị</label>
-                                        <input type="text" class="form-control" name="unit_batch_size" value="Kg" readonly>
+                                        {{-- <input type="text" class="form-control" name="unit_batch_size" value="Kg" readonly> --}}
+                                         <select class="form-control" name="unit_batch_size" >
+                                            <option value="Kg" {{ old('unit_batch_size') == "Kg" ? 'selected' : '' }}>Kg</option>
+                                            <option value="L" {{ old('unit_batch_size') == "L" ? 'selected' : '' }}>L</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
