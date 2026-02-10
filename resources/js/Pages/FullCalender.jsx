@@ -136,7 +136,7 @@ const ScheduleTest = () => {
           setLines(data.Lines)
           setAllLines (data.allLines)
           sessionStorage.setItem('theoryHidden', 0);
-        
+         
         if (!authorization){
           setPlan(data.plan);
           setCurrentPassword (data.currentPassword??'')
@@ -1030,13 +1030,15 @@ const ScheduleTest = () => {
       if (!eventsToCopy || eventsToCopy.length === 0) {
         eventsToCopy = [{ id: event.id }];
       }
-
+     
       const rows = eventsToCopy.map(sel => {
         const ev = calendar.getEventById(sel.id);
+        const resourceId = Number(ev._def.resourceIds?.[0]);
+       
         if (!ev) return null;
-
         return [
           ev.title,
+          resources.find(r => r.id ==  resourceId)?.title || '',
           ev.start?.toLocaleString(),
           ev.end?.toLocaleString(),
           stageName[ev.extendedProps.stage_code] || ''
@@ -1044,7 +1046,7 @@ const ScheduleTest = () => {
       }).filter(Boolean);
 
       const clipboardText = [
-        ['Title','Start','End','Stage'].join('\t'),
+        ['Title','Room','Start','End','Stage'].join('\t'),
         ...rows
       ].join('\n');
 
