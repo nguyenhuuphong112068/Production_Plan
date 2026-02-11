@@ -1,9 +1,26 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <style>
     .updateModal-modal-size {
-        max-width: 50% !important;
-        width: 50% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 100% !important;
+        height: 100% !important;
     }
+    #updateModal .modal-dialog {
+        margin-top: 0px; /* hoặc 0, 10px */
+        margin-right: 0px;
+        margin-left: 10px;
+    }
+
+    #updateModal .modal-content {
+    height: 100vh;
+    }
+
+    #updateModal .modal-body {
+        overflow-y: auto;
+        max-height: calc(100vh - 120px); /* trừ header + footer */
+    }
+
 
     .bootstrap-switch {
         height: 100%;
@@ -11,13 +28,48 @@
         align-items: center;
         /* căn giữa theo chiều dọc */
     }
+
+
+
+    .batchNo {
+        display: flex;
+        justify-content: center;   /* canh giữa ngang */
+        align-items: center;       /* canh giữa dọc */
+        font-weight: bold;         /* in đậm */
+        color: green;              /* màu chữ xanh */
+    }
+
+    .updateInput {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        text-align: center;
+        height: 100%;
+        padding: 2px 4px;
+        box-sizing: border-box;
+    }
+
+    .step-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff; /* màu xanh bootstrap */
+    }
+
+    .step-checkbox:checked {
+        box-shadow: 0 0 5px #007bff;
+    }
+
+
+
 </style>
 
 <!-- Modal -->
 <div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
     <div class="modal-dialog updateModal-modal-size" role="document">
-
-        <form class="form-update" action="{{ route('pages.plan.production.update') }}" method="POST">
+        
+        <form action="{{ route('pages.plan.production.store') }}" method="POST">
             @csrf
 
             <div class="modal-content">
@@ -25,9 +77,8 @@
                     <a href="{{ route('pages.general.home') }}">
                         <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
                     </a>
-
-                    <h4 class="modal-title w-100 text-center" id="updateModalLabel" style="color: #CDC717">
-                        {{ 'Cập Nhật Lô' }}
+                    <h4 class="modal-title w-100 text-center" id="pModalLabel" style="color: #CDC717">
+                        {{ 'Tạo Lô' }}
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -36,244 +87,344 @@
                 </div>
 
                 <div class="modal-body">
+                <div class ="row">
 
-                    {{-- San Phẩm --}}
-                    <div class ="row">
-                        <div class = "col-md-3">
-                            <div class="form-group">
-                                <label>Mã BTP</label>
-                                <input type="text" class="form-control" name="intermediate_code" readonly
-                                    value="{{ old('intermediate_code') }}" />
-                            </div>
-                        </div>
-                        <div class = "col-md-3">
-                            <div class="form-group">
-                                <label>Mã TP</label>
-                                <input type="text" class="form-control" name="finished_product_code" readonly
-                                    value="{{ old('finished_product_code') }}" />
-                            </div>
-                        </div>
-                        <div class = "col-md-6">
-                            <div class="form-group">
-                                <label>Qui Cánh - Thị Trường</label>
-                                <input type="text" class="form-control" name="specification" readonly
-                                    value="{{ old('specification') }}" />
-                            </div>
-                        </div>
-                        <input type="hidden" name="id" value="{{ old('id') }}" />
-                        
-
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-9">
-                            <div class="form-group">
-                                <label>Tên Sản Phẩm</label>
-                                <input type="text" class="form-control" name="name" readonly
-                                    value="{{ old('name') }}" />
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>Cỡ Lô</label>
-                                <input type="text" class="form-control" name="batch_qty" readonly
-                                    value="{{ old('batch_qty') }}" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-
-                            <label>Số lô</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" name="batch"
-                                    value="{{ old('batch') }}" />
-                                <input type="number" min="1" step="1" class="form-control"
-                                    name="number_of_batch" value="{{ old('number_of_batch', 1) }}"
-                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')" readonly>
-                                <span class="input-group-text p-0" style="width: 105px">
-                                    <input type="checkbox" name="format_batch_no" checked data-bootstrap-switch>
-                                </span>
-                            </div>
-
-
-                            <label class = "mt-2">Nguồn</label>
-                            <div class="input-group">
-                                <textarea class="form-control" name="source_material_name" rows="3" value="{{ old('source_material_name') }}" readonly></textarea>
-                                <button type="button" class = "btn btn-success" data-toggle="modal" data-target="#selectSourceModal"> 
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                                <input type="hidden" class="form-control" name="material_source_id" value="{{ old('material_source_id') }}" />
-                            </div>
-
-                            {{-- Lô thẩm định --}}
-                            <label class ="mt-3">Lô Thẩm Định</label>
-                            <div class="card ">
-                                <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-4">        
-                                        <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox1" 
-                                                name = "first_val_batch">
-                                            <label for="update_checkbox1">Lô thứ nhất</label>
-                                            <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}"  readonly/>
-                                            <input type="hidden" name="code_val_first" value="{{ old('code_val_first') }}"/>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4"> 
-                                        <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox2" 
-                                                name = "second_val_batch">
-                                            <label for="update_checkbox2">Lô thứ hai</label>
-                                            <span  class = "batchNo batchNo2" ></span>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4"> 
-                                        <div class="icheck-primary d-inline">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox3" 
-                                                name = "third_val_batch">
-                                            <label for="update_checkbox3">Lô thứ ba</label>
-                                            <span class = "batchNo batchNo3"></span>
-                                        </div>
-                                    </div>
-                                </div>
+                    {{-- Thông tin Lô SX --}}
+                    <div class ="col-md-4">
+                        {{-- San Phẩm --}}
+                        <div class ="row">  
+                            <div class = "col-md-3">
+                                <div class="form-group">
+                                    <label>Mã BTP</label>
+                                    <input type="text" class="form-control" name="intermediate_code" readonly
+                                        value="{{ old('intermediate_code') }}" />
                                 </div>
                             </div>
-
-
+                            <div class = "col-md-3">
+                                <div class="form-group">
+                                    <label>Mã TP</label>
+                                    <input type="text" class="form-control" name="finished_product_code" readonly
+                                        value="{{ old('finished_product_code') }}" />
+                                </div>
+                            </div>
+                            <div class = "col-md-6">
+                                <div class="form-group">
+                                    <label>Qui Cánh - Thị Trường</label>
+                                    <input type="text" class="form-control" name="specification" readonly
+                                        value="{{ old('specification') }}" />
+                                </div>
+                            </div>
+                            <input type="hidden" name="product_caterogy_id" 
+                                value="{{ old('product_caterogy_id') }}" />
+                            <input type="hidden" name="plan_list_id" readonly value="{{ old('plan_list_id') }}" />
                         </div>
 
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Ngày dự kiên KCS</label>
+                        <div class="row mt-0">
+                            <div class="col-md-9">
+                                <div class="form-group">
+                                    <label>Tên Sản Phẩm</label>
+                                    <input type="text" class="form-control" name="name" readonly
+                                        value="{{ old('name') }}" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Cỡ Lô</label>
+                                    <input type="text" class="form-control" name="batch_qty" readonly
+                                        value="{{ old('batch_qty') }}" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+
+                                <label>Số lô</label>
                                 <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "expected_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('expected_date', \Carbon\Carbon::now()->addMonth(2)->format('Y-m-d')) }}">
+                                    <input type="text" class="form-control batchNo" name="batch"
+                                        value="{{ old('batch') }}" />
+                                    <input type="number" min="1" step="1" class="form-control"
+                                        name="number_of_batch" value="{{ old('number_of_batch', 1) }}"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                    <span class="input-group-text p-0" style="width: 105px">
+                                        <input type="checkbox" name="format_batch_no" checked data-bootstrap-switch>
+                                    </span>
                                 </div>
-                            </div>
+                                <input type="hidden" name="max_number_of_unit" id ="max_number_of_unit" >
+                                
+                                {{-- <label class ="mt-2">Nguồn</label>
+                                <div class="input-group">
+                                    <textarea class="form-control" name="source_material_name" rows="4"
+                                        value="{{ old('source_material_name') }}"></textarea>
+                                    <button type="button" class = "btn btn-success" id = "add_source_material"
+                                        data-toggle="modal" data-target="#selectSourceModal">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <input type="hidden" class="form-control" name="material_source_id"
+                                        value="{{ old('material_source_id') }}" />
+                                </div> --}}
 
-                            <div class="card card-success">
-                                <div class="card-header">
-                                    <h3 class="card-title">Mức Độ Ưu Tiên</h3>
+                                 <div class="form-group">
+                                    <label>Ngày dự kiên KCS</label>
+                                    <div class="input-group">
+                                        <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                            name = "expected_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                            value="{{ old('expected_date', \Carbon\Carbon::now()->addMonth(2)->format('Y-m-d')) }}">
+                                    </div>
                                 </div>
-                                <div class="card-body">
-                                    <!-- Minimal style -->
+
+
+                                <label class ="mt-3">Lô Thẩm Định</label>
+                                <div class="card ">
+                                    <div class="card-body">
                                     <div class="row">
-                                        <div class="col-sm-12">
-                                            <div class="form-group clearfix">
-                                                <div class="icheck-danger d-inline">
-                                                    <input type="radio" id="update_level_1" name="level" value = "1" {{ old('level') == 1 ||  old('level') === null ? 'checked':'' }}>
-                                                    <label for="update_level_1">
-                                                        1: Hàng Gấp, Hàng Thầu
-                                                    </label>
-                                                </div>
+                                        <div class="col-md-4">        
+                                            <div class="icheck-primary d-inline">
+                                                <input type="checkbox" class="step-checkbox" id="checkbox1" 
+                                                    name = "first_val_batch">
+                                                <label for="checkbox1">Lô thứ nhất</label>
+                                                <input type="text" name="batchNo1" class ="batchNo updateInput" value="{{ old('batchNo1') }}"  readonly/>
+                                                <input type="hidden" name="code_val_first" value="{{ old('code_val_first') }}"/>
                                             </div>
                                         </div>
-
-                                        <div class="col-sm-12">
-                                            <div class="form-group clearfix">
-                                                <div class="icheck-warning d-inline">
-                                                    <input type="radio" id="update_level_2" name="level" value = "2" {{ old('level') == 2 ? 'checked':'' }}>
-                                                    <label for="update_level_2">
-                                                        2: Hàng Gấp, Hàng sắp hết số đăng ký
-                                                    </label>
-                                                </div>
+                                        <div class="col-md-4"> 
+                                            <div class="icheck-primary d-inline">
+                                                <input type="checkbox" class="step-checkbox" id="checkbox2" 
+                                                    name = "second_val_batch">
+                                                <label for="checkbox2">Lô thứ hai</label>
+                                                <span  class = "batchNo batchNo2" ></span>
                                             </div>
                                         </div>
-
-                                        <div class="col-sm-12">
-                                            <div class="form-group clearfix">
-                                                <div class="icheck-primary d-inline">
-                                                    <input type="radio" id="update_level_3" name="level" value = "3" {{ old('level') == 3 ? 'checked':'' }}>
-                                                    <label for="update_level_3">
-                                                        3: Hàng SX dự trù theo kế hoạch bán hàng, đăng ký thuốc
-                                                    </label>
-                                                </div>
+                                        <div class="col-md-4"> 
+                                            <div class="icheck-primary d-inline">
+                                                <input type="checkbox" class="step-checkbox" id="checkbox3" 
+                                                    name = "third_val_batch">
+                                                <label for="checkbox3">Lô thứ ba</label>
+                                                <span class = "batchNo batchNo3"></span>
                                             </div>
                                         </div>
+                                    </div>
+                                    </div>
+                                </div>
 
-                                        <div class="col-sm-12">
-                                            <div class="form-group clearfix">
-                                                <div class="icheck-success d-inline">
-                                                    <input type="radio" id="update_level_4" name="level" value = "4" {{ old('level') == 4 ? 'checked':'' }}>
-                                                    <label for="update_level_4">
-                                                        4: Hàng không cần gấp
-                                                    </label>
+                            </div>
+
+                            <div class="col-md-6">
+                               
+
+                                <div class="card card-success">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Mức Độ Ưu Tiên</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Minimal style -->
+                                        <div class="row">
+                                            <div class="col-sm-12 mb-1">
+                                                <div class="form-group clearfix">
+                                                    <div class="icheck-danger d-inline">
+                                                        <input type="radio" id="radioDanger" name="level"
+                                                            value = "1"
+                                                            {{ old('level') == 1 || old('level') === null ? 'checked' : '' }}>
+                                                        <label for="radioDanger">
+                                                            1: Hàng Gấp, Hàng Thầu
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-sm-12 mb-1">
+                                                <div class="form-group clearfix">
+                                                    <div class="icheck-warning d-inline">
+                                                        <input type="radio" id="radioWarning" name="level"
+                                                            value = "2" {{ old('level') == 2 ? 'checked' : '' }}>
+                                                        <label for="radioWarning">
+                                                            2: Hàng Gấp, Hàng sắp hết số đăng ký
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-sm-12 mb-1">
+                                                <div class="form-group clearfix">
+                                                    <div class="icheck-primary d-inline">
+                                                        <input type="radio" id="radioPrimary" name="level"
+                                                            value = "3" {{ old('level') == 3 ? 'checked' : '' }}>
+                                                        <label for="radioPrimary">
+                                                            3: Hàng SX dự trù theo kế hoạch bán hàng, đăng ký thuốc
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-sm-12 mb-1">
+                                                <div class="form-group clearfix">
+                                                    <div class="icheck-success d-inline">
+                                                        <input type="radio" id="radioSuccess" name="level"
+                                                            value = "4" {{ old('level') == 4 ? 'checked' : '' }}>
+                                                        <label for="radioSuccess">
+                                                            4: Hàng không cần gấp
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+
+                            </div>
+                        </div>
+
+                        {{-- Ngày ràng buột --}}
+                        <div class="row">
+                            <div class="col-md-6">
+                            <label>Ngày có đủ nguyên liệu Pha Chế (Nếu chưa xác định thì để trống)</label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "after_weigth_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask id = "after_weigth_date"
+                                        value="{{ old('after_weigth_date')}}">
+                                </div>
+                            </div>
+
+
+                            <div class="col-md-6">
+                                <label>Ngày có đủ bao bì đóng gói (Nếu chưa xác định thì để trống)</label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "after_parkaging_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('after_parkaging_date')}}">
+                                </div>
                             </div>
 
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label>Có thể cân từ ngày</label>
+
+                        {{--  Ngày được phép cân - hết hạn nguyên liệu --}}
+                        <div class="row mt-2">
+                            <div class="col-md-4">
+                            <label>Ngày được phép cân (Mặc định theo ngày có đủ NL)</label>
                                 <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_weigth_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_weigth_date', date('Y-m-d')) }}"> 
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "allow_weight_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask data-mask id = "allow_weight_before_date"
+                                        value="{{ old('allow_weight_before_date') }}">
                                 </div>
-                        </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label> Ngày hết hạn nguyên liệu (Nếu có) </label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "expired_material_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('expired_material_date') }}">
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label> Ngày hết hạn bao bì (Nếu có) </label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "expired_packing_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('expired_packing_date') }}">
+                                </div>
+                            </div>
+                        </div>      
                         
-                        {{-- <div class="col-md-3">
-                            <label>Cân Trước ngày</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_weigth_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_weigth_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
+                        {{-- Cân Trước ngày --}}
+                        <div class="row mt-2">
+                            <div class="col-md-3">
+                                <label>Pha chế trước ngày (Nếu có)</label>
+                                    <div class="input-group">
+                                        <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                            name = "preperation_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                            value="{{ old('preperation_before_date') }}">
                                 </div>
-                        </div> --}}
-                        <div class="col-md-6">
-                            <label>Có thể ĐG từ ngày</label>
+                            </div>
+                            <div class="col-md-3">
+                                <label>THT trước ngày (Nếu có)</label>
                                 <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "after_parkaging_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('after_parkaging_date', date('Y-m-d')) }}">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "blending_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('blending_before_date') }}">
                                 </div>
-                        </div>
-                        {{-- <div class="col-md-3">
-                            <label>Đóng gói trước ngày</label>
+                            </div>
+                            <div class="col-md-3">
+                                <label>Bao Phim trước ngày (nếu có)</label>
                                 <div class="input-group">
-                                    <input type="date" class="form-control" data-inputmask-alias="datetime" name = "before_parkaging_date"
-                                        data-inputmask-inputformat="dd/mm/yyyy" data-mask value="{{ old('before_parkaging_date', \Carbon\Carbon::now()->addYear()->format('Y-m-d')) }}">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "coating_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('coating_before_date') }}">
                                 </div>
-                        </div> --}}
-                    </div>
-                    {{-- Ghi chú --}}
-                    <div class="row mt-3" >
+                            </div>
+                            <div class="col-md-3">
+                                <label>Đóng Gói Trước Ngày (nếu có)</label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                        name = "parkaging_before_date" data-inputmask-inputformat="dd/mm/yyyy" data-mask
+                                        value="{{ old('parkaging_before_date') }}">
+                                </div>
+                            </div>
+                        </div>  
+                        {{-- Ghi chú --}}
+                        <div class="row mt-2">
                             <div class="col-md-12">
-                                <label >Ghi Chú</label>
+                                <label>Ghi Chú (nếu có)</label>
                                 <textarea class="form-control" name="note" rows="2"></textarea>
                             </div>
-                    </div>
-
-                    {{-- Lý do --}}
-                    <div class="row mt-3" style="display: {{ $send == 1 ?'block':'none' }}">
-                        <div class="col-md-12">
-                                <label >Lý Do Cập Nhật</label>
-                                <textarea class="form-control" name="reason" rows="2"></textarea>
                         </div>
-                    </div>
-
-                    <div class="modal-footer" >
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-primary" id="update_btnSave">
-                            Cập Nhật
-                        </button>
 
                     </div>
+                  
+                    {{-- CÔng Thức PC --}}
+                    <div class ="col-md-4">
+                        <table id="data_table_recipe" class="table table-bordered table-striped" style="font-size: 16px">
+                            <thead >
+                                <tr>
+                                <th>STT</th>
+                                <th>Mã Nguyên Liệu</th>
+                                <th>Tên Nguyên Liệu</th>
+                                <th>Khối Lượng Nguyên Liệu</th>
+                                <th>Chọn</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id = "material_recipe_body">
+            
+                            </tbody>
+                        </table>
+                    </div>
+                    {{-- CÔng Thức ĐG --}}
+                    <div class ="col-md-4">
+                        <table id="data_table_recipe" class="table table-bordered table-striped" style="font-size: 16px">
+                            <thead >
+                                <tr>
+                                <th>STT</th>
+                                <th>Mã BB</th>
+                                <th>Tên BB</th>
+                                <th>Lượng BB</th>
+                                <th>Chọn</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id = "packaging_recipe_body">
+            
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary" id="btnSave">
+                        Lưu
+                    </button>
                 </div>
             </div>
         </form>
+
+
     </div>
 </div>
 
-
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->update_finished_Errors->any())
@@ -283,7 +434,6 @@
         });
     </script>
 @endif
-
 
 <script>
     $(document).ready(function() {
@@ -303,15 +453,163 @@
             $("input[data-bootstrap-switch]").each(function() {
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
+
+            
+            const material_table = $('#material_recipe_body')
+            const intermediate_code = $(this).find('input[name="intermediate_code"]').val();
+            material_table.empty();
+            $.ajax({
+                url: "{{ route('pages.category.intermediate.recipe') }}",
+                type: 'post',
+                data: {
+                    intermediate_code: intermediate_code,
+                    _token: "{{ csrf_token() }}"
+                },
+                success: function(res) {
+                        if (res.length === 0) {
+                            material_table.append(
+                                `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                                // map màu level
+                       
+                                material_table.append(`
+                              <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${item.MatID ?? ''}</td>
+                                    <td>${item.MaterialName ?? ''}</td>
+                                    <td style="text-align:center">
+                                        ${
+                                            item.MatQty != null
+                                            ? Number(item.MatQty).toLocaleString(undefined, {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 3
+                                            })
+                                            : ''
+                                        } ${item.uom ?? ''}
+                                    </td>
+
+                                    <td style="text-align:center">
+
+                                    <input type="hidden" 
+                                        name="materials[${item.MatID}][active]" 
+                                        value="0">
+
+                                    <input type="checkbox"
+                                        class="step-checkbox"
+                                        name="materials[${item.MatID}][active]"
+                                        value="1"
+                                        checked>
+
+                                    <input type="hidden"
+                                        name="materials[${item.MatID}][qty]"
+                                        value="${item.MatQty ?? 0}">
+
+                                    <input type="hidden"
+                                        name="materials[${item.MatID}][uom]"
+                                        value="${item.uom ?? ''}">
+                                    
+                                    <input type="hidden"
+                                            name="materials[${item.MatID}][MaterialName]"
+                                            value="${item.MaterialName ?? ''}"> 
+
+                                    </td>
+
+                              </tr>
+                          `);
+                            });
+                        }
+                    },
+                    error: function() {
+                        material_table.append(
+                            `<tr><td colspan="5" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                        );
+                    }
+            });
+
+
+            const packagin_table = $('#packaging_recipe_body')
+            const finished_product_code = $(this).find('input[name="finished_product_code"]').val();
+            packagin_table.empty();
+            $.ajax({
+                url: "{{ route('pages.category.intermediate.recipe') }}",
+                type: 'post',
+                data: {
+                    intermediate_code: finished_product_code,
+                    _token: "{{ csrf_token() }}"
+                },
+                success: function(res) {
+                        if (res.length === 0) {
+                            packagin_table.append(
+                                `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
+                            );
+                        } else {
+                            console.log (res)
+                            res.forEach((item, index) => {
+                                // map màu level
+                       
+                                packagin_table.append(`
+                              <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${item.MatID ?? ''}</td>
+                                    <td>${item.MaterialName ?? ''}</td>
+                                    <td style="text-align:center">
+                                        ${
+                                            item.MatQty != null
+                                            ? Number(item.MatQty).toLocaleString(undefined, {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 3
+                                            })
+                                            : ''
+                                        } ${item.uom ?? ''}
+                                    </td>
+                                     <td style="text-align:center">
+
+                                        <input type="hidden" 
+                                            name="packagings[${item.MatID}][active]" 
+                                            value="0">
+
+                                        <input type="checkbox"
+                                            class="step-checkbox"
+                                            name="packagings[${item.MatID}][active]"
+                                            value="1"
+                                            checked>
+
+                                        <input type="hidden"
+                                            name="packagings[${item.MatID}][qty]"
+                                            value="${item.MatQty ?? 0}">
+
+                                        <input type="hidden"
+                                            name="packagings[${item.MatID}][uom]"
+                                            value="${item.uom ?? ''}"> 
+                                        
+                                        <input type="hidden"
+                                            name="packagings[${item.MatID}][MaterialName]"
+                                            value="${item.MaterialName ?? ''}"> 
+
+                                    </td>
+                              </tr>
+                          `);
+                            });
+                        }
+                    },
+                    error: function() {
+                        packagin_table.append(
+                            `<tr><td colspan="5" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                        );
+                    }
+            });
+
+            
         });
 
 
-
-        $("#update_number_of_unit").on('input', function() {
+        $("#number_of_unit").on('input', function() {
             let numberOfUnit = parseInt($(this).val()) || 0;
 
             // Lấy batch_qty và lọc chỉ lấy số
-            let batchQtyStr = $("#update_max_number_of_unit").val();
+            let batchQtyStr = $("#max_number_of_unit").val();
 
             let batchQty = parseInt(batchQtyStr.replace(/[^0-9]/g, '')) || 0;
 
@@ -326,41 +624,29 @@
                 });
             } else {
 
-                $("#update_update_percent_packaging").val((numberOfUnit / batchQty).toFixed(4))
+                $("#percent_packaging").val((numberOfUnit / batchQty).toFixed(4))
             }
         });
-        
-        $('#selectSourceModal').on('show.bs.modal', function (e) {
+
+        $('#selectSourceModal').on('show.bs.modal', function(e) {
             const button = $(e.relatedTarget);
             const modal = $('#updateModal');
             const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
 
+
         $("#updateModal .step-checkbox").on("change", function() {
-
+          
             let batch = $('#updateModal input[name="batch"]').val();
-            let checkbox1 = $("#update_checkbox1").is(":checked") ? 1 : 0;
-            let checkbox2 = $("#update_checkbox2").is(":checked") ? 1 : 0;
-            let checkbox3 = $("#update_checkbox3").is(":checked") ? 1 : 0;
-
-            let code_val = $('#updateModal input[name="code_val_first"]').val()|| null;
-            let intermediate_code = $('#updateModal input[name="intermediate_code"]').val()|| "" ;
+            let checkbox1 = $("#updateModal #checkbox1").is(":checked") ? 1 : 0;
+            let checkbox2 = $("#updateModal #checkbox2").is(":checked") ? 1 : 0;
+            let checkbox3 = $("#updateModal #checkbox3").is(":checked") ? 1 : 0;
+            let code_val = $('input[name="code_val_first"]').val()|| null;
+            let intermediate_code = $('input[name="intermediate_code"]').val()|| "" ;
             let first_batch_modal =  $('#tbody_first_val_batch')
             let total = checkbox1 + checkbox2 + checkbox3;
-        
-            if (checkbox1 == 1){
-                $("#update_checkbox1").prop("checked", false);
-                $("#update_checkbox3").prop("checked", false);
-            }else if (checkbox2 == 1){
-                $("#update_checkbox2").prop("checked", false);
-                $("#update_checkbox3").prop("checked", false);
-            }else if (checkbox3 == 1){
-                $("#update_checkbox1").prop("checked", false);
-                $("#update_checkbox2").prop("checked", false);
-            }
-                
-           
+
             if (checkbox1 == 1 && !batch || batch.trim() === '') {
                 Swal.fire({
                     icon: 'warning',
@@ -369,121 +655,155 @@
                 });
                 $('input[name="batchNo1"]').val('');
                 $('input[name="code_val_first"]').val('');
-                $("#update_checkbox1").prop("checked", false);
-                $("#update_checkbox2").prop("checked", false);
-                $("#update_checkbox3").prop("checked", false);
+                $("#updateModal #checkbox1").prop("checked", false);
+                $("#updateModal #checkbox2").prop("checked", false);
+                $("#updateModal #checkbox3").prop("checked", false);
                 return;
             }
 
             if (total == 0){
                 $('input[name="batchNo1"]').val('');
-                $('input[name="code_val_first"]').val(null);
+                $('input[name="code_val_first"]').val('');
+            }
+                        
+            $('input[name="number_of_batch"]').val(total);
+
+            if (checkbox1 == 1 && code_val == null ){
+
+                $.ajax({
+                    url: "{{ route('pages.plan.production.get_last_id') }}",
+                    type: 'post',
+                    data: {
+                        table: "plan_master",
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                      
+                        $('input[name="batchNo1"]').val(batch);
+                        $('input[name="code_val_first"]').val((res.last_id + 1) + "_1");
+                    },
+                    error: function(xhr, status, error) {
+                            console.error("❌ Lỗi Ajax:", {
+                                status: status,
+                                error: error,
+                                responseText: xhr.responseText
+                            });
+                        }
+                });
+
+                         
+                return;
+
             }
             
-            // if ((checkbox1 == 0 && checkbox2 == 1 && code_val == null) || (checkbox1 == 0 && checkbox2 == 0 && checkbox3 == 1 && code_val == null)){
-               
-            //     first_batch_modal.empty();
-            //     $.ajax({
-            //         url: "{{ route('pages.plan.production.first_batch') }}",
-            //         type: 'post',
-            //         data: {
-            //             intermediate_code: intermediate_code,
-            //             _token: "{{ csrf_token() }}"
-            //         },
-            //         success: function(res) {
 
-            //             if (res.length === 0) {
-            //                 first_batch_modal.append(
-            //                     `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
-            //                 );
-            //             } else {
-            //                 res.forEach((item, index) => {
-            //                     // map màu level
-            //                     const colors = {
-            //                         1: 'background-color: #f44336; color: white;', // đỏ
-            //                         2: 'background-color: #ff9800; color: white;', // cam
-            //                         3: 'background-color: blue; color: white;', // xanh dương
-            //                         4: 'background-color: #4caf50; color: white;', // xanh lá
-            //                     };
-            //                     first_batch_modal.append(`
-            //                   <tr>
-            //                       <td>${index + 1}</td>
-            //                       <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
-            //                           <div>${item.intermediate_code ?? ''}</div>
-            //                           <div>${item.finished_product_code ?? ''}</div>
-            //                       </td>
+            if ((checkbox1 == 0 && checkbox2 == 1 && code_val == null) || (checkbox1 == 0 && checkbox2 == 0 && checkbox3 == 1 && code_val == null)){
+                first_batch_modal.empty();
+                $.ajax({
+                    url: "{{ route('pages.plan.production.first_batch') }}",
+                    type: 'post',
+                    data: {
+                        intermediate_code: intermediate_code,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+          
 
-            //                       <td>${item.name ?? ''} (${item.batch_qty ?? ''} ${item.unit_batch_qty ?? ''})</td>
-            //                       <td>${item.batch ?? ''}</td>
-            //                       <td>
-            //                           <div>${item.market ?? ''}</div>
-            //                           <div>${item.specification ?? ''}</div>
-            //                       </td>
+                        if (res.length === 0) {
+                            first_batch_modal.append(
+                                `<tr><td colspan="13" class="text-center">Không có lịch sử</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                                // map màu level
+                                const colors = {
+                                    1: 'background-color: #f44336; color: white;', // đỏ
+                                    2: 'background-color: #ff9800; color: white;', // cam
+                                    3: 'background-color: blue; color: white;', // xanh dương
+                                    4: 'background-color: #4caf50; color: white;', // xanh lá
+                                };
+                                first_batch_modal.append(`
+                              <tr>
+                                  <td>${index + 1}</td>
+                                  <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
+                                      <div>${item.intermediate_code ?? ''}</div>
+                                      <div>${item.finished_product_code ?? ''}</div>
+                                  </td>
 
-            //                         <td>
-            //                           <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
-            //                       </td>
+                                  <td>${item.name ?? ''} (${item.batch_qty ?? ''} ${item.unit_batch_qty ?? ''})</td>
+                                  <td>${item.batch ?? ''}</td>
+                                  <td>
+                                      <div>${item.market ?? ''}</div>
+                                      <div>${item.specification ?? ''}</div>
+                                  </td>
 
-            //                       <td style="text-align: center; vertical-align: middle;">
-            //                           <span style="display: inline-block; padding: 6px 10px; width: 50px; border-radius: 40px; ${colors[item.level] ?? ''}">
-            //                               <b>${item.level ?? ''}</b>
-            //                           </span>
+                                    <td>
+                                      <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
 
-            //                       </td>
+                                  <td style="text-align: center; vertical-align: middle;">
+                                      <span style="display: inline-block; padding: 6px 10px; width: 50px; border-radius: 40px; ${colors[item.level] ?? ''}">
+                                          <b>${item.level ?? ''}</b>
+                                      </span>
 
-            //                       <td class="text-center align-middle">
-            //                           ${item.is_val ? '<i class="fas fa-check text-primary fs-4"></i>' : ''}
-            //                           <br>
-            //                            <span class="fw-bold text-success">Lô thứ ${item.code_val ? item.code_val.split('_')[1] ?? '' : ''}</span>
-            //                       </td>
+                                  </td>
 
-            //                       <td>${item.source_material_name ?? ''}</td>
+                                  <td class="text-center align-middle">
+                                      ${item.is_val ? '<i class="fas fa-check text-primary fs-4"></i>' : ''}
+                                      <br>
+                                       <span class="fw-bold text-success">Lô thứ ${item.code_val ? item.code_val.split('_')[1] ?? '' : ''}</span>
+                                  </td>
 
-            //                       <td>
-            //                           <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
-            //                           <div>${item.before_weigth_date ? moment(item.before_weigth_date).format('DD/MM/YYYY') : ''}</div>
-            //                       </td>
-            //                       <td>
-            //                           <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-            //                           <div>${item.before_parkaging_date ? moment(item.before_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-            //                       </td>
+                                  <td>${item.source_material_name ?? ''}</td>
 
-            //                       <td>${item.note ?? ''}</td>
-            //                     <td>
-            //                         <button type="button" class="btn btn-success btn-confirm-first-batch" 
-            //                         data-id="${item.id}"
-            //                         data-code_val="${item.code_val}"
-            //                         data-batch="${item.batch}"
+                                  <td>
+                                      <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
+                                  <td>
+                                      <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>   
+                                  </td>
 
-            //                         data-dismiss="modal">
-            //                         <i class="fas fa-plus"></i>
-            //                         </button>
-            //                     </td>
+                                  <td>${item.note ?? ''}</td>
+                                <td>
+                                    <button type="button" class="btn btn-success btn-confirm-first-batch" 
+                                    data-id="${item.id}"
+                                    data-code_val="${item.code_val}"
+                                    data-batch="${item.batch}"
+
+                                    data-dismiss="modal">
+                                    <i class="fas fa-plus"></i>
+                                    </button>
+                                </td>
                             
-            //                   </tr>
-            //               `);
-            //                 });
-            //             }
-            //         },
-            //         error: function(xhr, status, error) {
-            //                 console.error("❌ Lỗi Ajax:", {
-            //                     status: status,
-            //                     error: error,
-            //                     responseText: xhr.responseText
-            //                 });
-            //                 first_batch_modal.empty().append(
-            //                     `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-            //                 );
-            //             }
-            //     });
+                              </tr>
+                          `);
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                            console.error("❌ Lỗi Ajax:", {
+                                status: status,
+                                error: error,
+                                responseText: xhr.responseText
+                            });
+                            first_batch_modal.empty().append(
+                                `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                            );
+                        }
+                });
 
-            //     $('#fist_batch_modal').modal('show');
-            // }
-            return
+                $('#fist_batch_modal').modal('show');
+            }
+
         });
 
-         preventDoubleSubmit("#updateModal", "#update_btnSave");
-         
+        $("#after_weigth_date").on("change", function () {
+            $("#allow_weight_before_date").val($(this).val());
+        });
+
+
+        preventDoubleSubmit("#updateModal", "#btnSave");
+
+
     });
-    
 </script>

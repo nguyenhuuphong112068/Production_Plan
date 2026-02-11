@@ -12,6 +12,15 @@
         margin-left: 10px;
     }
 
+    #createModal .modal-content {
+    height: 100vh;
+    }
+
+    #createModal .modal-body {
+        overflow-y: auto;
+        max-height: calc(100vh - 120px); /* trừ header + footer */
+    }
+
 
     .bootstrap-switch {
         height: 100%;
@@ -39,6 +48,17 @@
         height: 100%;
         padding: 2px 4px;
         box-sizing: border-box;
+    }
+
+    .step-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff; /* màu xanh bootstrap */
+    }
+
+    .step-checkbox:checked {
+        box-shadow: 0 0 5px #007bff;
     }
 
 
@@ -415,7 +435,6 @@
     </script>
 @endif
 
-
 <script>
     $(document).ready(function() {
         $("input[data-bootstrap-switch]").bootstrapSwitch({
@@ -437,7 +456,7 @@
 
             
             const material_table = $('#material_recipe_body')
-            const intermediate_code = "IS000000332"// $('input[name="intermediate_code"]').val();
+            const intermediate_code = $(this).find('input[name="intermediate_code"]').val();
             material_table.empty();
             $.ajax({
                 url: "{{ route('pages.category.intermediate.recipe') }}",
@@ -472,7 +491,29 @@
                                     </td>
 
                                     <td style="text-align:center">
-                                        
+
+                                    <input type="hidden" 
+                                        name="materials[${item.MatID}][active]" 
+                                        value="0">
+
+                                    <input type="checkbox"
+                                        class="step-checkbox"
+                                        name="materials[${item.MatID}][active]"
+                                        value="1"
+                                        checked>
+
+                                    <input type="hidden"
+                                        name="materials[${item.MatID}][qty]"
+                                        value="${item.MatQty ?? 0}">
+
+                                    <input type="hidden"
+                                        name="materials[${item.MatID}][uom]"
+                                        value="${item.uom ?? ''}">
+                                    
+                                    <input type="hidden"
+                                            name="materials[${item.MatID}][MaterialName]"
+                                            value="${item.MaterialName ?? ''}"> 
+
                                     </td>
 
                               </tr>
@@ -489,7 +530,7 @@
 
 
             const packagin_table = $('#packaging_recipe_body')
-            const finished_product_code = "31010000103"// $('input[name="intermediate_code"]').val();
+            const finished_product_code = $(this).find('input[name="finished_product_code"]').val();
             packagin_table.empty();
             $.ajax({
                 url: "{{ route('pages.category.intermediate.recipe') }}",
@@ -504,6 +545,7 @@
                                 `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
                             );
                         } else {
+                            console.log (res)
                             res.forEach((item, index) => {
                                 // map màu level
                        
@@ -522,8 +564,30 @@
                                             : ''
                                         } ${item.uom ?? ''}
                                     </td>
-                                    <td style="text-align:center">
+                                     <td style="text-align:center">
+
+                                        <input type="hidden" 
+                                            name="packagings[${item.MatID}][active]" 
+                                            value="0">
+
+                                        <input type="checkbox"
+                                            class="step-checkbox"
+                                            name="packagings[${item.MatID}][active]"
+                                            value="1"
+                                            checked>
+
+                                        <input type="hidden"
+                                            name="packagings[${item.MatID}][qty]"
+                                            value="${item.MatQty ?? 0}">
+
+                                        <input type="hidden"
+                                            name="packagings[${item.MatID}][uom]"
+                                            value="${item.uom ?? ''}"> 
                                         
+                                        <input type="hidden"
+                                            name="packagings[${item.MatID}][MaterialName]"
+                                            value="${item.MaterialName ?? ''}"> 
+
                                     </td>
                               </tr>
                           `);

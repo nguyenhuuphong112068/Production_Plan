@@ -88,12 +88,10 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                         <tr>
                             <th rowspan="2" style="width: 40px">STT</th>
                             <th rowspan="2" >Mã NL</th>
-                            <th rowspan="2" style="width: 15%">Tên NL</th>
-                            <th rowspan="2">Mã SP</th>
-                            <th rowspan="2">Tên SP</th>
-                            <th rowspan="2">KL CT</th>
-                            <th rowspan="2">Số Lô</th>
-                            <th rowspan="2">KL Cần Dùng</th>
+                            <th rowspan="2" style="width: 15%">Tên NL</th>                      
+                            <th rowspan="2">Số Lượng Lô</th>
+                            <th rowspan="2">Lượng Theo CT</th>
+                            <th rowspan="2">Lượng Cần Dùng</th>
                             <th colspan="7" class="text-center">Tồn Kho</th>
                         </tr>
                         <tr>
@@ -118,25 +116,26 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                         {{-- ROW CHÍNH --}}
                         <tr data-group="{{ $groupId }}">
                             <td rowspan="{{ $rowspan }}">{{ $loop->iteration }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ $data->MatID }}</td>
+                            <td rowspan="{{ $rowspan }}">{{ $data->material_packaging_code }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->MaterialName }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ $data->PrdID }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ $data->MatNM }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ round($data->MatQty,5) }} {{ $data->uom }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->NumberOfBatch }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ round($data->TotalMatQty,5) }} {{ $data->uom }}</td>
+                            <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}</td>
+                            <td rowspan="{{ $rowspan }}">{{ round($data->TotalMatQty,5) }} {{ $data->unit_bom }}</td>
 
+                            
                             @if ($stocks->count())
                                 @php $s = $stocks->first(); $lb = lable_status($s->GRNSts,$s->IntBatchNo); @endphp
-                                <td>{{ $s->Mfgbatchno }}</td>
-                                <td>{{ $s->ARNO }}</td>
+                                <td>{{ $s->GRNNO}}</td>
+                                <td>{{ $s->ARNO }}
+                                    {{ $s->Mfgbatchno}}
+                                </td>
                                 <td>
                                     {{ $s->Expirydate ? \Carbon\Carbon::parse($s->Expirydate)->format('d/m/Y') : '' }}<br>
                                     {{ $s->Retestdate ? \Carbon\Carbon::parse($s->Retestdate)->format('d/m/Y') : '' }}
                                 </td>
                                 <td>{{ $s->Mfg }}</td>
                                 <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
-                                <td>{{ round($s->{'Total Qty'},4) }} {{ $s->MatUOM }}</td>
+                                <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
                                 <td class="text-center">
                                     <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
                                         {{ $lb['text'] }}
@@ -162,7 +161,7 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                                 </td>
                                 <td>{{ $s->Mfg }}</td>
                                 <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
-                                <td>{{ round($s->{'Total Qty'},4) }} {{ $s->MatUOM }}</td>
+                                <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
                                 <td class="text-center">
                                     <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
                                         {{ $lb['text'] }}
