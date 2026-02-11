@@ -41,6 +41,17 @@
         display: block;
         margin: auto;
     }
+
+     .step-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff; /* màu xanh bootstrap */
+    }
+
+    .step-checkbox:checked {
+        box-shadow: 0 0 5px #007bff;
+    }
 </style>
 
 <div class="content-wrapper">
@@ -65,9 +76,24 @@
                                 <i class="fas fa-plus"></i> Thêm
                             </button>
                         @endif
+                       
                     </div>
 
-                    <div class="col-md-8"></div>
+                    <div class="col-md-8 text-center">
+                         @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
+                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
+                                data-target="#selectProductModal" style="width: 300px;">
+                                <i class="fas fa-table"></i></i> Bảng Dự Trù Nguyên Liệu
+                            </button>
+                        @endif
+                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
+                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
+                                data-target="#selectProductModal" style="width: 300px;">
+                                <i class="fas fa-table"></i></i> Bảng Dự Trù Bao Bì
+                            </button>
+                        @endif
+
+                    </div>
                     <div class="col-md-2" style="text-align: right;">
 
                         <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
@@ -99,7 +125,7 @@
                         <th>Ngày dự kiến KCS</th>
                         <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
-                        <th>Nguồn</th>
+                       
                         <th>
                             <div> {{ "(1) Ngày có đủ NL" }}  </div>
                             <div> {{ "(2) Ngày có đủ BB" }}  </div>
@@ -117,9 +143,10 @@
                        
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
-                        <th style="width:1%">Cập Nhật</th>
-                        <th style="width:1%">Vô Hiệu</th>
+                        <th style="width:1%">Cập Nhật/ Vô Hiệu</th>
+                        {{-- <th style="width:1%">Vô Hiệu</th> --}}
                         <th style="width:1%">Lịch Sử</th>
+                        <th>Chọn</th>
                     </tr>
 
                 </thead>
@@ -238,7 +265,7 @@
                                     @endif
                             </td>
 
-                            <td>{{ $data->source_material_name }}</td>
+                            
 
                             <td>
                                 <div style="display:flex; align-items:center; gap:6px;">
@@ -321,7 +348,7 @@
  
 
                             <td class="text-center align-middle">
-                                <button type="button"  class="btn btn-warning btn-edit" 
+                                <button type="button"  class="btn btn-warning btn-edit mb-2" 
                                     {{ $auth_update }}
                                     {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                     data-name="{{ $data->finished_product_name }}"
@@ -349,9 +376,7 @@
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                            </td>
 
-                            <td class="text-center align-middle">
                                 <form class="form-deActive" action="{{ route('pages.plan.production.deActive') }}"
                                     method="post">
                                     @csrf
@@ -379,7 +404,6 @@
                                         </button>
                                     @endif
                                 </form>
-
                             </td>
 
                             <td class="text-center align-middle">
@@ -391,6 +415,14 @@
                                         {{ $data->history_count ?? 0 }}
                                     </span>
                                 </button>
+                            </td>
+
+                            <td class="text-center align-middle">
+                                <input type="checkbox"
+                                        class="step-checkbox"
+                                        name="selected"
+                                        value="1"
+                                        checked>
                             </td>
 
 

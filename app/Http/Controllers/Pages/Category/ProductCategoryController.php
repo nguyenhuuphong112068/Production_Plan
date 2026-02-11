@@ -198,8 +198,8 @@ class ProductCategoryController extends Controller
                 $datas = DB::connection('mms')
                 ->table('yfBOM_BOMItemHP')
                 ->where('PrdID', $request->intermediate_code)
-                ->where('Revno1', function ($q) use ($request) {
-                        $q->selectRaw('MAX(Revno1)')
+                ->where('Revno', function ($q) use ($request) {
+                        $q->selectRaw('MAX(Revno)')
                         ->from('yfBOM_BOMItemHP')
                         ->where('PrdID', $request->intermediate_code);
                 })
