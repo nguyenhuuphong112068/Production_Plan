@@ -20,9 +20,9 @@
   @include('pages.plan.production.batch_splitting')
   @include('pages.plan.production.update_batch_splitting')   
   @include('pages.plan.production.finished_category')
-  @include('pages.plan.production.source_material_list')
   @include('pages.plan.production.history')
-  @include('pages.plan.production.create_source') 
   @include('pages.plan.production.confirm_first_val_batch')
+  {{-- @include('pages.plan.production.source_material_list') --}}
+  {{-- @include('pages.plan.production.create_source')  --}}
   
 @endsection

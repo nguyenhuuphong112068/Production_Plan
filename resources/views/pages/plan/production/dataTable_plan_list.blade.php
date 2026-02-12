@@ -85,6 +85,7 @@
                                     <input type="hidden" name="month" value="{{ $data->month }}">
                                     <input type="hidden" name="send" value="{{ $data->send }}">
                                     <input type="hidden" name="name" value="{{ $data->name }}">
+                                    
                                     <button type="submit" class="btn btn-success">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -95,9 +96,7 @@
                                 <form action="{{ route('pages.plan.production.open_stock') }}" method="get">
                                     @csrf
                                     <input type="hidden" name="plan_list_id" value="{{ $data->id }}">
-                                    <input type="hidden" name="month" value="{{ $data->month }}">
-                                    <input type="hidden" name="send" value="{{ $data->send }}">
-                                    <input type="hidden" name="name" value="{{ $data->name }}">
+                                    <input type="hidden" name="current_url" value="{{ url()->full() }}">
                                     <button type="submit" class="btn btn-success" {{ $auth_view_material }}>
                                         <i class="fas fa-table"></i>
                                     </button>

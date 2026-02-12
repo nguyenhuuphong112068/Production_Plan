@@ -11,8 +11,8 @@
  
 @section('mainContent')
   @include('pages.plan.production.dataTable_feedback')
-  @include('pages.plan.production.qa_feedback')
+  {{-- @include('pages.plan.production.qa_feedback')
   @include('pages.plan.production.en_feedback')
   @include('pages.plan.production.qc_feedback')
-  @include('pages.plan.production.pro_feedback')
+  @include('pages.plan.production.pro_feedback') --}}
 @endsection

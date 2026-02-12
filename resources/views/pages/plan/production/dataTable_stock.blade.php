@@ -71,7 +71,12 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
 
             {{-- SEARCH --}}
             <div class="row mb-2">
-                <div class="col-md-9"></div>
+                <div class="col-md-9">
+                    <button type="button" class="btn btn-success"
+                        onclick="window.location.href='{{ $current_url }}'">
+                        <i class="fas fa-arrow-left"></i> Trở Về
+                    </button>
+                </div>
                 <div class="col-md-3">
                     <input id="globalSearch"
                            class="form-control"
@@ -89,18 +94,19 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             <th rowspan="2" style="width: 40px">STT</th>
                             <th rowspan="2" >Mã NL</th>
                             <th rowspan="2" style="width: 15%">Tên NL</th>                      
-                            <th rowspan="2">Số Lượng Lô</th>
+                            <th rowspan="2" style="width: 4%">Số Lượng Lô</th>
                             <th rowspan="2">Lượng Theo CT</th>
                             <th rowspan="2">Lượng Cần Dùng</th>
-                            <th colspan="7" class="text-center">Tồn Kho</th>
+                            <th rowspan="2">Tổng Tồn</th>
+                            <th colspan="7" class="text-center">Tồn Kho Hiện Hành</th>
                         </tr>
                         <tr>
-                            <th>Lô NSX</th>
-                            <th>Lô NB</th>
+                            <th>Tồn</th>
+                            <th>Nhập</th>
+                            <th>Số GRN</th>
+                            <th>Số Lô NB/ Số Lô NSX</th>
                             <th>HSD / Retest</th>
                             <th>Nhà SX</th>
-                            <th>Nhập</th>
-                            <th>Tồn</th>
                             <th>Trạng Thái</th>
                         </tr>
                     </thead>
@@ -118,13 +124,25 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             <td rowspan="{{ $rowspan }}">{{ $loop->iteration }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->material_packaging_code }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->MaterialName }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ $data->NumberOfBatch }}</td>
+                            <td rowspan="{{ $rowspan }}">{{ $data->NumberOfBatch }}
+                                <button type="button" class="btn btn-sm btn-batch-datial"
+                                        data-plan_master_ids="{{ $data->plan_master_ids }}"
+                            
+                                        data-toggle="modal" 
+                                        data-target="#batchDetialModal"
+                                        >
+                                                    📝
+                                </button>
+                            </td>
                             <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}</td>
                             <td rowspan="{{ $rowspan }}">{{ round($data->TotalMatQty,5) }} {{ $data->unit_bom }}</td>
+                            <td rowspan="{{ $rowspan }}">{{ round($data->totalQty,5) }} {{ $data->unit_bom }}</td>
 
                             
                             @if ($stocks->count())
                                 @php $s = $stocks->first(); $lb = lable_status($s->GRNSts,$s->IntBatchNo); @endphp
+                                <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
+                                <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
                                 <td>{{ $s->GRNNO}}</td>
                                 <td>{{ $s->ARNO }}
                                     {{ $s->Mfgbatchno}}
@@ -134,8 +152,7 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                                     {{ $s->Retestdate ? \Carbon\Carbon::parse($s->Retestdate)->format('d/m/Y') : '' }}
                                 </td>
                                 <td>{{ $s->Mfg }}</td>
-                                <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
-                                <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
+
                                 <td class="text-center">
                                     <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
                                         {{ $lb['text'] }}
@@ -153,6 +170,8 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                         @foreach ($stocks->skip(1) as $s)
                             @php $lb = lable_status($s->GRNSts,$s->IntBatchNo); @endphp
                             <tr data-group="{{ $groupId }}">
+                                <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
+                                <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
                                 <td>{{ $s->Mfgbatchno }}</td>
                                 <td>{{ $s->ARNO }}</td>
                                 <td>
@@ -160,8 +179,8 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                                     {{ $s->Retestdate ? \Carbon\Carbon::parse($s->Retestdate)->format('d/m/Y') : '' }}
                                 </td>
                                 <td>{{ $s->Mfg }}</td>
-                                <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
-                                <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
+
+                                
                                 <td class="text-center">
                                     <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
                                         {{ $lb['text'] }}
@@ -228,5 +247,166 @@ $(document).ready(function () {
 
     /* INIT COUNT */
     $('#visibleCount').text(totalGroups);
+
+    $('.btn-batch-datial').on('click', function() {
+     
+        const btn = $(this);
+        const plan_master_ids_text = btn.data('plan_master_ids');
+
+        const plan_master_ids = plan_master_ids_text
+            ? String(plan_master_ids_text).split('_')
+            : [];
+        if (!plan_master_ids.length) return
+        
+        const modal_table_body = $('#data_table_batch_detail_body')
+        
+                modal_table_body.empty();
+
+                $.ajax({
+                        url: "{{ route('pages.plan.production.open_bacth_detail') }}",
+                        type: 'post',
+                        data: {
+                            plan_master_ids: plan_master_ids,
+                            _token: "{{ csrf_token() }}"
+                        },
+
+                        success: function (res) {
+                            console.log (res)
+                            if (!res || res.length === 0) {
+                                modal_table_body.append(`
+                                    <tr>
+                                        <td colspan="15" class="text-center">Không có dữ liệu</td>
+                                    </tr>
+                                `);
+                                return;
+                            }
+
+                            res.datas.forEach((data, index) => {
+
+                                let statusColors = {
+                                    "Chưa làm": "background-color: green; color: white;",
+                                    "Đã Cân": "background-color: #e3f2fd; color: #0d47a1;",
+                                    "Đã Pha chế": "background-color: #bbdefb; color: #0d47a1;",
+                                    "Đã THT": "background-color: #90caf9; color: #0d47a1;",
+                                    "Đã định hình": "background-color: #64b5f6; color: white;",
+                                    "Đã Bao phim": "background-color: #1e88e5; color: white;",
+                                    "Hoàn Tất ĐG": "background-color: #0d47a1; color: white;",
+                                    "Hủy": "background-color: red; color: white;"
+                                };
+
+                                let levelColors = {
+                                    1: "background-color:#f44336;color:white;",
+                                    2: "background-color:#ff9800;color:white;",
+                                    3: "background-color:blue;color:white;",
+                                    4: "background-color:#4caf50;color:white;"
+                                };
+
+                                let cancelClass = data.cancel ? 'text-danger' : 'text-success';
+
+                                let finishedName = 
+                                    (data.finished_product_name?.trim() !== data.intermediate_product_name?.trim())
+                                        ? data.finished_product_name ?? ''
+                                        : '';
+
+                                let isValText = '';
+                                if (data.is_val && data.code_val) {
+                                    let arr = data.code_val.split('_');
+                                    isValText = `Lô thứ ${arr[1] ?? ''}`;
+                                }
+
+                                modal_table_body.append(`
+                                    <tr>
+                                        <td>
+                                            <div>${index + 1}</div>
+                                            ${data.userGroup === "Admin" ? `<div>${data.id}</div>` : ''}
+                                        </td>
+
+                                        <td>
+                                            <div class="text-center"
+                                                style="display:inline-block;padding:6px 10px;width:100px;border-radius:10px;
+                                                ${statusColors[data.status] ?? ''}">
+                                                ${data.status ?? ''}
+                                            </div>
+                                        </td>
+
+                                        <td class="${cancelClass}">
+                                            <div>${data.intermediate_code ?? ''}</div>
+                                            <div>${data.finished_product_code ?? ''}</div>
+                                        </td>
+
+                                        <td>
+                                            <div>${data.intermediate_product_name ?? ''}</div>
+                                            <div>${finishedName}</div>
+                                            <div>(${data.batch_qty ?? ''} ${data.unit_batch_qty ?? ''})</div>
+                                        </td>
+
+                                        <td class="text-center">
+                                            <div>${data.batch ?? ''}</div>
+                                        </td>
+
+                                        <td>
+                                            <div>${data.market ?? ''}</div>
+                                            <div>${data.specification ?? ''}</div>
+                                        </td>
+
+                                        <td>
+                                            <div>${formatDateInput(data.expected_date)??''}</div>
+                                        </td>
+
+                                        <td class="text-center">
+                                            <span style="display:inline-block;padding:6px 10px;width:50px;border-radius:40px;
+                                                ${levelColors[data.level] ?? ''}">
+                                                <input type="text"
+                                                    class="updateInput"
+                                                    name="level"
+                                                    value="${data.level ?? ''}"
+                                                    data-id="${data.id}">
+                                            </span>
+                                        </td>
+
+                                        <td class="text-center">
+                                            <input type="checkbox"
+                                                ${data.is_val ? 'checked' : ''}
+                                                disabled>
+                                            <br>
+                                            ${isValText}
+                                        </td>
+
+                                        <td>
+                                            <div>${formatDateInput(data.expected_date)??''}</div>
+                                        </td>
+                                        <td>
+                                            <div>${formatDateInput(data.expected_date)??''}</div>
+                                        </td>
+
+                                        <td>${data.note ?? ''}</td>
+
+                                
+                                    </tr>
+                                `);
+                            });
+                        }
+                        ,
+                        error: function() {
+                                modal_table_body.append(
+                                    `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                                );
+                            }
+                });  
+                
+    });   
 });
+
+
+function formatDateInput(date) {
+    if (!date) return '';
+    let d = new Date(date);
+    return d.toISOString().split('T')[0];
+}
+
+function formatDate(date) {
+    if (!date) return '';
+    let d = new Date(date);
+    return d.toLocaleDateString('vi-VN');
+}
 </script>

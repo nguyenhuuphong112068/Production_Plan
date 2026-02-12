@@ -152,6 +152,7 @@ class ProductionPlanController extends Controller
                         DB::raw('MAX(stage_code) as max_stage_code')
                 )
                 ->groupBy('plan_master_id');
+  
 
                 $datas = DB::table('plan_master')
                         ->select(
@@ -1085,13 +1086,19 @@ class ProductionPlanController extends Controller
         public function updateInput(Request $request){
                 $now = now();
                 $user = session('user')['fullName'];
+                $idOrPlanListId = 'id';
+                if ($request->name == "selected"){
+                        $updateData = ['selected' => !$request->updateValue]; 
+                }
+                else if ($request->name == "selected_all"){
+                        $idOrPlanListId = 'plan_list_id';
+                        $updateData = ['selected' => !$request->updateValue];  
+                }else {
+                        $updateData = [$request->name => $request->updateValue];
+                }
 
-                Log::info  ($request->all());
                 
                 
-                $updateData = [
-                        $request->name => $request->updateValue
-                ];
 
                 switch ($request->name) {
                 case 'pro_feedback':
@@ -1141,12 +1148,8 @@ class ProductionPlanController extends Controller
                         break;
                 }
 
-
-                Log::info  ($updateData);
-              
-               
                 DB::table('plan_master')
-                        ->where('id', $request->id)
+                        ->where($idOrPlanListId, $request->id)
                         ->update($updateData);
 
                 return response()->json(['success' => true]);
@@ -1392,22 +1395,27 @@ class ProductionPlanController extends Controller
         }
 
         public function open_stock(Request  $request){
-                
+        
                 $plan_master_materials = DB::table('plan_master_materials as pmm')
                 ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
                 ->where('pm.plan_list_id', $request->plan_list_id)
                 ->where('pm.active', 1)
                 ->where('pmm.active', 1)
+                ->when($request->selected, function ($q) {return $q->where('pm.selected', 1);})
+                ->when($request->has('material_packaging_type'), function ($q) use ($request)  {return $q->where('pmm.material_packaging_type', $request->material_packaging_type);})
                 ->select(
+                        
                         'pmm.MaterialName',
                         'pmm.material_packaging_code',
                         'pmm.material_packaging_type',
                         'pmm.unit_bom',
                         DB::raw('SUM(pmm.qty) as total_qty'),
                         DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
-                        DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty')
+                        DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
+                        DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids")
                 )
                 ->groupBy(
+                        
                         'pmm.MaterialName',
                         'pmm.material_packaging_code',
                         'pmm.material_packaging_type',
@@ -1415,9 +1423,7 @@ class ProductionPlanController extends Controller
                 )
                 ->orderBy('pmm.material_packaging_code')
                 ->get();
-
                
-                
 
                 $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
 
@@ -1456,119 +1462,115 @@ class ProductionPlanController extends Controller
                 $stockByMat = collect($StockOverview)->groupBy('MatID');
                 
                 $plan_master_materials = collect($plan_master_materials)
-                ->map(function ($item) use ($stockByMat) {
-                        $item->stock = $stockByMat[$item->material_packaging_code] ?? collect([]);
+                        ->map(function ($item) use ($stockByMat) {
+
+                        $stocks = $stockByMat[$item->material_packaging_code] ?? collect([]);
+
+                        // 👉 Chỉ tính tổng, không thêm dòng
+                        $item->totalReceipt = $stocks->sum('ReceiptQuantity');
+                        $item->totalQty     = $stocks->sum('Total_Qty');
+
+                        $item->stock = $stocks;
+
                         return $item;
-                })
-                ->sortBy(fn ($i) => mb_strtolower($i->MaterialName))
-                ->values();
-           
-                //dd ($plan_master_materials );
+                        })
+                        ->sortBy(fn ($i) => mb_strtolower($i->MaterialName))
+                        ->values();
+
+
+                
                 $production  =  session('user')['production_name'];
+
+
                
                 session()->put(['title'=> "BẢNG DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
-        
+
+                if ($request->title){
+                         session()->put(['title'=> "$request->title - $production"]);
+                }
+                      
                 return view('pages.plan.production.stock_list',[
                         'datas' => $plan_master_materials, 
                         'plan_list_id' => $request->plan_list_id,
                         'month' => $request->month, 
                         'production' => $request->production,
-                        'send'=> $request->send??1,      
+                        'send'=> $request->send??1, 
+                        'current_url' => $request->current_url??null
                 ]);
         }
+        
+        public function open_bacth_detail(Request  $request){
+                Log::info($request->all());
 
-        // public function open_stock(Request  $request){
+                $maxStageFinished = DB::table('stage_plan')
+                ->whereIn('stage_plan.plan_master_id', $request->plan_master_ids)
+                ->where('finished', 1)
+                ->select(
+                        'plan_master_id',
+                        DB::raw('MAX(stage_code) as max_stage_code')
+                )
+                ->groupBy('plan_master_id');
+  
+
+                $datas = DB::table('plan_master')
+                        ->select(
+                                'plan_master.*',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                DB::raw('fp_name.name AS finished_product_name'),
+                                DB::raw('im_name.name AS intermediate_product_name'),
+                                'market.name as market',
+                                'specification.name as specification',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'finished_product_category.deparment_code',
+                                'source_material.name as source_material_name',
+
+                                DB::raw("
+                                CASE
+                                        WHEN plan_master.cancel = 1 THEN 'Hủy'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
+                                        ELSE 'Chưa làm'
+                                        END AS status
+                                ")
+                        )
+                        ->whereIn('plan_master.id', $request->plan_master_ids)
+                        ->where('plan_master.active', 1)
+
+                        ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
+                        ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
+                        ->leftJoin('source_material', 'plan_master.material_source_id','=','source_material.id')
+                        ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
+                        ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
+                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
+                        })
+                        ->leftJoin('stage_plan', function ($join) {
+                                $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                                ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                        })
+                        ->orderBy('expected_date', 'asc')
+                        ->orderBy('level', 'asc')
+                        ->orderBy('batch', 'asc')
+                ->get();
+
                 
-
-        //         $intermediateCodes = DB::table('plan_master')
-        //                 ->leftJoin(
-        //                         'finished_product_category',
-        //                         'plan_master.product_caterogy_id',
-        //                         '=',
-        //                         'finished_product_category.id'
-        //                 )
-        //                 ->where('plan_master.plan_list_id', $request->plan_list_id)
-        //                 ->where('plan_master.active', 1)
-        //         ->pluck('finished_product_category.intermediate_code');
-
-        //         $finishedCodes = DB::table('plan_master')
-        //                 ->leftJoin(
-        //                         'finished_product_category',
-        //                         'plan_master.product_caterogy_id',
-        //                         '=',
-        //                         'finished_product_category.id'
-        //                 )
-        //                 ->where('plan_master.plan_list_id', $request->plan_list_id)
-        //                 ->where('plan_master.active', 1)
-        //         ->pluck('finished_product_category.finished_product_code');
-
-               
-
-        //         $prdQtyMap = $intermediateCodes
-        //         ->merge($finishedCodes)
-        //         ->countBy();
-                 
-        //         $prdIds = $prdQtyMap
-        //         ->keys()
-        //         ->map(fn ($v) => (string) $v)
-        //         ->values();
-
-        //         //dd ($prdIds);
-        //         $latestRev = DB::connection('mms')->table('yfBOM_BOMItemHP')
-        //         ->select('PrdID', DB::raw('MAX(Revno1) as Revno1'))
-        //         ->whereIn('PrdID', $prdIds)
-        //         ->groupBy('PrdID');
-                        
-        //         $BOM = DB::connection('mms')->table('yfBOM_BOMItemHP as b')
-        //         ->joinSub($latestRev, 'r', function ($join) {
-        //                 $join->on('b.PrdID', '=', 'r.PrdID')
-        //                 ->on('b.Revno1', '=', 'r.Revno1');
-        //         })
-        //         ->orderBy('b.PrdStage')
-        //         ->orderBy('b.MatID')
-        //         ->get();
-
-        //         $raw_material = $BOM->map(function ($row) use ($prdQtyMap) {
-        //                 $row->NumberOfBatch = $prdQtyMap[$row->PrdID] ?? 1;
-        //                 $row->TotalMatQty = round($row->MatQty * $row->NumberOfBatch,3);
-        //                 return $row;
-        //         });
-
-        //         $matIds = $raw_material
-        //         ->pluck('MatID')
-        //         ->unique()
-        //         ->map(fn ($v) => (string) $v)   // ép string cho chắc (SQL Server)
-        //         ->values();
-
-        //         $StockOverview = DB::connection('mms')
-        //                 ->table('yf_RMPMStockOverview')
-        //                 ->whereIn('MatID', $matIds)
-        //         ->get();
+                return response()->json([
+                        'datas' => $datas
+                ]);
 
               
-        //         $stockByMat = collect($StockOverview)->groupBy('MatID');
-                
-        //         $raw_material = collect($raw_material)
-        //         ->map(function ($item) use ($stockByMat) {
-        //                 $item->stock = $stockByMat[$item->MatID] ?? collect([]);
-        //                 return $item;
-        //         })
-        //         ->sortBy(fn ($i) => mb_strtolower($i->MatNM))
-        //         ->values();
-           
+        }
 
-        //         $production  =  session('user')['production_name'];
 
-        //         session()->put(['title'=> "BẢNG DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
         
-        //         return view('pages.plan.production.stock_list',[
-        //                 'datas' => $raw_material, 
-        //                 'plan_list_id' => $request->plan_list_id,
-        //                 'month' => $request->month, 
-        //                 'production' => $request->production,
-        //                 'send'=> $request->send??1,      
-        //         ]);
-        // }
 
         public function open_feedback_API (Request $request){
                
