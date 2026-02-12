@@ -63,7 +63,7 @@
         @php
             $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
             $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
-            
+            $auth_view_material = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
         @endphp
         <!-- /.card-Body -->
         <div class="card-body">
@@ -80,20 +80,39 @@
                     </div>
 
                     <div class="col-md-8 text-center">
-                         @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
-                                data-target="#selectProductModal" style="width: 300px;">
-                                <i class="fas fa-table"></i></i> Bảng Dự Trù Nguyên Liệu
-                            </button>
-                        @endif
                         @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
-                                data-target="#selectProductModal" style="width: 300px;">
-                                <i class="fas fa-table"></i></i> Bảng Dự Trù Bao Bì
-                            </button>
+                            <form action="{{ route('pages.plan.production.open_stock') }}" 
+                                method="get"
+                                class="d-inline-block">
+                                @csrf
+                                <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
+                                <input type="hidden" name="material_packaging_type" value="0">
+                                <input type="hidden" name="title" value="BẢNG TÍNH NGUYÊN LIỆU">
+                                <input type="hidden" name="selected" value="1">
+                                <input type="hidden" name="current_url" value="{{ url()->full() }}">
+                                <button type="submit" class="btn btn-success" {{ $auth_view_material }} style="width: 300px">
+                                    <i class="fas fa-table"></i> Bảng Dự Trù Nguyên Liệu
+                                </button>
+                            </form>
+
+                            <form action="{{ route('pages.plan.production.open_stock') }}" 
+                                method="get"
+                                class="d-inline-block ms-2">
+                                @csrf
+                                <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
+                                <input type="hidden" name="material_packaging_type" value="1">
+                                <input type="hidden" name="title" value="BẢNG TÍNH BAO BÌ">
+                                <input type="hidden" name="selected" value="1">
+                                <input type="hidden" name="current_url" value="{{ url()->full() }}">
+                                <button type="submit" class="btn btn-success"  style="width: 300px" {{ $auth_view_material }}>
+                                    <i class="fas fa-table"></i> Bảng Dự Trù Bao Bì
+                                </button>
+                            </form>
                         @endif
 
                     </div>
+
+
                     <div class="col-md-2" style="text-align: right;">
 
                         <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
@@ -146,7 +165,15 @@
                         <th style="width:1%">Cập Nhật/ Vô Hiệu</th>
                         {{-- <th style="width:1%">Vô Hiệu</th> --}}
                         <th style="width:1%">Lịch Sử</th>
-                        <th>Chọn</th>
+                        <th class = "text-center">Chọn
+                            <button type="button"
+                                    class="btn btn-primary btn-selected-all mt-3"
+                                    {{ $auth_update }}
+                                    data-plan_list_id="{{ $plan_list_id }}"
+                                    data-active="0">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </th>
                     </tr>
 
                 </thead>
@@ -345,7 +372,6 @@
                                 <div> {{ $data->prepared_by }} </div>
                                 <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
                             </td>
- 
 
                             <td class="text-center align-middle">
                                 <button type="button"  class="btn btn-warning btn-edit mb-2" 
@@ -421,8 +447,9 @@
                                 <input type="checkbox"
                                         class="step-checkbox"
                                         name="selected"
-                                        value="1"
-                                        checked>
+                                        data-id = {{ $data->id }}
+                                        value= {{$data->selected}}
+                                        {{ $data->selected == 1 ? 'checked':''}}>
                             </td>
 
 
@@ -756,7 +783,7 @@
                 if (id == ''){
                     Swal.fire({
                     title: 'Cảnh Báo!',
-                    text: 'Sản Phẩm Chưa Định Mức',
+                    text: 'id Không xác định',
                     icon: 'warning',
                     timer: 1000, // tự đóng sau 2 giây
                     showConfirmButton: false
@@ -783,6 +810,8 @@
                     }
                 }
 
+            
+
 
                 $.ajax({
                     url: "{{ route('pages.plan.production.updateInput') }}",
@@ -796,6 +825,95 @@
                     }
                 });
             });
+
+            $(document).on('change', '.step-checkbox' , function () {
+ 
+                let id = $(this).data('id');
+                let name = $(this).attr('name');
+                let updateValue = $(this).val();
+                let oldValue = $(this).data('old-value');
+              
+                if (updateValue === oldValue)return;
+                
+                if (id == ''){
+                    Swal.fire({
+                    title: 'Cảnh Báo!',
+                    text: 'id Không xác định',
+                    icon: 'warning',
+                    timer: 1000, // tự đóng sau 2 giây
+                    showConfirmButton: false
+                });
+                    $(this).val('');
+                    return
+                }
+
+            
+                $.ajax({
+                    url: "{{ route('pages.plan.production.updateInput') }}",
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    name: name,
+                    updateValue: updateValue
+                    }
+                });
+            });
+
+            $(document).on('click', '.btn-selected-all', function () {
+
+                let btn = $(this);
+                let id = btn.data('plan_list_id');
+                let isActive = btn.data('active') == 1;
+
+                // Toggle value
+                let updateValue = isActive ? 0 : 1;
+
+                // Update lại trạng thái trong button
+                btn.data('active', updateValue);
+
+                // Đổi màu cho dễ nhìn
+                if (updateValue == 1) {
+                    btn.removeClass('btn-primary').addClass('btn-success');
+                } else {
+                    btn.removeClass('btn-success').addClass('btn-primary');
+                }
+
+                // AJAX update
+                $.ajax({
+                    url: "{{ route('pages.plan.production.updateInput') }}",
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        id: id,
+                        name: 'selected_all',   // gửi cố định field name
+                        updateValue: updateValue
+                    },
+                    success: function (res) {
+
+                        
+                        // btn.data('active', updateValue);
+                        // btn.find('i')
+                        // .removeClass(updateValue == 1 ? 'fa-check' : 'fa-xmark')
+                        // .addClass(updateValue == 1 ? 'fa-xmark' : 'fa-check');
+
+                        // if (updateValue == 1) {
+                        //     icon.removeClass('fa-check').addClass('fa-xmark');
+                        // } else {
+                        //     icon.removeClass('fa-xmark').addClass('fa-check');
+                        // }
+
+                        // cập nhật checkbox
+                        $('.step-checkbox').prop('checked', updateValue == 1);
+                    }
+                });
+
+            });
+
+
+
 
         });
     </script>
