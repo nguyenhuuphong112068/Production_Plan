@@ -47,9 +47,6 @@
 
             <div class="modal-body">
             <div class="card" >
-
-  
-
             @php
                 $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
                 $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
@@ -133,9 +130,9 @@
                         <th style="width:10%" >Sản Phẩm</th>
                         <th>Số Lô/Số lượng ĐG</th>
                         <th>Thị Trường/ Qui Cách</th>
-                        <th>Ngày dự kiến KCS</th>
+                        <th style="width:5%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên</th>
-                        <th>Lô Thẩm định</th>
+                        <th style="width:2%" >Lô TĐ</th>
                        
                         <th>
                             <div> {{ "(1) Ngày có đủ NL" }}  </div>
@@ -150,208 +147,12 @@
                             <div> {{ "(2) THT trước" }}  </div>
                             <div> {{ "(3) BP trước" }}  </div>
                             <div> {{ "(4) ĐG trước" }}  </div>
-                        </th>
+                        </th >
                        
-                        <th>Ghi Chú</th>
+                        <th style="width:30%" >Ghi Chú</th>
                 </thead>
                 <tbody id = "data_table_batch_detail_body">
 
-                    {{-- @foreach ($datas as $data)
-                        <tr>
-                            <td>
-                                <div> {{ $loop->iteration }} </div>
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
-                            </td>
-                            <td>
-                                @php
-                                    $stutus_colors = [
-                                        "Chưa làm" => 'background-color: green; color: white;', 
-                                        "Đã Cân"        => 'background-color: #e3f2fd; color: #0d47a1;', // xanh rất nhạt
-                                        "Đã Pha chế"    => 'background-color: #bbdefb; color: #0d47a1;',
-                                        "Đã THT"        => 'background-color: #90caf9; color: #0d47a1;',
-                                        "Đã định hình"  => 'background-color: #64b5f6; color: white;',
-                                        "Đã Bao phim"   => 'background-color: #1e88e5; color: white;',
-                                        "Hoàn Tất ĐG"   => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
-                                        'Hủy' => 'background-color: red; color: white;'
-                                      
-                                    ];
-                                @endphp
-                                <div class ="text-center" style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
-                                    > {{ $data->status }} </div>
-                            </td>
-
-
-                            @if (!$data->cancel)
-                                <td class="text-success">
-                                    <div> {{ $data->intermediate_code }} </div>
-                                    <div> {{ $data->finished_product_code }} </div>
-                                </td>
-                            @else
-                                <td class="text-danger">
-                                    <div> {{ $data->intermediate_code }} </div>
-                                    <div> {{ $data->finished_product_code }} </div>
-                                </td>
-                            @endif
-
-                            <td>
-                                <div> {{ $data->intermediate_product_name }} </div>
-                                <div> {{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '':trim($data->finished_product_name)}} </div>
-                                <div>  {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
-                            </td>
-                            <td style="text-align: center;" >
-                                <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }} style="font-weight: bold;" >                              
-                                {{ $splittingModal = "" }}
-
-                                @if ($data->number_parkaging > 0)
-                                    @if ($auth_update != 'disabled')
-                                    <div  class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
-                                        {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
-                                        data-name="{{ $data->finished_product_name }}"
-                                        data-intermediate_code="{{ $data->intermediate_code }}"
-                                        data-finished_product_code="{{ $data->finished_product_code }}"
-                                        data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
-                                        data-specification="{{ $data->specification }}" data-level="{{ $data->level }}"
-                                        data-expected_date="{{ $data->expected_date }}" data-is_val="{{ $data->is_val }}"
-                                        data-source_material_name="{{ $data->source_material_name }}"
-                                        data-after_weigth_date="{{ $data->after_weigth_date}}"
-                                        data-after_parkaging_date="{{ $data->after_parkaging_date }}"
-                                        data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
-                                        data-unit_batch_qty="{{ $data->unit_batch_qty}}"
-                                        data-material_source_id="{{ $data->material_source_id}}"
-                                        data-number_parkaging="{{ $data->number_parkaging}}"
-
-                                       
-                                    >
-                                        {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
-                                    @else
-                                        {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }}
-                                    @endif
-                                @endif
-                                </td>
-
-                            <td>
-                                <div> {{ $data->market }} </div>
-                                <div> {{ $data->specification }} </div>
-                            </td>
-
-                            <td>
-                                <input type= "date" class="updateInput" name="expected_date"  value="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }} {{ $auth_update }}>
-                            </td>
-                            
-                            @php
-                                $colors = [
-                                    1 => 'background-color: #f44336; color: white;', // đỏ
-                                    2 => 'background-color: #ff9800; color: white;', // cam
-                                    3 => 'background-color: blue; color: white;', // vàng
-                                    4 => 'background-color: #4caf50; color: white;', // xanh lá
-                                ];
-                            @endphp
-                           
-                            <td class="text-center "> 
-                                <span
-                                    style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
-                                    <input type= "text" class="updateInput" name="level" value = "{{$data->level}}" data-id = {{$data->id}} {{ $auth_update }}>
-                                </span>
-                            </td>
-
-                            <td class="text-center ">
-                                  <input class="form-check-input step-checkbox2"
-                                      type="checkbox" role="switch"
-                                      data-id="{{ $data->id }}"
-                                      id="{{ $data->id }}"
-                                      {{ $auth_update != ''?'readOnly':''}}
-                                      {{ $data->is_val ? 'checked' : '' }}
-                                      readonly
-                                      >
-                                      <br>
-                                    @if ($data->is_val)
-                                        Lô thứ  {{$data->code_val ? explode('_', $data->code_val)[1] ?? '' : '' }}
-                                    @endif
-                            </td>
-
-                            
-
-                            <td>
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(1):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="after_weigth_date"
-                                        value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(2):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="after_parkaging_date"
-                                        value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(3):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="allow_weight_before_date"
-                                        value="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(4):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="expired_material_date"
-                                        value="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(5):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="expired_packing_date"
-                                        value="{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-                         
-                            </td>
-
-                            <td>
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(1):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="preperation_before_date"
-                                        value="{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(2):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="blending_before_date"
-                                        value="{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(3):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="coating_before_date"
-                                        value="{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-
-                                 <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(4):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="parkaging_before_date"
-                                        value="{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('Y-m-d') : '' }}"
-                                        data-id="{{ $data->id }}">
-                                </div>
-                         
-                            </td>
-
-
-                            <td> 
-                                {{ $data->note }}
-                            </td>
-
-                            <td>
-                                <div> {{ $data->prepared_by }} </div>
-                                <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
-                            </td>
-
-                        </tr>
-                    @endforeach --}}
                 </tbody>
             </table>
 
@@ -362,13 +163,11 @@
 
 
     <script>
+        let batchTable;
 
-        $(document).ready(function() {
-            document.body.style.overflowY = "auto";
-            preventDoubleSubmit("#send_form", "#send_btn");
+        $(document).ready(function () {
 
-  
-            $('#data_table_batch_detail').DataTable({
+            batchTable = $('#data_table_batch_detail').DataTable({
                 paging: true,
                 lengthChange: true,
                 searching: true,
@@ -387,27 +186,64 @@
                     paginate: {
                         previous: "Trước",
                         next: "Sau"
-                    }
-                },
-                infoCallback: function(settings, start, end, max, total, pre) {
-                    let activeCount = 0;
-                    let inactiveCount = 0;
-
-                    settings.aoData.forEach(function(row) {
-                        // row.anCells là danh sách <td> của từng hàng
-                        const lastTd = row.anCells[row.anCells.length -
-                            1]; // cột cuối (Vô Hiệu)
-                        const btn = $(lastTd).find('button[type="submit"]');
-                        const status = btn.data('type'); // lấy 1 hoặc 0
-
-                        if (status == 1) activeCount++;
-                        else inactiveCount++;
-                    });
-
-                    return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
+                        }
                 }
             });
 
+            $(document).on('blur', '.updateInput', function () {
+                
+                let id = $(this).data('id');
+                let name = $(this).attr('name');
+                let updateValue = $(this).val();
+                let oldValue = $(this).data('old-value');
+              
+                if (updateValue === oldValue)return;
+                
+                if (id == ''){
+                    Swal.fire({
+                    title: 'Cảnh Báo!',
+                    text: 'id Không xác định',
+                    icon: 'warning',
+                    timer: 1000, // tự đóng sau 2 giây
+                    showConfirmButton: false
+                });
+                    $(this).val('');
+                    return
+                }
+
+                if (name == "level"){
+                    const pattern = /^[1-9]\d*$/;
+                    if (updateValue && !pattern.test(updateValue)) {
+                        Swal.fire({
+                            title: 'Lỗi định dạng!',
+                            text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                            icon: 'error',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        $(this).focus();
+                        $(this).css('border', '1px solid red');
+                        return;
+                    } else {
+                        $(this).css('border', '');
+                    }
+                }
+
+            
+
+
+                $.ajax({
+                    url: "{{ route('pages.plan.production.updateInput') }}",
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    name: name,
+                    updateValue: updateValue
+                    }
+                });
+            });
 
 
         });

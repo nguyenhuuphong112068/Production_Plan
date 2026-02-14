@@ -21,6 +21,8 @@ class ProductionPlanController extends Controller
                         ->orderBy('id', 'desc')
                 ->get();
 
+
+
                 // 2. Lấy tổng batch theo plan_list_id
                 $total_batch_qtys = DB::table('plan_master as pm')
                         ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
@@ -45,12 +47,14 @@ class ProductionPlanController extends Controller
 
                 $batch_status = DB::table('plan_master as pm')
                         ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
+                        ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
                         ->where('pm.active', 1)
                         ->where('pm.only_parkaging', 0)
                         ->where('pm.deparment_code', session('user')['production_code'])
                         ->groupBy('pm.plan_list_id', 'pm.id')
                         ->select(
                                 'pm.plan_list_id',
+                                'fc.batch_qty',
                         
                         DB::raw("
                         CASE
@@ -80,19 +84,27 @@ class ProductionPlanController extends Controller
                         END AS huy
                         ")
                 )
+                ->groupBy('pm.plan_list_id', 'pm.id', 'fc.batch_qty')
                 ->get();
-                
+              
+         
 
+                
+              
                 $batch_summary = $batch_status
                         ->groupBy('plan_list_id')
                         ->map(function ($rows) {
+                                $so_lo_chua_lam = $rows->where('chua_lam', 1);
                                 return (object)[
                                 'tong_lo'        => $rows->count(),       // ✅ TỔNG LÔ
                                 'so_lo_da_lam'   => $rows->sum('da_lam'),
                                 'so_lo_chua_lam' => $rows->sum('chua_lam'),
                                 'so_lo_huy'      => $rows->sum('huy'),
+                                'batch_qty_pending' => $so_lo_chua_lam->sum('batch_qty'),
                                 ];
                 });
+
+               // dd ($batch_summary);
 
 
                 $datas = $datas->map(function ($item) use ($total_batch_qtys, $batch_summary) {
@@ -116,6 +128,37 @@ class ProductionPlanController extends Controller
 
                 return $item;
                 });
+
+                $pending_plan = (object)[
+                        'id' => -1,
+                        'deparment_code' => session('user')['production_code'],
+                        'prepared_by' => "NA",
+                        'created_at' => now(),
+                        'send' => 1,
+                        'send_by' => 'NA',
+                        'send_date' => now(),
+                        'month' => 'NA',
+
+                        'name' => 'KẾ HOẠCH CHƯA THỰC HIỆN',
+                        'total_batch_qty' => 0,
+                        'tong_lo' => 0,
+                        'so_lo_da_lam' => 0,
+                        'so_lo_chua_lam' => 0,
+                        'so_lo_huy' => 0,
+                ];
+
+                foreach ($datas as $item) {
+                        if ($item->so_lo_chua_lam > 0) {
+                                $pending_plan->total_batch_qty += $batch_summary[$item->id]->batch_qty_pending ?? 0;
+                                $pending_plan->tong_lo += $item->so_lo_chua_lam;
+                                $pending_plan->so_lo_chua_lam += $item->so_lo_chua_lam;
+                        }
+                }
+
+                // Chỉ thêm nếu có dữ liệu
+                if ($pending_plan->so_lo_chua_lam > 0) {
+                        $datas->prepend($pending_plan);
+                }
 
                // dd ($datas, $total_batch_qtys);
 
@@ -143,7 +186,7 @@ class ProductionPlanController extends Controller
         }
 
         public function open(Request  $request){
-         
+              
                 $maxStageFinished = DB::table('stage_plan')
                 ->where('stage_plan.plan_list_id', $request->plan_list_id)
                 ->where('finished', 1)
@@ -153,7 +196,6 @@ class ProductionPlanController extends Controller
                 )
                 ->groupBy('plan_master_id');
   
-
                 $datas = DB::table('plan_master')
                         ->select(
                                 'plan_master.*',
@@ -181,9 +223,19 @@ class ProductionPlanController extends Controller
                                         END AS status
                                 ")
                         )
-                        ->where('plan_master.plan_list_id', $request->plan_list_id)
+                        ->whereIn('plan_master.plan_list_id', DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('id'))
                         ->where('plan_master.active', 1)
-
+                        ->where('plan_master.only_parkaging', 0)
+                        ->when($request->plan_list_id < 0,
+                                function ($q) {
+                                        return $q->where('plan_master.weighed', 0) 
+                                                ->where('plan_master.cancel', 0) 
+                                        ;
+                                },
+                                function ($q) use ($request) {
+                                        return $q->where('plan_master.plan_list_id', $request->plan_list_id);
+                                }
+                        )
                         ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
                         ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
                         ->leftJoin('source_material', 'plan_master.material_source_id','=','source_material.id')
@@ -234,8 +286,10 @@ class ProductionPlanController extends Controller
                 ->where ('source_material.active',1)->orderBy('source_material.name','asc')->get();
 
                 $production  =  session('user')['production_name'];
-
+                $plan_list_id_title =  DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('name','id');
+               
                 session()->put(['title'=> " $request->name - $production"]);
+
         
                 return view('pages.plan.production.list',[
                         'datas' => $datas, 
@@ -245,6 +299,7 @@ class ProductionPlanController extends Controller
                         'finished_product_category' => $finished_product_category,
                         'source_material_list'=> $source_material_list,
                         'send'=> $request->send??1,
+                        'plan_list_id_title' => $plan_list_id_title
                         
                 ]);
         }
@@ -310,7 +365,7 @@ class ProductionPlanController extends Controller
         
                 if ($validator->fails()) {
                         return redirect()->back()
-                        ->withErrors($validator, 'create_Errors')
+                        ->withErrors($validator, 'createErrors')
                         ->withInput();
                 }
                 
@@ -728,7 +783,7 @@ class ProductionPlanController extends Controller
         }
 
         public function splittingUpdate(Request $request){
-                //dd ($request->all());
+               
                 $validator = Validator::make($request->all(), [
                         //'batch' => 'required',
                         'expected_date' => 'required',
@@ -1395,9 +1450,18 @@ class ProductionPlanController extends Controller
         }
 
         public function open_stock(Request  $request){
-        
+                        //dd ( $request->all());
                 $plan_master_materials = DB::table('plan_master_materials as pmm')
                 ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
+                ->when($request->plan_list_id < 0,
+                                 function ($q) {
+                                        return $q->where('pm.weighed', 0) 
+                                                ->where('pm.cancel', 0) ;
+                                },
+                                function ($q) use ($request) {
+                                        return $q->where('pm.plan_list_id', $request->plan_list_id);
+                                }
+                )
                 ->where('pm.plan_list_id', $request->plan_list_id)
                 ->where('pm.active', 1)
                 ->where('pmm.active', 1)
@@ -1500,7 +1564,7 @@ class ProductionPlanController extends Controller
         }
         
         public function open_bacth_detail(Request  $request){
-                Log::info($request->all());
+                
 
                 $maxStageFinished = DB::table('stage_plan')
                 ->whereIn('stage_plan.plan_master_id', $request->plan_master_ids)
@@ -1569,8 +1633,6 @@ class ProductionPlanController extends Controller
               
         }
 
-
-        
 
         public function open_feedback_API (Request $request){
                
