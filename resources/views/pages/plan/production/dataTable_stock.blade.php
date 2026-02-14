@@ -94,7 +94,7 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             <th rowspan="2" style="width: 40px">STT</th>
                             <th rowspan="2" >Mã NL</th>
                             <th rowspan="2" style="width: 15%">Tên NL</th>                      
-                            <th rowspan="2" style="width: 4%">Số Lượng Lô</th>
+                            <th rowspan="2" style="width: 4%">Số Lượng Dung Cho</th>
                             <th rowspan="2">Lượng Theo CT</th>
                             <th rowspan="2">Lượng Cần Dùng</th>
                             <th rowspan="2">Tổng Tồn</th>
@@ -124,14 +124,13 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             <td rowspan="{{ $rowspan }}">{{ $loop->iteration }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->material_packaging_code }}</td>
                             <td rowspan="{{ $rowspan }}">{{ $data->MaterialName }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ $data->NumberOfBatch }}
-                                <button type="button" class="btn btn-sm btn-batch-datial"
+                            <td rowspan="{{ $rowspan }}">
+                                <button type="button" class="btn btn-primary btn-batch-datial"
                                         data-plan_master_ids="{{ $data->plan_master_ids }}"
-                            
                                         data-toggle="modal" 
                                         data-target="#batchDetialModal"
                                         >
-                                                    📝
+                                        {{ $data->NumberOfBatch }} Lô
                                 </button>
                             </td>
                             <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}</td>
@@ -209,8 +208,10 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 <script>
-$(document).ready(function () {
 
+
+$(document).ready(function () {
+    let authUpdate = '';
     /* GROUP ROWS */
     let groups = {};
 
@@ -248,165 +249,277 @@ $(document).ready(function () {
     /* INIT COUNT */
     $('#visibleCount').text(totalGroups);
 
-    $('.btn-batch-datial').on('click', function() {
-     
+
+    $('.btn-batch-datial').on('click', function () {
+
         const btn = $(this);
         const plan_master_ids_text = btn.data('plan_master_ids');
 
         const plan_master_ids = plan_master_ids_text
             ? String(plan_master_ids_text).split('_')
             : [];
-        if (!plan_master_ids.length) return
-        
-        const modal_table_body = $('#data_table_batch_detail_body')
-        
-                modal_table_body.empty();
 
-                $.ajax({
-                        url: "{{ route('pages.plan.production.open_bacth_detail') }}",
-                        type: 'post',
-                        data: {
-                            plan_master_ids: plan_master_ids,
-                            _token: "{{ csrf_token() }}"
-                        },
+        if (!plan_master_ids.length) return;
 
-                        success: function (res) {
-                            console.log (res)
-                            if (!res || res.length === 0) {
-                                modal_table_body.append(`
-                                    <tr>
-                                        <td colspan="15" class="text-center">Không có dữ liệu</td>
-                                    </tr>
-                                `);
-                                return;
-                            }
+        $.ajax({
+            url: "{{ route('pages.plan.production.open_bacth_detail') }}",
+            type: 'post',
+            data: {
+                plan_master_ids: plan_master_ids,
+                _token: "{{ csrf_token() }}"
+            },
 
-                            res.datas.forEach((data, index) => {
+            success: function (res) {
 
-                                let statusColors = {
-                                    "Chưa làm": "background-color: green; color: white;",
-                                    "Đã Cân": "background-color: #e3f2fd; color: #0d47a1;",
-                                    "Đã Pha chế": "background-color: #bbdefb; color: #0d47a1;",
-                                    "Đã THT": "background-color: #90caf9; color: #0d47a1;",
-                                    "Đã định hình": "background-color: #64b5f6; color: white;",
-                                    "Đã Bao phim": "background-color: #1e88e5; color: white;",
-                                    "Hoàn Tất ĐG": "background-color: #0d47a1; color: white;",
-                                    "Hủy": "background-color: red; color: white;"
-                                };
+                batchTable.clear(); // 🔥 Xóa dữ liệu cũ
 
-                                let levelColors = {
-                                    1: "background-color:#f44336;color:white;",
-                                    2: "background-color:#ff9800;color:white;",
-                                    3: "background-color:blue;color:white;",
-                                    4: "background-color:#4caf50;color:white;"
-                                };
+                if (!res || !res.datas || res.datas.length === 0) {
+                    batchTable.row.add([
+                        '',
+                        '',
+                        '',
+                        'Không có dữ liệu',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        ''
+                    ]).draw();
+                    return;
+                }
 
-                                let cancelClass = data.cancel ? 'text-danger' : 'text-success';
+                res.datas.forEach((data, index) => {
 
-                                let finishedName = 
-                                    (data.finished_product_name?.trim() !== data.intermediate_product_name?.trim())
-                                        ? data.finished_product_name ?? ''
-                                        : '';
+                    let statusColors = {
+                        "Chưa làm": "background-color: green; color: white;",
+                        "Đã Cân": "background-color: #e3f2fd; color: #0d47a1;",
+                        "Đã Pha chế": "background-color: #bbdefb; color: #0d47a1;",
+                        "Đã THT": "background-color: #90caf9; color: #0d47a1;",
+                        "Đã định hình": "background-color: #64b5f6; color: white;",
+                        "Đã Bao phim": "background-color: #1e88e5; color: white;",
+                        "Hoàn Tất ĐG": "background-color: #0d47a1; color: white;",
+                        "Hủy": "background-color: red; color: white;"
+                    };
 
-                                let isValText = '';
-                                if (data.is_val && data.code_val) {
-                                    let arr = data.code_val.split('_');
-                                    isValText = `Lô thứ ${arr[1] ?? ''}`;
-                                }
+                    let levelColors = {
+                        1: "background-color:#f44336;color:white;",
+                        2: "background-color:#ff9800;color:white;",
+                        3: "background-color:blue;color:white;",
+                        4: "background-color:#4caf50;color:white;"
+                    };
 
-                                modal_table_body.append(`
-                                    <tr>
-                                        <td>
-                                            <div>${index + 1}</div>
-                                            ${data.userGroup === "Admin" ? `<div>${data.id}</div>` : ''}
-                                        </td>
+                    let cancelClass = data.cancel ? 'text-danger' : 'text-success';
 
-                                        <td>
-                                            <div class="text-center"
-                                                style="display:inline-block;padding:6px 10px;width:100px;border-radius:10px;
-                                                ${statusColors[data.status] ?? ''}">
-                                                ${data.status ?? ''}
-                                            </div>
-                                        </td>
+                    let finishedName =
+                        (data.finished_product_name?.trim() !== data.intermediate_product_name?.trim())
+                            ? data.finished_product_name ?? ''
+                            : '';
 
-                                        <td class="${cancelClass}">
-                                            <div>${data.intermediate_code ?? ''}</div>
-                                            <div>${data.finished_product_code ?? ''}</div>
-                                        </td>
+                    let isValText = '';
+                    if (data.is_val && data.code_val) {
+                        let arr = data.code_val.split('_');
+                        isValText = `Lô thứ ${arr[1] ?? ''}`;
+                    }
 
-                                        <td>
-                                            <div>${data.intermediate_product_name ?? ''}</div>
-                                            <div>${finishedName}</div>
-                                            <div>(${data.batch_qty ?? ''} ${data.unit_batch_qty ?? ''})</div>
-                                        </td>
+                    batchTable.row.add([
+                        `
+                        <div>${index + 1}</div>
+                        ${data.userGroup === "Admin" ? `<div>${data.id}</div>` : ''}
+                        `,
+                        `
+                        <div class="text-center"
+                            style="display:inline-block;padding:6px 10px;width:100px;border-radius:10px;
+                            ${statusColors[data.status] ?? ''}">
+                            ${data.status ?? ''}
+                        </div>
+                        `,
+                        `
+                        <div class="${cancelClass}">
+                            <div>${data.intermediate_code ?? ''}</div>
+                            <div>${data.finished_product_code ?? ''}</div>
+                        </div>
+                        `,
+                        `
+                        <div>${data.intermediate_product_name ?? ''}</div>
+                        <div>${finishedName}</div>
+                        <div>(${data.batch_qty ?? ''} ${data.unit_batch_qty ?? ''})</div>
+                        `,
+                        `<div class="text-center">${data.batch ?? ''}</div>`,
+                        `
+                        <div>${data.market ?? ''}</div>
+                        <div>${data.specification ?? ''}</div>
+                        `,
+                        `
+                        <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="expected_date"
+                                value="${formatDateForInput(data.expected_date)}"
+                                data-id="${data.id}">
+                       `,
+                        `
+                        <span style="display:inline-block;padding:6px 10px;width:50px;border-radius:40px;
+                            ${levelColors[data.level] ?? ''}">
+                            <input type="text"
+                                class="updateInput"
+                                name="level"
+                                value="${data.level ?? ''}"
+                                data-id="${data.id}">
+                        </span>
+                        `,
+                        `
+                        <input type="checkbox"
+                            ${data.is_val ? 'checked' : ''}
+                            disabled>
+                        <br>
+                        ${isValText}
+                        `,
+                        `
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(1):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="after_weigth_date"
+                                value="${formatDateForInput(data.after_weigth_date)}"
+                                data-id="${data.id}">
+                        </div>
 
-                                        <td class="text-center">
-                                            <div>${data.batch ?? ''}</div>
-                                        </td>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(2):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="after_parkaging_date"
+                                value="${formatDateForInput(data.after_parkaging_date)}"
+                                data-id="${data.id}">
+                        </div>
 
-                                        <td>
-                                            <div>${data.market ?? ''}</div>
-                                            <div>${data.specification ?? ''}</div>
-                                        </td>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(3):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="allow_weight_before_date"
+                                value="${formatDateForInput(data.allow_weight_before_date)}"
+                                data-id="${data.id}">
+                        </div>
 
-                                        <td>
-                                            <div>${formatDateInput(data.expected_date)??''}</div>
-                                        </td>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(4):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="expired_material_date"
+                                value="${formatDateForInput(data.expired_material_date)}"
+                                data-id="${data.id}">
+                        </div>
 
-                                        <td class="text-center">
-                                            <span style="display:inline-block;padding:6px 10px;width:50px;border-radius:40px;
-                                                ${levelColors[data.level] ?? ''}">
-                                                <input type="text"
-                                                    class="updateInput"
-                                                    name="level"
-                                                    value="${data.level ?? ''}"
-                                                    data-id="${data.id}">
-                                            </span>
-                                        </td>
-
-                                        <td class="text-center">
-                                            <input type="checkbox"
-                                                ${data.is_val ? 'checked' : ''}
-                                                disabled>
-                                            <br>
-                                            ${isValText}
-                                        </td>
-
-                                        <td>
-                                            <div>${formatDateInput(data.expected_date)??''}</div>
-                                        </td>
-                                        <td>
-                                            <div>${formatDateInput(data.expected_date)??''}</div>
-                                        </td>
-
-                                        <td>${data.note ?? ''}</td>
-
-                                
-                                    </tr>
-                                `);
-                            });
-                        }
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(5):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="expired_packing_date"
+                                value="${formatDateForInput(data.expired_packing_date)}"
+                                data-id="${data.id}">
+                        </div>
+                        `
                         ,
-                        error: function() {
-                                modal_table_body.append(
-                                    `<tr><td colspan="13" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-                                );
-                            }
-                });  
-                
-    });   
+                        `
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(1):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="preperation_before_date"
+                                value="${formatDateForInput(data.preperation_before_date)}"
+                                data-id="${data.id}">
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(2):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="blending_before_date"
+                                value="${formatDateForInput(data.blending_before_date)}"
+                                data-id="${data.id}">
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(3):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="coating_before_date"
+                                value="${formatDateForInput(data.coating_before_date)}"
+                                data-id="${data.id}">
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(4):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
+                                name="parkaging_before_date"
+                                value="${formatDateForInput(data.parkaging_before_date)}"
+                                data-id="${data.id}">
+                        </div>
+                        `                    ,
+                        `
+                        <div style="display:flex; align-items:left; gap:6px; width:100%;">
+                            <textarea ${authUpdate}
+                                
+                                class="updateInput text-left "
+                                name="note"
+                                rows="5"
+                                style="width:100%; resize:vertical;"
+                                data-id="${data.id}">${data.note ?? ''}</textarea>
+                        </div>
+                        `
+                    ]);
+
+                });
+
+                batchTable.draw(); // 🔥 Vẽ lại table
+
+            },
+
+            error: function () {
+                batchTable.clear().draw();
+            }
+
+        });
+
+    });
+
 });
 
 
-function formatDateInput(date) {
-    if (!date) return '';
-    let d = new Date(date);
-    return d.toISOString().split('T')[0];
-}
+    function formatDateForInput(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return '';
+        return d.toISOString().split('T')[0];
+    }
 
-function formatDate(date) {
-    if (!date) return '';
-    let d = new Date(date);
-    return d.toLocaleDateString('vi-VN');
-}
+    function formatDate(date) {
+        if (!date) return '';
+        let d = new Date(date);
+        return d.toLocaleDateString('vi-VN');
+    }
 </script>

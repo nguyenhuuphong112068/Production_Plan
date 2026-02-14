@@ -127,7 +127,7 @@
           
           let target_modal = $('#selectedModalId').val() ?? '#createModal';
 
-          console.log (target_modal);
+
           const modal = $(target_modal);
 
           const modal_source = $('#create_soure_modal');

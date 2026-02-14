@@ -48,7 +48,7 @@
                             <td>{{ $data->name }}</td>
                             <td>{{ $data->deparment_code }}</td>
                             <td>{{ $data->prepared_by }}</td>
-                            <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y H:i') }}</td>
+                            <td>{{ $data->created_at? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y H:i'):'' }}</td>
 
                             @php
                                 $colors = [
@@ -75,7 +75,7 @@
 
                             <td>{{ $data->send_by }}</td>
 
-                            <td>{{ \Carbon\Carbon::parse($data->send_date)->format('d/m/Y H:i') }}</td>
+                            <td>{{ $data->send_date? \Carbon\Carbon::parse($data->send_date)->format('d/m/Y'): '' }}</td>
 
 
                             <td class="text-center align-middle">

@@ -60,27 +60,31 @@
         <div class="card-header mt-4" >
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
         </div>
+
         @php
             $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
             $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
             $auth_view_material = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
         @endphp
+
         <!-- /.card-Body -->
         <div class="card-body">
-            @if (!$send)
+            
                 <div class="row">
+                 
                     <div class="col-md-2">
-                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
+                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') && !$send)
+                            <button class="btn btn-success btn-add mb-2" 
+                                data-toggle="modal"
                                 data-target="#selectProductModal" style="width: 155px;">
                                 <i class="fas fa-plus"></i> Thêm
                             </button>
                         @endif
-                       
                     </div>
-
+              
+            
                     <div class="col-md-8 text-center">
-                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
+                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean')|| true)
                             <form action="{{ route('pages.plan.production.open_stock') }}" 
                                 method="get"
                                 class="d-inline-block">
@@ -121,8 +125,8 @@
                             <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
                             <input type="hidden" name="month" value="{{ $month }}">
                             <input type="hidden" name="production" value="{{ $production }}">
-                            @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean'))
-                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;">
+                            @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean') && !$send )
+                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;" >
                                 <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
                             </button>
                             @endif
@@ -130,18 +134,22 @@
 
                     </div>
                 </div>
-            @endif
+            
             <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
 
                     <tr>
                         <th>STT</th>
                         <th>Tình Trạng</th>
+                        @if ($plan_list_id < 0)
+                            <th style="width:4%">Tháng</th>
+                        @endif
+                        
                         <th >Mã Sản Phẩm</th>
-                        <th style="width:10%" >Sản Phẩm</th>
-                        <th>Số Lô/Số lượng ĐG</th>
+                        <th style="width:7%" >Sản Phẩm</th>
+                        <th style="width:5%">Số Lô/Số lượng ĐG</th>
                         <th>Thị Trường/ Qui Cách</th>
-                        <th>Ngày dự kiến KCS</th>
+                        <th style="width:4%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
                        
@@ -160,7 +168,7 @@
                             <div> {{ "(4) ĐG trước" }}  </div>
                         </th>
                        
-                        <th>Ghi Chú</th>
+                        <th style="width:15%">Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th style="width:1%">Cập Nhật/ Vô Hiệu</th>
                         {{-- <th style="width:1%">Vô Hiệu</th> --}}
@@ -202,6 +210,9 @@
                                 <div class ="text-center" style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
                                     > {{ $data->status }} </div>
                             </td>
+                            @if ($plan_list_id < 0)
+                                <td>{{$plan_list_id_title [$data->plan_list_id]?? 'NA'}}</td>
+                            @endif
 
 
                             @if (!$data->cancel)
@@ -292,8 +303,6 @@
                                     @endif
                             </td>
 
-                            
-
                             <td>
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(1):</span>
@@ -363,9 +372,14 @@
                          
                             </td>
 
-
                             <td> 
-                                {{ $data->note }}
+                               
+                                <textarea {{ $auth_update }} 
+                                    class="updateInput text-left "
+                                    name="note"
+                                    rows="5"
+                                    style="width:100%; resize:vertical;"
+                                    data-id="{{ $data->id }}"> {{ $data->note??'' }}</textarea>
                             </td>
 
                             <td>

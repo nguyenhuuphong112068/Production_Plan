@@ -267,7 +267,7 @@ class SchedualFinisedController extends Controller
                         ]);
                 }
 
-                Log::info($updateData);
+
                 /* ===============================
                 6. UPDATE DB
                 =============================== */
@@ -282,7 +282,10 @@ class SchedualFinisedController extends Controller
 
                         DB::table('plan_master')
                         ->where('id', $plan_master_id)
-                        ->update(['actual_batch' => $request->actual_batch]);
+                        ->update([
+                                'actual_batch' => $request->actual_batch,
+                                'weighed' => 1
+                        ]);
                 }
 
                 return back()->with('success', '✅ Cập nhật công đoạn thành công!');

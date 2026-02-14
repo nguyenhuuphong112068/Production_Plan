@@ -143,6 +143,7 @@
                                 <div class="input-group">
                                     <input type="text" class="form-control batchNo" name="batch"
                                         value="{{ old('batch') }}" />
+                                    
                                     <input type="number" min="1" step="1" class="form-control"
                                         name="number_of_batch" value="{{ old('number_of_batch', 1) }}"
                                         oninput="this.value = this.value.replace(/[^0-9]/g, '')">
@@ -150,19 +151,11 @@
                                         <input type="checkbox" name="format_batch_no" checked data-bootstrap-switch>
                                     </span>
                                 </div>
+                                @error('batch', 'createErrors')
+                                        <div class="alert alert-danger">{{ $message }}</div>
+                                @enderror
                                 <input type="hidden" name="max_number_of_unit" id ="max_number_of_unit" >
-                                
-                                {{-- <label class ="mt-2">Nguồn</label>
-                                <div class="input-group">
-                                    <textarea class="form-control" name="source_material_name" rows="4"
-                                        value="{{ old('source_material_name') }}"></textarea>
-                                    <button type="button" class = "btn btn-success" id = "add_source_material"
-                                        data-toggle="modal" data-target="#selectSourceModal">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <input type="hidden" class="form-control" name="material_source_id"
-                                        value="{{ old('material_source_id') }}" />
-                                </div> --}}
+                            
 
                                  <div class="form-group">
                                     <label>Ngày dự kiên KCS</label>
@@ -374,7 +367,7 @@
                   
                     {{-- CÔng Thức PC --}}
                     <div class ="col-md-4">
-                        <table id="data_table_recipe" class="table table-bordered table-striped" style="font-size: 16px">
+                        <table id="data_table_material" class="table table-bordered table-striped" style="font-size: 16px">
                             <thead >
                                 <tr>
                                 <th>STT</th>
@@ -392,7 +385,7 @@
                     </div>
                     {{-- CÔng Thức ĐG --}}
                     <div class ="col-md-4">
-                        <table id="data_table_recipe" class="table table-bordered table-striped" style="font-size: 16px">
+                        <table id="data_table_packaging" class="table table-bordered table-striped" style="font-size: 16px">
                             <thead >
                                 <tr>
                                 <th>STT</th>
@@ -427,7 +420,7 @@
 
 
 {{-- //Show modal nếu có lỗi validation --}}
-@if ($errors->create_finished_Errors->any())
+@if ($errors->createErrors->any())
     <script>
         $(document).ready(function() {
             $('#createModal').modal('show');
@@ -437,6 +430,7 @@
 
 <script>
     $(document).ready(function() {
+
         $("input[data-bootstrap-switch]").bootstrapSwitch({
             onText: 'AAMMYY',
             offText: 'YWWAA',
@@ -454,8 +448,8 @@
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
 
-            
-            const material_table = $('#material_recipe_body')
+           
+            const material_table = $('#data_table_material').find('tbody'); 
             const intermediate_code = $(this).find('input[name="intermediate_code"]').val();
             material_table.empty();
             $.ajax({
@@ -466,14 +460,17 @@
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {
+
+                
                         if (res.length === 0) {
                             material_table.append(
                                 `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
                             );
                         } else {
+                            
                             res.forEach((item, index) => {
                                 // map màu level
-                       
+                              
                                 material_table.append(`
                               <tr>
                                     <td>${index + 1}</td>
@@ -529,8 +526,9 @@
             });
 
 
-            const packagin_table = $('#packaging_recipe_body')
+            const packagin_table = $('#data_table_packaging').find('tbody'); 
             const finished_product_code = $(this).find('input[name="finished_product_code"]').val();
+           
             packagin_table.empty();
             $.ajax({
                 url: "{{ route('pages.category.intermediate.recipe') }}",
@@ -545,7 +543,7 @@
                                 `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
                             );
                         } else {
-                            console.log (res)
+                           
                             res.forEach((item, index) => {
                                 // map màu level
                        
