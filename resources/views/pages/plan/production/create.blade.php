@@ -500,6 +500,10 @@
                                         checked>
 
                                     <input type="hidden"
+                                            name="materials[${item.MatID}][Revno]"
+                                            value="${item.Revno ?? 0}">
+
+                                    <input type="hidden"
                                         name="materials[${item.MatID}][qty]"
                                         value="${item.MatQty ?? 0}">
 
@@ -563,6 +567,9 @@
                                         } ${item.uom ?? ''}
                                     </td>
                                      <td style="text-align:center">
+                                        <input type="hidden"
+                                            name="packagings[${item.MatID}][Revno]"
+                                            value="${item.Revno ?? 0}">
 
                                         <input type="hidden" 
                                             name="packagings[${item.MatID}][active]" 

@@ -135,7 +135,8 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             </td>
                             <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}</td>
                             <td rowspan="{{ $rowspan }}">{{ round($data->TotalMatQty,5) }} {{ $data->unit_bom }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ round($data->totalQty,5) }} {{ $data->unit_bom }}</td>
+                   
+                            <td rowspan="{{ $rowspan }}" class = "{{ $data->totalQty < $data->TotalMatQty?'text-red':'a' }}">{{ round($data->totalQty,5) }} {{ $data->unit_bom }}</td>
 
                             
                             @if ($stocks->count())

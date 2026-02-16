@@ -173,7 +173,9 @@
                         <th style="width:1%">Cập Nhật/ Vô Hiệu</th>
                         {{-- <th style="width:1%">Vô Hiệu</th> --}}
                         <th style="width:1%">Lịch Sử</th>
-                        <th class = "text-center">Chọn
+                        <th class = "text-center">
+                            Chọn
+                            <br>
                             <button type="button"
                                     class="btn btn-primary btn-selected-all mt-3"
                                     {{ $auth_update }}
@@ -373,7 +375,6 @@
                             </td>
 
                             <td> 
-                               
                                 <textarea {{ $auth_update }} 
                                     class="updateInput text-left "
                                     name="note"
@@ -517,10 +518,8 @@
                 modal.find('input[name="material_source_id"]').val(button.data('material_source_id'));
 
                 modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
-                modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
-                //modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
+                modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date')); 
                 modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
-                //modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
                 modal.find('textarea[name="note"]').val(button.data('note'));
 
                 modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
@@ -876,23 +875,15 @@
             });
 
             $(document).on('click', '.btn-selected-all', function () {
-
                 let btn = $(this);
                 let id = btn.data('plan_list_id');
                 let isActive = btn.data('active') == 1;
-
+               
                 // Toggle value
                 let updateValue = isActive ? 0 : 1;
 
                 // Update lại trạng thái trong button
-                btn.data('active', updateValue);
-
-                // Đổi màu cho dễ nhìn
-                if (updateValue == 1) {
-                    btn.removeClass('btn-primary').addClass('btn-success');
-                } else {
-                    btn.removeClass('btn-success').addClass('btn-primary');
-                }
+              
 
                 // AJAX update
                 $.ajax({
@@ -907,21 +898,23 @@
                     },
                     success: function (res) {
 
-                        
-                        // btn.data('active', updateValue);
-                        // btn.find('i')
-                        // .removeClass(updateValue == 1 ? 'fa-check' : 'fa-xmark')
-                        // .addClass(updateValue == 1 ? 'fa-xmark' : 'fa-check');
+                        const isActive = updateValue == 1;
+                        btn.data('active', updateValue);
 
-                        // if (updateValue == 1) {
-                        //     icon.removeClass('fa-check').addClass('fa-xmark');
-                        // } else {
-                        //     icon.removeClass('fa-xmark').addClass('fa-check');
-                        // }
+                        const icon = btn.find('i');
 
-                        // cập nhật checkbox
-                        $('.step-checkbox').prop('checked', updateValue == 1);
+                        // Đổi màu nút
+                        btn.toggleClass('btn-danger', isActive);
+                        btn.toggleClass('btn-primary', !isActive);
+
+                        // Đổi icon
+                        icon.toggleClass('fa-check', !isActive);
+                        icon.toggleClass('fa-times-circle', isActive);
+
+                        // Cập nhật checkbox
+                        $('.step-checkbox').prop('checked', isActive);
                     }
+
                 });
 
             });

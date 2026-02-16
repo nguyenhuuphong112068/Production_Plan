@@ -69,7 +69,7 @@
 <div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
     <div class="modal-dialog updateModal-modal-size" role="document">
         
-        <form action="{{ route('pages.plan.production.store') }}" method="POST">
+        <form action="{{ route('pages.plan.production.update') }}" method="POST">
             @csrf
 
             <div class="modal-content">
@@ -114,6 +114,8 @@
                                         value="{{ old('specification') }}" />
                                 </div>
                             </div>
+                            <input type="hidden" name="id" 
+                                value="{{ old('id') }}" />
                             <input type="hidden" name="product_caterogy_id" 
                                 value="{{ old('product_caterogy_id') }}" />
                             <input type="hidden" name="plan_list_id" readonly value="{{ old('plan_list_id') }}" />
@@ -437,6 +439,7 @@
 
 <script>
     $(document).ready(function() {
+        
         $("input[data-bootstrap-switch]").bootstrapSwitch({
             onText: 'AAMMYY',
             offText: 'YWWAA',
@@ -450,19 +453,20 @@
 
         // Nếu muốn khi modal mở mới khởi tạo
         $('#updateModal').on('shown.bs.modal', function() {
-            $("input[data-bootstrap-switch]").each(function() {
-                $(this).bootstrapSwitch('state', $(this).prop('checked'));
-            });
 
-            
+            // $("input[data-bootstrap-switch]").each(function() {
+            //      $(this).bootstrapSwitch('state', $(this).prop('checked'));
+            //  });
+
             const material_table = $('#material_recipe_body')
-            const intermediate_code = $(this).find('input[name="intermediate_code"]').val();
+            const plan_master_id = $(this).find('input[name="id"]').val();
             material_table.empty();
             $.ajax({
-                url: "{{ route('pages.category.intermediate.recipe') }}",
+                url: "{{ route('pages.plan.production.recipe_show_update') }}",
                 type: 'post',
                 data: {
-                    intermediate_code: intermediate_code,
+                    plan_master_id: plan_master_id,
+                    material_packaging_type: 0,
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {
@@ -476,43 +480,39 @@
                        
                                 material_table.append(`
                               <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${item.MatID ?? ''}</td>
+                                    <td>${index + 1}
+                                        <input type="hidden"
+                                        name="materials[${item.material_packaging_code}][id]"
+                                        value="${item.id ?? 0}">
+
+                                    </td>
+                                    <td>${item.material_packaging_code ?? ''}</td>
                                     <td>${item.MaterialName ?? ''}</td>
+
                                     <td style="text-align:center">
                                         ${
-                                            item.MatQty != null
-                                            ? Number(item.MatQty).toLocaleString(undefined, {
+                                            item.qty != null
+                                            ? Number(item.qty).toLocaleString(undefined, {
                                                 minimumFractionDigits: 0,
                                                 maximumFractionDigits: 3
                                             })
                                             : ''
-                                        } ${item.uom ?? ''}
+                                        } ${item.unit_bom ?? ''}
                                     </td>
 
                                     <td style="text-align:center">
 
                                     <input type="hidden" 
-                                        name="materials[${item.MatID}][active]" 
+                                        name="materials[${item.material_packaging_code}][active]" 
                                         value="0">
 
                                     <input type="checkbox"
                                         class="step-checkbox"
-                                        name="materials[${item.MatID}][active]"
+                                        name="materials[${item.material_packaging_code}][active]"
                                         value="1"
-                                        checked>
+                                        ${item.active == 1 ? 'checked' : ''}>
 
-                                    <input type="hidden"
-                                        name="materials[${item.MatID}][qty]"
-                                        value="${item.MatQty ?? 0}">
-
-                                    <input type="hidden"
-                                        name="materials[${item.MatID}][uom]"
-                                        value="${item.uom ?? ''}">
-                                    
-                                    <input type="hidden"
-                                            name="materials[${item.MatID}][MaterialName]"
-                                            value="${item.MaterialName ?? ''}"> 
+                                  
 
                                     </td>
 
@@ -530,13 +530,13 @@
 
 
             const packagin_table = $('#packaging_recipe_body')
-            const finished_product_code = $(this).find('input[name="finished_product_code"]').val();
             packagin_table.empty();
             $.ajax({
-                url: "{{ route('pages.category.intermediate.recipe') }}",
+                url: "{{ route('pages.plan.production.recipe_show_update') }}",
                 type: 'post',
                 data: {
-                    intermediate_code: finished_product_code,
+                    plan_master_id: plan_master_id,
+                    material_packaging_type: 1,
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {
@@ -545,49 +545,40 @@
                                 `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
                             );
                         } else {
-                            console.log (res)
+                            
                             res.forEach((item, index) => {
                                 // map màu level
                        
-                                packagin_table.append(`
+                            packagin_table.append(`
                               <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${item.MatID ?? ''}</td>
+                                    <td>${index + 1}
+                                        <input type="hidden"
+                                            name="packagings[${item.material_packaging_code}][id]"
+                                            value="${item.id ?? 0}">
+                                        </td>
+                                    <td>${item.material_packaging_code ?? ''}</td>
                                     <td>${item.MaterialName ?? ''}</td>
                                     <td style="text-align:center">
                                         ${
-                                            item.MatQty != null
-                                            ? Number(item.MatQty).toLocaleString(undefined, {
+                                            item.qty != null
+                                            ? Number(item.qty).toLocaleString(undefined, {
                                                 minimumFractionDigits: 0,
                                                 maximumFractionDigits: 3
                                             })
                                             : ''
-                                        } ${item.uom ?? ''}
+                                        } ${item.unit_bom ?? ''}
                                     </td>
                                      <td style="text-align:center">
 
                                         <input type="hidden" 
-                                            name="packagings[${item.MatID}][active]" 
+                                            name="packagings[${item.material_packaging_code}][active]" 
                                             value="0">
 
-                                        <input type="checkbox"
-                                            class="step-checkbox"
-                                            name="packagings[${item.MatID}][active]"
-                                            value="1"
-                                            checked>
-
-                                        <input type="hidden"
-                                            name="packagings[${item.MatID}][qty]"
-                                            value="${item.MatQty ?? 0}">
-
-                                        <input type="hidden"
-                                            name="packagings[${item.MatID}][uom]"
-                                            value="${item.uom ?? ''}"> 
-                                        
-                                        <input type="hidden"
-                                            name="packagings[${item.MatID}][MaterialName]"
-                                            value="${item.MaterialName ?? ''}"> 
-
+                                      <input type="checkbox"
+                                        class="step-checkbox"
+                                        name="packagings[${item.material_packaging_code}][active]"
+                                        value="1"
+                                        ${item.active == 1 ? 'checked' : ''}>
                                     </td>
                               </tr>
                           `);
@@ -603,7 +594,6 @@
 
             
         });
-
 
         $("#number_of_unit").on('input', function() {
             let numberOfUnit = parseInt($(this).val()) || 0;
@@ -634,7 +624,6 @@
             const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
-
 
         $("#updateModal .step-checkbox").on("change", function() {
           
@@ -689,14 +678,11 @@
                                 responseText: xhr.responseText
                             });
                         }
-                });
-
-                         
+                }); 
                 return;
 
             }
             
-
             if ((checkbox1 == 0 && checkbox2 == 1 && code_val == null) || (checkbox1 == 0 && checkbox2 == 0 && checkbox3 == 1 && code_val == null)){
                 first_batch_modal.empty();
                 $.ajax({

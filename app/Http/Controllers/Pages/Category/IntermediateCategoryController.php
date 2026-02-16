@@ -16,12 +16,17 @@ class IntermediateCategoryController extends Controller
                 $productNames = DB::table('product_name')->where('active', true)->orderBy('name','asc')->get();
                 $dosages = DB::table('dosage')->where('active', true)->get();
                 $units = DB::table('unit')->where('active', true)->get();
-
-
+                
+              
                 $datas = DB::table('intermediate_category')->select('intermediate_category.*','dosage.name as dosage_name' , 'product_name.name as product_name')
                 ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
                 ->leftJoin('dosage','intermediate_category.dosage_id','dosage.id')
                 ->where('intermediate_category.deparment_code', session('user')['production_code'])
+                ->when(!user_has_permission(session('user')['userId'], 'view_Hypothesis_category', 'boolean'),
+                        function ($q) {
+                                return $q->where('intermediate_category.IsHypothesis', 0);
+                        }
+                )	
                 ->orderBy('product_name.name','asc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC BÁN THÀNH PHẨM']);

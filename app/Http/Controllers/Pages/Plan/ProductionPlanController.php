@@ -284,6 +284,8 @@ class ProductionPlanController extends Controller
                         ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
                         ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
                 ->where ('source_material.active',1)->orderBy('source_material.name','asc')->get();
+                
+
 
                 $production  =  session('user')['production_name'];
                 $plan_list_id_title =  DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('name','id');
@@ -343,7 +345,6 @@ class ProductionPlanController extends Controller
 
         public function store(Request $request){
                 //dd ($request->all());
-               
                 try {
                 $validator = Validator::make($request->all(), [
                         'product_caterogy_id' => 'required',
@@ -468,10 +469,12 @@ class ProductionPlanController extends Controller
                                         'plan_master_id'          => $planMasterId,
                                         'material_packaging_code' => (string) $code,
                                         'material_packaging_type' => 0,
+                                        'Revno'                   => $item['Revno'],
                                         'qty'                     => (float) $item['qty'],
                                         'unit_bom'                => $item['uom'],
                                         'MaterialName'            => $item['MaterialName'],
                                         'created_at'              => now(),
+                                        'created_by'              =>session ('user')['fullName'],
                                         'active'                  => $item['active'],
                                 ];
                         }
@@ -485,10 +488,12 @@ class ProductionPlanController extends Controller
                                         'plan_master_id'          => $planMasterId,
                                         'material_packaging_code' => (string) $code,
                                         'material_packaging_type' => 1,
+                                        'Revno'                   => $item['Revno'],
                                         'qty'                     => (float) $item['qty'],
                                         'unit_bom'                => $item['uom'],
                                         'MaterialName'            => $item['MaterialName'],
                                         'created_at'              => now(),
+                                        'created_by'              =>session ('user')['fullName'],
                                         'active'                  => $item['active'],
                                         
                                 ];
@@ -499,7 +504,7 @@ class ProductionPlanController extends Controller
                                 DB::table('plan_master_materials')->upsert(
                                 $insertData,
                                 ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
-                                ['qty', 'unit_bom', 'active']
+                                ['qty', 'unit_bom', 'active', 'Revno']
                                 );
                         }
 
@@ -533,6 +538,7 @@ class ProductionPlanController extends Controller
                                 "version" => 1,
                                 "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
                         ]);
+
                         $i++;
                 }
 
@@ -578,28 +584,24 @@ class ProductionPlanController extends Controller
         }
  
         public function update(Request $request){
-                //dd ($request->all());
+               // dd ($request->all());
                 $validator = Validator::make($request->all(), [
                        
                         'batch' => 'required',
                         'expected_date' => 'required',
                         'level' => 'required',
-                        'after_weigth_date' => 'required',
-                        
-                        'after_parkaging_date' => 'required',
+                
                        
-                        'material_source_id' => 'required',
+                       // 'material_source_id' => 'required',
                        
                 ], [
                         
                         'batch' => 'Vui lòng nhập số lô',
                         'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level' => 'vui lòng chọn mức độ ưu tiên',
-                        'after_weigth_date' => 'vui lòng chọn ngày có thể cân',
                         
-                        'after_parkaging_date' => 'vui lòng chọn ngày có thể đóng gói',
                         
-                        'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
+                        //'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
 
                 if ($validator->fails()) {
@@ -645,6 +647,25 @@ class ProductionPlanController extends Controller
 
                 // Lấy dữ liệu gốc từ plan_master
                 $plan = DB::table('plan_master')->where('id', $request->id)->first();
+
+
+                //  update recipe
+                $allItems = array_merge(
+                        $request->input('materials', []),
+                        $request->input('packagings', [])
+                );
+                //dd ($allItems);
+                foreach ($allItems as $item) {
+                        DB::table('plan_master_materials')
+                                ->where('id', $item['id'])
+                                ->update([
+                                        'active' => $item['active'],
+                                        'updated_at' => now(),
+                                        'created_by' =>session ('user')['fullName']
+                                ]);
+                        
+                }
+
                 
                 // Tìm version cao nhất hiện tại trong history
                 $lastVersion = DB::table('plan_master_history')
@@ -652,8 +673,6 @@ class ProductionPlanController extends Controller
                         ->max('version');
 
                 $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-                //dd ($plan);
-                // Insert lịch sử
                         DB::table('plan_master_history')->insert([
                         'plan_master_id' => $plan->id,
                         'plan_list_id' => $plan->plan_list_id,
@@ -1142,19 +1161,18 @@ class ProductionPlanController extends Controller
                 $now = now();
                 $user = session('user')['fullName'];
                 $idOrPlanListId = 'id';
+
                 if ($request->name == "selected"){
                         $updateData = ['selected' => !$request->updateValue]; 
                 }
-                else if ($request->name == "selected_all"){
+                else if ($request->name == "selected_all" && $request->id > 0){
                         $idOrPlanListId = 'plan_list_id';
-                        $updateData = ['selected' => !$request->updateValue];  
+                        $updateData = ['selected' => $request->updateValue == 1?1:0];  
                 }else {
                         $updateData = [$request->name => $request->updateValue];
                 }
 
-                
-                
-
+        
                 switch ($request->name) {
                 case 'pro_feedback':
                         $updateData['pro_feedback_by']   = $user;
@@ -1202,12 +1220,20 @@ class ProductionPlanController extends Controller
                         // các field khác như has_BMR, actual_record… thì không cần _by và _date
                         break;
                 }
-
-                DB::table('plan_master')
+                Log::info ($request->all());
+               
+                if ($request->name  == "selected_all" && $request->id < 0){
+                        DB::table('plan_master')
+                        ->where('weighed', 0)
+                        ->update(['selected' => 1]);
+                }else {
+                        DB::table('plan_master')
                         ->where($idOrPlanListId, $request->id)
                         ->update($updateData);
+                }
+                
 
-                return response()->json(['success' => true]);
+                return response()->json(['updateValue' => $request->updateValue]);
         }
 
         public function first_batch(Request $request) {
@@ -1450,22 +1476,21 @@ class ProductionPlanController extends Controller
         }
 
         public function open_stock(Request  $request){
-                        //dd ( $request->all());
+                //dd ( $request->all());
                 $plan_master_materials = DB::table('plan_master_materials as pmm')
                 ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
                 ->when($request->plan_list_id < 0,
                                  function ($q) {
-                                        return $q->where('pm.weighed', 0) 
-                                                ->where('pm.cancel', 0) ;
+                                        return $q->where('pm.weighed', 0);
                                 },
                                 function ($q) use ($request) {
                                         return $q->where('pm.plan_list_id', $request->plan_list_id);
                                 }
                 )
-                ->where('pm.plan_list_id', $request->plan_list_id)
+                ->where('pm.cancel', 0)
                 ->where('pm.active', 1)
                 ->where('pmm.active', 1)
-                ->when($request->selected, function ($q) {return $q->where('pm.selected', 1);})
+                ->when($request->has('selected'), function ($q) {return $q->where('pm.selected', 1);})
                 ->when($request->has('material_packaging_type'), function ($q) use ($request)  {return $q->where('pmm.material_packaging_type', $request->material_packaging_type);})
                 ->select(
                         
@@ -1487,7 +1512,7 @@ class ProductionPlanController extends Controller
                 )
                 ->orderBy('pmm.material_packaging_code')
                 ->get();
-               
+               //dd ($plan_master_materials);
 
                 $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
 
@@ -1633,7 +1658,6 @@ class ProductionPlanController extends Controller
               
         }
 
-
         public function open_feedback_API (Request $request){
                
                 $deparment_code = $request->deparment_code?? 'PXV1';
@@ -1743,6 +1767,116 @@ class ProductionPlanController extends Controller
                 ]);
 
         }
+
+        public function recipe_show_update(Request $request){
+                
+                $datas = DB::table('plan_master_materials as pmm')
+                ->where('pmm.plan_master_id', $request->plan_master_id)
+                ->where('pmm.material_packaging_type', $request->material_packaging_type)
+                ->get();
+                return response()->json($datas);
+
+        }
+
+        public function update_plan_master_material(Request $request){
+
+                $type_update =  'finished_product_code'; //'intermediate_code'; //
+                $material_packaging_type = 1;
+                $insertData = [];
+
+                // 1️⃣ Lấy plan
+                $plans = DB::table('plan_master as pm')
+                        ->select(
+                        'pm.id as plan_master_id',
+                        "fpc.$type_update"
+                        )
+                        ->leftJoin('finished_product_category as fpc',
+                        'pm.product_caterogy_id',
+                        '=',
+                        'fpc.id'
+                        )
+                        ->where('pm.active', 1)
+                        ->where('pm.plan_list_id', '>', 23)
+                        //->where('pm.weighed', 0)
+                        ->where('pm.cancel', 0)
+                        ->get();
+                //dd ($plans);
+                // 2️⃣ Lấy danh sách PrdID
+                $prdIds = $plans->pluck($type_update)
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                if ($prdIds->isEmpty()) {
+                        return response()->json([]);
+                }
+
+                // 3️⃣ Lấy BOM từ SQL Server
+                $boms = DB::connection('mms')
+                        ->table('yfBOM_BOMItemHP')
+                        ->whereIn('PrdID', $prdIds)
+                        ->get();
+
+                if ($boms->isEmpty()) {
+                        return response()->json([]);
+                }
+
+                // 4️⃣ Tính Revno max theo từng PrdID (CHỈ TÍNH 1 LẦN)
+                $maxRevByPrd = $boms
+                        ->groupBy('PrdID')
+                        ->map(fn($items) => $items->max('Revno'));
+
+                // 5️⃣ Lọc BOM chỉ giữ Revno max
+                $boms = $boms->filter(function ($item) use ($maxRevByPrd) {
+                        return $item->Revno == $maxRevByPrd[$item->PrdID];
+                });
+
+                // 6️⃣ Group lại theo PrdID cho nhanh
+                $bomsGrouped = $boms->groupBy('PrdID');
+
+                // 7️⃣ Map vào từng plan
+                foreach ($plans as $plan) {
+
+                        $prdId = $plan->$type_update;
+
+                        if (!isset($bomsGrouped[$prdId])) {
+                        continue;
+                        }
+
+                        foreach ($bomsGrouped[$prdId] as $item) {
+
+                        $insertData[] = [
+                                'plan_master_id'          => $plan->plan_master_id,
+                                'material_packaging_code' => (string) $item->MatID,
+                                'material_packaging_type' => $material_packaging_type,
+                                'Revno'                   => $item->Revno,
+                                'qty'                     => (float) $item->MatQty,
+                                'unit_bom'                => $item->uom,
+                                'MaterialName'            => $item->MaterialName,
+                                'created_at'              => now(),
+                                'created_by'              => "Auto_generate",
+                                'active'                  => 1,
+                        ];
+                        }
+                }
+
+                // 8️⃣ Upsert
+                if (!empty($insertData)) {
+
+                foreach (array_chunk($insertData, 1000) as $chunk) {
+
+                        DB::table('plan_master_materials')->upsert(
+                        $chunk,
+                        ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
+                        ['qty', 'unit_bom', 'active', 'Revno']
+                        );
+
+                }
+                }
+
+                return response()->json([]);
+        }
+
 
 
 }
