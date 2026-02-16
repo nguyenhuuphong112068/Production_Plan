@@ -44,6 +44,10 @@ Route::prefix('/plan')
             Route::post('accept_expected_date','accept_expected_date')->name('accept_expected_date');
             Route::post('all_feedback','all_feedback')->name('all_feedback');
             Route::post('order','order')->name('order');
+            Route::post('recipe_show_update','recipe_show_update')->name('recipe_show_update');
+
+
+            Route::get('update_plan_master_material','update_plan_master_material')->name('update_plan_master_material');
 
 
     });
