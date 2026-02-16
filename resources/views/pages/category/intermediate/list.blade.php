@@ -14,7 +14,10 @@
   @include('pages.category.intermediate.dataTable')
 @endsection
 @section('model')
+  
   @include('pages.category.intermediate.create')
+  @include('pages.category.intermediate.create_hypothesis')
+  @include('pages.category.intermediate.update_hypothesis')
   @include('pages.category.intermediate.update') 
   @include('pages.category.intermediate.recipe')
 @endsection

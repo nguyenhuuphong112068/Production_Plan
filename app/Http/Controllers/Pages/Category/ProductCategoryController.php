@@ -25,7 +25,6 @@ class ProductCategoryController extends Controller
 
                 $datas = DB::table('finished_product_category')
                 ->select('finished_product_category.*', 
-                        //'product_name.name as product_name', 
                         'intermediate_category.intermediate_code',
                         'intermediate_category.batch_size',
                         'intermediate_category.unit_batch_size',
@@ -35,6 +34,11 @@ class ProductCategoryController extends Controller
                         DB::raw('im_name.name AS intermediate_product_name'),
                 )
                 ->where('finished_product_category.deparment_code', session('user')['production_code'])
+                ->when(!user_has_permission(session('user')['userId'], 'view_Hypothesis_category', 'boolean'),
+                        function ($q) {
+                                return $q->where('intermediate_category.IsHypothesis', 0);
+                        }
+                )
                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
                 ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
                 ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')

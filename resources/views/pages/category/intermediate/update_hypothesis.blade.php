@@ -1,19 +1,9 @@
 
-<link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
-
 <!-- Modal -->
-<div class="modal fade" id="update_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
+<div class="modal fade" id="update_hypothesis_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        @php  
-            if (user_has_permission(session('user')['userId'], 'create_Hypothesis_category', 'boolean') ){
-                $title =  'Tạo Mới Danh Mục Bán Thành Phẩm Giã Định';
-                $is_Hypothesis = 1;
-            }else {
-                $title =  'Tạo Mới Danh Mục Bán Thành Phẩm';
-                $is_Hypothesis = 0;
-            }  
+       
         @endphp
-
         <form action="{{ route('pages.category.intermediate.update') }}" method="POST">
             @csrf
 
@@ -24,7 +14,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" id="productNameModalLabel" style="color: #CDC717">
-                        Cập Nhật Danh Mục Bán Thành Phẩm
+                        {{'Tạo Mới Danh Mục Bán Thành Phẩm Giã Định'}}
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -33,7 +23,8 @@
                 </div>
 
                 <div class="modal-body">
-
+                    <input type="hidden" class="form-control" name="is_Hypothesis" value="1">
+                    <input type="hidden" class="form-control" name="id" value="{{ old('id') }}">
                     {{-- NAME --}}
                     <div class="form-group">
                         <label for="name">Tên Sản Phẩm</label>
@@ -50,14 +41,13 @@
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
                     </div> 
-                    <input type="hidden" class="form-control" name="id" value="{{ old('id') }}">
-                    <input type="hidden" class="form-control" name="is_Hypothesis" value="{{ $is_Hypothesis }}">
+    
                     {{-- Mã TBP và Dạng Bào Chế--}}
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="intermediate_code">Mã Bán Thành Phẩm</label>
-                                <input type="text" class="form-control" name="intermediate_code" value="{{ old('intermediate_code') }}" readonly>
+                                <input type="text" class="form-control" name="intermediate_code" value="{{ old('intermediate_code') }}">
                                 @error('intermediate_code', 'updateErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
@@ -87,11 +77,12 @@
                     {{--Cở lô--}}
                     <div class="row">
                         <div class="col-md-6">
+                           
                             <div class="form-group">
                                 <div class="row">
                                     <div class="col-md-8">
                                         <label for="batch_size">Cỡ Lô Theo Khối Lượng</label>
-                                        <input type="number" min = "0" step="0.01"  class="form-control" name="batch_size" value="{{ old('batch_size') }}">
+                                        <input type="number" min = "0" step="0.001"  class="form-control" name="batch_size" value="{{ old('batch_size') }}">
                                         @error('batch_size', 'updateErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
@@ -99,7 +90,11 @@
                                     
                                     <div class="col-md-4">
                                         <label for="unit_batch_size">Đơn Vị</label>
-                                        <input type="text" class="form-control" name="unit_batch_size" value="Kg" readonly>
+                                        {{-- <input type="text" class="form-control" name="unit_batch_size" value="Kg" readonly> --}}
+                                         <select class="form-control" name="unit_batch_size" >
+                                            <option value="Kg" {{ old('unit_batch_size') == "Kg" ? 'selected' : '' }}>Kg</option>
+                                            <option value="Lít" {{ old('unit_batch_size') == "Lít" ? 'selected' : '' }}>Lít</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -136,7 +131,7 @@
                         </div>
                     </div>
 
-                    <div class="row">
+                    {{-- <div class="row">
                         <div class="col-md-6">
                             <label>Công Đoạn Bao Gồm</label>
                         </div>
@@ -147,9 +142,9 @@
                             </div>
                         </div>
 
-                    </div>
+                    </div> --}}
 
-                    <div class="row">
+                    {{-- <div class="row">
                         <div class="col-md-12">
                             <div class="form-group border p-2 rounded">
 
@@ -157,12 +152,12 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox1"  name = "weight_1">
-                                            <label for="update_checkbox1">Cân Nguyên Liệu</label>
+                                            <input type="checkbox" class="step-checkbox" id="checkbox1" checked name = "weight_1" >
+                                            <label for="checkbox1">Cân Nguyên Liệu</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau cân" name ="quarantine_weight">
+                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau cân" name ="quarantine_weight" value = "0" readonly>
                                     </div>
                                 </div>
 
@@ -170,12 +165,12 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox2"  name = "prepering">
-                                            <label for="update_checkbox2">Pha Chế</label>
+                                            <input type="checkbox" class="step-checkbox" id="checkbox2" checked name = "prepering">
+                                            <label for="checkbox2">Pha Chế</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau pha chế" name ="quarantine_preparing">
+                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau pha chế" name ="quarantine_preparing" value = "0" readonly>
                                     </div>
                                 </div>
 
@@ -183,12 +178,12 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox3"  name = "blending">
-                                            <label for="update_checkbox3">Trộn Hoàn Tất</label>
+                                            <input type="checkbox" class="step-checkbox" id="checkbox3" checked name = "blending">
+                                            <label for="checkbox3">Trộn Hoàn Tất</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau trộn hoàn tất" name ="quarantine_blending">
+                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau trộn hoàn tất" name ="quarantine_blending" value = "0" readonly>
                                     </div>
                                 </div>
 
@@ -196,12 +191,12 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox4"  name = "forming">
-                                            <label for="update_checkbox4">Định Hình</label>
+                                            <input type="checkbox" class="step-checkbox" id="checkbox4" checked name = "forming">
+                                            <label for="checkbox4">Định Hình</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau định hình" name ="quarantine_forming">
+                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau định hình" name ="quarantine_forming" value = "0" readonly>
                                     </div>
                                 </div>
 
@@ -209,12 +204,12 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox5"  name = "coating">
-                                            <label for="update_checkbox5">Bao Phim</label>
+                                            <input type="checkbox" class="step-checkbox" id="checkbox5" checked name = "coating">
+                                            <label for="checkbox5">Bao Phim</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau bao phim" name ="quarantine_coating">
+                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ sau bao phim" name ="quarantine_coating" value = "0" readonly>
                                     </div>
                                 </div>
 
@@ -222,18 +217,18 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-danger">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox6" name ="quarantine_total_checked">
-                                            <label for="update_checkbox6">Thời gian biệt trữ từ Cân đến trước ĐGSC</label>
+                                            <input type="checkbox" class="step-checkbox" id="checkbox6" name ="quarantine_total_checked">
+                                            <label for="checkbox6">Thời gian biệt trữ từ Cân đến trước ĐGSC</label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ từ Cân - ĐGSC" name ="quarantine_total">
+                                        <input type="number" min="0" class="form-control step-input" placeholder="Biệt trữ từ Cân - ĐGSC" name ="quarantine_total" value = "0" readonly>
                                     </div>
                                 </div>
 
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
 
                 </div>
 
@@ -248,15 +243,10 @@
     </div>
 </div>
 
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
 
 {{-- Tự động mở modal nếu có lỗi --}}
 @if ($errors->updateErrors->any()) 
     <script>
-       
         $(document).ready(function() {
             $('#update_modal').modal('show');
         });
@@ -278,7 +268,7 @@
         });
 
         // Nếu muốn khi modal mở mới khởi tạo
-        $('#update_modal').on('shown.bs.modal', function() {
+        $('#updateModal').on('shown.bs.modal', function() {
             $("input[data-bootstrap-switch]").each(function() {
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
@@ -287,20 +277,19 @@
 
         // Xử lý check
         function updateInputs() {
-            if ($("#update_checkbox6").is(":checked")) {
-               
+            if ($("#checkbox6").is(":checked")) {
                 // Chỉ tác động input 1-5, không đổi trạng thái checkbox
                 for (let i = 1; i <= 5; i++) {
-                    const cb = $("#update_checkbox" + i);
+                    const cb = $("#checkbox" + i);
                     const input = cb.closest(".form-group.row").find(".step-input");
                     input.val(0).prop("readonly", true);
                 }
-                $("#update_checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
+                $("#checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
             } else {
                 // Quay lại logic cũ
 
                 for (let i = 1; i <= 5; i++) {
-                    const cb = $("#update_checkbox" + i);
+                    const cb = $("#checkbox" + i);
                     const input = cb.closest(".form-group.row").find(".step-input");
 
                     if (cb.is(":checked")) {
@@ -309,17 +298,19 @@
                         input.val(0).prop("readonly", true);
                     }
                 }
-                $("#update_checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly", true);
+                $("#checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly", true);
             }
         }
 
         // Lắng nghe thay đổi của tất cả checkbox
-        $(".step-checkbox, #update_checkbox6").on("change", function() {
+        $(".step-checkbox, #checkbox6").on("change", function() {
             updateInputs();
         });
 
         // Chạy khi load trang
         updateInputs();
+
+
 
          
     });

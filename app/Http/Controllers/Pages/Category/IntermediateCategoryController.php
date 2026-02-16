@@ -16,7 +16,6 @@ class IntermediateCategoryController extends Controller
                 $productNames = DB::table('product_name')->where('active', true)->orderBy('name','asc')->get();
                 $dosages = DB::table('dosage')->where('active', true)->get();
                 $units = DB::table('unit')->where('active', true)->get();
-                
               
                 $datas = DB::table('intermediate_category')->select('intermediate_category.*','dosage.name as dosage_name' , 'product_name.name as product_name')
                 ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
@@ -26,7 +25,8 @@ class IntermediateCategoryController extends Controller
                         function ($q) {
                                 return $q->where('intermediate_category.IsHypothesis', 0);
                         }
-                )	
+                )->where ('cancel',0)
+                ->orderBy('intermediate_category.IsHypothesis','desc')
                 ->orderBy('product_name.name','asc')->get();
                 
                 session()->put(['title'=> 'DANH MỤC BÁN THÀNH PHẨM']);
@@ -42,25 +42,25 @@ class IntermediateCategoryController extends Controller
 
         public function store (Request $request) {
                 //dd ($request->all());
-      
-                $validator = Validator::make($request->all(), [
-                        'intermediate_code' => 'required|unique:intermediate_category,intermediate_code',
-                        'product_name_id' => 'required',
-                        'dosage_id' => 'required',
-                        'batch_size' => 'required',
-                        'batch_qty' => 'required',
-                        'unit_batch_qty' => 'required',
-                ], [
-                        'intermediate_code.required' => 'Vui lòng nhập mã bán thành phẩm.',
-                        'intermediate_code.unique' => 'Mã bán thành phẩm đã tồn tại.',
-                        'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
-                        'dosage_id.required' => 'Vui lòng chọn dạng bào chế',
-                        'batch_size.required' => 'Vui lòng nhập cỡ lô',
-                        'batch_qty.required' => 'Vui lòng nhập cỡ lô',
-                        'unit_batch_qty.required' => 'Vui lòng chọn đơn vị '
-                ]);
+
                
-        
+                $validator = Validator::make($request->all(), [
+                                'intermediate_code' => 'required|unique:intermediate_category,intermediate_code',
+                                'product_name_id' => 'required',
+                                'dosage_id' => 'required',
+                                'batch_size' => 'required',
+                                'batch_qty' => 'required',
+                                'unit_batch_qty' => 'required',
+                ], [
+                                'intermediate_code.required' => 'Vui lòng nhập mã bán thành phẩm.',
+                                'intermediate_code.unique' => 'Mã bán thành phẩm đã tồn tại.',
+                                'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
+                                'dosage_id.required' => 'Vui lòng chọn dạng bào chế',
+                                'batch_size.required' => 'Vui lòng nhập cỡ lô',
+                                'batch_qty.required' => 'Vui lòng nhập cỡ lô',
+                                'unit_batch_qty.required' => 'Vui lòng chọn đơn vị '
+                ]);
+
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
@@ -92,7 +92,7 @@ class IntermediateCategoryController extends Controller
                         'quarantine_forming'=> $request->quarantine_forming??0,
                         'quarantine_coating'=> $request->quarantine_coating??0,
                         'quarantine_time_unit' => $request->quarantine_time_unit === "on"?true:false,
-
+                        'IsHypothesis' => $request->is_Hypothesis??0,
                         'deparment_code'=> session('user')['production_code'],
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
@@ -158,12 +158,22 @@ class IntermediateCategoryController extends Controller
         }
 
         public function deActive(Request $request){
+
+                if ($request->IsHypothesis == 1){
+                        DB::table('intermediate_category')->where('id', $request->id)->update([
+                                'cancel' => 1,
+                                'prepared_by' => session('user')['fullName'],
+                                'updated_at' => now(), 
+                        ]);
+                }else{
+                        DB::table('intermediate_category')->where('id', $request->id)->update([
+                                'Active' => !$request->active,
+                                'prepared_by' => session('user')['fullName'],
+                                'updated_at' => now(), 
+                        ]);
+                }
               
-               DB::table('intermediate_category')->where('id', $request->id)->update([
-                        'Active' => !$request->active,
-                        'prepared_by' => session('user')['fullName'],
-                        'updated_at' => now(), 
-                ]);
+
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
 
