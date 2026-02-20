@@ -1,10 +1,10 @@
 
 
 <!-- Modal -->
-<div class="modal fade" id="create_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
+<div class="modal fade" id="update_hypothesis_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         
-        <form action="{{ route('pages.category.product.store') }}" method="POST">
+        <form action="{{ route('pages.category.product.update') }}" method="POST">
             @csrf
 
             <div class="modal-content">
@@ -14,7 +14,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" id="productNameModalLabel" style="color: #CDC717">
-                        Tạo Mới Danh Mục Thành Phẩm
+                        Cập Nhật Danh Mục Thành Phẩm Giã Định
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -23,14 +23,13 @@
                 </div>
 
                 <div class="modal-body">
-                    <input type="hidden" class="form-control" name="is_Hypothesis" value="0">
                     {{-- Mã Sản Phẩm --}}
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="intermediate_code">Mã Bán Thành Phẩm</label>
                                 <input type="text" class="form-control" name="intermediate_code" value="{{ old('intermediate_code') }} " readonly>
-                                @error('intermediate_code', 'createErrors')
+                                @error('intermediate_code', 'updateErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -39,14 +38,15 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="finished_product_code">Mã Thành Phẩm</label>
-                                <input type="text" class="form-control" name="finished_product_code" value="{{ old('finished_product_code') }}">
-                                @error('finished_product_code', 'createErrors')
+                                <input type="text" class="form-control" name="finished_product_code" value="{{ old('finished_product_code') }}" readonly>
+                                @error('finished_product_code', 'updateErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                     </div>
-                    <input type="hidden" class="form-control" name="process_code" value="{{ old('process_code') }}">
+                    
+                    <input type="hidden" class="form-control" name="id" value="{{ old('id') }}" readonly>
                     {{-- NAME --}}
                     <div class="form-group">
                         <label for="name">Tên Sản Phẩm Theo BPR</label>
@@ -59,7 +59,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        @error(' product_name_id', 'createErrors')
+                        @error(' product_name_id', 'updateErrors')
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
                     </div> 
@@ -74,7 +74,7 @@
                                     <div class="col-md-8">
                                         <label for="batch_size">Cỡ Lô Theo Khối Lượng</label>
                                         <input type="number" min = "0" class="form-control" name="batch_size" value="{{ old('batch_size') }}" readonly>
-                                        @error('batch_size', 'createErrors')
+                                        @error('batch_size', 'updateErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
                                     </div>
@@ -94,14 +94,14 @@
                                     <div class="col-md-8">
                                         <label for="batch_qty">Cỡ Lô Theo Đơn Vị Liều </label>
                                         <input type="number" min = "0" class="form-control" name="batch_qty" value="{{ old('batch_qty') }}"  > 
-                                        @error('batch_qty', 'createErrors')
+                                        @error('batch_qty', 'updateErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4">
                                         <label for="unit_batch_qty">Đơn Vị</label>
                                         <input type="text" class="form-control" name="unit_batch_qty" value="{{ old('unit_batch_qty') }}" readonly>
-                                        @error('unit_batch_qty', 'createErrors')
+                                        @error('unit_batch_qty', 'updateErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
                                     </div>
@@ -120,11 +120,11 @@
                                     @foreach ($markets as $market)
                                         <option value="{{ $market->id }}"
                                             {{ old('market_id') == $market->id ? 'selected' : '' }}>
-                                            {{ $market->code ." - ". $market->name}}
+                                            {{ $market->code}}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('market_id', 'createErrors')
+                                @error('market_id', 'updateErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -142,14 +142,14 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('specification_id', 'createErrors')
+                                @error('specification_id', 'updateErrors')
                                     <div class="alert alert-danger">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                     </div>  
 
-                    <div class="row">
+                    {{-- <div class="row">
                         <div class="col-md-6">
                             <label>Công Đoạn Bao Gồm</label>
                         </div>
@@ -162,14 +162,14 @@
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">
                                         <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="checkbox1" checked name = "primary_parkaging">
-                                            <label for="checkbox1">ĐGSC - ĐGTC</label>
+                                            <input type="checkbox" class="step-checkbox" id="update_checkbox1" checked name = "primary_parkaging">
+                                            <label for="update_checkbox1">ĐGSC - ĐGTC</label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
 
                 </div>
 
@@ -185,11 +185,12 @@
 </div>
 
 
+
 {{-- Tự động mở modal nếu có lỗi --}}
-@if ($errors->createErrors->any()) 
+@if ($errors->updateErrors->any()) 
     <script>
         $(document).ready(function() {
-            $('#create_modal').modal('show');
+            $('#update_modal').modal('show');
         });
     </script>
 @endif
@@ -210,6 +211,5 @@
         });
          
     });
-
     
 </script>

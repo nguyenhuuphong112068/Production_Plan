@@ -1,24 +1,41 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+<style> 
+    .highlight-row {
+        background-color: #fff3cd !important; /* vàng nhạt */
+    }
+</style>
 <div class="content-wrapper">
     <div class="card">
         <div class="card-header mt-4">
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
         </div>
+            @php
+                $auth_update = user_has_permission(session('user')['userId'], 'category_product_update','disabled');
+                $auth_deActive = user_has_permission(session('user')['userId'], 'category_product_deActive','disabled');
+                $create_i_Hypothesis_category = user_has_permission(session('user')['userId'], 'create_intermediate_Hypothesis_category', 'boolean');
+            @endphp
 
         <!-- /.card-Body -->
         <div class="card-body">
             @if (user_has_permission(session('user')['userId'], 'category_product_create', 'boolean'))
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#intermediate_category"
-                    style="width: 155px">
-                    <i class="fas fa-plus"></i> Thêm
+                <button class="btn btn-success btn-create mb-2" 
+                    data-toggle="modal" 
+                    data-target="#intermediate_category"
+                    data-modal_type="#create_modal"
+                    style="width: 255px">
+                    <i class="fas fa-plus"></i> Thêm Danh Mục
                 </button>
             @endif
-                                    
-            @php
-                $auth_update = user_has_permission(session('user')['userId'], 'category_product_update','disabled');
-                $auth_deActive = user_has_permission(session('user')['userId'], 'category_product_deActive','disabled');
-               
-            @endphp
+
+            @if ($create_i_Hypothesis_category)
+                <button class="btn btn-success btn-create-hypothesis mb-2" 
+                    data-toggle="modal" 
+                    data-target="#intermediate_category"
+                    data-modal_type="#create_hypothesis_modal"
+                    style="width: 255px">
+                    <i class="fas fa-plus"></i> Thêm Danh Mục Giã Định
+                </button>
+            @endif
 
             <table id="data_table_product_category" class="table table-bordered table-striped">
 
@@ -34,14 +51,19 @@
                         <th>Đóng gói</th>
                         <th>Phân Xưởng</th>
                         <th>Người Tạo/ Ngày Tạo</th>
-                        <th>Cập Nhật</th>
+                        @if (!$auth_update )
+                            <th>Cập Nhật</th>
+                        @endif
+                        @if ($create_i_Hypothesis_category )
+                            <th>Cập Nhật DMGĐ</th>
+                        @endif
                         <th>Vô Hiệu</th>
                         <th>Công Thức</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($datas as $data)
-                        <tr>
+                        <tr class = "{{ $data->IsHypothesis? 'highlight-row':'' }}">
                             <td>{{ $loop->iteration }} 
                                 @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
                             </td>
@@ -87,6 +109,7 @@
                                 <div>{{ $data->created_at?\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</div>
                             </td>
 
+                            @if (!$auth_update )
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
                                     data-finished_product_code="{{ $data->finished_product_code }}"
@@ -102,6 +125,28 @@
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </td>
+                            @endif
+
+                            @if ($create_i_Hypothesis_category )
+                            <td class="text-center align-middle">
+                                <button type="button" class="btn btn-warning btn-edit-hypothesis" 
+                                    data-id="{{ $data->id }}"
+                                    data-finished_product_code="{{ $data->finished_product_code }}"
+                                    data-intermediate_code="{{ $data->intermediate_code }}"
+                                    data-product_name_id="{{ $data->product_name_id }}"
+                                    data-market_id="{{ $data->market_id }}"
+                                    data-specification_id="{{ $data->specification_id }}"
+                                    data-batch_size="{{ $data->batch_size }}" data-batch_qty="{{ $data->batch_qty }}"
+                                    data-unit_batch_qty="{{ $data->unit_batch_qty }}"
+                                    data-primary_parkaging="{{ $data->primary_parkaging }}" 
+                                    data-toggle="modal"
+                                    data-target="#update_hypothesis_modal"
+                                    {{ $data->IsHypothesis == 0 ? $auth_update :''}}
+                                    >
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
+                            @endif
 
 
                             <td class="text-center align-middle">
@@ -110,9 +155,12 @@
                                     @csrf
                                     <input type="hidden" name="id" value = "{{ $data->id }}">
                                     <input type="hidden" name="active" value="{{ $data->active }}">
+                                    <input type="hidden" name="IsHypothesis" value="{{ $data->IsHypothesis }}">
+
                                     @if ($data->active)
-                                        <button type="submit" class="btn btn-danger" {{ $auth_deActive }} data-type="{{ $data->active }}"
+                                        <button type="submit" class="btn btn-danger"  data-type="{{ $data->active }}"
                                             data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->finished_product_name }}"
+                                            {{ $data->IsHypothesis == 0 ? $auth_update :''}}
                                             >
                                             <i class="fas fa-lock"></i>
                                         </button>
@@ -184,8 +232,23 @@
             modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
             modal.find('input[name="primary_parkaging"]').prop('checked', button.data(
                 'primary_parkaging'));
+        });
 
+        $('.btn-edit-hypothesis').click(function() {
+            const button = $(this);
+            const modal = $('#update_hypothesis_modal');
 
+            // Gán dữ liệu vào input
+            modal.find('input[name="id"]').val(button.data('id'));
+            modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
+            modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+            modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
+            modal.find('select[name="market_id"]').val(button.data('market_id'));
+            modal.find('select[name="specification_id"]').val(button.data('specification_id'));
+            modal.find('input[name="batch_size"]').val(button.data('batch_size'));
+            modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
+            modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
+            
         });
 
         $('.form-deActive').on('submit', function(e) {
@@ -317,8 +380,6 @@
                     }
                 });
         });
-
-
 
     });
 </script>

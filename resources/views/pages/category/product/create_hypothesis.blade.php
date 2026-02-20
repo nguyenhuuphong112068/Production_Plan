@@ -1,7 +1,7 @@
 
 
 <!-- Modal -->
-<div class="modal fade" id="create_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
+<div class="modal fade" id="create_hypothesis_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         
         <form action="{{ route('pages.category.product.store') }}" method="POST">
@@ -14,7 +14,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" id="productNameModalLabel" style="color: #CDC717">
-                        Tạo Mới Danh Mục Thành Phẩm
+                        Tạo Mới Danh Mục Thành Phẩm Giã Định
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -23,7 +23,7 @@
                 </div>
 
                 <div class="modal-body">
-                    <input type="hidden" class="form-control" name="is_Hypothesis" value="0">
+                    <input type="hidden" class="form-control" name="is_Hypothesis" value="1">
                     {{-- Mã Sản Phẩm --}}
                     <div class="row">
                         <div class="col-md-6">
@@ -149,7 +149,7 @@
                         </div>
                     </div>  
 
-                    <div class="row">
+                    {{-- <div class="row">
                         <div class="col-md-6">
                             <label>Công Đoạn Bao Gồm</label>
                         </div>
@@ -169,7 +169,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
 
                 </div>
 
@@ -208,8 +208,11 @@
             const finishedCode = $(this).val() || "";
             processInput.val(intermediateCode + "_" + finishedCode);
         });
+
+
          
     });
+
 
     
 </script>

@@ -16,12 +16,24 @@ class ProductCategoryController extends Controller
                 $specifications = DB::table('specification')->orderBy('name','asc')->get();
                 $productNames = DB::table('product_name')->where('active', true)->orderBy('name','asc')->get();
           
-                $intermediate_category = DB::table('intermediate_category')->select('intermediate_category.*','dosage.name as dosage_name' , 'product_name.name as product_name')
+                $intermediate_category = DB::table('intermediate_category')
+                ->select('intermediate_category.*',
+                        'dosage.name as dosage_name' , 
+                        'product_name.name as product_name')
                 ->leftJoin('product_name','intermediate_category.product_name_id','product_name.id')
                 ->leftJoin('dosage','intermediate_category.dosage_id','dosage.id')
+                ->when(!user_has_permission(session('user')['userId'], 'view_Hypothesis_category', 'boolean'),
+                        function ($q) { return $q->where('intermediate_category.IsHypothesis', 0);
+                })
+                ->when(!user_has_permission(session('user')['userId'], 'category_product_create', 'boolean'),
+                        function ($q) { return $q->where('intermediate_category.IsHypothesis', 1);
+                })
                 ->where('intermediate_category.active', true)
+                ->where('intermediate_category.cancel', 0)
                 ->where('intermediate_category.deparment_code', session('user')['production_code'])
                 ->orderBy('product_name.name','asc')->get();
+
+                //dd ($intermediate_category);
 
                 $datas = DB::table('finished_product_category')
                 ->select('finished_product_category.*', 
@@ -36,14 +48,15 @@ class ProductCategoryController extends Controller
                 ->where('finished_product_category.deparment_code', session('user')['production_code'])
                 ->when(!user_has_permission(session('user')['userId'], 'view_Hypothesis_category', 'boolean'),
                         function ($q) {
-                                return $q->where('intermediate_category.IsHypothesis', 0);
+                                return $q->where('finished_product_category.IsHypothesis', 0);
                         }
-                )
+                )->where ('finished_product_category.cancel',0)
                 ->leftJoin('intermediate_category','finished_product_category.intermediate_code','intermediate_category.intermediate_code')
                 ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
                 ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->leftJoin('specification','finished_product_category.specification_id','specification.id')
+                ->orderBy('IsHypothesis','desc')
                 ->orderBy('finished_product_name','asc')
                 ->get();
 
@@ -93,6 +106,7 @@ class ProductCategoryController extends Controller
                         'unit_batch_qty'=> $request->unit_batch_qty,
                         'primary_parkaging'=> $request->primary_parkaging == "on"? true:false,
                         'secondary_parkaging' => false,
+                         'IsHypothesis' => $request->is_Hypothesis??0,
                         'deparment_code'=> session('user')['production_code'],
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
@@ -133,12 +147,20 @@ class ProductCategoryController extends Controller
         }
 
         public function deActive(Request $request){
-              
-               DB::table('finished_product_category')->where('id', $request->id)->update([
-                        'Active' => !$request->active,
-                        'prepared_by' => session('user')['fullName'],
-                        'updated_at' => now(), 
-                ]);
+        
+                if ($request->IsHypothesis == 1){
+                        DB::table('finished_product_category')->where('id', $request->id)->update([
+                                'cancel' => 1,
+                                'prepared_by' => session('user')['fullName'],
+                                'updated_at' => now(), 
+                        ]);
+                }else{
+                        DB::table('finished_product_category')->where('id', $request->id)->update([
+                                'Active' => !$request->active,
+                                'prepared_by' => session('user')['fullName'],
+                                'updated_at' => now(), 
+                        ]);
+                }
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
 

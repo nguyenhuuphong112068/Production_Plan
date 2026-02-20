@@ -54,10 +54,10 @@
                         <th rowspan="2">Phân Xưởng</th>
                         <th rowspan="2">Người Tạo/ Ngày Tạo</th>
                         @if (!$auth_update )
-                        <th rowspan="2">Cập Nhật</th>
+                            <th rowspan="2">Cập Nhật</th>
                         @endif
                         @if ($create_i_Hypothesis_category )
-                        <th rowspan="2">Cập Nhật DMGĐ</th>
+                            <th rowspan="2">Cập Nhật DMGĐ</th>
                         @endif
                         <th rowspan="2">Vô Hiệu</th>
                         <th rowspan="2">Công Thức</th>
@@ -212,7 +212,7 @@
                                         data-target="#update_modal"
                                         {{ $auth_update }}
                                         >
-                                        <i class="fas fa-edit"></i>
+                                        <i class="fas fa-edit"></i> 
                                     </button>
                             </td>
                             @endif
@@ -232,9 +232,9 @@
                                         
                                         data-toggle="modal"
                                         data-target="#update_hypothesis_modal"
-                                        {{ $auth_update }}
+                                       {{ $data->IsHypothesis == 0 ? $auth_update :''}}
                                         >
-                                        <i class="fas fa-edit"></i>
+                                        <i class="fas fa-edit"></i> 
                                     </button>
                                 
                                 </td>
@@ -254,7 +254,7 @@
                                             data-type="{{ $data->active }}"
                                             data-name="{{ $data->intermediate_code . ' - ' . $data->product_name }}"
 
-                                            {{ $auth_deActive }}>
+                                            {{ $data->IsHypothesis == 0 ? $auth_update :''}} >
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @else
@@ -280,7 +280,7 @@
                                     data-toggle="modal"
                                     data-target="#intermediateRecipeModal"
                                     >
-                                    <i class="fas fa-list-alt"></i>
+                                    <i class="fas fa-list-alt"></i> 
                                 </button>
                             </td>
 
