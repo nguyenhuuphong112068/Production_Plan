@@ -24,8 +24,8 @@ class IntermediateCategoryController extends Controller
                 ->when(!user_has_permission(session('user')['userId'], 'view_Hypothesis_category', 'boolean'),
                         function ($q) {
                                 return $q->where('intermediate_category.IsHypothesis', 0);
-                        }
-                )->where ('cancel',0)
+                })
+                ->where ('cancel',0)
                 ->orderBy('intermediate_category.IsHypothesis','desc')
                 ->orderBy('product_name.name','asc')->get();
                 

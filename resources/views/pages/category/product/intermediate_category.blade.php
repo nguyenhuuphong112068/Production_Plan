@@ -4,9 +4,11 @@
     max-width: 90% !important;
     width: 90% !important;
   }
+
 </style>
 
-<div class="modal fade" id="intermediate_category" tabindex="-1" role="dialog" aria-hidden="true">
+
+ <div class="modal fade" id="intermediate_category" tabindex="-1" role="dialog" > {{-- aria-hidden="true" --}}
   <div class="modal-dialog selectProductModal-modal-size" role="document">
     <div class="modal-content">
 
@@ -70,9 +72,12 @@
 
                     @php
                         $data->quarantine_time_unit == 1 ? $quarantine_time_unit = 'ngày': $quarantine_time_unit = 'giờ'
+                
                     @endphp
+ 
 
-                    <tr>
+                    <tr >
+
                       <td>{{ $loop->iteration}} </td>
                       @if ($data->active)
                         <td class="text-success"> {{$data->intermediate_code}}</td>
@@ -187,11 +192,11 @@
                               data-unit_batch_size="{{ $data->unit_batch_size }}"
                               data-batch_qty="{{ $data->batch_qty }}"
                               data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-
                               data-dismiss="modal"
-
+                              {{-- 
                               data-toggle="modal"
-                              data-target="#create_modal">
+                              data-target="#create_modal" --}}
+                              >
                               <i class="fas fa-plus"></i>
                           </button>
                       </td>
@@ -217,6 +222,7 @@
 
 
 <script>
+  let currentModalTarget = '#create_modal';
   $(document).ready(function () {
       // Khởi tạo DataTable
       $('#intermediate_category_dt').DataTable({
@@ -239,18 +245,38 @@
       });
 
       // Click nút +
-        $('#intermediate_category').on('click', '.btn-plus', function () {
-          const button = $(this);
-          const modal = $('#create_modal');
+      $('#intermediate_category').on('click', '.btn-plus', function () {
+        const button = $(this);
+        const modalSelector = currentModalTarget ;//button.attr('data-target'); // lấy selector
+        button.blur();
 
+        //$('#intermediate_category').modal('hide');
+
+        const modal = $(modalSelector); 
+ 
           modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
           modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
           modal.find('input[name="batch_size"]').val(button.data('batch_size'));
           modal.find('input[name="unit_batch_size"]').val(button.data('unit_batch_size'));
           modal.find('input[name="batch_qty"]').val(button.data('batch_qty')).attr('max', button.data('batch_qty'));
           modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
-      });
+          
+          modal.modal('show');
       
+      });
+
+       // default
+
+      // Khi mở intermediate_category
+      $('#intermediate_category').on('show.bs.modal', function (event) {
+
+          const button = $(event.relatedTarget);
+          const modal_type = button.data('modal_type');
+          currentModalTarget = modal_type;
+
+
+      });
+
 
 
   });
