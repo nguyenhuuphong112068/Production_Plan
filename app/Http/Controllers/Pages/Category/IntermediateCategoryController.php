@@ -179,21 +179,32 @@ class IntermediateCategoryController extends Controller
 
         public function recipe(Request $request){
                 
-                $datas = DB::connection('mms')
-                ->table('yfBOM_BOMItemHP')
-                ->where('PrdID', $request->intermediate_code)
-                ->where('Revno', function ($q) use ($request) {
-                        $q->selectRaw('MAX(Revno)')
-                        ->from('yfBOM_BOMItemHP')
-                        ->where('PrdID', $request->intermediate_code);
-                })
-                ->distinct()
-                ->orderBy('PrdStage')
-                ->orderBy('MatID')
-                ->get();
-
-              
-
+                if ($request->IsHypothesis){
+                        $datas = DB::table('bom_item')
+                        ->select ([
+                             'code as MatID',
+                             'name as MaterialName',
+                             'qty as MatQty',
+                             'uom',
+                             'Revno'
+                        ])
+                        ->where('product_caterogy_id', $request->product_caterogy_id)
+                        ->get();
+                }else{
+                        $datas = DB::connection('mms')
+                        ->table('yfBOM_BOMItemHP')
+                        ->where('PrdID', $request->intermediate_code)
+                        ->where('Revno', function ($q) use ($request) {
+                                $q->selectRaw('MAX(Revno)')
+                                ->from('yfBOM_BOMItemHP')
+                                ->where('PrdID', $request->intermediate_code);
+                        })
+                        ->distinct()
+                        ->orderBy('PrdStage')
+                        ->orderBy('MatID')
+                        ->get();
+                }
+               
                 return response()->json($datas);
         }
 

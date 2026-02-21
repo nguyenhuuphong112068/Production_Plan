@@ -14,7 +14,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" id="productNameModalLabel" style="color: #CDC717">
-                        Cập Nhật Danh Mục Thành Phẩm Giã Định
+                        Cập Nhật Danh Mục Thành Phẩm Giả Định
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">

@@ -6,7 +6,7 @@
     <div class="modal-dialog modal-lg" role="document">
         @php  
             if (user_has_permission(session('user')['userId'], 'create_Hypothesis_category', 'boolean') ){
-                $title =  'Tạo Mới Danh Mục Bán Thành Phẩm Giã Định';
+                $title =  'Tạo Mới Danh Mục Bán Thành Phẩm Giả Định';
                 $is_Hypothesis = 1;
             }else {
                 $title =  'Tạo Mới Danh Mục Bán Thành Phẩm';

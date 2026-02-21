@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pages\Category;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class ProductCategoryController extends Controller
@@ -60,13 +61,16 @@ class ProductCategoryController extends Controller
                 ->orderBy('finished_product_name','asc')
                 ->get();
 
+                $units = DB::table('unit')->where('active', true)->get();
+              
                 session()->put(['title'=> 'DANH MỤC THÀNH PHẨM']);
                 return view('pages.category.product.list',[
                         'datas' => $datas,
                         'intermediate_category' => $intermediate_category,                      
                         'productNames' => $productNames,   
                         'markets' => $markets,     
-                        'specifications' => $specifications        
+                        'specifications' => $specifications,
+                        'units' => $units      
                 ]);
         }
 
@@ -220,19 +224,52 @@ class ProductCategoryController extends Controller
         }
 
         public function recipe(Request $request){
-                
-                $datas = DB::connection('mms')
-                ->table('yfBOM_BOMItemHP')
-                ->where('PrdID', $request->intermediate_code)
-                ->where('Revno', function ($q) use ($request) {
-                        $q->selectRaw('MAX(Revno)')
-                        ->from('yfBOM_BOMItemHP')
-                        ->where('PrdID', $request->intermediate_code);
-                })
-                ->orderBy('PrdStage')
-                ->orderBy('MatID')
-                ->get();
+             
+                if ($request->IsHypothesis){
+                        $datas = DB::table('bom_item')
+                        ->where('product_caterogy_id', $request->product_caterogy_id)
+                        ->get();
+                }else{
+                        $datas = DB::connection('mms')
+                                ->table('yfBOM_BOMItemHP')
+                                ->where('PrdID', $request->intermediate_code)
+                                ->where('Revno', function ($q) use ($request) {
+                                        $q->selectRaw('MAX(Revno)')
+                                        ->from('yfBOM_BOMItemHP')
+                                        ->where('PrdID', $request->intermediate_code);
+                                })
+                                ->orderBy('PrdStage')
+                                ->orderBy('MatID')
+                        ->get();
+                }
+               
                 return response()->json($datas);
+        }
+
+        public function save_bom(Request $request){
+        
+                foreach ($request->items as $item) {
+                        DB::table('bom_item')->updateOrInsert(
+                        // Điều kiện kiểm tra tồn tại
+                        [
+                                'product_caterogy_id' => $item['product_caterogy_id'],
+                                'code' => $item['code'],
+                        ],
+                        // Dữ liệu insert hoặc update
+                        [
+                                'name' => $item['name'],
+                                'qty' => $item['qty'],
+                                'uom' => $item['uom'],
+                                'mat_par_type' => $item['mat_par_type'],
+                                'Revno' => 0,
+                                'updated_at' => now(),
+                                'created_by' => session('user')['fullName'],
+                              
+                        ]
+                        );
+                }
+
+                return response()->json(['success' => true]);
         }
     
 }
