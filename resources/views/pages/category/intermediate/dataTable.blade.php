@@ -32,7 +32,7 @@
             @if ($create_i_Hypothesis_category)
                 <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_hypothesis_modal"
                     style="width: 255px">
-                    <i class="fas fa-plus"></i> Thêm Danh Mục Giã Định
+                    <i class="fas fa-plus"></i> Thêm Danh Mục Giả Định
                 </button>
             @endif
 

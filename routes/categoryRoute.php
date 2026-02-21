@@ -24,6 +24,7 @@ Route::prefix('/category')
             Route::post('update', 'update')->name('update');
             Route::post('deActive','deActive')->name('deActive'); 
             Route::post('recipe','recipe')->name('recipe'); 
+            Route::post('save_bom','save_bom')->name('resave_bomcipe');
     });
 
 
@@ -36,6 +37,7 @@ Route::prefix('/category')
             Route::post('update', 'update')->name('update');
             Route::post('deActive','deActive')->name('deActive'); 
             Route::post('recipe','recipe')->name('recipe');
+            Route::post('save_bom','save_bom')->name('save_bom');
 
             Route::get('getJsonFPCategory','getJsonFPCategory')->name('getJsonFPCategory'); 
     });

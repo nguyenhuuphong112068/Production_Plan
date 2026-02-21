@@ -152,12 +152,12 @@
                 </a>
               </li>
 
-               <li class="nav-item">
+               {{-- <li class="nav-item">
                 <a href="{{ route ('pages.materData.source_material.list') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Nguồn Hoạt chất Chính</p>
+                  <p>BOM Giả Định</p>
                 </a>
-              </li>
+              </li> --}}
 
               {{-- <li class="nav-item">
                 <a href="{{ route ('pages.materData.Instrument.list') }}" class="nav-link">
@@ -165,7 +165,6 @@
                   <p>Thiết Bị</p>
                 </a>
               </li> --}}
-
 
             </ul>
           </li>
