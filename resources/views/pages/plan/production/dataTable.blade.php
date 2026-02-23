@@ -52,6 +52,11 @@
     .step-checkbox:checked {
         box-shadow: 0 0 5px #007bff;
     }
+
+    .highlight-row {
+        background-color: #fff3cd !important; /* vàng nhạt */
+    }
+
 </style>
 
 <div class="content-wrapper">
@@ -190,28 +195,40 @@
                 <tbody>
 
                     @foreach ($datas as $data)
-                        <tr>
+                        <tr class = "{{ $data->IsHypothesis? 'highlight-row':'' }}">
+
                             <td>
                                 <div> {{ $loop->iteration }} </div>
                                 @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
                             </td>
+
                             <td>
-                                @php
-                                    $stutus_colors = [
-                                        "Chưa làm" => 'background-color: green; color: white;', 
-                                        "Đã Cân"        => 'background-color: #e3f2fd; color: #0d47a1;', // xanh rất nhạt
-                                        "Đã Pha chế"    => 'background-color: #bbdefb; color: #0d47a1;',
-                                        "Đã THT"        => 'background-color: #90caf9; color: #0d47a1;',
-                                        "Đã định hình"  => 'background-color: #64b5f6; color: white;',
-                                        "Đã Bao phim"   => 'background-color: #1e88e5; color: white;',
-                                        "Hoàn Tất ĐG"   => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
-                                        'Hủy' => 'background-color: red; color: white;'
-                                      
-                                    ];
-                                @endphp
-                                <div class ="text-center" style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
-                                    > {{ $data->status }} </div>
+                                @if ($data->IsHypothesis)
+                                    <div class ="text-center" 
+                                        style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; background-color: #d40bf7; color: #ffffff;"
+                                        > {{ "Lô Giả Định" }} </div>
+                                @else
+                                    @php
+                                        $stutus_colors = [
+                                            "Chưa làm" => 'background-color: green; color: white;', 
+                                            "Đã Cân"        => 'background-color: #e3f2fd; color: #0d47a1;', // xanh rất nhạt
+                                            "Đã Pha chế"    => 'background-color: #bbdefb; color: #0d47a1;',
+                                            "Đã THT"        => 'background-color: #90caf9; color: #0d47a1;',
+                                            "Đã định hình"  => 'background-color: #64b5f6; color: white;',
+                                            "Đã Bao phim"   => 'background-color: #1e88e5; color: white;',
+                                            "Hoàn Tất ĐG"   => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
+                                            'Hủy' => 'background-color: red; color: white;'
+                                        
+                                        ];
+                                    @endphp
+                                
+                                    <div class ="text-center" 
+                                        style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
+                                        > {{ $data->status }} </div>
+                                @endif
+                                
                             </td>
+
                             @if ($plan_list_id < 0)
                                 <td>{{$plan_list_id_title [$data->plan_list_id]?? 'NA'}}</td>
                             @endif
@@ -918,9 +935,6 @@
                 });
 
             });
-
-
-
 
         });
     </script>
