@@ -273,7 +273,7 @@
 
                             <td class="text-center align-middle">
                                 <button type="button"
-                                    class="btn btn-recipe btn-primary "
+                                    class="btn btn-recipe btn-primary mt-1 "
                                     data-intermediate_code="{{ $data->intermediate_code }}"
                                     data-product_name="{{ $data->product_name}} - {{$data->batch_size}} {{$data->unit_batch_size }}"
                                    
@@ -282,6 +282,21 @@
                                     >
                                     <i class="fas fa-list-alt"></i> 
                                 </button>
+
+                                 @if ($data->IsHypothesis)
+                                    <button type="button"
+                                        class="btn btn-create-bom btn-success mt-1 "
+                                        data-id="{{ $data->id }}"
+                                        data-product_name="{{ $data->product_name}} - {{$data->batch_size}} {{$data->unit_batch_size }}"
+                                        data-id =  "{{ $data->id }}"
+                                      
+                                        data-toggle="modal"
+                                        data-target="#createBOMModal"
+                                        >
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                @endif
+
                             </td>
 
                         </tr>
@@ -519,6 +534,96 @@
                         );
                     }
                 });
+        });
+
+        $('.btn-create-bom').click(function() {
+            const button = $(this);
+            const modal = $('#createBOMModal');
+            const product_caterogy_id = $(this).data('id')
+            // Gán dữ liệu vào input
+            modal.find('#product_caterogy_id').val(button.data('id'));
+            modal.find('#recipe_i_title').val(button.data('product_name'));
+            
+            const history_modal = modal.find('#data_table_create_recipe_body')
+            
+            
+            // const create_recip_modal = $('#data_table_create_recipe_body')
+            // // Xóa dữ liệu cũ
+            history_modal.empty();
+
+            // Gọi Ajax lấy dữ liệu history
+            $.ajax({
+                    url: "{{ route('pages.category.intermediate.recipe') }}",
+                    type: 'post',
+                    data: {
+                        IsHypothesis: 1,
+                        product_caterogy_id: product_caterogy_id,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                        
+                        if (res.length === 0) {
+                            history_modal.append(
+                                `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
+                            );
+                        } else {
+
+                        res.forEach((item, index) => {
+                            let code = item.MatID ?? '';
+                            let name = item.MaterialName ?? '';
+                            let qty = item.MatQty ?? '';
+                            let uom = item.uom ?? '';
+
+                            history_modal.append(`
+                                <tr>
+                                    <td>${index + 1}</td>
+
+                                    <td>
+                                        <input type="text" 
+                                            class="form-control code" 
+                                            value="${code}">
+                                    </td>
+
+                                    <td>
+                                        <input type="text" 
+                                            class="form-control name" 
+                                            value="${name}">
+                                    </td>
+
+                                    <td>
+                                        <input type="number" 
+                                            step="0.001"
+                                            class="form-control qty" 
+                                            value="${qty}">
+                                    </td>
+
+                                    <td>
+                                        <input type="text" 
+                                            class="form-control uom" 
+                                            value="${uom}">
+                                    </td>
+
+                                    <td>
+                                        <button type="button" 
+                                                class="btn btn-danger btn-sm btn_remove">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `);
+
+                        });
+                                                
+                        }
+                    },
+                    error: function() {
+                        history_modal.append(
+                            `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                        );
+                    }
+            });
+
+            
         });
 
 

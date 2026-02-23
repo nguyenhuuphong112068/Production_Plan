@@ -201,6 +201,7 @@ class ProductionPlanController extends Controller
                                 'plan_master.*',
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code',
+                                'finished_product_category.IsHypothesis',
                                 DB::raw('fp_name.name AS finished_product_name'),
                                 DB::raw('im_name.name AS intermediate_product_name'),
                                 'market.name as market',
@@ -270,7 +271,13 @@ class ProductionPlanController extends Controller
                         });
                
                 $finished_product_category = DB::table('finished_product_category')
-                        ->select('finished_product_category.*', 'product_name.name', 'market.name as market', 'specification.name as specification',)
+                        ->select('finished_product_category.*', 
+                                'product_name.name', 
+                                'market.name as market', 
+                                'specification.name as specification',
+                                'intermediate_category.id as intermediate_caterogy_id'
+                                )
+                        ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
@@ -942,13 +949,14 @@ class ProductionPlanController extends Controller
 
                 // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
                 $plans_main = DB::table('plan_master')
+                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
+                ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
                 ->where('plan_master.active', 1)
                 ->where('plan_master.cancel', 0)
                 ->where('plan_master.only_parkaging', 0)
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
-                ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
+                ->where('finished_product_category.IsHypothesis', 0)
                 ->select(
                         'plan_master.id',
                         'plan_master.plan_list_id',
@@ -987,12 +995,13 @@ class ProductionPlanController extends Controller
                 
                 // Phần 2: Các plan chỉ đóng gói (only_parkaging = 1)
                 $plans_packaging = DB::table('plan_master')
+                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
                 ->where('plan_master.plan_list_id', $request->plan_list_id)
                 ->where('plan_master.active', 1)
                 ->where('plan_master.cancel', 0)
                 ->where('plan_master.only_parkaging', 1)
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
+                ->where('finished_product_category.IsHypothesis', 0)
                 ->select(
                         'plan_master.id',
                         'plan_master.plan_list_id',

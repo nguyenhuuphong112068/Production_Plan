@@ -20,8 +20,8 @@
 
         <h4 class="modal-title w-100 text-center" id="createModal"
             style="color: #CDC717; font-size: 30px">
-              Tạo Mới Công Thức Bao Bì Đóng Gói Giả Định
-            <br> 
+              Tạo Mới Công Thức Nguyên Liệu Giả Định
+            <br>
             <span id="recipe_i_title" class="ml-2" ></span>
             
         </h4>
@@ -37,8 +37,8 @@
 
             <div class="mb-3" style="display:flex; gap:10px; align-items:center; font-size:18px;">
                 <input type="hidden" id="product_caterogy_id">
-                <input type="text" id="input_code" class="form-control" placeholder="Mã Bao Bì">
-                <input type="text" id="input_name" class="form-control" placeholder="Tên Bao Bì">
+                <input type="text" id="input_code" class="form-control" placeholder="Mã Nguyên Liệu">
+                <input type="text" id="input_name" class="form-control" placeholder="Tên Nguyên Liệu">
                 <input type="number" id="input_qty" class="form-control" placeholder="Số Lượng">
                 
                 <select class="form-control" id="input_uom" >
@@ -147,7 +147,7 @@
             qty: $(this).find('.qty').val(),
             uom: $(this).find('.uom').val(),
             version: $(this).find('.version').val(),
-            mat_par_type : 1
+            mat_par_type : 0
         };
 
         data.push(row);

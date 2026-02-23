@@ -64,7 +64,7 @@
                       <td class="text-center align-middle">
                           
 
-                        <button type="summit" class="btn btn-success btn-plus" 
+                        <button type="button" class="btn btn-success btn-plus" 
                           data-id="{{ $data->id }}"
                           data-intermediate_code="{{ $data->intermediate_code }}"
                           data-finished_product_code="{{ $data->finished_product_code }}"
@@ -74,7 +74,9 @@
                           data-market="{{ $data->market }}"
                           data-specification="{{ $data->specification }}"
                           data-plan_list_id="{{ $plan_list_id }}"
-                        
+                          data-is_hypothesis="{{ $data->IsHypothesis }}"
+                          data-intermediate_caterogy_id = "{{ $data->intermediate_caterogy_id }}"
+
                           data-dismiss="modal"
                          
                           >
@@ -141,6 +143,8 @@
           modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
           modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
           modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
+          modal.find('input[name="IsHypothesis"]').val(button.data('is_hypothesis'));
+          modal.find('input[name="intermediate_caterogy_id"]').val(button.data('intermediate_caterogy_id'));
 
           if (target_modal == "#target_modal"){
             modal.find('input[name="number_of_unit"]').val(button.data('batch_qty'));

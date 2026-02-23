@@ -114,9 +114,13 @@
                                         value="{{ old('specification') }}" />
                                 </div>
                             </div>
-                            <input type="hidden" name="product_caterogy_id" 
-                                value="{{ old('product_caterogy_id') }}" />
+                            
+                            <input type="hidden" name="intermediate_caterogy_id" value="{{ old('intermediate_caterogy_id') }}" />
+                            <input type="hidden" name="product_caterogy_id" value="{{ old('product_caterogy_id') }}" />
                             <input type="hidden" name="plan_list_id" readonly value="{{ old('plan_list_id') }}" />
+                            <input type="hidden" name="IsHypothesis"  value="{{ old('IsHypothesis') }}" />
+
+                            
                         </div>
 
                         <div class="row mt-0">
@@ -447,21 +451,23 @@
             $("input[data-bootstrap-switch]").each(function() {
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
-
-           
             const material_table = $('#data_table_material').find('tbody'); 
             const intermediate_code = $(this).find('input[name="intermediate_code"]').val();
+            const IsHypothesis = $(this).find('input[name="IsHypothesis"]').val();
+            const intermediate_caterogy_id = $(this).find('input[name="intermediate_caterogy_id"]').val();
+            const product_caterogy_id = $(this).find('input[name="product_caterogy_id"]').val();
+
             material_table.empty();
             $.ajax({
                 url: "{{ route('pages.category.intermediate.recipe') }}",
                 type: 'post',
                 data: {
+                    product_caterogy_id: intermediate_caterogy_id,
+                    IsHypothesis: IsHypothesis,
                     intermediate_code: intermediate_code,
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {
-
-                
                         if (res.length === 0) {
                             material_table.append(
                                 `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
@@ -538,6 +544,8 @@
                 url: "{{ route('pages.category.intermediate.recipe') }}",
                 type: 'post',
                 data: {
+                    product_caterogy_id: product_caterogy_id,
+                    IsHypothesis: IsHypothesis,
                     intermediate_code: finished_product_code,
                     _token: "{{ csrf_token() }}"
                 },
@@ -609,7 +617,6 @@
             
         });
 
-
         $("#number_of_unit").on('input', function() {
             let numberOfUnit = parseInt($(this).val()) || 0;
 
@@ -639,7 +646,6 @@
             const intermediateCode = modal.find('input[name="intermediate_code"]').val() || "";
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
-
 
         $("#createModal .step-checkbox").on("change", function() {
           
