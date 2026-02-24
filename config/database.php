@@ -114,35 +114,36 @@ return [
 
         #################################################################
 
-        'mms' => [
-            'driver' => 'sqlsrv',
-            'host' => env('DB_MMS_HOST', 'localhost'),
-            'port' => env('DB_MMS_PORT', '1433'),
-            'database' => env('DB_MMS_DATABASE', 'MMS'),
-            'username' => env('DB_MMS_USERNAME', ''),
-            'password' => env('DB_MMS_PASSWORD', ''),
-            'charset' => 'utf8',
-            'prefix' => '',
-            'prefix_indexes' => true,
-            // 'encrypt' => 0,
-            // 'trust_server_certificate' => true,
-           
-        
-        ],
-
-
         // 'mms' => [
-        //     'driver' => env('DB_MMS_DRIVER', 'sqlsrv'),
-        //     'host' => env('DB_MMS_HOST'),
-        //     'port' => env('DB_MMS_PORT', 1433),
-        //     'database' => env('DB_MMS_DATABASE'),
-        //     'username' => env('DB_MMS_USERNAME'),
-        //     'password' => env('DB_MMS_PASSWORD'),
+        //     'driver' => 'sqlsrv',
+        //     'host' => env('DB_MMS_HOST', 'localhost'),
+        //     'port' => env('DB_MMS_PORT', '1433'),
+        //     'database' => env('DB_MMS_DATABASE', 'MMS'),
+        //     'username' => env('DB_MMS_USERNAME', ''),
+        //     'password' => env('DB_MMS_PASSWORD', ''),
         //     'charset' => 'utf8',
         //     'prefix' => '',
-        //     'encrypt' => env('DB_MMS_ENCRYPT', false),
-        //     'trust_server_certificate' => env('DB_MMS_TRUST_SERVER_CERTIFICATE', true),
+        //     'prefix_indexes' => true,
+        //     // 'encrypt' => 0,
+        //     // 'trust_server_certificate' => true,
+           
+        
         // ],
+
+
+        'mms' => [
+            'driver' => env('DB_MMS_DRIVER', 'sqlsrv'),
+            'host' => env('DB_MMS_HOST'),
+            'port' => env('DB_MMS_PORT', 1433),
+            'database' => env('DB_MMS_DATABASE'),
+            'username' => env('DB_MMS_USERNAME'),
+            'password' => env('DB_MMS_PASSWORD'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'encrypt' => env('DB_MMS_ENCRYPT', false),
+            'trust_server_certificate' => env('DB_MMS_TRUST_SERVER_CERTIFICATE', true),
+        ],
+        
         // 'cal1' => [
         //     'driver' => env('DB_CAL1_DRIVER', 'sqlsrv'),
         //     'host' => env('DB_CAL1_HOST'),

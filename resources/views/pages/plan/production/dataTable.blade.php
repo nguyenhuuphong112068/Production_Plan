@@ -152,7 +152,11 @@
                         
                         <th >Mã Sản Phẩm</th>
                         <th style="width:7%" >Sản Phẩm</th>
-                        <th style="width:5%">Số Lô/Số lượng ĐG</th>
+                        <th style="width:5%">
+                            {{ "Số Lô Dự Kiến" }} <br>
+                            {{ "Số Lô Thực Tế" }} <br>
+                            {{ "Số lượng ĐG" }}   
+                        </th>
                         <th>Thị Trường/ Qui Cách</th>
                         <th style="width:4%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên</th>
@@ -253,10 +257,12 @@
                             </td>
                             <td style="text-align: center;" >
                                 <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }} style="font-weight: bold;" >                              
-                                {{ $splittingModal = "" }}
+                                <b class="text-blue"> {{ $data->actual_batch }} </b>
+                                {{-- {{ $splittingModal = "" }} --}}
 
                                 @if ($data->number_parkaging > 0)
                                     @if ($auth_update != 'disabled')
+
                                     <div  class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
                                         {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                         data-name="{{ $data->finished_product_name }}"
@@ -272,8 +278,6 @@
                                         data-unit_batch_qty="{{ $data->unit_batch_qty}}"
                                         data-material_source_id="{{ $data->material_source_id}}"
                                         data-number_parkaging="{{ $data->number_parkaging}}"
-
-                                       
                                     >
                                         {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
                                     @else

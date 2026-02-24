@@ -205,14 +205,14 @@
                                         name ="has_BMR"
                                         id="{{ $data->id }}"
                                         data-id="{{ $data->id }}"
-                                        data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(7)->gt(now()) && $department == "QA" && $plan_feedback) 
+                                        data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(16)->gt(now()) && $department == "QA" && $plan_feedback) 
                                         || ($department == "QA" && $plan_feedback_leader) ?'1': "0" }}"
                                         {{ $data->has_BMR ? 'checked' : '' }}
                                       >
                                 </div>
 
                                 <div>
-                                    @if ($department == "QA" && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(7)->gt(now()) ||
+                                    @if ($department == "QA" && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(16)->gt(now()) ||
                                         $department == "QA" && $plan_feedback_leader)
                                         <textarea class="updateInput text-left"
                                             name="qa_feedback"
@@ -240,7 +240,7 @@
                                       name ="has_punch_die_mold" 
                                       data-id="{{ $data->id }}"
                                       id="{{ $data->id }}"
-                                      data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(10)->gt(now()) && $department == "EN" && $plan_feedback) 
+                                      data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(18)->gt(now()) && $department == "EN" && $plan_feedback) 
                                         || ($department == "EN" && $plan_feedback_leader) ?'1': "0" }}"
 
                                       {{ $data->has_punch_die_mold ? 'checked' : '' }}
@@ -249,7 +249,7 @@
            
 
                                  <div>
-                                    @if ($department == "EN" && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(10)->gt(now()) ||
+                                    @if ($department == "EN" && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(18)->gt(now()) ||
                                         $department == "EN" && $plan_feedback_leader)
                                         <textarea class="updateInput text-left"
                                             name="en_feedback"
