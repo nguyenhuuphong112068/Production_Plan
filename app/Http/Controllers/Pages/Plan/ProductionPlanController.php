@@ -1789,8 +1789,8 @@ class ProductionPlanController extends Controller
 
         public function update_plan_master_material(Request $request){
 
-                $type_update =  'finished_product_code'; //'intermediate_code'; //
-                $material_packaging_type = 1;
+                $type_update =   'intermediate_code'; //'finished_product_code';
+                $material_packaging_type = 0;
                 $insertData = [];
 
                 // 1️⃣ Lấy plan
