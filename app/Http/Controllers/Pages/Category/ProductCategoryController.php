@@ -247,6 +247,10 @@ class ProductCategoryController extends Controller
 
                 // 3️⃣ Insert hoặc update + bật active lại
                 foreach ($items as $item) {
+                        if (!isset($item['code']) || empty($item['code'])) {
+                                continue; // bỏ qua dòng không hợp lệ
+                        }
+                        
                         DB::table('bom_item')->updateOrInsert(
                         [
                                 'product_caterogy_id' => $item['product_caterogy_id'],

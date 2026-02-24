@@ -178,7 +178,7 @@ class IntermediateCategoryController extends Controller
         }
 
         public function recipe(Request $request){
-               
+               Log::info ($request->all());
                 if ($request->IsHypothesis == 1){
                         $datas = DB::table('bom_item')
                         ->select ([

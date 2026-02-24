@@ -276,7 +276,8 @@
                                     class="btn btn-recipe btn-primary mt-1 "
                                     data-intermediate_code="{{ $data->intermediate_code }}"
                                     data-product_name="{{ $data->product_name}} - {{$data->batch_size}} {{$data->unit_batch_size }}"
-                                   
+                                    data-id =  "{{ $data->id }}"
+                                    data-is_hypothesis="{{ $data->IsHypothesis }}"
                                     data-toggle="modal"
                                     data-target="#intermediateRecipeModal"
                                     >
@@ -479,7 +480,8 @@
                 const history_modal = $('#data_table_recipe_body')
                 const intermediate_code = $(this).data('intermediate_code');
                 const product_name = $(this).data('product_name');
-
+                const IsHypothesis = $(this).data('is_hypothesis');
+                const product_caterogy_id = $(this).data('id')
                 $('#recipe_intermediate_code').text(`${intermediate_code} - ${product_name}`);
 
                 // Xóa dữ liệu cũ
@@ -490,10 +492,13 @@
                     url: "{{ route('pages.category.intermediate.recipe') }}",
                     type: 'post',
                     data: {
+                        IsHypothesis: IsHypothesis,
+                        product_caterogy_id: product_caterogy_id,
                         intermediate_code: intermediate_code,
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(res) {
+                        console.log (res)
                         if (res.length === 0) {
                             history_modal.append(
                                 `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
