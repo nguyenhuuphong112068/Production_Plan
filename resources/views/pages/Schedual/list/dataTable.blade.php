@@ -55,6 +55,7 @@
                                     <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
                                     <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
                                     <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
+                                    <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>ĐGSC-ĐGTC</option>
                                 </select>
                         </div>
                         </div>
