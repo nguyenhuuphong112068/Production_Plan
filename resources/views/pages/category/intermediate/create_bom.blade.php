@@ -62,9 +62,9 @@
                   <thead >
                     <tr>
                       <th>STT</th>
-                      <th>Mã Bao Bì</th>
-                      <th>Tên Bao Bì</th>
-                      <th>Số Lượng Bao Bì</th>
+                      <th>Mã Nguyên Liệu</th>
+                      <th>Tên Nguyên Liệu</th>
+                      <th>Số Lượng Nguyên Liệu</th>
                       <th>Đơn Vị</th>
                       <th>Xóa</th>
                     

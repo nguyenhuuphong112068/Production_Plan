@@ -39,8 +39,6 @@ class ShedualYieldController extends Controller
         // --- 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
         $stage_plan_100 = DB::table("stage_plan as sp")
             ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [$startDate->toDateTimeString(), $endDate->toDateTimeString()])
-            //->where('sp.start', '>=', $endDate->toDateTimeString())
-            //->where('sp.end', '<=', $startDate->toDateTimeString())
             ->whereNotNull('sp.start')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
@@ -214,11 +212,11 @@ class ShedualYieldController extends Controller
     }
 
     public function yield_actual($startDate, $endDate, $group_By){
-        
+       
         // --- 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
         $stage_plan_100 = DB::table("stage_plan as sp")
             ->whereNotNull('sp.actual_start')
-            ->whereNotNull('sp.start')
+            ->whereNotNull('sp.resourceId')
             ->whereRaw('((sp.actual_start >= ? AND sp.actual_end <= ?))', [$startDate, $endDate])
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
@@ -231,14 +229,15 @@ class ShedualYieldController extends Controller
                     END as unit
                 ')
             )
-            ->groupBy("sp.$group_By", "unit")
+            ->groupBy("sp.resourceId", "unit")
             ->get();
+       
 
         // --- 2️⃣ Giai đoạn chỉ giao nhau 1 phần
         $stage_plan_part = DB::table("stage_plan as sp")
             ->whereNotNull('sp.actual_start')
             ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?) AND NOT (sp.actual_start >= ? AND sp.actual_end <= ?)', [$endDate, $startDate, $startDate, $endDate])
-            ->whereNotNull('sp.start')
+            ->whereNotNull('sp.resourceId')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
@@ -257,8 +256,9 @@ class ShedualYieldController extends Controller
                 ')
             )
             ->groupBy("sp.$group_By", "unit")
-            ->get();
+        ->get();
 
+        
         // --- 3️⃣ Gộp và tổng hợp
         $merged = $stage_plan_100->merge($stage_plan_part)
             ->groupBy(function ($item) use ($group_By) {
@@ -270,10 +270,15 @@ class ShedualYieldController extends Controller
 
                 // Nếu group_By là room_id hoặc resourceId → lấy thêm thông tin phòng
                 if ($group_By === 'room_id' || $group_By === 'resourceId') {
+
                     $room = DB::table('room')
                         ->select('code', 'name', 'stage_code', 'order_by')
                         ->where('id', $first->$group_By)
                         ->first();
+                    
+                        if ($room->stage_code == null){
+                            dd ($room);
+                        }
 
                     return (object)[
                         'stage_code' => $room->stage_code,
@@ -317,13 +322,13 @@ class ShedualYieldController extends Controller
         foreach ($period as $date) {
             
             $date = Carbon::instance($date);
-            $dayStart = $date->copy()->startOfDay();
-            $dayEnd = $date->copy()->endOfDay();
+            $dayStart = $date->copy()->setTime(6,0,0);
+            $dayEnd = $date->copy()->addDay(1)->setTime(6,0,0);
 
             $totalForDay = DB::table("stage_plan as sp")
                 ->join('room as r', 'sp.resourceId', '=', 'r.id') // 👈 JOIN thêm bảng room
                 ->where('sp.deparment_code', session('user')['production_code'])
-                ->whereNotNull('sp.start')
+                ->whereNotNull('sp.resourceId')
                 ->whereNotNull('sp.actual_start')
                 ->whereRaw('(sp.actual_start <= ? AND sp.actual_end >= ?)', [$dayEnd, $dayStart])
                 ->select(
@@ -363,8 +368,6 @@ class ShedualYieldController extends Controller
 
         $dailyTotals = $dailyTotals->groupBy("date");
         $merged = $merged->sortBy('stage_code')->values();
-       // dd ($merged,$dailyTotals, $merged_by_stage);
-        // --- 5️⃣ Trả về cả 2 phần
 
 
         //dd ($dailyTotals, $dailyTotals, $merged_by_stage);

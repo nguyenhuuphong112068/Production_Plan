@@ -295,6 +295,14 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 DB::raw('SUM(sp.yields) as total_qty'),
                 DB::raw('
+                    SUM(
+                        CASE
+                            WHEN sp.Theoretical_yields_qty > 0 THEN sp.Theoretical_yields_qty
+                            ELSE 0
+                        END
+                    ) as total_qty_unit
+                '),
+                DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
@@ -303,11 +311,6 @@ class DailyReportController extends Controller
             )
             ->groupBy("sp.$group_By", "unit")
             ->get();
-
-
-  
-
-
 
         // ------------------------------
         // 2️⃣ Giai đoạn giao nhau 1 phần trong 1 ngày
@@ -325,6 +328,17 @@ class DailyReportController extends Controller
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
                     ) as total_qty
+                '),
+                DB::raw('
+                    SUM(
+                        CASE
+                            WHEN sp.Theoretical_yields_qty > 0 THEN
+                                sp.Theoretical_yields_qty *
+                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
+                                TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
+                            ELSE 0
+                        END
+                    ) as total_qty_unit
                 '),
                 DB::raw('
                     CASE
@@ -347,6 +361,7 @@ class DailyReportController extends Controller
             ->map(function ($items) use ($group_By) {
                 $first = $items->first();
                 $total_qty = round($items->sum('total_qty'), 2);
+                $total_qty_unit = round($items->sum('total_qty_unit'), 2);
 
                 // Lấy thông tin phòng
                 $room = DB::table('room')
@@ -361,7 +376,8 @@ class DailyReportController extends Controller
                     'stage_code'  => $room->stage_code ?? null,
                     'order_by'    => $room->order_by ?? null,
                     'unit'        => $first->unit,
-                    'total_qty'   => $total_qty
+                    'total_qty'   => $total_qty,
+                    'total_qty_unit' => $total_qty_unit
                 ];
             })
             ->values();
@@ -412,6 +428,13 @@ class DailyReportController extends Controller
                     ) as total_qty
                 '),
                 DB::raw('
+                    SUM(
+                        sp.Theoretical_yields_qty *
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
+                        TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+                    ) as total_qty_unit
+                '),
+                DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
@@ -430,11 +453,12 @@ class DailyReportController extends Controller
                 "unit"       => $item->unit,
                 "date"       => $dayStart->format('Y-m-d'),
                 "total_qty"  => round($item->total_qty ?? 0, 2),
+                "total_qty_unit" => round($item->total_qty_unit ?? 0, 2),
             ]);
         }
 
         $dailyTotals = $dailyTotals->groupBy("date");
-
+        //dd ($dailyTotals);
         // ------------------------------
         // 7️⃣ Trả về dữ liệu
         // ------------------------------
@@ -457,6 +481,14 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
                 DB::raw('
+                    SUM(
+                        CASE
+                            WHEN sp.Theoretical_yields_qty > 0 THEN sp.Theoretical_yields_qty
+                            ELSE 0
+                        END
+                    ) as total_qty_unit
+                '),
+                DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
@@ -465,6 +497,7 @@ class DailyReportController extends Controller
             )
             ->groupBy("sp.$group_By", "unit")
             ->get();
+            
 
         // ------------------------------
         // 2️⃣ Giai đoạn giao nhau 1 phần
@@ -483,6 +516,17 @@ class DailyReportController extends Controller
                     ) as total_qty
                 '),
                 DB::raw('
+                    SUM(
+                        CASE
+                            WHEN sp.Theoretical_yields_qty > 0 THEN
+                                sp.Theoretical_yields_qty *
+                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
+                                TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
+                            ELSE 0
+                        END
+                    ) as total_qty_unit
+                '),
+                DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
@@ -492,6 +536,7 @@ class DailyReportController extends Controller
             ->groupBy("sp.$group_By", "unit")
             ->get();
 
+          
         // ------------------------------
         // 3️⃣ Gộp và tổng hợp
         // ------------------------------
@@ -502,6 +547,7 @@ class DailyReportController extends Controller
             ->map(function ($items) use ($group_By) {
                 $first = $items->first();
                 $total_qty = round($items->sum('total_qty'), 2);
+                $total_qty_unit = round($items->sum('total_qty_unit'), 2);
 
                 // Nếu group_By là room_id hoặc resourceId → lấy thêm thông tin phòng
                 if ($group_By === 'room_id' || $group_By === 'resourceId') {
@@ -518,6 +564,7 @@ class DailyReportController extends Controller
                         'room_name' => $room->name ?? null,
                         'unit' => $first->unit,
                         'total_qty' => $total_qty,
+                        'total_qty_unit' => $total_qty_unit
                     ];
                 }
 
@@ -526,6 +573,7 @@ class DailyReportController extends Controller
                     $group_By => $first->$group_By,
                     'unit' => $first->unit,
                     'total_qty' => $total_qty,
+                    'total_qty_unit' => $total_qty_unit
                 ];
             })
             ->values();
@@ -547,7 +595,8 @@ class DailyReportController extends Controller
                 'stage_code'  => $room->stage_code,
                 'order_by'    => $room->order_by,
                 'unit'        => $found->unit ?? null,
-                'total_qty'   => $found->total_qty ?? 0
+                'total_qty'   => $found->total_qty ?? 0,
+                'total_qty_unit' => $found->total_qty_unit?? 0
             ];
         })->sortBy('order_by')->values();
 
@@ -567,6 +616,7 @@ class DailyReportController extends Controller
                 return (object)[
                     'stage_code' => $group->first()->stage_code,
                     'total_qty' => round($group->sum('total_qty'), 2),
+                    'total_qty_unit' => round($group->sum('total_qty_unit'), 2),
                     'details' => $group->values(),
                 ];
             })
@@ -598,6 +648,13 @@ class DailyReportController extends Controller
                     ) as total_qty
                 '),
                 DB::raw('
+                    SUM(
+                        sp.Theoretical_yields_qty *
+                       TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$dayEnd.'"), GREATEST(sp.start, "'.$dayStart.'"))) /
+                        TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
+                    ) as total_qty_unit
+                '),
+                DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
@@ -616,19 +673,24 @@ class DailyReportController extends Controller
                 "unit" => $item->unit,
                 "date" => $dayStart->format('Y-m-d'),
                 "total_qty" => round($item->total_qty ?? 0, 2),
+                "total_qty_unit" => round($item->total_qty_unit ?? 0, 2),
             ]);
         }
 
         $dailyTotals = $dailyTotals->groupBy("date");
-
+        //dd ($dailyTotals, $yield_stage);
         // ------------------------------
         // 7️⃣ Trả về dữ liệu
         // ------------------------------
+
+       // dd ($yield_stage);
         return [
             'yield_room' => $yield_room,
             'yield_day' => $dailyTotals,
             'yield_stage' => $yield_stage
         ];
+
+       
     }
 
     public function detail(Request $request) {

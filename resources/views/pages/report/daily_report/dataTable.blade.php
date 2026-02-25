@@ -11,14 +11,14 @@
 
                 $update_daily_report = user_has_permission(session('user')['userId'], 'update_daily_report', 'boolean');
                 
-                 $stage_name = [
+                $stage_name = [
                       1 => "Cân Nguyên Liệu",
                       3 => "Pha Chế",
                       4 => "Trộn Hoàn Tất",
                       5 => "Định Hình",
                       6 => "Bao Phim",
                       7 => "ĐGSC - ĐGTC",
-                  ];
+                ];
 
                 $group_name = [
                       1 => "Cân Nguyên Liệu",
@@ -27,7 +27,7 @@
                       5 => "Định Hình",
                       6 => "Bao Phim",
                       7 => "ĐGSC - ĐGTC",
-                  ];
+                ];
 
               @endphp
               <!-- /.card-Body -->
@@ -118,7 +118,6 @@
                             @foreach ($roomsByStage as $stage_code => $rooms)
                                     {{-- Tính tổng công đoạn trước --}}
                                     @php
-                                        
                                         $stageLT = [];
                                         $stageTT = [];
                                         $stagePercent = [];
@@ -126,17 +125,20 @@
                                         foreach ($allDates as $date) {
                                             $dayLT = $theory['yield_day'][$date] ?? collect();
                                             $stageLT[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
-
+                                            if ($stage_code == 4){
+                                                $stageLT_unit = $dayLT->where('stage_code', 4)->sum('total_qty_unit');
+                                                $stageTT_unit = $dayTT->where('stage_code', 4)->sum('total_qty_unit');
+                                            }
+                                            
                                             $dayTT = $actual['yield_day'][$date] ?? collect();
                                             $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
+                                             
 
                                              if ($stageLT[$date] == 0 ){
                                                  $stagePercent[$date] = 100;
                                              }else{
                                                  $stagePercent[$date] = $stageLT[$date] > 0 ? ($stageTT[$date] / $stageLT[$date] * 100) : 0;
                                              }
-
-                                            
                                         }
                                     @endphp
 
@@ -152,8 +154,8 @@
 
                                         @foreach ($allDates as $date)
                                             <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
-                                            <td class="text-center">{{ number_format($stageLT[$date], 2) }}</td>
-                                            <td class="text-center">{{ number_format($stageTT[$date], 2) }}</td>
+                                            <td class="text-center"> {{ number_format($stageLT[$date], 2) }} {{$stage_code == 4 ? "# " . number_format($stageLT_unit, 2) : '' }} </td>
+                                            <td class="text-center">{{ number_format($stageTT[$date], 2) }} {{$stage_code == 4 ? "# " . number_format($stageTT_unit, 2) : '' }}</td>
                                             <td class="text-center " 
                                                 style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
                                                 {{ number_format($stagePercent[$date], 2) }}%                            
@@ -190,11 +192,13 @@
                                                     $dayLT = $theory['yield_day'][$date] ?? collect();
                                                     $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
                                                     $qtyLT = $itemLT['total_qty'] ?? 0;
+                                                    $qtyLT_unit = $itemLT['total_qty_unit'] ?? 0;
 
                                                     // TT
                                                     $dayTT = $actual['yield_day'][$date] ?? collect();
                                                     $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
                                                     $qtyTT = $itemTT['total_qty'] ?? 0;
+                                                    $qtyTT_unit = $itemTT['total_qty_unit'] ?? 0;
 
                                                     // %
                                                     //$percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
@@ -221,14 +225,12 @@
 
                                                 {{-- LT --}}
                                                 <td class="text-center" style="background:#93f486;">
-                                                    {{ number_format($qtyLT, 2) }}
+                                                    {{ number_format($qtyLT, 2) }} {{$stage_code == 4 ? "# " . number_format($qtyLT_unit, 2) : '' }}
                                                 </td>
-
-
 
                                                 {{-- TT --}}
                                                 <td class="text-center" style="background:#69b8f4;">
-                                                    {{ number_format($qtyTT, 2) }}
+                                                    {{ number_format($qtyTT, 2) }} {{$stage_code == 4 ? "# " . number_format($qtyTT_unit, 2) : '' }}
                                                 </td>
 
                                                 {{-- % --}}
