@@ -331,6 +331,7 @@
 
 <script>
     $(document).ready(function() {
+        
         document.body.style.overflowY = "auto";
 
         $('.btn-edit').click(function() {
@@ -630,7 +631,6 @@
 
             
         });
-
 
     });
 

@@ -23,7 +23,7 @@
                 </div>
 
                 <div class="modal-body">
-                    <input type="hidden" class="form-control" name="is_Hypothesis" value="1">
+                    <input type="hidden" class="form-control" name="is_Hypothesis" value="1" >
                     {{-- Mã Sản Phẩm --}}
                     <div class="row">
                         <div class="col-md-6">
@@ -189,7 +189,7 @@
 @if ($errors->createErrors->any()) 
     <script>
         $(document).ready(function() {
-            $('#create_modal').modal('show');
+            $('#create_hypothesis_modal').modal('show');
         });
     </script>
 @endif

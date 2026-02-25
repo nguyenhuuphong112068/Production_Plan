@@ -27,8 +27,6 @@ import NoteModal from '../Components/NoteModal';
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
 
-
-
 const ScheduleTest = () => {
   
   const calendarRef = useRef(null);
@@ -176,7 +174,6 @@ const ScheduleTest = () => {
       );
 
   }, [loading]);
-
 
   useHotkeys("alt+q",(e) => {
       e.preventDefault();
@@ -383,7 +380,6 @@ const ScheduleTest = () => {
     }, 1);
 
   };
-
 
   const handleShowList = () => {
       if (!authorization) return;
