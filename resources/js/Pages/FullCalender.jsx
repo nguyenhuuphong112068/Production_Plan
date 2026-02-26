@@ -2492,7 +2492,7 @@ const ScheduleTest = () => {
 
         views={{
           resourceTimelineDay: {
-            slotDuration: '00:05:00',
+            slotDuration: '00:15:00',
             slotMinTime: '00:00:00',
             slotMaxTime: '24:00:00',
             buttonText: 'Ngày',
