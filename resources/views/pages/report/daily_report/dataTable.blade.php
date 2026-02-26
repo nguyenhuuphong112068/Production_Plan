@@ -125,21 +125,32 @@
                                         foreach ($allDates as $date) {
                                             $dayLT = $theory['yield_day'][$date] ?? collect();
                                             $stageLT[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
+                                            
                                             if ($stage_code == 4){
                                                 $stageLT_unit = $dayLT->where('stage_code', 4)->sum('total_qty_unit');
                                                 $stageTT_unit = $dayTT->where('stage_code', 4)->sum('total_qty_unit');
                                             }
+                                            //dd ($dayTT->where('stage_code', 5));
+                                              
+
                                             
                                             $dayTT = $actual['yield_day'][$date] ?? collect();
                                             $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
-                                             
 
-                                             if ($stageLT[$date] == 0 ){
+             
+                                            if ($stageLT[$date] == 0 ){
                                                  $stagePercent[$date] = 100;
-                                             }else{
+                                            }else{
                                                  $stagePercent[$date] = $stageLT[$date] > 0 ? ($stageTT[$date] / $stageLT[$date] * 100) : 0;
-                                             }
+                                            }
                                         }
+
+                                        if ($stage_code == 5){
+                                                $sum_coating = $dayTT->where('stage_code', 5)->sum('coating');
+                                                $sum_capsule= $dayTT->where('stage_code', 5)->sum('capsule');
+                                                $sum_tablet= $dayTT->where('stage_code', 5)->sum('tablet');
+                                        }                                            
+
                                     @endphp
 
                                     {{-- ⭐ Dòng tổng công đoạn --}}
@@ -154,8 +165,18 @@
 
                                         @foreach ($allDates as $date)
                                             <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
-                                            <td class="text-center"> {{ number_format($stageLT[$date], 2) }} {{$stage_code == 4 ? "# " . number_format($stageLT_unit, 2) : '' }} </td>
-                                            <td class="text-center">{{ number_format($stageTT[$date], 2) }} {{$stage_code == 4 ? "# " . number_format($stageTT_unit, 2) : '' }}</td>
+                                            <td class="text-center"> 
+                                                {{ number_format($stageLT[$date], 2) }} 
+                                                {{$stage_code == 4 ? "# " . number_format($stageLT_unit, 2) : '' }} 
+                                                
+                                            </td>
+                                            <td class="text-center">
+                                                {{ number_format($stageTT[$date], 2) }} 
+                                                {{$stage_code == 4 ? "# " . number_format($stageTT_unit, 2) : '' }}
+                                                {{$stage_code == 5 ? "Coating:" . number_format($sum_coating, 2) : '' }}
+                                                {{$stage_code == 5 ? "Capsule:" . number_format($sum_capsule, 2) : '' }}
+                                                {{$stage_code == 5 ? "Tablet:" . number_format($sum_tablet, 2) : '' }}
+                                            </td>
                                             <td class="text-center " 
                                                 style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
                                                 {{ number_format($stagePercent[$date], 2) }}%                            
