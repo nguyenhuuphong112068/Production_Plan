@@ -173,9 +173,10 @@
                                             <td class="text-center">
                                                 {{ number_format($stageTT[$date], 2) }} 
                                                 {{$stage_code == 4 ? "# " . number_format($stageTT_unit, 2) : '' }}
+                                                {{$stage_code == 5 ? "Tablet:" . number_format($sum_tablet, 2) : '' }}
                                                 {{$stage_code == 5 ? "Coating:" . number_format($sum_coating, 2) : '' }}
                                                 {{$stage_code == 5 ? "Capsule:" . number_format($sum_capsule, 2) : '' }}
-                                                {{$stage_code == 5 ? "Tablet:" . number_format($sum_tablet, 2) : '' }}
+                                                
                                             </td>
                                             <td class="text-center " 
                                                 style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
