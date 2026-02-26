@@ -375,7 +375,7 @@
                                                                 {{$i++ .". "}}  {{$d->title == null && $d->yields == null  ?"VS":$d->title}}
                                                                 ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} = <b> {{ $hours }}h{{ $mins }}p </b>)
 
-                                                                @if ($d->yields)
+                                                                @if ($d->yields  || true)
                                                                     || <b>{{"Sản Lượng: ". number_format($d->yields, 2) }} {{ $d->unit }} {{ $d->yields_batch_qty? "# $d->yields_batch_qty  ĐVL" : "" }}</b>
                                                                 @endif
 
