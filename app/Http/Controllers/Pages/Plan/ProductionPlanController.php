@@ -1486,6 +1486,8 @@ class ProductionPlanController extends Controller
 
         public function open_stock(Request  $request){
                 //dd ( $request->all());
+
+        try {        
                 $plan_master_materials = DB::table('plan_master_materials as pmm')
                 ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
                 ->when($request->plan_list_id < 0,
@@ -1574,9 +1576,7 @@ class ProductionPlanController extends Controller
                                 's.Mfg'
                         )
                 ->get();
-                        
-                 //dd ($StockOverview);
-                
+
                 
                 $stockByMat = collect($StockOverview)->groupBy('MatID');
                 
@@ -1617,6 +1617,27 @@ class ProductionPlanController extends Controller
                         'send'=> $request->send??1, 
                         'current_url' => $request->current_url??null
                 ]);
+
+
+        } catch (\Throwable $e) {
+
+                        Log::error('OPEN_STOCK_ERROR', [
+                                'message' => $e->getMessage(),
+                                'line' => $e->getLine(),
+                                'file' => $e->getFile(),
+                                'trace' => $e->getTraceAsString()
+                        ]);
+
+                        return view('pages.plan.production.stock_list', [
+                                'datas' => collect([]),
+                                'js_error' => [
+                                        'message' => $e->getMessage(),
+                                        'line' => $e->getLine(),
+                                        'file' => $e->getFile()
+                                ]
+                        ]);
+        }
+
         }
         
         public function open_bacth_detail(Request  $request){
