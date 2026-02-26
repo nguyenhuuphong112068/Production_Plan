@@ -73,6 +73,7 @@
                         <th>Hạn TK</th>
                         <th>Nhập</th>
                         <th>Tồn</th>
+                        <th>Định Khu</th>
                         <th>Tình Trạng Lấy Mẫu</th>
                         <th>Tình Trạng Nhãn/ 
                             CoA No.
@@ -97,6 +98,7 @@
                             <td>{{ $data->Retestdate?\Carbon\Carbon::parse($data->Retestdate)->format('d/m/Y') : '' }}</td>
                             <td>{{ round($data->{'ReceiptQuantity'},4) . " " . $data->MatUOM }} </td>
                             <td>{{ round($data->{'Total Qty'},4) . " " . $data->MatUOM }} </td>
+                            <td>{{ $data->warehouse_id}} </td>
                             <td>{{ $material_status[$data->GRNSts] }} </td>
                           
                             @php

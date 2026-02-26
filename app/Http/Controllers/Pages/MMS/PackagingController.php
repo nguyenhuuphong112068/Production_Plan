@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\DB;
 class PackagingController extends Controller
 {
         public function index(){
-              
-                $datas = DB::connection('mms')->table('yf_RMPMStockOverview')->where ('MatTY1', 'PS')->get();
-                //dd ($datas->first());
+  
+                $datas = DB::connection('mms')
+                        ->table('yf_RMPMStockOverview_pms as s')
+                        ->where('s.MatTY1', 'PS')
+
+                ->get();
+                
                 session()->put(['title'=> 'TỒN KHO BAO Bì']);
             
                 return view('pages.MMS.packaging.list',['datas' => $datas]);
