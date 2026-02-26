@@ -108,7 +108,7 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             <th>HSD / Retest</th>
                             <th>Nhà SX</th>
                             <th>Trạng Thái</th>
-                             <th>Định Khu</th>
+                            <th>Kho</th>
                         </tr>
                     </thead>
 

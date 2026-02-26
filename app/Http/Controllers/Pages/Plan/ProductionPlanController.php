@@ -1545,24 +1545,25 @@ class ProductionPlanController extends Controller
                                 DB::raw('SUM([Total Qty]) as Total_Qty'),
 
                                 // Gộp warehouse_id
-DB::raw("
-    STUFF((
-        SELECT DISTINCT ', ' + s2.warehouse_id
-        FROM yf_RMPMStockOverview_pms s2
-        WHERE s2.GRNNO = s.GRNNO
-        FOR XML PATH('')
-    ), 1, 2, '') as warehouse_list
-"),
+                                DB::raw("
+                                STUFF((
+                                        SELECT DISTINCT ', ' + 
+                                        LEFT(s2.warehouse_id, CHARINDEX('.', s2.warehouse_id + '.') - 1)
+                                        FROM yf_RMPMStockOverview_pms s2
+                                        WHERE s2.GRNNO = s.GRNNO
+                                        FOR XML PATH('')
+                                ), 1, 2, '') as warehouse_list
+                                "),
 
-                                // Gộp IntBatchNo
-DB::raw("
-    STUFF((
-        SELECT DISTINCT ', ' + s3.IntBatchNo
-        FROM yf_RMPMStockOverview_pms s3
-        WHERE s3.GRNNO = s.GRNNO
-        FOR XML PATH('')
-    ), 1, 2, '') as coa_list
-"),
+                                                                // Gộp IntBatchNo
+                                DB::raw("
+                                STUFF((
+                                        SELECT DISTINCT ', ' + s3.IntBatchNo
+                                        FROM yf_RMPMStockOverview_pms s3
+                                        WHERE s3.GRNNO = s.GRNNO
+                                        FOR XML PATH('')
+                                ), 1, 2, '') as coa_list
+                                "),
                         )
                         ->groupBy(
                                 's.GRNNO',
