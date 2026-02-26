@@ -1,8 +1,9 @@
 <style>
-.note-content {
-    white-space: pre-line;
-}
+    .note-content {
+        white-space: pre-line;
+    }
 </style>
+
 <div class="content-wrapper">
     <!-- Main content -->
           <div class="card">
