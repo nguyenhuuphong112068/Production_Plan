@@ -532,3 +532,10 @@ $(document).ready(function () {
         return d.toLocaleDateString('vi-VN');
     }
 </script>
+
+@if(isset($js_error))
+<script>
+    console.error("🔥 PRODUCTION ERROR:");
+    console.error(@json($js_error));
+</script>
+@endif
