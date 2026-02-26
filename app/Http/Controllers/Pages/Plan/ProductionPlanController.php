@@ -1526,56 +1526,56 @@ class ProductionPlanController extends Controller
                //dd ($plan_master_materials);
 
                 $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
+                $StockOverview = [];
+                // $StockOverview = DB::connection('mms')
+                //         ->table('yf_RMPMStockOverview_pms as s')
+                //         ->whereIn('s.MatID', $material_packaging_code)
+                //         ->select(
+                //                 's.GRNNO',
+                //                 's.Mfgbatchno',
+                //                 's.ARNO',
+                //                 's.Expirydate',
+                //                 's.Retestdate',
+                //                 's.MatUOM',
+                //                 's.MatID',
+                //                 's.GRNSts',
+                //                 's.Mfg',
 
-                $StockOverview = DB::connection('mms')
-                        ->table('yf_RMPMStockOverview_pms as s')
-                        ->whereIn('s.MatID', $material_packaging_code)
-                        ->select(
-                                's.GRNNO',
-                                's.Mfgbatchno',
-                                's.ARNO',
-                                's.Expirydate',
-                                's.Retestdate',
-                                's.MatUOM',
-                                's.MatID',
-                                's.GRNSts',
-                                's.Mfg',
+                //                 DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
+                //                 DB::raw('SUM([Total Qty]) as Total_Qty'),
 
-                                DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
-                                DB::raw('SUM([Total Qty]) as Total_Qty'),
+                //                 // Gộp warehouse_id
+                //                         DB::raw("
+                //                         STUFF((
+                //                                 SELECT DISTINCT ', ' + s2.warehouse_id
+                //                                 FROM yf_RMPMStockOverview_pms s2
+                //                                 WHERE s2.GRNNO = s.GRNNO
+                //                                 FOR XML PATH(''), TYPE
+                //                         ).value('.', 'NVARCHAR(MAX)'), 1, 2, '') as warehouse_list
+                //                 "),
 
-                                // Gộp warehouse_id
-                                        DB::raw("
-                                        STUFF((
-                                                SELECT DISTINCT ', ' + s2.warehouse_id
-                                                FROM yf_RMPMStockOverview_pms s2
-                                                WHERE s2.GRNNO = s.GRNNO
-                                                FOR XML PATH(''), TYPE
-                                        ).value('.', 'NVARCHAR(MAX)'), 1, 2, '') as warehouse_list
-                                "),
-
-                                // Gộp IntBatchNo
-                                DB::raw("
-                                        STUFF((
-                                                SELECT DISTINCT ', ' + s3.IntBatchNo
-                                                FROM yf_RMPMStockOverview_pms s3
-                                                WHERE s3.GRNNO = s.GRNNO
-                                                FOR XML PATH(''), TYPE
-                                        ).value('.', 'NVARCHAR(MAX)'), 1, 2, '') as coa_list
-                                ")
-                        )
-                        ->groupBy(
-                                's.GRNNO',
-                                's.Mfgbatchno',
-                                's.ARNO',
-                                's.Expirydate',
-                                's.Retestdate',
-                                's.MatUOM',
-                                's.MatID',
-                                's.GRNSts',
-                                's.Mfg'
-                        )
-                ->get();
+                //                 // Gộp IntBatchNo
+                //                 DB::raw("
+                //                         STUFF((
+                //                                 SELECT DISTINCT ', ' + s3.IntBatchNo
+                //                                 FROM yf_RMPMStockOverview_pms s3
+                //                                 WHERE s3.GRNNO = s.GRNNO
+                //                                 FOR XML PATH(''), TYPE
+                //                         ).value('.', 'NVARCHAR(MAX)'), 1, 2, '') as coa_list
+                //                 ")
+                //         )
+                //         ->groupBy(
+                //                 's.GRNNO',
+                //                 's.Mfgbatchno',
+                //                 's.ARNO',
+                //                 's.Expirydate',
+                //                 's.Retestdate',
+                //                 's.MatUOM',
+                //                 's.MatID',
+                //                 's.GRNSts',
+                //                 's.Mfg'
+                //         )
+                // ->get();
 
                 
                 $stockByMat = collect($StockOverview)->groupBy('MatID');
