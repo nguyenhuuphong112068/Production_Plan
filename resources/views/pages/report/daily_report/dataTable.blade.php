@@ -87,27 +87,11 @@
                             <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
                                 <tr style="color:#003A4F; font-size: 20px; font-weight: bold;">
                                     <th class="text-center" style="max-width: 200px;">Phòng SX</th>
-
-                                    @php
-                                        $allDates = $theory['yield_day']->keys()
-                                            ->merge($actual['yield_day']->keys())
-                                            ->unique()
-                                            ->sort();
-                                            
-                                            if ($allDates->isEmpty()) {
-                                                    $allDates = collect([$defaultFrom]);
-                                            }
-                                        
-                                    @endphp
                                     <th class="text-center" style="width: 3% " >ĐV</th>
-                                    
-                                    @foreach ($allDates as $date)
-                                        <th class="text-center" style="width: 5% ">Sản lượng lý thuyết</th>
-                                        <th class="text-center" style="width: 5% ">Sản lượng thực tế</th>
-                                        <th class="text-center" style="width: 5% ">Phần trăm đáp ứng</th>
-                                        <th class="text-center">Chi tiết</th>
-                                    @endforeach
-
+                                    <th class="text-center" style="width: 5% ">Sản lượng lý thuyết</th>
+                                    <th class="text-center" style="width: 5% ">Sản lượng thực tế</th>
+                                    <th class="text-center" style="width: 5% ">Phần trăm đáp ứng</th>
+                                    <th class="text-center">Chi tiết</th>
                                 </tr>
                             </thead>
 
@@ -121,36 +105,33 @@
                                     @php
                                         $stageLT = [];
                                         $stageTT = [];
+
                                         $stagePercent = [];
 
-                                        foreach ($allDates as $date) {
-                                            $dayLT = $theory['yield_day'][$date] ?? collect();
-                                            $stageLT[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
+                                        $dayLT = $theory['yield_day'] ?? collect();
+                                        $stageLT = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
                                             
-                                            if ($stage_code == 4){
-                                                $stageLT_unit = $dayLT->where('stage_code', 4)->sum('total_qty_unit');
-                                                $stageTT_unit = $dayTT->where('stage_code', 4)->sum('total_qty_unit');
-                                            }
-                                            //dd ($dayTT->where('stage_code', 5));
-                                              
-
-                                            
-                                            $dayTT = $actual['yield_day'][$date] ?? collect();
-                                            $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
-
-             
-                                            if ($stageLT[$date] == 0 ){
-                                                 $stagePercent[$date] = 100;
-                                            }else{
-                                                 $stagePercent[$date] = $stageLT[$date] > 0 ? ($stageTT[$date] / $stageLT[$date] * 100) : 0;
-                                            }
+                                        $dayTT = $yield_actual_detial['yield_day'];
+                                        $stageTT = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
+                                     
+                                        if ($stageLT == 0 ){
+                                                $stagePercent = 100;
+                                        }else{
+                                                $stagePercent = $stageLT > 0 ? ($stageTT / $stageLT * 100) : 0;
                                         }
 
+                         
                                         if ($stage_code == 5){
-                                                $sum_coating = $dayTT->where('stage_code', 5)->sum('coating');
-                                                $sum_capsule= $dayTT->where('stage_code', 5)->sum('capsule');
-                                                $sum_tablet= $dayTT->where('stage_code', 5)->sum('tablet');
-                                        }                                            
+                                            
+                                                $sum_coating = $dayTT->where('stage_code', 5)->where('table_type', 'coating')->sum('total_qty');
+                                                $sum_capsule= $dayTT->where('stage_code', 5)->where('table_type', 'capsule')->sum('total_qty'); 
+                                                $sum_tablet= $dayTT->where('stage_code', 5)->where('table_type', 'tablet')->sum('total_qty'); 
+                                        }  
+                                        
+                                        if ($stage_code == 4){
+                                                $stageLT_unit = $dayLT->where('stage_code', 4)->sum('total_qty_unit');
+                                                $stageTT_unit = $dayTT->where('stage_code', 4)->sum('total_qty_unit');
+                                        }
 
                                     @endphp
 
@@ -164,15 +145,15 @@
                                             Công Đoạn {{ $stage_name[$stage_code] ?? $stage_code }}
                                         </td>
 
-                                        @foreach ($allDates as $date)
+                                        {{-- @foreach ($allDates as $date) --}}
                                             <td class="text-center">{{ $stage_code <=4? "Kg":"ĐVL" }}</td>
                                             <td class="text-center"> 
-                                                {{ number_format($stageLT[$date], 2) }} 
+                                                {{ number_format($stageLT, 2) }} 
                                                 {{$stage_code == 4 ? "# " . number_format($stageLT_unit, 2) : '' }} 
                                                 
                                             </td>
                                             <td class="text-center">
-                                                {{ number_format($stageTT[$date], 2) }} 
+                                                {{ number_format($stageTT, 2) }} 
                                                 {{$stage_code == 4 ? "# " . number_format($stageTT_unit, 2) : '' }}
                                                 {{$stage_code == 5 ? "Tablet:" . number_format($sum_tablet, 2) : '' }}
                                                 {{$stage_code == 5 ? "Coating:" . number_format($sum_coating, 2) : '' }}
@@ -180,8 +161,8 @@
                                                 
                                             </td>
                                             <td class="text-center " 
-                                                style="background: {{ number_format($stagePercent[$date], 2) < 90 ? 'red' : '#CDC717' }}">
-                                                {{ number_format($stagePercent[$date], 2) }}%                            
+                                                style="background: {{ number_format($stagePercent, 2) < 90 ? 'red' : '#CDC717' }}">
+                                                {{ number_format($stagePercent, 2) }}%                            
                                             </td>
 
                                         <td class="text-left note-content">
@@ -194,7 +175,7 @@
                                                     📝
                                                 </button>
                                         </td>
-                                        @endforeach
+                                        {{-- @endforeach --}}
 
                                         
                                     </tr>
@@ -209,23 +190,21 @@
                                         <tr class="stage-child stage-{{ $stage_code }}">
                                             <td class="align-middle">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
 
-                                            @foreach ($allDates as $date)
                                                 @php
                                                     // LT
-                                                    $dayLT = $theory['yield_day'][$date] ?? collect();
+                                                    $dayLT = $theory['yield_day'] ?? collect();
                                                     $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
                                                     $qtyLT = $itemLT['total_qty'] ?? 0;
                                                     $qtyLT_unit = $itemLT['total_qty_unit'] ?? 0;
 
                                                     // TT
-                                                    $dayTT = $actual['yield_day'][$date] ?? collect();
+                                                    $dayTT = $yield_actual_detial['yield_day']?? collect();
                                                     $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
                                                     $qtyTT = $itemTT['total_qty'] ?? 0;
                                                     $qtyTT_unit = $itemTT['total_qty_unit'] ?? 0;
 
                                                     // %
-                                                    //$percent = $qtyLT > 0 ? ($qtyTT / $qtyLT * 100) : 0;
-
+            
                                                     if ($qtyTT > 0 && $qtyLT > 0){
                                                         $percent = $qtyTT / $qtyLT * 100;
                                                     }elseif ($qtyTT == 0 && $qtyLT == 0){
@@ -281,8 +260,8 @@
 
                                                     @php
                                                         // --- Cấu hình ca ---
-                                                        $shiftStart = Carbon::parse($date . ' 06:00:00');
-                                                        $shiftEnd   = $shiftStart->copy()->addDay();
+                                                        $shiftStart = Carbon::createFromFormat('d/m/Y H:i:s',$reportedDate . ' 06:00:00');
+                                                        $shiftEnd = $shiftStart->copy()->addDay();
 
                                                         // Lưu các đoạn đã chuẩn hóa
                                                         $intervals = [];
@@ -425,16 +404,8 @@
                                                     @endif
 
                                                 </td>
-
-
-                                            @endforeach
-                                            
-                                        
                                         </tr>
-
                                     @endforeach
-
-
                             @endforeach
                             </tbody>
                         </table>
