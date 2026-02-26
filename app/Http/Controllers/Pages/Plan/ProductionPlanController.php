@@ -226,7 +226,7 @@ class ProductionPlanController extends Controller
                         )
                         ->whereIn('plan_master.plan_list_id', DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('id'))
                         ->where('plan_master.active', 1)
-                        ->where('plan_master.only_parkaging', 0)
+                        //->where('plan_master.only_parkaging', 0)
                         ->when($request->plan_list_id < 0,
                                 function ($q) {
                                         return $q->where('plan_master.weighed', 0) 
