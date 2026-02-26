@@ -333,7 +333,7 @@ class DailyReportController extends Controller
                     SUM(
                         CASE
                             WHEN sp.Theoretical_yields_qty > 0 THEN
-                                sp.Theoretical_yields_qty *
+                                sp.Theoretical_yields_qty * 
                                 TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
                                 TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                             ELSE 0
@@ -411,51 +411,6 @@ class DailyReportController extends Controller
         $dayEnd   = $endDate->copy()->addDay(1)->setTime(6,0,0);
    
         $totalForDay = DB::table("stage_plan as sp")
-
-            ->join('room as r', 'sp.resourceId', '=', 'r.id')
-            ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-            ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
-            ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
-            ->where('sp.deparment_code', session('user')['production_code'])
-            ->whereNotNull('sp.actual_start')
-            ->whereRaw('(sp.actual_start <= ? AND sp.actual_end >= ?)', [$endDate, $startDate])
-            ->select(
-                "sp.$group_By",
-                'r.code as room_code',
-                'r.name as room_name',
-                'r.stage_code as stage_code',
-                DB::raw('
-                    SUM(
-                        sp.yields *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
-                        TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
-                    ) as total_qty
-                '),
-                DB::raw('
-                    SUM(
-                        sp.Theoretical_yields_qty *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
-                        TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
-                    ) as total_qty_unit
-                '),
-                DB::raw('
-                    CASE
-                        WHEN sp.stage_code <= 4 THEN "Kg"
-                        ELSE "ĐVL"
-                    END as unit
-                '),
-                 DB::raw("
-                    CASE
-                        WHEN sp.stage_code = 5 AND dosage.name LIKE '%phim%' THEN 'Viên BP'
-                        WHEN sp.stage_code = 5 AND dosage.name LIKE '%nang%' THEN 'Viên Nang'                      
-                        ELSE 'Viên Nhân'
-                        END AS tablet
-                "),
-            )
-            ->groupBy("sp.$group_By", "r.code", "r.name", "r.stage_code", "unit", "tablet")
-        ->get();
-
-        $totalForDay = DB::table("stage_plan as sp")
             ->join('room as r', 'sp.resourceId', '=', 'r.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
@@ -480,12 +435,14 @@ class DailyReportController extends Controller
                     ) as total_qty
                 "),
 
-                // 🔹 Tổng ĐVL theo thời gian giao nhau
+                // 🔹 Tổng ĐVL theo thời gian giao nhau 
                 DB::raw("
                     SUM(
-                        sp.Theoretical_yields_qty *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, ?), GREATEST(sp.actual_start, ?))) /
-                        TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+                        (sp.Theoretical_yields_qty * sp.yields / NULLIF(sp.Theoretical_yields,0))
+                        *
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, ?), GREATEST(sp.actual_start, ?)))
+                        /
+                        NULLIF(TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start)),0)
                     ) as total_qty_unit
                 "),
 
