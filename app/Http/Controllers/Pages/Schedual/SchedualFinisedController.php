@@ -14,10 +14,6 @@ class SchedualFinisedController extends Controller
 {
         public function index(Request $request){
               
-
-                //$fromDate = $request->from_date ?? Carbon::now()->toDateString();
-                //$toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
-                
                 $stage_code = $request->stage_code??1;
 
                 $stage_code_room =  $stage_code;
@@ -113,180 +109,418 @@ class SchedualFinisedController extends Controller
                 ]);
         }
 
+        // public function store(Request $request){
+       
+        //         /* ===============================
+        //         1. FORMAT DATE TIME (LUÔN Ở ĐẦU)
+        //         =============================== */
+        //         $actualStart = $request->start
+        //         ? Carbon::parse($request->start)->format('Y-m-d H:i:s')
+        //         : null;
+
+        //         // $actualStart_yield = $request->start_yield
+        //         // ? Carbon::parse($request->start_yield)->format('Y-m-d H:i:s')
+        //         // : null;
+
+        //         $actualEnd = $request->end
+        //         ? Carbon::parse($request->end)->format('Y-m-d H:i:s')
+        //         : null;
+
+        //         $actualStartCleaning = $request->start_clearning
+        //         ? Carbon::parse($request->start_clearning)->format('Y-m-d H:i:s')
+        //         : null;
+
+        //         $actualEndCleaning = $request->end_clearning
+        //         ? Carbon::parse($request->end_clearning)->format('Y-m-d H:i:s')
+        //         : null;
+
+        //         if ($actualStart > now()) {
+        //                 return response()->json([
+        //                 'message' => '❌ Thời gian bắt đầu sản xuất lớn hơn hiện tại'
+        //                 ], 422);
+        //         } 
+
+        //         // if ($actualStart > $actualStart_yield) {
+        //         //         return response()->json([
+        //         //         'message' => '❌ Thời gian chạy máy phải lớn hơn thời gian bắt đầu sản xuất'
+        //         //         ], 422);
+        //         // } 
+
+        //         // if ($actualEnd < $actualStart_yield) {
+        //         //         return response()->json([
+        //         //         'message' => '❌ Thời gian chạy máy phải nhỏ hơn thời gian kết thúc sản xuất'
+        //         //         ], 422);
+        //         // } 
+
+        //         if ($actualEnd > now()) {
+        //                 return response()->json([
+        //                 'message' => '❌ Thời gian kết thúc sản xuất lớn hơn hiện tại'
+        //                 ], 422);
+        //         } 
+
+        //         if ($actualStartCleaning > now() && $request->actionType === 'finised') {
+        //                 return response()->json([
+        //                 'message' => '❌ Thời gian bắt đầu vệ sinh lớn hơn hiện tại'
+        //                 ], 422);
+        //         } 
+
+        //         if ($actualEndCleaning > now() && $request->actionType === 'finised') {
+        //                 return response()->json([
+        //                 'message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'
+        //                 ], 422);
+        //         } 
+
+
+        //         if ($request->actionType === 'finised') {
+        //                 if ( $actualStartCleaning == null || $actualEndCleaning == null || $actualStart == null || $actualEnd  == null){
+        //                         return response()->json([
+        //                         'message' => '❌ Thời gian Sản Xuất Không Hợp Lệ'
+        //                         ], 422);
+        //                 }
+
+        //         } else {
+        //                 if ($actualStart == null || $actualEnd  == null){
+        //                         return response()->json([
+        //                         'message' => '❌ Thời gian Sản Xuất / Vệ Sinh Không Hợp Lệ'
+        //                         ], 422);
+        //                 }
+                
+        //         }
+
+        //         // $overlap = DB::table('yields')
+        //         //         ->where('stage_plan_id', $request->id)
+        //         //         ->where(function ($query) use ($actualStart_yield, $actualEnd) {
+        //         //                 $query->where('start', '<', $actualEnd)
+        //         //                 ->where('end', '>', $actualStart_yield);
+        //         //         })
+        //         //         ->exists();
+
+        //         //         if ($overlap) {
+        //         //         return response()->json([
+        //         //                 'message' => '❌ Khoảng thời gian vừa nhập bị chồng lấp với dữ liệu đã tồn tại'
+        //         //         ], 422);
+        //         // }
+
+        //         /* ===============================
+        //         2. VALIDATE TIME LOGIC
+        //         =============================== */
+        //         if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
+        //                 return response()->json([
+        //                         'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
+        //                         ], 422);
+        //         }
+
+
+        //         if ($request->resourceId == null) {
+        //                 return response()->json([
+        //                         'message' => '❌ Chọn Phòng Sản Xuất!'
+        //                         ], 422);
+        //         }
+
+        //         /* ===============================
+        //         3. TÍNH YIELDS BATCH QTY (STAGE 4)
+        //         =============================== */
+        //         $yields_batch_qty = null;
+
+        //         $stage_code =  DB::table('room')->where ('id', $request->resourceId)->value('stage_code');
+
+        //         if ((int)$stage_code === 4) {
+
+        //         $stagePlan = DB::table('stage_plan')
+        //                 ->where('id', $request->id)
+        //                 ->first();
+
+        //         if ($stagePlan && $stagePlan->Theoretical_yields > 0) {
+
+        //                 $batch_qty = DB::table('finished_product_category')
+        //                 ->where('id', $stagePlan->product_caterogy_id)
+        //                 ->value('batch_qty');
+
+        //                 $yields_batch_qty = round(
+        //                 ($request->yields / $stagePlan->Theoretical_yields) * $batch_qty,
+        //                 2
+        //                 );
+        //         }
+        //         }
+
+        //         /* ===============================
+        //         4. DATA UPDATE CHUNG
+        //         =============================== */
+        //         $updateData = [
+        //                 'title'            => $request->title,
+        //                 'resourceId'       => $request->resourceId,
+        //                 'actual_start'     => $actualStart,
+        //                 'actual_end'       => $actualEnd,
+        //                 'yields'           => $request->yields,
+        //                 'yields_batch_qty' => $yields_batch_qty,
+        //                 'number_of_boxes'  => $request->number_of_boxes ?? 1,
+        //                 'note'             => $request->note ?? 'NA',
+        //                 'finished_by'      => session('user')['fullName'],
+        //                 'finished_date'    => now(),
+        //         ];
+
+        //         /* ===============================
+        //         5. PHÂN BIỆT FINISHED / SEMI
+        //         =============================== */
+        //         if ($request->actionType === 'finised') {
+
+        //                 $updateData = array_merge($updateData, [
+                                
+        //                         'actual_start_clearning' => $actualStartCleaning,
+        //                         'actual_end_clearning'   => $actualEndCleaning,
+        //                         'finished'               => 1,
+        //                 ]);
+
+        //         } elseif ($request->actionType === 'semi-finised') {
+
+        //                 $updateData = array_merge($updateData, [
+                                
+        //                         'finished' => 1,
+        //                 ]);
+
+        //         } else {
+                       
+        //                 return response()->json([
+        //                         'message' => '❌ actionType không hợp lệ'
+        //                         ], 422);
+                        
+        //         }
+
+        //         if ((int)$stage_code <= 2){
+        //                  $updateData = array_merge($updateData, [
+        //                         'quarantine_room_code' => 'W14'
+        //                 ]);
+        //         }
+
+
+        //         /* ===============================
+        //         6. UPDATE DB
+        //         =============================== */
+        //         DB::table('stage_plan')
+        //         ->where('id', $request->id)
+        //         ->update($updateData);
+
+        //         if ($request->actual_batch) {
+        //                 $plan_master_id = DB::table('stage_plan')
+        //                 ->where('id', $request->id)
+        //                 ->value('plan_master_id');
+
+        //                 DB::table('plan_master')
+        //                 ->where('id', $plan_master_id)
+        //                 ->update([
+        //                         'actual_batch' => $request->actual_batch,
+        //                         'weighed' => 1
+        //                 ]);
+        //         }
+
+        //         /* ===============================
+        //         INSERT NEW YIELD ROW
+        //         =============================== */
+
+        //         // DB::table('yields')->insert([
+        //         // 'stage_plan_id' => $request->id,
+        //         // 'start'         => $actualStart_yield,
+        //         // 'end'           => $actualEnd,
+        //         // 'yield'         => $request->yields ?? 0,
+        //         // 'created_by'    => session('user')['fullName'],
+        //         // 'created_date'  => now(),
+        //         // ]);
+
+        //         return back()->with('success', '✅ Cập nhật công đoạn thành công!');
+        // }
+
         public function store(Request $request){
-                //Log::info($request->all());
                 /* ===============================
-                1. FORMAT DATE TIME (LUÔN Ở ĐẦU)
+                1. FORMAT DATE (GIỮ DẠNG CARBON)
                 =============================== */
-                $actualStart = $request->start
-                ? Carbon::parse($request->start)->format('Y-m-d H:i:s')
-                : null;
 
-                $actualEnd = $request->end
-                ? Carbon::parse($request->end)->format('Y-m-d H:i:s')
-                : null;
+                $actualStart          = $request->start ? Carbon::parse($request->start) : null;
+                $actualStartYield     = $actualStart; //$request->start_yield ? Carbon::parse($request->start_yield) : null;
+                $actualEnd            = $request->end ? Carbon::parse($request->end) : null;
+                $actualStartCleaning  = $request->start_clearning ? Carbon::parse($request->start_clearning) : null;
+                $actualEndCleaning    = $request->end_clearning ? Carbon::parse($request->end_clearning) : null;
 
-                $actualStartCleaning = $request->start_clearning
-                ? Carbon::parse($request->start_clearning)->format('Y-m-d H:i:s')
-                : null;
+                $now = now();
 
-                $actualEndCleaning = $request->end_clearning
-                ? Carbon::parse($request->end_clearning)->format('Y-m-d H:i:s')
-                : null;
+                /* ===============================
+                2. VALIDATE THỜI GIAN CƠ BẢN
+                =============================== */
 
-                if ($actualStart > now()) {
-                        return response()->json([
-                        'message' => '❌ Thời gian bắt đầu sản xuất lớn hơn hiện tại'
-                        ], 422);
-                } 
+                if ($actualStart && $actualStart->gt($now))
+                        return response()->json(['message' => '❌ Thời gian bắt đầu sản xuất lớn hơn hiện tại'], 422);
 
-                if ($actualEnd > now()) {
-                        return response()->json([
-                        'message' => '❌ Thời gian kết thúc sản xuất lớn hơn hiện tại'
-                        ], 422);
-                } 
+                if ($actualEnd && $actualEnd->gt($now))
+                        return response()->json(['message' => '❌ Thời gian kết thúc sản xuất lớn hơn hiện tại'], 422);
 
-                if ($actualStartCleaning > now() && $request->actionType === 'finised') {
-                        return response()->json([
-                        'message' => '❌ Thời gian bắt đầu vệ sinh lớn hơn hiện tại'
-                        ], 422);
-                } 
+                if ($actualStart && $actualEnd && $actualEnd->lte($actualStart))
+                        return response()->json(['message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'], 422);
 
-                if ($actualEndCleaning > now() && $request->actionType === 'finised') {
-                        return response()->json([
-                        'message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'
-                        ], 422);
-                } 
+                if ($actualStart && $actualStartYield && $actualStartYield->lt($actualStart))
+                        return response()->json(['message' => '❌ Thời gian chạy máy phải lớn hơn thời gian bắt đầu sản xuất'], 422);
 
-
+                if ($actualEnd && $actualStartYield && $actualStartYield->gte($actualEnd))
+                        return response()->json(['message' => '❌ Thời gian chạy máy phải nhỏ hơn thời gian kết thúc sản xuất'], 422);
 
                 if ($request->actionType === 'finised') {
-                        if ( $actualStartCleaning == null || $actualEndCleaning == null || $actualStart == null || $actualEnd  == null){
-                                return response()->json([
-                                'message' => '❌ Thời gian Sản Xuất Không Hợp Lệ'
-                                ], 422);
-                        }
 
+                        if (!$actualStart || !$actualEnd || !$actualStartCleaning || !$actualEndCleaning)
+                        return response()->json(['message' => '❌ Thời gian Sản Xuất Không Hợp Lệ'], 422);
+
+                        if ($actualStartCleaning->gt($now))
+                        return response()->json(['message' => '❌ Thời gian bắt đầu vệ sinh lớn hơn hiện tại'], 422);
+
+                        if ($actualEndCleaning->gt($now))
+                        return response()->json(['message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'], 422);
                 } else {
-                        if ($actualStart == null || $actualEnd  == null){
-                                return response()->json([
-                                'message' => '❌ Thời gian Sản Xuất / Vệ Sinh Không Hợp Lệ'
-                                ], 422);
-                        }
-                
+
+                        if (!$actualStart || !$actualEnd)
+                        return response()->json(['message' => '❌ Thời gian Sản Xuất / Vệ Sinh Không Hợp Lệ'], 422);
                 }
+
+                if (!$request->resourceId)
+                        return response()->json(['message' => '❌ Chọn Phòng Sản Xuất!'], 422);
 
                 /* ===============================
-                2. VALIDATE TIME LOGIC
+                3. VALIDATE YIELD RANGE & OVERLAP
                 =============================== */
-                if ($actualStart && $actualEnd && $actualEnd <= $actualStart) {
-                        return response()->json([
-                                'message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'
-                                ], 422);
-                }
 
+                // if ($actualStartYield && $actualEnd) {
 
-                if ($request->resourceId == null) {
-                        return response()->json([
-                                'message' => '❌ Chọn Phòng Sản Xuất!'
-                                ], 422);
-                }
+                //         // phải nằm trong khoảng production
+                //         if ($actualStartYield->lt($actualStart) || $actualEnd->gt($actualEnd))
+                //         return response()->json(['message' => '❌ Thời gian Yield phải nằm trong khoảng sản xuất'], 422);
+
+                //         // không overlap
+                //         $overlap = DB::table('yields')
+                //         ->where('stage_plan_id', $request->id)
+                //         ->where(function ($q) use ($actualStartYield, $actualEnd) {
+                //                 $q->where('start', '<', $actualEnd)
+                //                 ->where('end', '>', $actualStartYield);
+                //         })
+                //         ->exists();
+
+                //         if ($overlap)
+                //         return response()->json(['message' => '❌ Khoảng thời gian vừa nhập bị chồng lấp'], 422);
+                // }
 
                 /* ===============================
-                3. TÍNH YIELDS BATCH QTY (STAGE 4)
+                4. TÍNH YIELDS_BATCH_QTY (STAGE 4)
                 =============================== */
+
                 $yields_batch_qty = null;
 
-                $stage_code =  DB::table('room')->where ('id', $request->resourceId)->value('stage_code');
+                $stage_code = DB::table('room')
+                        ->where('id', $request->resourceId)
+                        ->value('stage_code');
 
                 if ((int)$stage_code === 4) {
 
-                $stagePlan = DB::table('stage_plan')
+                        $stagePlan = DB::table('stage_plan')
                         ->where('id', $request->id)
                         ->first();
 
-                if ($stagePlan && $stagePlan->Theoretical_yields > 0) {
+                        if ($stagePlan && $stagePlan->Theoretical_yields > 0) {
 
                         $batch_qty = DB::table('finished_product_category')
-                        ->where('id', $stagePlan->product_caterogy_id)
-                        ->value('batch_qty');
+                                ->where('id', $stagePlan->product_caterogy_id)
+                                ->value('batch_qty');
 
                         $yields_batch_qty = round(
-                        ($request->yields / $stagePlan->Theoretical_yields) * $batch_qty,
-                        2
+                                ($request->yields / $stagePlan->Theoretical_yields) * $batch_qty,
+                                2
                         );
-                }
+                        }
                 }
 
                 /* ===============================
-                4. DATA UPDATE CHUNG
+                5. UPDATE + INSERT (TRANSACTION)
                 =============================== */
-                $updateData = [
+
+                DB::transaction(function () use (
+                        $request,
+                        $actualStart,
+                        $actualEnd,
+                        $actualStartCleaning,
+                        $actualEndCleaning,
+                        $actualStartYield,
+                        $yields_batch_qty,
+                        $stage_code
+                ) {
+                         /* ===============================
+                        1. LẤY TỔNG YIELD TRƯỚC ĐÓ
+                        =============================== */
+
+                        $previousYield = DB::table('yields')
+                                ->where('stage_plan_id', $request->id)
+                                ->value('yield');
+                        $previousYield = $previousYield ?? 0;
+                        $newYield = ($request->yields ?? 0) + $previousYield;
+                        
+                        $updateData = [
                         'title'            => $request->title,
                         'resourceId'       => $request->resourceId,
                         'actual_start'     => $actualStart,
                         'actual_end'       => $actualEnd,
-                        'yields'           => $request->yields,
+                        'yields'           => $newYield,
                         'yields_batch_qty' => $yields_batch_qty,
                         'number_of_boxes'  => $request->number_of_boxes ?? 1,
                         'note'             => $request->note ?? 'NA',
                         'finished_by'      => session('user')['fullName'],
                         'finished_date'    => now(),
-                ];
+                        'finished'         => 1
+                        ];
 
-                /* ===============================
-                5. PHÂN BIỆT FINISHED / SEMI
-                =============================== */
-                if ($request->actionType === 'finised') {
+                        if ($request->actionType === 'finised') {
+                        $updateData['actual_start_clearning'] = $actualStartCleaning;
+                        $updateData['actual_end_clearning']   = $actualEndCleaning;
+                        }
 
-                        $updateData = array_merge($updateData, [
-                                
-                                'actual_start_clearning' => $actualStartCleaning,
-                                'actual_end_clearning'   => $actualEndCleaning,
-                                'finished'               => 1,
-                        ]);
+                        if ((int)$stage_code <= 2) {
+                        $updateData['quarantine_room_code'] = 'W14';
+                        }
 
-                } elseif ($request->actionType === 'semi-finised') {
-
-                        $updateData = array_merge($updateData, [
-                                
-                                'finished' => 1,
-                        ]);
-
-                } else {
-                       
-                        return response()->json([
-                                'message' => '❌ actionType không hợp lệ'
-                                ], 422);
-                        
-                }
-
-                if ((int)$stage_code <= 2){
-                         $updateData = array_merge($updateData, [
-                                'quarantine_room_code' => 'W14'
-                        ]);
-                }
-
-
-                /* ===============================
-                6. UPDATE DB
-                =============================== */
-                DB::table('stage_plan')
-                ->where('id', $request->id)
-                ->update($updateData);
-
-                if ($request->actual_batch) {
-                        $plan_master_id = DB::table('stage_plan')
+                        DB::table('stage_plan')
                         ->where('id', $request->id)
-                        ->value('plan_master_id');
+                        ->update($updateData);
+
+                        // insert yield mới mỗi lần update
+                        // DB::table('yields')->insert([
+                        // 'stage_plan_id' => $request->id,
+                        // 'start'         => $actualStartYield,
+                        // 'end'           => $actualEnd,
+                        // 'yield'         => $request->yields ?? 0,
+                        // 'created_by'    => session('user')['fullName'],
+                        // 'created_date'  => now(),
+                        // ]);
+
+
+                        DB::table('yields')->updateOrInsert(
+                        ['stage_plan_id' => $request->id, 
+                        //'start'=> $actualStartYield
+                        ], // điều kiện kiểm tra tồn tại
+                        [
+                                'start'        => $actualStartYield,
+                                'end'          => $actualEnd,
+                                'yield'        => $request->yields ?? 0,
+                                'created_by'   => session('user')['fullName'],
+                                'created_date' => now(),
+                        ]
+                        );
+
+                        if ($request->actual_batch) {
+
+                        $plan_master_id = DB::table('stage_plan')
+                                ->where('id', $request->id)
+                                ->value('plan_master_id');
 
                         DB::table('plan_master')
-                        ->where('id', $plan_master_id)
-                        ->update([
+                                ->where('id', $plan_master_id)
+                                ->update([
                                 'actual_batch' => $request->actual_batch,
-                                'weighed' => 1
-                        ]);
-                }
+                                'weighed'      => 1
+                                ]);
+                        }
+                });
 
                 return back()->with('success', '✅ Cập nhật công đoạn thành công!');
         }
