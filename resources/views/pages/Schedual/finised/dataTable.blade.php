@@ -71,7 +71,8 @@
                                 style="font-size: 25px;">&raquo;</button>
                         </div>
                     </div> --}}
-                        <div class="form-group" style="width: 177px">
+
+                    <div class="form-group" style="width: 177px">
                                 <select class="form-control" name="stage_code" style="text-align-last: center;"
                                     onchange="document.getElementById('filterForm').submit();">
                                     <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
@@ -82,7 +83,7 @@
                                     <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
                                     <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
                                 </select>
-                        </div>
+                    </div>
             </form>
             
 
@@ -110,7 +111,6 @@
 
                         <th colspan="2">Thời Gian Vệ Sinh</th>
                         <th>Xác Nhận Toàn Bộ </th>
-
 
                     </tr>
                 </thead>
@@ -182,18 +182,25 @@
 
                         
                             <td>
-                                <div>BD: </div>
-                                <div>KT: </div>
+                                <div>BĐSX: </div>
+                                <div>BĐCM: </div>
+                                {{-- <div>KT: </div> --}}
                             </td>
                             {{-- {{ $semi_finished }} --}}
                             <td>
                                 @if (!empty($data->actual_start) || !empty($data->start))
-                                    <input type="datetime-local" class="time" id = "start" name="start"    {{ $semi_finished }}
+                                    <input type="datetime-local" class="time start" id = "start" name="start"    {{ $semi_finished }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_start??$data->start)->format('Y-m-d\TH:i') }}">
+
+                                    {{-- <input type="datetime-local" class="time start_yield" id = "start_yield" name="start_yield" >    --}}
+
                                     <input type="datetime-local" class="time" id = "end" name="end"  
                                         value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
                                 @else
-                                    <input type="datetime-local" class="time" id = "start"  name="start"  {{ $semi_finished }}>
+                                    <input type="datetime-local" class="time start" id = "start"  name="start"  {{ $semi_finished }}>
+
+                                    {{-- <input type="datetime-local" class="time start_yield" id = "start_yield"  name="start_yield" > --}}
+
                                     <input type="datetime-local" class="time" id = "end" name="end">
                                 @endif
                                 
@@ -293,11 +300,11 @@
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
-
-
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
+
+    
         $('#data_table_Schedual_list').DataTable({
             paging: true,
             lengthChange: true,
@@ -322,47 +329,12 @@
         });
 
     });
+
+    $(document).on('input change', '.start', function () {
+            $(this).closest('tr').find('.start_yield')
+                .val($(this).val());
+    });
 </script>
-
-{{-- <script>
-    let stages = @json($stages);
-    let currentIndex = stages.findIndex(s => s.stage_code == {{ $stageCode ?? 'null' }});
-   
-    const filterForm = document.getElementById("filterForm");
-    const stageNameEl = document.getElementById("stageName");
-    const stageCodeEl = document.getElementById("stage_code");
-
-    
-    function updateStage() {
-        stageNameEl.textContent = stages[currentIndex].stage;
-        stageCodeEl.value = stages[currentIndex].stage_code;
-    }
-   
-    document.getElementById("prevStage").addEventListener("click", function() {
-        currentIndex = (currentIndex > 0) ? currentIndex - 1 : stages.length - 1;
-        updateStage();
-        filterForm.submit();
-    });
-
-    document.getElementById("nextStage").addEventListener("click", function() {
-        currentIndex = (currentIndex < stages.length - 1) ? currentIndex + 1 : 0;
-        updateStage();
-        filterForm.submit();
-    });
-</script> --}}
-
-
-{{-- <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      
-        document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
-            new Stepper(stepperEl, {
-                linear: false,
-                animation: true
-            });
-        });
-    });
-</script> --}}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -599,3 +571,45 @@
 
     });
 </script>
+
+{{-- <script>
+    let stages = @json($stages);
+    let currentIndex = stages.findIndex(s => s.stage_code == {{ $stageCode ?? 'null' }});
+   
+    const filterForm = document.getElementById("filterForm");
+    const stageNameEl = document.getElementById("stageName");
+    const stageCodeEl = document.getElementById("stage_code");
+
+    
+    function updateStage() {
+        stageNameEl.textContent = stages[currentIndex].stage;
+        stageCodeEl.value = stages[currentIndex].stage_code;
+    }
+   
+    document.getElementById("prevStage").addEventListener("click", function() {
+        currentIndex = (currentIndex > 0) ? currentIndex - 1 : stages.length - 1;
+        updateStage();
+        filterForm.submit();
+    });
+
+    document.getElementById("nextStage").addEventListener("click", function() {
+        currentIndex = (currentIndex < stages.length - 1) ? currentIndex + 1 : 0;
+        updateStage();
+        filterForm.submit();
+    });
+</script> --}}
+
+
+{{-- <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      
+        document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
+            new Stepper(stepperEl, {
+                linear: false,
+                animation: true
+            });
+        });
+    });
+</script> --}}
+
+
