@@ -349,9 +349,10 @@
                                                                     $minutes = $start->diffInMinutes($end);
                                                                     $hours = intdiv($minutes, 60);
                                                                     $mins  = $minutes % 60;
+                                                                   // dd ($d);
                                                                 @endphp
 
-                                                                {{$i++ .". "}}  {{$d->title == null && $d->yields == null  ?"VS":$d->title}}
+                                                                {{$i++ .". "}}  {{$d->title == null && $d->yields == null  ?"VS":$d->title}} 
                                                                 ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} = <b> {{ $hours }}h{{ $mins }}p </b>)
 
                                                                 @if ($d->yields )
