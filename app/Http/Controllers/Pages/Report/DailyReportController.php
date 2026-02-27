@@ -129,14 +129,7 @@ class DailyReportController extends Controller
 
                 DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
 
-                DB::raw("
-                    CASE 
-                        WHEN sp.stage_code = 5 AND LOWER(d.name) LIKE '%phim%' THEN 'coating'
-                        WHEN sp.stage_code = 5 AND LOWER(d.name) LIKE '%nang%' THEN 'capsule'
-                        WHEN sp.stage_code = 5 THEN 'tablet'
-                        ELSE 'NA'
-                    END as table_type
-                "),
+                DB::raw("CASE WHEN sp.stage_code = 5 AND d.name LIKE '%phim%' THEN 'coating' WHEN sp.stage_code = 5 AND d.name LIKE '%nang%' THEN 'capsule' WHEN sp.stage_code = 5 THEN 'tablet' ELSE 'NA' END as table_type "),
 
                 "sp.note"
             )
