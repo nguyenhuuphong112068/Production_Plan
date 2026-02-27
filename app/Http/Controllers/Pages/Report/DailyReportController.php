@@ -125,7 +125,24 @@ class DailyReportController extends Controller
                     ,2) AS yields
                 "),
 
-                DB::raw('0 as yields_batch_qty'),
+                DB::raw("CASE WHEN sp.stage_code = 4 THEN 
+                        ROUND(
+                                sp.Theoretical_yields_qty *
+                                (
+                                    (
+                                        y.yield *
+                                        TIME_TO_SEC(
+                                            TIMEDIFF(
+                                                LEAST(y.end, '$endDateStr'),
+                                                GREATEST(y.start, '$startDateStr')
+                                            )
+                                        ) /
+                                        NULLIF(TIME_TO_SEC(TIMEDIFF(y.end, y.start)), 0)
+                                    )
+                                    / NULLIF(sp.Theoretical_yields, 0)
+                                )
+                            , 2)
+                    ELSE 0 END AS total_qty_unit"),
 
                 DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
 
@@ -142,6 +159,7 @@ class DailyReportController extends Controller
             )
         ->get();
 
+        //dd ($production);
 
         /*
         |--------------------------------------------------------------------------
@@ -221,7 +239,7 @@ class DailyReportController extends Controller
                     'start'         => $item->actual_start,
                     'end'           => $item->actual_end,
                     'yields'        => $item->yields,
-                    'yields_batch_qty' => $item->yields_batch_qty,
+                    'yields_batch_qty' => $item->total_qty_unit??0,
                     'unit'          => $item->unit,
                     'note'          => $item->note ?? null,
                     'is_order_action' => $item->is_daily_report ?? 0,
@@ -238,6 +256,7 @@ class DailyReportController extends Controller
         | 5️⃣ TỔNG SẢN LƯỢNG THEO RESOURCE
         |--------------------------------------------------------------------------
         */
+        
         $yield_day = $actual_detail
             ->whereNotNull('yields')
             ->groupBy('resourceId')
@@ -245,13 +264,14 @@ class DailyReportController extends Controller
                 return [
                     'resourceId'    => $items->first()->resourceId,
                     'total_qty'     => round($items->sum('yields'), 2),
+                    'total_qty_unit'   => round($items->sum('yields_batch_qty'), 2),
                     'unit'          => $items->first()->unit,
                     'table_type'    => $items->first()->table_type,
                     'stage_code'    => $items->first()->stage_code,
                 ];
             })
             ->values();
-
+       // dd ($yield_day->where ('stage_code', 4));
         return [
             'actual_detail' => $actual_detail,
             'yield_day'     => $yield_day
