@@ -24,51 +24,97 @@ class SchedualFinisedController extends Controller
       
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
                 $datas = DB::table('stage_plan as sp')
-                ->select(
-                        'sp.*',
-                        'room.name as room_name',
-                        'room.code as room_code',
-                        'room.stage as stage',
-                        DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
-                        'plan_master.actual_batch',
-                        'plan_master.expected_date',
-                        'plan_master.is_val',
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'product_name.name as product_name',
-                        'market.code as market'
-                )
-                ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
-                ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
-                ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
-                ->where('sp.stage_code', $stage_code)
-                ->where('sp.active', 1)
-                ->where('sp.deparment_code', $production)
+                        ->leftJoin(
+                                DB::raw("
+                                (
+                                SELECT 
+                                        t.stage_plan_id,
+                                        GROUP_CONCAT(
+                                        CONCAT(
+                                                '(', t.rownum, ') ',
+                                                DATE_FORMAT(t.`start`, '%H:%i %d/%m'),
+                                                ' - ',
+                                                DATE_FORMAT(t.`end`, '%H:%i %d/%m'),
+                                                ' = ',
+                                                FORMAT(t.`yield`, 2)
+                                        )
+                                        ORDER BY t.`start`
+                                        SEPARATOR '<br>'
+                                        ) as confirmed,
 
-                // 🔹 finished logic
-                ->where(function ($q) {
-                        $q->where('sp.finished', 0)
-                        ->orWhere(function ($q2) {
-                        $q2->where('sp.finished', 1)
-                                ->whereNull('sp.actual_start_clearning');
-                        });
-                })
+                                         -- ✅ Tổng sản lượng
+                                        ROUND(SUM(t.`yield`), 2) as total_confirmed
+                                FROM (
+                                        SELECT 
+                                        y.stage_plan_id,
+                                        y.`start`,
+                                        y.`end`,
+                                        y.`yield`,
+                                        @rownum := IF(@current_sp = y.stage_plan_id, @rownum + 1, 1) as rownum,
+                                        @current_sp := y.stage_plan_id
+                                        FROM yields y
+                                        JOIN (SELECT @rownum := 0, @current_sp := 0) vars
+                                        WHERE y.`start` IS NOT NULL 
+                                        AND y.`end` IS NOT NULL
+                                        ORDER BY y.stage_plan_id, y.`start`
+                                ) t
+                                GROUP BY t.stage_plan_id
+                                ) as y
+                                "),
+                                'sp.id',
+                                '=',
+                                'y.stage_plan_id'
+                        )
+                        ->select(
+                                'sp.*',
+                                'room.name as room_name',
+                                'room.code as room_code',
+                                'room.stage as stage',
+                                DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
+                                'plan_master.actual_batch',
+                                'plan_master.expected_date',
+                                'plan_master.is_val',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'product_name.name as product_name',
+                                'market.code as market',
+                                // ✅ confirmed yield
+                                DB::raw("COALESCE(y.confirmed,'') as confirmed"),
+                                DB::raw("COALESCE(y.total_confirmed,0) as total_confirmed")
+                        )
+                        ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
+                        ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+                        ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                        ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                        ->where('sp.stage_code', $stage_code)
+                        ->where('sp.active', 1)
+                        ->where('sp.deparment_code', $production)
 
-                // 🔹 loại trừ bản ghi lỗi
-                ->whereNot(function ($q) {
-                        $q->where('sp.finished', 1)
-                        ->whereNull('sp.actual_start')
-                        ->whereNull('sp.start');
-                })
+                        // 🔹 finished logic
+                        ->where(function ($q) {
+                                $q->where('sp.finished', 0)
+                                ->orWhere(function ($q2) {
+                                $q2->where('sp.finished', 1)
+                                        ->whereNull('sp.actual_start_clearning');
+                                });
+                        })
 
-                ->orderBy('sp.start')
+                        // 🔹 loại trừ bản ghi lỗi
+                        ->whereNot(function ($q) {
+                                $q->where('sp.finished', 1)
+                                ->whereNull('sp.actual_start')
+                                ->whereNull('sp.start');
+                        })
+
+                        ->orderBy('sp.start')
                 ->get();
-        
+             
+                //dd ($datas);
+
                 $stages = DB::table('stage_plan')
                 ->select(
                         'stage_plan.stage_code',
@@ -335,7 +381,7 @@ class SchedualFinisedController extends Controller
                 =============================== */
 
                 $actualStart          = $request->start ? Carbon::parse($request->start) : null;
-                $actualStartYield     = $actualStart; //$request->start_yield ? Carbon::parse($request->start_yield) : null;
+                $actualStartYield     = $request->start_yield ? Carbon::parse($request->start_yield) : null;
                 $actualEnd            = $request->end ? Carbon::parse($request->end) : null;
                 $actualStartCleaning  = $request->start_clearning ? Carbon::parse($request->start_clearning) : null;
                 $actualEndCleaning    = $request->end_clearning ? Carbon::parse($request->end_clearning) : null;
@@ -383,25 +429,25 @@ class SchedualFinisedController extends Controller
                 /* ===============================
                 3. VALIDATE YIELD RANGE & OVERLAP
                 =============================== */
+              
+                if ($actualStartYield && $actualEnd) {
 
-                // if ($actualStartYield && $actualEnd) {
+                        // phải nằm trong khoảng production
+                        if ($actualStartYield->lt($actualStart) || $actualEnd->gt($actualEnd))
+                        return response()->json(['message' => '❌ Thời gian Yield phải nằm trong khoảng sản xuất'], 422);
 
-                //         // phải nằm trong khoảng production
-                //         if ($actualStartYield->lt($actualStart) || $actualEnd->gt($actualEnd))
-                //         return response()->json(['message' => '❌ Thời gian Yield phải nằm trong khoảng sản xuất'], 422);
+                        // không overlap
+                        $overlap = DB::table('yields')
+                        ->where('stage_plan_id', $request->id)
+                        ->where(function ($q) use ($actualStartYield, $actualEnd) {
+                                $q->where('start', '<', $actualEnd)
+                                ->where('end', '>', $actualStartYield);
+                        })
+                        ->exists();
 
-                //         // không overlap
-                //         $overlap = DB::table('yields')
-                //         ->where('stage_plan_id', $request->id)
-                //         ->where(function ($q) use ($actualStartYield, $actualEnd) {
-                //                 $q->where('start', '<', $actualEnd)
-                //                 ->where('end', '>', $actualStartYield);
-                //         })
-                //         ->exists();
-
-                //         if ($overlap)
-                //         return response()->json(['message' => '❌ Khoảng thời gian vừa nhập bị chồng lấp'], 422);
-                // }
+                        if ($overlap)
+                        return response()->json(['message' => '❌ Khoảng thời gian vừa nhập bị chồng lấp với các lần xác nhận trước đó, vui lòng kiểm tra lại'], 422);
+                }
 
                 /* ===============================
                 4. TÍNH YIELDS_BATCH_QTY (STAGE 4)
@@ -471,54 +517,63 @@ class SchedualFinisedController extends Controller
                         ];
 
                         if ($request->actionType === 'finised') {
-                        $updateData['actual_start_clearning'] = $actualStartCleaning;
-                        $updateData['actual_end_clearning']   = $actualEndCleaning;
+                                $updateData['actual_start_clearning'] = $actualStartCleaning;
+                                $updateData['actual_end_clearning']   = $actualEndCleaning;
                         }
 
                         if ((int)$stage_code <= 2) {
-                        $updateData['quarantine_room_code'] = 'W14';
+                                $updateData['quarantine_room_code'] = 'W14';
                         }
 
                         DB::table('stage_plan')
-                        ->where('id', $request->id)
-                        ->update($updateData);
-
-                        // insert yield mới mỗi lần update
-                        // DB::table('yields')->insert([
-                        // 'stage_plan_id' => $request->id,
-                        // 'start'         => $actualStartYield,
-                        // 'end'           => $actualEnd,
-                        // 'yield'         => $request->yields ?? 0,
-                        // 'created_by'    => session('user')['fullName'],
-                        // 'created_date'  => now(),
-                        // ]);
+                                ->where('id', $request->id)
+                                ->update($updateData);
 
 
-                        DB::table('yields')->updateOrInsert(
-                        ['stage_plan_id' => $request->id, 
-                        //'start'=> $actualStartYield
-                        ], // điều kiện kiểm tra tồn tại
-                        [
-                                'start'        => $actualStartYield,
-                                'end'          => $actualEnd,
-                                'yield'        => $request->yields ?? 0,
-                                'created_by'   => session('user')['fullName'],
-                                'created_date' => now(),
-                        ]
-                        );
+                        // mới
+                        if ($request->actionType != 'finised' || !empty($actualStartYield)) {
+                                DB::table('yields')->updateOrInsert(
+                                        [
+                                        'stage_plan_id' => $request->id,
+                                        'start' => $actualStart,
+                                        'end'   => $actualStartYield
+                                        ],
+                                        [
+                                        'start'        => $actualStartYield,
+                                        'end'          => $actualEnd,
+                                        'yield'        => $request->yields ?? 0,
+                                        'created_by'   => session('user')['fullName'],
+                                        'created_date' => now(),
+                                        ]
+                                );
+                        }
+                        // như cũ
+                        // DB::table('yields')->updateOrInsert(
+                        // ['stage_plan_id' => $request->id, 
+                        // //'start'=> $actualStartYield
+                        // ], // điều kiện kiểm tra tồn tại
+                        // [
+                        //         'start'        => $actualStartYield,
+                        //         'end'          => $actualEnd,
+                        //         'yield'        => $request->yields ?? 0,
+                        //         'created_by'   => session('user')['fullName'],
+                        //         'created_date' => now(),
+                        // ]
+                        // );
+                        
 
                         if ($request->actual_batch) {
 
-                        $plan_master_id = DB::table('stage_plan')
-                                ->where('id', $request->id)
-                                ->value('plan_master_id');
+                                $plan_master_id = DB::table('stage_plan')
+                                        ->where('id', $request->id)
+                                        ->value('plan_master_id');
 
-                        DB::table('plan_master')
-                                ->where('id', $plan_master_id)
-                                ->update([
-                                'actual_batch' => $request->actual_batch,
-                                'weighed'      => 1
-                                ]);
+                                DB::table('plan_master')
+                                        ->where('id', $plan_master_id)
+                                        ->update([
+                                        'actual_batch' => $request->actual_batch,
+                                        'weighed'      => 1
+                                        ]);
                         }
                 });
 
