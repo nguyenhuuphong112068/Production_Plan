@@ -115,8 +115,8 @@ class HistoryController extends Controller{
                         DB::commit();
 
                         return response()->json([
-                        'success' => true,
-                        'message' => 'Trả Về Thành Công!'
+                                'success' => true,
+                                'message' => 'Trả Về Thành Công!'
                         ]);
 
                 } catch (\Exception $e) {
