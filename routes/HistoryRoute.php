@@ -12,6 +12,7 @@ Route::prefix('/History')
 ->group(function(){
 
         Route::get('','index')->name('list');
+        Route::post('returnStage','returnStage')->name('returnStage');      
     
 });
    
