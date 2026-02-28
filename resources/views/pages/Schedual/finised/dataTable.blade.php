@@ -198,7 +198,7 @@
 
                         
                             <td>
-                                <div>BĐ: </div>
+                                <div>BĐSX: </div>
                                 <div>BĐCM: </div>
                                 <div>KT: </div>
                             </td>
