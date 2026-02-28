@@ -942,10 +942,7 @@ class ProductionPlanController extends Controller
         public function send(Request $request){
                        
                 $exists = DB::table('stage_plan')->where('plan_list_id', $request->plan_list_id)->exists();
-                if ($exists){
-                        return redirect()->route('pages.plan.production.list');
-                
-                }
+                if ($exists){return redirect()->route('pages.plan.production.list');}
 
                 // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
                 $plans_main = DB::table('plan_master')
@@ -1487,157 +1484,157 @@ class ProductionPlanController extends Controller
         public function open_stock(Request  $request){
                 //dd ( $request->all());
 
-        try {        
-                $plan_master_materials = DB::table('plan_master_materials as pmm')
-                ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
-                ->when($request->plan_list_id < 0,
-                                 function ($q) {
-                                        return $q->where('pm.weighed', 0);
-                                },
-                                function ($q) use ($request) {
-                                        return $q->where('pm.plan_list_id', $request->plan_list_id);
-                                }
-                )
-                ->where('pm.cancel', 0)
-                ->where('pm.active', 1)
-                ->where('pmm.active', 1)
-                ->when($request->has('selected'), function ($q) {return $q->where('pm.selected', 1);})
-                ->when($request->has('material_packaging_type'), function ($q) use ($request)  {return $q->where('pmm.material_packaging_type', $request->material_packaging_type);})
-                ->select(
-                        
-                        'pmm.MaterialName',
-                        'pmm.material_packaging_code',
-                        'pmm.material_packaging_type',
-                        'pmm.unit_bom',
-                        DB::raw('SUM(pmm.qty) as total_qty'),
-                        DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
-                        DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
-                        DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids")
-                )
-                ->groupBy(
-                        
-                        'pmm.MaterialName',
-                        'pmm.material_packaging_code',
-                        'pmm.material_packaging_type',
-                        'pmm.unit_bom'
-                )
-                ->orderBy('pmm.material_packaging_code')
-                ->get();
-               //dd ($plan_master_materials);
-
-                $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
-                
-                $StockOverview = DB::connection('mms')
-                        ->table('yf_RMPMStockOverview_pms as s')
-                        ->whereIn('s.MatID', $material_packaging_code)
+                try {        
+                        $plan_master_materials = DB::table('plan_master_materials as pmm')
+                        ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
+                        ->when($request->plan_list_id < 0,
+                                        function ($q) {
+                                                return $q->where('pm.weighed', 0);
+                                        },
+                                        function ($q) use ($request) {
+                                                return $q->where('pm.plan_list_id', $request->plan_list_id);
+                                        }
+                        )
+                        ->where('pm.cancel', 0)
+                        ->where('pm.active', 1)
+                        ->where('pmm.active', 1)
+                        ->when($request->has('selected'), function ($q) {return $q->where('pm.selected', 1);})
+                        ->when($request->has('material_packaging_type'), function ($q) use ($request)  {return $q->where('pmm.material_packaging_type', $request->material_packaging_type);})
                         ->select(
-                                's.GRNNO',
-                                's.Mfgbatchno',
-                                's.ARNO',
-                                's.Expirydate',
-                                's.Retestdate',
-                                's.MatUOM',
-                                's.MatID',
-                                's.GRNSts',
-                                's.Mfg',
-
-                                DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
-                                DB::raw('SUM([Total Qty]) as Total_Qty'),
-
-                                // Gộp warehouse_id
-                                DB::raw("
-                                STUFF((
-                                        SELECT DISTINCT ', ' + 
-                                        LEFT(s2.warehouse_id, CHARINDEX('.', s2.warehouse_id + '.') - 1)
-                                        FROM yf_RMPMStockOverview_pms s2
-                                        WHERE s2.GRNNO = s.GRNNO
-                                        FOR XML PATH('')
-                                ), 1, 2, '') as warehouse_list
-                                "),
-
-                                                                // Gộp IntBatchNo
-                                DB::raw("
-                                STUFF((
-                                        SELECT DISTINCT ', ' + s3.IntBatchNo
-                                        FROM yf_RMPMStockOverview_pms s3
-                                        WHERE s3.GRNNO = s.GRNNO
-                                        FOR XML PATH('')
-                                ), 1, 2, '') as coa_list
-                                "),
+                                
+                                'pmm.MaterialName',
+                                'pmm.material_packaging_code',
+                                'pmm.material_packaging_type',
+                                'pmm.unit_bom',
+                                DB::raw('SUM(pmm.qty) as total_qty'),
+                                DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
+                                DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
+                                DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids")
                         )
                         ->groupBy(
-                                's.GRNNO',
-                                's.Mfgbatchno',
-                                's.ARNO',
-                                's.Expirydate',
-                                's.Retestdate',
-                                's.MatUOM',
-                                's.MatID',
-                                's.GRNSts',
-                                's.Mfg'
+                                
+                                'pmm.MaterialName',
+                                'pmm.material_packaging_code',
+                                'pmm.material_packaging_type',
+                                'pmm.unit_bom'
                         )
-                ->get();
-
-                
-                $stockByMat = collect($StockOverview)->groupBy('MatID');
-                
-                $plan_master_materials = collect($plan_master_materials)
-                        ->map(function ($item) use ($stockByMat) {
-
-                        $stocks = $stockByMat[$item->material_packaging_code] ?? collect([]);
-
-                        // 👉 Chỉ tính tổng, không thêm dòng
-                        $item->totalReceipt = $stocks->sum('ReceiptQuantity');
-                        $item->totalQty     = $stocks->sum('Total_Qty');
-
-                        $item->stock = $stocks;
-
-                        return $item;
-                        })
-                        ->sortBy(fn ($i) => mb_strtolower($i->MaterialName))
-                        ->values();
-
-
-                
-                $production  =  session('user')['production_name'];
-
-
-               
-                session()->put(['title'=> "BẢNG DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
-
-                if ($request->title){
-                         session()->put(['title'=> "$request->title - $production"]);
-                }
-                
+                        ->orderBy('pmm.material_packaging_code')
+                        ->get();
                 //dd ($plan_master_materials);
-                return view('pages.plan.production.stock_list',[
-                        'datas' => $plan_master_materials, 
-                        'plan_list_id' => $request->plan_list_id,
-                        'month' => $request->month, 
-                        'production' => $request->production,
-                        'send'=> $request->send??1, 
-                        'current_url' => $request->current_url??null
-                ]);
+
+                        $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
+                        
+                        $StockOverview = DB::connection('mms')
+                                ->table('yf_RMPMStockOverview_pms as s')
+                                ->whereIn('s.MatID', $material_packaging_code)
+                                ->select(
+                                        's.GRNNO',
+                                        's.Mfgbatchno',
+                                        's.ARNO',
+                                        's.Expirydate',
+                                        's.Retestdate',
+                                        's.MatUOM',
+                                        's.MatID',
+                                        's.GRNSts',
+                                        's.Mfg',
+
+                                        DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
+                                        DB::raw('SUM([Total Qty]) as Total_Qty'),
+
+                                        // Gộp warehouse_id
+                                        DB::raw("
+                                        STUFF((
+                                                SELECT DISTINCT ', ' + 
+                                                LEFT(s2.warehouse_id, CHARINDEX('.', s2.warehouse_id + '.') - 1)
+                                                FROM yf_RMPMStockOverview_pms s2
+                                                WHERE s2.GRNNO = s.GRNNO
+                                                FOR XML PATH('')
+                                        ), 1, 2, '') as warehouse_list
+                                        "),
+
+                                                                        // Gộp IntBatchNo
+                                        DB::raw("
+                                        STUFF((
+                                                SELECT DISTINCT ', ' + s3.IntBatchNo
+                                                FROM yf_RMPMStockOverview_pms s3
+                                                WHERE s3.GRNNO = s.GRNNO
+                                                FOR XML PATH('')
+                                        ), 1, 2, '') as coa_list
+                                        "),
+                                )
+                                ->groupBy(
+                                        's.GRNNO',
+                                        's.Mfgbatchno',
+                                        's.ARNO',
+                                        's.Expirydate',
+                                        's.Retestdate',
+                                        's.MatUOM',
+                                        's.MatID',
+                                        's.GRNSts',
+                                        's.Mfg'
+                                )
+                        ->get();
+
+                        
+                        $stockByMat = collect($StockOverview)->groupBy('MatID');
+                        
+                        $plan_master_materials = collect($plan_master_materials)
+                                ->map(function ($item) use ($stockByMat) {
+
+                                $stocks = $stockByMat[$item->material_packaging_code] ?? collect([]);
+
+                                // 👉 Chỉ tính tổng, không thêm dòng
+                                $item->totalReceipt = $stocks->sum('ReceiptQuantity');
+                                $item->totalQty     = $stocks->sum('Total_Qty');
+
+                                $item->stock = $stocks;
+
+                                return $item;
+                                })
+                                ->sortBy(fn ($i) => mb_strtolower($i->MaterialName))
+                                ->values();
 
 
-        } catch (\Throwable $e) {
+                        
+                        $production  =  session('user')['production_name'];
 
-                        Log::error('OPEN_STOCK_ERROR', [
-                                'message' => $e->getMessage(),
-                                'line' => $e->getLine(),
-                                'file' => $e->getFile(),
-                                'trace' => $e->getTraceAsString()
+
+                
+                        session()->put(['title'=> "BẢNG DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
+
+                        if ($request->title){
+                                session()->put(['title'=> "$request->title - $production"]);
+                        }
+                        
+                        //dd ($plan_master_materials);
+                        return view('pages.plan.production.stock_list',[
+                                'datas' => $plan_master_materials, 
+                                'plan_list_id' => $request->plan_list_id,
+                                'month' => $request->month, 
+                                'production' => $request->production,
+                                'send'=> $request->send??1, 
+                                'current_url' => $request->current_url??null
                         ]);
 
-                        return view('pages.plan.production.stock_list', [
-                                'datas' => collect([]),
-                                'js_error' => [
+
+                } catch (\Throwable $e) {
+
+                                Log::error('OPEN_STOCK_ERROR', [
                                         'message' => $e->getMessage(),
                                         'line' => $e->getLine(),
-                                        'file' => $e->getFile()
-                                ]
-                        ]);
-        }
+                                        'file' => $e->getFile(),
+                                        'trace' => $e->getTraceAsString()
+                                ]);
+
+                                return view('pages.plan.production.stock_list', [
+                                        'datas' => collect([]),
+                                        'js_error' => [
+                                                'message' => $e->getMessage(),
+                                                'line' => $e->getLine(),
+                                                'file' => $e->getFile()
+                                        ]
+                                ]);
+                }
 
         }
         

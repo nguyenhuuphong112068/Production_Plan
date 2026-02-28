@@ -95,7 +95,18 @@
                         <th>Sản Phẩm</th>
                         <th>Số lô</th>
                         <th>Phòng Sản Xuất</th>
-                        <th colspan="2">Thới Gian Sản Xuất</th>
+                        <th colspan="2">
+                            Thới Gian Sản Xuất <br>
+                            <span style="color: red; font-style:italic;">
+                                BĐSX: là thời gian bắt đầu sản xuất 
+                            </span> <br>
+                            <span style="color: red; font-style:italic;">
+                                BĐCM: là thời gian bắt đầu tạo ra sản lượng
+                            </span> <br>
+                            <span style="color: red; font-style:italic;">
+                                KT: là thời gian kết thúc 1 ca làm việc /ngày làm việc/kết lô
+                            </span>
+                        </th>
                        
                         
                         <th class = "text-center">Sản Lượng Thực Tế
@@ -104,13 +115,18 @@
                             @else
                                 {{ '(ĐVL)' }}
                             @endif
+                            <br>
+                            <span style="color: red; font-style:italic;">
+                                Lưu ý: trường hợp báo sl nhiều lần thì SL sẽ được tính cho khoảng thời gian BĐCM - KT. Không cộng dồn SL khi xác nhận nhiều lần
+                            </span>
                         </th>
-                        <th class = "text-center">Số Thùng</th>
+                        {{-- <th class = "text-center">Đã Xác Nhận</th> --}}
+                        <th class = "text-center" style = "width: 3%">Số Thùng</th>
                         <th>Ghi Chú</th>
-                         <th>Xác Nhận Sản Xuất</th>
+                         <th style = "width: 3%">Xác Nhận Sản Xuất</th>
 
                         <th colspan="2">Thời Gian Vệ Sinh</th>
-                        <th>Xác Nhận Toàn Bộ </th>
+                        <th style = "width: 3%">Xác Nhận Toàn Bộ </th>
 
                     </tr>
                 </thead>
@@ -182,9 +198,9 @@
 
                         
                             <td>
-                                <div>BĐSX: </div>
+                                <div>BĐ: </div>
                                 <div>BĐCM: </div>
-                                {{-- <div>KT: </div> --}}
+                                <div>KT: </div>
                             </td>
                             {{-- {{ $semi_finished }} --}}
                             <td>
@@ -192,14 +208,14 @@
                                     <input type="datetime-local" class="time start" id = "start" name="start"    {{ $semi_finished }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_start??$data->start)->format('Y-m-d\TH:i') }}">
 
-                                    {{-- <input type="datetime-local" class="time start_yield" id = "start_yield" name="start_yield" >    --}}
+                                    <input type="datetime-local" class="time start_yield" id = "start_yield" name="start_yield" >   
 
                                     <input type="datetime-local" class="time" id = "end" name="end"  
                                         value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
                                 @else
                                     <input type="datetime-local" class="time start" id = "start"  name="start"  {{ $semi_finished }}>
 
-                                    {{-- <input type="datetime-local" class="time start_yield" id = "start_yield"  name="start_yield" > --}}
+                                    <input type="datetime-local" class="time start_yield" id = "start_yield"  name="start_yield" >
 
                                     <input type="datetime-local" class="time" id = "end" name="end">
                                 @endif
@@ -209,7 +225,8 @@
 
                                 <input type="text" class="time" name="yields" 
                                     data-max="{{ $data->Theoretical_yields * 1.1 }}"
-                                    value="{{ $data->yields ?? ($data->Theoretical_yields ?? '') }}"
+                                    
+                                    value="{{ (($data->yields ? $data->Theoretical_yields - $data->total_confirmed : $data->Theoretical_yields) < 0 ? 0: $data->Theoretical_yields - $data->total_confirmed) }}"
                                     oninput="
                                             this.value = this.value
                                                 .replace(',', '.')
@@ -220,9 +237,11 @@
                                             const val = parseFloat(this.value);
                                             if (!isNaN(val) && val > max) this.value = max;
                                         ">
-
+                                        <br>
+                                         {!! $data->confirmed !!} <br>
+                                        {{ "Tổng: " . $data->total_confirmed }}
                             </td>
-                            
+                        
                             <td>
                                 <input type="text" class="time" name="number_of_boxes" 
                                     value="{{ $data->number_of_boxes ?? 1 }}"
