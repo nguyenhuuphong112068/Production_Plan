@@ -185,10 +185,10 @@
     });
 
     $('.btn-return').click(function() {
-         
+           
             const button = $(this);
             const stage_plan_id = $(this).data('id')
-
+             alert (stage_plan_id)
             $.ajax({
             url: "{{ route('pages.History.returnStage') }}",
             type: 'POST',
