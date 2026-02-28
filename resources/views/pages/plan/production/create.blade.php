@@ -61,6 +61,11 @@
         box-shadow: 0 0 5px #007bff;
     }
 
+    
+    #radioDanger { accent-color: #dc3545; }
+    #radioWarning { accent-color: #ffc107; }
+    #radioPrimary { accent-color: #0d6efd; }
+    #radioSuccess { accent-color: #198754; }
 
 
 </style>
@@ -207,8 +212,6 @@
                             </div>
 
                             <div class="col-md-6">
-                               
-
                                 <div class="card card-success">
                                     <div class="card-header">
                                         <h3 class="card-title">Mức Độ Ưu Tiên</h3>
@@ -218,8 +221,9 @@
                                         <div class="row">
                                             <div class="col-sm-12 mb-1">
                                                 <div class="form-group clearfix">
-                                                    <div class="icheck-danger d-inline">
-                                                        <input type="radio" id="radioDanger" name="level"
+                                                    {{-- <div class="icheck-success d-inline"> --}}
+                                                    <div class="form-check form-check-inline priority-radio text-left">
+                                                        <input class="form-check-input" type="radio" id="radioDanger" name="level"
                                                             value = "1"
                                                             {{ old('level') == 1 || old('level') === null ? 'checked' : '' }}>
                                                         <label for="radioDanger">
@@ -231,8 +235,9 @@
 
                                             <div class="col-sm-12 mb-1">
                                                 <div class="form-group clearfix">
-                                                    <div class="icheck-warning d-inline">
-                                                        <input type="radio" id="radioWarning" name="level"
+                                                    {{-- <div class="icheck-success d-inline"> --}}
+                                                    <div class="form-check form-check-inline priority-radio text-left">
+                                                        <input class="form-check-input" type="radio" id="radioWarning" name="level"
                                                             value = "2" {{ old('level') == 2 ? 'checked' : '' }}>
                                                         <label for="radioWarning">
                                                             2: Hàng Gấp, Hàng sắp hết số đăng ký
@@ -243,8 +248,9 @@
 
                                             <div class="col-sm-12 mb-1">
                                                 <div class="form-group clearfix">
-                                                    <div class="icheck-primary d-inline">
-                                                        <input type="radio" id="radioPrimary" name="level"
+                                                    {{-- <div class="icheck-success d-inline"> --}}
+                                                   <div class="form-check form-check-inline priority-radio text-left">
+                                                        <input class="form-check-input" type="radio" id="radioPrimary" name="level"
                                                             value = "3" {{ old('level') == 3 ? 'checked' : '' }}>
                                                         <label for="radioPrimary">
                                                             3: Hàng SX dự trù theo kế hoạch bán hàng, đăng ký thuốc
@@ -255,8 +261,9 @@
 
                                             <div class="col-sm-12 mb-1">
                                                 <div class="form-group clearfix">
-                                                    <div class="icheck-success d-inline">
-                                                        <input type="radio" id="radioSuccess" name="level"
+                                                    {{-- <div class="icheck-success d-inline"> --}}
+                                                    <div class="form-check form-check-inline priority-radio text-left">
+                                                        <input class="form-check-input" type="radio" id="radioSuccess" name="level"
                                                             value = "4" {{ old('level') == 4 ? 'checked' : '' }}>
                                                         <label for="radioSuccess">
                                                             4: Hàng không cần gấp
@@ -267,7 +274,6 @@
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
 
