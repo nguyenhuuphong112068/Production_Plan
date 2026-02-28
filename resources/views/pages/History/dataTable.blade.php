@@ -1,6 +1,12 @@
+
+
+    
+
 <div class="content-wrapper">
   
             <div class="card">
+
+
 
               {{-- <div class="card-header mt-4">
               
@@ -73,6 +79,9 @@
                         <th>Phòng BT</th>
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
+                        @if (session('user')['userName'] == 'Admin' || session('user')['userName'] == '19764')
+                            <th>Return</th>
+                        @endif
                     </tr>
                   </thead>
                   <tbody>
@@ -119,7 +128,18 @@
                       <td>
                           <div> {{ $data->finished_by}} </div>
                           <div>{{ \Carbon\Carbon::parse($data->finished_date)->format('d/m/Y') }} </div>
-                      </td>                     
+                      </td>
+                      
+                      @if (session('user')['userName'] == 'Admin' || session('user')['userName'] == '19764')
+                        <td class="text-center align-middle">
+                                <button type="button"
+                                    class="btn btn-return btn-danger"
+                                    data-id =  "{{ $data->id }}"
+                                    >
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                        </td>
+                      @endif
 
                     </tr>
                   @endforeach
@@ -163,10 +183,67 @@
         }
       },
     });
+
+    $('.btn-return').click(function() {
+         
+            const button = $(this);
+            const stage_plan_id = $(this).data('id')
+
+            $.ajax({
+            url: "{{ route('pages.History.returnStage') }}",
+            type: 'POST',
+            data: {
+                stage_plan_id: stage_plan_id,
+                _token: "{{ csrf_token() }}"
+            },
+            success: function(res) {
+                if (res.success){
+                     Swal.fire({
+                        icon: "success",
+                        title: res.message || "Thành công",
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+
+                    button.closest('tr').fadeOut(400, function() {
+                        $(this).remove(); // nếu muốn xóa hẳn khỏi DOM
+                    });
+                }
+               
+            },
+            error: function(xhr) {
+
+                let message = "Có lỗi xảy ra";
+
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    message = xhr.responseJSON.message;
+                }
+
+                Swal.fire({
+                    icon: "error",
+                    title: message,
+                    timer: 3000
+                });
+            }
+        });
+    });
+
   });
 </script> 
 
 <script>
+    const form = document.getElementById('filterForm');
+    const fromInput = document.getElementById('from_date');
+    const toInput = document.getElementById('to_date');
+
+   [fromInput, toInput].forEach(input => {
+        input.addEventListener('input', function () { 
+            form.submit();
+        });
+    });
+</script>
+
+{{-- <script>
     let stages = @json($stages);
     let currentIndex = stages.findIndex(s => s.stage_code == {{ $stageCode ?? 'null' }});
     
@@ -191,23 +268,13 @@
         updateStage();
         filterForm.submit();
     });
-</script> 
+</script>  --}}
 
 
 
-<script>
-    const form = document.getElementById('filterForm');
-    const fromInput = document.getElementById('from_date');
-    const toInput = document.getElementById('to_date');
 
-   [fromInput, toInput].forEach(input => {
-        input.addEventListener('input', function () { 
-            form.submit();
-        });
-    });
-</script>
 
-<script>
+{{-- <script>
   document.addEventListener('DOMContentLoaded', function () {
       // Init tất cả stepper
       document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
@@ -215,5 +282,5 @@
       });
   });
 
-</script>
+</script> --}}
 

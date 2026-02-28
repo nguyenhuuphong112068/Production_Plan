@@ -5,6 +5,8 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
 class HistoryController extends Controller{
 
        public function index(Request $request){
@@ -76,5 +78,59 @@ class HistoryController extends Controller{
                     
                 ]);
         }
+        
+        public function returnStage(Request $request){
+
+                DB::beginTransaction();
+                try {   
+                        
+                        // 🔎 Kiểm tra tồn tại
+                        if (!$request->has('stage_plan_id')) {
+                                return response()->json([
+                                        'success' => false,
+                                        'message' => 'Stage plan id is required'
+                                ], 400);
+                        }
+                       
+                        // ✅ Reset trạng thái stage
+                        DB::table('stage_plan')
+                        ->where('id', $request->stage_plan_id)
+                        ->update([
+                                'finished' => 0,
+                                'actual_start' => null,
+                                'actual_end' => null,
+                                'actual_start_clearning' => null,
+                                'actual_end_clearning' => null,
+                                'yields' => null,
+                                'finished_by' => session('user')['fullName'],
+                                'finished_date' => now(),
+                        ]);
+                        
+
+                        // ✅ Xoá toàn bộ yields liên quan
+                        DB::table('yields')
+                        ->where('stage_plan_id', $request->stage_plan_id)
+                        ->delete();
+
+                        DB::commit();
+
+                        return response()->json([
+                        'success' => true,
+                        'message' => 'Trả Về Thành Công!'
+                        ]);
+
+                } catch (\Exception $e) {
+
+                        DB::rollBack();
+
+                        return response()->json([
+                        'success' => false,
+                        'message' => 'Error while returning stage',
+                        'error' => $e->getMessage()
+                        ], 500);
+                }
+        }
+
+
     
 }
