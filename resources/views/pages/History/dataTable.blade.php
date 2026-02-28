@@ -183,59 +183,12 @@
         }
       },
     });
-
-    // $('.btn-return').click(function() {
-           
-    //         const button = $(this);
-    //         const stage_plan_id = $(this).data('id')
-    //          alert (stage_plan_id)
-    //         $.ajax({
-    //         url: "{{ route('pages.History.returnStage') }}",
-    //         type: 'POST',
-    //         data: {
-    //             stage_plan_id: stage_plan_id,
-    //             _token: "{{ csrf_token() }}"
-    //         },
-    //         success: function(res) {
-    //             if (res.success){
-    //                  Swal.fire({
-    //                     icon: "success",
-    //                     title: res.message || "Thành công",
-    //                     timer: 2000,
-    //                     showConfirmButton: false
-    //                 });
-
-    //                 button.closest('tr').fadeOut(400, function() {
-    //                     $(this).remove(); // nếu muốn xóa hẳn khỏi DOM
-    //                 });
-    //             }
-               
-    //         },
-    //         error: function(xhr) {
-
-    //             let message = "Có lỗi xảy ra";
-
-    //             if (xhr.responseJSON && xhr.responseJSON.message) {
-    //                 message = xhr.responseJSON.message;
-    //             }
-
-    //             Swal.fire({
-    //                 icon: "error",
-    //                 title: message,
-    //                 timer: 3000
-    //             });
-    //         }
-    //     });
-    // });
-
   });
 
   $(document).on('click', '.btn-return', function () {
 
         const button = $(this);
         const stage_plan_id = button.data('id');
-
-        alert(stage_plan_id);
 
         $.ajax({
             url: "{{ route('pages.History.returnStage') }}",
