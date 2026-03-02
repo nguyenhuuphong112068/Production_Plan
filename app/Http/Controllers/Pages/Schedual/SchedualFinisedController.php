@@ -376,6 +376,9 @@ class SchedualFinisedController extends Controller
         // }
 
         public function store(Request $request){
+
+                Log :: info ($request->all());
+
                 /* ===============================
                 1. FORMAT DATE (GIỮ DẠNG CARBON)
                 =============================== */
@@ -430,7 +433,7 @@ class SchedualFinisedController extends Controller
                 3. VALIDATE YIELD RANGE & OVERLAP
                 =============================== */
               
-                if ($actualStartYield && $actualEnd) {
+                if ($actualStartYield && $actualEnd && $request->actionType == 'semi-finised') {
 
                         // phải nằm trong khoảng production
                         if ($actualStartYield->lt($actualStart) || $actualEnd->gt($actualEnd))
@@ -446,6 +449,7 @@ class SchedualFinisedController extends Controller
                         ->exists();
 
                         if ($overlap)
+                        
                         return response()->json(['message' => '❌ Khoảng thời gian vừa nhập bị chồng lấp với các lần xác nhận trước đó, vui lòng kiểm tra lại'], 422);
                 }
 
