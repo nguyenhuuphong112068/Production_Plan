@@ -1716,14 +1716,14 @@ class ProductionPlanController extends Controller
 
                 $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
                 
-                // $maxStageFinished = DB::table('stage_plan')
-                // ->whereIn('stage_plan.plan_list_id', $plan_list_id)
-                // ->where('finished', 1)
-                // ->select(
-                //         'plan_master_id',
-                //         DB::raw('MAX(stage_code) as max_stage_code')
-                // )
-                // ->groupBy('plan_master_id');
+                $maxStageFinished = DB::table('stage_plan')
+                ->whereIn('stage_plan.plan_list_id', $plan_list_id)
+                ->where('finished', 1)
+                ->select(
+                        'plan_master_id',
+                        DB::raw('MAX(stage_code) as max_stage_code')
+                )
+                ->groupBy('plan_master_id');
 
                 $datas = DB::table('plan_master')
                 ->select(
@@ -1794,29 +1794,53 @@ class ProductionPlanController extends Controller
                         'finished_product_category.unit_batch_qty',
                         'finished_product_category.deparment_code',
                         'source_material.name as source_material_name',
-                        'stage_plan.end as end'
+                        'stage_plan.end as end',
+
+                        DB::raw("
+                                CASE
+                                        WHEN plan_master.cancel = 1 THEN 'Hủy'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
+                                        ELSE 'Chưa làm'
+                                        END AS status
+                        ")
+
                 )
                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
                 ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->leftJoin('stage_plan', function ($join) use ($request) {
+                // ->leftJoin('stage_plan', function ($join) use ($request) {
+                //         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                //         ->where('stage_plan.stage_code', 7)
+                //         ->where('stage_plan.active', 1)
+                //         ;
+                // })
+                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                        $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
+                })
+                ->leftJoin('stage_plan', function ($join) {
                         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                        ->where('stage_plan.stage_code', 7)
-                        ->where('stage_plan.active', 1)
-                        ;
+                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
                 })
                 ->whereIn('plan_master.plan_list_id', $plan_list_id)
                 ->where('plan_master.active', 1)
                 ->orderBy('id', 'asc')
                 ->get();
 
+                
+
                 return response()->json([
                         'datas' => $datas
                 ]);
 
         }
+
 
         public function recipe_show_update(Request $request){
                 
