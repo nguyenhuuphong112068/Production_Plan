@@ -559,8 +559,8 @@
 
                     // Giữ nút ở trạng thái disabled sau khi hoàn thành
                     $(btn).addClass('disabled').text('✓ Đã hoàn thành');
-                    
-                    $(row).find('.actual_batch').addClass('text-primary');
+
+                    $(row).find('.actual_batch').
 
                     if (actionType === 'finised') {
                         $(row).find('.btn-semi-finised')
