@@ -632,8 +632,6 @@ const ScheduleTest = () => {
     return (h * 3600 + m * 60) * 1000;
   };
 
-
-
   const buildOffRanges = (offDays) => {
     if (!Array.isArray(offDays)) return [];
 
@@ -2112,7 +2110,6 @@ const ScheduleTest = () => {
         color: ${style.color};
       `;
     };
-
 
   const EventContent = (arg) => {
     const event = arg.event;

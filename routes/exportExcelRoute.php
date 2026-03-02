@@ -22,6 +22,7 @@ Route::prefix('/exportExcel')
     ->controller(ProductionPlanController::class)
     ->group(function(){
             Route::get('open_feedback_API','open_feedback_API')->name('open_feedback_API'); 
+            //Route::get('open_plan_master_API','open_plan_master_API')->name('open_plan_master_API'); 
     });
 
     Route::prefix('/Schedual')
