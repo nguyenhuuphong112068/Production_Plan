@@ -56,7 +56,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
   const columnWidths30 = {
     name: '45%',           // Sản phẩm
-    batch: '20%',          // Số lô
+    batch: '20%',
+    is_val: '2%',          // Số lô
     expected_date: '20%',  // Ngày DK KCS
     market: '7%',  
     level: '8%',          // Ưu tiên
@@ -135,7 +136,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       }));
 
     } else if (percentShow === "30%") {
-      visibleCols = allColumns.filter(col => ["name", "batch", "expected_date","market", "level"].includes(col.field))
+      visibleCols = allColumns.filter(col => ["name", "batch", "is_val", "expected_date","market", "level"].includes(col.field))
         .map(col => ({
           ...col,
           style: { ...col.style, width: columnWidths30[col.field] || 'auto', maxWidth: columnWidths30[col.field] || 'auto' }
