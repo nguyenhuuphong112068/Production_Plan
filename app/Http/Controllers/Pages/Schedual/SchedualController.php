@@ -4770,7 +4770,7 @@ class SchedualController extends Controller
                         $start = Carbon::parse($task->next_start)->setTime(6, 0, 0);
                 }     
                 
-                $daysToSubtract = 2;
+                $daysToSubtract = 3;
 
                 while ($daysToSubtract > 0) {
                         $start->subDay();
