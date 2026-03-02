@@ -1072,10 +1072,6 @@ class SchedualController extends Controller
                         $current_start = Carbon::parse($request->start);
 
                         // 🔥 KIỂM TRA NGAY TỪ ĐẦU NẾU current_start NẰM TRONG OFFDATE
-                        //$current_start = $this->check_offdate($current_start, $this->selectedDates);
-
-                       // $current_start = $this->skipOffTime($current_start, $this->offDate, $request->room_id);
-
                         foreach ($products as $index => $product) {
 
                                 /*
@@ -1197,7 +1193,6 @@ class SchedualController extends Controller
                                         'start_clearning' => $start_clearning,
                                         'end_clearning'   => $end_clearning,
                                         'resourceId'      => $request->room_id,
-                                        //'title_clearning' => $clearning_type,
                                         'schedualed'      => 1,
                                         'schedualed_by'   => session('user')['fullName'],
                                         'schedualed_at'   => now(),
@@ -1274,6 +1269,7 @@ class SchedualController extends Controller
 
 
                         if ($multi_stage){
+
                                 $this->max_Step = 7;
                                 $totalTimeCampaign = abs($firstBatachStart->diffInMinutes($lastBatachEnd));
                                 // Làm liên tục các công cộng sau
@@ -1326,19 +1322,21 @@ class SchedualController extends Controller
                                                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                                                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                                                 ->whereIn('sp.code', $nextcessor_codes)
-                                                //->where('sp.stage_code', $nextcessor_code)
                                                 ->where('sp.active',1)
-                                                //->whereNotNull('plan_master.after_weigth_date')
                                                 ->where('sp.deparment_code', session('user')['production_code'])
                                                 ->orderBy('prev.start', 'asc')
                                         ->get();
 
 
                                 if ($nextTasks->isNotEmpty()) {
+                                                $waite_time = 0;
+                                                if ($nextTasks->contains('is_val', 1)){
+                                                        $waite_time = 5 * 24 * 60;
+                                                }
                                                 $this->scheduleCampaign(
                                                         $nextTasks,
                                                         $next_stage_code,
-                                                        0,
+                                                        $waite_time,
                                                         $start_date,
                                                         null,
                                                         $totalTimeCampaign,
@@ -1785,12 +1783,12 @@ class SchedualController extends Controller
 
         public function deActiveAll(Request $request){
 
-                // Log::info ($request->all());
-                // dd ("sa");
+                //Log::info ($request->all());
+                //dd ("sa");
 
                 $production = session('user')['production_code'];
                 try {   
-                       if ($request->mode == "step"){
+                        if ($request->mode == "step"){
                                 if ($request->selectedStep == "CNL" ){
                                         $ids = DB::table('stage_plan')
                                         ->where('deparment_code', $production)
@@ -1815,16 +1813,50 @@ class SchedualController extends Controller
                                 }
 
                         }else if ($request->mode == "resource"){
-                                $ids = DB::table('stage_plan')
-                                ->where('deparment_code', $production)
-                                ->whereNotNull('start')
-                                ->where ('start', '>=', $request->start_date)
-                                ->where('active', 1)
-                                ->where('finished', 0)
-                                ->where('resourceId', "=", $request->resourceId)
-                                ->pluck('id');
+                                $stage_code = DB::table('room')->where ('id', $request->resourceId)->value ('stage_code');
+                                if ($stage_code >=3){
+                                        $plan_master_ids = DB::table('stage_plan')
+                                        ->where('resourceId', "=", $request->resourceId)
+                                        ->where('deparment_code', $production)
+                                        ->whereNotNull('start')
+                                        ->where ('start', '>=', $request->start_date)
+                                        ->where('active', 1)
+                                        ->where('finished', 0)
+                                        ->pluck('plan_master_id');
+
+                                        $ids = DB::table('stage_plan')
+                                        ->whereIn('plan_master_id', $plan_master_ids)
+                                        ->where('stage_code', ">=", $stage_code)
+                                        ->pluck('id');
+                                }else {
+
+                                        $ids = DB::table('stage_plan')
+                                        ->where('resourceId', "=", $request->resourceId)
+                                        ->where('deparment_code', $production)
+                                        ->whereNotNull('start')
+                                        ->where ('start', '>=', $request->start_date)
+                                        ->where('active', 1)
+                                        ->where('finished', 0)
+                                        ->pluck('id');
+                                }
+                               
                         }
                        
+                        
+
+                        if ($ids->isEmpty()) {
+                                $production = session('user')['production_code'];
+                                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
+                                $plan_waiting = $this->getPlanWaiting($production);
+                                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                                return response()->json([
+                                        'events' => $events,
+                                        'plan' => $plan_waiting,
+                                        'sumBatchByStage' => $sumBatchByStage,
+                                ]);
+                        }
+
+                        
 
                         if ($ids->isNotEmpty()) {
                                 // Lấy danh sách campaign_code + stage_code của các dòng bị xoá
@@ -1838,12 +1870,12 @@ class SchedualController extends Controller
                                 $relatedIds = DB::table('stage_plan')
                                         ->where('deparment_code', $production)
                                         ->where(function($query) use ($deletedRows) {
-                                        foreach ($deletedRows as $row) {
-                                                $query->orWhere(function($q) use ($row) {
-                                                $q->where('campaign_code', $row->campaign_code)
-                                                ->where('stage_code', $row->stage_code);
-                                                });
-                                        }
+                                                foreach ($deletedRows as $row) {
+                                                        $query->orWhere(function($q) use ($row) {
+                                                        $q->where('campaign_code', $row->campaign_code)
+                                                        ->where('stage_code', $row->stage_code);
+                                                        });
+                                                }
                                         })
                                         ->where('start', '<', $request->start_date)
                                         ->pluck('id');
@@ -1852,18 +1884,6 @@ class SchedualController extends Controller
                                 $ids = $ids->merge($relatedIds)->unique();
                         }
 
-
-                        if ($ids->isEmpty()) {
-                                $production = session('user')['production_code'];
-                                $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
-                                $plan_waiting = $this->getPlanWaiting($production);
-                                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
-                                return response()->json([
-                                        'events' => $events,
-                                        'plan' => $plan_waiting,
-                                        'sumBatchByStage' => $sumBatchByStage,
-                                ]);
-                        }
 
                         DB::table('stage_plan')
                                 ->whereIn('id',  $ids)

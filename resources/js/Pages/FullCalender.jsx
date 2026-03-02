@@ -2546,6 +2546,12 @@ const ScheduleTest = () => {
             hint: 'Lùi về 1 khung thời gian'
           },
 
+          myToday: {
+            text: 'Hiện Tại',
+            click: () => handleViewChange(null, 'today'),
+            hint: 'Trờ về ngày hiện tại của khung thời gian đã chọn'
+          },
+
           customList: {
             text: 'KHSX',
             click: handleShowList,
@@ -2573,11 +2579,7 @@ const ScheduleTest = () => {
             hint: 'Thay đổi hiển thị lịch theo khung thời gian 3 tháng'
           },
 
-          myToday: {
-            text: 'Hiện Tại',
-            click: () => calendarRef.current.getApi().today(),
-            hint: 'Trờ về ngày hiện tại của khung thời gian đã chọn'
-          },
+
           noteModal: {
             text: 'ℹ️',
             click: toggleNoteModal,
