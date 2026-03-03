@@ -1213,6 +1213,7 @@ class SchedualController extends Controller
                                         'schedualed'      => 1,
                                         'schedualed_by'   => session('user')['fullName'],
                                         'schedualed_at'   => now(),
+                                        'receive_packaging_date'   => Carbon::parse($current_start)->subDay()->format('Y-m-d')
                                         ]);
                                 }
                         
@@ -3239,6 +3240,7 @@ class SchedualController extends Controller
                         $code = DB::table('stage_plan')->where('id', $stageId)->value('code');
                         
                         //$ids = DB::table('stage_plan')->where('code', $code)->pluck('id');
+                        $receiveDate = \Carbon\Carbon::parse($start)->subDay()->toDateString();
                         
                         DB::table('stage_plan')
                                 ->where('code', $code)
@@ -3253,6 +3255,7 @@ class SchedualController extends Controller
                                 'scheduling_direction'  => $direction,
                                 'AHU_group'             => $AHU_group??null,
                                 'schedualed_at'         => now(),
+                                'receive_packaging_date'   => $receiveDate
                         ]);
 
                         $submit = DB::table('stage_plan')->where('id', $stageId)->value('submit');

@@ -2,6 +2,7 @@
     // use Illuminate\Routing\Route;
 
 use App\Http\Controllers\Pages\Schedual\ClearningValidationController;
+use App\Http\Controllers\Pages\Schedual\ReceivePackagingController;
 use App\Http\Controllers\Pages\Schedual\SchedualAuditController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
@@ -145,7 +146,20 @@ use Illuminate\Support\Facades\Route;
                 ->name('clearning_validation.')
                 ->group(function(){
                         Route::get('','index')->name('index');
-                });  
+                }); 
+                
+                Route::prefix('/receive_packaging')
+                ->controller(ReceivePackagingController::class)
+                ->name('receive_packaging.')
+                ->group(function(){
+                        Route::get('','list')->name('list');
+                        Route::post('store','store')->name('store');
+                        Route::post('updateInput','updateInput')->name('updateInput');
+                        Route::post('received','received')->name('received');
+
+                        
+                });
+
 
         });
 

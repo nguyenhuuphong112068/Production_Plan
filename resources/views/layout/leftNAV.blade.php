@@ -366,6 +366,13 @@
               </li>
 
               <li class="nav-item">
+                <a href="{{ route ('pages.Schedual.receive_packaging.list') }}" class="nav-link">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Lịch Nhận Bao Bì</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
                 <a href="{{ route ('pages.Schedual.yield.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Sản Lượng</p>

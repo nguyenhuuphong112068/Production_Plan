@@ -12,6 +12,8 @@ if (! function_exists('user_has_permission')) {
                 ->where('permissions.name', $permissionName)
                 ->exists();
 
+                //dd ($result, $userId, $permissionName);
+
         //dd ($userId);
         if ($typeReturn == "boolean"){
             return $result;

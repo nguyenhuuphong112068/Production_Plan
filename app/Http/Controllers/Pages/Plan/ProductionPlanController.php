@@ -1226,7 +1226,7 @@ class ProductionPlanController extends Controller
                         // các field khác như has_BMR, actual_record… thì không cần _by và _date
                         break;
                 }
-                Log::info ($request->all());
+
                
                 if ($request->name  == "selected_all" && $request->id < 0){
                         DB::table('plan_master')
