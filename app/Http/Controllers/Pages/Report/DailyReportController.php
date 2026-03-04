@@ -872,7 +872,7 @@ class DailyReportController extends Controller
     }
 
     public function update (Request $request) {
-                //dd ($request->all());
+                dd ($request->all());
                 $validator = Validator::make($request->all(), [
                     'id' => 'required',
                     'in_production' => 'required',

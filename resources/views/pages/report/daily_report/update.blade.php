@@ -2,7 +2,7 @@
 <div class="modal fade " id="updateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
 
-        <form action="{{ route('pages.report.daily_report.update') }}" method="POST">
+        <form action="{{ route('pages.report.daily_report.update') }}" method="GET">
             @csrf
 
             <div class="modal-content">
