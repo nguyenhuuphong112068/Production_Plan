@@ -191,7 +191,8 @@
                                         data-id="{{ $data->id }}">
                                             <i class="fas fa-check"></i>
                                 </button>
-                                @if ($data->received == 0 && strtoupper($data->market_code) != 'VN')
+                                {{-- && strtoupper($data->market_code) != 'VN' --}}
+                                @if ($data->received == 0 ) 
                                     <input {{ $Change_receive_packaging_date }}
                                         type="date"
                                         class="updateInput"
@@ -219,7 +220,7 @@
                                         data-id="{{ $data->id }}">
                                         <i class="fas fa-check"></i>
                                 </button> 
-                                @if ($data->received_second_packaging == 0 && strtoupper($data->market_code) != 'VN')
+                                @if ($data->received_second_packaging == 0)
                                     <input {{ $Change_receive_packaging_date }}
                                         type="date"
                                         class="updateInput"
