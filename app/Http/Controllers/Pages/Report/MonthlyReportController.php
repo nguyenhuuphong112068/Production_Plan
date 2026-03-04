@@ -9,9 +9,42 @@ use Illuminate\Support\Facades\DB;
 
 class MonthlyReportController extends Controller
 {
-    public function index(Request $request) {
+        public function index(Request $request) {
             $reportedMonth = (int) ($request->month ?? now()->month);
             $reportedYear  = (int) ($request->year ?? now()->year);
+
+            // 1️⃣ Xác định đầu & cuối tháng
+            $startMonth = Carbon::create($reportedYear, $reportedMonth, 1)->startOfMonth();
+            $endMonth   = $startMonth->copy()->endOfMonth();
+
+                        // Xác định tuần
+                    // 2️⃣ Lấy danh sách off days trong tháng
+            $offDays = DB::table('off_days')
+                ->whereBetween('off_date', [
+                    $startMonth->toDateString(),
+                    $endMonth->toDateString()
+                ])
+                ->pluck('off_date')
+                ->toArray();
+
+            $totalWorkingDays = 0;
+            $current = $startMonth->copy();
+
+            // 3️⃣ Lặp từng ngày trong tháng
+            while ($current <= $endMonth) {
+
+                if (
+                    !$current->isWeekend() && // bỏ Thứ 7 & CN
+                    !in_array($current->toDateString(), $offDays) // bỏ ngày nghỉ lễ
+                ) {
+                    $totalWorkingDays++;
+                }
+
+                $current->addDay();
+            }
+
+            //dd ();
+
 
             $start = Carbon::create($reportedYear, $reportedMonth, 1)
                 ->startOfDay()
@@ -86,7 +119,8 @@ class MonthlyReportController extends Controller
             $datas = $datas->map(function ($row) use (
                 $timeByResource,
                 $actualByResource,
-                $theoryByResource
+                $theoryByResource,
+                $totalWorkingDays
             ) {
                 $resourceId = (int) $row->room_id;
 
@@ -101,6 +135,7 @@ class MonthlyReportController extends Controller
                 $row->cleaning_hours = $time['cleaning_hours'] ?? 0;
                 $row->busy_hours     = $time['busy_hours']    ?? 0;
                 $row->free_hours     = $time['free_hours']    ?? 0;
+                $row->day_in_months     = $totalWorkingDays    ?? 0;
                 
                 /* ================= YIELD ================= */
                 $row->yield_actual = $actual->total_qty ?? 0;
@@ -112,7 +147,7 @@ class MonthlyReportController extends Controller
 
                 $row->OEE = $row->output_thery > 0? round(($row->yield_actual/$row->output_thery) *100):0;
 
-                $row->H_in_month = $row->shift *  $row->day_in_month * 8;
+                $row->H_in_month = $row->shift *  $totalWorkingDays * 8;
 
                 $row->loading = $row->H_in_month > 0 ? round($row->work_hours /  $row->H_in_month * 100,2) : 0;
 
@@ -133,7 +168,7 @@ class MonthlyReportController extends Controller
         }
 
         public function getOperatedTime($startDate, $endDate){
-            // 1. Chuẩn hoá thời gian
+            //dd ($startDate, $endDate);
             $start = Carbon::parse($startDate);
             $end   = Carbon::parse($endDate);
 
@@ -142,24 +177,31 @@ class MonthlyReportController extends Controller
 
             $totalSeconds = $start->diffInSeconds($end);
 
-            // 2. Lấy RAW event (KHÔNG SUM)
+            // 🔥 Join yields
             $rows = DB::table('stage_plan as sp')
+                ->join('yields as y', 'sp.id', '=', 'y.stage_plan_id')
+
                 ->select(
                     'sp.resourceId',
-                    'sp.actual_start',
+                    'y.start as yield_start',
+                    'y.end as yield_end',
                     'sp.actual_end',
                     'sp.actual_end_clearning'
                 )
                 ->where('sp.deparment_code', session('user')['production_code'])
+
+                // overlap theo yield time
                 ->whereRaw(
-                    'GREATEST(sp.actual_start, ?) < LEAST(COALESCE(sp.actual_end_clearning, sp.actual_end), ?)',
+                    'GREATEST(y.start, ?) < LEAST(y.end, ?)',
                     [$start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')]
                 )
+
                 ->orderBy('sp.resourceId')
-                ->orderBy('sp.actual_start')
+                ->orderBy('y.start')
                 ->get();
 
-            // 3. Hàm merge interval (loại trùng)
+
+            // Merge function giữ nguyên
             $mergeIntervals = function (array $intervals) {
                 if (empty($intervals)) return [];
 
@@ -171,7 +213,6 @@ class MonthlyReportController extends Controller
                     $lastIndex = count($merged) - 1;
 
                     if ($current[0] <= $merged[$lastIndex][1]) {
-                        // chồng thời gian → merge
                         $merged[$lastIndex][1] = max(
                             $merged[$lastIndex][1],
                             $current[1]
@@ -184,7 +225,6 @@ class MonthlyReportController extends Controller
                 return $merged;
             };
 
-            // 4. Xử lý theo từng resource
             $result = [];
 
             foreach ($rows->groupBy('resourceId') as $resourceId => $items) {
@@ -194,15 +234,15 @@ class MonthlyReportController extends Controller
 
                 foreach ($items as $r) {
 
-                    // WORK interval
-                    if ($r->actual_start && $r->actual_end) {
+                    // ✅ WORK từ yields
+                    if ($r->yield_start && $r->yield_end) {
                         $workIntervals[] = [
-                            max(Carbon::parse($r->actual_start)->timestamp, $startTs),
-                            min(Carbon::parse($r->actual_end)->timestamp, $endTs),
+                            max(Carbon::parse($r->yield_start)->timestamp, $startTs),
+                            min(Carbon::parse($r->yield_end)->timestamp, $endTs),
                         ];
                     }
 
-                    // CLEANING interval
+                    // ✅ CLEANING giữ nguyên
                     if ($r->actual_end && $r->actual_end_clearning) {
                         $cleanIntervals[] = [
                             max(Carbon::parse($r->actual_end)->timestamp, $startTs),
@@ -211,11 +251,9 @@ class MonthlyReportController extends Controller
                     }
                 }
 
-                // 5. Merge interval
                 $workMerged  = $mergeIntervals($workIntervals);
                 $cleanMerged = $mergeIntervals($cleanIntervals);
 
-                // 6. Tính seconds
                 $workSeconds = array_sum(
                     array_map(fn ($i) => max(0, $i[1] - $i[0]), $workMerged)
                 );
@@ -227,7 +265,6 @@ class MonthlyReportController extends Controller
                 $busySeconds = $workSeconds + $cleanSeconds;
                 $freeSeconds = max(0, $totalSeconds - $busySeconds);
 
-                // 7. Kết quả
                 $result[] = [
                     'resourceId'      => $resourceId,
                     'total_hours'     => round($totalSeconds / 3600, 2),
@@ -305,70 +342,44 @@ class MonthlyReportController extends Controller
         }
 
         public function yield_actual($startDate, $endDate){
-            // ------------------------------
-        
-            // 1️⃣ Giai đoạn nằm hoàn toàn trong 1 ngày
-            // ------------------------------
-            $stage_plan_100 = DB::table("stage_plan as sp")
-                ->whereNotNull('sp.actual_start')
-                ->whereNotNull('sp.resourceId')
-                ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
-                ->where('sp.deparment_code', session('user')['production_code'])
-                ->select(
-                    "sp.resourceId",
-                    DB::raw('SUM(sp.yields) as total_qty'),
-                )
-                ->groupBy("sp.resourceId")
-            ->get();
+            $startDateStr = \Carbon\Carbon::parse($startDate)->format('Y-m-d H:i:s');
+            $endDateStr   = \Carbon\Carbon::parse($endDate)->format('Y-m-d H:i:s');
 
+            $result = DB::table('stage_plan as sp')
+                ->join('yields as y', 'sp.id', '=', 'y.stage_plan_id')
 
-            // ------------------------------
-            // 2️⃣ Giai đoạn giao nhau 1 phần trong 1 ngày
-            // ------------------------------
-            $stage_plan_part = DB::table("stage_plan as sp")
-                ->whereNotNull('sp.actual_start')
                 ->whereNotNull('sp.resourceId')
-                ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
-                ->whereRaw('NOT (sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
                 ->where('sp.deparment_code', session('user')['production_code'])
+
+                // 🔥 chỉ lấy phần overlap
+                ->whereRaw('(y.start < ? AND y.end > ?)', [$endDateStr, $startDateStr])
+
                 ->select(
-                    "sp.resourceId",
-                    DB::raw('
+                    'sp.resourceId',
+
+                    DB::raw("
                         SUM(
-                            sp.yields *
-                            TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
-                            TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+                            ROUND(
+                                y.yield *
+                                TIME_TO_SEC(
+                                    TIMEDIFF(
+                                        LEAST(y.end, '$endDateStr'),
+                                        GREATEST(y.start, '$startDateStr')
+                                    )
+                                ) /
+                                NULLIF(TIME_TO_SEC(TIMEDIFF(y.end, y.start)), 0)
+                            ,2)
                         ) as total_qty
-                    ')
+                    ")
                 )
-                ->groupBy("sp.resourceId")
-            ->get();
 
-            // ------------------------------
-            // 3️⃣ Gom 2 phần lại
-            // ------------------------------
-
-            $merged = $stage_plan_100->merge($stage_plan_part)
-                ->groupBy(function ($item) {
-                    return $item->resourceId ;
-                })
-                ->map(function ($items) {
-                    $first = $items->first();
-                    $total_qty = round($items->sum('total_qty'), 2);
-
-    
-                    return (object)[
-                        'resourceId'     => $first->resourceId,
-                        'total_qty'   => $total_qty
-                    ];
-                })
-                ->values();
+                ->groupBy('sp.resourceId')
+                ->get();
             
-            return collect($merged); 
-                
+
+            return collect($result);
         }
 
-        
         public function updateInput(Request $request){
                 DB::table('room_sheet_month')
                         ->where('id', $request->id)
@@ -377,4 +388,180 @@ class MonthlyReportController extends Controller
                         ]);
                 return response()->json(['success' => true]);
         }
+
+        // public function getOperatedTime($startDate, $endDate){
+        //     // 1. Chuẩn hoá thời gian
+        //     $start = Carbon::parse($startDate);
+        //     $end   = Carbon::parse($endDate);
+
+        //     $startTs = $start->timestamp;
+        //     $endTs   = $end->timestamp;
+
+        //     $totalSeconds = $start->diffInSeconds($end);
+
+        //     // 2. Lấy RAW event (KHÔNG SUM)
+        //     $rows = DB::table('stage_plan as sp')
+        //         ->select(
+        //             'sp.resourceId',
+        //             'sp.actual_start',
+        //             'sp.actual_end',
+        //             'sp.actual_end_clearning'
+        //         )
+        //         ->where('sp.deparment_code', session('user')['production_code'])
+        //         ->whereRaw(
+        //             'GREATEST(sp.actual_start, ?) < LEAST(COALESCE(sp.actual_end_clearning, sp.actual_end), ?)',
+        //             [$start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')]
+        //         )
+        //         ->orderBy('sp.resourceId')
+        //         ->orderBy('sp.actual_start')
+        //         ->get();
+
+        //     // 3. Hàm merge interval (loại trùng)
+        //     $mergeIntervals = function (array $intervals) {
+        //         if (empty($intervals)) return [];
+
+        //         usort($intervals, fn ($a, $b) => $a[0] <=> $b[0]);
+
+        //         $merged = [$intervals[0]];
+
+        //         foreach ($intervals as $current) {
+        //             $lastIndex = count($merged) - 1;
+
+        //             if ($current[0] <= $merged[$lastIndex][1]) {
+        //                 // chồng thời gian → merge
+        //                 $merged[$lastIndex][1] = max(
+        //                     $merged[$lastIndex][1],
+        //                     $current[1]
+        //                 );
+        //             } else {
+        //                 $merged[] = $current;
+        //             }
+        //         }
+
+        //         return $merged;
+        //     };
+
+        //     // 4. Xử lý theo từng resource
+        //     $result = [];
+
+        //     foreach ($rows->groupBy('resourceId') as $resourceId => $items) {
+
+        //         $workIntervals  = [];
+        //         $cleanIntervals = [];
+
+        //         foreach ($items as $r) {
+
+        //             // WORK interval
+        //             if ($r->actual_start && $r->actual_end) {
+        //                 $workIntervals[] = [
+        //                     max(Carbon::parse($r->actual_start)->timestamp, $startTs),
+        //                     min(Carbon::parse($r->actual_end)->timestamp, $endTs),
+        //                 ];
+        //             }
+
+        //             // CLEANING interval
+        //             if ($r->actual_end && $r->actual_end_clearning) {
+        //                 $cleanIntervals[] = [
+        //                     max(Carbon::parse($r->actual_end)->timestamp, $startTs),
+        //                     min(Carbon::parse($r->actual_end_clearning)->timestamp, $endTs),
+        //                 ];
+        //             }
+        //         }
+
+        //         // 5. Merge interval
+        //         $workMerged  = $mergeIntervals($workIntervals);
+        //         $cleanMerged = $mergeIntervals($cleanIntervals);
+
+        //         // 6. Tính seconds
+        //         $workSeconds = array_sum(
+        //             array_map(fn ($i) => max(0, $i[1] - $i[0]), $workMerged)
+        //         );
+
+        //         $cleanSeconds = array_sum(
+        //             array_map(fn ($i) => max(0, $i[1] - $i[0]), $cleanMerged)
+        //         );
+
+        //         $busySeconds = $workSeconds + $cleanSeconds;
+        //         $freeSeconds = max(0, $totalSeconds - $busySeconds);
+
+        //         // 7. Kết quả
+        //         $result[] = [
+        //             'resourceId'      => $resourceId,
+        //             'total_hours'     => round($totalSeconds / 3600, 2),
+        //             'work_hours'      => round($workSeconds / 3600, 2),
+        //             'cleaning_hours'  => round($cleanSeconds / 3600, 2),
+        //             'busy_hours'      => round($busySeconds / 3600, 2),
+        //             'free_hours'      => round($freeSeconds / 3600, 2),
+        //         ];
+        //     }
+
+        //     return collect($result);
+        // }
+
+        // public function yield_actual($startDate, $endDate){
+        //     // ------------------------------
+        
+        //     // 1️⃣ Giai đoạn nằm hoàn toàn trong 1 ngày
+        //     // ------------------------------
+        //     $stage_plan_100 = DB::table("stage_plan as sp")
+        //         ->whereNotNull('sp.actual_start')
+        //         ->whereNotNull('sp.resourceId')
+        //         ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
+        //         ->where('sp.deparment_code', session('user')['production_code'])
+        //         ->select(
+        //             "sp.resourceId",
+        //             DB::raw('SUM(sp.yields) as total_qty'),
+        //         )
+        //         ->groupBy("sp.resourceId")
+        //     ->get();
+
+
+        //     // ------------------------------
+        //     // 2️⃣ Giai đoạn giao nhau 1 phần trong 1 ngày
+        //     // ------------------------------
+        //     $stage_plan_part = DB::table("stage_plan as sp")
+        //         ->whereNotNull('sp.actual_start')
+        //         ->whereNotNull('sp.resourceId')
+        //         ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
+        //         ->whereRaw('NOT (sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
+        //         ->where('sp.deparment_code', session('user')['production_code'])
+        //         ->select(
+        //             "sp.resourceId",
+        //             DB::raw('
+        //                 SUM(
+        //                     sp.yields *
+        //                     TIME_TO_SEC(TIMEDIFF(LEAST(sp.actual_end, "'.$endDate.'"), GREATEST(sp.actual_start, "'.$startDate.'"))) /
+        //                     TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start))
+        //                 ) as total_qty
+        //             ')
+        //         )
+        //         ->groupBy("sp.resourceId")
+        //     ->get();
+
+        //     // ------------------------------
+        //     // 3️⃣ Gom 2 phần lại
+        //     // ------------------------------
+
+        //     $merged = $stage_plan_100->merge($stage_plan_part)
+        //         ->groupBy(function ($item) {
+        //             return $item->resourceId ;
+        //         })
+        //         ->map(function ($items) {
+        //             $first = $items->first();
+        //             $total_qty = round($items->sum('total_qty'), 2);
+
+    
+        //             return (object)[
+        //                 'resourceId'     => $first->resourceId,
+        //                 'total_qty'   => $total_qty
+        //             ];
+        //         })
+        //         ->values();
+            
+        //     return collect($merged); 
+                
+        // }
+
+        
+
 }
