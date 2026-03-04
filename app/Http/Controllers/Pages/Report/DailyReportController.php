@@ -885,13 +885,13 @@ class DailyReportController extends Controller
                     'end.required' => 'Nhập Giờ Kết Thúc',
                 ]);
 
-                dd ($request->all(), $validator->fails());
+                //dd ($request->all(), $validator->fails());
 
                 if ($validator->fails()) {
                     return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 }
                 
-                DB::table('room_status')->where ('id', $request->id)->update([
+                DB::table('room_status')->where ('id', explode ("-",$request->id)[0])->update([
             
                         'start' => $request->start,
                         'end' => $request->end,
