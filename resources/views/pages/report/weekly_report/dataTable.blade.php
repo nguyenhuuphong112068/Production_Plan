@@ -178,13 +178,15 @@
 
                                         {{-- shift --}}
                                         <td> 
-                                            <input type= "text" class="time" name="shift" value = "{{ $data->shift }}" data-id={{ $data->id }} {{ $auth_update }}>
+                                            {{ $data->shift }}
+                                            {{-- <input type= "text" class="time" name="shift" value = "{{ $data->shift }}" data-id={{ $data->id }} {{ $auth_update }}> --}}
                                         </td> 
 
                                         {{-- day in week --}}
                                         <td> 
-                                            <input type= "text" class="time" name="day_in_week" value = "{{ $data->day_in_week }}" data-id={{ $data->id }} {{ $auth_update }}>
-                                        </td> 
+                                             {{ $data->day_in_weeks }}
+                                            {{-- <input type= "text" class="time" name="day_in_week" value = "{{ $data->day_in_week }}" data-id={{ $data->id }} {{ $auth_update }}>  --}}
+                                        </td>
                                         <td> {{$data->H_in_week }} </td>
 
                                         <td> {{$data->loading }} </td>
