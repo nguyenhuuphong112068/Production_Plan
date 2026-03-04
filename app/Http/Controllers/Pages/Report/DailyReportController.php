@@ -872,7 +872,7 @@ class DailyReportController extends Controller
     }
 
     public function update (Request $request) {
-                dd ($request->all());
+                
                 $validator = Validator::make($request->all(), [
                     'id' => 'required',
                     'in_production' => 'required',
@@ -884,6 +884,8 @@ class DailyReportController extends Controller
                     'start.required' => 'Nhập Giờ Bắt Đầu',  
                     'end.required' => 'Nhập Giờ Kết Thúc',
                 ]);
+
+                dd ($request->all(), $validator->fails());
 
                 if ($validator->fails()) {
                     return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
