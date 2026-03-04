@@ -174,12 +174,14 @@
 
                                         {{-- shift --}}
                                         <td> 
-                                            <input type= "text" class="time" name="shift" value = "{{ $data->shift }}" data-id={{ $data->id }} {{ $auth_update }}>
+                                            {{ (int)$data->shift }} 
+                                            {{-- <input type= "text" class="time" name="shift" value = "{{ $data->shift }}" data-id={{ $data->id }} {{ $auth_update }}> --}}
                                         </td> 
 
                                         {{-- day in week --}}
                                         <td> 
-                                            <input type= "text" class="time" name="day_in_month" value = "{{ $data->day_in_month }}" data-id={{ $data->id }} {{ $auth_update }}>
+                                            {{ $data->day_in_months }}
+                                            {{-- <input type= "text" class="time" name="day_in_month" value = "{{ $data->day_in_month }}" data-id={{ $data->id }} {{ $auth_update }}> --}}
                                         </td>  
 
                                         <td> {{$data->H_in_month }} </td>
