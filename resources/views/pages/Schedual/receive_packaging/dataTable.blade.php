@@ -142,18 +142,19 @@
                         <th>Sản Phẩm</th>
                         <th>Số Lô/ TĐ</th>
                         <th>Ngày Dự Kiến KCS</th>
+                        <th>Qui Cách</th>
                         <th>Phòng Sản Xuất</th>
                         <th>Thới Gian Sản Xuất</th>
-                        <th>Thời Gian Vệ Sinh</th>
+                        {{-- <th>Thời Gian Vệ Sinh</th> --}}
                         <th>Ngày Nhận Bao Bì</th>
                         <th>Trao Đổi Thông tin</th>
-                        <th style = "width: 1%">Đã Nhận</th>
+                       
                     </tr>
                   </thead>
                   <tbody>
 
                   @foreach ($datas->sortBy('receive_packaging_date') as $data)
-                    <tr class = "{{ $data->received == 1 ? 'highlight-row':'' }}">
+                    <tr >
                       <td>{{ $loop->iteration}} <br>
                           @if (session('user')['userGroup'] == 'Admin')
                             {{$data->id}} <br>
@@ -164,7 +165,7 @@
                           <div> {{ $data->intermediate_code}} </div>
                           <div> {{ $data->finished_product_code}} </div>
                       </td>
-                      <td>{{$data->product_name}} - {{$data->batch_qty . " " .  $data->unit_batch_qty}}</td>
+                      <td>{{$data->product_name}} - {{$data->batch_qty . " - " .  $data->unit_batch_qty . " - " .  $data->market }} </td>
                       <td>{{$data->batch}}  
                           @if ($data->is_val)
                             <i class="fas fa-check-circle text-primary fs-4"></i>
@@ -174,19 +175,70 @@
                       <td>
                           <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
                       </td>
+                     <td>
+                          <div>{{ $data->specification}} </div>
+                      </td>
              
                       <td> {{ $data->room_name ." - ". $data->room_code}} </td>
                       <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }} </td>
+
                       <td>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                              @if ($data->received == 0)
-                              <input {{ $Change_receive_packaging_date }} type="date" class="updateInput" name="receive_packaging_date" 
-                                    value="{{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('Y-m-d') : '' }}"
-                                    data-id="{{ $data->id }}">
-                              @else
-                                  {{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('d/m/Y') : '' }}
-                              @endif
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <div class ="{{ $data->received == 1 ? 'highlight-row':'' }}" style="display:flex; align-items:center; gap:6px; border-radius:15px; padding:6px;">
+                                <span>BBSC:</span>
+                                <button  type="button" class="btn btn-sm btn-success btn-received position-relative mt-0" {{ $data->received == 1 ? 'disabled':'' }}
+                                        style="padding:2px 6px; font-size:12px;"    
+                                        data-id="{{ $data->id }}">
+                                            <i class="fas fa-check"></i>
+                                </button>
+                                @if ($data->received == 0 && strtoupper($data->market_code) != 'VN')
+                                    <input {{ $Change_receive_packaging_date }}
+                                        type="date"
+                                        class="updateInput"
+                                        name="receive_packaging_date"
+                                        value="{{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+ 
+                                @else
+                                    {{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('d/m/Y') : '' }}
+                                @endif
+                                <br>
+                        
+                            </div>
+                            <div class="tc-confirm-info">
+                                Người xác nhận: <span class="confirm-by">{{ $data->packaging_confirm_by ?? '' }}</span> <br>
+                                Ngày xác nhận: <span class="confirm-date">
+                                    {{ $data->packaging_confirm_date ? \Carbon\Carbon::parse($data->packaging_confirm_date)->format('d/m/Y') : '' }}
+                                </span>
+                            </div>
+    
+                            <div class ="{{ $data->received_second_packaging == 1 ? 'highlight-row':'' }}" style="display:flex; align-items:center; gap:6px; border-radius:15px; padding:6px;">
+                                <span>BBTC:</span>
+                                <button  type="button" class="btn btn-sm btn-success btn-received-second position-relative mt-0" {{ $data->received_second_packaging == 1 ? 'disabled':'' }}
+                                        style="padding:2px 6px; font-size:12px;"
+                                        data-id="{{ $data->id }}">
+                                        <i class="fas fa-check"></i>
+                                </button> 
+                                @if ($data->received_second_packaging == 0 && strtoupper($data->market_code) != 'VN')
+                                    <input {{ $Change_receive_packaging_date }}
+                                        type="date"
+                                        class="updateInput"
+                                        name="receive_second_packaging_date"
+                                        value="{{ $data->receive_second_packaging_date ? \Carbon\Carbon::parse($data->receive_second_packaging_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+        
+                                @else
+                                    {{ $data->receive_second_packaging_date ? \Carbon\Carbon::parse($data->receive_second_packaging_date)->format('d/m/Y') : '' }}
+                                @endif
+                                <br>
+                            </div>
+                           <div class="tc-confirm-info">
+                                Người xác nhận: <span class="second-confirm-by">{{ $data->second_packaging_confirm_by ?? '' }}</span> <br>
+                                Ngày xác nhận: <span class="second-confirm-date">
+                                    {{ $data->second_packaging_confirm_date ? \Carbon\Carbon::parse($data->second_packaging_confirm_date)->format('d/m/Y') : '' }}
+                                </span>
+                            </div>
+                            
 
                         </div>
                       </td>
@@ -194,7 +246,8 @@
                         {{-- ===== LIST COMMENT ===== --}}
                         <div class="chat-box" style="max-height:150px; overflow-y:auto; font-size:14px">
                             @forelse ($data->comments as $comment)
-                                <div class="mb-2 p-2 border rounded" style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}">
+                                <div class="mb-2 p-2 border rounded" 
+                                style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}; border-radius:15px; padding:6px;">
                                     <div style="font-weight:600">
                                         {{ $comment->user_name }}
                                         <small class="text-muted">
@@ -206,21 +259,7 @@
                                         {{ $comment->message }}
                                     </div>
                                 </div>
-                                {{-- <div class="direct-chat-msg">
-                                    <div class="direct-chat-infos clearfix" style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}">
-                                        <span class="direct-chat-name float-left">
-                                            {{ $comment->user_name }}
-                                        </span>
-                                        <span class="direct-chat-timestamp float-right">
-                                            {{ \Carbon\Carbon::parse($comment->created_at)->format('d/m H:i') }}
-                                        </span>
-                                    </div>
 
-                                    <div class="direct-chat-text">
-                                        {{ $comment->message }}
-                                    </div>
-                                </div> --}}
-               
                             @empty
                                 <div class="text-muted">Chưa có trao đổi</div>
                             @endforelse
@@ -240,13 +279,7 @@
                           </div>
 
                     </td>
-                    <td> 
-
-                      <button  type="button" class="btn btn-success btn-received position-relative mt-3" {{ $data->received == 1 ? 'disabled':'' }}
-                          data-id="{{ $data->id }}">
-                          <i class="fas fa-check"></i>
-                      </button>  
-                    </td>
+       
 
                     </tr>
                   @endforeach
@@ -337,70 +370,122 @@
 
   });
 
-  $(document).on('click', '.send-comment', function () {
+    $(document).on('click', '.send-comment', function () {
 
-      let button = $(this);
-      let rowId = button.data('row-id');
-      let input = $('.chat-input[data-row-id="' + rowId + '"]');
-      let message = input.val().trim();
+        let button = $(this);
+        let rowId = button.data('row-id');
+        let input = $('.chat-input[data-row-id="' + rowId + '"]');
+        let message = input.val().trim();
 
-      if (!message) return;
+        if (!message) return;
 
-      // 🚫 Nếu đang gửi thì không cho gửi tiếp
-      if (button.prop('disabled')) return;
+        // 🚫 Nếu đang gửi thì không cho gửi tiếp
+        if (button.prop('disabled')) return;
 
-      // 🔄 Disable + loading
-      button.prop('disabled', true);
-      button.html('<span class="spinner-border spinner-border-sm"></span>');
+        // 🔄 Disable + loading
+        button.prop('disabled', true);
+        button.html('<span class="spinner-border spinner-border-sm"></span>');
 
-      $.ajax({
-          url: "{{ route('pages.Schedual.receive_packaging.store') }}",
-          type: "POST",
-          data: {
-              plan_master_id: rowId,
-              message: message,
-              _token: "{{ csrf_token() }}"
-          },
-          success: function (res) {
+        $.ajax({
+            url: "{{ route('pages.Schedual.receive_packaging.store') }}",
+            type: "POST",
+            data: {
+                plan_master_id: rowId,
+                message: message,
+                _token: "{{ csrf_token() }}"
+            },
+            success: function (res) {
 
-              let bgColor = res.department?.startsWith('PX')
-                  ? '#d4edda'
-                  : '#d1ecf1';
+                let bgColor = res.department?.startsWith('PX')
+                    ? '#d4edda'
+                    : '#d1ecf1';
 
-              let newComment = `
-                  <div class="mb-2 p-2 border rounded"
-                      style="background-color: ${bgColor}">
-                      <div style="font-weight:600">
-                          ${res.user_name}
-                          <small class="text-muted">${res.time}</small>
-                      </div>
-                      <div>${res.message}</div>
-                  </div>
-              `;
+                let newComment = `
+                    <div class="mb-2 p-2 border rounded"
+                        style="background-color: ${bgColor}">
+                        <div style="font-weight:600">
+                            ${res.user_name}
+                            <small class="text-muted">${res.time}</small>
+                        </div>
+                        <div>${res.message}</div>
+                    </div>
+                `;
 
-              input.closest('td').find('.chat-box').prepend(newComment);
-              input.val('');
-          },
-          error: function () {
-              alert('Gửi thất bại!');
-          },
-          complete: function () {
-              // ✅ Mở lại nút
-              button.prop('disabled', false);
-              button.html('Gửi');
-          }
-      });
+                input.closest('td').find('.chat-box').prepend(newComment);
+                input.val('');
+            },
+            error: function () {
+                alert('Gửi thất bại!');
+            },
+            complete: function () {
+                // ✅ Mở lại nút
+                button.prop('disabled', false);
+                button.html('Gửi');
+            }
+        });
 
-  });
+    });
 
-  $(document).on('keypress', '.chat-input', function (e) {
-      if (e.which === 13 && !e.shiftKey) {
-          e.preventDefault();
-          $(this).siblings('.send-comment').click();
-      }
-  });
+    $(document).on('keypress', '.chat-input', function (e) {
+        if (e.which === 13 && !e.shiftKey) {
+            e.preventDefault();
+            $(this).siblings('.send-comment').click();
+        }
+    });
 
-  $(document).on('click', '.btn-received', function () {
+    $(document).on('click', '.btn-received', function () {
+
+        let button = $(this);
+        let plan_master_id = button.data('id');
+        let row = button.closest('tr'); 
+
+        $.ajax({
+            url: "{{ route('pages.Schedual.receive_packaging.received') }}",
+            type: "POST",
+            data: {
+                plan_master_id: plan_master_id,
+                btn : "received",
+                confirm_by: 'packaging_confirm_by',
+                confirm_date: 'packaging_confirm_date',
+                _token: "{{ csrf_token() }}"
+            },
+           success: function (res) {
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Hoàn Thành',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+
+                // Lấy đúng div TC
+                let tcDiv = $(row).find('.btn-received').closest('div');
+
+                // Disable tất cả button + input trong div đó
+                tcDiv.find('button, input')
+                    .prop('disabled', true)
+                    .addClass('disabled');
+
+                // Highlight div
+                tcDiv.addClass('highlight-row');
+
+                  // ✅ Cập nhật người xác nhận + ngày xác nhận
+                $(row).find('.tc-confirm-info .confirm-by')
+                    .text(res.confirm_by);
+
+                $(row).find('.tc-confirm-info .confirm-date')
+                    .text(res.confirm_date);
+
+
+            },
+            error: function () {
+                alert('Gửi thất bại!');
+            }
+        });
+
+    });
+
+    $(document).on('click', '.btn-received-second', function () {
 
       let button = $(this);
       let plan_master_id = button.data('id');
@@ -410,32 +495,45 @@
           url: "{{ route('pages.Schedual.receive_packaging.received') }}",
           type: "POST",
           data: {
-              plan_master_id: plan_master_id,
-              _token: "{{ csrf_token() }}"
+            plan_master_id: plan_master_id,
+            btn : "received_second_packaging",
+            confirm_by: 'second_packaging_confirm_by',
+            confirm_date: 'second_packaging_confirm_date',
+             _token: "{{ csrf_token() }}"
           },
-          success: function (res) {
+            success: function (res) {
 
-            Swal.fire({
-                icon: 'success',
-                title: 'Hoàn Thành',
-                timer: 1500,
-            });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Hoàn Thành',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
 
+                // Lấy đúng div TC
+                let tcDiv = $(row).find('.btn-received-second').closest('div');
 
-            $(row).find('.btn-received')
-                .addClass('disabled')
-                .prop('disabled', true);
+                // Disable tất cả button + input trong div đó
+                tcDiv.find('button, input')
+                    .prop('disabled', true)
+                    .addClass('disabled');
 
-                // ✅ Thêm highlight cho cả dòng
-            $(row).addClass('highlight-row');
+                // Highlight div
+                tcDiv.addClass('highlight-row');
 
-          },
+                 // ✅ Cập nhật người xác nhận + ngày xác nhận
+                $(row).find('.tc-confirm-info .second-confirm-by')
+                    .text(res.confirm_by);
+
+                $(row).find('.tc-confirm-info .second-confirm-date')
+                    .text(res.confirm_date);
+            },
           error: function () {
               alert('Gửi thất bại!');
           }
       });
 
-  });
+    });
 
   
 
