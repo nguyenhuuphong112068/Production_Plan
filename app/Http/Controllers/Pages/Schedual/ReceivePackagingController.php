@@ -30,8 +30,10 @@ class ReceivePackagingController extends Controller
                         'finished_product_category.finished_product_code',
                         'finished_product_category.batch_qty',
                         'finished_product_category.unit_batch_qty',
-                        'market.name as name',
+                        'market.name as market',
+                        'market.code as market_code',
                         'product_name.name as product_name',
+                        'specification.name as specification',
 
                          //DB::raw("DATE(DATE_SUB(stage_plan.start, INTERVAL 2 DAY)) as receive_date")
                 )
@@ -46,6 +48,7 @@ class ReceivePackagingController extends Controller
                 ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
                 ->orderBy('receive_packaging_date', 'asc')
                 ->orderBy('received', 'asc')
                 ->get();
@@ -105,11 +108,17 @@ class ReceivePackagingController extends Controller
         }
 
         public function received(Request $request){
-           
             DB::table('stage_plan')
                 ->where('id', $request->plan_master_id)
-                ->update(['received' => 1]);
-                return response()->json([]);
+                ->update([ 
+                    $request->btn => 1,
+                    $request->confirm_by => session('user')['fullName'],
+                    $request->confirm_date => now (),
+                ]);
+                return response()->json([
+                    'confirm_by' =>  session('user')['fullName'],
+                    'confirm_date' => now()->format('d/m/Y'),
+                ]);
         }
 
 

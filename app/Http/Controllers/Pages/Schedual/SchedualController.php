@@ -1198,6 +1198,18 @@ class SchedualController extends Controller
                                         'schedualed_at'   => now(),
                                         ]);
                                 }else{
+                                        
+                                        $offDays = DB::table('off_days')
+                                                ->whereDate('off_date', '<=', $current_start)
+                                                ->pluck('off_date')
+                                                ->toArray();
+
+                                        $receiveDate = Carbon::parse($current_start)->subDay();
+
+                                        while (in_array($receiveDate->toDateString(), $offDays)) {
+                                                $receiveDate->subDay();
+                                        }
+
                                         DB::table('stage_plan')
                                         ->where('id', $product['id'])
                                         ->update([
@@ -1213,7 +1225,8 @@ class SchedualController extends Controller
                                         'schedualed'      => 1,
                                         'schedualed_by'   => session('user')['fullName'],
                                         'schedualed_at'   => now(),
-                                        'receive_packaging_date'   => Carbon::parse($current_start)->subDay()->format('Y-m-d')
+                                        'receive_packaging_date'   => $receiveDate,
+                                        'receive_second_packaging_date'   => $receiveDate
                                         ]);
                                 }
                         
@@ -3238,9 +3251,19 @@ class SchedualController extends Controller
                         $AHU_group  = DB::table ('room')->where ('id',$roomId)->value('AHU_group')?? 0;
                         
                         $code = DB::table('stage_plan')->where('id', $stageId)->value('code');
-                        
-                        //$ids = DB::table('stage_plan')->where('code', $code)->pluck('id');
-                        $receiveDate = \Carbon\Carbon::parse($start)->subDay()->toDateString();
+
+                        $offDays = DB::table('off_days')
+                                ->whereDate('off_date', '<=', $start)
+                                ->pluck('off_date')
+                                ->toArray();
+
+                        $receiveDate = Carbon::parse($start)->subDay();
+
+                        while (in_array($receiveDate->toDateString(), $offDays)) {
+                                $receiveDate->subDay();
+                        }
+
+                        $receiveDate = $receiveDate->toDateString();
                         
                         DB::table('stage_plan')
                                 ->where('code', $code)
@@ -3255,7 +3278,8 @@ class SchedualController extends Controller
                                 'scheduling_direction'  => $direction,
                                 'AHU_group'             => $AHU_group??null,
                                 'schedualed_at'         => now(),
-                                'receive_packaging_date'   => $receiveDate
+                                'receive_packaging_date'   => $receiveDate,
+                                'receive_second_packaging_date'   => $receiveDate
                         ]);
 
                         $submit = DB::table('stage_plan')->where('id', $stageId)->value('submit');
