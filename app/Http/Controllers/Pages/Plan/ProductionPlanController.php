@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 
 class ProductionPlanController extends Controller
 {
+        
         public function index(){
                
                // 1. Lấy plan_list
@@ -47,7 +48,7 @@ class ProductionPlanController extends Controller
                         ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
                         ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
                         ->where('pm.active', 1)
-                        //->where('pm.only_parkaging', 0)
+                        ->where('pm.only_parkaging', 0)
                         ->where('pm.deparment_code', session('user')['production_code'])
                         ->groupBy('pm.plan_list_id', 'pm.id')
                         ->select(
@@ -84,6 +85,8 @@ class ProductionPlanController extends Controller
                 )
                 ->groupBy('pm.plan_list_id', 'pm.id', 'fc.batch_qty')
                 ->get();
+
+              
               
          
                 $batch_summary = $batch_status

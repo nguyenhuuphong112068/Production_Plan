@@ -64,6 +64,7 @@
 @php
       $receive_packaging_feedback = user_has_permission(session('user')['userId'], 'receive_packaging_feedback', 'disabled');
       $Change_receive_packaging_date = user_has_permission(session('user')['userId'], 'Change_receive_packaging_date', 'disabled');
+      $confirm_receive_packaging = user_has_permission(session('user')['userId'], 'confirm_receive_packaging', 'disabled');
 
       //dd ($receive_packaging_feedback,$Change_receive_packaging_date );
 @endphp
@@ -188,7 +189,9 @@
                                 <span>BBSC:</span>
                                 <button  type="button" class="btn btn-sm btn-success btn-received position-relative mt-0" {{ $data->received == 1 ? 'disabled':'' }}
                                         style="padding:2px 6px; font-size:12px;"    
-                                        data-id="{{ $data->id }}">
+                                        data-id="{{ $data->id }}"
+                                        {{ $confirm_receive_packaging }}
+                                        >
                                             <i class="fas fa-check"></i>
                                 </button>
                                 {{-- && strtoupper($data->market_code) != 'VN' --}}
@@ -217,7 +220,9 @@
                                 <span>BBTC:</span>
                                 <button  type="button" class="btn btn-sm btn-success btn-received-second position-relative mt-0" {{ $data->received_second_packaging == 1 ? 'disabled':'' }}
                                         style="padding:2px 6px; font-size:12px;"
-                                        data-id="{{ $data->id }}">
+                                        data-id="{{ $data->id }}"
+                                        {{ $confirm_receive_packaging }}
+                                        >
                                         <i class="fas fa-check"></i>
                                 </button> 
                                 @if ($data->received_second_packaging == 0)
