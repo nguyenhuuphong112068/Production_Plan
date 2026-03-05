@@ -68,6 +68,7 @@ const ScheduleTest = () => {
   const [lines, setLines] = useState(['S16']);
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
+  const [userID, setUserID] = useState(null);
 
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
   const stageName = {
@@ -141,6 +142,7 @@ const ScheduleTest = () => {
           setQuota(data.quota);
           setOffDays (data.off_days);
           setBkcCode (data.bkc_code);
+          setUserID (data.UesrID);
          
         }
 
@@ -206,7 +208,6 @@ const ScheduleTest = () => {
     },
     { enableOnFormTags: false }
   );
-
 
   useHotkeys("ctrl+s",(e) => {
       e.preventDefault();
@@ -904,9 +905,10 @@ const ScheduleTest = () => {
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
     let startDate = toLocalISOString(activeStart);
     let endDate = toLocalISOString(activeEnd);
-
+    const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
     axios.put('/Schedual/update', {
       reason, // 🟢 gửi thêm lý do
+      theory: theoryHidden,
       changes: pendingChanges.map(change => ({
         id: change.id,
         start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
@@ -924,9 +926,10 @@ const ScheduleTest = () => {
         data = data.replace(/^<!--.*?-->/, "").trim();
         data = JSON.parse(data);
       }
+
       setEvents(data.events);
       setSumBatchByStage(data.sumBatchByStage);
-      setPlan(data.plan);
+      //setPlan(data.plan);
       setPendingChanges([]);
       setSaving(false);
 
@@ -977,6 +980,12 @@ const ScheduleTest = () => {
    
 
     const event = clickInfo.event;
+    if (event._def.ui.backgroundColor == "#002af9ff"){
+        clickInfo.revert();
+        return false;
+    }
+      
+    console.log (clickInfo.event);
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey) {
 
@@ -1976,7 +1985,11 @@ const ScheduleTest = () => {
   }
 
   const finisedEvent = (dropInfo, draggedEvent) => {
-    if (draggedEvent.extendedProps.finished) { return false; }
+    if (userID == 1 || userID == 5 ){
+        return true;
+    }
+    if (draggedEvent.extendedProps.finished) 
+      { return false;}
     return true;
   };
 

@@ -1,6 +1,6 @@
 <div class="content-wrapper" >
     <div class="card">
-        <div class="card-body mt-5" style="min-height: 96vh">
+        <div class="card-body mt-5" style="height: 96vh; overflow-y: auto;">
             @php
                 $auth_view_material = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
             @endphp
@@ -44,7 +44,7 @@
                     @foreach ($datas as $data)
                         <tr>
                             <td>{{ $loop->iteration }} 
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                                {{-- @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif --}}
                             </td>
                             {{-- <td>{{ $data->code}}</td> --}}
                             <td>{{ $data->name }}</td>
@@ -122,5 +122,14 @@
             timer: 1000, // tự đóng sau 2 giây
             showConfirmButton: false
         });
+
+
+
     </script>
 @endif
+
+<script>
+        $(document).ready(function() {
+            document.body.style.overflowY = "auto";
+        });
+</script>
