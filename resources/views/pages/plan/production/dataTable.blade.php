@@ -59,18 +59,20 @@
 
 </style>
 
+
+@php
+    $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
+    $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
+    $auth_view_material = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
+@endphp
+
+
 <div class="content-wrapper">
     <div class="card" style="min-height: 100vh">
 
         <div class="card-header mt-4" >
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
         </div>
-
-        @php
-            $auth_update = user_has_permission(session('user')['userId'], 'plan_production_update', 'disabled');
-            $auth_deActive = user_has_permission(session('user')['userId'], 'plan_production_deActive', 'disabled');
-            $auth_view_material = user_has_permission(session('user')['userId'], 'plan_production_view_material', 'disabled');
-        @endphp
 
         <!-- /.card-Body -->
         <div class="card-body">
