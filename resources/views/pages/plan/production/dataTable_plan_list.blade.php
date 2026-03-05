@@ -43,7 +43,9 @@
 
                     @foreach ($datas as $data)
                         <tr>
-                            <td>{{ $loop->iteration }} </td>
+                            <td>{{ $loop->iteration }} 
+                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                            </td>
                             {{-- <td>{{ $data->code}}</td> --}}
                             <td>{{ $data->name }}</td>
                             <td>{{ $data->deparment_code }}</td>

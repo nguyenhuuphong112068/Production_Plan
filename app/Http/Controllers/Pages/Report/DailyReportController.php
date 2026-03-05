@@ -917,7 +917,7 @@ class DailyReportController extends Controller
                     return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
                 
-                DB::table('room_status')->where ('id', $request->id)->update([
+                DB::table('room_status')->where ('id', explode ("-",$request->id)[0])->update([
                         'active' => 0,
                         'created_by' => session('user')['fullName'],
                         'created_at' => now(),
