@@ -10,8 +10,7 @@ use Carbon\Carbon;
 
 class ShedualYieldController extends Controller
 {
-    
-    
+
     public function index (Request $request){
         //dd ($request->all());
         $startDate = $request->from_date

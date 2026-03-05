@@ -21,8 +21,6 @@ class ProductionPlanController extends Controller
                         ->orderBy('id', 'desc')
                 ->get();
 
-
-
                 // 2. Lấy tổng batch theo plan_list_id
                 $total_batch_qtys = DB::table('plan_master as pm')
                         ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
@@ -49,7 +47,7 @@ class ProductionPlanController extends Controller
                         ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
                         ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
                         ->where('pm.active', 1)
-                        ->where('pm.only_parkaging', 0)
+                        //->where('pm.only_parkaging', 0)
                         ->where('pm.deparment_code', session('user')['production_code'])
                         ->groupBy('pm.plan_list_id', 'pm.id')
                         ->select(
@@ -88,9 +86,6 @@ class ProductionPlanController extends Controller
                 ->get();
               
          
-
-                
-              
                 $batch_summary = $batch_status
                         ->groupBy('plan_list_id')
                         ->map(function ($rows) {
@@ -186,7 +181,7 @@ class ProductionPlanController extends Controller
         }
 
         public function open(Request  $request){
-              
+                //dd ($request->plan_list_id);
                 $maxStageFinished = DB::table('stage_plan')
                 ->where('stage_plan.plan_list_id', $request->plan_list_id)
                 ->where('finished', 1)
@@ -226,11 +221,12 @@ class ProductionPlanController extends Controller
                         )
                         ->whereIn('plan_master.plan_list_id', DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('id'))
                         ->where('plan_master.active', 1)
-                        //->where('plan_master.only_parkaging', 0)
+   
                         ->when($request->plan_list_id < 0,
                                 function ($q) {
                                         return $q->where('plan_master.weighed', 0) 
                                                 ->where('plan_master.cancel', 0) 
+                                                ->where('plan_master.only_parkaging', 0)
                                         ;
                                 },
                                 function ($q) use ($request) {
@@ -245,10 +241,10 @@ class ProductionPlanController extends Controller
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                                $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
+                                $join->on('plan_master.main_parkaging_id', '=', 'sp_max.plan_master_id');
                         })
                         ->leftJoin('stage_plan', function ($join) {
-                                $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                                $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id') //
                                 ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
                         })
                         ->orderBy('expected_date', 'asc')
