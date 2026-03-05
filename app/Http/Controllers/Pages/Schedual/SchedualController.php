@@ -969,7 +969,7 @@ class SchedualController extends Controller
                         
                
                         $authorization = session('user')['userGroup'];
-       
+                        $UesrID =  session('user')['userId'];
 
                         return response()->json([
                                 'title' => $title,
@@ -988,7 +988,8 @@ class SchedualController extends Controller
                                 'Lines'       => $Lines ?? [],
                                 'allLines' => $allLines ?? [],
                                 'off_days' => DB::table('off_days')->where ('off_date','>=',now())->get()->pluck('off_date') ?? [],
-                                'bkc_code' => $bkc_code ?? []
+                                'bkc_code' => $bkc_code ?? [],
+                                'UesrID' => $UesrID
                         ]);
 
                 } catch (\Throwable $e) {
@@ -1572,9 +1573,9 @@ class SchedualController extends Controller
         }
 
         public function update(Request $request){
-               
+              
                 $changes = $request->input('changes', []);
-
+                $this->theory = (int)$request->theory ?? 0;
                 try {
                 foreach ($changes as $change) {
                         // Tách id: "102-main" -> 102
@@ -1663,12 +1664,12 @@ class SchedualController extends Controller
 
                 $production = session('user')['production_code'];
                 $events = $this->getEvents($production, $request->startDate, $request->endDate , true, $this->theory);
-                $plan_waiting = $this->getPlanWaiting($production);
+                //$plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
                 return response()->json([
                         'events' => $events,
-                        'plan' => $plan_waiting,
+                        //'plan' => $plan_waiting,
                         'sumBatchByStage' => $sumBatchByStage,
                 ]);
         }
