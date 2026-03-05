@@ -44,11 +44,13 @@
                     @foreach ($datas as $data)
                         <tr>
                             <td>{{ $loop->iteration }} 
-                                {{-- @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif --}}
+                                
                             </td>
                             {{-- <td>{{ $data->code}}</td> --}}
                             <td>{{ $data->name }}</td>
-                            <td>{{ $data->deparment_code }}</td>
+                            <td>{{ $data->deparment_code }}
+                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                            </td>
                             <td>{{ $data->prepared_by }}</td>
                             <td>{{ $data->created_at? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y H:i'):'' }}</td>
 

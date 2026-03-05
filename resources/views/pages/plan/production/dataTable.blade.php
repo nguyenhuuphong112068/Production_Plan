@@ -205,7 +205,9 @@
 
                             <td>
                                 <div> {{ $loop->iteration }} </div>
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                                @if(session('user')['userGroup'] == "Admin") 
+                                    <div> {{ $data->id}} </div> 
+                                @endif
                             </td>
 
                             <td>
