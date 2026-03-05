@@ -412,7 +412,6 @@ const ScheduleTest = () => {
 
       const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
       const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
-
      
       // 🔹 4. Gọi API backend
       const { data } = await axios.post(`/Schedual/view`, {
@@ -978,11 +977,12 @@ const ScheduleTest = () => {
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
    
-
-    const event = clickInfo.event;
+    const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));  
    
+    const event = clickInfo.event;
+    
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
-    if (clickInfo.jsEvent.altKey) {
+    if (clickInfo.jsEvent.altKey && theoryHidden != 2) {
 
       if (!authorization) {
         clickInfo.revert();
@@ -1014,6 +1014,65 @@ const ScheduleTest = () => {
 
       // trigger pending changes
       handleEventChange({ event: cleanEvent });
+      });
+
+      return;
+    }
+
+
+        // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
+    if (clickInfo.jsEvent.altKey && theoryHidden == 2) {
+     
+
+      if (userID !== 1 && userID !== 5) {
+        return;
+      }
+
+      if (event._def.ui.backgroundColor != "#002af9ff"){
+        alert ('Chỉ Chọn Sự Kiện Đã Hoàn Thành' )
+        return;
+      }
+  
+      if (selectedEvents.length === 0) {
+        return;
+      }
+
+      // Lấy instance calendar
+      const calendar = clickInfo.view.calendar;
+
+      selectedEvents.forEach(sel => {
+      
+      const mainId = sel.id;            
+      const theoryId = mainId.replace("-main", "-main-theory");
+      const cleanId = mainId.replace("-main", "-cleaning");
+      const theoryCleanId = mainId.replace("-main", "-cleaning-theory");
+      
+      const mainEvent = calendar.getEventById(mainId);
+      const theoryEvent = calendar.getEventById(theoryId);
+      const cleanEvent = calendar.getEventById(cleanId);
+      const theoryCleanEvent = calendar.getEventById(theoryCleanId);
+
+      if (!mainEvent || !theoryEvent || !cleanEvent || !theoryCleanEvent) return;
+
+    
+      const newStart = new Date(mainEvent.start.getTime() + 15 * 60000);
+      const newEnd   = new Date(mainEvent.end.getTime() + 15 * 60000);
+
+      theoryEvent.setStart(newStart);
+      theoryEvent.setEnd(newEnd);
+      handleEventChange({ event: theoryEvent });
+
+
+
+      const newClearningStart = new Date(cleanEvent.start.getTime() + 15 * 60000);
+      const newClearningEnd   = new Date(cleanEvent.end.getTime() + 15 * 60000);
+
+      theoryCleanEvent.setStart(newClearningStart);
+      theoryCleanEvent.setEnd(newClearningEnd);
+
+      // trigger pending changes   
+      handleEventChange({ event: theoryCleanEvent });
+
       });
 
       return;
