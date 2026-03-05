@@ -980,12 +980,7 @@ const ScheduleTest = () => {
    
 
     const event = clickInfo.event;
-    if (event._def.ui.backgroundColor == "#002af9ff"){
-        clickInfo.revert();
-        return false;
-    }
-      
-    console.log (clickInfo.event);
+   
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey) {
 
@@ -1985,9 +1980,15 @@ const ScheduleTest = () => {
   }
 
   const finisedEvent = (dropInfo, draggedEvent) => {
+  
+    if (draggedEvent._def.ui.backgroundColor == "#002af9ff"){
+        return false;
+    }
+
     if (userID == 1 || userID == 5 ){
         return true;
     }
+   
     if (draggedEvent.extendedProps.finished) 
       { return false;}
     return true;
