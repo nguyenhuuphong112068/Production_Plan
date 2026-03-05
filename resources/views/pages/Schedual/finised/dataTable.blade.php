@@ -548,8 +548,7 @@
                     stage_code: stage_code
                 },
                 success: function(res) {
-                    
-
+                
                     Swal.fire({
                         icon: 'success',
                         title: 'Hoàn Thành',
@@ -560,13 +559,19 @@
                     // Giữ nút ở trạng thái disabled sau khi hoàn thành
                     $(btn).addClass('disabled').text('✓ Đã hoàn thành');
 
-                    // $(row).find('.actual_batch').
-
                     if (actionType === 'finised') {
+                        $(row).find('.btn-finised')
+                            .addClass('disabled')
+                            .text('✓ Đã hoàn thành');
+                        
                         $(row).find('.btn-semi-finised')
                             .addClass('disabled')
                             .text('✓ Đã hoàn thành');
                         
+                    }
+
+                    if (actionType === 'semi-finised') {
+                        $(row).find('.start_yield').val('');
                     }
                     
                 },

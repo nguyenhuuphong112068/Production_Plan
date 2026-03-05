@@ -157,8 +157,8 @@ class SchedualFinisedController extends Controller
 
         public function store(Request $request){
 
-                //Log :: info ($request->all());
-
+                Log :: info ($request->all());
+                //dd ($request->all());
                 /* ===============================
                 1. FORMAT DATE (GIỮ DẠNG CARBON)
                 =============================== */
