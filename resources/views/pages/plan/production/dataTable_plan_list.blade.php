@@ -21,7 +21,7 @@
                         <th rowspan="2">Tình Trạng</th>
                         <th rowspan="2">Sản Lượng Lý Thuyết (ĐVL)</th>
 
-                        <th colspan="4" style="text-align:center;">
+                        <th colspan="8" style="text-align:center;">
                             Tình Trạng Sản Xuất
                         </th>
 
@@ -33,8 +33,13 @@
 
                     <tr>
                         <th>Tổng Lô</th>
-                        <th>Đã làm</th>
-                        <th>Chưa làm</th>
+                        <th>Chưa Làm</th>
+                        <th>Đã Cân</th>
+                        <th>Đã PC</th>
+                        <th>Đã THT</th>
+                        <th>Đã ĐH</th>
+                        <th>Đã BP</th>
+                        <th>Đã ĐG</th>
                         <th>Hủy</th>
                     </tr>
                 </thead>
@@ -51,9 +56,9 @@
                             <td>{{ $data->deparment_code }}
                                 @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
                             </td>
-                            <td>{{ $data->prepared_by }}</td>
-                            <td>{{ $data->created_at? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y H:i'):'' }}</td>
-
+                            <td>{{ $data->prepared_by?? "NA"}}</td>
+                            <td>{{ $data->created_at ? \Carbon\Carbon::parse($data->created_at??now())->format('d/m/Y H:i'): '' }}</td>
+                          
                             @php
                                 $colors = [
                                     0 => 'background-color: #ffeb3b; color: white;', // vàng
@@ -66,18 +71,27 @@
                             @endphp
 
                             <td style="text-align: center; vertical-align: middle;">
-                                <span style="padding: 6px 15px; border-radius: 20px; {{ $colors[$data->send] ?? '' }}">
-                                    {{ $status[$data->send] }}
+                                <span style="padding: 6px 15px; border-radius: 20px; {{ $colors[$data->send??1] ?? '' }}">
+                                    {{ $status[$data->send??1] }}
                                 </span>
                             </td>
-                            <td>{{ number_format($data->total_batch_qty) }}</td>
+                            <td>
+                                {{ number_format($data->total_batch_qty) }} <br>
+                                {{-- {{ number_format($data->batch_qty_pending) }} --}}
+                            </td>
 
                             <td>{{ $data->tong_lo }}</td>
-                            <td>{{ $data->so_lo_da_lam }}</td>
-                            <td>{{ $data->so_lo_chua_lam }}</td>
-                            <td>{{ $data->so_lo_huy }}</td>
+                            <td>{{ $data->status_counts['Chưa làm']??0 }}</td>
+                            <td>{{ $data->status_counts['Đã Cân']??0 }}</td>
+                            <td>{{ $data->status_counts['Đã Pha chế']??0 }}</td>
+                            <td>{{ $data->status_counts['Đã THT']??0 }}</td>
+                            <td>{{ $data->status_counts['Đã định hình']??0 }}</td>
+                            <td>{{ $data->status_counts['Đã Bao phim']??0 }}</td>
+                            <td>{{ $data->status_counts['Hoàn Tất ĐG']??0 }}</td>
+                            <td>{{ $data->status_counts['Hủy']??0 }}</td>
 
-                            <td>{{ $data->send_by }}</td>
+  
+                            <td>{{ $data->send_by??"NA" }}</td>
 
                             <td>{{ $data->send_date? \Carbon\Carbon::parse($data->send_date)->format('d/m/Y'): '' }}</td>
 

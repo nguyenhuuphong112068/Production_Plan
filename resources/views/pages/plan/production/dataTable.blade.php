@@ -147,7 +147,21 @@
 
                     <tr>
                         <th>STT</th>
-                        <th>Tình Trạng</th>
+                        <th>Tình Trạng
+                            <br>
+                            <select id="statusFilter" class="form-control form-control-sm mt-1">
+                                <option value="">-- Tất cả --</option>
+                                <option value="Hủy">Hủy</option>
+                                <option value="Chưa làm">Chưa làm</option>
+                                <option value="Đã Cân">Đã Cân</option>
+                                <option value="Đã Pha chế">Đã Pha chế</option>
+                                <option value="Đã THT">Đã THT</option>
+                                <option value="Đã định hình">Đã định hình</option>
+                                <option value="Đã Bao phim">Đã Bao phim</option>
+                                <option value="Hoàn Tất ĐG">Hoàn Tất ĐG</option>
+                            </select>
+
+                        </th>
                         @if ($plan_list_id < 0)
                             <th style="width:4%">Tháng</th>
                         @endif
@@ -230,9 +244,15 @@
                                         ];
                                     @endphp
                                 
+                                    {{-- <div class ="text-center" 
+                                        style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
+                                        > {{ $data->status }} 
+                                    </div> --}}
+
                                     <div class ="text-center" 
                                         style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
-                                        > {{ $data->status }} </div>
+                                        > {{ $data->status }} 
+                                    </div>
                                 @endif
                                 
                             </td>
@@ -944,5 +964,12 @@
 
             });
 
+            var table = $('#data_table_plan_master').DataTable();
+
+            $('#statusFilter').on('change', function () {
+                var value = $(this).val();
+
+                table.column(1).search(value ? value : '', true, false).draw();
+            });
         });
     </script>
