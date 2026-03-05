@@ -12,159 +12,350 @@ use Illuminate\Support\Str;
 class ProductionPlanController extends Controller
 {
         
-        public function index(){
+        // public function index(){
                
-               // 1. Lấy plan_list
+        //        // 1. Lấy plan_list
+        //         $datas = DB::table('plan_list')
+        //                 ->where('active', 1)
+        //                 ->where('deparment_code', session('user')['production_code'])
+        //                 ->where('type', 1)
+        //                 ->orderBy('id', 'desc')
+        //         ->get();
+
+                
+
+        //         // 2. Lấy tổng batch theo plan_list_id
+        //         $total_batch_qtys = DB::table('plan_master as pm')
+        //                 ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+        //                 ->where('pm.active', 1)
+        //                 ->where('pm.cancel', 0)
+        //                 ->where('pm.only_parkaging', 0)
+        //                 ->where('fpc.active', 1)
+        //                 ->where('pm.deparment_code', session('user')['production_code'])
+        //                 ->groupBy('pm.plan_list_id')
+        //                 ->select(
+        //                         'pm.plan_list_id',
+        //                         DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
+        //                 )
+        //                 ->get()
+        //                 ->keyBy('plan_list_id');   // 🔥 KEY THEO plan_list_id
+
+        //                 // 3. Merge vào plan_list
+        //                 $datas = $datas->map(function ($item) use ($total_batch_qtys) {
+        //                 $item->total_batch_qty = $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
+        //                 return $item;
+        //         });
+
+                
+
+        //         $batch_status = DB::table('plan_master as pm')
+        //                 ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
+        //                 ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
+        //                 ->where('pm.active', 1)
+        //                 ->where('pm.only_parkaging', 0)
+        //                 ->where('pm.plan_list_id', '!=' , 0)
+        //                 ->where('pm.deparment_code', session('user')['production_code'])
+        //                 ->groupBy('pm.plan_list_id', 'pm.id')
+        //                 ->select(
+        //                         'pm.plan_list_id',
+        //                         'fc.batch_qty',
+                        
+        //                 DB::raw("
+        //                         CASE
+        //                                 WHEN 
+        //                                 SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) = 0 AND SUM(CASE WHEN sp.finished = 1 THEN 1 ELSE 0 END) >= 1 THEN 1 
+        //                                 ELSE 0
+        //                         END AS da_lam
+        //                 "),
+
+        //                 DB::raw("
+        //                         CASE
+        //                                 WHEN 
+        //                                 SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) = 0 AND SUM(CASE WHEN sp.finished = 1 THEN 1 ELSE 0 END) = 0 THEN 1 
+        //                                 ELSE 0
+        //                         END AS chua_lam
+        //                 "),
+
+        //                 DB::raw("
+        //                         CASE
+        //                                 WHEN  
+        //                                 SUM(CASE WHEN pm.cancel = 0  THEN 0 ELSE 1 END) >= 1 THEN 1 ELSE 0
+        //                         END AS huy
+        //                 ")
+        //         )
+        //         ->groupBy('pm.plan_list_id', 'pm.id', 'fc.batch_qty')
+        //         ->get();
+
+        //         //dd ($datas, $total_batch_qtys, $batch_status->take(10));
+         
+        //         $batch_summary = $batch_status
+        //                 ->groupBy('plan_list_id')
+        //                 ->map(function ($rows) {
+        //                         $so_lo_chua_lam = $rows->where('chua_lam', 1);
+        //                         return (object)[
+        //                         'tong_lo'        => $rows->count(),       // ✅ TỔNG LÔ
+        //                         'so_lo_da_lam'   => $rows->sum('da_lam'),
+        //                         'so_lo_chua_lam' => $rows->sum('chua_lam'),
+        //                         'so_lo_huy'      => $rows->sum('huy'),
+        //                         'batch_qty_pending' => $so_lo_chua_lam->sum('batch_qty'),
+        //                         ];
+        //         });
+
+        //        // dd ($batch_summary);
+
+
+        //         $datas = $datas->map(function ($item) use ($total_batch_qtys, $batch_summary) {
+
+        //         // Tổng batch
+        //         $item->total_batch_qty =
+        //                 $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
+
+        //         // Thống kê lô
+        //         $item->tong_lo =
+        //                 $batch_summary[$item->id]->tong_lo ?? 0;
+
+        //         $item->so_lo_da_lam =
+        //                 $batch_summary[$item->id]->so_lo_da_lam ?? 0;
+
+        //         $item->so_lo_chua_lam =
+        //                 $batch_summary[$item->id]->so_lo_chua_lam ?? 0;
+
+        //         $item->so_lo_huy =
+        //                 $batch_summary[$item->id]->so_lo_huy ?? 0;
+
+        //         return $item;
+        //         });
+
+        //         $pending_plan = (object)[
+        //                 'id' => -1,
+        //                 'deparment_code' => session('user')['production_code'],
+        //                 'prepared_by' => "NA",
+        //                 'created_at' => now(),
+        //                 'send' => 1,
+        //                 'send_by' => 'NA',
+        //                 'send_date' => now(),
+        //                 'month' => 'NA',
+
+        //                 'name' => 'KẾ HOẠCH CHƯA THỰC HIỆN',
+        //                 'total_batch_qty' => 0,
+        //                 'tong_lo' => 0,
+        //                 'so_lo_da_lam' => 0,
+        //                 'so_lo_chua_lam' => 0,
+        //                 'so_lo_huy' => 0,
+        //         ];
+
+        //         foreach ($datas as $item) {
+        //                 if ($item->so_lo_chua_lam > 0) {
+        //                         $pending_plan->total_batch_qty += $batch_summary[$item->id]->batch_qty_pending ?? 0;
+        //                         $pending_plan->tong_lo += $item->so_lo_chua_lam;
+        //                         $pending_plan->so_lo_chua_lam += $item->so_lo_chua_lam;
+        //                 }
+        //         }
+
+        //         // Chỉ thêm nếu có dữ liệu
+        //         if ($pending_plan->so_lo_chua_lam > 0) {
+        //                 $datas->prepend($pending_plan);
+        //         }
+
+        //        // dd ($datas, $total_batch_qtys);
+
+        //         session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
+        
+        //         return view('pages.plan.production.plan_list',[
+        //                 'datas' => $datas,
+        //                 //'total_batch_qtys' => $total_batch_qtys
+        //         ]);
+        // }
+
+        public function index(){
+
+                $production_code = session('user')['production_code'];
+
+                /*
+                |--------------------------------------------------------------------------
+                | 1. LẤY DANH SÁCH PLAN LIST
+                |--------------------------------------------------------------------------
+                */
+
                 $datas = DB::table('plan_list')
                         ->where('active', 1)
-                        ->where('deparment_code', session('user')['production_code'])
+                        ->where('deparment_code', $production_code)
                         ->where('type', 1)
                         ->orderBy('id', 'desc')
-                ->get();
+                        ->get();
 
-                // 2. Lấy tổng batch theo plan_list_id
+
+                /*
+                |--------------------------------------------------------------------------
+                | 2. TỔNG BATCH THEO PLAN_LIST
+                |--------------------------------------------------------------------------
+                */
+
                 $total_batch_qtys = DB::table('plan_master as pm')
                         ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
                         ->where('pm.active', 1)
                         ->where('pm.cancel', 0)
                         ->where('pm.only_parkaging', 0)
                         ->where('fpc.active', 1)
-                        ->where('pm.deparment_code', session('user')['production_code'])
+                        ->where('pm.deparment_code', $production_code)
                         ->groupBy('pm.plan_list_id')
                         ->select(
-                                'pm.plan_list_id',
-                                DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
+                        'pm.plan_list_id',
+                        DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
                         )
                         ->get()
-                        ->keyBy('plan_list_id');   // 🔥 KEY THEO plan_list_id
+                        ->keyBy('plan_list_id');
 
-                        // 3. Merge vào plan_list
-                        $datas = $datas->map(function ($item) use ($total_batch_qtys) {
-                        $item->total_batch_qty = $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
-                        return $item;
-                });
+
+                /*
+                |--------------------------------------------------------------------------
+                | 3. LẤY MAX STAGE FINISHED
+                |--------------------------------------------------------------------------
+                */
+
+                $maxStageFinished = DB::table('stage_plan')
+                        ->where('finished', 1)
+                        ->select(
+                        'plan_master_id',
+                        DB::raw('MAX(stage_code) as max_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | 4. XÁC ĐỊNH STATUS TỪNG LÔ
+                |--------------------------------------------------------------------------
+                */
 
                 $batch_status = DB::table('plan_master as pm')
-                        ->join('stage_plan as sp', 'sp.plan_master_id', '=', 'pm.id')
+                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                        $join->on('pm.id', '=', 'sp_max.plan_master_id');
+                        })
+                        ->leftJoin('stage_plan as sp', function ($join) {
+                        $join->on('pm.id', '=', 'sp.plan_master_id')
+                                ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
+                        })
                         ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
                         ->where('pm.active', 1)
                         ->where('pm.only_parkaging', 0)
-                        ->where('pm.deparment_code', session('user')['production_code'])
-                        ->groupBy('pm.plan_list_id', 'pm.id')
+                        ->where('pm.plan_list_id', '!=', 0)
+                        ->where('pm.deparment_code', $production_code)
                         ->select(
-                                'pm.plan_list_id',
-                                'fc.batch_qty',
-                        
+                        'pm.plan_list_id',
+                        'fc.batch_qty',
                         DB::raw("
-                        CASE
-                                WHEN 
-                                SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) = 0
-                                AND
-                                SUM(CASE WHEN sp.finished = 1 THEN 1 ELSE 0 END) >= 1
-                                THEN 1 ELSE 0
-                        END AS da_lam
-                        "),
-
-                        DB::raw("
-                        CASE
-                                WHEN 
-                                SUM(CASE WHEN sp.active = 0 THEN 1 ELSE 0 END) = 0
-                                AND
-                                SUM(CASE WHEN sp.finished = 1 THEN 1 ELSE 0 END) = 0
-                                THEN 1 ELSE 0
-                        END AS chua_lam
-                        "),
-
-                        DB::raw("
-                        CASE
-                                WHEN 
-                                SUM(CASE WHEN pm.cancel = 0  THEN 0 ELSE 1 END) >= 1
-                                THEN 1 ELSE 0
-                        END AS huy
+                                CASE
+                                WHEN pm.cancel = 1 THEN 'Hủy'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
+                                ELSE 'Chưa làm'
+                                END AS status
                         ")
-                )
-                ->groupBy('pm.plan_list_id', 'pm.id', 'fc.batch_qty')
-                ->get();
+                        )
+                        ->get();
 
-              
-              
-         
+
+                /*
+                |--------------------------------------------------------------------------
+                | 5. GOM THEO PLAN_LIST
+                |--------------------------------------------------------------------------
+                */
+
                 $batch_summary = $batch_status
                         ->groupBy('plan_list_id')
                         ->map(function ($rows) {
-                                $so_lo_chua_lam = $rows->where('chua_lam', 1);
-                                return (object)[
-                                'tong_lo'        => $rows->count(),       // ✅ TỔNG LÔ
-                                'so_lo_da_lam'   => $rows->sum('da_lam'),
-                                'so_lo_chua_lam' => $rows->sum('chua_lam'),
-                                'so_lo_huy'      => $rows->sum('huy'),
-                                'batch_qty_pending' => $so_lo_chua_lam->sum('batch_qty'),
-                                ];
-                });
 
-               // dd ($batch_summary);
+                        $statusCount = $rows->groupBy('status')->map->count();
 
+                        return (object)[
+                                'tong_lo' => $rows->count(),
+                                'status_counts' => $statusCount,
+                                'batch_qty_pending' => $rows
+                                ->where('status', 'Chưa làm')
+                                ->sum('batch_qty'),
+                        ];
+                        });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | 6. MERGE VÀO PLAN LIST
+                |--------------------------------------------------------------------------
+                */
 
                 $datas = $datas->map(function ($item) use ($total_batch_qtys, $batch_summary) {
 
-                // Tổng batch
-                $item->total_batch_qty =
+                        $item->total_batch_qty =
+
                         $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
 
-                // Thống kê lô
-                $item->tong_lo =
-                        $batch_summary[$item->id]->tong_lo ?? 0;
+                        $summary = $batch_summary[$item->id] ?? null;
 
-                $item->so_lo_da_lam =
-                        $batch_summary[$item->id]->so_lo_da_lam ?? 0;
+                        $item->tong_lo = $summary->tong_lo ?? 0;
 
-                $item->so_lo_chua_lam =
-                        $batch_summary[$item->id]->so_lo_chua_lam ?? 0;
+                        $item->status_counts = $summary->status_counts ?? collect();
 
-                $item->so_lo_huy =
-                        $batch_summary[$item->id]->so_lo_huy ?? 0;
+                        $item->batch_qty_pending = $summary->batch_qty_pending ?? 0;
 
-                return $item;
+                        return $item;
                 });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | 7. TẠO PLAN "CHƯA THỰC HIỆN"
+                |--------------------------------------------------------------------------
+                */
+
 
                 $pending_plan = (object)[
                         'id' => -1,
-                        'deparment_code' => session('user')['production_code'],
-                        'prepared_by' => "NA",
+                        'deparment_code' => $production_code,
+                        'prepared_by' => 'NA',
                         'created_at' => now(),
                         'send' => 1,
                         'send_by' => 'NA',
-                        'send_date' => now(),
+                        'send_date' => null,   // ✅ THÊM DÒNG NÀY
                         'month' => 'NA',
 
                         'name' => 'KẾ HOẠCH CHƯA THỰC HIỆN',
                         'total_batch_qty' => 0,
                         'tong_lo' => 0,
-                        'so_lo_da_lam' => 0,
-                        'so_lo_chua_lam' => 0,
-                        'so_lo_huy' => 0,
-                ];
+                        'status_counts' => collect(),
+                        'batch_qty_pending' => 0,
+                        ];
 
+                //dd ($datas);
                 foreach ($datas as $item) {
-                        if ($item->so_lo_chua_lam > 0) {
-                                $pending_plan->total_batch_qty += $batch_summary[$item->id]->batch_qty_pending ?? 0;
-                                $pending_plan->tong_lo += $item->so_lo_chua_lam;
-                                $pending_plan->so_lo_chua_lam += $item->so_lo_chua_lam;
-                        }
+
+                $pending = $item->status_counts['Chưa làm'] ?? 0;
+
+                if ($pending > 0) {
+                        $pending_plan->tong_lo += $pending;
+                        $pending_plan->total_batch_qty += $item->batch_qty_pending ?? 0;
+                }
                 }
 
-                // Chỉ thêm nếu có dữ liệu
-                if ($pending_plan->so_lo_chua_lam > 0) {
+                if ($pending_plan->tong_lo > 0) {
                         $datas->prepend($pending_plan);
                 }
 
-               // dd ($datas, $total_batch_qtys);
+
+                /*
+                |--------------------------------------------------------------------------
+                | 8. RETURN VIEW
+                |--------------------------------------------------------------------------
+                */
 
                 session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
-        
-                return view('pages.plan.production.plan_list',[
+                //dd ($datas);
+                return view('pages.plan.production.plan_list', [
                         'datas' => $datas,
-                        //'total_batch_qtys' => $total_batch_qtys
                 ]);
         }
 
