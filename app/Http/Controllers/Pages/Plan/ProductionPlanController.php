@@ -215,6 +215,8 @@ class ProductionPlanController extends Controller
 
                 $maxStageFinished = DB::table('stage_plan')
                         ->where('finished', 1)
+                        ->where('active', 1)
+                        ->where('deparment_code', $production_code)
                         ->select(
                         'plan_master_id',
                         DB::raw('MAX(stage_code) as max_stage_code')
