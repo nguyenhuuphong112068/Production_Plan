@@ -157,7 +157,7 @@ class SchedualFinisedController extends Controller
 
         public function store(Request $request){
 
-                Log :: info ($request->all());
+              
                 //dd ($request->all());
                 /* ===============================
                 1. FORMAT DATE (GIỮ DẠNG CARBON)
@@ -266,6 +266,33 @@ class SchedualFinisedController extends Controller
                 5. UPDATE + INSERT (TRANSACTION)
                 =============================== */
 
+
+
+                $previousYield = DB::table('yields')
+                                ->where('stage_plan_id', $request->id)
+                                ->value('yield');
+
+                $Theoretical_yields = DB::table('stage_plan')
+                                ->where('id', $request->id)
+                                ->value('Theoretical_yields');
+
+                $previousYield = $previousYield ?? 0;
+
+                $newYield = ($request->yields ?? 0) + $previousYield;
+
+                if ($newYield > $Theoretical_yields * 1.05){
+                        return response()->json(['message' => '❌ Sản Lượng Không Vượt Quá 105% Sản Lượng Lý Thuyết'], 422); 
+                }
+
+                
+                /* ===============================
+                5. UPDATE + INSERT (TRANSACTION)
+                =============================== */
+                Log::info([
+                        'newYield' => $newYield , 
+                        'Theoretical_yields' =>  $Theoretical_yields
+                ]);
+
                 DB::transaction(function () use (
                         $request,
                         $actualStart,
@@ -274,17 +301,14 @@ class SchedualFinisedController extends Controller
                         $actualEndCleaning,
                         $actualStartYield,
                         $yields_batch_qty,
-                        $stage_code
+                        $stage_code,
+                        $newYield
                 ) {
                          /* ===============================
                         1. LẤY TỔNG YIELD TRƯỚC ĐÓ
                         =============================== */
 
-                        $previousYield = DB::table('yields')
-                                ->where('stage_plan_id', $request->id)
-                                ->value('yield');
-                        $previousYield = $previousYield ?? 0;
-                        $newYield = ($request->yields ?? 0) + $previousYield;
+
                         
                         $updateData = [
                         'title'            => $request->title,
