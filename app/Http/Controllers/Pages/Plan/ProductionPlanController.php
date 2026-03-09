@@ -1679,11 +1679,12 @@ class ProductionPlanController extends Controller
         }
 
         public function open_stock(Request  $request){
-                //dd ( $request->all());
+              
 
                 try {        
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
                         ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
+                        ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id','fc.id')
                         ->when($request->plan_list_id < 0,
                                         function ($q) {
                                                 return $q->where('pm.weighed', 0);
@@ -1706,7 +1707,13 @@ class ProductionPlanController extends Controller
                                 DB::raw('SUM(pmm.qty) as total_qty'),
                                 DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
                                 DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
-                                DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids")
+                                DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids"),
+                                DB::raw("
+                                        GROUP_CONCAT(
+                                        CONCAT(fc.intermediate_code, ' : ', pmm.qty)
+                                        SEPARATOR CHAR(10)
+                                        ) as qty_list
+                                ")
                         )
                         ->groupBy(
                                 
@@ -1717,10 +1724,11 @@ class ProductionPlanController extends Controller
                         )
                         ->orderBy('pmm.material_packaging_code')
                         ->get();
-                //dd ($plan_master_materials);
+
+                        dd ($plan_master_materials);
 
                         $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
-                        
+                      
                         $StockOverview = DB::connection('mms')
                                 ->table('yf_RMPMStockOverview_pms as s')
                                 ->whereIn('s.MatID', $material_packaging_code)
@@ -1772,6 +1780,8 @@ class ProductionPlanController extends Controller
                                 )
                         ->get();
 
+                       
+
                         
                         $stockByMat = collect($StockOverview)->groupBy('MatID');
                         
@@ -1795,7 +1805,7 @@ class ProductionPlanController extends Controller
                         
                         $production  =  session('user')['production_name'];
 
-
+                       // dd ( $plan_master_materials);
                 
                         session()->put(['title'=> "BẢNG DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
 

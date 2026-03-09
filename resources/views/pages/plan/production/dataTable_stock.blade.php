@@ -73,7 +73,7 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
             <div class="row mb-2">
                 <div class="col-md-9">
                     <button type="button" class="btn btn-success"
-                        onclick="window.location.href='{{ $current_url }}'">
+                        onclick="window.location.href='{{ url()->previous() }}'">
                         <i class="fas fa-arrow-left"></i> Trở Về
                     </button>
                 </div>
@@ -96,8 +96,8 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             <th rowspan="2" style="width: 15%">Tên NL</th>                      
                             <th rowspan="2" style="width: 4%">Số Lượng Dung Cho</th>
                             <th rowspan="2">Lượng Theo CT</th>
-                            <th rowspan="2">Lượng Cần Dùng</th>
                             <th rowspan="2">Tổng Tồn</th>
+                            <th rowspan="2">Lượng Cần Dự Trù</th>
                             <th colspan="8" class="text-center">Tồn Kho Hiện Hành</th>
                         </tr>
                         <tr>
@@ -134,11 +134,14 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                                         {{ $data->NumberOfBatch }} Lô
                                 </button>
                             </td>
-                            <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}</td>
-                            <td rowspan="{{ $rowspan }}">{{ round($data->TotalMatQty,5) }} {{ $data->unit_bom }}</td>
+                            <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}
+                                {{$data->qty_list  }}
+                            </td>
+                           
                    
                             <td rowspan="{{ $rowspan }}" class = "{{ $data->totalQty < $data->TotalMatQty?'text-red':'a' }}">{{ round($data->totalQty,5) }} {{ $data->unit_bom }}</td>
-
+                            
+                            <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}</td>
                             
                             @if ($stocks->count())
                                 @php $s = $stocks->first(); $lb = lable_status($s->GRNSts,$s->coa_list); @endphp
