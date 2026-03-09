@@ -242,6 +242,7 @@ class ProductionPlanController extends Controller
                         ->where('pm.active', 1)
                         ->where('pm.only_parkaging', 0)
                         ->where('pm.plan_list_id', '!=', 0)
+                        ->where('pm.plan_list_id', '>=', 23)
                         ->where('pm.deparment_code', $production_code)
                         ->select(
                         'pm.plan_list_id',
@@ -332,17 +333,18 @@ class ProductionPlanController extends Controller
                         'batch_qty_pending' => 0,
                         ];
 
-                //dd ($datas);
+               
                 foreach ($datas as $item) {
 
-                $pending = $item->status_counts['Chưa làm'] ?? 0;
-
-                if ($pending > 0) {
-                        $pending_plan->tong_lo += $pending;
-                        $pending_plan->total_batch_qty += $item->batch_qty_pending ?? 0;
+                        $pending = $item->status_counts['Chưa làm'] ?? 0;
+                        
+                        if ($pending > 0) {
+                                $pending_plan->tong_lo += $pending;
+                                $pending_plan->total_batch_qty += $item->batch_qty_pending ?? 0;
+                        }
                 }
-                }
 
+             
                 if ($pending_plan->tong_lo > 0) {
                         $datas->prepend($pending_plan);
                 }

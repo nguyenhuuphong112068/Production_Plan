@@ -21,7 +21,7 @@
                         <th rowspan="2">Tình Trạng</th>
                         <th rowspan="2">Sản Lượng Lý Thuyết (ĐVL)</th>
 
-                        <th colspan="8" style="text-align:center;">
+                        <th colspan="9" style="text-align:center;">
                             Tình Trạng Sản Xuất
                         </th>
 
