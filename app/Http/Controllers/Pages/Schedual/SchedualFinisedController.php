@@ -158,7 +158,7 @@ class SchedualFinisedController extends Controller
         public function store(Request $request){
 
               
-                //dd ($request->all());
+                
                 /* ===============================
                 1. FORMAT DATE (GIỮ DẠNG CARBON)
                 =============================== */
@@ -200,6 +200,7 @@ class SchedualFinisedController extends Controller
 
                         if ($actualEndCleaning->gt($now))
                         return response()->json(['message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'], 422);
+
                 } else {
 
                         if (!$actualStart || !$actualEnd)
@@ -212,8 +213,8 @@ class SchedualFinisedController extends Controller
                 /* ===============================
                 3. VALIDATE YIELD RANGE & OVERLAP
                 =============================== */
-              
-                if ($actualStartYield && $actualEnd && $request->actionType == 'semi-finised') {
+               
+                if ($actualStartYield && $actualEnd) {
 
                         // phải nằm trong khoảng production
                         if ($actualStartYield->lt($actualStart) || $actualEnd->gt($actualEnd))
@@ -266,32 +267,32 @@ class SchedualFinisedController extends Controller
                 5. UPDATE + INSERT (TRANSACTION)
                 =============================== */
 
+                $newYield = 0;
+                if ($actualStartYield) {
+                        $previousYield = DB::table('yields')
+                                        ->where('stage_plan_id', $request->id)
+                                        ->value('yield');
 
+                        $Theoretical_yields = DB::table('stage_plan')
+                                        ->where('id', $request->id)
+                                        ->value('Theoretical_yields');
 
-                $previousYield = DB::table('yields')
-                                ->where('stage_plan_id', $request->id)
-                                ->value('yield');
+                        $previousYield = $previousYield ?? 0;
 
-                $Theoretical_yields = DB::table('stage_plan')
-                                ->where('id', $request->id)
-                                ->value('Theoretical_yields');
+                        $newYield = ($request->yields ?? 0) + $previousYield;
 
-                $previousYield = $previousYield ?? 0;
-
-                $newYield = ($request->yields ?? 0) + $previousYield;
-
-                if ($newYield > $Theoretical_yields * 1.05){
-                        return response()->json(['message' => '❌ Sản Lượng Không Vượt Quá 105% Sản Lượng Lý Thuyết'], 422); 
+                        if ($newYield > $Theoretical_yields * 1.05){
+                                return response()->json(['message' => '❌ Sản Lượng Không Vượt Quá 105% Sản Lượng Lý Thuyết'], 422); 
+                        }
                 }
-
                 
                 /* ===============================
                 5. UPDATE + INSERT (TRANSACTION)
                 =============================== */
-                Log::info([
-                        'newYield' => $newYield , 
-                        'Theoretical_yields' =>  $Theoretical_yields
-                ]);
+                // Log::info([
+                //         'newYield' => $newYield , 
+                //         'Theoretical_yields' =>  $Theoretical_yields
+                // ]);
 
                 DB::transaction(function () use (
                         $request,
@@ -344,7 +345,8 @@ class SchedualFinisedController extends Controller
                                         [
                                         'stage_plan_id' => $request->id,
                                         'start' => $actualStart,
-                                        'end'   => $actualStartYield
+                                        // 'end'   => $actualStartYield,
+                                        'yield'   => $request->yields
                                         ],
                                         [
                                         'start'        => $actualStartYield,
@@ -355,19 +357,7 @@ class SchedualFinisedController extends Controller
                                         ]
                                 );
                         }
-                        // như cũ
-                        // DB::table('yields')->updateOrInsert(
-                        // ['stage_plan_id' => $request->id, 
-                        // //'start'=> $actualStartYield
-                        // ], // điều kiện kiểm tra tồn tại
-                        // [
-                        //         'start'        => $actualStartYield,
-                        //         'end'          => $actualEnd,
-                        //         'yield'        => $request->yields ?? 0,
-                        //         'created_by'   => session('user')['fullName'],
-                        //         'created_date' => now(),
-                        // ]
-                        // );
+
                         
 
                         if ($request->actual_batch) {
