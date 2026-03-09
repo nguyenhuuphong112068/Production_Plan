@@ -329,7 +329,9 @@ class ProductionPlanController extends Controller
                         'name' => 'KẾ HOẠCH CHƯA THỰC HIỆN',
                         'total_batch_qty' => 0,
                         'tong_lo' => 0,
-                        'status_counts' => collect(),
+                        'status_counts' => [
+                                'Chưa làm' => 0   // ✅ thêm dòng này
+                        ],
                         'batch_qty_pending' => 0,
                         ];
 
@@ -340,6 +342,7 @@ class ProductionPlanController extends Controller
                         
                         if ($pending > 0) {
                                 $pending_plan->tong_lo += $pending;
+                                $pending_plan->status_counts ['Chưa làm'] += $pending;
                                 $pending_plan->total_batch_qty += $item->batch_qty_pending ?? 0;
                         }
                 }
