@@ -286,14 +286,20 @@
                                 @if ($data->number_parkaging > 0)
                                     @if ($auth_update != 'disabled')
 
-                                    <div  class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" data-toggle="modal" data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
-                                        {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
+                                    <div  class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" 
+                                        data-toggle="modal" 
+                                        data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
+                                        {{ $data->active ? '' : 'disabled' }} 
+                                        data-id="{{ $data->id }}"
                                         data-name="{{ $data->finished_product_name }}"
                                         data-intermediate_code="{{ $data->intermediate_code }}"
                                         data-finished_product_code="{{ $data->finished_product_code }}"
-                                        data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
-                                        data-specification="{{ $data->specification }}" data-level="{{ $data->level }}"
-                                        data-expected_date="{{ $data->expected_date }}" data-is_val="{{ $data->is_val }}"
+                                        data-batch="{{ $data->batch }}" 
+                                        data-market="{{ $data->market }}"
+                                        data-specification="{{ $data->specification }}" 
+                                        data-level="{{ $data->level }}"
+                                        data-expected_date="{{ $data->expected_date }}" 
+                                        data-is_val="{{ $data->is_val }}"
                                         data-source_material_name="{{ $data->source_material_name }}"
                                         data-after_weigth_date="{{ $data->after_weigth_date}}"
                                         data-after_parkaging_date="{{ $data->after_parkaging_date }}"
@@ -301,6 +307,10 @@
                                         data-unit_batch_qty="{{ $data->unit_batch_qty}}"
                                         data-material_source_id="{{ $data->material_source_id}}"
                                         data-number_parkaging="{{ $data->number_parkaging}}"
+
+                                        data-product_caterogy_id="{{ $data->product_caterogy_id}}"
+                                        data-plan_list_id="{{ $data->plan_list_id}}"
+                                        data-IsHypothesis="{{ $data->IsHypothesis}}"
                                     >
                                         {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
                                     @else
@@ -627,6 +637,9 @@
 
                     modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
 
+                    // modal.find('input[name="product_caterogy_id"]').val(button.data('product_caterogy_id'));
+                    // modal.find('input[name="plan_list_id"]').val(button.data('plan_list_id'));
+                    // modal.find('input[name="IsHypothesis"]').val(button.data('IsHypothesis'));   
 
                 }else {
                     const modal_splitting = $('#splittingModal');
