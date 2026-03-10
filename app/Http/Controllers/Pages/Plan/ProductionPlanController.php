@@ -1713,8 +1713,15 @@ class ProductionPlanController extends Controller
                                         ELSE fc.finished_product_code
                                         END AS product_code,
 
-                                        SUM(pmm.qty) AS total_qty,
+                                        SUM(CASE
+                                                WHEN pmm.material_packaging_type = 1
+                                                THEN pmm.qty * pm.percent_parkaging
+                                                ELSE pmm.qty
+                                                END
+                                        ) AS total_qty,
+
                                         COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
+
                                         ROUND(
                                                 SUM(
                                                 CASE
@@ -1785,13 +1792,13 @@ class ProductionPlanController extends Controller
                                         DISTINCT CONCAT(
                                                 qty_sum.product_code,
                                                 ' : ',
-                                                qty_sum.batch_count, ' lô', 
+                                                qty_sum.batch_count, ' lô',
                                                 ' x ',
                                                 ROUND(qty_sum.qty_per_batch,3),
                                                 ' = ',
                                                 ROUND(qty_sum.total_qty,3),
                                                 ' ',
-                                                pmm.unit_bom 
+                                                pmm.unit_bom
                                         )
                                         SEPARATOR '<br>'
                                         ) as qty_list
@@ -1949,7 +1956,7 @@ class ProductionPlanController extends Controller
                         ->select(
                                 'plan_master.*',
 
-                                
+
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code',
                                 DB::raw('fp_name.name AS finished_product_name'),
