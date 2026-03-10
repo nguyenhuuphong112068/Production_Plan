@@ -395,7 +395,14 @@ $(document).ready(function () {
                         <div>${finishedName}</div>
                         <div>(${data.batch_qty ?? ''} ${data.unit_batch_qty ?? ''})</div>
                         `,
-                        `<div class="text-center">${data.batch ?? ''}</div>`,
+                        `<div class="text-center">
+                            ${data.batch ?? ''}
+                            <br>
+                            <b class="text-blue">  ${data.actual_batch ?? ''} </b>
+                            <br>
+                            <b class="text-green">  ${data.number_parkaging + ' ' + data.unit_batch_qty ?? ''} #  ${data.percent_parkaging * 100 + "%" ?? ''} </b>
+
+                        </div>`,
                         `
                         <div>${data.market ?? ''}</div>
                         <div>${data.specification ?? ''}</div>
