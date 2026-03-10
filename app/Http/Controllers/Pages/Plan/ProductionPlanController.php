@@ -1683,42 +1683,50 @@ class ProductionPlanController extends Controller
 
                 try {          
 
-                $sub = DB::table('plan_master_materials as pmm')
+                        $sub = DB::table('plan_master_materials as pmm')
                         ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
                         ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
 
                         ->when($request->plan_list_id < 0,
-                                function ($q) {
-                                $q->where('pm.weighed', 0);
-                                },
-                                function ($q) use ($request) {
-                                $q->where('pm.plan_list_id', $request->plan_list_id);
-                                }
+                                fn($q)=>$q->where('pm.weighed',0),
+                                fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
                         )
 
-                        ->where('pm.cancel', 0)
-                        ->where('pm.active', 1)
-                        ->where('pmm.active', 1)
+                        ->where('pm.cancel',0)
+                        ->where('pm.active',1)
+                        ->where('pmm.active',1)
 
-                        ->when($request->has('selected'), function ($q) {
-                                $q->where('pm.selected', 1);
-                        })
-
-                        ->when($request->has('material_packaging_type'), function ($q) use ($request) {
-                                $q->where('pmm.material_packaging_type', $request->material_packaging_type);
-                        })
-
-                        ->select(
-                                'pmm.material_packaging_code',
-                                'fc.intermediate_code',
-                                DB::raw('SUM(pmm.qty) as total_qty'),
-                                DB::raw('COUNT(DISTINCT pmm.plan_master_id) as batch_count'),
-                                DB::raw('ROUND(SUM(pmm.qty)/COUNT(DISTINCT pmm.plan_master_id),3) as qty_per_batch')
+                        ->when($request->has('selected'),
+                                fn($q)=>$q->where('pm.selected',1)
                         )
 
-                ->groupBy('pmm.material_packaging_code','fc.intermediate_code');
+                        ->when($request->has('material_packaging_type'),
+                                fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                        )
 
-                      
+                        ->selectRaw("
+                                pmm.material_packaging_code,
+
+                                CASE
+                                WHEN pmm.material_packaging_type = 0
+                                THEN fc.intermediate_code
+                                ELSE fc.finished_product_code
+                                END AS product_code,
+
+                                SUM(pmm.qty) AS total_qty,
+                                COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
+                                ROUND(SUM(pmm.qty)/COUNT(DISTINCT pmm.plan_master_id),3) AS qty_per_batch
+                        ")
+
+                        ->groupByRaw("
+                                pmm.material_packaging_code,
+                                CASE
+                                WHEN pmm.material_packaging_type = 0
+                                THEN fc.intermediate_code
+                                ELSE fc.finished_product_code
+                                END
+                        ");
+
 
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
 
@@ -1767,7 +1775,7 @@ class ProductionPlanController extends Controller
                                         DB::raw("
                                         GROUP_CONCAT(
                                         DISTINCT CONCAT(
-                                                qty_sum.intermediate_code,
+                                                qty_sum.product_code,
                                                 ' : ',
                                                 qty_sum.batch_count, ' lô',
                                                 ' x ',
@@ -1792,9 +1800,6 @@ class ProductionPlanController extends Controller
                                 ->orderBy('pmm.material_packaging_code')
 
                         ->get();
-
-                        //dd ( $plan_master_materials);
-
                         
 
                         $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
