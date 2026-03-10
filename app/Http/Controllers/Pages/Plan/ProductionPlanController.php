@@ -1684,39 +1684,47 @@ class ProductionPlanController extends Controller
                 try {          
 
                         $sub = DB::table('plan_master_materials as pmm')
-                        ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
-                        ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+                                ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                                ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
 
-                        ->when($request->plan_list_id < 0,
-                                fn($q)=>$q->where('pm.weighed',0),
-                                fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
-                        )
+                                ->when($request->plan_list_id < 0,
+                                        fn($q)=>$q->where('pm.weighed',0),
+                                        fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                                )
 
-                        ->where('pm.cancel',0)
-                        ->where('pm.active',1)
-                        ->where('pmm.active',1)
+                                ->where('pm.cancel',0)
+                                ->where('pm.active',1)
+                                ->where('pmm.active',1)
 
-                        ->when($request->has('selected'),
-                                fn($q)=>$q->where('pm.selected',1)
-                        )
+                                ->when($request->has('selected'),
+                                        fn($q)=>$q->where('pm.selected',1)
+                                )
 
-                        ->when($request->has('material_packaging_type'),
-                                fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
-                        )
+                                ->when($request->has('material_packaging_type'),
+                                        fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                                )
 
-                        ->selectRaw("
-                                pmm.material_packaging_code,
+                                ->selectRaw("
+                                        pmm.material_packaging_code,
 
-                                CASE
-                                WHEN pmm.material_packaging_type = 0
-                                THEN fc.intermediate_code
-                                ELSE fc.finished_product_code
-                                END AS product_code,
+                                        CASE
+                                        WHEN pmm.material_packaging_type = 0
+                                        THEN fc.intermediate_code
+                                        ELSE fc.finished_product_code
+                                        END AS product_code,
 
-                                SUM(pmm.qty) AS total_qty,
-                                COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
-                                ROUND(SUM(pmm.qty)/COUNT(DISTINCT pmm.plan_master_id),3) AS qty_per_batch
-                        ")
+                                        SUM(pmm.qty) AS total_qty,
+                                        COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
+                                        ROUND(
+                                                SUM(
+                                                CASE
+                                                        WHEN pmm.material_packaging_type = 1
+                                                        THEN pmm.qty * pm.percent_parkaging
+                                                        ELSE pmm.qty
+                                                END
+                                                ) / COUNT(DISTINCT pmm.plan_master_id)
+                                        ,3) AS qty_per_batch
+                                ")
 
                         ->groupByRaw("
                                 pmm.material_packaging_code,
