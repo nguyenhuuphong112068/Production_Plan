@@ -47,6 +47,36 @@
         padding: 6px 6px;
     }
 
+    /* GRN hình tròn */
+    .status-circle{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        border:2px solid #007bff;
+        border-radius:50%;
+        width:40px;
+        height:40px;
+        font-size:11px;
+        font-weight:600;
+        color:#007bff;
+    }
+
+    /* QC bo góc */
+    .status-pill{
+        display:inline-block;
+        padding:3px 10px;
+        border-radius:8px;
+        border:1px solid #999;
+        font-size:11px;
+    }
+
+    /* Approved */
+    .status-approved{
+        background:#28a745;
+        color:white;
+        border-color:#28a745;
+    }
+
 
 </style>
 
@@ -84,7 +114,7 @@
                             <th rowspan="2" style="width: 4%">Lượng Tổng Cần Dùng</th>
                             <th rowspan="2">Tổng Tồn MMS</th>
                             <th rowspan="2">Lượng Thiếu Hụt (Nếu có)</th>
-                            <th colspan="8" class="text-center" >Chi Tiết Tồn Kho Hiện Hành</th>
+                            <th colspan="9" class="text-center" >Chi Tiết Tồn Kho Hiện Hành</th>
                         </tr>
                         <tr>
                             <th>Tồn</th>
@@ -94,8 +124,12 @@
                             <th>HSD / Retest</th>
                             <th>Nhà SX</th>
                             <th style="width: 5%">CoA</th>
-                            <th style="width: 1%">Approve Status</th>
-                            <th style="width: 1%">GRN Status</th>
+                            <th style="width: 1%">
+                                {{ 'GRN Status' }}
+                                <br>
+                                {{ 'Approve Status' }}
+                            </th>
+                            {{-- <th style="width: 1%"></th> --}}
                             <th style="width: 1%">Kho</th>
                         </tr>
                     </thead>
@@ -152,12 +186,20 @@
 
                                 <td>{{ $s->coa_list }} </td>
 
-                                <td>{{ $s->QCSTS }} </td>
-                                <td>{{ $s->GRNSts }} </td>
-
+                                <td class="text-center">
+                                    <span class="status-circle">
+                                        {{ $s->GRNSts }}
+                                    </span>
+                                    <br>
+                                    <span class="status-pill 
+                                        {{ strtolower(trim($s->QCSTS)) == 'approved' ? 'status-approved' : '' }}">
+                                        {{ $s->QCSTS }}
+                                    </span>
+                                </td>
+                            
                                 <td>{{ $s->warehouse_list }} </td>
                             @else
-                                <td colspan="8" class="text-center text-danger fw-bold">
+                                <td colspan="9" class="text-center text-danger fw-bold">
                                     Không có tồn kho
                                 </td>
                             @endif
@@ -180,8 +222,16 @@
 
                                 <td>{{ $s->coa_list }} </td>
                         
-                                <td>{{ $s->QCSTS }} </td>
-                                <td>{{ $s->GRNSts }} </td>
+                                <td class="text-center">
+                                    <span class="status-circle">
+                                        {{ $s->GRNSts }}
+                                    </span>
+                                    <br>
+                                    <span class="status-pill 
+                                        {{ strtolower(trim($s->QCSTS)) == 'approved' ? 'status-approved' : '' }}">
+                                        {{ $s->QCSTS }}
+                                    </span>
+                                </td>
 
                                 <td>{{ $s->warehouse_list }} </td>
                             </tr>
