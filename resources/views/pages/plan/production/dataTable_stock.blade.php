@@ -50,21 +50,6 @@
 
 </style>
 
-@php
-function lable_status(int $GRNSts, ?string $ARNO): array {
-    if (!empty($ARNO) && $GRNSts == 7) {
-        return ['text'=>'Chờ Tái Kiểm','color'=>'#dc2626'];
-    }
-    if (!empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
-        return ['text'=>'Chấp Nhận','color'=>'#166534'];
-    }
-    if (empty($ARNO) && $GRNSts >= 2 && $GRNSts <= 5) {
-        return ['text'=>'Đã Lấy Mẫu','color'=>'#ca8a04'];
-    }
-    return ['text'=>'Biệt Trữ','color'=>'#facc15'];
-}
-@endphp
-
 <div class="content-wrapper">
     <div class="card" style="min-height:100vh">
         <div class="card-body mt-5">
@@ -92,13 +77,14 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                     <thead style="position:sticky;top:0;background:#fff;z-index:10">
                         <tr>
                             <th rowspan="2" style="width: 40px">STT</th>
-                            <th rowspan="2" >Mã NL</th>
-                            <th rowspan="2" style="width: 15%">Tên NL</th>                      
-                            <th rowspan="2" style="width: 4%">Số Lượng Dung Cho</th>
-                            <th rowspan="2">Lượng Theo CT</th>
-                            <th rowspan="2">Tổng Tồn</th>
-                            <th rowspan="2">Lượng Cần Dự Trù</th>
-                            <th colspan="8" class="text-center">Tồn Kho Hiện Hành</th>
+                            <th rowspan="2" >Mã Nguyên Liệu/Bao Bì</th>
+                            <th rowspan="2" style="width: 10%">Tên Nguyên Liệu/Bao Bì</th>                      
+                            <th rowspan="2" style="width: 4%">Số Lô Dùng Cho</th>
+                            <th rowspan="2" style="width: 15%">Lượng Dùng Chi Tiết</th>
+                            <th rowspan="2" style="width: 4%">Lượng Tổng Cần Dùng</th>
+                            <th rowspan="2">Tổng Tồn MMS</th>
+                            <th rowspan="2">Lượng Thiếu Hụt (Nếu có)</th>
+                            <th colspan="8" class="text-center" >Chi Tiết Tồn Kho Hiện Hành</th>
                         </tr>
                         <tr>
                             <th>Tồn</th>
@@ -107,13 +93,16 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                             <th>Số Lô NB/ Số Lô NSX</th>
                             <th>HSD / Retest</th>
                             <th>Nhà SX</th>
-                            <th>Trạng Thái</th>
-                            <th>Kho</th>
+                            <th style="width: 5%">CoA</th>
+                            <th style="width: 1%">Approve Status</th>
+                            <th style="width: 1%">GRN Status</th>
+                            <th style="width: 1%">Kho</th>
                         </tr>
                     </thead>
 
                     <tbody>
                     @foreach ($datas as $data)
+
                         @php
                             $stocks = $data->stock ?? collect();
                             $rowspan = max($stocks->count(), 1);
@@ -131,20 +120,24 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                                         data-toggle="modal" 
                                         data-target="#batchDetialModal"
                                         >
-                                        {{ $data->NumberOfBatch }} Lô
+                                        {{ $data->NumberOfBatch}} Lô
                                 </button>
                             </td>
-                            <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}
-                                {{$data->qty_list  }}
-                            </td>
-                           
-                   
-                            <td rowspan="{{ $rowspan }}" class = "{{ $data->totalQty < $data->TotalMatQty?'text-red':'a' }}">{{ round($data->totalQty,5) }} {{ $data->unit_bom }}</td>
-                            
+                            <td rowspan="{{ $rowspan }}"> {!!  $data->qty_list  !!} </td>
                             <td rowspan="{{ $rowspan }}">{{ round($data->total_qty,5) }} {{ $data->unit_bom }}</td>
+
+                            <td rowspan="{{ $rowspan }}" class = "{{ $data->totalQty < $data->total_qty?'text-red':'a' }}">{{ round($data->totalQty,5) }} {{ $data->unit_bom }}</td>
+                            
+                            @php
+                                $shortageQuantity =  $data->total_qty -  $data->totalQty;
+                            @endphp
+                            <td rowspan="{{ $rowspan }} ">{{ $shortageQuantity > 0 ? round($shortageQuantity,5) . " " . $data->unit_bom : '-' }} </td>
                             
                             @if ($stocks->count())
-                                @php $s = $stocks->first(); $lb = lable_status($s->GRNSts,$s->coa_list); @endphp
+                               @php 
+                                    $s = $stocks->first(); 
+                               @endphp
+                   
                                 <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
                                 <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
                                 <td>{{ $s->GRNNO}}</td>
@@ -157,12 +150,11 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                                 </td>
                                 <td>{{ $s->Mfg }}</td>
 
-                                <td class="text-center">
-                                    <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
-                                        {{ $lb['text'] }}
-                                    </span>
-                                    {{ $s->coa_list }}
-                                </td>
+                                <td>{{ $s->coa_list }} </td>
+
+                                <td>{{ $s->QCSTS }} </td>
+                                <td>{{ $s->GRNSts }} </td>
+
                                 <td>{{ $s->warehouse_list }} </td>
                             @else
                                 <td colspan="8" class="text-center text-danger fw-bold">
@@ -174,10 +166,6 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                         {{-- ROW STOCK --}}
                         @foreach ($stocks->skip(1) as $s)
 
-                            @php 
-                                $lb = lable_status($s->GRNSts,$s->coa_list); 
-                                
-                            @endphp
                             <tr data-group="{{ $groupId }}">
                                 <td>{{ round($s->Total_Qty,4) }} {{ $s->MatUOM }}</td>
                                 <td>{{ round($s->ReceiptQuantity,4) }} {{ $s->MatUOM }}</td>
@@ -190,13 +178,11 @@ function lable_status(int $GRNSts, ?string $ARNO): array {
                                 </td>
                                 <td>{{ $s->Mfg }}</td>
 
-                                
-                                <td class="text-center">
-                                    <span style="background:{{ $lb['color'] }};color:#fff;padding:4px 12px;border-radius:14px">
-                                        {{ $lb['text'] }}
-                                    </span>
-                                    {{ $s->coa_list }}
-                                </td>
+                                <td>{{ $s->coa_list }} </td>
+                        
+                                <td>{{ $s->QCSTS }} </td>
+                                <td>{{ $s->GRNSts }} </td>
+
                                 <td>{{ $s->warehouse_list }} </td>
                             </tr>
                         @endforeach

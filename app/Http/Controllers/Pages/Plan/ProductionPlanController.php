@@ -1681,51 +1681,121 @@ class ProductionPlanController extends Controller
         public function open_stock(Request  $request){
               
 
-                try {        
-                        $plan_master_materials = DB::table('plan_master_materials as pmm')
-                        ->leftJoin('plan_master as pm','pmm.plan_master_id', 'pm.id')
-                        ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id','fc.id')
+                try {          
+
+                $sub = DB::table('plan_master_materials as pmm')
+                        ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                        ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+
                         ->when($request->plan_list_id < 0,
-                                        function ($q) {
-                                                return $q->where('pm.weighed', 0);
-                                        },
-                                        function ($q) use ($request) {
-                                                return $q->where('pm.plan_list_id', $request->plan_list_id);
-                                        }
+                                function ($q) {
+                                $q->where('pm.weighed', 0);
+                                },
+                                function ($q) use ($request) {
+                                $q->where('pm.plan_list_id', $request->plan_list_id);
+                                }
                         )
+
                         ->where('pm.cancel', 0)
                         ->where('pm.active', 1)
                         ->where('pmm.active', 1)
-                        ->when($request->has('selected'), function ($q) {return $q->where('pm.selected', 1);})
-                        ->when($request->has('material_packaging_type'), function ($q) use ($request)  {return $q->where('pmm.material_packaging_type', $request->material_packaging_type);})
+
+                        ->when($request->has('selected'), function ($q) {
+                                $q->where('pm.selected', 1);
+                        })
+
+                        ->when($request->has('material_packaging_type'), function ($q) use ($request) {
+                                $q->where('pmm.material_packaging_type', $request->material_packaging_type);
+                        })
+
                         ->select(
-                                
-                                'pmm.MaterialName',
                                 'pmm.material_packaging_code',
-                                'pmm.material_packaging_type',
-                                'pmm.unit_bom',
+                                'fc.intermediate_code',
                                 DB::raw('SUM(pmm.qty) as total_qty'),
-                                DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
-                                DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
-                                DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids"),
-                                DB::raw("
+                                DB::raw('COUNT(DISTINCT pmm.plan_master_id) as batch_count'),
+                                DB::raw('ROUND(SUM(pmm.qty)/COUNT(DISTINCT pmm.plan_master_id),3) as qty_per_batch')
+                        )
+
+                ->groupBy('pmm.material_packaging_code','fc.intermediate_code');
+
+                      
+
+                        $plan_master_materials = DB::table('plan_master_materials as pmm')
+
+                                ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                                ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+
+                                ->leftJoinSub($sub,'qty_sum', function($join){
+                                        $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code');
+                                })
+
+                                ->when($request->plan_list_id < 0,
+                                        function ($q) {
+                                        $q->where('pm.weighed', 0);
+                                        },
+                                        function ($q) use ($request) {
+                                        $q->where('pm.plan_list_id', $request->plan_list_id);
+                                        }
+                                )
+
+                                ->where('pm.cancel', 0)
+                                ->where('pm.active', 1)
+                                ->where('pmm.active', 1)
+
+                                ->when($request->has('selected'), function ($q) {
+                                        $q->where('pm.selected', 1);
+                                })
+
+                                ->when($request->has('material_packaging_type'), function ($q) use ($request) {
+                                        $q->where('pmm.material_packaging_type', $request->material_packaging_type);
+                                })
+
+                                ->select(
+                                        'pmm.MaterialName',
+                                        'pmm.material_packaging_code',
+                                        'pmm.material_packaging_type',
+                                        'pmm.unit_bom',
+
+                                        DB::raw('SUM(DISTINCT qty_sum.total_qty) as total_qty'),
+
+                                        DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
+
+                                        DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
+
+                                        DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids"),
+
+                                        DB::raw("
                                         GROUP_CONCAT(
-                                        CONCAT(fc.intermediate_code, ' : ', pmm.qty)
-                                        SEPARATOR CHAR(10)
+                                        DISTINCT CONCAT(
+                                                qty_sum.intermediate_code,
+                                                ' : ',
+                                                qty_sum.batch_count, ' lô',
+                                                ' x ',
+                                                ROUND(qty_sum.total_qty/qty_sum.batch_count,3),
+                                                ' = ',
+                                                ROUND(qty_sum.total_qty,3),
+                                                ' ',
+                                                pmm.unit_bom
+                                        )
+                                        SEPARATOR '<br>'
                                         ) as qty_list
-                                ")
-                        )
-                        ->groupBy(
-                                
-                                'pmm.MaterialName',
-                                'pmm.material_packaging_code',
-                                'pmm.material_packaging_type',
-                                'pmm.unit_bom'
-                        )
-                        ->orderBy('pmm.material_packaging_code')
+                                        ")
+                                )
+
+                                ->groupBy(
+                                        'pmm.MaterialName',
+                                        'pmm.material_packaging_code',
+                                        'pmm.material_packaging_type',
+                                        'pmm.unit_bom'
+                                )
+
+                                ->orderBy('pmm.material_packaging_code')
+
                         ->get();
 
-                        dd ($plan_master_materials);
+                        //dd ( $plan_master_materials);
+
+                        
 
                         $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
                       
@@ -1742,6 +1812,7 @@ class ProductionPlanController extends Controller
                                         's.MatID',
                                         's.GRNSts',
                                         's.Mfg',
+                                        's.QCSTS',
 
                                         DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
                                         DB::raw('SUM([Total Qty]) as Total_Qty'),
@@ -1776,9 +1847,12 @@ class ProductionPlanController extends Controller
                                         's.MatUOM',
                                         's.MatID',
                                         's.GRNSts',
-                                        's.Mfg'
+                                        's.Mfg',
+                                        's.QCSTS',
                                 )
                         ->get();
+
+                       // dd ($StockOverview);
 
                        
 
