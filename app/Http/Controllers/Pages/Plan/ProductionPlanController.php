@@ -1948,6 +1948,8 @@ class ProductionPlanController extends Controller
                 $datas = DB::table('plan_master')
                         ->select(
                                 'plan_master.*',
+
+                                
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code',
                                 DB::raw('fp_name.name AS finished_product_name'),

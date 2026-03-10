@@ -55,70 +55,7 @@
             
         <!-- /.card-Body -->
         <div class="card-body">
-            {{-- @if (!$send)
-                <div class="row">
-                    <div class="col-md-2">
-                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                            <button class="btn btn-success btn-add mb-2" data-toggle="modal"
-                                data-target="#selectProductModal" style="width: 155px;">
-                                <i class="fas fa-plus"></i> Thêm
-                            </button>
-                        @endif
-                       
-                    </div>
-
-                    <div class="col-md-8 text-center">
-                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                            <form action="{{ route('pages.plan.production.open_stock') }}" 
-                                method="get"
-                                class="d-inline-block">
-                                @csrf
-                                <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
-                                <input type="hidden" name="material_packaging_type" value="0">
-                                <input type="hidden" name="title" value="BẢNG TÍNH NGUYÊN LIỆU">
-                                <input type="hidden" name="selected" value="1">
-                                <input type="hidden" name="current_url" value="{{ url()->full() }}">
-                                <button type="submit" class="btn btn-success" {{ $auth_view_material }} style="width: 300px">
-                                    <i class="fas fa-table"></i> Bảng Dự Trù Nguyên Liệu
-                                </button>
-                            </form>
-
-                            <form action="{{ route('pages.plan.production.open_stock') }}" 
-                                method="get"
-                                class="d-inline-block ms-2">
-                                @csrf
-                                <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
-                                <input type="hidden" name="material_packaging_type" value="1">
-                                <input type="hidden" name="title" value="BẢNG TÍNH BAO BÌ">
-                                <input type="hidden" name="selected" value="1">
-                                <input type="hidden" name="current_url" value="{{ url()->full() }}">
-                                <button type="submit" class="btn btn-success"  style="width: 300px" {{ $auth_view_material }}>
-                                    <i class="fas fa-table"></i> Bảng Dự Trù Bao Bì
-                                </button>
-                            </form>
-                        @endif
-
-                    </div>
-
-
-                    <div class="col-md-2" style="text-align: right;">
-
-                        <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
-
-                            @csrf
-                            <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
-                            <input type="hidden" name="month" value="{{ $month }}">
-                            <input type="hidden" name="production" value="{{ $production }}">
-                            @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean'))
-                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;">
-                                <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
-                            </button>
-                            @endif
-                        </form>
-
-                    </div>
-                </div>
-            @endif --}}
+         
 
             <table id="data_table_batch_detail" class="table table-bordered table-striped" style="font-size: 16px">
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
