@@ -1691,7 +1691,7 @@ class ProductionPlanController extends Controller
                                         fn($q)=>$q->where('pm.weighed',0),
                                         fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
                                 )
-
+                                ->where('pm.deparment_code',session('user')['production_code'])
                                 ->where('pm.cancel',0)
                                 ->where('pm.active',1)
                                 ->where('pmm.active',1)
@@ -1760,7 +1760,7 @@ class ProductionPlanController extends Controller
                                         $q->where('pm.plan_list_id', $request->plan_list_id);
                                         }
                                 )
-
+                                ->where('pm.deparment_code',session('user')['production_code'])
                                 ->where('pm.cancel', 0)
                                 ->where('pm.active', 1)
                                 ->where('pmm.active', 1)
