@@ -279,11 +279,10 @@
                                 <div> {{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '':trim($data->finished_product_name)}} </div>
                                 <div>  {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
                             </td>
+                            
                             <td style="text-align: center;" >
                                 <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }} style="font-weight: bold;" >                              
                                 <b class="text-blue"> {{ $data->actual_batch }} </b>
-                                {{-- {{ $splittingModal = "" }} --}}
-
                                 @if ($data->number_parkaging > 0)
                                     @if ($auth_update != 'disabled')
 
