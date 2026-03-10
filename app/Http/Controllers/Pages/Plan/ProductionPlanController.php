@@ -1785,13 +1785,13 @@ class ProductionPlanController extends Controller
                                         DISTINCT CONCAT(
                                                 qty_sum.product_code,
                                                 ' : ',
-                                                qty_sum.batch_count, ' lô',
+                                                qty_sum.batch_count, ' lô', 
                                                 ' x ',
-                                                ROUND(qty_sum.total_qty/qty_sum.batch_count,3),
+                                                ROUND(qty_sum.qty_per_batch,3),
                                                 ' = ',
                                                 ROUND(qty_sum.total_qty,3),
                                                 ' ',
-                                                pmm.unit_bom
+                                                pmm.unit_bom 
                                         )
                                         SEPARATOR '<br>'
                                         ) as qty_list
