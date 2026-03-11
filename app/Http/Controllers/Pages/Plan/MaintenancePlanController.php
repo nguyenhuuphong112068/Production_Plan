@@ -90,8 +90,7 @@ class MaintenancePlanController extends Controller
                 ->select(
                         'maintenance_category.*',
                         'room.name as room_name',
-                        'room.code as room_code',
-                        'room.id as room_id'
+                        'room.code as room_code'
                 )
                 ->leftJoin('room', 'maintenance_category.room_id', '=', 'room.id')
                 ->where('maintenance_category.active', 1)

@@ -1390,9 +1390,7 @@ class ProductionPlanController extends Controller
                 ->orderBy('id','desc')
                 ->get();
 
-                Log::info('first_batch', [
-                        'datas' => $datas
-                ]);
+      
                  return response()->json($datas);    
         }
 
@@ -1603,8 +1601,7 @@ class ProductionPlanController extends Controller
         }
 
         public function open_stock(Request  $request){
-              
-
+        
                 try { 
                         
 
@@ -1686,13 +1683,34 @@ class ProductionPlanController extends Controller
                         ");
 
   
+                        // Tổng hợp lại theo từng material_packaging_code/type để tránh bị nhân bản khi join với pmm/pm
+                        $qtyTotal = DB::query()
+                                ->fromSub($sub, 'qty_sum')
+                                ->selectRaw("
+                                        material_packaging_code,
+                                        material_packaging_type,
+                                        SUM(total_qty) as total_qty,
+                                        SUM(batch_count) as NumberOfBatch,
+                                        GROUP_CONCAT(
+                                                DISTINCT CONCAT(
+                                                        product_code,
+                                                        ' : ',
+                                                        batch_count,' lô x ',
+                                                        ROUND(total_qty / NULLIF(batch_count, 0), 3),
+                                                        ' = ',
+                                                        ROUND(total_qty, 3)
+                                                )
+                                                SEPARATOR '<br>'
+                                        ) as qty_list
+                                ")
+                                ->groupBy('material_packaging_code', 'material_packaging_type');
 
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
 
                                 ->join('plan_master as pm','pmm.plan_master_id','=','pm.id')
-                                ->leftJoinSub($sub,'qty_sum', function($join){
-                                        $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code')
-                                        ->on('pmm.material_packaging_type','=','qty_sum.material_packaging_type');
+                                ->leftJoinSub($qtyTotal,'qty_total', function($join){
+                                        $join->on('pmm.material_packaging_code','=','qty_total.material_packaging_code')
+                                        ->on('pmm.material_packaging_type','=','qty_total.material_packaging_type');
                                 })
                                 ->leftJoinSub($maxStageFinished,'sp_max',function ($join) {
                                         $join->on('pm.main_parkaging_id','=','sp_max.plan_master_id');
@@ -1735,27 +1753,15 @@ class ProductionPlanController extends Controller
                                         pmm.material_packaging_type,
                                         pmm.unit_bom,
 
-                                        SUM(qty_sum.total_qty) as total_qty,
+                                        MAX(qty_total.total_qty) as total_qty,
 
                                      
-                                        SUM(DISTINCT qty_sum.batch_count) as NumberOfBatch,
+                                        MAX(qty_total.NumberOfBatch) as NumberOfBatch,
                                         SUM(pmm.qty) as TotalMatQty,
 
                                         GROUP_CONCAT(DISTINCT pm.id SEPARATOR '_') as plan_master_ids,
-                                        
-                                        GROUP_CONCAT(
-                                        DISTINCT CONCAT(
-                                                qty_sum.product_code,
-                                                ' : ',
-                                                qty_sum.batch_count,' lô x ',
-                                                ROUND(qty_sum.total_qty/qty_sum.batch_count,3),
-                                                ' = ',
-                                                ROUND(qty_sum.total_qty,3),
-                                                ' ',
-                                                pmm.unit_bom
-                                        )
-                                        SEPARATOR '<br>'
-                                        ) as qty_list
+
+                                        MAX(qty_total.qty_list) as qty_list
                                 ")
 
                                 ->groupBy(
