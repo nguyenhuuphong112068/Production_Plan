@@ -1871,8 +1871,8 @@ class ProductionPlanController extends Controller
 
                                 ->join('plan_master as pm','pmm.plan_master_id','=','pm.id')
                                 ->leftJoinSub($sub,'qty_sum', function($join){
-                                        $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code');
-                                        //->on('pmm.material_packaging_type','=','qty_sum.material_packaging_type');
+                                        $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code')
+                                        ->on('pmm.material_packaging_type','=','qty_sum.material_packaging_type');
                                 })
                                 ->leftJoinSub($maxStageFinished,'sp_max',function ($join) {
                                         $join->on('pm.main_parkaging_id','=','sp_max.plan_master_id');
@@ -1921,8 +1921,8 @@ class ProductionPlanController extends Controller
                                         SUM(DISTINCT qty_sum.batch_count) as NumberOfBatch,
                                         SUM(pmm.qty) as TotalMatQty,
 
-                                        GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids,
-
+                                        GROUP_CONCAT(DISTINCT pm.id SEPARATOR '_') as plan_master_ids,
+                                        
                                         GROUP_CONCAT(
                                         DISTINCT CONCAT(
                                                 qty_sum.product_code,
