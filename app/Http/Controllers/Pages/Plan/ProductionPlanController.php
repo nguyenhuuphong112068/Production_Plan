@@ -1606,6 +1606,17 @@ class ProductionPlanController extends Controller
               
 
                 try {          
+                        $maxStageFinished = DB::table('stage_plan')
+                                ->when($request->plan_list_id >= 0, function ($q) use ($request) {
+                                        $q->where('stage_plan.plan_list_id', $request->plan_list_id);
+                                })
+                                ->where('stage_plan.plan_list_id', ">",23)
+                                ->where('finished', 1)
+                                ->select(
+                                        'plan_master_id',
+                                        DB::raw('MAX(stage_code) as max_stage_code')
+                                )
+                        ->groupBy('plan_master_id');
 
                         $sub = DB::table('plan_master_materials as pmm')
                                 ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
@@ -1613,7 +1624,10 @@ class ProductionPlanController extends Controller
 
                                 ->when($request->plan_list_id < 0,
                                         fn($q)=>$q->where('pm.weighed',0),
-                                        fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                                        fn($q)=>$q->where(function ($sub) {
+                                                        $sub->whereNull('sp_max.max_stage_code')
+                                                        ->orWhere('sp_max.max_stage_code', '<', 7);})
+                                        //$q->where('pm.plan_list_id',$request->plan_list_id)
                                 )
                                 ->where('pm.deparment_code',session('user')['production_code'])
                                 ->where('pm.cancel',0)
@@ -1666,20 +1680,6 @@ class ProductionPlanController extends Controller
                                 END
                         ");
 
-                        $maxStageFinished = DB::table('stage_plan')
-                                ->when($request->plan_list_id >= 0, function ($q) use ($request) {
-                                        $q->where('stage_plan.plan_list_id', $request->plan_list_id);
-                                })
-                                ->where('stage_plan.plan_list_id', ">",23)
-                                ->where('finished', 1)
-                                ->select(
-                                        'plan_master_id',
-                                        DB::raw('MAX(stage_code) as max_stage_code')
-                                )
-                        ->groupBy('plan_master_id');
-
-
-
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
                                 ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
                                 ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
@@ -1696,10 +1696,15 @@ class ProductionPlanController extends Controller
 
                                 ->when($request->plan_list_id < 0,
                                         function ($q) {
-                                        $q->where('pm.weighed', 0);
+                                        //$q->where('pm.weighed', 0);
+                                                $q->where(function ($sub) {
+                                                        $sub->whereNull('sp_max.max_stage_code')
+                                                        ->orWhere('sp_max.max_stage_code', '<', 7);
+                                                });
+
                                         },
                                         function ($q) use ($request) {
-                                        $q->where('pm.plan_list_id', $request->plan_list_id);
+                                                $q->where('pm.plan_list_id', $request->plan_list_id);
                                         }
                                 )
                                 ->where('pm.deparment_code',session('user')['production_code'])
