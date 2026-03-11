@@ -1643,6 +1643,14 @@ class ProductionPlanController extends Controller
                                         ->where('pm.active',1)
                                         ->where('pmm.active',1)
 
+                                         ->where(function ($q) {
+                                                $q->where('pmm.material_packaging_type', '!=', 0)
+                                                ->orWhere(function ($sub) {
+                                                        $sub->where('pmm.material_packaging_type', 0)
+                                                        ->whereNull('sp_max.max_stage_code');
+                                                });
+                                        })
+
 
                                         ->when($request->has('selected'),
                                                 fn($q)=>$q->where('pm.selected',1)
