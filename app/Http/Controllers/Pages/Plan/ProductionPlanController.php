@@ -1607,185 +1607,345 @@ class ProductionPlanController extends Controller
 
                 try { 
                         
+                        // $maxStageFinished = DB::table('stage_plan')
+                                //         ->when($request->plan_list_id >= 0, function ($q) use ($request) {
+                                //                 $q->where('stage_plan.plan_list_id', $request->plan_list_id);
+                                //         })
+                                //         //->where('stage_plan.plan_list_id', ">",23)
+                                //         ->where('finished', 1)
+                                //         ->select(
+                                //                 'plan_master_id',
+                                //                 DB::raw('MAX(stage_code) as max_stage_code')
+                                //         )
+                        // ->groupBy('plan_master_id');
+
+
+                        // $sub = DB::table('plan_master_materials as pmm')
+                        //                 ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                        //                 ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+                  
+                        //                 ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                        //                         $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
+                        //                         })
+                        //                         ->leftJoin('stage_plan', function ($join) {
+                        //                         $join->on('pm.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                        //                                 ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                        //                 })
+                        //                 ->when($request->plan_list_id < 0,
+                        //                         fn($q)=>$q->where(function ($sub) {
+                        //                                         $sub->whereNull('sp_max.max_stage_code')
+                        //                                         ->orWhere('sp_max.max_stage_code', '<', 7);}),
+                        //                         fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                        //                 )
+                        //                 ->where('pm.deparment_code',session('user')['production_code'])
+                        //                 ->where('pm.cancel',0)
+                        //                 ->where('pm.active',1)
+                        //                 ->where('pmm.active',1)
+
+                        //                  ->where(function ($q) {
+                        //                         $q->where('pmm.material_packaging_type', '!=', 0)
+                        //                         ->orWhere(function ($sub) {
+                        //                                 $sub->where('pmm.material_packaging_type', 0)
+                        //                                 ->whereNull('sp_max.max_stage_code');
+                        //                         });
+                        //                 })
+
+
+                        //                 ->when($request->has('selected'),
+                        //                         fn($q)=>$q->where('pm.selected',1)
+                        //                 )
+
+                        //                 ->when($request->has('material_packaging_type'),
+                        //                         fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                        //                 )
+
+                        //                 ->selectRaw("
+                        //                         pmm.material_packaging_code,
+                                              
+                        //                         CASE
+                        //                         WHEN pmm.material_packaging_type = 0
+                        //                         THEN fc.intermediate_code
+                        //                         ELSE fc.finished_product_code
+                        //                         END AS product_code,
+
+                        //                         SUM(CASE
+                        //                                 WHEN pmm.material_packaging_type = 1
+                        //                                 THEN pmm.qty * pm.percent_parkaging
+                        //                                 ELSE pmm.qty
+                        //                                 END
+                        //                         ) AS total_qty,
+
+                        //                         COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
+
+                        //                         ROUND(
+                        //                                 SUM(
+                        //                                 CASE
+                        //                                         WHEN pmm.material_packaging_type = 1
+                        //                                         THEN pmm.qty * pm.percent_parkaging
+                        //                                         ELSE pmm.qty
+                        //                                 END
+                        //                                 ) / COUNT(DISTINCT pmm.plan_master_id)
+                        //                         ,3) AS qty_per_batch
+                        //                 ")
+
+                        //                 ->groupByRaw("
+                        //                 pmm.material_packaging_code,
+                        //                 CASE
+                        //                 WHEN pmm.material_packaging_type = 0
+                        //                 THEN fc.intermediate_code
+                        //                 ELSE fc.finished_product_code
+                        //                 END
+                        // ");
+
+
+                        // $plan_master_materials = DB::table('plan_master_materials as pmm')
+                        //         ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                        //         ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+                        //         ->leftJoinSub($sub,'qty_sum', function($join){
+                        //                 $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code');
+                        //         })
+                        //         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                        //                 $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
+                        //                 })
+                        //                 ->leftJoin('stage_plan', function ($join) {
+                        //                 $join->on('pm.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                        //                         ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                        //         })
+
+                        //         ->when($request->plan_list_id < 0,
+                        //                 function ($q) {
+                        //                         $q->where(function ($sub) {
+                        //                         $sub->whereNull('sp_max.max_stage_code')
+                        //                                 ->orWhere('sp_max.max_stage_code', '<', 7);
+                        //                         });
+                        //                 },
+                        //                 function ($q) use ($request) {
+                        //                         $q->where('pm.plan_list_id', $request->plan_list_id);
+                        //                 }
+                        //         )
+                        //         ->where('pm.deparment_code',session('user')['production_code'])
+                        //         ->where('pm.cancel', 0)
+                        //         ->where('pm.active', 1)
+                        //         ->where('pmm.active', 1)
+
+                        //         ->where(function ($q) {
+                        //                 $q->where('pmm.material_packaging_type', '!=', 0)
+                        //                 ->orWhere(function ($sub) {
+                        //                         $sub->where('pmm.material_packaging_type', 0)
+                        //                         ->whereNull('sp_max.max_stage_code');
+                        //                 });
+                        //         })
+
+
+                        //         ->when($request->has('selected'), function ($q) {
+                        //                 $q->where('pm.selected', 1);
+                        //         })
+
+                        //         ->when($request->has('material_packaging_type'), function ($q) use ($request) {
+                        //                 $q->where('pmm.material_packaging_type', $request->material_packaging_type);
+                        //         })
+
+                        //         ->select(
+                        //                 'pmm.MaterialName',
+                        //                 'pmm.material_packaging_code',
+                        //                 'pmm.material_packaging_type',
+                        //                 'pmm.unit_bom',
+
+                        //                 DB::raw('SUM(DISTINCT qty_sum.total_qty) as total_qty'),
+
+                        //                 DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
+
+                        //                 DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
+
+                        //                 DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids"),
+
+                        //                 DB::raw("
+                        //                 GROUP_CONCAT(
+                        //                 DISTINCT CONCAT(
+                        //                         qty_sum.product_code,
+                        //                         ' : ',
+                        //                         qty_sum.batch_count, ' lô',
+                        //                         ' x ',
+                        //                         ROUND(qty_sum.qty_per_batch,3),
+                        //                         ' = ',
+                        //                         ROUND(qty_sum.total_qty,3),
+                        //                         ' ',
+                        //                         pmm.unit_bom
+                        //                 )
+                        //                 SEPARATOR '<br>'
+                        //                 ) as qty_list
+                        //                 ")
+                        //         )
+
+                        //         ->groupBy(
+                        //                 'pmm.MaterialName',
+                        //                 'pmm.material_packaging_code',
+                        //                 'pmm.material_packaging_type',
+                        //                 'pmm.unit_bom'
+                        //         )
+
+                        //         ->orderBy('pmm.material_packaging_code')
+
+                        // ->get();
+
                         $maxStageFinished = DB::table('stage_plan')
-                                ->when($request->plan_list_id >= 0, function ($q) use ($request) {
-                                        $q->where('stage_plan.plan_list_id', $request->plan_list_id);
-                                })
-                                //->where('stage_plan.plan_list_id', ">",23)
-                                ->where('finished', 1)
-                                ->select(
-                                        'plan_master_id',
-                                        DB::raw('MAX(stage_code) as max_stage_code')
-                                )
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_stage_code')
+                        )
+                        ->where('finished', 1)
+                        ->when($request->plan_list_id >= 0, function ($q) use ($request) {
+                                $q->where('plan_list_id', $request->plan_list_id);
+                        })
                         ->groupBy('plan_master_id');
 
-                        //dd ( $maxStageFinished);
-
                         $sub = DB::table('plan_master_materials as pmm')
-                                        ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
-                                        ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
-                  
-                                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                                                $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
-                                                })
-                                                ->leftJoin('stage_plan', function ($join) {
-                                                $join->on('pm.main_parkaging_id', '=', 'stage_plan.plan_master_id')
-                                                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
-                                        })
-                                        ->when($request->plan_list_id < 0,
-                                                fn($q)=>$q->where(function ($sub) {
-                                                                $sub->whereNull('sp_max.max_stage_code')
-                                                                ->orWhere('sp_max.max_stage_code', '<', 7);}),
-                                                fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
-                                        )
-                                        ->where('pm.deparment_code',session('user')['production_code'])
-                                        ->where('pm.cancel',0)
-                                        ->where('pm.active',1)
-                                        ->where('pmm.active',1)
+                        ->join('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                        ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
 
-                                         ->where(function ($q) {
-                                                $q->where('pmm.material_packaging_type', '!=', 0)
-                                                ->orWhere(function ($sub) {
-                                                        $sub->where('pmm.material_packaging_type', 0)
-                                                        ->whereNull('sp_max.max_stage_code');
-                                                });
-                                        })
+                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                $join->on('pm.main_parkaging_id','=','sp_max.plan_master_id');
+                        })
 
+                        ->when($request->plan_list_id < 0,
+                                fn($q)=>$q->where(function ($sub) {
+                                $sub->whereNull('sp_max.max_stage_code')
+                                        ->orWhere('sp_max.max_stage_code','<',7);
+                                }),
+                                fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                        )
 
-                                        ->when($request->has('selected'),
-                                                fn($q)=>$q->where('pm.selected',1)
-                                        )
+                        ->where([
+                                ['pm.deparment_code',session('user')['production_code']],
+                                ['pm.cancel',0],
+                                ['pm.active',1],
+                                ['pmm.active',1]
+                        ])
 
-                                        ->when($request->has('material_packaging_type'),
-                                                fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
-                                        )
+                        ->where(function ($q) {
+                                $q->where('pmm.material_packaging_type','!=',0)
+                                ->orWhere(function ($sub) {
+                                $sub->where('pmm.material_packaging_type',0)
+                                        ->whereNull('sp_max.max_stage_code');
+                                });
+                        })
 
-                                        ->selectRaw("
-                                                pmm.material_packaging_code,
+                        ->when($request->has('selected'),
+                                fn($q)=>$q->where('pm.selected',1)
+                        )
 
-                                                CASE
-                                                WHEN pmm.material_packaging_type = 0
-                                                THEN fc.intermediate_code
-                                                ELSE fc.finished_product_code
-                                                END AS product_code,
+                        ->when($request->has('material_packaging_type'),
+                                fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                        )
 
-                                                SUM(CASE
-                                                        WHEN pmm.material_packaging_type = 1
-                                                        THEN pmm.qty * pm.percent_parkaging
-                                                        ELSE pmm.qty
-                                                        END
-                                                ) AS total_qty,
+                        ->selectRaw("
+                                pmm.material_packaging_code,
+                                pmm.material_packaging_type,
 
-                                                COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
+                                CASE
+                                WHEN pmm.material_packaging_type = 0
+                                THEN fc.intermediate_code
+                                ELSE fc.finished_product_code
+                                END AS product_code,
 
-                                                ROUND(
-                                                        SUM(
-                                                        CASE
-                                                                WHEN pmm.material_packaging_type = 1
-                                                                THEN pmm.qty * pm.percent_parkaging
-                                                                ELSE pmm.qty
-                                                        END
-                                                        ) / COUNT(DISTINCT pmm.plan_master_id)
-                                                ,3) AS qty_per_batch
-                                        ")
+                                SUM(
+                                CASE
+                                        WHEN pmm.material_packaging_type = 1
+                                        THEN pmm.qty * pm.percent_parkaging
+                                        ELSE pmm.qty
+                                END
+                                ) as total_qty,
 
-                                        ->groupByRaw("
-                                        pmm.material_packaging_code,
-                                        CASE
-                                        WHEN pmm.material_packaging_type = 0
-                                        THEN fc.intermediate_code
-                                        ELSE fc.finished_product_code
-                                        END
+                                COUNT(DISTINCT pmm.plan_master_id) as batch_count
+                        ")
+
+                        ->groupByRaw("
+                                pmm.material_packaging_code,
+                                pmm.material_packaging_type,
+                                product_code
                         ");
 
-
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
-                                ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
-                                ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
-                                ->leftJoinSub($sub,'qty_sum', function($join){
-                                        $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code');
-                                })
-                                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                                        $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
-                                        })
-                                        ->leftJoin('stage_plan', function ($join) {
-                                        $join->on('pm.main_parkaging_id', '=', 'stage_plan.plan_master_id')
-                                                ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
-                                })
 
-                                ->when($request->plan_list_id < 0,
-                                        function ($q) {
-                                                $q->where(function ($sub) {
-                                                $sub->whereNull('sp_max.max_stage_code')
-                                                        ->orWhere('sp_max.max_stage_code', '<', 7);
-                                                });
-                                        },
-                                        function ($q) use ($request) {
-                                                $q->where('pm.plan_list_id', $request->plan_list_id);
-                                        }
+                        ->join('plan_master as pm','pmm.plan_master_id','=','pm.id')
+
+                        ->leftJoinSub($sub,'qty_sum', function($join){
+                                $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code')
+                                ->on('pmm.material_packaging_type','=','qty_sum.material_packaging_type');
+                        })
+
+                        ->leftJoinSub($maxStageFinished,'sp_max',function ($join) {
+                                $join->on('pm.main_parkaging_id','=','sp_max.plan_master_id');
+                        })
+
+                        ->when($request->plan_list_id < 0,
+                                fn($q)=>$q->where(function ($sub) {
+                                $sub->whereNull('sp_max.max_stage_code')
+                                        ->orWhere('sp_max.max_stage_code','<',7);
+                                }),
+                                fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                        )
+
+                        ->where([
+                                ['pm.deparment_code',session('user')['production_code']],
+                                ['pm.cancel',0],
+                                ['pm.active',1],
+                                ['pmm.active',1]
+                        ])
+
+                        ->where(function ($q) {
+                                $q->where('pmm.material_packaging_type','!=',0)
+                                ->orWhere(function ($sub) {
+                                $sub->where('pmm.material_packaging_type',0)
+                                        ->whereNull('sp_max.max_stage_code');
+                                });
+                        })
+
+                        ->when($request->has('selected'),
+                                fn($q)=>$q->where('pm.selected',1)
+                        )
+
+                        ->when($request->has('material_packaging_type'),
+                                fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                        )
+
+                        ->selectRaw("
+                                pmm.MaterialName,
+                                pmm.material_packaging_code,
+                                pmm.material_packaging_type,
+                                pmm.unit_bom,
+
+                                SUM(qty_sum.total_qty) as total_qty,
+
+                                COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch,
+
+                                SUM(pmm.qty) as TotalMatQty,
+
+                                GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids,
+
+                                GROUP_CONCAT(
+                                DISTINCT CONCAT(
+                                        qty_sum.product_code,
+                                        ' : ',
+                                        qty_sum.batch_count,' lô x ',
+                                        ROUND(qty_sum.total_qty/qty_sum.batch_count,3),
+                                        ' = ',
+                                        ROUND(qty_sum.total_qty,3),
+                                        ' ',
+                                        pmm.unit_bom
                                 )
-                                ->where('pm.deparment_code',session('user')['production_code'])
-                                ->where('pm.cancel', 0)
-                                ->where('pm.active', 1)
-                                ->where('pmm.active', 1)
+                                SEPARATOR '<br>'
+                                ) as qty_list
+                        ")
 
-                                ->where(function ($q) {
-                                        $q->where('pmm.material_packaging_type', '!=', 0)
-                                        ->orWhere(function ($sub) {
-                                                $sub->where('pmm.material_packaging_type', 0)
-                                                ->whereNull('sp_max.max_stage_code');
-                                        });
-                                })
+                        ->groupBy(
+                                'pmm.MaterialName',
+                                'pmm.material_packaging_code',
+                                'pmm.material_packaging_type',
+                                'pmm.unit_bom'
+                        )
 
-
-                                ->when($request->has('selected'), function ($q) {
-                                        $q->where('pm.selected', 1);
-                                })
-
-                                ->when($request->has('material_packaging_type'), function ($q) use ($request) {
-                                        $q->where('pmm.material_packaging_type', $request->material_packaging_type);
-                                })
-
-                                ->select(
-                                        'pmm.MaterialName',
-                                        'pmm.material_packaging_code',
-                                        'pmm.material_packaging_type',
-                                        'pmm.unit_bom',
-
-                                        DB::raw('SUM(DISTINCT qty_sum.total_qty) as total_qty'),
-
-                                        DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
-
-                                        DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
-
-                                        DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids"),
-
-                                        DB::raw("
-                                        GROUP_CONCAT(
-                                        DISTINCT CONCAT(
-                                                qty_sum.product_code,
-                                                ' : ',
-                                                qty_sum.batch_count, ' lô',
-                                                ' x ',
-                                                ROUND(qty_sum.qty_per_batch,3),
-                                                ' = ',
-                                                ROUND(qty_sum.total_qty,3),
-                                                ' ',
-                                                pmm.unit_bom
-                                        )
-                                        SEPARATOR '<br>'
-                                        ) as qty_list
-                                        ")
-                                )
-
-                                ->groupBy(
-                                        'pmm.MaterialName',
-                                        'pmm.material_packaging_code',
-                                        'pmm.material_packaging_type',
-                                        'pmm.unit_bom'
-                                )
-
-                                ->orderBy('pmm.material_packaging_code')
+                        ->orderBy('pmm.material_packaging_code')
 
                         ->get();
 
