@@ -1605,12 +1605,13 @@ class ProductionPlanController extends Controller
         public function open_stock(Request  $request){
               
 
-                try {          
+                try { 
+                        
                         $maxStageFinished = DB::table('stage_plan')
                                 ->when($request->plan_list_id >= 0, function ($q) use ($request) {
                                         $q->where('stage_plan.plan_list_id', $request->plan_list_id);
                                 })
-                                ->where('stage_plan.plan_list_id', ">",23)
+                                //->where('stage_plan.plan_list_id', ">",23)
                                 ->where('finished', 1)
                                 ->select(
                                         'plan_master_id',
@@ -1618,67 +1619,77 @@ class ProductionPlanController extends Controller
                                 )
                         ->groupBy('plan_master_id');
 
+                        //dd ( $maxStageFinished);
+
                         $sub = DB::table('plan_master_materials as pmm')
-                                ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
-                                ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+                                        ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                                        ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+                  
+                                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                                $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
+                                                })
+                                                ->leftJoin('stage_plan', function ($join) {
+                                                $join->on('pm.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                                                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                                        })
+                                        ->when($request->plan_list_id < 0,
+                                                fn($q)=>$q->where(function ($sub) {
+                                                                $sub->whereNull('sp_max.max_stage_code')
+                                                                ->orWhere('sp_max.max_stage_code', '<', 7);}),
+                                                fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                                        )
+                                        ->where('pm.deparment_code',session('user')['production_code'])
+                                        ->where('pm.cancel',0)
+                                        ->where('pm.active',1)
+                                        ->where('pmm.active',1)
 
-                                ->when($request->plan_list_id < 0,
-                                        fn($q)=>$q->where('pm.weighed',0),
-                                        fn($q)=>$q->where(function ($sub) {
-                                                        $sub->whereNull('sp_max.max_stage_code')
-                                                        ->orWhere('sp_max.max_stage_code', '<', 7);})
-                                        //$q->where('pm.plan_list_id',$request->plan_list_id)
-                                )
-                                ->where('pm.deparment_code',session('user')['production_code'])
-                                ->where('pm.cancel',0)
-                                ->where('pm.active',1)
-                                ->where('pmm.active',1)
 
-                                ->when($request->has('selected'),
-                                        fn($q)=>$q->where('pm.selected',1)
-                                )
+                                        ->when($request->has('selected'),
+                                                fn($q)=>$q->where('pm.selected',1)
+                                        )
 
-                                ->when($request->has('material_packaging_type'),
-                                        fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
-                                )
+                                        ->when($request->has('material_packaging_type'),
+                                                fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                                        )
 
-                                ->selectRaw("
+                                        ->selectRaw("
+                                                pmm.material_packaging_code,
+
+                                                CASE
+                                                WHEN pmm.material_packaging_type = 0
+                                                THEN fc.intermediate_code
+                                                ELSE fc.finished_product_code
+                                                END AS product_code,
+
+                                                SUM(CASE
+                                                        WHEN pmm.material_packaging_type = 1
+                                                        THEN pmm.qty * pm.percent_parkaging
+                                                        ELSE pmm.qty
+                                                        END
+                                                ) AS total_qty,
+
+                                                COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
+
+                                                ROUND(
+                                                        SUM(
+                                                        CASE
+                                                                WHEN pmm.material_packaging_type = 1
+                                                                THEN pmm.qty * pm.percent_parkaging
+                                                                ELSE pmm.qty
+                                                        END
+                                                        ) / COUNT(DISTINCT pmm.plan_master_id)
+                                                ,3) AS qty_per_batch
+                                        ")
+
+                                        ->groupByRaw("
                                         pmm.material_packaging_code,
-
                                         CASE
                                         WHEN pmm.material_packaging_type = 0
                                         THEN fc.intermediate_code
                                         ELSE fc.finished_product_code
-                                        END AS product_code,
-
-                                        SUM(CASE
-                                                WHEN pmm.material_packaging_type = 1
-                                                THEN pmm.qty * pm.percent_parkaging
-                                                ELSE pmm.qty
-                                                END
-                                        ) AS total_qty,
-
-                                        COUNT(DISTINCT pmm.plan_master_id) AS batch_count,
-
-                                        ROUND(
-                                                SUM(
-                                                CASE
-                                                        WHEN pmm.material_packaging_type = 1
-                                                        THEN pmm.qty * pm.percent_parkaging
-                                                        ELSE pmm.qty
-                                                END
-                                                ) / COUNT(DISTINCT pmm.plan_master_id)
-                                        ,3) AS qty_per_batch
-                                ")
-
-                                ->groupByRaw("
-                                pmm.material_packaging_code,
-                                CASE
-                                WHEN pmm.material_packaging_type = 0
-                                THEN fc.intermediate_code
-                                ELSE fc.finished_product_code
-                                END
+                                        END
                         ");
+
 
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
                                 ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
@@ -1696,12 +1707,10 @@ class ProductionPlanController extends Controller
 
                                 ->when($request->plan_list_id < 0,
                                         function ($q) {
-                                        //$q->where('pm.weighed', 0);
                                                 $q->where(function ($sub) {
-                                                        $sub->whereNull('sp_max.max_stage_code')
+                                                $sub->whereNull('sp_max.max_stage_code')
                                                         ->orWhere('sp_max.max_stage_code', '<', 7);
                                                 });
-
                                         },
                                         function ($q) use ($request) {
                                                 $q->where('pm.plan_list_id', $request->plan_list_id);
@@ -1711,6 +1720,15 @@ class ProductionPlanController extends Controller
                                 ->where('pm.cancel', 0)
                                 ->where('pm.active', 1)
                                 ->where('pmm.active', 1)
+
+                                ->where(function ($q) {
+                                        $q->where('pmm.material_packaging_type', '!=', 0)
+                                        ->orWhere(function ($sub) {
+                                                $sub->where('pmm.material_packaging_type', 0)
+                                                ->whereNull('sp_max.max_stage_code');
+                                        });
+                                })
+
 
                                 ->when($request->has('selected'), function ($q) {
                                         $q->where('pm.selected', 1);
@@ -1762,8 +1780,9 @@ class ProductionPlanController extends Controller
                                 ->orderBy('pmm.material_packaging_code')
 
                         ->get();
-                        
 
+                
+   
                         $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
                       
                         $StockOverview = DB::connection('mms')
@@ -1848,7 +1867,7 @@ class ProductionPlanController extends Controller
 
                        // dd ( $plan_master_materials);
                 
-                        session()->put(['title'=> "BẢNG DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
+                        session()->put(['title'=> "BẢNG TÍNH DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
 
                         if ($request->title){
                                 session()->put(['title'=> "$request->title - $production"]);
@@ -2090,7 +2109,6 @@ class ProductionPlanController extends Controller
                 ]);
 
         }
-
 
         public function recipe_show_update(Request $request){
                 
