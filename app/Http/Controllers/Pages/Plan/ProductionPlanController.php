@@ -86,7 +86,7 @@ class ProductionPlanController extends Controller
                         ->where('pm.active', 1)
                         ->where('pm.only_parkaging', 0)
                         ->where('pm.plan_list_id', '!=', 0)
-                        ->where('pm.plan_list_id', '>=', 23)
+                        ->where('pm.plan_list_id', '>', 23)
                         ->where('pm.deparment_code', $production_code)
                         ->select(
                         'pm.plan_list_id',
@@ -167,28 +167,49 @@ class ProductionPlanController extends Controller
                         'created_at' => now(),
                         'send' => 1,
                         'send_by' => 'NA',
-                        'send_date' => null,   // ✅ THÊM DÒNG NÀY
+                        'send_date' => null,  
                         'month' => 'NA',
 
-                        'name' => 'KẾ HOẠCH CHƯA THỰC HIỆN',
+                        'name' => 'KẾ HOẠCH CHƯA HOÀN TẤT ĐÓNG GÓI',
                         'total_batch_qty' => 0,
                         'tong_lo' => 0,
                         'status_counts' => [
-                                'Chưa làm' => 0   // ✅ thêm dòng này
+                                'Chưa làm' => 0,
+                                'Đã Cân' => 0,  
+                                'Đã Pha chế' => 0,     
+                                'Đã THT' => 0,  
+                                'Đã định hình' => 0,
+                                'Đã Bao phim' => 0,    
                         ],
                         'batch_qty_pending' => 0,
                         ];
 
                
                 foreach ($datas as $item) {
+                //dd ($item);
+                $notFinished = collect($item->status_counts)
+                        ->except(['Hoàn Tất ĐG','Hủy'])
+                        ->sum();
 
-                        $pending = $item->status_counts['Chưa làm'] ?? 0;
-                        
-                        if ($pending > 0) {
-                                $pending_plan->tong_lo += $pending;
-                                $pending_plan->status_counts ['Chưa làm'] += $pending;
-                                $pending_plan->total_batch_qty += $item->batch_qty_pending ?? 0;
+                if ($notFinished > 0) {
+
+                        $pending_plan->tong_lo += $notFinished;
+
+                        // cộng từng trạng thái
+                        foreach ($item->status_counts as $status => $count) {
+
+                        if (!in_array($status, ['Hoàn Tất ĐG','Hủy'])) {
+
+                                if (!isset($pending_plan->status_counts[$status])) {
+                                $pending_plan->status_counts[$status] = 0;
+                                }
+
+                                $pending_plan->status_counts[$status] += $count;
                         }
+                        }
+
+                        $pending_plan->total_batch_qty += $item->total_batch_qty ?? 0;
+                }
                 }
 
              
@@ -226,14 +247,16 @@ class ProductionPlanController extends Controller
         }
 
         public function open(Request  $request){
-                //dd ($request->plan_list_id);
+
                 $maxStageFinished = DB::table('stage_plan')
-                ->where('stage_plan.plan_list_id', $request->plan_list_id)
-                ->where('finished', 1)
-                ->select(
-                        'plan_master_id',
-                        DB::raw('MAX(stage_code) as max_stage_code')
-                )
+                        ->when($request->plan_list_id >= 0, function ($q) use ($request) {
+                                $q->where('stage_plan.plan_list_id', $request->plan_list_id);
+                        })
+                        ->where('finished', 1)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_stage_code')
+                        )
                 ->groupBy('plan_master_id');
   
                 $datas = DB::table('plan_master')
@@ -265,14 +288,17 @@ class ProductionPlanController extends Controller
                                 ")
                         )
                         ->whereIn('plan_master.plan_list_id', DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('id'))
+                        ->where('plan_master.plan_list_id', ">", 23)
                         ->where('plan_master.active', 1)
    
                         ->when($request->plan_list_id < 0,
                                 function ($q) {
-                                        return $q->where('plan_master.weighed', 0) 
-                                                ->where('plan_master.cancel', 0) 
-                                                ->where('plan_master.only_parkaging', 0)
-                                        ;
+                                        return $q->where('plan_master.cancel', 0)
+                                                //->where('plan_master.only_parkaging', 0)
+                                                ->where(function ($sub) {
+                                                        $sub->whereNull('sp_max.max_stage_code')
+                                                        ->orWhere('sp_max.max_stage_code', '<', 7);
+                                                });
                                 },
                                 function ($q) use ($request) {
                                         return $q->where('plan_master.plan_list_id', $request->plan_list_id);
@@ -292,6 +318,7 @@ class ProductionPlanController extends Controller
                                 $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id') //
                                 ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
                         })
+                        
                         ->orderBy('expected_date', 'asc')
                         ->orderBy('level', 'asc')
                         ->orderBy('batch', 'asc')
@@ -1630,7 +1657,7 @@ class ProductionPlanController extends Controller
                                         ,3) AS qty_per_batch
                                 ")
 
-                        ->groupByRaw("
+                                ->groupByRaw("
                                 pmm.material_packaging_code,
                                 CASE
                                 WHEN pmm.material_packaging_type = 0
@@ -1639,14 +1666,105 @@ class ProductionPlanController extends Controller
                                 END
                         ");
 
+                        $maxStageFinished = DB::table('stage_plan')
+                        ->where('stage_plan.plan_list_id', $request->plan_list_id)
+                        ->where('finished', 1)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
+                        // $plan_master_materials = DB::table('plan_master_materials as pmm')
+                        //         ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
+                        //         ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+                        //         ->leftJoinSub($sub,'qty_sum', function($join){
+                        //                 $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code');
+                        //         })
+                        //         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                        //                 $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
+                        //                 })
+                        //                 ->leftJoin('stage_plan', function ($join) {
+                        //                 $join->on('pm.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                        //                         ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                        //         })
+
+                        //         ->when($request->plan_list_id < 0,
+                        //                 function ($q) {
+                        //                 $q->where('pm.weighed', 0);
+                        //                 },
+                        //                 function ($q) use ($request) {
+                        //                 $q->where('pm.plan_list_id', $request->plan_list_id);
+                        //                 }
+                        //         )
+                        //         ->where('pm.deparment_code',session('user')['production_code'])
+                        //         ->where('pm.cancel', 0)
+                        //         ->where('pm.active', 1)
+                        //         ->where('pmm.active', 1)
+
+                        //         ->when($request->has('selected'), function ($q) {
+                        //                 $q->where('pm.selected', 1);
+                        //         })
+
+                        //         ->when($request->has('material_packaging_type'), function ($q) use ($request) {
+                        //                 $q->where('pmm.material_packaging_type', $request->material_packaging_type);
+                        //         })
+
+                        //         ->select(
+                        //                 'pmm.MaterialName',
+                        //                 'pmm.material_packaging_code',
+                        //                 'pmm.material_packaging_type',
+                        //                 'pmm.unit_bom',
+
+                        //                 DB::raw('SUM(DISTINCT qty_sum.total_qty) as total_qty'),
+
+                        //                 DB::raw('COUNT(DISTINCT pmm.plan_master_id) as NumberOfBatch'),
+
+                        //                 DB::raw('SUM(pmm.qty) * COUNT(DISTINCT pmm.plan_master_id) as TotalMatQty'),
+
+                        //                 DB::raw("GROUP_CONCAT(DISTINCT pmm.plan_master_id SEPARATOR '_') as plan_master_ids"),
+
+                        //                 DB::raw("
+                        //                 GROUP_CONCAT(
+                        //                 DISTINCT CONCAT(
+                        //                         qty_sum.product_code,
+                        //                         ' : ',
+                        //                         qty_sum.batch_count, ' lô',
+                        //                         ' x ',
+                        //                         ROUND(qty_sum.qty_per_batch,3),
+                        //                         ' = ',
+                        //                         ROUND(qty_sum.total_qty,3),
+                        //                         ' ',
+                        //                         pmm.unit_bom
+                        //                 )
+                        //                 SEPARATOR '<br>'
+                        //                 ) as qty_list
+                        //                 ")
+                        //         )
+
+                        //         ->groupBy(
+                        //                 'pmm.MaterialName',
+                        //                 'pmm.material_packaging_code',
+                        //                 'pmm.material_packaging_type',
+                        //                 'pmm.unit_bom'
+                        //         )
+
+                        //         ->orderBy('pmm.material_packaging_code')
+
+                        // ->get();
 
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
-
                                 ->leftJoin('plan_master as pm','pmm.plan_master_id','=','pm.id')
                                 ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
-
                                 ->leftJoinSub($sub,'qty_sum', function($join){
                                         $join->on('pmm.material_packaging_code','=','qty_sum.material_packaging_code');
+                                })
+                                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                        $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
+                                        })
+                                        ->leftJoin('stage_plan', function ($join) {
+                                        $join->on('pm.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                                                ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
                                 })
 
                                 ->when($request->plan_list_id < 0,
