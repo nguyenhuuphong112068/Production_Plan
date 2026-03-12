@@ -1,3 +1,42 @@
+<style>
+    .step-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff;
+        /* màu xanh bootstrap */
+    }
+
+    .step-checkbox:checked {
+        box-shadow: 0 0 5px #007bff;
+    }
+
+    .time {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        text-align: center;
+        height: 100%;
+        padding: 2px 4px;
+        box-sizing: border-box;
+    }
+
+    /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
+    .time:focus {
+        border: 1px solid #007bff;
+        border-radius: 2px;
+        background-color: #fff;
+    }
+
+    /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
+    td input.time {
+        display: block;
+        margin: auto;
+    }
+</style>
+
+
 <div class="content-wrapper">
     <!-- Main content -->
     <div class="card">
@@ -9,12 +48,7 @@
 
         <!-- /.card-Body -->
         <div class="card-body">
-            @if (user_has_permission(session('user')['userId'], 'category_maintenance_create', 'boolean'))
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal"
-                    style="width: 155px">
-                    <i class="fas fa-plus"></i> Thêm
-                </button>
-            @endif
+
 
             @php
                 $auth_update = user_has_permission(
@@ -39,15 +73,15 @@
                         <th>Mã Thiết Bị Lớn</th>
                         <th>Mã Thiết Bị Con</th>
                         <th>Tên Thiết Bị</th>
+                        <th>Tần Suất BT-HC</th>
                         <th>Vị Trí Lắp Đặt</th>
                         <th>Vị Trí Thẩm Định</th>
-                        <th>Tần Suất BT-HC</th>
-                        <th style="width: 12%">Thời gian Thực Hiện</th>
+                        <th>Thời gian Thực Hiện</th>
+                        <th>Có Thuộc Hệ Thông HVAC?</th>
 
                         <th>Người Tạo/Ngày Tạo</th>
-                        
-                        <th>Edit</th>
-                        <th>DeActive</th>
+
+                        <th>Vô Hiệu</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,9 +96,41 @@
                             @endif
                             <td>{{ $data->name }}</td>
                             <td>{{ $data->room_code }}</td>
-                            <td>{{ $data->exe_room_code ?? '' }}</td>
                             <td>{{ $data->sch_type }}</td>
-                            <td>{{ $data->quota }}</td>
+
+                            <td>
+                                @if ($data->exe_room_name)
+                                    <span>
+                                        {{ $data->exe_room_name }}
+                                    </span>
+                                    <input type="hidden" name="room_id" value="{{ $data->room_id }}">
+                                @else
+                                    <select class="form-control select-room" name="room_id"
+                                        data-id="{{ $data->id }}">
+                                        <option value="">-- Phòng Thực Hiện --</option>
+                                        @foreach ($rooms as $room)
+                                            <option value="{{ $room->id }}"
+                                                {{ ($data->room_id ?? null) == $room->id ? 'selected' : '' }}>
+                                                {{ $room->code . ' - ' . $room->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                            </td>
+
+
+
+                            <td>
+                                <input type= "text" class="time" name="quota" value = "{{ $data->quota }}"
+                                    data-id={{ $data->id }} {{ $auth_update }}>
+                            </td>
+
+                            <td class="text-center">
+                                <div class="form-check form-switch text-center">
+                                    <input class="form-check-input step-checkbox" type="checkbox" role="switch"
+                                        data-id="{{ $data->id }}" id="checkbox-{{ $data->id }}"
+                                        {{ $data->is_HVAC ? 'checked' : '' }}>
+                                </div>
+                            </td>
 
                             <td>
                                 <div> {{ $data->created_by }} </div>
@@ -74,44 +140,13 @@
                             </td>
 
 
-                            <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit"
-                                    data-id="{{ $data->id }}"
-                                    data-code="{{ $data->code }}"
-                                    data-name="{{ $data->name }}"
-                                    data-room="{{ $data->room_code }}"
-                                    data-quota="{{ $data->quota }}"
-                                    data-note="{{ $data->note }}"
 
-                                    data-toggle="modal"
-                                    data-target="#update_modal">
-                                    <i class="fas fa-edit"></i>
+
+                            <td class="text-center align-middle">
+                                <button type="button" class="btn btn-danger btn-deActive"
+                                    data-id="{{ $data->id }}" data-name="{{ $data->name }}">
+                                    <i class="fas fa-trash"></i>
                                 </button>
-                            </td>
-
-                            <td class="text-center align-middle">
-
-                                <form class="form-deActive" action="{{ route('pages.category.maintenance.deActive') }}"
-                                    method="post">
-                                    @csrf
-                                    <input type="hidden" name="id" value = "{{ $data->id }}">
-                                    <input type="hidden" name="active" value="{{ $data->active }}">
-
-                                    @if ($data->active)
-                                        <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"
-                                            data-name="{{ $data->name }}">
-                                            <i class="fas fa-lock"></i>
-                                        </button>
-                                    @else
-                                        <button type="submit" class="btn btn-success" data-type="{{ $data->active }}"
-                                            data-name="{{ $data->name }}">
-                                            <i class="fas fa-unlock"></i>
-                                        </button>
-                                    @endif
-
-
-                                </form>
-
                             </td>
                         </tr>
                     @endforeach
@@ -212,23 +247,157 @@
                 }
             },
             infoCallback: function(settings, start, end, max, total, pre) {
-                let activeCount = 0;
-                let inactiveCount = 0;
-
-                settings.aoData.forEach(function(row) {
-                    // row.anCells là danh sách <td> của từng hàng
-                    const lastTd = row.anCells[row.anCells.length -
-                        1]; // cột cuối (Vô Hiệu)
-                    const btn = $(lastTd).find('button[type="submit"]');
-                    const status = btn.data('type'); // lấy 1 hoặc 0
-
-                    if (status == 1) activeCount++;
-                    else inactiveCount++;
-                });
-
-                return pre + ` (Đang hiệu lực: ${activeCount}, Vô hiệu: ${inactiveCount})`;
+                return pre + ` (Tổng: ${total} thiết bị)`;
             }
 
+        });
+
+        // AJAX Vô hiệu hóa - xóa hàng khỏi bảng
+        $(document).on('click', '.btn-deActive', function() {
+            let btn = $(this);
+            let id = btn.data('id');
+            let name = btn.data('name');
+
+            Swal.fire({
+                title: 'Vô hiệu hóa thiết bị?',
+                text: 'Thiết bị: ' + name,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Đồng ý',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: "{{ route('pages.category.maintenance.deActive') }}",
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            id: id
+                        },
+                        success: function(res) {
+                            if (res.success) {
+                                var table = $('#data_table_instrument').DataTable();
+                                table.row(btn.closest('tr')).remove().draw();
+                                Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000
+                                }).fire({
+                                    icon: 'success',
+                                    title: 'Đã vô hiệu hóa thành công'
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        $(document).on('focus', '.time', function() {
+            $(this).data('old-value', $(this).val());
+        });
+
+        $(document).on('blur', '.time', function() {
+
+            let id = $(this).data('id');
+            let name = $(this).attr('name');
+            let time = $(this).val();
+            let oldValue = $(this).data('old-value');
+
+            if (time === oldValue) return;
+
+
+            $.ajax({
+                url: "{{ route('pages.category.maintenance.updateTime') }}",
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    name: name,
+                    time: time
+                },
+                success: function(res) {
+                    if (res.success) {
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).fire({
+                            icon: 'success',
+                            title: 'Cập nhật thời gian thành công'
+                        });
+                    }
+                }
+            });
+        });
+
+
+        $(document).on('change', '.step-checkbox', function() {
+
+            let id = $(this).data('id');
+
+            let checked = $(this).is(':checked');
+            //console.log (id, stage_code, checked)
+            $.ajax({
+                url: "{{ route('pages.category.maintenance.is_HVAC') }}",
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    checked: checked
+                },
+                success: function(res) {
+                    if (res.success) {
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).fire({
+                            icon: 'success',
+                            title: 'Cập nhật HVAC thành công'
+                        });
+                    }
+                }
+            });
+        });
+
+        // AJAX cập nhật Phòng Thực Hiện
+        $(document).on('change', '.select-room', function() {
+            let id = $(this).data('id');
+            let room_id = $(this).val();
+            if (!room_id) return;
+
+            $.ajax({
+                url: "{{ route('pages.category.maintenance.updateRoom') }}",
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    room_id: room_id
+                },
+                success: function(res) {
+                    if (res.success) {
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).fire({
+                            icon: 'success',
+                            title: 'Cập nhật phòng thực hiện thành công'
+                        });
+                    }
+                }
+            });
         });
 
     });

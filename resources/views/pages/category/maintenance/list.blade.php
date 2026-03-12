@@ -1,4 +1,3 @@
-
 @extends ('layout.master')
 
 @section('topNAV')
@@ -8,12 +7,12 @@
 @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
- 
+
 @section('mainContent')
-  @include('pages.category.maintenance.dataTable')
+    @include('pages.category.maintenance.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.category.maintenance.create')
-  @include('pages.category.maintenance.update') 
+    {{-- @include('pages.category.maintenance.create')
+  @include('pages.category.maintenance.update')  --}}
 @endsection

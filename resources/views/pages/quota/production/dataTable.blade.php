@@ -113,26 +113,26 @@
 
                 <tbody>
                     @foreach ($datas as $data)
-                    @php
-                        if ($data->active) {
-                            $class_bkg="";  
-                        }else {
-                            $class_bkg="text-danger"; 
-                        }
-                    @endphp
+                        @php
+                            if ($data->active) {
+                                $class_bkg = '';
+                            } else {
+                                $class_bkg = 'text-danger';
+                            }
+                        @endphp
                         <tr>
 
-                            <td class = {{$class_bkg}}>  {{$loop->iteration  }}
+                            <td class={{ $class_bkg }}> {{ $loop->iteration }}
                                 @if (session('user')['userGroup'] == 'Admin')
                                     <div> {{ $data->id }} </div>
                                 @endif
                             </td>
-                            <td class = {{$class_bkg}}>
+                            <td class={{ $class_bkg }}>
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code ?? '' }} </div>
                             </td>
-                            <td class = {{$class_bkg}}>{{ $data->product_name }} </td>
-                            <td class = {{$class_bkg}}>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
+                            <td class={{ $class_bkg }}>{{ $data->product_name }} </td>
+                            <td class={{ $class_bkg }}>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
 
                             @php
                                 $field =
@@ -144,7 +144,7 @@
                             @endphp
 
                             @if ($field)
-                                <td class="text-center align-middle " >
+                                <td class="text-center align-middle ">
                                     <div class="form-check form-switch text-center">
                                         <input class="form-check-input step-checkbox" type="checkbox" role="switch"
                                             data-id="{{ $data->id }}" data-stage_code="{{ $stage_code }}"
@@ -153,7 +153,7 @@
                                 </td>
                             @endif
 
-                            <td class = {{$class_bkg}}>
+                            <td class={{ $class_bkg }}>
                                 @if ($data->room_name == null)
                                     <span class="px-2 py-1 rounded-pill"
                                         style="background-color:red; color:white; font-size: 14px">
@@ -166,47 +166,47 @@
                                 @endif
                             </td>
 
-                            <td >
-                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="p_time"
+                            <td>
+                                <input type= "{{ $typeInput }}" class="time {{ $class_bkg }}" name="p_time"
                                     value = "{{ $data->p_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
 
-                            <td >
-                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="m_time"
+                            <td>
+                                <input type= "{{ $typeInput }}" class="time {{ $class_bkg }}" name="m_time"
                                     value = "{{ $data->m_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
-                            <td >
-                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="C1_time"
+                            <td>
+                                <input type= "{{ $typeInput }}" class="time {{ $class_bkg }}" name="C1_time"
                                     value = "{{ $data->C1_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
-                            <td >
-                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="C2_time"
+                            <td>
+                                <input type= "{{ $typeInput }}" class="time {{ $class_bkg }}" name="C2_time"
                                     value = "{{ $data->C2_time }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
                             <td>
-                                <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="maxofbatch_campaign"
-                                    value = "{{ $data->maxofbatch_campaign }}" data-id={{ $data->id }}
-                                    {{ $auth_update }}>
+                                <input type= "{{ $typeInput }}" class="time {{ $class_bkg }}"
+                                    name="maxofbatch_campaign" value = "{{ $data->maxofbatch_campaign }}"
+                                    data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
 
                             @if ($stage_code <= 2)
-                                <td >
-                                    <input type= "{{ $typeInput }}" class="time {{$class_bkg}}" name="campaign_index"
-                                        value = "{{ $data->campaign_index }}" data-id={{ $data->id }}
-                                        {{ $auth_update }}>
+                                <td>
+                                    <input type= "{{ $typeInput }}" class="time {{ $class_bkg }}"
+                                        name="campaign_index" value = "{{ $data->campaign_index }}"
+                                        data-id={{ $data->id }} {{ $auth_update }}>
                                 </td>
                             @endif
-                            <td class = {{$class_bkg}}>
+                            <td class={{ $class_bkg }}>
                                 <input type= "{{ $typeInput }}" class="time" name="note"
                                     value = "{{ $data->note }}" data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
 
-                            <td class = {{$class_bkg}}>
+                            <td class={{ $class_bkg }}>
 
-                            <div> {{ $data->prepared_by }} </div>
+                                <div> {{ $data->prepared_by }} </div>
 
-                            <div>
-                                    {{ $data->created_at}}
+                                <div>
+                                    {{ $data->created_at }}
                             </td>
 
 
@@ -224,15 +224,12 @@
                             <td class="text-center align-middle">
                                 <button type="button"
                                     class="btn btn-toggle-active {{ $data->active ? 'btn-danger' : 'btn-success' }}"
-                                    data-id="{{ $data->id }}" 
-                                    data-active="{{ $data->active }}"
-                                    {{-- data-name="{{ $data->intermediate_code . '-' . $data->finished_product_code . '-' . $data->product_name }}" --}}
-                                    {{ $auth_deActive }} {{ $data->room_name ? '' : 'disabled' }}>
+                                    data-id="{{ $data->id }}" data-active="{{ $data->active }}"
+                                    {{-- data-name="{{ $data->intermediate_code . '-' . $data->finished_product_code . '-' . $data->product_name }}" --}} {{ $auth_deActive }}
+                                    {{ $data->room_name ? '' : 'disabled' }}>
                                     <i class="fas {{ $data->active ? 'fa-lock' : 'fa-unlock' }}"></i>
                                 </button>
                             </td>
-
-                           
                     @endforeach
                 </tbody>
             </table>
@@ -299,37 +296,25 @@
             searching: true,
             ordering: true,
             autoWidth: false,
-            columnDefs: [
-                {
-                    targets: 0,        // cột STT
-                    orderable: false,
-                    searchable: false
-                }
-            ]
+            columnDefs: [{
+                targets: 0, // cột STT
+                orderable: false,
+                searchable: false
+            }]
         });
 
-        // ✅ ĐÁNH SỐ STT ĐÚNG CHUẨN
-        // table.on('order.dt search.dt draw.dt', function () {
-        //     const info = table.page.info();
-        //     table.column(0, { search: 'applied', order: 'applied' })
-        //         .nodes()
-        //         .each(function (cell, i) {
-        //             cell.innerHTML = info.start + i + 1;
-        //         });
-        // });
-  
     });
 
-    $(document).on('click', '.btn-toggle-active', function () {
+    $(document).on('click', '.btn-toggle-active', function() {
 
         const btn = $(this);
         const url = "{{ route('pages.quota.production.deActive') }}";
         const id = btn.data('id');
         let active = parseInt(btn.data('active'));
 
-        let title = active === 1
-            ? 'Bạn chắc chắn muốn vô hiệu hóa định mức?'
-            : 'Bạn chắc chắn muốn phục hồi định mức?';
+        let title = active === 1 ?
+            'Bạn chắc chắn muốn vô hiệu hóa định mức?' :
+            'Bạn chắc chắn muốn phục hồi định mức?';
 
         Swal.fire({
             title: title,
@@ -354,13 +339,13 @@
                     id: id,
                     active: active
                 },
-                success: function (res) {
+                success: function(res) {
 
                     if (!res.success) {
                         Swal.fire('Lỗi', res.message || 'Có lỗi xảy ra', 'error');
                         return;
                     }
-                    
+
                     const newActive = res.active;
                     btn.data('active', !newActive);
 
@@ -374,11 +359,11 @@
 
                     Swal.fire('Thành công!', 'Cập nhật thành công', 'success');
                 },
-                error: function (xhr) {
+                error: function(xhr) {
                     console.error(xhr);
                     Swal.fire('Lỗi server', 'Không thể xử lý yêu cầu', 'error');
                 },
-                complete: function () {
+                complete: function() {
                     btn.prop('disabled', false);
                 }
             });
