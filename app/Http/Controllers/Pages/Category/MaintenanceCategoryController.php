@@ -54,16 +54,19 @@ class MaintenanceCategoryController extends Controller
                         foreach (array_chunk($new_quotas, 1000) as $chunk) {
                                 DB::table('quota_maintenance')->insert($chunk);
                         }
-                        // Cập nhật lại danh sách định mức sau khi thêm mới
-                        $quota_maintenance = DB::table('quota_maintenance')->get();
                 }
+                $quota_maintenance = DB::table('quota_maintenance')->where('active', 1)->get();
 
                 $rooms = DB::table('room')->where('deparment_code', session('user')['production_code'])->select('id', 'name', 'code')->get();
+                $room_names = $rooms->mapWithKeys(function ($room) {
+                        return [$room->id => $room->code . ' - ' . $room->name];
+                })->toArray();
 
-                // Map dữ liệu thành Collection $datas, sử dụng quota_maintenance làm gốc (left join)
+
+
                 $datas = collect();
 
-                // Build lookup array cho instruments để map nhanh hơn O(1)
+                //Build lookup array cho instruments để map nhanh hơn O(1)
                 $inst_lookup = [];
                 foreach ($instruments as $inst) {
                         $inst_lookup[$inst->Inst_id] = $inst;
@@ -74,23 +77,23 @@ class MaintenanceCategoryController extends Controller
 
                         $item = (object)[
                                 'id' => $quota->id,
-                                'code' => $quota->inst_id, // Mã thiết bị con
-                                'parent_code' => $inst ? ($inst->Parent_Eqp_ID ?? ($inst->Parent_Equip_id ?? '')) : '',
-                                'name' => $inst ? $inst->Inst_Name : '',
-                                'room_name' => '',
-                                'room_code' => $inst ? $inst->Inst_Installed_Location : '',
-                                'sch_type' => $inst ? $inst->Inst_sch_type : '',
+                                'code' => $quota->inst_id,
+                                'parent_code' => $inst->Parent_Equip_id,
+                                'name' => $inst->Inst_Name,
+                                'room_id' => $quota->room_id,
+                                'exe_room_name' => $room_names[$quota->room_id] ?? null,
+                                'room_code' => $inst->Inst_Installed_Location,
+                                'sch_type' => $inst->Inst_sch_type,
                                 'quota' => $quota->exe_time,
-                                'note' => $inst ? ($inst->Inst_Type ?? '') : '',
-                                'is_HVAC' => 0,
-                                'active' => 1,
-                                'created_by' => $inst ? $inst->Created_By : $quota->created_by,
-                                'created_at' => $inst ? $inst->Created_On : $quota->created_time,
+                                'is_HVAC' => $quota->is_HVAC,
+                                'active' =>  $quota->active,
+                                'created_by' => $quota->created_by,
+                                'created_at' => $quota->created_time,
                         ];
 
                         $datas->push($item);
                 }
-
+                //dd($datas);
                 session()->put(['title' => 'DANH MỤC BẢO TRÌ - HIỆU CHUẨN']);
                 return view('pages.category.maintenance.list', [
                         'datas' => $datas,
@@ -98,39 +101,49 @@ class MaintenanceCategoryController extends Controller
                 ]);
         }
 
-
-
-        public function update(Request $request)
+        public function updateTime(Request $request)
         {
-                //dd ($request->all());
-                $validator = Validator::make($request->all(), [
-                        'quota' => 'required',
-                ], [
-                        'quota.required' => 'Vui lòng nhập thời gian thực hiện',
-                ]);
+                DB::table('quota_maintenance')
+                        ->where('id', $request->id)
+                        ->update([
+                                'exe_time' => $request->time,
+                                'created_by' => session('user')['fullName'],
+                                'created_time' => now(),
+                        ]);
+                return response()->json(['success' => true]);
+        }
 
-                if ($validator->fails()) {
-                        return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
-                }
+        public function is_HVAC(Request $request)
+        {
+                DB::table('quota_maintenance')
+                        ->where('id', $request->id)
+                        ->update([
+                                'is_HVAC' => filter_var($request->checked, FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
+                                'created_by' => session('user')['fullName'],
+                                'created_time' => now(),
+                        ]);
+                return response()->json(['success' => true]);
+        }
 
-                DB::table('maintenance_category')->where('code', $request->code)->update([
-
-                        'quota' => $request->quota,
-                        'note' => $request->note,
-                        'created_by' => session('user')['fullName'],
-                        'updated_at' => now(),
-                ]);
-                return redirect()->back()->with('success', 'Cập nhật thành công!');
+        public function updateRoom(Request $request)
+        {
+                DB::table('quota_maintenance')
+                        ->where('id', $request->id)
+                        ->update([
+                                'room_id' => $request->room_id,
+                                'created_by' => session('user')['fullName'],
+                                'created_time' => now(),
+                        ]);
+                return response()->json(['success' => true]);
         }
 
         public function deActive(Request $request)
         {
-                //dd ($request->all());
-                DB::table('maintenance_category')->where('id', $request->id)->update([
-                        'Active' => !$request->active,
+                DB::table('quota_maintenance')->where('id', $request->id)->update([
+                        'active' => 0,
                         'created_by' => session('user')['fullName'],
-                        'updated_at' => now(),
+                        'created_time' => now(),
                 ]);
-                return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
+                return response()->json(['success' => true]);
         }
 }
