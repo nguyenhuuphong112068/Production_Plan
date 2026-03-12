@@ -4,7 +4,6 @@
         height: 20px;
         cursor: pointer;
         accent-color: #007bff;
-        /* màu xanh bootstrap */
     }
 
     .step-checkbox:checked {
@@ -22,33 +21,26 @@
         box-sizing: border-box;
     }
 
-    /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
     .time:focus {
         border: 1px solid #007bff;
         border-radius: 2px;
         background-color: #fff;
     }
 
-    /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
     td input.time {
         display: block;
         margin: auto;
     }
 </style>
 
-
 <div class="content-wrapper">
     <!-- Main content -->
     <div class="card">
 
-        <div class="card-header mt-4">
-            {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-
-        </div>
+        <div class="card-header mt-4"></div>
 
         <!-- /.card-Body -->
         <div class="card-body">
-
 
             @php
                 $auth_update = user_has_permission(
@@ -63,11 +55,9 @@
                 );
             @endphp
 
-
             <table id="data_table_instrument" class="table table-bordered table-striped">
 
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
-
                     <tr>
                         <th>STT</th>
                         <th>Mã Thiết Bị Lớn</th>
@@ -78,92 +68,20 @@
                         <th>Vị Trí Thẩm Định</th>
                         <th>Thời gian Thực Hiện</th>
                         <th>Có Thuộc Hệ Thông HVAC?</th>
-
                         <th>Người Tạo/Ngày Tạo</th>
-
                         <th>Vô Hiệu</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach ($datas as $data)
-                        <tr>
-                            <td>{{ $loop->iteration }} </td>
-                            <td>{{ $data->parent_code }}</td>
-                            @if ($data->active)
-                                <td class="text-success"> {{ $data->code }}</td>
-                            @else
-                                <td class="text-danger"> {{ $data->code }}</td>
-                            @endif
-                            <td>{{ $data->name }}</td>
-                            <td>{{ $data->room_code }}</td>
-                            <td>{{ $data->sch_type }}</td>
-
-                            <td>
-                                @if ($data->exe_room_name)
-                                    <span>
-                                        {{ $data->exe_room_name }}
-                                    </span>
-                                    <input type="hidden" name="room_id" value="{{ $data->room_id }}">
-                                @else
-                                    <select class="form-control select-room" name="room_id"
-                                        data-id="{{ $data->id }}">
-                                        <option value="">-- Phòng Thực Hiện --</option>
-                                        @foreach ($rooms as $room)
-                                            <option value="{{ $room->id }}"
-                                                {{ ($data->room_id ?? null) == $room->id ? 'selected' : '' }}>
-                                                {{ $room->code . ' - ' . $room->name }}</option>
-                                        @endforeach
-                                    </select>
-                                @endif
-                            </td>
-
-
-
-                            <td>
-                                <input type= "text" class="time" name="quota" value = "{{ $data->quota }}"
-                                    data-id={{ $data->id }} {{ $auth_update }}>
-                            </td>
-
-                            <td class="text-center">
-                                <div class="form-check form-switch text-center">
-                                    <input class="form-check-input step-checkbox" type="checkbox" role="switch"
-                                        data-id="{{ $data->id }}" id="checkbox-{{ $data->id }}"
-                                        {{ $data->is_HVAC ? 'checked' : '' }}>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div> {{ $data->created_by }} </div>
-                                <div>
-                                    {{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}
-                                </div>
-                            </td>
-
-
-
-
-                            <td class="text-center align-middle">
-                                <button type="button" class="btn btn-danger btn-deActive"
-                                    data-id="{{ $data->id }}" data-name="{{ $data->name }}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    @endforeach
-
-                </tbody>
+                <tbody></tbody>
 
             </table>
 
         </div>
-        <!-- /.card-body -->
     </div>
-    <!-- /.content -->
 </div>
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
-
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
 @if (session('success'))
@@ -172,7 +90,7 @@
             title: 'Thành công!',
             text: '{{ session('success') }}',
             icon: 'success',
-            timer: 2000, // tự đóng sau 2 giây
+            timer: 2000,
             showConfirmButton: false
         });
     </script>
@@ -181,62 +99,29 @@
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
-        $('.btn-edit').click(function() {
 
-            const button = $(this);
-            const modal = $('#update_modal');
+        var authUpdate = '{{ $auth_update }}';
+        var disabledAttr = authUpdate ? 'disabled' : '';
 
-            // Gán dữ liệu vào input
-            modal.find('input[name="id"]').val(button.data('id'));
-            modal.find('input[name="code"]').val(button.data('code'));
-            modal.find('input[name="name"]').val(button.data('name'));
-            modal.find('input[name="room"]').val(button.data('room'));
-            modal.find('input[name="quota"]').val(button.data('quota'));
-            modal.find('input[name="note"]').val(button.data('note'));
+        // Danh sách phòng cho select option
+        var roomOptions = '<option value="">-- Phòng Thực Hiện --</option>';
+        @foreach ($rooms as $room)
+            roomOptions += '<option value="{{ $room->id }}">{{ $room->code }} - {{ $room->name }}</option>';
+        @endforeach
 
+        // Dữ liệu JSON từ server
+        var tableData = @json($datas);
 
-        });
-
-
-
-        $('.form-deActive').on('submit', function(e) {
-            e.preventDefault(); // chặn submit mặc định
-            const form = this;
-            const productName = $(form).find('button[type="submit"]').data('name');
-            const active = $(form).find('button[type="submit"]').data('type');
-
-            let title = 'Bạn chắc chắn muốn vô hiệu hóa danh mục?'
-            if (!active) {
-                title = 'Bạn chắc chắn muốn phục hồi danh mục?'
-            }
-
-
-
-            Swal.fire({
-                title: title,
-                text: `Danh Mục: ${productName}`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Đồng ý',
-                cancelButtonText: 'Hủy'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit(); // chỉ submit sau khi xác nhận
-                }
-            });
-        });
-
-
-        $('#data_table_instrument').DataTable({
+        var table = $('#data_table_instrument').DataTable({
+            data: tableData,
+            deferRender: true,
             paging: true,
             lengthChange: true,
             searching: true,
             ordering: true,
             info: true,
             autoWidth: false,
-            pageLength: 10,
+            pageLength: 25,
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",
@@ -246,13 +131,84 @@
                     next: "Sau"
                 }
             },
+            columns: [
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type, row, meta) {
+                        return meta.row + 1;
+                    }
+                },
+                { data: 'parent_code', defaultContent: '' },
+                {
+                    data: 'code',
+                    render: function(data, type, row) {
+                        return '<span class="text-success">' + (data || '') + '</span>';
+                    }
+                },
+                { data: 'name', defaultContent: '' },
+                { data: 'sch_type', defaultContent: '' },
+                { data: 'room_code', defaultContent: '' },
+                {
+                    data: 'exe_room_name',
+                    render: function(data, type, row) {
+                        if (data) {
+                            return '<span>' + data + '</span>';
+                        }
+                        var opts = roomOptions.replace(
+                            'value="' + (row.room_id || '') + '"',
+                            'value="' + (row.room_id || '') + '" selected'
+                        );
+                        return '<select class="form-control select-room" name="room_id" data-id="' + row.id + '">' + opts + '</select>';
+                    }
+                },
+                {
+                    data: 'quota',
+                    render: function(data, type, row) {
+                        return '<input type="text" class="time" name="quota" value="' + (data || '') + '" data-id="' + row.id + '" ' + disabledAttr + '>';
+                    }
+                },
+                {
+                    data: 'is_HVAC',
+                    className: 'text-center',
+                    render: function(data, type, row) {
+                        var checked = (data == 1 || data == '1' || data === true) ? 'checked' : '';
+                        return '<div class="form-check form-switch text-center">' +
+                            '<input class="form-check-input step-checkbox" type="checkbox" role="switch" data-id="' + row.id + '" ' + checked + '>' +
+                            '</div>';
+                    }
+                },
+                {
+                    data: null,
+                    render: function(data, type, row) {
+                        var date = '';
+                        if (row.created_at) {
+                            try {
+                                var d = new Date(row.created_at);
+                                date = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth()+1)).slice(-2) + '/' + d.getFullYear();
+                            } catch(e) { date = row.created_at; }
+                        }
+                        return '<div>' + (row.created_by || '') + '</div><div>' + date + '</div>';
+                    }
+                },
+                {
+                    data: null,
+                    className: 'text-center align-middle',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type, row) {
+                        return '<button type="button" class="btn btn-danger btn-sm btn-deActive" data-id="' + row.id + '" data-name="' + (row.name || '') + '">' +
+                            '<i class="fas fa-trash"></i></button>';
+                    }
+                }
+            ],
             infoCallback: function(settings, start, end, max, total, pre) {
-                return pre + ` (Tổng: ${total} thiết bị)`;
+                return pre + ' (Tổng: ' + total + ' thiết bị)';
             }
-
         });
 
-        // AJAX Vô hiệu hóa - xóa hàng khỏi bảng
+        // AJAX Vô hiệu hóa
         $(document).on('click', '.btn-deActive', function() {
             let btn = $(this);
             let id = btn.data('id');
@@ -279,7 +235,6 @@
                         },
                         success: function(res) {
                             if (res.success) {
-                                var table = $('#data_table_instrument').DataTable();
                                 table.row(btn.closest('tr')).remove().draw();
                                 Swal.mixin({
                                     toast: true,
@@ -297,19 +252,17 @@
             });
         });
 
+        // AJAX Cập nhật Thời gian
         $(document).on('focus', '.time', function() {
             $(this).data('old-value', $(this).val());
         });
 
         $(document).on('blur', '.time', function() {
-
             let id = $(this).data('id');
             let name = $(this).attr('name');
             let time = $(this).val();
             let oldValue = $(this).data('old-value');
-
             if (time === oldValue) return;
-
 
             $.ajax({
                 url: "{{ route('pages.category.maintenance.updateTime') }}",
@@ -337,13 +290,11 @@
             });
         });
 
-
+        // AJAX Cập nhật HVAC
         $(document).on('change', '.step-checkbox', function() {
-
             let id = $(this).data('id');
-
             let checked = $(this).is(':checked');
-            //console.log (id, stage_code, checked)
+
             $.ajax({
                 url: "{{ route('pages.category.maintenance.is_HVAC') }}",
                 type: 'POST',
