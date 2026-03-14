@@ -69,6 +69,18 @@
         box-shadow: 0 0 5px #007bff;
     }
 
+    .step-checkbox-bom {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff;
+        /* màu xanh bootstrap */
+    }
+
+    .step-checkbox-bom:checked {
+        box-shadow: 0 0 5px #007bff;
+    }
+
 
     #radioDanger {
         accent-color: #dc3545;
@@ -202,9 +214,9 @@
                                             <div class="row">
                                                 <div class="col-md-4">
                                                     <div class="icheck-primary d-inline">
-                                                        <input type="checkbox" class="step-checkbox" id="checkbox1"
-                                                            name = "first_val_batch">
-                                                        <label for="checkbox1">Lô thứ nhất</label>
+                                                        <input type="checkbox" class="step-checkbox"
+                                                            id="create_checkbox1" name = "first_val_batch">
+                                                        <label for="create_checkbox1">Lô thứ nhất</label>
                                                         <input type="text" name="batchNo1"
                                                             class ="batchNo updateInput"
                                                             value="{{ old('batchNo1') }}" readonly />
@@ -214,17 +226,17 @@
                                                 </div>
                                                 <div class="col-md-4">
                                                     <div class="icheck-primary d-inline">
-                                                        <input type="checkbox" class="step-checkbox" id="checkbox2"
-                                                            name = "second_val_batch">
-                                                        <label for="checkbox2">Lô thứ hai</label>
+                                                        <input type="checkbox" class="step-checkbox"
+                                                            id="create_checkbox2" name = "second_val_batch">
+                                                        <label for="create_checkbox2">Lô thứ hai</label>
                                                         <span class = "batchNo batchNo2"></span>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <div class="icheck-primary d-inline">
-                                                        <input type="checkbox" class="step-checkbox" id="checkbox3"
-                                                            name = "third_val_batch">
-                                                        <label for="checkbox3">Lô thứ ba</label>
+                                                        <input type="checkbox" class="step-checkbox"
+                                                            id="create_checkbox3" name = "third_val_batch">
+                                                        <label for="create_checkbox3">Lô thứ ba</label>
                                                         <span class = "batchNo batchNo3"></span>
                                                     </div>
                                                 </div>
@@ -488,6 +500,7 @@
 
         // Nếu muốn khi modal mở mới khởi tạo
         $('#createModal').on('shown.bs.modal', function() {
+
             $("input[data-bootstrap-switch]").each(function() {
                 $(this).bootstrapSwitch('state', $(this).prop('checked'));
             });
@@ -541,7 +554,7 @@
                                         value="0">
 
                                     <input type="checkbox"
-                                        class="step-checkbox"
+                                        class="step-checkbox-bom"
                                         name="materials[${item.MatID}][active]"
                                         value="1"
                                         checked>
@@ -625,7 +638,7 @@
                                             value="0">
 
                                         <input type="checkbox"
-                                            class="step-checkbox"
+                                            class="step-checkbox-bom"
                                             name="packagings[${item.MatID}][active]"
                                             value="1"
                                             checked>
@@ -688,28 +701,30 @@
             $('#source_material_list').DataTable().search(intermediateCode).draw();
         })
 
-        $("#createModal .step-checkbox").on("change", function() {
+        $(document).on('change', '#createModal .step-checkbox', function() {
 
-            let batch = $('#createModal input[name="batch"]').val();
-            let checkbox1 = $("#createModal #checkbox1").is(":checked") ? 1 : 0;
-            let checkbox2 = $("#createModal #checkbox2").is(":checked") ? 1 : 0;
-            let checkbox3 = $("#createModal #checkbox3").is(":checked") ? 1 : 0;
-            let code_val = $('input[name="code_val_first"]').val() || null;
-            let intermediate_code = $('input[name="intermediate_code"]').val() || "";
-            let first_batch_modal = $('#tbody_first_val_batch')
+
+            let modal = $('#createModal');
+            let batch = modal.find('input[name="batch"]').val();
+            let checkbox1 = modal.find("#create_checkbox1").is(":checked") ? 1 : 0;
+            let checkbox2 = modal.find("#create_checkbox2").is(":checked") ? 1 : 0;
+            let checkbox3 = modal.find("#create_checkbox3").is(":checked") ? 1 : 0;
+            let code_val = modal.find('input[name="code_val_first"]').val() || null;
+            let intermediate_code = modal.find('input[name="intermediate_code"]').val() || "";
+            let first_batch_modal = $('#tbody_first_val_batch');
             let total = checkbox1 + checkbox2 + checkbox3;
 
-            if (checkbox1 == 1 && !batch || batch.trim() === '') {
+
+
+            if (total > 0 && (!batch || batch.trim() === '')) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Nhập số lô trước khi chọn lô thẩm định',
                     confirmButtonText: 'OK'
                 });
-                $('input[name="batchNo1"]').val('');
-                $('input[name="code_val_first"]').val('');
-                $("#createModal #checkbox1").prop("checked", false);
-                $("#createModal #checkbox2").prop("checked", false);
-                $("#createModal #checkbox3").prop("checked", false);
+                modal.find('input[name="batchNo1"]').val('');
+                modal.find('input[name="code_val_first"]').val('');
+                modal.find(".step-checkbox").prop("checked", false);
                 return;
             }
 
@@ -718,7 +733,7 @@
                 $('input[name="code_val_first"]').val('');
             }
 
-            $('input[name="number_of_batch"]').val(total);
+            modal.find('input[name="number_of_batch"]').val(total);
 
             if (checkbox1 == 1 && code_val == null) {
 
@@ -731,8 +746,9 @@
                     },
                     success: function(res) {
 
-                        $('input[name="batchNo1"]').val(batch);
-                        $('input[name="code_val_first"]').val((res.last_id + 1) + "_1");
+                        modal.find('input[name="batchNo1"]').val(batch);
+                        modal.find('input[name="code_val_first"]').val((res.last_id + 1) +
+                            "_1");
                     },
                     error: function(xhr, status, error) {
                         console.error("❌ Lỗi Ajax:", {
