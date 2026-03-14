@@ -570,27 +570,32 @@ class MaintenancePlanController extends Controller
 
         public function send(Request $request)
         {
-
                 $plans = DB::table('plan_master')
                         ->where('plan_master.plan_list_id', $request->plan_list_id)
                         ->where('plan_master.active', 1)
                         ->where('plan_master.cancel', 0)
+                        ->leftJoin('quota_maintenance', 'plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
                         ->select(
                                 'plan_master.id',
                                 'plan_master.plan_list_id',
                                 'plan_master.product_caterogy_id',
+                                'plan_master.expected_date',
+                                'quota_maintenance.inst_id'
                         )
                         ->get();
-
 
                 $dataToInsert = [];
 
                 foreach ($plans as $plan) {
+                        $mmyy = $plan->expected_date ? \Carbon\Carbon::parse($plan->expected_date)->format('my') : '0000';
+                        $campaignCode = trim($plan->inst_id) . '_' . $mmyy;
+
                         $dataToInsert[] = [
                                 'plan_list_id' => $plan->plan_list_id,
                                 'plan_master_id' => $plan->id,
                                 'product_caterogy_id' => $plan->product_caterogy_id,
                                 'stage_code' => 8,
+                                'campaign_code' => $campaignCode,
                                 'order_by' =>  $plan->id,
                                 'code' =>  $plan->id . "_8",
                                 'deparment_code' => session('user')['production_code'],
@@ -598,8 +603,8 @@ class MaintenancePlanController extends Controller
                         ];
                 }
 
-
                 DB::table('stage_plan')->insert($dataToInsert);
+
                 DB::table('plan_list')->where('id', $request->plan_list_id)->update([
                         'send' => 1,
                         'send_by' => session('user')['fullName'],
@@ -609,7 +614,6 @@ class MaintenancePlanController extends Controller
 
                 $datas = DB::table('plan_list')
                         ->where('active', 1)
-                        ->where('deparment_code', session('user')['production_code'])
                         ->where('type', 0)
                         ->orderBy('created_at', 'desc')->get();
 

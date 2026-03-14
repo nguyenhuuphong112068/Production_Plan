@@ -721,8 +721,6 @@ class SchedualController extends Controller
                         $order_by_column = "sp.order_by_line";
                 }
 
-
-
                 $plan_waiting = DB::table("stage_plan as sp")
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
@@ -739,8 +737,8 @@ class SchedualController extends Controller
                                 $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
                                         ->where('sp.stage_code', '<=', 7);
                         })
-                        ->leftJoin('maintenance_category', function ($join) {
-                                $join->on('sp.product_caterogy_id', '=', 'maintenance_category.id')
+                        ->leftJoin('quota_maintenance', function ($join) {
+                                $join->on('sp.product_caterogy_id', '=', 'quota_maintenance.id')
                                         ->where('sp.stage_code', '=', 8);
                         })
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
