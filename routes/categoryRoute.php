@@ -53,5 +53,6 @@ Route::prefix('/category')
                                 Route::post('deActive', 'deActive')->name('deActive');
                                 Route::post('is_HVAC', 'is_HVAC')->name('is_HVAC');
                                 Route::post('updateRoom', 'updateRoom')->name('updateRoom');
+                                Route::post('updateDepartment', 'updateDepartment')->name('updateDepartment');
                         });
         });
