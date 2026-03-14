@@ -2,22 +2,25 @@
 
 <style>
     .step-checkbox {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    accent-color: #007bff; /* màu xanh bootstrap */
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff;
+        /* màu xanh bootstrap */
     }
 
     .step-checkbox2 {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    accent-color: #007bff; /* màu xanh bootstrap */
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #007bff;
+        /* màu xanh bootstrap */
     }
 
     .step-checkbox:checked {
         box-shadow: 0 0 5px #007bff;
     }
+
     .updateInput {
         width: 100%;
         border: none;
@@ -29,24 +32,25 @@
         box-sizing: border-box;
     }
 
-  /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
+    /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
     .updateInput:focus {
         border: 1px solid #007bff;
         border-radius: 2px;
         background-color: #fff;
     }
 
-  /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
+    /* Tùy chọn: nếu bạn muốn chữ canh giữa theo chiều dọc */
     td input.updateInput {
         display: block;
         margin: auto;
     }
 
-     .step-checkbox {
+    .step-checkbox {
         width: 20px;
         height: 20px;
         cursor: pointer;
-        accent-color: #007bff; /* màu xanh bootstrap */
+        accent-color: #007bff;
+        /* màu xanh bootstrap */
     }
 
     .step-checkbox:checked {
@@ -54,9 +58,9 @@
     }
 
     .highlight-row {
-        background-color: #fff3cd !important; /* vàng nhạt */
+        background-color: #fff3cd !important;
+        /* vàng nhạt */
     }
-
 </style>
 
 
@@ -70,78 +74,77 @@
 <div class="content-wrapper">
     <div class="card" style="min-height: 100vh">
 
-        <div class="card-header mt-4" >
+        <div class="card-header mt-4">
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
         </div>
 
         <!-- /.card-Body -->
         <div class="card-body">
-            
-                <div class="row">
-                 
-                    <div class="col-md-2">
-                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') && !$send)
-                            <button class="btn btn-success btn-add mb-2" 
-                                data-toggle="modal"
-                                data-target="#selectProductModal" style="width: 155px;">
-                                <i class="fas fa-plus"></i> Thêm
-                            </button>
-                        @endif
-                    </div>
-              
-            
-                    <div class="col-md-8 text-center">
-                        @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean')|| true)
-                            <form action="{{ route('pages.plan.production.open_stock') }}" 
-                                method="get"
-                                class="d-inline-block">
-                                @csrf
-                                <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
-                                <input type="hidden" name="material_packaging_type" value="0">
-                                <input type="hidden" name="title" value="BẢNG TÍNH NGUYÊN LIỆU">
-                                <input type="hidden" name="selected" value="1">
-                                <input type="hidden" name="current_url" value="{{ url()->full() }}">
-                                <button type="submit" class="btn btn-success" {{ $auth_view_material }} style="width: 300px">
-                                    <i class="fas fa-table"></i> Bảng Dự Trù Nguyên Liệu
-                                </button>
-                            </form>
 
-                            <form action="{{ route('pages.plan.production.open_stock') }}" 
-                                method="get"
-                                class="d-inline-block ms-2">
-                                @csrf
-                                <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
-                                <input type="hidden" name="material_packaging_type" value="1">
-                                <input type="hidden" name="title" value="BẢNG TÍNH BAO BÌ">
-                                <input type="hidden" name="selected" value="1">
-                                <input type="hidden" name="current_url" value="{{ url()->full() }}">
-                                <button type="submit" class="btn btn-success"  style="width: 300px" {{ $auth_view_material }}>
-                                    <i class="fas fa-table"></i> Bảng Dự Trù Bao Bì
-                                </button>
-                            </form>
-                        @endif
+            <div class="row">
 
-                    </div>
+                <div class="col-md-2">
+                    @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') && !$send)
+                        <button class="btn btn-success btn-add mb-2" data-toggle="modal"
+                            data-target="#selectProductModal" style="width: 155px;">
+                            <i class="fas fa-plus"></i> Thêm
+                        </button>
+                    @endif
+                </div>
 
 
-                    <div class="col-md-2" style="text-align: right;">
-
-                        <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
-
+                <div class="col-md-8 text-center">
+                    @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') || true)
+                        <form action="{{ route('pages.plan.production.open_stock') }}" method="get"
+                            class="d-inline-block">
                             @csrf
                             <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
-                            <input type="hidden" name="month" value="{{ $month }}">
-                            <input type="hidden" name="production" value="{{ $production }}">
-                            @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean') && !$send )
-                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;" >
-                                <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
+                            <input type="hidden" name="material_packaging_type" value="0">
+                            <input type="hidden" name="title" value="BẢNG TÍNH NGUYÊN LIỆU">
+                            <input type="hidden" name="selected" value="1">
+                            <input type="hidden" name="current_url" value="{{ url()->full() }}">
+                            <button type="submit" class="btn btn-success" {{ $auth_view_material }}
+                                style="width: 300px">
+                                <i class="fas fa-table"></i> Bảng Dự Trù Nguyên Liệu
                             </button>
-                            @endif
                         </form>
 
-                    </div>
+                        <form action="{{ route('pages.plan.production.open_stock') }}" method="get"
+                            class="d-inline-block ms-2">
+                            @csrf
+                            <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
+                            <input type="hidden" name="material_packaging_type" value="1">
+                            <input type="hidden" name="title" value="BẢNG TÍNH BAO BÌ">
+                            <input type="hidden" name="selected" value="1">
+                            <input type="hidden" name="current_url" value="{{ url()->full() }}">
+                            <button type="submit" class="btn btn-success" style="width: 300px"
+                                {{ $auth_view_material }}>
+                                <i class="fas fa-table"></i> Bảng Dự Trù Bao Bì
+                            </button>
+                        </form>
+                    @endif
+
                 </div>
-            
+
+
+                <div class="col-md-2" style="text-align: right;">
+
+                    <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
+
+                        @csrf
+                        <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
+                        <input type="hidden" name="month" value="{{ $month }}">
+                        <input type="hidden" name="production" value="{{ $production }}">
+                        @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean') && !$send)
+                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;">
+                                <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
+                            </button>
+                        @endif
+                    </form>
+
+                </div>
+            </div>
+
             <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
 
@@ -165,34 +168,34 @@
                         @if ($plan_list_id < 0)
                             <th style="width:4%">Tháng</th>
                         @endif
-                        
-                        <th >Mã Sản Phẩm</th>
-                        <th style="width:7%" >Sản Phẩm</th>
+
+                        <th>Mã Sản Phẩm</th>
+                        <th style="width:7%">Sản Phẩm</th>
                         <th style="width:5%">
-                            {{ "Số Lô Dự Kiến" }} <br>
-                            {{ "Số Lô Thực Tế" }} <br>
-                            {{ "Số lượng ĐG" }}   
+                            {{ 'Số Lô Dự Kiến' }} <br>
+                            {{ 'Số Lô Thực Tế' }} <br>
+                            {{ 'Số lượng ĐG' }}
                         </th>
                         <th>Thị Trường/ Qui Cách</th>
                         <th style="width:4%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
-                       
+
                         <th>
-                            <div> {{ "(1) Ngày có đủ NL" }}  </div>
-                            <div> {{ "(2) Ngày có đủ BB" }}  </div>
-                            <div> {{ "(3) Ngày được phép cân" }}  </div>
-                            <div> {{ "(4) Ngày HH NL chính" }}  </div>
-                            <div> {{ "(5) Ngày HH BB" }}  </div>
+                            <div> {{ '(1) Ngày có đủ NL' }} </div>
+                            <div> {{ '(2) Ngày có đủ BB' }} </div>
+                            <div> {{ '(3) Ngày được phép cân' }} </div>
+                            <div> {{ '(4) Ngày HH NL chính' }} </div>
+                            <div> {{ '(5) Ngày HH BB' }} </div>
                         </th>
 
                         <th>
-                            <div> {{ "(1) PC trước" }}  </div>
-                            <div> {{ "(2) THT trước" }}  </div>
-                            <div> {{ "(3) BP trước" }}  </div>
-                            <div> {{ "(4) ĐG trước" }}  </div>
+                            <div> {{ '(1) PC trước' }} </div>
+                            <div> {{ '(2) THT trước' }} </div>
+                            <div> {{ '(3) BP trước' }} </div>
+                            <div> {{ '(4) ĐG trước' }} </div>
                         </th>
-                       
+
                         <th style="width:15%">Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th style="width:1%">Cập Nhật/ Vô Hiệu</th>
@@ -201,11 +204,8 @@
                         <th class = "text-center">
                             Chọn
                             <br>
-                            <button type="button"
-                                    class="btn btn-primary btn-selected-all mt-3"
-                                    {{ $auth_update }}
-                                    data-plan_list_id="{{ $plan_list_id }}"
-                                    data-active="0">
+                            <button type="button" class="btn btn-primary btn-selected-all mt-3" {{ $auth_update }}
+                                data-plan_list_id="{{ $plan_list_id }}" data-active="0">
                                 <i class="fas fa-check"></i>
                             </button>
                         </th>
@@ -215,50 +215,49 @@
                 <tbody>
 
                     @foreach ($datas as $data)
-                        <tr class = "{{ $data->IsHypothesis? 'highlight-row':'' }}">
+                        <tr class = "{{ $data->IsHypothesis ? 'highlight-row' : '' }}">
 
                             <td>
                                 <div> {{ $loop->iteration }} </div>
-                                @if(session('user')['userGroup'] == "Admin") 
-                                    <div> {{ $data->id}} </div> 
+                                @if (session('user')['userGroup'] == 'Admin')
+                                    <div> {{ $data->id }} </div>
                                 @endif
                             </td>
 
                             <td>
                                 @if ($data->IsHypothesis)
-                                    <div class ="text-center" 
-                                        style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; background-color: #d40bf7; color: #ffffff;"
-                                        > {{ "Lô Giả Định" }} </div>
+                                    <div class ="text-center"
+                                        style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; background-color: #d40bf7; color: #ffffff;">
+                                        {{ 'Lô Giả Định' }} </div>
                                 @else
                                     @php
                                         $stutus_colors = [
-                                            "Chưa làm" => 'background-color: green; color: white;', 
-                                            "Đã Cân"        => 'background-color: #e3f2fd; color: #0d47a1;', // xanh rất nhạt
-                                            "Đã Pha chế"    => 'background-color: #bbdefb; color: #0d47a1;',
-                                            "Đã THT"        => 'background-color: #90caf9; color: #0d47a1;',
-                                            "Đã định hình"  => 'background-color: #64b5f6; color: white;',
-                                            "Đã Bao phim"   => 'background-color: #1e88e5; color: white;',
-                                            "Hoàn Tất ĐG"   => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
-                                            'Hủy' => 'background-color: red; color: white;'
-                                        
+                                            'Chưa làm' => 'background-color: green; color: white;',
+                                            'Đã Cân' => 'background-color: #e3f2fd; color: #0d47a1;', // xanh rất nhạt
+                                            'Đã Pha chế' => 'background-color: #bbdefb; color: #0d47a1;',
+                                            'Đã THT' => 'background-color: #90caf9; color: #0d47a1;',
+                                            'Đã định hình' => 'background-color: #64b5f6; color: white;',
+                                            'Đã Bao phim' => 'background-color: #1e88e5; color: white;',
+                                            'Hoàn Tất ĐG' => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
+                                            'Hủy' => 'background-color: red; color: white;',
                                         ];
                                     @endphp
-                                
+
                                     {{-- <div class ="text-center" 
                                         style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
                                         > {{ $data->status }} 
                                     </div> --}}
 
-                                    <div class ="text-center" 
-                                        style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}"
-                                        > {{ $data->status }} 
+                                    <div class ="text-center"
+                                        style="display: inline-block; padding: 6px 10py; width: 100px; border-radius: 10px; {{ $stutus_colors[$data->status] ?? '' }}">
+                                        {{ $data->status }}
                                     </div>
                                 @endif
-                                
+
                             </td>
 
                             @if ($plan_list_id < 0)
-                                <td>{{$plan_list_id_title [$data->plan_list_id]?? 'NA'}}</td>
+                                <td>{{ $plan_list_id_title[$data->plan_list_id] ?? 'NA' }}</td>
                             @endif
 
 
@@ -276,48 +275,47 @@
 
                             <td>
                                 <div> {{ $data->intermediate_product_name }} </div>
-                                <div> {{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '':trim($data->finished_product_name)}} </div>
-                                <div>  {{'(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')'}} </div>
+                                <div>
+                                    {{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '' : trim($data->finished_product_name) }}
+                                </div>
+                                <div> {{ '(' . $data->batch_qty . ' ' . $data->unit_batch_qty . ')' }} </div>
                             </td>
-                            
-                            <td style="text-align: center;" >
-                                <input type= "text" class="updateInput" name="batch" value = "{{$data->batch }}" data-id = {{ $data->id }} {{ $auth_update }} style="font-weight: bold;" >                              
+
+                            <td style="text-align: center;">
+                                <input type= "text" class="updateInput" name="batch"
+                                    value = "{{ $data->batch }}" data-id={{ $data->id }} {{ $auth_update }}
+                                    style="font-weight: bold;">
                                 <b class="text-blue"> {{ $data->actual_batch }} </b>
                                 @if ($data->number_parkaging > 0)
                                     @if ($auth_update != 'disabled')
-
-                                    <div  class="btn {{$data->only_parkaging == 0? 'btn-success':'btn-secondary' }} btn-splitting" 
-                                        data-toggle="modal" 
-                                        data-target= "{{$data->only_parkaging == 0 ? '#selectProductModal':'#splittingUpdateModal'}}"
-                                        {{ $data->active ? '' : 'disabled' }} 
-                                        data-id="{{ $data->id }}"
-                                        data-name="{{ $data->finished_product_name }}"
-                                        data-intermediate_code="{{ $data->intermediate_code }}"
-                                        data-finished_product_code="{{ $data->finished_product_code }}"
-                                        data-batch="{{ $data->batch }}" 
-                                        data-market="{{ $data->market }}"
-                                        data-specification="{{ $data->specification }}" 
-                                        data-level="{{ $data->level }}"
-                                        data-expected_date="{{ $data->expected_date }}" 
-                                        data-is_val="{{ $data->is_val }}"
-                                        data-source_material_name="{{ $data->source_material_name }}"
-                                        data-after_weigth_date="{{ $data->after_weigth_date}}"
-                                        data-after_parkaging_date="{{ $data->after_parkaging_date }}"
-                                        data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
-                                        data-unit_batch_qty="{{ $data->unit_batch_qty}}"
-                                        data-material_source_id="{{ $data->material_source_id}}"
-                                        data-number_parkaging="{{ $data->number_parkaging}}"
-
-                                        data-product_caterogy_id="{{ $data->product_caterogy_id}}"
-                                        data-plan_list_id="{{ $data->plan_list_id}}"
-                                        data-IsHypothesis="{{ $data->IsHypothesis}}"
-                                    >
-                                        {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }} </div> 
+                                        <div class="btn {{ $data->only_parkaging == 0 ? 'btn-success' : 'btn-secondary' }} btn-splitting"
+                                            data-toggle="modal"
+                                            data-target= "{{ $data->only_parkaging == 0 ? '#selectProductModal' : '#splittingUpdateModal' }}"
+                                            {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
+                                            data-name="{{ $data->finished_product_name }}"
+                                            data-intermediate_code="{{ $data->intermediate_code }}"
+                                            data-finished_product_code="{{ $data->finished_product_code }}"
+                                            data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
+                                            data-specification="{{ $data->specification }}"
+                                            data-level="{{ $data->level }}"
+                                            data-expected_date="{{ $data->expected_date }}"
+                                            data-is_val="{{ $data->is_val }}"
+                                            data-source_material_name="{{ $data->source_material_name }}"
+                                            data-after_weigth_date="{{ $data->after_weigth_date }}"
+                                            data-after_parkaging_date="{{ $data->after_parkaging_date }}"
+                                            data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
+                                            data-unit_batch_qty="{{ $data->unit_batch_qty }}"
+                                            data-material_source_id="{{ $data->material_source_id }}"
+                                            data-number_parkaging="{{ $data->number_parkaging }}"
+                                            data-product_caterogy_id="{{ $data->product_caterogy_id }}"
+                                            data-plan_list_id="{{ $data->plan_list_id }}"
+                                            data-IsHypothesis="{{ $data->IsHypothesis }}">
+                                            {{ $data->number_parkaging . ' ' . $data->unit_batch_qty }} </div>
                                     @else
-                                        {{ $data->number_parkaging  . ' ' . $data->unit_batch_qty }}
+                                        {{ $data->number_parkaging . ' ' . $data->unit_batch_qty }}
                                     @endif
                                 @endif
-                                </td>
+                            </td>
 
                             <td>
                                 <div> {{ $data->market }} </div>
@@ -325,9 +323,11 @@
                             </td>
 
                             <td>
-                                <input type= "date" class="updateInput" name="expected_date"  value="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}" data-id = {{ $data->id }} {{ $auth_update }}>
+                                <input type= "date" class="updateInput" name="expected_date"
+                                    value="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}"
+                                    data-id={{ $data->id }} {{ $auth_update }}>
                             </td>
-                            
+
                             @php
                                 $colors = [
                                     1 => 'background-color: #f44336; color: white;', // đỏ
@@ -336,105 +336,108 @@
                                     4 => 'background-color: #4caf50; color: white;', // xanh lá
                                 ];
                             @endphp
-                           
-                            <td class="text-center "> 
+
+                            <td class="text-center ">
                                 <span
                                     style="display: inline-block; padding: 6px 10py; width: 50px; border-radius: 40px; {{ $colors[$data->level] ?? '' }}">
-                                    <input type= "text" class="updateInput" name="level" value = "{{$data->level}}" data-id = {{$data->id}} {{ $auth_update }}>
+                                    <input type= "text" class="updateInput" name="level"
+                                        value = "{{ $data->level }}" data-id={{ $data->id }}
+                                        {{ $auth_update }}>
                                 </span>
                             </td>
 
                             <td class="text-center ">
-                                  <input class="form-check-input step-checkbox2"
-                                      type="checkbox" role="switch"
-                                      data-id="{{ $data->id }}"
-                                      id="{{ $data->id }}"
-                                      {{ $auth_update != ''?'readOnly':''}}
-                                      {{ $data->is_val ? 'checked' : '' }}
-                                      readonly
-                                      >
-                                      <br>
-                                    @if ($data->is_val)
-                                        Lô thứ  {{$data->code_val ? explode('_', $data->code_val)[1] ?? '' : '' }}
-                                    @endif
+                                <input class="form-check-input step-checkbox2" type="checkbox" role="switch"
+                                    data-id="{{ $data->id }}" id="{{ $data->id }}"
+                                    {{ $auth_update != '' ? 'readOnly' : '' }} {{ $data->is_val ? 'checked' : '' }}
+                                    readonly>
+                                <br>
+                                @if ($data->is_val)
+                                    Lô thứ {{ $data->code_val ? explode('_', $data->code_val)[1] ?? '' : '' }}
+                                @endif
                             </td>
 
                             <td>
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(1):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="after_weigth_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="after_weigth_date"
                                         value="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(2):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="after_parkaging_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="after_parkaging_date"
                                         value="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(3):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="allow_weight_before_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="allow_weight_before_date"
                                         value="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(4):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="expired_material_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="expired_material_date"
                                         value="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(5):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="expired_packing_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="expired_packing_date"
                                         value="{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
-                         
+
                             </td>
 
                             <td>
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(1):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="preperation_before_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="preperation_before_date"
                                         value="{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(2):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="blending_before_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="blending_before_date"
                                         value="{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(3):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="coating_before_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="coating_before_date"
                                         value="{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
-                                 <div style="display:flex; align-items:center; gap:6px;">
+                                <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(4):</span>
-                                    <input {{ $auth_update }} type="date" class="updateInput" name="parkaging_before_date"
+                                    <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="parkaging_before_date"
                                         value="{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
-                         
+
                             </td>
 
-                            <td> 
-                                <textarea {{ $auth_update }} 
-                                    class="updateInput text-left "
-                                    name="note"
-                                    rows="5"
-                                    style="width:100%; resize:vertical;"
-                                    data-id="{{ $data->id }}"> {{ $data->note??'' }}</textarea>
+                            <td>
+                                <textarea {{ $auth_update }} class="updateInput text-left " name="note" rows="5"
+                                    style="width:100%; resize:vertical;" data-id="{{ $data->id }}"> {{ $data->note ?? '' }}</textarea>
                             </td>
 
                             <td>
@@ -443,31 +446,23 @@
                             </td>
 
                             <td class="text-center align-middle">
-                                <button type="button"  class="btn btn-warning btn-edit mb-2" 
-                                    {{ $auth_update }}
+                                <button type="button" class="btn btn-warning btn-edit mb-2" {{ $auth_update }}
                                     {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                     data-name="{{ $data->finished_product_name }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"
                                     data-finished_product_code="{{ $data->finished_product_code }}"
-                                    data-batch="{{ $data->batch }}" 
-                                    data-market="{{ $data->market }}"
-                                    data-specification="{{ $data->specification }}" 
+                                    data-batch="{{ $data->batch }}" data-market="{{ $data->market }}"
+                                    data-specification="{{ $data->specification }}"
                                     data-level="{{ $data->level }}"
-                                    data-expected_date="{{ $data->expected_date }}" 
-                                    data-is_val="{{ $data->is_val }}"
-                                    data-code_val="{{ $data->code_val}}"
+                                    data-expected_date="{{ $data->expected_date }}"
+                                    data-is_val="{{ $data->is_val }}" data-code_val="{{ $data->code_val }}"
                                     data-source_material_name="{{ $data->source_material_name }}"
                                     data-after_weigth_date="{{ $data->after_weigth_date }}"
-               
                                     data-after_parkaging_date="{{ $data->after_parkaging_date }}"
- 
-                                    data-note="{{ $data->note }}" 
-                                    data-batch_qty="{{ $data->batch_qty }}"
+                                    data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
                                     data-unit_batch_qty="{{ $data->unit_batch_qty }}"
                                     data-material_source_id="{{ $data->material_source_id }}"
-                                    data-number_parkaging="{{ $data->number_parkaging}}"
-                                   
-                                    data-toggle="modal"
+                                    data-number_parkaging="{{ $data->number_parkaging }}" data-toggle="modal"
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -477,22 +472,23 @@
                                     @csrf
                                     <input type="hidden" name="id" value = "{{ $data->id }}">
                                     <input type="hidden" name="active" value="{{ $data->active }}">
-                                    <input type="hidden" name="only_parkaging" value="{{ $data->only_parkaging }}">
+                                    <input type="hidden" name="only_parkaging"
+                                        value="{{ $data->only_parkaging }}">
 
                                     @if ($data->active == true && $send == false)
-                                        <button type="submit" class="btn btn-danger" data-type="delete" 
+                                        <button type="submit" class="btn btn-danger" data-type="delete"
                                             {{ $auth_deActive }}
                                             data-name="{{ $data->finished_product_name . ' - ' . $data->batch }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     @elseif ($data->cancel == false && $send == true)
-                                        <button type="submit" class="btn btn-danger" data-type="cancel" 
+                                        <button type="submit" class="btn btn-danger" data-type="cancel"
                                             {{ $auth_deActive }}
                                             data-name="{{ $data->finished_product_name . ' - ' . $data->batch }}">
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @elseif ($data->cancel == true && $send == true)
-                                        <button type="submit" class="btn btn-success" data-type="restore" 
+                                        <button type="submit" class="btn btn-success" data-type="restore"
                                             {{ $auth_deActive }}
                                             data-name="{{ $data->finished_product_name . ' - ' . $data->batch }}">
                                             <i class="fas fa-unlock"></i>
@@ -502,7 +498,7 @@
                             </td>
 
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-primary btn-history position-relative" 
+                                <button type="button" class="btn btn-primary btn-history position-relative"
                                     data-id="{{ $data->id }}" data-toggle="modal" data-target="#historyModal">
                                     <i class="fas fa-history"></i>
                                     <span class="badge badge-danger"
@@ -513,12 +509,9 @@
                             </td>
 
                             <td class="text-center align-middle">
-                                <input type="checkbox"
-                                        class="step-checkbox"
-                                        name="selected"
-                                        data-id = {{ $data->id }}
-                                        value= {{$data->selected}}
-                                        {{ $data->selected == 1 ? 'checked':''}}>
+                                <input type="checkbox" class="step-checkbox" name="selected"
+                                    data-id={{ $data->id }} value={{ $data->selected }}
+                                    {{ $data->selected == 1 ? 'checked' : '' }}>
                             </td>
 
 
@@ -548,7 +541,6 @@
     @endif
 
     <script>
-
         $(document).ready(function() {
             document.body.style.overflowY = "auto";
             preventDoubleSubmit("#send_form", "#send_btn");
@@ -571,36 +563,44 @@
                 modal.find('input[name="batch"]').val(button.data('batch'));
                 modal.find('input[name="material_source_id"]').val(button.data('material_source_id'));
 
-                modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
-                modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date')); 
+                modal.find('textarea[name="source_material_name"]').val(button.data(
+                    'source_material_name'));
+                modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
                 modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
                 modal.find('textarea[name="note"]').val(button.data('note'));
 
-                modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
-                modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
+                modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data(
+                    'unit_batch_qty'));
+                modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data(
+                    'specification'));
                 modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
                 modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
                 modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
                 modal.find('input[name="expected_date"]').val(button.data('expected_date'));
-                modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
+                modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',
+                    true);
 
 
-                if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "1"){
+                if (button.data('is_val') == 1 && button.data('code_val').split('_')[1] == "1") {
                     modal.find('input[name="batchNo1"]').val(button.data('batch'));
                     modal.find('#update_checkbox1').prop('checked', true).val(true);
-                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] + "_1");
-                }else if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "2"){
+                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] +
+                        "_1");
+                } else if (button.data('is_val') == 1 && button.data('code_val').split('_')[1] == "2") {
                     modal.find('input[name="batchNo1"]').val(button.data('batch'));
                     modal.find('#update_checkbox2').prop('checked', true).val(true);
-                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] + "_1");
-                }else if (button.data('is_val')  == 1 && button.data('code_val').split('_')[1] == "3"){
+                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] +
+                        "_1");
+                } else if (button.data('is_val') == 1 && button.data('code_val').split('_')[1] == "3") {
                     modal.find('input[name="batchNo1"]').val(button.data('batch'));
                     modal.find('#update_checkbox3').prop('checked', true).val(true);
-                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] + "_1");
+                    modal.find('input[name="code_val_first"]').val(button.data('code_val').split('_')[0] +
+                        "_1");
                 }
-                
+
                 const create_soure_modal = $('#create_soure_modal');
-                create_soure_modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+                create_soure_modal.find('input[name="intermediate_code"]').val(button.data(
+                    'intermediate_code'));
                 create_soure_modal.find('input[name="product_name"]').val(button.data('name'));
                 create_soure_modal.find('input[name="mode"]').val("update");
             });
@@ -608,50 +608,59 @@
             $('.btn-splitting').click(function() {
                 const button = $(this);
                 const targetModal = button.data('target');
-                
-                if (targetModal == "#splittingUpdateModal"){
+
+                if (targetModal == "#splittingUpdateModal") {
                     const modal = $(targetModal);
                     // Gán dữ liệu vào input
                     modal.find('input[name="id"]').val(button.data('id'));
                     modal.find('input[name="name"]').val(button.data('name'));
                     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-                    modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
+                    modal.find('input[name="finished_product_code"]').val(button.data(
+                        'finished_product_code'));
                     modal.find('input[name="batch"]').val(button.data('batch'));
                     modal.find('input[name="material_source_id"]').val(button.data('material_source_id'));
 
-                    modal.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
+                    modal.find('textarea[name="source_material_name"]').val(button.data(
+                        'source_material_name'));
                     modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
                     //modal.find('input[name="before_weigth_date"]').val(button.data('before_weigth_date'));
-                    modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
+                    modal.find('input[name="after_parkaging_date"]').val(button.data(
+                        'after_parkaging_date'));
                     //modal.find('input[name="before_parkaging_date"]').val(button.data('before_parkaging_date'));
                     modal.find('textarea[name="note"]').val(button.data('note'));
 
-                    modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data('unit_batch_qty'));
-                    modal.find('input[name="specification"]').val(button.data('market') + " - " + button.data('specification'));
+                    modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button
+                        .data('unit_batch_qty'));
+                    modal.find('input[name="specification"]').val(button.data('market') + " - " + button
+                        .data('specification'));
                     modal.find('input[name="number_of_unit"]').attr('max', button.data('batch_qty'));
                     modal.find('input[name="max_number_of_unit"]').val(button.data('batch_qty'));
                     modal.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
                     modal.find('input[name="expected_date"]').val(button.data('expected_date'));
-                    modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button.data('is_val'));
-                    
+                    modal.find('input[name="is_val"]').prop('checked', button.data('is_val')).val(button
+                        .data('is_val'));
 
-                    modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',true);
+
+                    modal.find('input[name="level"][value="' + button.data('level') + '"]').prop('checked',
+                        true);
 
                     // modal.find('input[name="product_caterogy_id"]').val(button.data('product_caterogy_id'));
                     // modal.find('input[name="plan_list_id"]').val(button.data('plan_list_id'));
                     // modal.find('input[name="IsHypothesis"]').val(button.data('IsHypothesis'));   
 
-                }else {
+                } else {
                     const modal_splitting = $('#splittingModal');
                     modal_splitting.find('input[name="id"]').val(button.data('id'));
                     modal_splitting.find('input[name="batch"]').val(button.data('batch'));
-                    modal_splitting.find('textarea[name="source_material_name"]').val(button.data('source_material_name'));
-                    modal_splitting.find('input[name="number_of_unit"]').val(button.data('number_parkaging'));
+                    modal_splitting.find('textarea[name="source_material_name"]').val(button.data(
+                        'source_material_name'));
+                    modal_splitting.find('input[name="number_of_unit"]').val(button.data(
+                        'number_parkaging'));
                     $('#selectedModalId').val('#splittingModal');
-     
+
                 }
 
-                 
+
             });
 
             $('.btn-add').click(function() {
@@ -837,32 +846,32 @@
                 }
             });
 
-            $(document).on('focus', '.updateInput', function () {
+            $(document).on('focus', '.updateInput', function() {
                 $(this).data('old-value', $(this).val());
             });
 
-            $(document).on('blur', '.updateInput', function () {
-                
+            $(document).on('blur', '.updateInput', function() {
+
                 let id = $(this).data('id');
                 let name = $(this).attr('name');
                 let updateValue = $(this).val();
                 let oldValue = $(this).data('old-value');
-              
-                if (updateValue === oldValue)return;
-                
-                if (id == ''){
+
+                if (updateValue === oldValue) return;
+
+                if (id == '') {
                     Swal.fire({
-                    title: 'Cảnh Báo!',
-                    text: 'id Không xác định',
-                    icon: 'warning',
-                    timer: 1000, // tự đóng sau 2 giây
-                    showConfirmButton: false
-                });
+                        title: 'Cảnh Báo!',
+                        text: 'id Không xác định',
+                        icon: 'warning',
+                        timer: 1000, // tự đóng sau 2 giây
+                        showConfirmButton: false
+                    });
                     $(this).val('');
                     return
                 }
 
-                if (name == "level"){
+                if (name == "level") {
                     const pattern = /^[1-9]\d*$/;
                     if (updateValue && !pattern.test(updateValue)) {
                         Swal.fire({
@@ -880,7 +889,7 @@
                     }
                 }
 
-            
+
 
 
                 $.ajax({
@@ -888,59 +897,111 @@
                     type: 'POST',
                     dataType: 'json',
                     data: {
-                    _token: '{{ csrf_token() }}',
-                    id: id,
-                    name: name,
-                    updateValue: updateValue
+                        _token: '{{ csrf_token() }}',
+                        id: id,
+                        name: name,
+                        updateValue: updateValue
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000
+                                })
+                                .fire({
+                                    icon: 'success',
+                                    title: 'Cập nhật thành công'
+                                });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.mixin({
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 2000
+                            })
+                            .fire({
+                                icon: 'error',
+                                title: 'Cập nhật thất bại'
+                            });
                     }
                 });
             });
 
-            $(document).on('change', '.step-checkbox' , function () {
- 
+            $(document).on('change', '.step-checkbox', function() {
+
                 let id = $(this).data('id');
                 let name = $(this).attr('name');
                 let updateValue = $(this).val();
                 let oldValue = $(this).data('old-value');
-              
-                if (updateValue === oldValue)return;
-                
-                if (id == ''){
+
+                if (updateValue === oldValue) return;
+
+                if (id == '') {
                     Swal.fire({
-                    title: 'Cảnh Báo!',
-                    text: 'id Không xác định',
-                    icon: 'warning',
-                    timer: 1000, // tự đóng sau 2 giây
-                    showConfirmButton: false
-                });
+                        title: 'Cảnh Báo!',
+                        text: 'id Không xác định',
+                        icon: 'warning',
+                        timer: 1000, // tự đóng sau 2 giây
+                        showConfirmButton: false
+                    });
                     $(this).val('');
                     return
                 }
 
-            
+
                 $.ajax({
                     url: "{{ route('pages.plan.production.updateInput') }}",
                     type: 'POST',
                     dataType: 'json',
                     data: {
-                    _token: '{{ csrf_token() }}',
-                    id: id,
-                    name: name,
-                    updateValue: updateValue
+                        _token: '{{ csrf_token() }}',
+                        id: id,
+                        name: name,
+                        updateValue: updateValue
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000
+                                })
+                                .fire({
+                                    icon: 'success',
+                                    title: 'Cập nhật thành công'
+                                });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.mixin({
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 2000
+                            })
+                            .fire({
+                                icon: 'error',
+                                title: 'Cập nhật thất bại'
+                            });
                     }
                 });
             });
 
-            $(document).on('click', '.btn-selected-all', function () {
+            $(document).on('click', '.btn-selected-all', function() {
                 let btn = $(this);
                 let id = btn.data('plan_list_id');
                 let isActive = btn.data('active') == 1;
-               
+
                 // Toggle value
                 let updateValue = isActive ? 0 : 1;
 
                 // Update lại trạng thái trong button
-              
+
 
                 // AJAX update
                 $.ajax({
@@ -950,10 +1011,10 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         id: id,
-                        name: 'selected_all',   // gửi cố định field name
+                        name: 'selected_all', // gửi cố định field name
                         updateValue: updateValue
                     },
-                    success: function (res) {
+                    success: function(res) {
 
                         const isActive = updateValue == 1;
                         btn.data('active', updateValue);
@@ -978,7 +1039,7 @@
 
             var table = $('#data_table_plan_master').DataTable();
 
-            $('#statusFilter').on('change', function () {
+            $('#statusFilter').on('change', function() {
                 var value = $(this).val();
 
                 table.column(1).search(value ? value : '', true, false).draw();

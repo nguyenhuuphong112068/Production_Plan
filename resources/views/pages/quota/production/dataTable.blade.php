@@ -284,7 +284,6 @@
 
         });
 
-
         const table = $('#data_table_quota').DataTable({
             paging: true,
             deferRender: true,
@@ -397,6 +396,32 @@
                 id: id,
                 stage_code: stage_code,
                 checked: checked
+            },
+            success: function(res) {
+                if (res.success) {
+                    Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        })
+                        .fire({
+                            icon: 'success',
+                            title: 'Cập nhật thành công'
+                        });
+                }
+            },
+            error: function(xhr) {
+                Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000
+                    })
+                    .fire({
+                        icon: 'error',
+                        title: 'Cập nhật thất bại'
+                    });
             }
         });
     });
@@ -486,6 +511,32 @@
                 id: id,
                 name: name,
                 time: time
+            },
+            success: function(res) {
+                if (res.success) {
+                    Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        })
+                        .fire({
+                            icon: 'success',
+                            title: 'Cập nhật thành công'
+                        });
+                }
+            },
+            error: function(xhr) {
+                Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000
+                    })
+                    .fire({
+                        icon: 'error',
+                        title: 'Cập nhật thất bại'
+                    });
             }
         });
     });

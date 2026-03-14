@@ -11,7 +11,8 @@ use Illuminate\Support\Str;
 
 class ProductionPlanController extends Controller
 {
-        public function index(){
+        public function index()
+        {
 
                 $production_code = session('user')['production_code'];
 
@@ -44,8 +45,8 @@ class ProductionPlanController extends Controller
                         ->where('pm.deparment_code', $production_code)
                         ->groupBy('pm.plan_list_id')
                         ->select(
-                        'pm.plan_list_id',
-                        DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
+                                'pm.plan_list_id',
+                                DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
                         )
                         ->get()
                         ->keyBy('plan_list_id');
@@ -62,8 +63,8 @@ class ProductionPlanController extends Controller
                         ->where('active', 1)
                         ->where('deparment_code', $production_code)
                         ->select(
-                        'plan_master_id',
-                        DB::raw('MAX(stage_code) as max_stage_code')
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_stage_code')
                         )
                         ->groupBy('plan_master_id');
 
@@ -76,11 +77,11 @@ class ProductionPlanController extends Controller
 
                 $batch_status = DB::table('plan_master as pm')
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                        $join->on('pm.id', '=', 'sp_max.plan_master_id');
+                                $join->on('pm.id', '=', 'sp_max.plan_master_id');
                         })
                         ->leftJoin('stage_plan as sp', function ($join) {
-                        $join->on('pm.id', '=', 'sp.plan_master_id')
-                                ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
+                                $join->on('pm.id', '=', 'sp.plan_master_id')
+                                        ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
                         })
                         ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
                         ->where('pm.active', 1)
@@ -89,9 +90,9 @@ class ProductionPlanController extends Controller
                         ->where('pm.plan_list_id', '>', 23)
                         ->where('pm.deparment_code', $production_code)
                         ->select(
-                        'pm.plan_list_id',
-                        'fc.batch_qty',
-                        DB::raw("
+                                'pm.plan_list_id',
+                                'fc.batch_qty',
+                                DB::raw("
                                 CASE
                                 WHEN pm.cancel = 1 THEN 'Hủy'
                                 WHEN sp.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
@@ -117,15 +118,15 @@ class ProductionPlanController extends Controller
                         ->groupBy('plan_list_id')
                         ->map(function ($rows) {
 
-                        $statusCount = $rows->groupBy('status')->map->count();
+                                $statusCount = $rows->groupBy('status')->map->count();
 
-                        return (object)[
-                                'tong_lo' => $rows->count(),
-                                'status_counts' => $statusCount,
-                                'batch_qty_pending' => $rows
-                                ->where('status', 'Chưa làm')
-                                ->sum('batch_qty'),
-                        ];
+                                return (object)[
+                                        'tong_lo' => $rows->count(),
+                                        'status_counts' => $statusCount,
+                                        'batch_qty_pending' => $rows
+                                                ->where('status', 'Chưa làm')
+                                                ->sum('batch_qty'),
+                                ];
                         });
 
 
@@ -139,7 +140,7 @@ class ProductionPlanController extends Controller
 
                         $item->total_batch_qty =
 
-                        $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
+                                $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
 
                         $summary = $batch_summary[$item->id] ?? null;
 
@@ -167,7 +168,7 @@ class ProductionPlanController extends Controller
                         'created_at' => now(),
                         'send' => 1,
                         'send_by' => 'NA',
-                        'send_date' => null,  
+                        'send_date' => null,
                         'month' => 'NA',
 
                         'name' => 'KẾ HOẠCH CHƯA HOÀN TẤT ĐÓNG GÓI',
@@ -175,21 +176,21 @@ class ProductionPlanController extends Controller
                         'tong_lo' => 0,
                         'status_counts' => [
                                 'Chưa làm' => 0,
-                                'Đã Cân' => 0,  
-                                'Đã Pha chế' => 0,     
-                                'Đã THT' => 0,  
+                                'Đã Cân' => 0,
+                                'Đã Pha chế' => 0,
+                                'Đã THT' => 0,
                                 'Đã định hình' => 0,
-                                'Đã Bao phim' => 0,    
+                                'Đã Bao phim' => 0,
                         ],
                         'batch_qty_pending' => 0,
-                        ];
+                ];
 
-               
+
                 foreach ($datas as $item) {
-                //dd ($item);
-                $notFinished = collect($item->status_counts)
-                        ->except(['Hoàn Tất ĐG','Hủy'])
-                        ->sum();
+                        //dd ($item);
+                        $notFinished = collect($item->status_counts)
+                                ->except(['Hoàn Tất ĐG', 'Hủy'])
+                                ->sum();
 
                         if ($notFinished > 0) {
 
@@ -198,21 +199,21 @@ class ProductionPlanController extends Controller
                                 // cộng từng trạng thái
                                 foreach ($item->status_counts as $status => $count) {
 
-                                if (!in_array($status, ['Hoàn Tất ĐG','Hủy'])) {
+                                        if (!in_array($status, ['Hoàn Tất ĐG', 'Hủy'])) {
 
-                                        if (!isset($pending_plan->status_counts[$status])) {
-                                        $pending_plan->status_counts[$status] = 0;
+                                                if (!isset($pending_plan->status_counts[$status])) {
+                                                        $pending_plan->status_counts[$status] = 0;
+                                                }
+
+                                                $pending_plan->status_counts[$status] += $count;
                                         }
-
-                                        $pending_plan->status_counts[$status] += $count;
-                                }
                                 }
 
                                 $pending_plan->total_batch_qty += $item->batch_qty_pending ?? 0;
                         }
                 }
 
-             
+
                 if ($pending_plan->tong_lo > 0) {
                         $datas->prepend($pending_plan);
                 }
@@ -224,16 +225,17 @@ class ProductionPlanController extends Controller
                 |--------------------------------------------------------------------------
                 */
 
-                session()->put(['title'=> 'KẾ HOẠCH SẢN XUẤT THÁNG']);
+                session()->put(['title' => 'KẾ HOẠCH SẢN XUẤT THÁNG']);
                 //dd ($datas);
                 return view('pages.plan.production.plan_list', [
                         'datas' => $datas,
                 ]);
         }
 
-        public function create_plan_list (Request $request) {
-                       
-                 DB::table('plan_list')->insert([
+        public function create_plan_list(Request $request)
+        {
+
+                DB::table('plan_list')->insert([
                         'name' => $request->name,
                         'month' => date('m'),
                         'type' => 1,
@@ -243,10 +245,10 @@ class ProductionPlanController extends Controller
                         'created_at' => now(),
                 ]);
                 return redirect()->back()->with('success', "Tạo Mới $request->name Thành Công!");
-
         }
 
-        public function open(Request  $request){
+        public function open(Request  $request)
+        {
 
                 $maxStageFinished = DB::table('stage_plan')
                         ->when($request->plan_list_id >= 0, function ($q) use ($request) {
@@ -257,8 +259,8 @@ class ProductionPlanController extends Controller
                                 'plan_master_id',
                                 DB::raw('MAX(stage_code) as max_stage_code')
                         )
-                ->groupBy('plan_master_id');
-  
+                        ->groupBy('plan_master_id');
+
                 $datas = DB::table('plan_master')
                         ->select(
                                 'plan_master.*',
@@ -290,25 +292,26 @@ class ProductionPlanController extends Controller
                         ->whereIn('plan_master.plan_list_id', DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('id'))
                         ->where('plan_master.plan_list_id', ">", 23)
                         ->where('plan_master.active', 1)
-   
-                        ->when($request->plan_list_id < 0,
+
+                        ->when(
+                                $request->plan_list_id < 0,
                                 function ($q) {
                                         return $q->where('plan_master.cancel', 0)
                                                 //->where('plan_master.only_parkaging', 0)
                                                 ->where(function ($sub) {
                                                         $sub->whereNull('sp_max.max_stage_code')
-                                                        ->orWhere('sp_max.max_stage_code', '<', 7);
+                                                                ->orWhere('sp_max.max_stage_code', '<', 7);
                                                 });
                                 },
                                 function ($q) use ($request) {
                                         return $q->where('plan_master.plan_list_id', $request->plan_list_id);
                                 }
                         )
-                        ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
-                        ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
-                        ->leftJoin('source_material', 'plan_master.material_source_id','=','source_material.id')
-                        ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
-                        ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+                        ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', '=', 'fp_name.id')
+                        ->leftJoin('product_name as im_name', 'intermediate_category.product_name_id', '=', 'im_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
@@ -316,13 +319,13 @@ class ProductionPlanController extends Controller
                         })
                         ->leftJoin('stage_plan', function ($join) {
                                 $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id') //
-                                ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
                         })
-                        
+
                         ->orderBy('expected_date', 'asc')
                         ->orderBy('level', 'asc')
                         ->orderBy('batch', 'asc')
-                ->get();
+                        ->get();
 
 
                 $planMasterIds = $datas->pluck('id')->toArray();
@@ -333,290 +336,294 @@ class ProductionPlanController extends Controller
                         ->groupBy('plan_master_id')
                         ->pluck('total', 'plan_master_id')
                         ->toArray();
-                $datas = $datas->map(function($item) use ($historyCounts) {
+                $datas = $datas->map(function ($item) use ($historyCounts) {
                         $item->history_count = $historyCounts[$item->id] ?? 0; // nếu không có history thì = 0
                         return $item;
-                        });
-               
+                });
+
                 $finished_product_category = DB::table('finished_product_category')
-                        ->select('finished_product_category.*', 
-                                'product_name.name', 
-                                'market.name as market', 
+                        ->select(
+                                'finished_product_category.*',
+                                'product_name.name',
+                                'market.name as market',
                                 'specification.name as specification',
                                 'intermediate_category.id as intermediate_caterogy_id'
-                                )
+                        )
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                        ->where ('finished_product_category.active',1)
-                        ->where ('finished_product_category.deparment_code',session ('user')['production_code'])
-                        ->orderBy('name','asc')
-                ->get();
-                
+                        ->where('finished_product_category.active', 1)
+                        ->where('finished_product_category.deparment_code', session('user')['production_code'])
+                        ->orderBy('name', 'asc')
+                        ->get();
+
                 $source_material_list = DB::table('source_material')
                         ->select('source_material.*', 'product_name.name as product_name')
                         ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
                         ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
-                ->where ('source_material.active',1)->orderBy('source_material.name','asc')->get();
-                
+                        ->where('source_material.active', 1)->orderBy('source_material.name', 'asc')->get();
+
 
 
                 $production  =  session('user')['production_name'];
-                $plan_list_id_title =  DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('name','id');
-               
-                session()->put(['title'=> " $request->name - $production"]);
+                $plan_list_id_title =  DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('name', 'id');
 
-        
-                return view('pages.plan.production.list',[
-                        'datas' => $datas, 
+                session()->put(['title' => " $request->name - $production"]);
+
+
+                return view('pages.plan.production.list', [
+                        'datas' => $datas,
                         'plan_list_id' => $request->plan_list_id,
-                        'month' => $request->month, 
+                        'month' => $request->month,
                         'production' => $request->production,
                         'finished_product_category' => $finished_product_category,
-                        'source_material_list'=> $source_material_list,
-                        'send'=> $request->send??1,
+                        'source_material_list' => $source_material_list,
+                        'send' => $request->send ?? 1,
                         'plan_list_id_title' => $plan_list_id_title
-                        
+
                 ]);
         }
 
-        public function history(Request $request) {
+        public function history(Request $request)
+        {
                 //dd ($request->all());
                 $histories = DB::table('plan_master_history')
-                ->select('plan_master_history.*', 
-                        'finished_product_category.intermediate_code', 
-                        'finished_product_category.finished_product_code', 
-                        'product_name.name',
-                        'market.name as market', 
-                        'specification.name as specification', 
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'finished_product_category.deparment_code',
-                        'source_material.name as source_material_name'
+                        ->select(
+                                'plan_master_history.*',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'product_name.name',
+                                'market.name as market',
+                                'specification.name as specification',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'finished_product_category.deparment_code',
+                                'source_material.name as source_material_name'
                         )
-                ->where('plan_master_history.plan_master_id', $request->id)
-                ->leftJoin('finished_product_category', 'plan_master_history.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('source_material', 'plan_master_history.material_source_id', 'source_material.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->orderBy('version','desc')->orderBy('expected_date','asc')->get();
-                 return response()->json($histories);
+                        ->where('plan_master_history.plan_master_id', $request->id)
+                        ->leftJoin('finished_product_category', 'plan_master_history.product_caterogy_id', 'finished_product_category.id')
+                        ->leftJoin('source_material', 'plan_master_history.material_source_id', 'source_material.id')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                        ->orderBy('version', 'desc')->orderBy('expected_date', 'asc')->get();
+                return response()->json($histories);
         }
 
-        public function source_material(Request $request) {
+        public function source_material(Request $request)
+        {
                 //>where ('intermediate_code', $request->intermediate_code)
                 $source_material_list = DB::table('source_material')
-                ->select('source_material.*', 'product_name.name as product_name')
-                ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
-                ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
-                ->where ('source_material.active',1)
-                ->where ('source_material.intermediate_code',$request->intermediate_code)
-                ->orderBy('source_material.name','asc')->get();
-                
-                 return response()->json($source_material_list);
+                        ->select('source_material.*', 'product_name.name as product_name')
+                        ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
+                        ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
+                        ->where('source_material.active', 1)
+                        ->where('source_material.intermediate_code', $request->intermediate_code)
+                        ->orderBy('source_material.name', 'asc')->get();
+
+                return response()->json($source_material_list);
         }
 
-        public function store(Request $request){
+        public function store(Request $request)
+        {
                 //dd ($request->all());
                 try {
-                $validator = Validator::make($request->all(), [
-                        'product_caterogy_id' => 'required',
-                        'plan_list_id'   => 'required',
-                        'batch' => 'required',
-                        'expected_date' => 'required',
-                        'level' => 'required',
-                        //'material_source_id' => 'required',
-                       
-                ], [
-                        'product_caterogy_id' => 'Vui lòng chọn lại sản phẩm.',
-                        'plan_list_id'   => 'Vui lòng chọn lại sản phẩm',
-                        'batch' => 'Vui lòng nhập số lô',
-                        'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
-                        'level' => 'vui lòng chọn mức độ ưu tiên',
-                        //'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
-                ]);
+                        $validator = Validator::make($request->all(), [
+                                'product_caterogy_id' => 'required',
+                                'plan_list_id'   => 'required',
+                                'batch' => 'required',
+                                'expected_date' => 'required',
+                                'level' => 'required',
+                                //'material_source_id' => 'required',
 
-        
-                if ($validator->fails()) {
-                        return redirect()->back()
-                        ->withErrors($validator, 'createErrors')
-                        ->withInput();
-                }
-                
-                $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
-                $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
-                $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
-                $total =  $first_val_batch +  $second_val_batch + $third_val_batch;
-
-                if ($first_val_batch == 1){
-                        $current_val_batch = 1;
-                }else if ($second_val_batch == 1){
-                        $current_val_batch = 2;
-                }else if ($third_val_batch == 1){
-                         $current_val_batch = 3;                       
-                }
-                
-                $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
-
-                // // Tạo số lô
-                $batches = [];
-
-                if ($request->format_batch_no == "on") {
-                        $prefix = Str::substr($request->batch, -4);
-                        $aa     = intval(Str::substr($request->batch, 0, Str::length($request->batch) - 4));
-                        for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                                $charater_val = "";//($i <= $total) ? "V" : "";
-                                $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
-                                $aa++;
-                        }
-                } else {
-                        $prefix = Str::substr($request->batch, 0, 3);
-                        $aa     = intval(Str::substr($request->batch, 3, 3));
-                        for ($i = 1; $i <= $request->number_of_batch; $i++) {
-                                 $charater_val = ($i <= $total) ? "V" : "";
-                                $batches[] = $prefix . sprintf("%02d", $aa) . $charater_val;
-                                $aa++;
-                        }
-                }
-
-                $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
-                $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
-                $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
-
-              
-                $i = 1;
-
-                
-                foreach ($batches as  $batch) {
-                        if ($i <= $total){
-                                $code_val_part_1 = $current_val_batch - 1 + $i;
-                        }
-                        
-                        //dd ($total, $current_val_batch, $code_val_part_1);
-                        // Insert vào plan_master
-                        $planMasterId = DB::table('plan_master')->insertGetId([
-                                "product_caterogy_id" => $request->product_caterogy_id,
-                                "plan_list_id" => $request->plan_list_id,
-                                "batch" => $batch,
-                                "expected_date" => $request->expected_date,
-                                "responsed_date" => $request->expected_date,
-                                "level" => $request->level,
-                                "is_val" => ($i <= $total) ? 1 : 0,
-                                "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
-
-                                "after_weigth_date" => $request->after_weigth_date,
-                                "after_parkaging_date" => $request->after_parkaging_date,
-
-                                "allow_weight_before_date" => $request->allow_weight_before_date,
-                                "expired_material_date" => $request->expired_material_date,
-                                "preperation_before_date" => $request->preperation_before_date,
-                                "blending_before_date" => $request->blending_before_date,
-                                "coating_before_date" => $request->coating_before_date,
-
-                                "parkaging_before_date" => $request->parkaging_before_date,
-                                "expired_packing_date" => $request->expired_packing_date,
-
-                                //"material_source_id" => $request->material_source_id,
-                                "percent_parkaging" => 1,
-                                "number_parkaging" => $request->max_number_of_unit,
-                                "only_parkaging" => 0,
-                                "note" => $request->note ?? "NA",
-                                'deparment_code'=> session('user')['production_code'],
-                                'prepared_by' => session('user')['fullName'],
-                                'created_at' => now(),
+                        ], [
+                                'product_caterogy_id' => 'Vui lòng chọn lại sản phẩm.',
+                                'plan_list_id'   => 'Vui lòng chọn lại sản phẩm',
+                                'batch' => 'Vui lòng nhập số lô',
+                                'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
+                                'level' => 'vui lòng chọn mức độ ưu tiên',
+                                //'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                         ]);
 
-                        // Cập nhật lại chính bản ghi đó
-                        DB::table('plan_master')
-                        ->where('id', $planMasterId)
-                        ->update(['main_parkaging_id' => $planMasterId]);
 
-                        $insertData = [];
-
-                        $materials = $request->input('materials', []);
-          
-                        foreach ($materials as $code => $item) {
-
-                                $insertData[] = [
-                                        
-                                        'plan_master_id'          => $planMasterId,
-                                        'material_packaging_code' => (string) $code,
-                                        'material_packaging_type' => 0,
-                                        'Revno'                   => $item['Revno'],
-                                        'qty'                     => (float) $item['qty'],
-                                        'unit_bom'                => $item['uom'],
-                                        'MaterialName'            => $item['MaterialName'],
-                                        'created_at'              => now(),
-                                        'created_by'              =>session ('user')['fullName'],
-                                        'active'                  => $item['active'],
-                                ];
+                        if ($validator->fails()) {
+                                return redirect()->back()
+                                        ->withErrors($validator, 'createErrors')
+                                        ->withInput();
                         }
 
-                        $packagings = $request->input('packagings', []);
+                        $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
+                        $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
+                        $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
+                        $total =  $first_val_batch +  $second_val_batch + $third_val_batch;
 
-                        foreach ($packagings as $code => $item) {
-               
-                                $insertData[] = [
-                                        
-                                        'plan_master_id'          => $planMasterId,
-                                        'material_packaging_code' => (string) $code,
-                                        'material_packaging_type' => 1,
-                                        'Revno'                   => $item['Revno'],
-                                        'qty'                     => (float) $item['qty'],
-                                        'unit_bom'                => $item['uom'],
-                                        'MaterialName'            => $item['MaterialName'],
-                                        'created_at'              => now(),
-                                        'created_by'              =>session ('user')['fullName'],
-                                        'active'                  => $item['active'],
-                                        
-                                ];
-                        }
-                        
-                       
-                        if (!empty($insertData)) {
-                                DB::table('plan_master_materials')->upsert(
-                                $insertData,
-                                ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
-                                ['qty', 'unit_bom', 'active', 'Revno']
-                                );
+                        if ($first_val_batch == 1) {
+                                $current_val_batch = 1;
+                        } else if ($second_val_batch == 1) {
+                                $current_val_batch = 2;
+                        } else if ($third_val_batch == 1) {
+                                $current_val_batch = 3;
                         }
 
-                        // Insert vào plan_master_history
-                        DB::table('plan_master_history')->insert([
-                                "plan_master_id" => $planMasterId,
-                                "plan_list_id" => $request->plan_list_id,
-                                "product_caterogy_id" => $request->product_caterogy_id,
-                                "batch" => $batch,
-                                "expected_date" => $request->expected_date,
-                                "level" => $request->level,
-                                "is_val" => ($i <= $total) ? 1 : 0,
-                                "after_weigth_date" => $request->after_weigth_date,
-                                "after_parkaging_date" => $request->after_parkaging_date,
+                        $code_val_part_0 = explode("_", $request->code_val_first)[0];
 
-                                "allow_weight_before_date" => $request->allow_weight_before_date,
-                                "expired_material_date" => $request->expired_material_date,
-                                "preperation_before_date" => $request->preperation_before_date,
-                                "blending_before_date" => $request->blending_before_date,
-                                "coating_before_date" => $request->coating_before_date,
+                        // // Tạo số lô
+                        $batches = [];
 
-                                "material_source_id" => $request->material_source_id,
-                                "percent_parkaging" => 1,
-                                "number_parkaging" => $request->max_number_of_unit,
-                                "only_parkaging" => 0,
-                                "note" => $request->note ?? "NA",
-                                'deparment_code'=> session('user')['production_code'],
-                                'prepared_by' => session('user')['fullName'],
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                                "version" => 1,
-                                "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
-                        ]);
+                        if ($request->format_batch_no == "on") {
+                                $prefix = Str::substr($request->batch, -4);
+                                $aa     = intval(Str::substr($request->batch, 0, Str::length($request->batch) - 4));
+                                for ($i = 1; $i <= $request->number_of_batch; $i++) {
+                                        $charater_val = ""; //($i <= $total) ? "V" : "";
+                                        $batches[] = sprintf("%02d", $aa) . $prefix . $charater_val;
+                                        $aa++;
+                                }
+                        } else {
+                                $prefix = Str::substr($request->batch, 0, 3);
+                                $aa     = intval(Str::substr($request->batch, 3, 3));
+                                for ($i = 1; $i <= $request->number_of_batch; $i++) {
+                                        $charater_val = ($i <= $total) ? "V" : "";
+                                        $batches[] = $prefix . sprintf("%02d", $aa) . $charater_val;
+                                        $aa++;
+                                }
+                        }
 
-                        $i++;
-                }
+                        $first_val_batch = $request->first_val_batch == "on" ? 1 : 0;
+                        $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
+                        $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
 
+
+                        $i = 1;
+
+
+                        foreach ($batches as  $batch) {
+                                if ($i <= $total) {
+                                        $code_val_part_1 = $current_val_batch - 1 + $i;
+                                }
+
+                                //dd ($total, $current_val_batch, $code_val_part_1);
+                                // Insert vào plan_master
+                                $planMasterId = DB::table('plan_master')->insertGetId([
+                                        "product_caterogy_id" => $request->product_caterogy_id,
+                                        "plan_list_id" => $request->plan_list_id,
+                                        "batch" => $batch,
+                                        "expected_date" => $request->expected_date,
+                                        "responsed_date" => $request->expected_date,
+                                        "level" => $request->level,
+                                        "is_val" => ($i <= $total) ? 1 : 0,
+                                        "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
+
+                                        "after_weigth_date" => $request->after_weigth_date,
+                                        "after_parkaging_date" => $request->after_parkaging_date,
+
+                                        "allow_weight_before_date" => $request->allow_weight_before_date,
+                                        "expired_material_date" => $request->expired_material_date,
+                                        "preperation_before_date" => $request->preperation_before_date,
+                                        "blending_before_date" => $request->blending_before_date,
+                                        "coating_before_date" => $request->coating_before_date,
+
+                                        "parkaging_before_date" => $request->parkaging_before_date,
+                                        "expired_packing_date" => $request->expired_packing_date,
+
+                                        //"material_source_id" => $request->material_source_id,
+                                        "percent_parkaging" => 1,
+                                        "number_parkaging" => $request->max_number_of_unit,
+                                        "only_parkaging" => 0,
+                                        "note" => $request->note ?? "NA",
+                                        'deparment_code' => session('user')['production_code'],
+                                        'prepared_by' => session('user')['fullName'],
+                                        'created_at' => now(),
+                                ]);
+
+                                // Cập nhật lại chính bản ghi đó
+                                DB::table('plan_master')
+                                        ->where('id', $planMasterId)
+                                        ->update(['main_parkaging_id' => $planMasterId]);
+
+                                $insertData = [];
+
+                                $materials = $request->input('materials', []);
+
+                                foreach ($materials as $code => $item) {
+
+                                        $insertData[] = [
+
+                                                'plan_master_id'          => $planMasterId,
+                                                'material_packaging_code' => (string) $code,
+                                                'material_packaging_type' => 0,
+                                                'Revno'                   => $item['Revno'],
+                                                'qty'                     => (float) $item['qty'],
+                                                'unit_bom'                => $item['uom'],
+                                                'MaterialName'            => $item['MaterialName'],
+                                                'created_at'              => now(),
+                                                'created_by'              => session('user')['fullName'],
+                                                'active'                  => $item['active'],
+                                        ];
+                                }
+
+                                $packagings = $request->input('packagings', []);
+
+                                foreach ($packagings as $code => $item) {
+
+                                        $insertData[] = [
+
+                                                'plan_master_id'          => $planMasterId,
+                                                'material_packaging_code' => (string) $code,
+                                                'material_packaging_type' => 1,
+                                                'Revno'                   => $item['Revno'],
+                                                'qty'                     => (float) $item['qty'],
+                                                'unit_bom'                => $item['uom'],
+                                                'MaterialName'            => $item['MaterialName'],
+                                                'created_at'              => now(),
+                                                'created_by'              => session('user')['fullName'],
+                                                'active'                  => $item['active'],
+
+                                        ];
+                                }
+
+
+                                if (!empty($insertData)) {
+                                        DB::table('plan_master_materials')->upsert(
+                                                $insertData,
+                                                ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
+                                                ['qty', 'unit_bom', 'active', 'Revno']
+                                        );
+                                }
+
+                                // Insert vào plan_master_history
+                                DB::table('plan_master_history')->insert([
+                                        "plan_master_id" => $planMasterId,
+                                        "plan_list_id" => $request->plan_list_id,
+                                        "product_caterogy_id" => $request->product_caterogy_id,
+                                        "batch" => $batch,
+                                        "expected_date" => $request->expected_date,
+                                        "level" => $request->level,
+                                        "is_val" => ($i <= $total) ? 1 : 0,
+                                        "after_weigth_date" => $request->after_weigth_date,
+                                        "after_parkaging_date" => $request->after_parkaging_date,
+
+                                        "allow_weight_before_date" => $request->allow_weight_before_date,
+                                        "expired_material_date" => $request->expired_material_date,
+                                        "preperation_before_date" => $request->preperation_before_date,
+                                        "blending_before_date" => $request->blending_before_date,
+                                        "coating_before_date" => $request->coating_before_date,
+
+                                        "material_source_id" => $request->material_source_id,
+                                        "percent_parkaging" => 1,
+                                        "number_parkaging" => $request->max_number_of_unit,
+                                        "only_parkaging" => 0,
+                                        "note" => $request->note ?? "NA",
+                                        'deparment_code' => session('user')['production_code'],
+                                        'prepared_by' => session('user')['fullName'],
+                                        'created_at' => now(),
+                                        'updated_at' => now(),
+                                        "version" => 1,
+                                        "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
+                                ]);
+
+                                $i++;
+                        }
                 } catch (\Throwable $e) {
                         Log::error('Lỗi store plan_master', [
                                 'message' => $e->getMessage(),
@@ -626,15 +633,16 @@ class ProductionPlanController extends Controller
                                 'user'    => session('user') ?? null,
                         ]);
                         return redirect()->back()
-                        ->with('error', 'Có lỗi xảy ra, vui lòng kiểm tra log!');
+                                ->with('error', 'Có lỗi xảy ra, vui lòng kiểm tra log!');
                 }
                 return redirect()->back()->with('success', 'Đã thêm thành công!');
         }
 
-        public function store_source(Request $request){
-               
+        public function store_source(Request $request)
+        {
+
                 $validator = Validator::make($request->all(), [
-                        'name' => 'required',  
+                        'name' => 'required',
                 ], [
                         'name.required' => 'Vui lòng nhập nguồn nguyên liệu',
                 ]);
@@ -655,27 +663,27 @@ class ProductionPlanController extends Controller
                         'id'   => $id,
                         'name' => $request->name
                 ]);
-
         }
- 
-        public function update(Request $request){
-               // dd ($request->all());
+
+        public function update(Request $request)
+        {
+                // dd ($request->all());
                 $validator = Validator::make($request->all(), [
-                       
+
                         'batch' => 'required',
                         'expected_date' => 'required',
                         'level' => 'required',
-                
-                       
-                       // 'material_source_id' => 'required',
-                       
+
+
+                        // 'material_source_id' => 'required',
+
                 ], [
-                        
+
                         'batch' => 'Vui lòng nhập số lô',
                         'expected_date' => 'Vui lòng chọn ngày dự kiến KCS',
                         'level' => 'vui lòng chọn mức độ ưu tiên',
-                        
-                        
+
+
                         //'material_source_id' => 'vui lòng chọn nguồn nguyên liệu',
                 ]);
 
@@ -689,18 +697,18 @@ class ProductionPlanController extends Controller
 
                 $is_val = 0;
                 $code_val = null;
-                if ($first_val_batch == 1){
-                        $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
+                if ($first_val_batch == 1) {
+                        $code_val_part_0 = explode("_", $request->code_val_first)[0];
                         $is_val = 1;
-                        $code_val =  $code_val_part_0."_1";
-                }else if ($second_val_batch == 1){
-                        $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
+                        $code_val =  $code_val_part_0 . "_1";
+                } else if ($second_val_batch == 1) {
+                        $code_val_part_0 = explode("_", $request->code_val_first)[0];
                         $is_val = 1;
-                        $code_val =  $code_val_part_0."_2";
-                }else if ($third_val_batch == 1){
-                        $code_val_part_0 = explode("_", $request->code_val_first)[0] ;
-                        $is_val = 1;    
-                        $code_val =  $code_val_part_0."_3";         
+                        $code_val =  $code_val_part_0 . "_2";
+                } else if ($third_val_batch == 1) {
+                        $code_val_part_0 = explode("_", $request->code_val_first)[0];
+                        $is_val = 1;
+                        $code_val =  $code_val_part_0 . "_3";
                 }
 
                 // Update dữ liệu chính
@@ -711,9 +719,9 @@ class ProductionPlanController extends Controller
                         "is_val" => $is_val,
                         "code_val" => $code_val,
                         "after_weigth_date" => $request->after_weigth_date,
-                       
+
                         "after_parkaging_date" => $request->after_parkaging_date,
-                        
+
                         "material_source_id" => $request->material_source_id,
                         "note" => $request->note ?? "NA",
                         'prepared_by' => session('user')['fullName'],
@@ -736,19 +744,18 @@ class ProductionPlanController extends Controller
                                 ->update([
                                         'active' => $item['active'],
                                         'updated_at' => now(),
-                                        'created_by' =>session ('user')['fullName']
+                                        'created_by' => session('user')['fullName']
                                 ]);
-                        
                 }
 
-                
+
                 // Tìm version cao nhất hiện tại trong history
                 $lastVersion = DB::table('plan_master_history')
                         ->where('plan_master_id', $request->id)
                         ->max('version');
 
                 $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-                        DB::table('plan_master_history')->insert([
+                DB::table('plan_master_history')->insert([
                         'plan_master_id' => $plan->id,
                         'plan_list_id' => $plan->plan_list_id,
                         'product_caterogy_id' => $plan->product_caterogy_id,
@@ -759,9 +766,9 @@ class ProductionPlanController extends Controller
                         'expected_date' => $request->expected_date,
                         'is_val' => $request->is_val == null ? 0 : 1,
                         'after_weigth_date' => $request->after_weigth_date,
-                      
+
                         'after_parkaging_date' => $request->after_parkaging_date,
-                      
+
                         'material_source_id' => $request->material_source_id,
                         'percent_parkaging' => $plan->percent_parkaging,
                         'only_parkaging' => $plan->only_parkaging,
@@ -773,130 +780,130 @@ class ProductionPlanController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                         'updated_at' => now(),
-                        ]);
+                ]);
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
-
         }
 
-        public function splitting(Request $request){
+        public function splitting(Request $request)
+        {
 
                 //dd ($request->all());
                 try {
-                $validator = Validator::make($request->all(), [
-                        //'batch' => 'required',
-                        'expected_date' => 'required',
-                        'level' => 'required',
-                        'percent_packaging' => 'required',
-                        'number_of_unit' => 'required',
-                ], [
-                        //'batch.required' => 'Vui lòng nhập số lô',
-                        'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
-                        'level.required' => 'Vui lòng chọn mức độ ưu tiên',
-                        'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
-                        'number_of_unit.required' => 'Vui lòng chọn số lượng đóng gói',
-                ]);
-                
-
-                if ($validator->fails()) {
-                        return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
-                }
-
-               
-
-                $mainPlanMaster = DB::table('plan_master')->where ('id', $request->id)->first();
-                $main_intermediate_code = DB::table('finished_product_category')->where ('id', $mainPlanMaster->product_caterogy_id)->value('intermediate_code');
-                 
-               
-                if ($request->intermediate_code != $main_intermediate_code) {
-                        $error = ['intermediate_code' => 'Mã bán thành phẩm không khớp với sản phẩm chính.'];
-                        return redirect()->back()->withErrors($error, 'update_Errors')->withInput();
-                }
-
-                $planMasterId = DB::table('plan_master')->insertGetId([
-                        "product_caterogy_id" => $request->product_caterogy_id,
-                        "plan_list_id" => $mainPlanMaster->plan_list_id,
-                        "batch" => $mainPlanMaster->batch,
-                        "expected_date" => $request->expected_date,
-                        "level" => $request->level,
-                        "is_val" => $mainPlanMaster->is_val,
-                        "code_val" => $mainPlanMaster->code_val,
-                        "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                        "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                        "material_source_id" => $mainPlanMaster->material_source_id,
-                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,4),
-                        "number_parkaging" => $request->number_of_unit,
-                        "only_parkaging" => 1,
-                        "note" => $request->note ?? "NA",
-                        'deparment_code'=> session('user')['production_code'],
-                        'prepared_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                ]);
-
-                DB::table('plan_master')
-                        ->where('id', $planMasterId)
-                        ->update(['main_parkaging_id' => $request->id]);
-
-                DB::table('plan_master')
-                        ->where('id', $request->id)
-                        ->update([
-                                'number_parkaging' => $mainPlanMaster->number_parkaging - $request->number_of_unit,
-                                "percent_parkaging" => round(($mainPlanMaster->number_parkaging - $request->number_of_unit)/$request->max_number_of_unit,4),
+                        $validator = Validator::make($request->all(), [
+                                //'batch' => 'required',
+                                'expected_date' => 'required',
+                                'level' => 'required',
+                                'percent_packaging' => 'required',
+                                'number_of_unit' => 'required',
+                        ], [
+                                //'batch.required' => 'Vui lòng nhập số lô',
+                                'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
+                                'level.required' => 'Vui lòng chọn mức độ ưu tiên',
+                                'percent_packaging.required' => 'Vui lòng nhập số lượng đơn vị liều đóng gói',
+                                'number_of_unit.required' => 'Vui lòng chọn số lượng đóng gói',
                         ]);
 
 
-                $packagings = $request->input('packagings', []);
+                        if ($validator->fails()) {
+                                return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
+                        }
 
-                foreach ($packagings as $code => $item) {
-                        $insertData[] = [             
-                                'plan_master_id'          => $planMasterId,
-                                'material_packaging_code' => (string) $code,
-                                'material_packaging_type' => 1,
-                                'Revno'                   => $item['Revno'],
-                                'qty'                     => (float) $item['qty'],
-                                'unit_bom'                => $item['uom'],
-                                'MaterialName'            => $item['MaterialName'],
-                                'created_at'              => now(),
-                                'created_by'              =>session ('user')['fullName'],
-                                'active'                  => $item['active'],
-                                        
-                        ];
-                }
 
-                if (!empty($insertData)) {
-                        DB::table('plan_master_materials')->upsert(
-                        $insertData,
-                        ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
-                        ['qty', 'unit_bom', 'active', 'Revno']
-                        );
-                }
-                        
 
-                // Insert vào plan_master_history
-                DB::table('plan_master_history')->insert([
-                        "plan_master_id" => $planMasterId,
-                        "plan_list_id" => $mainPlanMaster->plan_list_id,
-                        "product_caterogy_id" => $mainPlanMaster->product_caterogy_id,
-                        "batch" => $mainPlanMaster->batch,
-                        "expected_date" => $request->expected_date,
-                        "level" => $request->level,
-                        "is_val" => $mainPlanMaster->is_val,
-                        "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                       
-                        "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                        
-                        "material_source_id" => $mainPlanMaster->material_source_id,
-                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,2),
-                        "number_parkaging" =>  $request->number_of_unit,
-                        "only_parkaging" => 1,
-                        "note" => $request->note ?? "NA",
-                        'deparment_code'=> session('user')['production_code'],
-                        'prepared_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                        "version" => 1,
-                        "reason" => "Chia Lô Đóng Gói", // lần đầu tạo thì version = 1
-                ]);
+                        $mainPlanMaster = DB::table('plan_master')->where('id', $request->id)->first();
+                        $main_intermediate_code = DB::table('finished_product_category')->where('id', $mainPlanMaster->product_caterogy_id)->value('intermediate_code');
+
+
+                        if ($request->intermediate_code != $main_intermediate_code) {
+                                $error = ['intermediate_code' => 'Mã bán thành phẩm không khớp với sản phẩm chính.'];
+                                return redirect()->back()->withErrors($error, 'update_Errors')->withInput();
+                        }
+
+                        $planMasterId = DB::table('plan_master')->insertGetId([
+                                "product_caterogy_id" => $request->product_caterogy_id,
+                                "plan_list_id" => $mainPlanMaster->plan_list_id,
+                                "batch" => $mainPlanMaster->batch,
+                                "expected_date" => $request->expected_date,
+                                "level" => $request->level,
+                                "is_val" => $mainPlanMaster->is_val,
+                                "code_val" => $mainPlanMaster->code_val,
+                                "after_weigth_date" => $mainPlanMaster->after_weigth_date,
+                                "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
+                                "material_source_id" => $mainPlanMaster->material_source_id,
+                                "percent_parkaging" => round($request->number_of_unit / $request->max_number_of_unit, 4),
+                                "number_parkaging" => $request->number_of_unit,
+                                "only_parkaging" => 1,
+                                "note" => $request->note ?? "NA",
+                                'deparment_code' => session('user')['production_code'],
+                                'prepared_by' => session('user')['fullName'],
+                                'created_at' => now(),
+                        ]);
+
+                        DB::table('plan_master')
+                                ->where('id', $planMasterId)
+                                ->update(['main_parkaging_id' => $request->id]);
+
+                        DB::table('plan_master')
+                                ->where('id', $request->id)
+                                ->update([
+                                        'number_parkaging' => $mainPlanMaster->number_parkaging - $request->number_of_unit,
+                                        "percent_parkaging" => round(($mainPlanMaster->number_parkaging - $request->number_of_unit) / $request->max_number_of_unit, 4),
+                                ]);
+
+
+                        $packagings = $request->input('packagings', []);
+
+                        foreach ($packagings as $code => $item) {
+                                $insertData[] = [
+                                        'plan_master_id'          => $planMasterId,
+                                        'material_packaging_code' => (string) $code,
+                                        'material_packaging_type' => 1,
+                                        'Revno'                   => $item['Revno'],
+                                        'qty'                     => (float) $item['qty'],
+                                        'unit_bom'                => $item['uom'],
+                                        'MaterialName'            => $item['MaterialName'],
+                                        'created_at'              => now(),
+                                        'created_by'              => session('user')['fullName'],
+                                        'active'                  => $item['active'],
+
+                                ];
+                        }
+
+                        if (!empty($insertData)) {
+                                DB::table('plan_master_materials')->upsert(
+                                        $insertData,
+                                        ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
+                                        ['qty', 'unit_bom', 'active', 'Revno']
+                                );
+                        }
+
+
+                        // Insert vào plan_master_history
+                        DB::table('plan_master_history')->insert([
+                                "plan_master_id" => $planMasterId,
+                                "plan_list_id" => $mainPlanMaster->plan_list_id,
+                                "product_caterogy_id" => $mainPlanMaster->product_caterogy_id,
+                                "batch" => $mainPlanMaster->batch,
+                                "expected_date" => $request->expected_date,
+                                "level" => $request->level,
+                                "is_val" => $mainPlanMaster->is_val,
+                                "after_weigth_date" => $mainPlanMaster->after_weigth_date,
+
+                                "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
+
+                                "material_source_id" => $mainPlanMaster->material_source_id,
+                                "percent_parkaging" => round($request->number_of_unit / $request->max_number_of_unit, 2),
+                                "number_parkaging" =>  $request->number_of_unit,
+                                "only_parkaging" => 1,
+                                "note" => $request->note ?? "NA",
+                                'deparment_code' => session('user')['production_code'],
+                                'prepared_by' => session('user')['fullName'],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                                "version" => 1,
+                                "reason" => "Chia Lô Đóng Gói", // lần đầu tạo thì version = 1
+                        ]);
                 } catch (\Throwable $e) {
                         Log::error('Lỗi store plan_master', [
                                 'message' => $e->getMessage(),
@@ -906,15 +913,15 @@ class ProductionPlanController extends Controller
                                 'user'    => session('user') ?? null,
                         ]);
                         return redirect()->back()
-                        ->with('error', 'Có lỗi xảy ra, vui lòng kiểm tra log!');
+                                ->with('error', 'Có lỗi xảy ra, vui lòng kiểm tra log!');
                 }
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
-
         }
 
-        public function splittingUpdate(Request $request){
-               
+        public function splittingUpdate(Request $request)
+        {
+
                 $validator = Validator::make($request->all(), [
                         //'batch' => 'required',
                         'expected_date' => 'required',
@@ -933,32 +940,32 @@ class ProductionPlanController extends Controller
                         return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
                 }
 
-                $mainPlanMaster = DB::table('plan_master')->where ('id', $request->id)->first();
+                $mainPlanMaster = DB::table('plan_master')->where('id', $request->id)->first();
 
-                DB::table('plan_master')->where ('id',$request->id )->update([
+                DB::table('plan_master')->where('id', $request->id)->update([
                         "batch" => $mainPlanMaster->batch,
                         "expected_date" => $request->expected_date,
                         "level" => $request->level,
-                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,4),
+                        "percent_parkaging" => round($request->number_of_unit / $request->max_number_of_unit, 4),
                         "number_parkaging" => $request->number_of_unit,
                         "note" => $request->note ?? "NA",
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
 
-                $sum_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $mainPlanMaster->main_parkaging_id)->where('only_parkaging',1)->sum('number_parkaging');
+                $sum_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $mainPlanMaster->main_parkaging_id)->where('only_parkaging', 1)->sum('number_parkaging');
                 //dd ($request->all());
                 DB::table('plan_master')
                         ->where('id', $mainPlanMaster->main_parkaging_id)
                         ->update([
                                 'number_parkaging' => $request->max_number_of_unit - $sum_number_parkaging,
-                                "percent_parkaging" => round(($request->max_number_of_unit - $sum_number_parkaging)/$request->max_number_of_unit,4),
+                                "percent_parkaging" => round(($request->max_number_of_unit - $sum_number_parkaging) / $request->max_number_of_unit, 4),
                         ]);
 
                 $allItems = array_merge(
                         $request->input('packagings', [])
                 );
-                
+
                 //dd ($allItems);
                 foreach ($allItems as $item) {
                         DB::table('plan_master_materials')
@@ -966,12 +973,11 @@ class ProductionPlanController extends Controller
                                 ->update([
                                         'active' => $item['active'],
                                         'updated_at' => now(),
-                                        'created_by' =>session ('user')['fullName']
+                                        'created_by' => session('user')['fullName']
                                 ]);
-                        
                 }
 
-                        // Insert vào plan_master_history
+                // Insert vào plan_master_history
                 DB::table('plan_master_history')->insert([
                         "plan_master_id" => $mainPlanMaster->id,
                         "plan_list_id" => $mainPlanMaster->plan_list_id,
@@ -981,15 +987,15 @@ class ProductionPlanController extends Controller
                         "level" => $request->level,
                         "is_val" => $mainPlanMaster->is_val,
                         "after_weigth_date" => $mainPlanMaster->after_weigth_date,
-                        
+
                         "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
-                       
+
                         "material_source_id" => $mainPlanMaster->material_source_id,
-                        "percent_parkaging" => round($request->number_of_unit/$request->max_number_of_unit,2),
+                        "percent_parkaging" => round($request->number_of_unit / $request->max_number_of_unit, 2),
                         "number_parkaging" =>  $request->number_of_unit,
                         "only_parkaging" => 1,
                         "note" => $request->note ?? "NA",
-                        'deparment_code'=> session('user')['production_code'],
+                        'deparment_code' => session('user')['production_code'],
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -998,11 +1004,11 @@ class ProductionPlanController extends Controller
                 ]);
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
-
         }
 
-        public function deActive(Request $request){
-               
+        public function deActive(Request $request)
+        {
+
                 $reason = $request->deactive_reason;
                 $updatesql = [
                         'prepared_by' => session('user')['fullName'],
@@ -1011,7 +1017,7 @@ class ProductionPlanController extends Controller
 
                 if ($request->type === 'delete') {
                         $updatesql['active'] = 0;
-                         $active_stage_plan = 0;
+                        $active_stage_plan = 0;
                 } elseif ($request->type === 'cancel') {
                         $updatesql['cancel'] = 1;
                         $active_stage_plan = 0;
@@ -1019,38 +1025,37 @@ class ProductionPlanController extends Controller
                         $updatesql['cancel'] = 0;
                         $active_stage_plan = 1;
                 }
-                if ($request->only_parkaging == 1){
-                        
+                if ($request->only_parkaging == 1) {
+
                         $main_parkaging_id =  DB::table('plan_master')->where('id', $request->id)->value('main_parkaging_id');
-                        
+
                         $max_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $main_parkaging_id)->sum('number_parkaging');
-                        
+
                         DB::table('plan_master')->where('id', $request->id)->update($updatesql);
 
 
-                        $sum_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $main_parkaging_id)->where('only_parkaging',1)->sum('number_parkaging');
-                        
-          
-                        DB::table('plan_master')
-                        ->where('id', $main_parkaging_id)
-                        ->update([
-                                'number_parkaging' => $max_number_parkaging - $sum_number_parkaging,
-                                "percent_parkaging" => round(($max_number_parkaging - $sum_number_parkaging)/$max_number_parkaging,4),
-                        ]);
+                        $sum_number_parkaging =  DB::table('plan_master')->where('active', 1)->where('main_parkaging_id', $main_parkaging_id)->where('only_parkaging', 1)->sum('number_parkaging');
 
-                }else{
+
+                        DB::table('plan_master')
+                                ->where('id', $main_parkaging_id)
+                                ->update([
+                                        'number_parkaging' => $max_number_parkaging - $sum_number_parkaging,
+                                        "percent_parkaging" => round(($max_number_parkaging - $sum_number_parkaging) / $max_number_parkaging, 4),
+                                ]);
+                } else {
                         DB::table('plan_master')->where('main_parkaging_id', $request->id)->update($updatesql);
                 }
 
                 $latest = DB::table('plan_master_history')
-                ->where('plan_master_id', $request->id)
-                ->orderByDesc('version')
-                ->first();
+                        ->where('plan_master_id', $request->id)
+                        ->orderByDesc('version')
+                        ->first();
 
                 if ($latest) {
                         DB::table('plan_master_history')
-                        ->where('id', $latest->id)
-                        ->update(['reason' => $reason]);
+                                ->where('id', $latest->id)
+                                ->update(['reason' => $reason]);
                 }
 
                 DB::table('stage_plan')->where('plan_master_id', $request->id)->update([
@@ -1060,95 +1065,98 @@ class ProductionPlanController extends Controller
                 return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }
 
-        public function send(Request $request){
-                       
+        public function send(Request $request)
+        {
+
                 $exists = DB::table('stage_plan')->where('plan_list_id', $request->plan_list_id)->exists();
-                if ($exists){return redirect()->route('pages.plan.production.list');}
+                if ($exists) {
+                        return redirect()->route('pages.plan.production.list');
+                }
 
                 // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
                 $plans_main = DB::table('plan_master')
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
-                ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
-                ->where('plan_master.plan_list_id', $request->plan_list_id)
-                ->where('plan_master.active', 1)
-                ->where('plan_master.cancel', 0)
-                ->where('plan_master.only_parkaging', 0)
-                ->where('finished_product_category.IsHypothesis', 0)
-                ->select(
-                        'plan_master.id',
-                        'plan_master.plan_list_id',
-                        'plan_master.product_caterogy_id',
-                        'plan_master.expected_date',
-                        'plan_master.level',
-                        'plan_master.batch',
-                        'plan_master.only_parkaging',
-                        'plan_master.percent_parkaging',
-                        'plan_master.main_parkaging_id',
-                        'intermediate_category.weight_1',
-                        'intermediate_category.weight_2',
-                        'intermediate_category.prepering',
-                        'intermediate_category.blending',
-                        'intermediate_category.forming',
-                        'intermediate_category.coating',
-                        'intermediate_category.batch_size',
-                        'finished_product_category.primary_parkaging',
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
-                        'finished_product_category.batch_qty',
-                        DB::raw("
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
+                        ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
+                        ->where('plan_master.plan_list_id', $request->plan_list_id)
+                        ->where('plan_master.active', 1)
+                        ->where('plan_master.cancel', 0)
+                        ->where('plan_master.only_parkaging', 0)
+                        ->where('finished_product_category.IsHypothesis', 0)
+                        ->select(
+                                'plan_master.id',
+                                'plan_master.plan_list_id',
+                                'plan_master.product_caterogy_id',
+                                'plan_master.expected_date',
+                                'plan_master.level',
+                                'plan_master.batch',
+                                'plan_master.only_parkaging',
+                                'plan_master.percent_parkaging',
+                                'plan_master.main_parkaging_id',
+                                'intermediate_category.weight_1',
+                                'intermediate_category.weight_2',
+                                'intermediate_category.prepering',
+                                'intermediate_category.blending',
+                                'intermediate_category.forming',
+                                'intermediate_category.coating',
+                                'intermediate_category.batch_size',
+                                'finished_product_category.primary_parkaging',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'finished_product_category.batch_qty',
+                                DB::raw("
                                 CASE
                                         WHEN dosage.name LIKE '%phim%' THEN 1
                                         WHEN dosage.name LIKE '%nang%' THEN 0
                                         ELSE NULL
                                 END AS w2
                                 ")
-                )
-                ->orderBy('expected_date', 'asc')
-                ->orderBy('level', 'asc')
-                ->orderByRaw('batch + 0 ASC')
-                ->get();
+                        )
+                        ->orderBy('expected_date', 'asc')
+                        ->orderBy('level', 'asc')
+                        ->orderByRaw('batch + 0 ASC')
+                        ->get();
 
-              
-                
+
+
                 // Phần 2: Các plan chỉ đóng gói (only_parkaging = 1)
                 $plans_packaging = DB::table('plan_master')
-                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
-                ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
-                ->where('plan_master.plan_list_id', $request->plan_list_id)
-                ->where('plan_master.active', 1)
-                ->where('plan_master.cancel', 0)
-                ->where('plan_master.only_parkaging', 1)
-                ->where('finished_product_category.IsHypothesis', 0)
-                ->select(
-                        'plan_master.id',
-                        'plan_master.plan_list_id',
-                        'plan_master.product_caterogy_id',
-                        'plan_master.expected_date',
-                        'plan_master.level',
-                        'plan_master.batch',
-                        'plan_master.only_parkaging',
-                        'plan_master.percent_parkaging',
-                        'plan_master.main_parkaging_id',
-                        'intermediate_category.weight_1',
-                        'intermediate_category.weight_2',
-                        'intermediate_category.prepering',
-                        'intermediate_category.blending',
-                        'intermediate_category.forming',
-                        'intermediate_category.coating',
-                        'intermediate_category.batch_size',
-                        'finished_product_category.primary_parkaging',
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
-                        'finished_product_category.batch_qty'
-                )
-                ->orderBy('expected_date', 'asc')
-                ->orderBy('level', 'asc')
-                ->orderByRaw('batch + 0 ASC')
-                ->get();
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
+                        ->where('plan_master.plan_list_id', $request->plan_list_id)
+                        ->where('plan_master.active', 1)
+                        ->where('plan_master.cancel', 0)
+                        ->where('plan_master.only_parkaging', 1)
+                        ->where('finished_product_category.IsHypothesis', 0)
+                        ->select(
+                                'plan_master.id',
+                                'plan_master.plan_list_id',
+                                'plan_master.product_caterogy_id',
+                                'plan_master.expected_date',
+                                'plan_master.level',
+                                'plan_master.batch',
+                                'plan_master.only_parkaging',
+                                'plan_master.percent_parkaging',
+                                'plan_master.main_parkaging_id',
+                                'intermediate_category.weight_1',
+                                'intermediate_category.weight_2',
+                                'intermediate_category.prepering',
+                                'intermediate_category.blending',
+                                'intermediate_category.forming',
+                                'intermediate_category.coating',
+                                'intermediate_category.batch_size',
+                                'finished_product_category.primary_parkaging',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'finished_product_category.batch_qty'
+                        )
+                        ->orderBy('expected_date', 'asc')
+                        ->orderBy('level', 'asc')
+                        ->orderByRaw('batch + 0 ASC')
+                        ->get();
 
 
-                $stages = ['weight_1','weight_2', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging'];
+                $stages = ['weight_1', 'weight_2', 'prepering', 'blending', 'forming', 'coating', 'primary_parkaging'];
                 $stage_code = [
                         'weight_1'              => 1,
                         'weight_2'              => 2,
@@ -1158,9 +1166,9 @@ class ProductionPlanController extends Controller
                         'coating'               => 6,
                         'primary_parkaging'     => 7,
                 ];
-                
+
                 $dataToInsert = [];
-                
+
                 foreach ($plans_main as $plan) {
                         $stageList = [];
 
@@ -1175,8 +1183,8 @@ class ProductionPlanController extends Controller
                                         ];
                                 }
                         }
-                        
-                        
+
+
                         // Vòng 2: set predecessor và nextcessor
                         foreach ($stageList as $i => $stageItem) {
                                 $prevCode = null;
@@ -1185,17 +1193,17 @@ class ProductionPlanController extends Controller
                                 // ✅ set prevCode
                                 if ($i > 0) {
                                         $prevItem = $stageList[$i - 1];
-                                    
+
                                         if ($stageItem['stage_code'] >= 3 && $prevItem['stage_code'] == 2) {
                                                 $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
-                                        }elseif ($stageItem['stage_code'] == 2){
+                                        } elseif ($stageItem['stage_code'] == 2) {
                                                 $prevCode = null;
-                                        }else {
+                                        } else {
                                                 $prevCode = $prevItem['code'];
                                         }
                                 }
 
-                                
+
 
                                 // ✅ set nextCode
                                 if ($i < count($stageList) - 1) {
@@ -1203,18 +1211,17 @@ class ProductionPlanController extends Controller
                                         // nếu stage hiện tại = 1 và next là 2 thì bỏ qua, tìm stage_code >= 3
                                         if ($stageItem['stage_code'] == 1 && ($nextItem['stage_code'] == 2)) {
                                                 $nextCode = collect($stageList)->first(fn($s) => $s['stage_code'] >= 3)['code'] ?? null;
-                                        }elseif ($stageItem['stage_code'] == 2) {
-                                                if ($stageItem['w2'] == 1){
-                                                        $nextCode = explode ("_",$nextItem['code'])[0] ."_". "6";
-                                                }else {
-                                                        $nextCode = explode ("_",$nextItem['code'])[0] ."_". "5";
+                                        } elseif ($stageItem['stage_code'] == 2) {
+                                                if ($stageItem['w2'] == 1) {
+                                                        $nextCode = explode("_", $nextItem['code'])[0] . "_" . "6";
+                                                } else {
+                                                        $nextCode = explode("_", $nextItem['code'])[0] . "_" . "5";
                                                 }
-                                        }       
-                                        else {
+                                        } else {
                                                 $nextCode = $nextItem['code'];
                                         }
                                 }
-                                
+
 
 
                                 $tank = DB::table('quota')
@@ -1228,8 +1235,8 @@ class ProductionPlanController extends Controller
                                                         ->where('stage_code', $stageItem['stage_code']);
                                         })
                                         ->first();
-                             
-                                
+
+
                                 $dataToInsert[] = [
                                         'plan_list_id'        => $plan->plan_list_id,
                                         'plan_master_id'      => $plan->id,
@@ -1239,16 +1246,16 @@ class ProductionPlanController extends Controller
                                         'code'                => $stageItem['code'],
                                         'predecessor_code'    => $prevCode,
                                         'nextcessor_code'     => $nextCode,
-                                        'tank'                => $tank->tank??0,
-                                        'keep_dry'            => $tank->keep_dry??0,
+                                        'tank'                => $tank->tank ?? 0,
+                                        'keep_dry'            => $tank->keep_dry ?? 0,
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
-                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan->batch_size:$plan->batch_qty,
-                                        'Theoretical_yields_qty'	=> $plan->batch_qty
+                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan->batch_size : $plan->batch_qty,
+                                        'Theoretical_yields_qty'        => $plan->batch_qty
                                 ];
 
-                                if ($plan->percent_parkaging  < 1 && $stageItem['stage_code'] == 7){
-                                        $plan_packagings = $plans_packaging->where ('main_parkaging_id',$plan->id);
+                                if ($plan->percent_parkaging  < 1 && $stageItem['stage_code'] == 7) {
+                                        $plan_packagings = $plans_packaging->where('main_parkaging_id', $plan->id);
                                         foreach ($plan_packagings as $plan_packaging) {
                                                 $dataToInsert[] = [
                                                         'plan_list_id'        => $plan_packaging->plan_list_id,
@@ -1259,23 +1266,21 @@ class ProductionPlanController extends Controller
                                                         'code'                => $stageItem['code'],
                                                         'predecessor_code'    => $prevCode,
                                                         'nextcessor_code'     => $nextCode,
-                                                        'tank'                => $tank->tank??0,
-                                                        'keep_dry'            => $tank->keep_dry??0,
+                                                        'tank'                => $tank->tank ?? 0,
+                                                        'keep_dry'            => $tank->keep_dry ?? 0,
                                                         'deparment_code'      => session('user')['production_code'],
                                                         'created_date'        => now(),
-                                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan_packaging->batch_size:$plan_packaging->batch_qty,
-                                                        'Theoretical_yields_qty'	=> $plan->batch_qty
+                                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan_packaging->batch_size : $plan_packaging->batch_qty,
+                                                        'Theoretical_yields_qty'        => $plan->batch_qty
                                                 ];
                                         }
-
                                 }
                         }
-
                 }
 
                 DB::table('stage_plan')->insert($dataToInsert);
 
-                DB::table('plan_list')->where ('id', $request->plan_list_id)->update([
+                DB::table('plan_list')->where('id', $request->plan_list_id)->update([
                         'send' => 1,
                         'send_by' => session('user')['fullName'],
                         'send_date' => now(),
@@ -1284,117 +1289,120 @@ class ProductionPlanController extends Controller
                 return redirect()->route('pages.plan.production.list');
         }
 
-        public function updateInput(Request $request){
+        public function updateInput(Request $request)
+        {
                 $now = now();
                 $user = session('user')['fullName'];
                 $idOrPlanListId = 'id';
 
-                if ($request->name == "selected"){
-                        $updateData = ['selected' => !$request->updateValue]; 
-                }
-                else if ($request->name == "selected_all" && $request->id > 0){
+                if ($request->name == "selected") {
+                        $updateData = ['selected' => !$request->updateValue];
+                } else if ($request->name == "selected_all" && $request->id > 0) {
                         $idOrPlanListId = 'plan_list_id';
-                        $updateData = ['selected' => $request->updateValue == 1?1:0];  
-                }else {
+                        $updateData = ['selected' => $request->updateValue == 1 ? 1 : 0];
+                } else {
                         $updateData = [$request->name => $request->updateValue];
                 }
 
-        
+
                 switch ($request->name) {
-                case 'pro_feedback':
-                        $updateData['pro_feedback_by']   = $user;
-                        $updateData['pro_feedback_date'] = $now;
-                        break;
+                        case 'pro_feedback':
+                                $updateData['pro_feedback_by']   = $user;
+                                $updateData['pro_feedback_date'] = $now;
+                                break;
 
-                case 'qc_feedback':
-                        $updateData['qc_feedback_by']   = $user;
-                        $updateData['qc_feedback_date'] = $now;
-                        break;
-                case 'actual_CoA_date':
-                        $updateData['qc_feedback_by']   = $user;
-                        $updateData['qc_feedback_date'] = $now;
-                        break;
-   
-                case 'en_feedback':
-                        $updateData['en_feedback_by']   = $user;
-                        $updateData['en_feedback_date'] = $now;
-                        break;
+                        case 'qc_feedback':
+                                $updateData['qc_feedback_by']   = $user;
+                                $updateData['qc_feedback_date'] = $now;
+                                break;
+                        case 'actual_CoA_date':
+                                $updateData['qc_feedback_by']   = $user;
+                                $updateData['qc_feedback_date'] = $now;
+                                break;
 
-                case 'has_punch_die_mold':
-                        $updateData['en_feedback_by']   = $user;
-                        $updateData['en_feedback_date'] = $now;
-                        break;
+                        case 'en_feedback':
+                                $updateData['en_feedback_by']   = $user;
+                                $updateData['en_feedback_date'] = $now;
+                                break;
 
-                case 'qa_feedback':
-                        $updateData['qa_feedback_by']   = $user;
-                        $updateData['qa_feedback_date'] = $now;
-                        break;
-                case 'has_BMR':
-                        $updateData['qa_feedback_by']   = $user;
-                        $updateData['qa_feedback_date'] = $now;
-                        break;
-                case 'actual_record':
-                        $updateData['qa_feedback_by']   = $user;
-                        $updateData['qa_feedback_date'] = $now;
-                        break;
+                        case 'has_punch_die_mold':
+                                $updateData['en_feedback_by']   = $user;
+                                $updateData['en_feedback_date'] = $now;
+                                break;
 
-                case 'actual_KCS':
-                        $updateData['kcs_record_by']   = $user;
-                        $updateData['kcs_record_date'] = $now;
-                        break;
+                        case 'qa_feedback':
+                                $updateData['qa_feedback_by']   = $user;
+                                $updateData['qa_feedback_date'] = $now;
+                                break;
+                        case 'has_BMR':
+                                $updateData['qa_feedback_by']   = $user;
+                                $updateData['qa_feedback_date'] = $now;
+                                break;
+                        case 'actual_record':
+                                $updateData['qa_feedback_by']   = $user;
+                                $updateData['qa_feedback_date'] = $now;
+                                break;
 
-                default:
-                        // các field khác như has_BMR, actual_record… thì không cần _by và _date
-                        break;
+                        case 'actual_KCS':
+                                $updateData['kcs_record_by']   = $user;
+                                $updateData['kcs_record_date'] = $now;
+                                break;
+
+                        default:
+                                // các field khác như has_BMR, actual_record… thì không cần _by và _date
+                                break;
                 }
 
-               
-                if ($request->name  == "selected_all" && $request->id < 0){
-                        DB::table('plan_master')
-                        ->where('weighed', 0)
-                        ->update(['selected' => 1]);
-                }else {
-                        DB::table('plan_master')
-                        ->where($idOrPlanListId, $request->id)
-                        ->update($updateData);
-                }
-                
 
-                return response()->json(['updateValue' => $request->updateValue]);
+                if ($request->name  == "selected_all" && $request->id < 0) {
+                        DB::table('plan_master')
+                                ->where('weighed', 0)
+                                ->update(['selected' => 1]);
+                } else {
+                        DB::table('plan_master')
+                                ->where($idOrPlanListId, $request->id)
+                                ->update($updateData);
+                }
+
+
+                return response()->json(['success' => true, 'updateValue' => $request->updateValue]);
         }
 
-        public function first_batch(Request $request) {
+        public function first_batch(Request $request)
+        {
                 ob_clean();
                 $datas = DB::table('plan_master')
-                ->select('plan_master.*', 
-                        'finished_product_category.intermediate_code', 
-                        'finished_product_category.finished_product_code', 
-                        'product_name.name',
-                        'market.name as market', 
-                        'specification.name as specification', 
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'finished_product_category.deparment_code',
-                        'source_material.name as source_material_name'
+                        ->select(
+                                'plan_master.*',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'product_name.name',
+                                'market.name as market',
+                                'specification.name as specification',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'finished_product_category.deparment_code',
+                                'source_material.name as source_material_name'
                         )
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id') 
-                ->where('plan_master.active',1)
-                ->where ('is_val',1)
-                ->where ('plan_master.active',1)
-                //->whereRaw("SUBSTRING_INDEX(plan_master.code_val, '_', -1) = '1'") 
-                ->where ('finished_product_category.intermediate_code',$request->intermediate_code)
-                ->orderBy('id','desc')
-                ->get();
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                        ->where('plan_master.active', 1)
+                        ->where('is_val', 1)
+                        ->where('plan_master.active', 1)
+                        //->whereRaw("SUBSTRING_INDEX(plan_master.code_val, '_', -1) = '1'") 
+                        ->where('finished_product_category.intermediate_code', $request->intermediate_code)
+                        ->orderBy('id', 'desc')
+                        ->get();
 
-      
-                 return response()->json($datas);    
+
+                return response()->json($datas);
         }
 
-        public function get_last_id (Request $request) {
+        public function get_last_id(Request $request)
+        {
                 ob_clean();
                 $last = DB::table($request->table)->latest('id')->value('id');
                 return response()->json([
@@ -1402,84 +1410,87 @@ class ProductionPlanController extends Controller
                 ]);
         }
 
-        public function feedback_list (Request $request) {
-               
-                 $datas = DB::table('plan_list')
-                ->where ('active',1)
-                ->where ('send',1)
-                ->where ('deparment_code',session('user')['production_code'])
-                ->where ('type',1)
-                ->orderBy('id','desc')
-                ->get();
-        
-                session()->put(['title'=> 'PHẢN HỒI KẾ HOẠCH SẢN XUẤT THÁNG']);
-        
-                return view('pages.plan.production.feedback_plan_list',[
-                        'datas' => $datas 
+        public function feedback_list(Request $request)
+        {
+
+                $datas = DB::table('plan_list')
+                        ->where('active', 1)
+                        ->where('send', 1)
+                        ->where('deparment_code', session('user')['production_code'])
+                        ->where('type', 1)
+                        ->orderBy('id', 'desc')
+                        ->get();
+
+                session()->put(['title' => 'PHẢN HỒI KẾ HOẠCH SẢN XUẤT THÁNG']);
+
+                return view('pages.plan.production.feedback_plan_list', [
+                        'datas' => $datas
                 ]);
         }
 
-        public function open_feedback(Request $request){
-                
-               $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');  
+        public function open_feedback(Request $request)
+        {
 
-               $datas = DB::table('plan_master')
-                ->select(
-                        'plan_master.*',
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
-                        'product_name.name',
-                        'market.code as market',
-                        'specification.name as specification',
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'finished_product_category.deparment_code',
-                        'source_material.name as source_material_name',
-                        'stage_plan.end as end'
-                )
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->leftJoin('stage_plan', function ($join) use ($request) {
-                        $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                        ->where('stage_plan.stage_code', 7)
-                        ->where('stage_plan.active', 1)
-                        ;
-                })
-                ->where('plan_master.plan_list_id', $request->plan_list_id)
-                ->where('plan_master.active', 1)
-                //->where('only_parkaging', 0)
-                ->orderBy('expected_date', 'asc')
-                ->orderBy('level', 'asc')
-                ->orderBy('batch', 'asc')
-                ->get();
+                $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
+
+                $datas = DB::table('plan_master')
+                        ->select(
+                                'plan_master.*',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'product_name.name',
+                                'market.code as market',
+                                'specification.name as specification',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'finished_product_category.deparment_code',
+                                'source_material.name as source_material_name',
+                                'stage_plan.end as end'
+                        )
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                        ->leftJoin('stage_plan', function ($join) use ($request) {
+                                $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                                        ->where('stage_plan.stage_code', 7)
+                                        ->where('stage_plan.active', 1)
+                                ;
+                        })
+                        ->where('plan_master.plan_list_id', $request->plan_list_id)
+                        ->where('plan_master.active', 1)
+                        //->where('only_parkaging', 0)
+                        ->orderBy('expected_date', 'asc')
+                        ->orderBy('level', 'asc')
+                        ->orderBy('batch', 'asc')
+                        ->get();
 
 
 
-               // dd ($datas);
+                // dd ($datas);
 
 
                 $production_name  =  session('user')['production_name'];
                 $production =  session('user')['production_code'];
 
-                $send_date = DB::table('plan_list')->where ('id',  $request->plan_list_id)-> value('send_date');
+                $send_date = DB::table('plan_list')->where('id',  $request->plan_list_id)->value('send_date');
 
-                session()->put(['title'=> "Phản Hồi $request->name - $production_name"]);
-                
-                return view('pages.plan.production.feedback_list',[
-                        'datas' => $datas, 
+                session()->put(['title' => "Phản Hồi $request->name - $production_name"]);
+
+                return view('pages.plan.production.feedback_list', [
+                        'datas' => $datas,
                         'plan_list_id' => $request->plan_list_id,
-                        'send'=> $request->send??1,
+                        'send' => $request->send ?? 1,
                         'department' => $department,
                         'production' => $production,
                         'send_date' => $send_date
                 ]);
         }
 
-        public function accept_expected_date(Request $request){
-               
+        public function accept_expected_date(Request $request)
+        {
+
                 DB::table('plan_master')->where('id', $request->id)->update([
                         "expected_date" => $request->new_expected_date,
                         'prepared_by' => session('user')['fullName'],
@@ -1488,7 +1499,7 @@ class ProductionPlanController extends Controller
 
                 // Lấy dữ liệu gốc từ plan_master
                 $plan = DB::table('plan_master')->where('id', $request->id)->first();
-                
+
                 // Tìm version cao nhất hiện tại trong history
                 $lastVersion = DB::table('plan_master_history')
                         ->where('plan_master_id', $request->id)
@@ -1518,44 +1529,46 @@ class ProductionPlanController extends Controller
 
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
-                        ]);
+                ]);
 
                 return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công!']);
         }
 
-        public function all_feedback(Request $request){
+        public function all_feedback(Request $request)
+        {
 
                 $dataToUpdate = [];
-                if (isset($request->en_feedback)){
+                if (isset($request->en_feedback)) {
                         $dataToUpdate = [
-                               'has_punch_die_mold' => $request->has_punch_die_mold == "on" ? 1:0,
-                               'en_feedback' => $request->en_feedback ,
+                                'has_punch_die_mold' => $request->has_punch_die_mold == "on" ? 1 : 0,
+                                'en_feedback' => $request->en_feedback,
                         ];
-                }else if (isset($request->qa_feedback)){
-                        $dataToUpdate = [       
-                                'actual_record' => $request->actual_record == "on" ? 1:0,
-                                'has_BMR' => $request->has_BMR == "on" ? 1:0,
+                } else if (isset($request->qa_feedback)) {
+                        $dataToUpdate = [
+                                'actual_record' => $request->actual_record == "on" ? 1 : 0,
+                                'has_BMR' => $request->has_BMR == "on" ? 1 : 0,
                                 'en_feedback' => $request->qa_feedback
                         ];
-                }else if (isset($request->qc_feedback)){
-                       $dataToUpdate = [       
+                } else if (isset($request->qc_feedback)) {
+                        $dataToUpdate = [
                                 'qc_feedback' => $request->qc_feedback
                         ];
-                }else if (isset($request->pro_feedback)){
-                       $dataToUpdate = [       
+                } else if (isset($request->pro_feedback)) {
+                        $dataToUpdate = [
                                 'pro_feedback' => $request->pro_feedback
                         ];
                 }
-                
+
                 DB::table('plan_master')
-                ->where('plan_list_id', $request->plan_list_id)
-                ->update($dataToUpdate);
+                        ->where('plan_list_id', $request->plan_list_id)
+                        ->update($dataToUpdate);
 
                 return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }
 
-        public function order (Request $request){
-               
+        public function order(Request $request)
+        {
+
                 DB::table('plan_master')->where('id', $request->id)->update([
                         "batch" => $request->batch,
                         'order_number' =>  $request->order_number,
@@ -1565,7 +1578,7 @@ class ProductionPlanController extends Controller
 
                 // Lấy dữ liệu gốc từ plan_master
                 $plan = DB::table('plan_master')->where('id', $request->id)->first();
-                
+
                 // Tìm version cao nhất hiện tại trong history
                 $lastVersion = DB::table('plan_master_history')
                         ->where('plan_master_id', $request->id)
@@ -1595,15 +1608,16 @@ class ProductionPlanController extends Controller
 
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
-                        ]);
+                ]);
 
                 return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công!']);
         }
 
-        public function open_stock(Request  $request){
-        
-                try { 
-                        
+        public function open_stock(Request  $request)
+        {
+
+                try {
+
 
                         $maxStageFinished = DB::table('stage_plan')
                                 ->select(
@@ -1614,45 +1628,48 @@ class ProductionPlanController extends Controller
                                 ->when($request->plan_list_id >= 0, function ($q) use ($request) {
                                         $q->where('plan_list_id', $request->plan_list_id);
                                 })
-                        ->groupBy('plan_master_id');
+                                ->groupBy('plan_master_id');
 
                         $sub = DB::table('plan_master_materials as pmm')
-                                ->join('plan_master as pm','pmm.plan_master_id','=','pm.id')
-                                ->leftJoin('finished_product_category as fc','pm.product_caterogy_id','=','fc.id')
+                                ->join('plan_master as pm', 'pmm.plan_master_id', '=', 'pm.id')
+                                ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
 
                                 ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                                        $join->on('pm.main_parkaging_id','=','sp_max.plan_master_id');
+                                        $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
                                 })
 
-                                ->when($request->plan_list_id < 0,
-                                        fn($q)=>$q->where(function ($sub) {
-                                        $sub->whereNull('sp_max.max_stage_code')
-                                                ->orWhere('sp_max.max_stage_code','<',7);
+                                ->when(
+                                        $request->plan_list_id < 0,
+                                        fn($q) => $q->where(function ($sub) {
+                                                $sub->whereNull('sp_max.max_stage_code')
+                                                        ->orWhere('sp_max.max_stage_code', '<', 7);
                                         }),
-                                        fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                                        fn($q) => $q->where('pm.plan_list_id', $request->plan_list_id)
                                 )
 
                                 ->where([
-                                        ['pm.deparment_code',session('user')['production_code']],
-                                        ['pm.cancel',0],
-                                        ['pm.active',1],
-                                        ['pmm.active',1]
+                                        ['pm.deparment_code', session('user')['production_code']],
+                                        ['pm.cancel', 0],
+                                        ['pm.active', 1],
+                                        ['pmm.active', 1]
                                 ])
 
                                 ->where(function ($q) {
-                                        $q->where('pmm.material_packaging_type','!=',0)
-                                        ->orWhere(function ($sub) {
-                                        $sub->where('pmm.material_packaging_type',0)
-                                                ->whereNull('sp_max.max_stage_code');
-                                        });
+                                        $q->where('pmm.material_packaging_type', '!=', 0)
+                                                ->orWhere(function ($sub) {
+                                                        $sub->where('pmm.material_packaging_type', 0)
+                                                                ->whereNull('sp_max.max_stage_code');
+                                                });
                                 })
 
-                                ->when($request->has('selected'),
-                                        fn($q)=>$q->where('pm.selected',1)
+                                ->when(
+                                        $request->has('selected'),
+                                        fn($q) => $q->where('pm.selected', 1)
                                 )
 
-                                ->when($request->has('material_packaging_type'),
-                                        fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                                ->when(
+                                        $request->has('material_packaging_type'),
+                                        fn($q) => $q->where('pmm.material_packaging_type', $request->material_packaging_type)
                                 )
 
                                 ->selectRaw("
@@ -1682,7 +1699,7 @@ class ProductionPlanController extends Controller
                                         product_code
                         ");
 
-  
+
                         // Tổng hợp lại theo từng material_packaging_code/type để tránh bị nhân bản khi join với pmm/pm
                         $qtyTotal = DB::query()
                                 ->fromSub($sub, 'qty_sum')
@@ -1707,44 +1724,47 @@ class ProductionPlanController extends Controller
 
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
 
-                                ->join('plan_master as pm','pmm.plan_master_id','=','pm.id')
-                                ->leftJoinSub($qtyTotal,'qty_total', function($join){
-                                        $join->on('pmm.material_packaging_code','=','qty_total.material_packaging_code')
-                                        ->on('pmm.material_packaging_type','=','qty_total.material_packaging_type');
+                                ->join('plan_master as pm', 'pmm.plan_master_id', '=', 'pm.id')
+                                ->leftJoinSub($qtyTotal, 'qty_total', function ($join) {
+                                        $join->on('pmm.material_packaging_code', '=', 'qty_total.material_packaging_code')
+                                                ->on('pmm.material_packaging_type', '=', 'qty_total.material_packaging_type');
                                 })
-                                ->leftJoinSub($maxStageFinished,'sp_max',function ($join) {
-                                        $join->on('pm.main_parkaging_id','=','sp_max.plan_master_id');
+                                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                        $join->on('pm.main_parkaging_id', '=', 'sp_max.plan_master_id');
                                 })
 
-                                ->when($request->plan_list_id < 0,
-                                        fn($q)=>$q->where(function ($sub) {
-                                        $sub->whereNull('sp_max.max_stage_code')
-                                                ->orWhere('sp_max.max_stage_code','<',7);
+                                ->when(
+                                        $request->plan_list_id < 0,
+                                        fn($q) => $q->where(function ($sub) {
+                                                $sub->whereNull('sp_max.max_stage_code')
+                                                        ->orWhere('sp_max.max_stage_code', '<', 7);
                                         }),
-                                        fn($q)=>$q->where('pm.plan_list_id',$request->plan_list_id)
+                                        fn($q) => $q->where('pm.plan_list_id', $request->plan_list_id)
                                 )
 
                                 ->where([
-                                        ['pm.deparment_code',session('user')['production_code']],
-                                        ['pm.cancel',0],
-                                        ['pm.active',1],
-                                        ['pmm.active',1]
+                                        ['pm.deparment_code', session('user')['production_code']],
+                                        ['pm.cancel', 0],
+                                        ['pm.active', 1],
+                                        ['pmm.active', 1]
                                 ])
 
                                 ->where(function ($q) {
-                                        $q->where('pmm.material_packaging_type','!=',0)
-                                        ->orWhere(function ($sub) {
-                                                $sub->where('pmm.material_packaging_type',0)
-                                                ->whereNull('sp_max.max_stage_code');
-                                        });
+                                        $q->where('pmm.material_packaging_type', '!=', 0)
+                                                ->orWhere(function ($sub) {
+                                                        $sub->where('pmm.material_packaging_type', 0)
+                                                                ->whereNull('sp_max.max_stage_code');
+                                                });
                                 })
 
-                                ->when($request->has('selected'),
-                                        fn($q)=>$q->where('pm.selected',1)
+                                ->when(
+                                        $request->has('selected'),
+                                        fn($q) => $q->where('pm.selected', 1)
                                 )
 
-                                ->when($request->has('material_packaging_type'),
-                                        fn($q)=>$q->where('pmm.material_packaging_type',$request->material_packaging_type)
+                                ->when(
+                                        $request->has('material_packaging_type'),
+                                        fn($q) => $q->where('pmm.material_packaging_type', $request->material_packaging_type)
                                 )
 
                                 ->selectRaw("
@@ -1773,12 +1793,12 @@ class ProductionPlanController extends Controller
 
                                 ->orderBy('pmm.material_packaging_code')
 
-                        ->get();
+                                ->get();
 
-                
-   
-                        $material_packaging_code =  $plan_master_materials->pluck ('material_packaging_code');
-                      
+
+
+                        $material_packaging_code =  $plan_master_materials->pluck('material_packaging_code');
+
                         $StockOverview = DB::connection('mms')
                                 ->table('yf_RMPMStockOverview_pms as s')
                                 ->whereIn('s.MatID', $material_packaging_code)
@@ -1808,7 +1828,7 @@ class ProductionPlanController extends Controller
                                         ), 1, 2, '') as warehouse_list
                                         "),
 
-                                                                        // Gộp IntBatchNo
+                                        // Gộp IntBatchNo
                                         DB::raw("
                                         STUFF((
                                                 SELECT DISTINCT ', ' + s3.IntBatchNo
@@ -1830,87 +1850,85 @@ class ProductionPlanController extends Controller
                                         's.Mfg',
                                         's.QCSTS',
                                 )
-                        ->get();
+                                ->get();
 
-                       // dd ($StockOverview);
+                        // dd ($StockOverview);
 
-                       
 
-                        
+
+
                         $stockByMat = collect($StockOverview)->groupBy('MatID');
-                        
+
                         $plan_master_materials = collect($plan_master_materials)
                                 ->map(function ($item) use ($stockByMat) {
 
-                                $stocks = $stockByMat[$item->material_packaging_code] ?? collect([]);
+                                        $stocks = $stockByMat[$item->material_packaging_code] ?? collect([]);
 
-                                // 👉 Chỉ tính tổng, không thêm dòng
-                                $item->totalReceipt = $stocks->sum('ReceiptQuantity');
-                                $item->totalQty     = $stocks->sum('Total_Qty');
+                                        // 👉 Chỉ tính tổng, không thêm dòng
+                                        $item->totalReceipt = $stocks->sum('ReceiptQuantity');
+                                        $item->totalQty     = $stocks->sum('Total_Qty');
 
-                                $item->stock = $stocks;
+                                        $item->stock = $stocks;
 
-                                return $item;
+                                        return $item;
                                 })
-                                ->sortBy(fn ($i) => mb_strtolower($i->MaterialName))
+                                ->sortBy(fn($i) => mb_strtolower($i->MaterialName))
                                 ->values();
 
 
-                        
+
                         $production  =  session('user')['production_name'];
 
-                       // dd ( $plan_master_materials);
-                
-                        session()->put(['title'=> "BẢNG TÍNH DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
+                        // dd ( $plan_master_materials);
 
-                        if ($request->title){
-                                session()->put(['title'=> "$request->title - $production"]);
+                        session()->put(['title' => "BẢNG TÍNH DỰ TRÙ NGUYÊN LIỆU CHO $request->name - $production"]);
+
+                        if ($request->title) {
+                                session()->put(['title' => "$request->title - $production"]);
                         }
-                        
+
                         //dd ($plan_master_materials);
-                        return view('pages.plan.production.stock_list',[
-                                'datas' => $plan_master_materials, 
+                        return view('pages.plan.production.stock_list', [
+                                'datas' => $plan_master_materials,
                                 'plan_list_id' => $request->plan_list_id,
-                                'month' => $request->month, 
+                                'month' => $request->month,
                                 'production' => $request->production,
-                                'send'=> $request->send??1, 
-                                'current_url' => $request->current_url??null
+                                'send' => $request->send ?? 1,
+                                'current_url' => $request->current_url ?? null
                         ]);
-
-
                 } catch (\Throwable $e) {
 
-                                Log::error('OPEN_STOCK_ERROR', [
+                        Log::error('OPEN_STOCK_ERROR', [
+                                'message' => $e->getMessage(),
+                                'line' => $e->getLine(),
+                                'file' => $e->getFile(),
+                                'trace' => $e->getTraceAsString()
+                        ]);
+
+                        return view('pages.plan.production.stock_list', [
+                                'datas' => collect([]),
+                                'js_error' => [
                                         'message' => $e->getMessage(),
                                         'line' => $e->getLine(),
-                                        'file' => $e->getFile(),
-                                        'trace' => $e->getTraceAsString()
-                                ]);
-
-                                return view('pages.plan.production.stock_list', [
-                                        'datas' => collect([]),
-                                        'js_error' => [
-                                                'message' => $e->getMessage(),
-                                                'line' => $e->getLine(),
-                                                'file' => $e->getFile()
-                                        ]
-                                ]);
+                                        'file' => $e->getFile()
+                                ]
+                        ]);
                 }
-
         }
-        
-        public function open_bacth_detail(Request  $request){
-                
+
+        public function open_bacth_detail(Request  $request)
+        {
+
 
                 $maxStageFinished = DB::table('stage_plan')
-                ->whereIn('stage_plan.plan_master_id', $request->plan_master_ids)
-                ->where('finished', 1)
-                ->select(
-                        'plan_master_id',
-                        DB::raw('MAX(stage_code) as max_stage_code')
-                )
-                ->groupBy('plan_master_id');
-  
+                        ->whereIn('stage_plan.plan_master_id', $request->plan_master_ids)
+                        ->where('finished', 1)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
 
                 $datas = DB::table('plan_master')
                         ->select(
@@ -1944,11 +1962,11 @@ class ProductionPlanController extends Controller
                         ->whereIn('plan_master.id', $request->plan_master_ids)
                         ->where('plan_master.active', 1)
 
-                        ->leftJoin('finished_product_category','plan_master.product_caterogy_id','=','finished_product_category.id')
-                        ->leftJoin('intermediate_category','finished_product_category.intermediate_code','=','intermediate_category.intermediate_code')
-                        ->leftJoin('source_material', 'plan_master.material_source_id','=','source_material.id')
-                        ->leftJoin('product_name as fp_name','finished_product_category.product_name_id','=','fp_name.id')
-                        ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+                        ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', '=', 'fp_name.id')
+                        ->leftJoin('product_name as im_name', 'intermediate_category.product_name_id', '=', 'im_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
@@ -1956,110 +1974,109 @@ class ProductionPlanController extends Controller
                         })
                         ->leftJoin('stage_plan', function ($join) {
                                 $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                                ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
                         })
                         ->orderBy('expected_date', 'asc')
                         ->orderBy('level', 'asc')
                         ->orderBy('batch', 'asc')
-                ->get();
+                        ->get();
 
-                
+
                 return response()->json([
                         'datas' => $datas
                 ]);
-
-              
         }
 
-        public function open_feedback_API (Request $request){
-               
-                $deparment_code = $request->deparment_code?? 'PXV1';
+        public function open_feedback_API(Request $request)
+        {
+
+                $deparment_code = $request->deparment_code ?? 'PXV1';
                 $month = $request->month ?? now()->month;
                 $year = $request->year ?? now()->year;
 
-                $plan_list_id =  DB::table('plan_list')->where ('deparment_code',$deparment_code)->where ('year',$year)->where ('month',$month)->pluck('id');
-                
+                $plan_list_id =  DB::table('plan_list')->where('deparment_code', $deparment_code)->where('year', $year)->where('month', $month)->pluck('id');
+
                 $maxStageFinished = DB::table('stage_plan')
-                ->whereIn('stage_plan.plan_list_id', $plan_list_id)
-                ->where('finished', 1)
-                ->select(
-                        'plan_master_id',
-                        DB::raw('MAX(stage_code) as max_stage_code')
-                )
-                ->groupBy('plan_master_id');
+                        ->whereIn('stage_plan.plan_list_id', $plan_list_id)
+                        ->where('finished', 1)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
 
                 $datas = DB::table('plan_master')
-                ->select(
-            
-                        "plan_master.id",
-                        "plan_master.plan_list_id",
-                        "plan_master.product_caterogy_id",
-                        "plan_master.level",
-                        "plan_master.batch",
-                        "plan_master.actual_batch",
-                        "plan_master.order_number",
-                        "plan_master.expected_date",
-                        "plan_master.responsed_date",
-                        "plan_master.actual_KCS",
-                        "plan_master.is_val",
-                        "plan_master.code_val",
-                        "plan_master.after_weigth_date",
-                        "plan_master.parkaging_before_date",
-                        "plan_master.after_parkaging_date",
-                        "plan_master.expired_packing_date",
-                        "plan_master.preperation_before_date",
-                        "plan_master.blending_before_date",
-                        "plan_master.coating_before_date",
-                        "plan_master.allow_weight_before_date",
-                        "plan_master.expired_material_date",
-                        "plan_master.material_source_id",
-                        "plan_master.only_parkaging",
-                        "plan_master.percent_parkaging",
-                        "plan_master.main_parkaging_id",
-                        "plan_master.number_parkaging",
-                        "plan_master.note",
-                        "plan_master.pro_feedback",
-                        "plan_master.qc_feedback",
-                        
+                        ->select(
 
-                        DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
-                        DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
+                                "plan_master.id",
+                                "plan_master.plan_list_id",
+                                "plan_master.product_caterogy_id",
+                                "plan_master.level",
+                                "plan_master.batch",
+                                "plan_master.actual_batch",
+                                "plan_master.order_number",
+                                "plan_master.expected_date",
+                                "plan_master.responsed_date",
+                                "plan_master.actual_KCS",
+                                "plan_master.is_val",
+                                "plan_master.code_val",
+                                "plan_master.after_weigth_date",
+                                "plan_master.parkaging_before_date",
+                                "plan_master.after_parkaging_date",
+                                "plan_master.expired_packing_date",
+                                "plan_master.preperation_before_date",
+                                "plan_master.blending_before_date",
+                                "plan_master.coating_before_date",
+                                "plan_master.allow_weight_before_date",
+                                "plan_master.expired_material_date",
+                                "plan_master.material_source_id",
+                                "plan_master.only_parkaging",
+                                "plan_master.percent_parkaging",
+                                "plan_master.main_parkaging_id",
+                                "plan_master.number_parkaging",
+                                "plan_master.note",
+                                "plan_master.pro_feedback",
+                                "plan_master.qc_feedback",
 
-                        DB::raw("IF(plan_master.en_feedback IS NOT NULL, plan_master.en_feedback, 'NA') AS en_feedback"),
-                        DB::raw("IF(plan_master.has_punch_die_mold = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_punch_die_mold"),
 
-      
-                        "plan_master.actual_CoA_date",
-                        "plan_master.actual_record_date",
-                  
-                        "plan_master.qa_feedback_by",
-                        "plan_master.qa_feedback_date",
-                        "plan_master.qc_feedback_by",
-                        "plan_master.qc_feedback_date",
-                        "plan_master.pro_feedback_by",
-                        "plan_master.pro_feedback_date",
-                        "plan_master.en_feedback_by",
-                        "plan_master.en_feedback_date",
-                        "plan_master.kcs_record_by",
-                        "plan_master.kcs_record_date",
-                        "plan_master.accept_expectedDate_by",
-                        "plan_master.accept_expectedDate_date",
-                        "plan_master.deparment_code",
-                        "plan_master.active",
-                        "plan_master.cancel",
-                      
-                        'finished_product_category.intermediate_code',
-                        'finished_product_category.finished_product_code',
-                        'product_name.name',
-                        'market.code as market',
-                        'specification.name as specification',
-                        'finished_product_category.batch_qty',
-                        'finished_product_category.unit_batch_qty',
-                        'finished_product_category.deparment_code',
-                        'source_material.name as source_material_name',
-                        'stage_plan.end as end',
+                                DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
+                                DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
 
-                        DB::raw("
+                                DB::raw("IF(plan_master.en_feedback IS NOT NULL, plan_master.en_feedback, 'NA') AS en_feedback"),
+                                DB::raw("IF(plan_master.has_punch_die_mold = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_punch_die_mold"),
+
+
+                                "plan_master.actual_CoA_date",
+                                "plan_master.actual_record_date",
+
+                                "plan_master.qa_feedback_by",
+                                "plan_master.qa_feedback_date",
+                                "plan_master.qc_feedback_by",
+                                "plan_master.qc_feedback_date",
+                                "plan_master.pro_feedback_by",
+                                "plan_master.pro_feedback_date",
+                                "plan_master.en_feedback_by",
+                                "plan_master.en_feedback_date",
+                                "plan_master.kcs_record_by",
+                                "plan_master.kcs_record_date",
+                                "plan_master.accept_expectedDate_by",
+                                "plan_master.accept_expectedDate_date",
+                                "plan_master.deparment_code",
+                                "plan_master.active",
+                                "plan_master.cancel",
+
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'product_name.name',
+                                'market.code as market',
+                                'specification.name as specification',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'finished_product_category.deparment_code',
+                                'source_material.name as source_material_name',
+                                'stage_plan.end as end',
+
+                                DB::raw("
                                 CASE
                                         WHEN plan_master.cancel = 1 THEN 'Hủy'
                                         WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
@@ -2072,49 +2089,49 @@ class ProductionPlanController extends Controller
                                         END AS status
                         ")
 
-                )
-                ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                // ->leftJoin('stage_plan', function ($join) use ($request) {
-                //         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                //         ->where('stage_plan.stage_code', 7)
-                //         ->where('stage_plan.active', 1)
-                //         ;
-                // })
-                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                        $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
-                })
-                ->leftJoin('stage_plan', function ($join) {
-                        $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
-                })
-                ->whereIn('plan_master.plan_list_id', $plan_list_id)
-                ->where('plan_master.active', 1)
-                ->orderBy('id', 'asc')
-                ->get();
+                        )
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                        // ->leftJoin('stage_plan', function ($join) use ($request) {
+                        //         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                        //         ->where('stage_plan.stage_code', 7)
+                        //         ->where('stage_plan.active', 1)
+                        //         ;
+                        // })
+                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
+                        })
+                        ->leftJoin('stage_plan', function ($join) {
+                                $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+                                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                        })
+                        ->whereIn('plan_master.plan_list_id', $plan_list_id)
+                        ->where('plan_master.active', 1)
+                        ->orderBy('id', 'asc')
+                        ->get();
 
-                
+
 
                 return response()->json([
                         'datas' => $datas
                 ]);
-
         }
 
-        public function recipe_show_update(Request $request){
-                
+        public function recipe_show_update(Request $request)
+        {
+
                 $datas = DB::table('plan_master_materials as pmm')
-                ->where('pmm.plan_master_id', $request->plan_master_id)
-                ->where('pmm.material_packaging_type', $request->material_packaging_type)
-                ->get();
+                        ->where('pmm.plan_master_id', $request->plan_master_id)
+                        ->where('pmm.material_packaging_type', $request->material_packaging_type)
+                        ->get();
                 return response()->json($datas);
-
         }
 
-        public function update_plan_master_material(Request $request){
+        public function update_plan_master_material(Request $request)
+        {
 
                 $type_update =   'intermediate_code'; //'finished_product_code';
                 $material_packaging_type = 0;
@@ -2123,13 +2140,14 @@ class ProductionPlanController extends Controller
                 // 1️⃣ Lấy plan
                 $plans = DB::table('plan_master as pm')
                         ->select(
-                        'pm.id as plan_master_id',
-                        "fpc.$type_update"
+                                'pm.id as plan_master_id',
+                                "fpc.$type_update"
                         )
-                        ->leftJoin('finished_product_category as fpc',
-                        'pm.product_caterogy_id',
-                        '=',
-                        'fpc.id'
+                        ->leftJoin(
+                                'finished_product_category as fpc',
+                                'pm.product_caterogy_id',
+                                '=',
+                                'fpc.id'
                         )
                         ->where('pm.active', 1)
                         ->where('pm.plan_list_id', '>', 23)
@@ -2176,43 +2194,39 @@ class ProductionPlanController extends Controller
                         $prdId = $plan->$type_update;
 
                         if (!isset($bomsGrouped[$prdId])) {
-                        continue;
+                                continue;
                         }
 
                         foreach ($bomsGrouped[$prdId] as $item) {
 
-                        $insertData[] = [
-                                'plan_master_id'          => $plan->plan_master_id,
-                                'material_packaging_code' => (string) $item->MatID,
-                                'material_packaging_type' => $material_packaging_type,
-                                'Revno'                   => $item->Revno,
-                                'qty'                     => (float) $item->MatQty,
-                                'unit_bom'                => $item->uom,
-                                'MaterialName'            => $item->MaterialName,
-                                'created_at'              => now(),
-                                'created_by'              => "Auto_generate",
-                                'active'                  => 1,
-                        ];
+                                $insertData[] = [
+                                        'plan_master_id'          => $plan->plan_master_id,
+                                        'material_packaging_code' => (string) $item->MatID,
+                                        'material_packaging_type' => $material_packaging_type,
+                                        'Revno'                   => $item->Revno,
+                                        'qty'                     => (float) $item->MatQty,
+                                        'unit_bom'                => $item->uom,
+                                        'MaterialName'            => $item->MaterialName,
+                                        'created_at'              => now(),
+                                        'created_by'              => "Auto_generate",
+                                        'active'                  => 1,
+                                ];
                         }
                 }
 
                 // 8️⃣ Upsert
                 if (!empty($insertData)) {
 
-                foreach (array_chunk($insertData, 1000) as $chunk) {
+                        foreach (array_chunk($insertData, 1000) as $chunk) {
 
-                        DB::table('plan_master_materials')->upsert(
-                        $chunk,
-                        ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
-                        ['qty', 'unit_bom', 'active', 'Revno']
-                        );
-
-                }
+                                DB::table('plan_master_materials')->upsert(
+                                        $chunk,
+                                        ['plan_master_id', 'material_packaging_code', 'material_packaging_type'],
+                                        ['qty', 'unit_bom', 'active', 'Revno']
+                                );
+                        }
                 }
 
                 return response()->json([]);
         }
-
-
-
 }
