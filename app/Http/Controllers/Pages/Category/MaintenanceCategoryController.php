@@ -101,8 +101,23 @@ class MaintenanceCategoryController extends Controller
                         $inst_lookup[$inst->Inst_id] = $inst;
                 }
 
+                // Lấy danh sách phòng đã gán cho từng quota
+                $quota_rooms = DB::table('quota_maintenance_rooms')
+                        ->get()
+                        ->groupBy('quota_maintenance_id');
+
                 foreach ($quota_maintenance as $quota) {
                         $inst = $inst_lookup[$quota->inst_id] ?? null;
+                        
+                        // Lấy danh sách room_id từ bảng bridge
+                        $assigned_room_ids = $quota_rooms->get($quota->id, collect())->pluck('room_id')->toArray();
+
+                        $exe_room_names = [];
+                        foreach ($assigned_room_ids as $rid) {
+                                if (isset($room_names[$rid])) {
+                                        $exe_room_names[] = $room_names[$rid];
+                                }
+                        }
 
                         $item = (object)[
                                 'id' => $quota->id,
@@ -110,8 +125,9 @@ class MaintenanceCategoryController extends Controller
                                 'block' => $quota->block ?? '',
                                 'parent_code' => $inst->Parent_Equip_id ?? '',
                                 'name' => $inst->Inst_Name ?? '',
-                                'room_id' => $quota->room_id,
-                                'exe_room_name' => $room_names[$quota->room_id] ?? null,
+                                'room_id' => $quota->room_id, // Giữ lại cho tương thích (hoặc dùng assigned_room_ids)
+                                'room_ids' => $assigned_room_ids,
+                                'exe_room_name' => !empty($exe_room_names) ? implode(', ', $exe_room_names) : null,
                                 'room_code' => $inst->Inst_Installed_Location ?? '',
                                 'sch_type' => $inst->Inst_sch_type ?? '',
                                 'deparment_code' => $quota->deparment_code,
@@ -160,14 +176,50 @@ class MaintenanceCategoryController extends Controller
 
         public function updateRoom(Request $request)
         {
-                DB::table('quota_maintenance')
-                        ->where('id', $request->id)
-                        ->update([
-                                'room_id' => $request->room_id,
-                                'created_by' => session('user')['fullName'],
-                                'created_time' => now(),
-                        ]);
-                return response()->json(['success' => true]);
+                $quota_id = $request->id;
+                $room_ids = $request->room_ids; // Mảng các room_id
+
+                DB::beginTransaction();
+                try {
+                        // Xóa các liên kết cũ
+                        DB::table('quota_maintenance_rooms')->where('quota_maintenance_id', $quota_id)->delete();
+
+                        // Thêm các liên kết mới
+                        if (!empty($room_ids) && is_array($room_ids)) {
+                                $insert_data = [];
+                                foreach ($room_ids as $room_id) {
+                                        $insert_data[] = [
+                                                'quota_maintenance_id' => $quota_id,
+                                                'room_id' => $room_id,
+                                        ];
+                                }
+                                DB::table('quota_maintenance_rooms')->insert($insert_data);
+                                
+                                // Cập nhật lại room_id đầu tiên vào bảng chính để tương thích ngược nếu cần
+                                DB::table('quota_maintenance')
+                                        ->where('id', $quota_id)
+                                        ->update([
+                                                'room_id' => $room_ids[0],
+                                                'created_by' => session('user')['fullName'],
+                                                'created_time' => now(),
+                                        ]);
+                        } else {
+                                // Nếu không chọn phòng nào
+                                DB::table('quota_maintenance')
+                                        ->where('id', $quota_id)
+                                        ->update([
+                                                'room_id' => null,
+                                                'created_by' => session('user')['fullName'],
+                                                'created_time' => now(),
+                                        ]);
+                        }
+
+                        DB::commit();
+                        return response()->json(['success' => true]);
+                } catch (\Exception $e) {
+                        DB::rollBack();
+                        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                }
         }
 
         public function deActive(Request $request)
@@ -182,10 +234,11 @@ class MaintenanceCategoryController extends Controller
 
         public function updateDepartment(Request $request)
         {
+                $dept_code = $request->department_code ?? $request->deparment_code;
                 DB::table('quota_maintenance')
                         ->where('id', $request->id)
                         ->update([
-                                'deparment_code' => $request->deparment_code,
+                                'deparment_code' => $dept_code,
                                 'created_by' => session('user')['fullName'],
                                 'created_time' => now(),
                         ]);
