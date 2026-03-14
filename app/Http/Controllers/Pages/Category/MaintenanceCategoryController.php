@@ -22,7 +22,7 @@ class MaintenanceCategoryController extends Controller
 
                 foreach ($connections as $conn) {
                         $block = ($conn === 'cal1') ? 'B1' : 'B2';
-                        
+
                         // Nếu có filter block mà không khớp thì bỏ qua connection này
                         if ($filter_block && $filter_block !== $block) {
                                 continue;
@@ -86,7 +86,7 @@ class MaintenanceCategoryController extends Controller
                 }
                 $quota_maintenance = $query->get();
 
-                $rooms = DB::table('room')->where('deparment_code', session('user')['production_code'])->select('id', 'name', 'code')->get();
+                $rooms = DB::table('room')->select('id', 'name', 'code', 'deparment_code')->get(); // ->where('deparment_code', session('user')['production_code'])
                 $room_names = $rooms->mapWithKeys(function ($room) {
                         return [$room->id => $room->code . ' - ' . $room->name];
                 })->toArray();
@@ -108,7 +108,7 @@ class MaintenanceCategoryController extends Controller
 
                 foreach ($quota_maintenance as $quota) {
                         $inst = $inst_lookup[$quota->inst_id] ?? null;
-                        
+
                         // Lấy danh sách room_id từ bảng bridge
                         $assigned_room_ids = $quota_rooms->get($quota->id, collect())->pluck('room_id')->toArray();
 
@@ -194,7 +194,7 @@ class MaintenanceCategoryController extends Controller
                                         ];
                                 }
                                 DB::table('quota_maintenance_rooms')->insert($insert_data);
-                                
+
                                 // Cập nhật lại room_id đầu tiên vào bảng chính để tương thích ngược nếu cần
                                 DB::table('quota_maintenance')
                                         ->where('id', $quota_id)
