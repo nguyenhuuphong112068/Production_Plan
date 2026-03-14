@@ -687,8 +687,10 @@ class DailyReportController extends Controller
         // 6️⃣ Tạo dailyTotals cho 1 ngày duy nhất
         // ------------------------------
         $dailyTotals = collect();
-        $dayStart = $startDate->copy()->startOfDay();
-        $dayEnd   = $startDate->copy()->endOfDay();
+        $dayStart =  $startDate; //$startDate->copy()->startOfDay();
+        $dayEnd   = $endDate; //$startDate->copy()->endOfDay();
+
+
 
         $totalForDay = DB::table("stage_plan as sp")
             ->join('room as r', 'sp.resourceId', '=', 'r.id')
