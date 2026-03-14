@@ -21,7 +21,7 @@
                 </div>
 
                 <div class="modal-body">
-                    <input type="hidden" class="form-control" name="room_id"  value="{{ old('room_id') }}">
+                    <input type="hidden" class="form-control" name="room_id" value="{{ old('room_id') }}">
 
                     <div class="form-group">
                         <label for="name">Phòng Sản Xuất</label>
@@ -29,8 +29,8 @@
                             value="{{ old('room_name') }}">
                     </div>
 
-                     <div class="form-group">
-                       <label for="in_production">Hoạt Động</label>
+                    <div class="form-group">
+                        <label for="in_production">Hoạt Động</label>
                         <input class="form-control" list="in_production_list" name="in_production" id="in_production">
                     </div>
 
@@ -39,14 +39,16 @@
                             <label>Thời Gian Bắt Đầu</label>
                             <div class="input-group">
                                 @php $dt = Carbon\Carbon::createFromFormat('d/m/Y', $reportedDate)->setTime(6,0,0);@endphp
-                                <input type="datetime-local"  class="form-control"  name="start"  value="{{ old('start', $dt->format('Y-m-d\TH:i')) }}">
+                                <input type="datetime-local" class="form-control" name="start"
+                                    value="{{ old('start', $dt->format('Y-m-d\TH:i')) }}">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <label>Thời Gian Kết Thúc</label>
                             <div class="input-group">
-                                 @php $dt = Carbon\Carbon::createFromFormat('d/m/Y', $reportedDate)->addDays(1)->setTime(6,0,0);@endphp
-                                <input type="datetime-local"  class="form-control"  name="end"  value="{{ old('end', $dt->format('Y-m-d\TH:i')) }}">
+                                @php $dt = Carbon\Carbon::createFromFormat('d/m/Y', $reportedDate)->addDays(1)->setTime(6,0,0);@endphp
+                                <input type="datetime-local" class="form-control" name="end"
+                                    value="{{ old('end', $dt->format('Y-m-d\TH:i')) }}">
                             </div>
                         </div>
                     </div>
@@ -83,3 +85,21 @@
     </script>
 @endif
 
+<script>
+    $(document).ready(function() {
+        $('#Modal form').on('submit', function(e) {
+            const start = new Date($(this).find('input[name="start"]').val());
+            const end = new Date($(this).find('input[name="end"]').val());
+
+            if (end <= start) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Cảnh báo!',
+                    text: 'Thời gian kết thúc phải lớn hơn thời gian bắt đầu!',
+                    icon: 'warning',
+                    confirmButtonText: 'Đóng'
+                });
+            }
+        });
+    });
+</script>
