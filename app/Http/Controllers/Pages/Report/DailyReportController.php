@@ -797,6 +797,7 @@ class DailyReportController extends Controller
         $data = DB::table('explanation')
             ->where('reported_date', $request->reported_date)
             ->where('stage_code', $request->stage_code)
+            ->where('deparment_code', session('user')['production_code'])
             ->first();
 
         if (!$data) {
@@ -805,15 +806,17 @@ class DailyReportController extends Controller
                 'reported_date' => $request->reported_date,
                 'stage_code' => $request->stage_code,
                 'content' => "Chưa Có Ghi Chú",
-                //'created_by' => session ('user')['fullName'],
-                //'created_at' => now(),
-               
+                'deparment_code' => session('user')['production_code'],
+                'created_by' => session('user')['fullName'],
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             // Lấy lại dữ liệu sau khi insert
             $data = DB::table('explanation')
                 ->where('reported_date', $request->reported_date)
                 ->where('stage_code', $request->stage_code)
+                ->where('deparment_code', session('user')['production_code'])
                 ->first();
         }
 

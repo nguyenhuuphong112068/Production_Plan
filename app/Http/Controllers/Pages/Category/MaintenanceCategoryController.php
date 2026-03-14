@@ -14,23 +14,39 @@ class MaintenanceCategoryController extends Controller
         {
 
                 // Tối ưu hóa truy vấn: Join trực tiếp trên database cal1 và lọc Inst_Status = Active
-                $instruments = DB::connection('cal1')
-                        ->table('Inst_Master_1 as Ins')
-                        ->leftJoin('Eqp_mst_1 as Eqp', 'Eqp.Eqp_ID', '=', 'Ins.Parent_Equip_id')
-                        ->where('Ins.Inst_Status', 'Active')
-                        ->select(
-                                'Ins.Inst_id',
-                                'Ins.Inst_Name',
-                                'Ins.Inst_sch_type',
-                                'Ins.Inst_Installed_Location',
-                                'Ins.Inst_Type',
-                                'Ins.Inst_Status',
-                                'Ins.Created_By',
-                                'Ins.Created_On',
-                                'Ins.Parent_Equip_id',
-                                'Eqp.Eqp_ID as Parent_Eqp_ID'
-                        )
-                        ->get();
+                // Gộp 6 bảng từ 2 khu vực (cal1, cal2) x 3 bảng (1, 2, 3) thành 1 collection
+                $instruments = collect();
+                $connections = ['cal1', 'cal2'];
+                $suffixes = [1, 2, 3];
+
+                foreach ($connections as $conn) {
+                        $block = ($conn === 'cal1') ? 'B1' : 'B2';
+                        foreach ($suffixes as $suffix) {
+                                $result = DB::connection($conn)
+                                        ->table("Inst_Master_{$suffix} as Ins")
+                                        ->leftJoin("Eqp_mst_{$suffix} as Eqp", 'Eqp.Eqp_ID', '=', 'Ins.Parent_Equip_id')
+                                        ->where('Ins.Inst_Status', 'Active')
+                                        ->select(
+                                                'Ins.Inst_id',
+                                                'Ins.Inst_Name',
+                                                'Ins.Inst_sch_type',
+                                                'Ins.Inst_Installed_Location',
+                                                'Ins.Inst_Type',
+                                                'Ins.Inst_Status',
+                                                'Ins.Created_By',
+                                                'Ins.Created_On',
+                                                'Ins.Parent_Equip_id',
+                                                'Eqp.Eqp_ID as Parent_Eqp_ID'
+                                        )
+                                        ->get()
+                                        ->map(function ($item) use ($block) {
+                                                $item->block = $block;
+                                                return $item;
+                                        });
+
+                                $instruments = $instruments->merge($result);
+                        }
+                }
 
                 // Lấy danh sách định mức hiện có
                 $quota_maintenance = DB::table('quota_maintenance')->get();
@@ -42,7 +58,8 @@ class MaintenanceCategoryController extends Controller
                         if (!in_array($inst->Inst_id, $existing_quota_inst_ids)) {
                                 $new_quotas[] = [
                                         'inst_id' => $inst->Inst_id,
-                                        'exe_time' => '00:00', // Default time
+                                        'exe_time' => '00:00',
+                                        'block' => $inst->block,
                                         'created_by' => session('user')['fullName'] ?? 'System',
                                         'created_time' => now(),
                                 ];
@@ -78,6 +95,7 @@ class MaintenanceCategoryController extends Controller
                         $item = (object)[
                                 'id' => $quota->id,
                                 'code' => $quota->inst_id,
+                                'block' => $quota->block ?? '',
                                 'parent_code' => $inst->Parent_Equip_id,
                                 'name' => $inst->Inst_Name,
                                 'room_id' => $quota->room_id,

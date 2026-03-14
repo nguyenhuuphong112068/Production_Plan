@@ -60,14 +60,15 @@
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                     <tr>
                         <th>STT</th>
+                        <th>Block</th>
                         <th>Mã Thiết Bị Lớn</th>
                         <th>Mã Thiết Bị Con</th>
                         <th>Tên Thiết Bị</th>
                         <th>Tần Suất BT-HC</th>
                         <th>Vị Trí Lắp Đặt</th>
-                        <th>Vị Trí Thẩm Định</th>
+                        <th>Phòng SX Liên Quan</th>
                         <th>Thời gian Thực Hiện</th>
-                        <th>Có Thuộc Hệ Thông HVAC?</th>
+                        <th>Có Thuộc Hệ Thống HVAC?</th>
                         <th>Người Tạo/Ngày Tạo</th>
                         <th>Vô Hiệu</th>
                     </tr>
@@ -106,7 +107,8 @@
         // Danh sách phòng cho select option
         var roomOptions = '<option value="">-- Phòng Thực Hiện --</option>';
         @foreach ($rooms as $room)
-            roomOptions += '<option value="{{ $room->id }}">{{ $room->code }} - {{ $room->name }}</option>';
+            roomOptions +=
+                '<option value="{{ $room->id }}">{{ $room->code }} - {{ $room->name }}</option>';
         @endforeach
 
         // Dữ liệu JSON từ server
@@ -131,8 +133,7 @@
                     next: "Sau"
                 }
             },
-            columns: [
-                {
+            columns: [{
                     data: null,
                     orderable: false,
                     searchable: false,
@@ -140,16 +141,32 @@
                         return meta.row + 1;
                     }
                 },
-                { data: 'parent_code', defaultContent: '' },
+                {
+                    data: 'block',
+                    defaultContent: ''
+                },
+                {
+                    data: 'parent_code',
+                    defaultContent: ''
+                },
                 {
                     data: 'code',
                     render: function(data, type, row) {
                         return '<span class="text-success">' + (data || '') + '</span>';
                     }
                 },
-                { data: 'name', defaultContent: '' },
-                { data: 'sch_type', defaultContent: '' },
-                { data: 'room_code', defaultContent: '' },
+                {
+                    data: 'name',
+                    defaultContent: ''
+                },
+                {
+                    data: 'sch_type',
+                    defaultContent: ''
+                },
+                {
+                    data: 'room_code',
+                    defaultContent: ''
+                },
                 {
                     data: 'exe_room_name',
                     render: function(data, type, row) {
@@ -160,22 +177,26 @@
                             'value="' + (row.room_id || '') + '"',
                             'value="' + (row.room_id || '') + '" selected'
                         );
-                        return '<select class="form-control select-room" name="room_id" data-id="' + row.id + '">' + opts + '</select>';
+                        return '<select class="form-control select-room" name="room_id" data-id="' +
+                            row.id + '">' + opts + '</select>';
                     }
                 },
                 {
                     data: 'quota',
                     render: function(data, type, row) {
-                        return '<input type="text" class="time" name="quota" value="' + (data || '') + '" data-id="' + row.id + '" ' + disabledAttr + '>';
+                        return '<input type="text" class="time" name="quota" value="' + (data ||
+                            '') + '" data-id="' + row.id + '" ' + disabledAttr + '>';
                     }
                 },
                 {
                     data: 'is_HVAC',
                     className: 'text-center',
                     render: function(data, type, row) {
-                        var checked = (data == 1 || data == '1' || data === true) ? 'checked' : '';
+                        var checked = (data == 1 || data == '1' || data === true) ? 'checked' :
+                            '';
                         return '<div class="form-check form-switch text-center">' +
-                            '<input class="form-check-input step-checkbox" type="checkbox" role="switch" data-id="' + row.id + '" ' + checked + '>' +
+                            '<input class="form-check-input step-checkbox" type="checkbox" role="switch" data-id="' +
+                            row.id + '" ' + checked + '>' +
                             '</div>';
                     }
                 },
@@ -186,10 +207,14 @@
                         if (row.created_at) {
                             try {
                                 var d = new Date(row.created_at);
-                                date = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth()+1)).slice(-2) + '/' + d.getFullYear();
-                            } catch(e) { date = row.created_at; }
+                                date = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d
+                                    .getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+                            } catch (e) {
+                                date = row.created_at;
+                            }
                         }
-                        return '<div>' + (row.created_by || '') + '</div><div>' + date + '</div>';
+                        return '<div>' + (row.created_by || '') + '</div><div>' + date +
+                            '</div>';
                     }
                 },
                 {
@@ -198,7 +223,8 @@
                     orderable: false,
                     searchable: false,
                     render: function(data, type, row) {
-                        return '<button type="button" class="btn btn-danger btn-sm btn-deActive" data-id="' + row.id + '" data-name="' + (row.name || '') + '">' +
+                        return '<button type="button" class="btn btn-danger btn-sm btn-deActive" data-id="' +
+                            row.id + '" data-name="' + (row.name || '') + '">' +
                             '<i class="fas fa-trash"></i></button>';
                     }
                 }
