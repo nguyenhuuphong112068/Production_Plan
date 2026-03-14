@@ -31,7 +31,64 @@
         display: block;
         margin: auto;
     }
+
+    /* Select2 customization */
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #ced4da;
+        border-radius: .25rem;
+        min-height: 38px;
+    }
+    .select2-container {
+        width: 100% !important;
+    }
+
+    /* Premium Select2 Styling for AdminLTE */
+    .select2-container--bootstrap4 .select2-selection--multiple {
+        border: 1px solid #ced4da !important;
+        border-radius: 4px !important;
+        padding: 1px 5px !important;
+        background-color: #fdfdfd !important;
+        height: auto !important;
+        min-height: 38px !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+    }
+    .select2-container--bootstrap4.select2-container--focus .select2-selection--multiple {
+        border-color: #80bdff !important;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25) !important;
+    }
+    .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice {
+        background-color: #e9ecef !important;
+        border: 1px solid #dee2e6 !important;
+        color: #495057 !important;
+        border-radius: 3px !important;
+        padding: 0 8px !important;
+        margin-top: 2px !important;
+        margin-bottom: 2px !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease;
+    }
+    .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice:hover {
+        background-color: #dee2e6 !important;
+        color: #212529 !important;
+    }
+    .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice__remove {
+        color: #dc3545 !important;
+        margin-right: 5px !important;
+        font-weight: bold !important;
+    }
+    .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #bd2130 !important;
+    }
+    .select2-container .select2-search--inline .select2-search__field {
+        margin-top: 0 !important;
+        height: 26px !important;
+    }
 </style>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
 
 <div class="content-wrapper">
     <!-- Main content -->
@@ -59,7 +116,7 @@
 
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                     <tr>
-                         <th>STT</th>
+                        <th>STT</th>
                         <th>Block</th>
                         <th>Mã Thiết Bị Lớn</th>
                         <th>Mã Thiết Bị Con</th>
@@ -85,6 +142,7 @@
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 @if (session('success'))
     <script>
@@ -105,19 +163,28 @@
         var authUpdate = '{{ $auth_update }}';
         var disabledAttr = authUpdate ? 'disabled' : '';
 
-         // Danh sách phòng cho select option
-        var roomOptions = '<option value="">-- Phòng Thực Hiện --</option>';
+        // Danh sách phòng cho select option
+        var roomOptions = '';
         @foreach ($rooms as $room)
             roomOptions +=
                 '<option value="{{ $room->id }}">{{ $room->code }} - {{ $room->name }}</option>';
         @endforeach
 
-        // Danh sách phân xưởng
-        var departmentOptions = '<option value="">-- Chọn PX --</option>';
-        var depts = ['PXV1', 'PXV2', 'PXVH', 'PXDN', 'PXTN'];
-        depts.forEach(function(dept) {
-            departmentOptions += '<option value="' + dept + '">' + dept + '</option>';
-        });
+        // Danh sách phân xưởng theo Block
+        var deptOptionsMap = {
+            'B1': ['PXV1', 'PXTN'],
+            'B2': ['PXV2', 'PXVH', 'PXDN']
+        };
+
+        function getDepartmentOptions(block, selectedValue) {
+            var options = '<option value="">-- Chọn PX --</option>';
+            var depts = deptOptionsMap[block] || ['PXV1', 'PXV2', 'PXVH', 'PXDN', 'PXTN'];
+            depts.forEach(function(dept) {
+                var selected = (dept === selectedValue) ? ' selected' : '';
+                options += '<option value="' + dept + '"' + selected + '>' + dept + '</option>';
+            });
+            return options;
+        }
 
         // Dữ liệu JSON từ server
         var tableData = @json($datas);
@@ -176,26 +243,22 @@
                     defaultContent: ''
                 },
                 {
-                    data: 'exe_room_name',
+                    data: 'room_ids',
                     render: function(data, type, row) {
-                        if (data) {
-                            return '<span>' + data + '</span>';
-                        }
-                        var opts = roomOptions.replace(
-                            'value="' + (row.room_id || '') + '"',
-                            'value="' + (row.room_id || '') + '" selected'
-                        );
-                        return '<select class="form-control select-room" name="room_id" data-id="' +
-                            row.id + '">' + opts + '</select>';
+                        var selectedIds = data || [];
+                        var options = '';
+                        @foreach ($rooms as $room)
+                            var isSelected = selectedIds.includes({{ $room->id }}) ? 'selected' : '';
+                            options += '<option value="{{ $room->id }}" ' + isSelected + '>{{ $room->code }} - {{ $room->name }}</option>';
+                        @endforeach
+                        
+                        return '<select class="form-control select-room" multiple="multiple" data-id="' + row.id + '">' + options + '</select>';
                     }
                 },
                 {
                     data: 'deparment_code',
                     render: function(data, type, row) {
-                        var opts = departmentOptions.replace(
-                            'value="' + (data || '') + '"',
-                            'value="' + (data || '') + '" selected'
-                        );
+                        var opts = getDepartmentOptions(row.block, data);
                         return '<select class="form-control select-department" name="deparment_code" data-id="' +
                             row.id + '">' + opts + '</select>';
                     }
@@ -250,6 +313,13 @@
             ],
             infoCallback: function(settings, start, end, max, total, pre) {
                 return pre + ' (Tổng: ' + total + ' thiết bị)';
+            },
+            drawCallback: function() {
+                $('.select-room').select2({
+                    placeholder: "-- Chọn phòng --",
+                    allowClear: true,
+                    theme: 'bootstrap4'
+                });
             }
         });
 
@@ -365,11 +435,10 @@
             });
         });
 
-         // AJAX cập nhật Phòng Thực Hiện
+        // AJAX cập nhật Phòng Thực Hiện
         $(document).on('change', '.select-room', function() {
             let id = $(this).data('id');
-            let room_id = $(this).val();
-            if (!room_id) return;
+            let room_ids = $(this).val(); // Đây sẽ là mảng các ID được chọn
 
             $.ajax({
                 url: "{{ route('pages.category.maintenance.updateRoom') }}",
@@ -378,7 +447,7 @@
                 data: {
                     _token: '{{ csrf_token() }}',
                     id: id,
-                    room_id: room_id
+                    room_ids: room_ids
                 },
                 success: function(res) {
                     if (res.success) {
@@ -399,8 +468,8 @@
         // AJAX cập nhật Phân Xưởng
         $(document).on('change', '.select-department', function() {
             let id = $(this).data('id');
-            let deparment_code = $(this).val();
-            if (!deparment_code) return;
+            let department_code = $(this).val();
+            if (!department_code) return;
 
             $.ajax({
                 url: "{{ route('pages.category.maintenance.updateDepartment') }}",
@@ -409,7 +478,7 @@
                 data: {
                     _token: '{{ csrf_token() }}',
                     id: id,
-                    deparment_code: deparment_code
+                    deparment_code: department_code
                 },
                 success: function(res) {
                     if (res.success) {
