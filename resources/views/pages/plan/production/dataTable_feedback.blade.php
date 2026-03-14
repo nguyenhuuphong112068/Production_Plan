@@ -492,13 +492,15 @@
                 $(this).data('old-value', $(this).val());
             });
 
-            $(document).on('blur', '.updateInput', function() {
+            $(document).on('blur', '#data_table_plan_master .updateInput', function() {
+
                 let id = $(this).data('id');
                 let name = $(this).attr('name');
                 let updateValue = $(this).val();
                 let oldValue = $(this).data('old-value');
 
-                if (updateValue === oldValue) return;
+                if (!id || id == '') return;
+
 
                 $.ajax({
                     url: "{{ route('pages.plan.production.updateInput') }}",
@@ -539,11 +541,14 @@
                 });
             });
 
-            $(document).on('change', '.step-checkbox', function() {
+            $(document).on('change', '#data_table_plan_master .step-checkbox', function() {
+
                 let id = $(this).data('id');
                 let permission = $(this).data('permission');
                 let name = $(this).attr('name');
                 let checked = $(this).is(':checked');
+                if (!id || id == '') return;
+
 
                 if (permission == 0) {
                     Swal.fire({

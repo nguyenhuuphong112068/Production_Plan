@@ -11,37 +11,39 @@ use Illuminate\Support\Facades\Validator;
 
 class DailyReportController extends Controller
 {
-    public function index(Request $request) {
+    public function index(Request $request)
+    {
 
         $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
 
-        if ($department == session('user')['production_code']){{
-             $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
-        }}else {
+        if ($department == session('user')['production_code']) { {
+                $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
+            }
+        } else {
             $reportedDate = $request->reportedDate ?? Carbon::yesterday()->format('Y-m-d');
         }
-       
-        $reportedDate = Carbon::parse($reportedDate)->setTime (6,0,0);
-        
+
+        $reportedDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+
         $startDate =  $reportedDate->copy();
         $endDate =  $reportedDate->copy()->addDays(1);
-        
+
 
         //$actual = $this->yield_actual($startDate, $endDate, 'resourceId');
 
         $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
 
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
-        
+
 
         $sum_by_next_room = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
-                $join->on('t2.code','=','t.nextcessor_code');
+                $join->on('t2.code', '=', 't.nextcessor_code');
             })
-            ->leftJoin('room','t2.resourceId','room.id')
+            ->leftJoin('room', 't2.resourceId', 'room.id')
             ->whereNotNull('t.yields')
             ->where('t.deparment_code', session('user')['production_code'])
-            ->where('t2.start','>', $reportedDate)
+            ->where('t2.start', '>', $reportedDate)
             ->where('t.active', 1)
             ->where('t.finished', 1)
             ->select(
@@ -52,33 +54,33 @@ class DailyReportController extends Controller
                 DB::raw("MIN(room.stage_code) as stage_code"),
                 DB::raw("MIN(room.group_code) as group_code"),
                 DB::raw("MIN(room.id) as room_id"),
-                
+
 
             )
             ->groupBy('next_room')
-            ->orderBy('group_code') 
+            ->orderBy('group_code')
             ->orderBy('next_room')   // sắp xếp theo stage
             ->get();
-       
-            $explanation = DB::table('explanation')
-            ->where('deparment_code', session('user')['production_code'])
-            ->where('reported_date', $reportedDate->toDateString())->pluck('content','stage_code');
-         
-            $displayDate = $reportedDate->format('d/m/Y');
-            session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
-                
-            return view('pages.report.daily_report.list', [
-                //'actual' => $actual,
-                'yield_actual_detial' => $yield_actual_detial,
-                'theory' => $theory,
-                'sum_by_next_room' => $sum_by_next_room ,
-                'reportedDate'    => $displayDate,
-                'explanation' => $explanation
-            ]);
 
+        $explanation = DB::table('explanation')
+            ->where('deparment_code', session('user')['production_code'])
+            ->where('reported_date', $reportedDate->toDateString())->pluck('content', 'stage_code');
+
+        $displayDate = $reportedDate->format('d/m/Y');
+        session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
+
+        return view('pages.report.daily_report.list', [
+            //'actual' => $actual,
+            'yield_actual_detial' => $yield_actual_detial,
+            'theory' => $theory,
+            'sum_by_next_room' => $sum_by_next_room,
+            'reportedDate'    => $displayDate,
+            'explanation' => $explanation
+        ]);
     }
 
-    public function yield_actual_detial($startDate, $endDate, $group_By){
+    public function yield_actual_detial($startDate, $endDate, $group_By)
+    {
         $startDateStr = $startDate->format('Y-m-d H:i:s');
         $endDateStr   = $endDate->format('Y-m-d H:i:s');
 
@@ -92,7 +94,7 @@ class DailyReportController extends Controller
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
-            ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
+            ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('dosage as d', 'intermediate_category.dosage_id', '=', 'd.id')
 
             ->where('sp.deparment_code', session('user')['production_code'])
@@ -157,7 +159,7 @@ class DailyReportController extends Controller
 
                 "sp.note"
             )
-        ->get();
+            ->get();
 
         //dd ($production);
 
@@ -185,7 +187,7 @@ class DailyReportController extends Controller
                 DB::raw("'NA' as table_type"),
                 DB::raw("NULL as note")
             )
-        ->get();
+            ->get();
 
 
         /*
@@ -218,7 +220,7 @@ class DailyReportController extends Controller
                 "rs.notification as note",
                 "rs.is_daily_report"
             )
-        ->get();
+            ->get();
 
 
         /*
@@ -239,7 +241,7 @@ class DailyReportController extends Controller
                     'start'         => $item->actual_start,
                     'end'           => $item->actual_end,
                     'yields'        => $item->yields,
-                    'yields_batch_qty' => $item->total_qty_unit??0,
+                    'yields_batch_qty' => $item->total_qty_unit ?? 0,
                     'unit'          => $item->unit,
                     'note'          => $item->note ?? null,
                     'is_order_action' => $item->is_daily_report ?? 0,
@@ -256,7 +258,7 @@ class DailyReportController extends Controller
         | 5️⃣ TỔNG SẢN LƯỢNG THEO RESOURCE
         |--------------------------------------------------------------------------
         */
-        
+
         $yield_day = $actual_detail
             ->whereNotNull('yields')
             ->groupBy('resourceId')
@@ -271,7 +273,7 @@ class DailyReportController extends Controller
                 ];
             })
             ->values();
-       // dd ($yield_day->where ('stage_code', 4));
+        // dd ($yield_day->where ('stage_code', 4));
         return [
             'actual_detail' => $actual_detail,
             'yield_day'     => $yield_day
@@ -332,7 +334,7 @@ class DailyReportController extends Controller
     //                 "sp.actual_start_clearning",
     //                 "sp.actual_end_clearning",
     //                 "sp.stage_code",
-                    
+
     //         )->get();
 
     //         // 3) PARTIAL PRODUCTION
@@ -435,9 +437,9 @@ class DailyReportController extends Controller
     //             )->get();
 
     //             //dd ($order_action_full);
-                    
+
     //         // 6) ROOM_STATUS_parti      
-           
+
     //         $order_action_partial = DB::table("room_status as sp")
     //             ->leftJoin('room', 'sp.room_id', 'room.id')
     //             ->whereNotNull('sp.start')
@@ -467,9 +469,9 @@ class DailyReportController extends Controller
     //                 'sp.is_daily_report'
     //             )
     //         ->get();
-                
 
-        
+
+
     //         $actual_detail = collect()
     //             ->concat($production_full)
     //             ->concat($cleaning_full)
@@ -517,19 +519,21 @@ class DailyReportController extends Controller
     //             ->values();
 
     //         //dd ($yield_day) ;
-           
+
     //         return [
     //             'actual_detail'  => $actual_detail,
     //             'yield_day'   => $yield_day
     //         ];
     // }
 
-    public function yield_theory($startDate, $endDate, $group_By){
+    public function yield_theory($startDate, $endDate, $group_By)
+    {
         // ------------------------------
         // 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
         // ------------------------------
         $stage_plan_100 = DB::table("stage_plan as sp")
             ->whereNotNull('sp.start')
+            ->where('sp.active', 1)
             ->whereRaw('(sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
@@ -552,13 +556,14 @@ class DailyReportController extends Controller
             )
             ->groupBy("sp.$group_By", "unit")
             ->get();
-            
+
 
         // ------------------------------
         // 2️⃣ Giai đoạn giao nhau 1 phần
         // ------------------------------
         $stage_plan_part = DB::table("stage_plan as sp")
             ->whereNotNull('sp.start')
+            ->where('sp.active', 1)
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
@@ -566,7 +571,7 @@ class DailyReportController extends Controller
                 DB::raw('
                     SUM(
                         sp.Theoretical_yields *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
                 '),
@@ -575,7 +580,7 @@ class DailyReportController extends Controller
                         CASE
                             WHEN sp.Theoretical_yields_qty > 0 THEN
                                 sp.Theoretical_yields_qty *
-                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
+                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                                 TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                             ELSE 0
                         END
@@ -591,7 +596,7 @@ class DailyReportController extends Controller
             ->groupBy("sp.$group_By", "unit")
             ->get();
 
-          
+
         // ------------------------------
         // 3️⃣ Gộp và tổng hợp
         // ------------------------------
@@ -634,10 +639,10 @@ class DailyReportController extends Controller
             ->values();
 
 
-                  // ------------------------------
+        // ------------------------------
         // 4️⃣ MERGE ROOMS + MERGED DATA
         // ------------------------------
-        $rooms = DB::table ('room')->where('deparment_code', session('user')['production_code'])->get();
+        $rooms = DB::table('room')->where('deparment_code', session('user')['production_code'])->get();
         $yield_room = $rooms->map(function ($room) use ($merged, $group_By) {
 
             // Tìm xem phòng có dữ liệu sản lượng không
@@ -651,17 +656,17 @@ class DailyReportController extends Controller
                 'order_by'    => $room->order_by,
                 'unit'        => $found->unit ?? null,
                 'total_qty'   => $found->total_qty ?? 0,
-                'total_qty_unit' => $found->total_qty_unit?? 0
+                'total_qty_unit' => $found->total_qty_unit ?? 0
             ];
         })->sortBy('order_by')->values();
 
-       
+
         // ------------------------------
         // 4️⃣ Tổng hợp theo ROOM
         // ------------------------------
         $yield_room = $yield_room->sortBy('stage_code')->values();
 
-       
+
         // ------------------------------
         // 5️⃣ Tổng hợp theo STAGE
         // ------------------------------
@@ -675,9 +680,9 @@ class DailyReportController extends Controller
                     'details' => $group->values(),
                 ];
             })
-        ->values();
+            ->values();
 
-            
+
         // ------------------------------
         // 6️⃣ Tạo dailyTotals cho 1 ngày duy nhất
         // ------------------------------
@@ -689,6 +694,7 @@ class DailyReportController extends Controller
             ->join('room as r', 'sp.resourceId', '=', 'r.id')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->whereNotNull('sp.start')
+            ->where('sp.active', 1)
             ->whereRaw('(sp.start <= ? AND sp.end >= ?)', [$dayEnd, $dayStart])
             ->select(
                 "sp.$group_By",
@@ -698,14 +704,14 @@ class DailyReportController extends Controller
                 DB::raw('
                     SUM(
                         sp.Theoretical_yields *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$dayEnd.'"), GREATEST(sp.start, "'.$dayStart.'"))) /
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $dayEnd . '"), GREATEST(sp.start, "' . $dayStart . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
                 '),
                 DB::raw('
                     SUM(
                         sp.Theoretical_yields_qty *
-                       TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$dayEnd.'"), GREATEST(sp.start, "'.$dayStart.'"))) /
+                       TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $dayEnd . '"), GREATEST(sp.start, "' . $dayStart . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty_unit
                 '),
@@ -731,69 +737,69 @@ class DailyReportController extends Controller
                 "total_qty_unit" => round($item->total_qty_unit ?? 0, 2),
             ]);
         }
-      
+
 
         //$dailyTotals1 = $dailyTotals->groupBy("date");
 
-       
+
         //dd ($dailyTotals, $yield_stage);
         // ------------------------------
         // 7️⃣ Trả về dữ liệu
         // ------------------------------
 
-        
+
         return [
             'yield_room' => $yield_room,
             'yield_day' => $dailyTotals,
             'yield_stage' => $yield_stage
         ];
-
-       
     }
 
-    public function detail(Request $request) {
-            $reportedDate = Carbon::parse ($request->reportedDate)->addDays(1)->setTime (6,0,0);
-            $detial = DB::table('stage_plan as t')
-                ->leftJoin('stage_plan as t2', function ($join) {
-                    $join->on('t2.code','=','t.nextcessor_code');
-                })
-                ->leftJoin('plan_master','t.plan_master_id','plan_master.id')
-                ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
-                ->leftJoin('product_name','fc.product_name_id','product_name.id')
-                ->leftJoin('quarantine_room','t.quarantine_room_code','quarantine_room.code')
-                ->leftJoin('room','t.resourceId','room.id')
-                ->whereNotNull('t.start')
-                ->whereNotNull('t.yields')
-                ->where('t2.resourceId',$request->room_id)
-                ->where('t2.start','>',$reportedDate)
-                ->where('t.active', 1)
-                ->where('t.finished', 1)
-                ->select(
-                    'fc.finished_product_code',
-                    'fc.intermediate_code',
-                    'product_name.name as product_name',
-                     DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
-                    //'plan_master.batch',
-                    't.quarantine_room_code',
-                    'quarantine_room.name',
-                    't.yields',
-                    't.stage_code',
-                    't2.stage_code as next_stage',
-                    't2.start as next_start',
-                    DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as pre_room"),
-                    'room.production_group as production_group',
-                    'room.stage as stage',
-                    'room.group_code',
-                
-                )
-                ->orderBy('t.plan_master_id')
-                ->orderBy('t.stage_code')
+    public function detail(Request $request)
+    {
+        $reportedDate = Carbon::parse($request->reportedDate)->addDays(1)->setTime(6, 0, 0);
+        $detial = DB::table('stage_plan as t')
+            ->leftJoin('stage_plan as t2', function ($join) {
+                $join->on('t2.code', '=', 't.nextcessor_code');
+            })
+            ->leftJoin('plan_master', 't.plan_master_id', 'plan_master.id')
+            ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
+            ->leftJoin('product_name', 'fc.product_name_id', 'product_name.id')
+            ->leftJoin('quarantine_room', 't.quarantine_room_code', 'quarantine_room.code')
+            ->leftJoin('room', 't.resourceId', 'room.id')
+            ->whereNotNull('t.start')
+            ->whereNotNull('t.yields')
+            ->where('t2.resourceId', $request->room_id)
+            ->where('t2.start', '>', $reportedDate)
+            ->where('t.active', 1)
+            ->where('t.finished', 1)
+            ->select(
+                'fc.finished_product_code',
+                'fc.intermediate_code',
+                'product_name.name as product_name',
+                DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
+                //'plan_master.batch',
+                't.quarantine_room_code',
+                'quarantine_room.name',
+                't.yields',
+                't.stage_code',
+                't2.stage_code as next_stage',
+                't2.start as next_start',
+                DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as pre_room"),
+                'room.production_group as production_group',
+                'room.stage as stage',
+                'room.group_code',
+
+            )
+            ->orderBy('t.plan_master_id')
+            ->orderBy('t.stage_code')
             ->get();
-            return response()->json($detial);
+        return response()->json($detial);
     }
 
-    public function getExplainationContent(Request $request) {
-       
+    public function getExplainationContent(Request $request)
+    {
+
         $data = DB::table('explanation')
             ->where('reported_date', $request->reported_date)
             ->where('stage_code', $request->stage_code)
@@ -824,8 +830,9 @@ class DailyReportController extends Controller
         return response()->json($data);
     }
 
-    public function explain (Request $request) {
-       //dd ($request->all(), session('user')['production_code']);
+    public function explain(Request $request)
+    {
+        //dd ($request->all(), session('user')['production_code']);
         DB::table('explanation')->updateOrInsert(
             [
                 'reported_date'   => $request->reported_date,
@@ -839,99 +846,98 @@ class DailyReportController extends Controller
                 'created_at'  => now(),
             ]
         );
-        return redirect()->back()->with('success', 'Đã thêm thành công!');    
+        return redirect()->back()->with('success', 'Đã thêm thành công!');
     }
 
-    public function store (Request $request) {
-            
-                $validator = Validator::make($request->all(), [
-                    'in_production' => 'required',
-                    'start' => 'required',
-                    'end' => 'required|after:start',
-                ],[
-            
-                    'in_production.required' => 'Hoạt Động Không Được Để Trống', 
-                    'start.required' => 'Nhập Giờ Bắt Đầu',  
-                    'end.required' => 'Nhập Giờ Kết Thúc',
-                    'end.after' => 'Thời Gian Kết Thúc Phải Lớn Hơn Thời Gian Bắt Đầu',
-                ]);
+    public function store(Request $request)
+    {
 
-                if ($validator->fails()) {
-                    return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
-                }
-                
-                DB::table('room_status')->insert([
-                        'room_id' => $request->room_id,
-                        'status' => 1,
-                        'start' => $request->start,
-                        'end' => $request->end,
-                        'in_production' => $request->in_production,
-                        'notification' => $request->notification??"NA",
-                        'is_daily_report' => 1,
-                        'deparment_code' => session('user')['production_code'],
-                        'created_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                ]);
-                return redirect()->back()->with('success', 'Đã thêm thành công!');    
+        $validator = Validator::make($request->all(), [
+            'in_production' => 'required',
+            'start' => 'required',
+            'end' => 'required|after:start',
+        ], [
+
+            'in_production.required' => 'Hoạt Động Không Được Để Trống',
+            'start.required' => 'Nhập Giờ Bắt Đầu',
+            'end.required' => 'Nhập Giờ Kết Thúc',
+            'end.after' => 'Thời Gian Kết Thúc Phải Lớn Hơn Thời Gian Bắt Đầu',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
+        }
+
+        DB::table('room_status')->insert([
+            'room_id' => $request->room_id,
+            'status' => 1,
+            'start' => $request->start,
+            'end' => $request->end,
+            'in_production' => $request->in_production,
+            'notification' => $request->notification ?? "NA",
+            'is_daily_report' => 1,
+            'deparment_code' => session('user')['production_code'],
+            'created_by' => session('user')['fullName'],
+            'created_at' => now(),
+        ]);
+        return redirect()->back()->with('success', 'Đã thêm thành công!');
     }
 
-    public function update (Request $request) {
-                
-                $validator = Validator::make($request->all(), [
-                    'id' => 'required',
-                    'in_production' => 'required',
-                    'start' => 'required',
-                    'end' => 'required|after:start',
-                ],[
-                    'id.required' => 'Chọn Hoạt Động Cần Sửa', 
-                    'in_production.required' => 'Hoạt Động Không Được Để Trống', 
-                    'start.required' => 'Nhập Giờ Bắt Đầu',  
-                    'end.required' => 'Nhập Giờ Kết Thúc',
-                    'end.after' => 'Thời Gian Kết Thúc Phải Lớn Hơn Thời Gian Bắt Đầu',
-                ]);
+    public function update(Request $request)
+    {
 
-                //dd ($request->all(), $validator->fails());
+        $validator = Validator::make($request->all(), [
+            'id' => 'required',
+            'in_production' => 'required',
+            'start' => 'required',
+            'end' => 'required|after:start',
+        ], [
+            'id.required' => 'Chọn Hoạt Động Cần Sửa',
+            'in_production.required' => 'Hoạt Động Không Được Để Trống',
+            'start.required' => 'Nhập Giờ Bắt Đầu',
+            'end.required' => 'Nhập Giờ Kết Thúc',
+            'end.after' => 'Thời Gian Kết Thúc Phải Lớn Hơn Thời Gian Bắt Đầu',
+        ]);
 
-                if ($validator->fails()) {
-                    return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
-                }
-                
-                DB::table('room_status')->where ('id', explode ("-",$request->id)[0])->update([
-            
-                        'start' => $request->start,
-                        'end' => $request->end,
-                        'in_production' => $request->in_production,
-                        'notification' => $request->notification??"NA",
-                        
-                        'created_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                ]);
+        //dd ($request->all(), $validator->fails());
 
-                return redirect()->back()->with('success', 'Đã cập nhật thành công!');    
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
+        }
+
+        DB::table('room_status')->where('id', explode("-", $request->id)[0])->update([
+
+            'start' => $request->start,
+            'end' => $request->end,
+            'in_production' => $request->in_production,
+            'notification' => $request->notification ?? "NA",
+
+            'created_by' => session('user')['fullName'],
+            'created_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Đã cập nhật thành công!');
     }
 
-    public function deActive (Request $request) {
-                //dd ($request->all());
-                $validator = Validator::make($request->all(), [
-                    'id' => 'required',
-                ],[
-                    'id.required' => 'Chọn Hoạt Động Cần Sửa', 
-                ]);
+    public function deActive(Request $request)
+    {
+        //dd ($request->all());
+        $validator = Validator::make($request->all(), [
+            'id' => 'required',
+        ], [
+            'id.required' => 'Chọn Hoạt Động Cần Sửa',
+        ]);
 
-                if ($validator->fails()) {
-                    return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
-                }
-                
-                DB::table('room_status')->where ('id', explode ("-",$request->id)[0])->update([
-                        'active' => 0,
-                        'created_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                ]);
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
+        }
 
-                return redirect()->back()->with('success', 'Đã hủy thành công!');    
+        DB::table('room_status')->where('id', explode("-", $request->id)[0])->update([
+            'active' => 0,
+            'created_by' => session('user')['fullName'],
+            'created_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Đã hủy thành công!');
     }
-
-
 }
-
-  

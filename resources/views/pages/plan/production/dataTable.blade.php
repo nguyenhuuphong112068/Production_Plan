@@ -850,7 +850,8 @@
                 $(this).data('old-value', $(this).val());
             });
 
-            $(document).on('blur', '.updateInput', function() {
+            $(document).on('blur', '#data_table_plan_master .updateInput', function() {
+
 
                 let id = $(this).data('id');
                 let name = $(this).attr('name');
@@ -859,7 +860,8 @@
 
                 if (updateValue === oldValue) return;
 
-                if (id == '') {
+                if (!id || id == '') {
+
                     Swal.fire({
                         title: 'Cảnh Báo!',
                         text: 'id Không xác định',
@@ -931,7 +933,8 @@
                 });
             });
 
-            $(document).on('change', '.step-checkbox', function() {
+            $(document).on('change', '#data_table_plan_master .step-checkbox', function() {
+
 
                 let id = $(this).data('id');
                 let name = $(this).attr('name');
@@ -940,7 +943,8 @@
 
                 if (updateValue === oldValue) return;
 
-                if (id == '') {
+                if (!id || id == '') {
+
                     Swal.fire({
                         title: 'Cảnh Báo!',
                         text: 'id Không xác định',
