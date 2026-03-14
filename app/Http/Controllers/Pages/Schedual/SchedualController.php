@@ -781,9 +781,9 @@ class SchedualController extends Controller
                                 'source_material.name as source_material_name',
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code',
-                                DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE maintenance_category.name END as name"),
-                                DB::raw("CASE WHEN sp.stage_code = 8 THEN maintenance_category.code END as instrument_code"),
-                                DB::raw("CASE WHEN sp.stage_code = 8 THEN maintenance_category.is_HVAC END as is_HVAC")
+                                DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE quota_maintenance.inst_id END as name"),
+                                DB::raw("CASE WHEN sp.stage_code = 8 THEN quota_maintenance.inst_id END as instrument_code"),
+                                DB::raw("CASE WHEN sp.stage_code = 8 THEN quota_maintenance.is_HVAC END as is_HVAC")
                         )
                         ->orderBy($order_by_column, 'asc')
                         ->get();
