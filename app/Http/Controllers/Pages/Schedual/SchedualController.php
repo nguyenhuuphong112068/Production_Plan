@@ -1582,6 +1582,10 @@ class SchedualController extends Controller
 
         public function update(Request $request)
         {
+                $offDays = DB::table('off_days')
+                        ->whereDate('off_date', '>=', now())
+                        ->pluck('off_date')
+                        ->toArray();
 
                 $changes = $request->input('changes', []);
                 $this->theory = (int)$request->theory ?? 0;
@@ -1618,6 +1622,15 @@ class SchedualController extends Controller
                                                         'schedualed_at'   => now(),
                                                 ]);
                                 } else {
+
+
+                                        $receiveDate = Carbon::parse($change['start'])->subDay();
+
+                                        while (in_array($receiveDate->toDateString(), $offDays)) {
+                                                $receiveDate->subDay();
+                                        }
+
+
                                         DB::table('stage_plan')
                                                 ->where('id', $realId)
                                                 ->update([
@@ -1627,6 +1640,10 @@ class SchedualController extends Controller
                                                         'schedualed_by'   => session('user')['fullName'],
                                                         'schedualed_at'   => now(),
                                                         'accept_quarantine' => 0,
+                                                        'receive_packaging_date'   => $receiveDate,
+                                                        'receive_second_packaging_date'   => $receiveDate
+
+
                                                 ]);
 
                                         $update_row = DB::table('stage_plan')->where('id', $realId)->first();

@@ -14,7 +14,6 @@ class MaintenancePlanController extends Controller
         {
                 $datas = DB::table('plan_list')
                         ->where('active', 1)
-                        ->where('deparment_code', session('user')['production_code'])
                         ->where('type', 0)
                         ->orderBy('created_at', 'desc')->get();
 
@@ -29,11 +28,94 @@ class MaintenancePlanController extends Controller
         {
                 $startDate = $request->from_date ?? date('Y-m-01');
                 $endDate = $request->to_date ?? date('Y-m-t');
+                $departmentCode = session('user')['production_code'];
+
+                try {
+                        $result = $this->generateMaintenancePlan($startDate, $endDate, $departmentCode);
+                        if ($result['success']) {
+                                return redirect()->back()->with('success', $result['message']);
+                        } else {
+                                $type = $result['total_devices'] === 0 ? 'warning' : 'error';
+                                return redirect()->back()->with($type, $result['message']);
+                        }
+                } catch (\Exception $e) {
+                        return redirect()->back()->with('error', 'Lỗi: ' . $e->getMessage());
+                }
+        }
+
+        public function autoCreatePlan(Request $request)
+        {
+                $startDate = $request->from_date;
+                $endDate = $request->to_date;
+                $departments = $request->departments; // mảng các PX
+
+                if (empty($departments)) {
+                        return redirect()->back()->with('error', 'Vui lòng chọn ít nhất một phân xưởng.');
+                }
+
+                $results = [];
+                $successCount = 0;
+                $totalNewDevices = 0;
+
+                // Fetch ALL schedules once for all departments to be processed
+                $schedules = $this->fetchAllSchedules($startDate, $endDate);
+
+                foreach ($departments as $dept) {
+                        try {
+                                $res = $this->generateMaintenancePlan($startDate, $endDate, $dept, $schedules);
+                                if ($res['success']) {
+                                        $successCount++;
+                                        $totalNewDevices += $res['count'];
+                                }
+                                $results[$dept] = $res['message'];
+                        } catch (\Exception $e) {
+                                $results[$dept] = 'Lỗi: ' . $e->getMessage();
+                        }
+                }
+
+                if ($successCount > 0) {
+                        return redirect()->back()->with('success', "Đã tạo thành công kế hoạch cho {$successCount} phân xưởng. Tổng số thiết bị mới: {$totalNewDevices}.");
+                } else {
+                        return redirect()->back()->with('warning', 'Không có kế hoạch mới nào được tạo. Có thể các kế hoạch đã tồn tại.');
+                }
+        }
+
+        private function fetchAllSchedules($startDate, $endDate)
+        {
+                $schedules = collect();
+                $connections = ['cal1', 'cal2'];
+                $suffixes = [1, 2, 3];
+
+                foreach ($connections as $conn) {
+                        foreach ($suffixes as $suffix) {
+                                try {
+                                        $result = DB::connection($conn)
+                                                ->table("Schedule_Master_{$suffix}")
+                                                ->whereBetween('Sch_DueDate', [$startDate, $endDate])
+                                                ->where('Sch_Result_Status', 'Pending')
+                                                ->select('Inst_ID', 'Sch_DueDate', 'Sch_Remark')
+                                                ->get();
+
+                                        $schedules = $schedules->merge($result);
+                                } catch (\Exception $e) {
+                                        Log::warning("Could not fetch schedules from {$conn}.Schedule_Master_{$suffix}: " . $e->getMessage());
+                                }
+                        }
+                }
+                return $schedules;
+        }
+
+        private function generateMaintenancePlan($startDate, $endDate, $departmentCode, $schedules = null)
+        {
                 $fromDisplay = \Carbon\Carbon::parse($startDate)->format('d/m/Y');
                 $toDisplay = \Carbon\Carbon::parse($endDate)->format('d/m/Y');
                 $month = \Carbon\Carbon::parse($startDate)->format('m');
                 $year = \Carbon\Carbon::parse($startDate)->format('Y');
                 $name = "KHBT-HC T{$month}/{$year} ({$fromDisplay}-{$toDisplay})";
+
+                if (!$schedules) {
+                        $schedules = $this->fetchAllSchedules($startDate, $endDate);
+                }
 
                 DB::beginTransaction();
                 try {
@@ -43,44 +125,23 @@ class MaintenancePlanController extends Controller
                                 'month' => $month,
                                 'type' => 0,
                                 'send' => false,
-                                'deparment_code' => session('user')['production_code'],
+                                'deparment_code' => $departmentCode,
                                 'prepared_by' => session('user')['fullName'],
                                 'created_at' => now(),
                         ]);
 
-                        // 2. Query Schedule_Master từ cal1/cal2 (6 bảng)
-
-                        $schedules = collect();
-                        $connections = ['cal1', 'cal2'];
-                        $suffixes = [1, 2, 3];
-
-                        foreach ($connections as $conn) {
-                                foreach ($suffixes as $suffix) {
-                                        $result = DB::connection($conn)
-                                                ->table("Schedule_Master_{$suffix}")
-                                                ->whereBetween('Sch_DueDate', [$startDate, $endDate])
-                                                ->where('Sch_Result_Status', 'Pending')
-                                                ->select('Inst_ID', 'Sch_DueDate', 'Sch_Remark')
-                                                ->get();
-
-                                        $schedules = $schedules->merge($result);
-                                }
-                        }
-
-                        //dd($schedules);
                         // 3. Map Inst_ID → quota_maintenance
                         $instIds = $schedules->pluck('Inst_ID')->unique()->toArray();
                         $quotas = DB::table('quota_maintenance')
                                 ->whereIn('inst_id', $instIds)
                                 ->where('active', 1)
-                                ->where('deparment_code', session('user')['production_code']) // Lọc theo PX của người dùng
+                                ->where('deparment_code', $departmentCode)
                                 ->get()
                                 ->keyBy('inst_id');
 
                         // 4. Insert plan_master + plan_master_history
                         $now = now();
                         $preparedBy = session('user')['fullName'];
-                        $departmentCode = session('user')['production_code'];
                         $count = 0;
 
                         // Lấy danh sách đã tồn tại để tránh tạo trùng
@@ -145,17 +206,24 @@ class MaintenancePlanController extends Controller
 
                         if ($count === 0) {
                                 DB::rollBack();
-                                return redirect()->back()->with('warning', "Không có kế hoạch mới từ {$fromDisplay} đến {$toDisplay}. Tất cả đã tồn tại.");
+                                return [
+                                        'success' => false,
+                                        'count' => 0,
+                                        'total_devices' => 0,
+                                        'message' => "Không có kế hoạch mới cho PX {$departmentCode}."
+                                ];
                         }
 
                         DB::commit();
-                        return redirect()->back()->with('success', "Tạo tự động {$name} thành công! ({$count} thiết bị)");
+                        return [
+                                'success' => true,
+                                'count' => $count,
+                                'message' => "Tạo tự động cho PX {$departmentCode} thành công! ({$count} thiết bị)"
+                        ];
                 } catch (\Exception $e) {
                         DB::rollBack();
-                        Log::error('Lỗi tạo kế hoạch bảo trì tự động: ' . $e->getMessage(), [
-                                'trace' => $e->getTraceAsString()
-                        ]);
-                        return redirect()->back()->with('error', 'Lỗi: ' . $e->getMessage());
+                        Log::error("Lỗi tạo kế hoạch bảo trì tự động cho {$departmentCode}: " . $e->getMessage());
+                        throw $e;
                 }
         }
 
@@ -218,6 +286,15 @@ class MaintenancePlanController extends Controller
                         return $item;
                 });
 
+                // Fetch Sch_Type from Schedule_Master
+                $schTypes = $this->fetchSchTypes($datas);
+                $datas = $datas->map(function ($item) use ($schTypes) {
+                        $date = \Carbon\Carbon::parse($item->expected_date)->format('Y-m-d');
+                        $key = trim($item->code) . '_' . $date;
+                        $item->sch_type = $schTypes[$key] ?? '';
+                        return $item;
+                });
+
                 $planMasterIds = $datas->pluck('id')->toArray();
 
                 $historyCounts = DB::table('plan_master_history')
@@ -233,7 +310,8 @@ class MaintenancePlanController extends Controller
 
 
 
-                $production  =  session('user')['production_name'];
+                $production  =  DB::table('plan_list')->where('id', $request->plan_list_id)->value('deparment_code');
+
                 session()->put(['title' => " $request->name - $production"]);
 
                 return view('pages.plan.maintenance.list', [
@@ -371,6 +449,18 @@ class MaintenancePlanController extends Controller
                 $histories = $histories->map(function ($item) use ($instruments) {
                         $inst = $instruments[$item->code] ?? null;
                         $item->name = $inst->Inst_Name ?? $item->code;
+                        return $item;
+                });
+
+                // Fetch Sch_Type for history
+                $historyItems = $histories->map(function ($h) {
+                        return (object)['code' => $h->code, 'expected_date' => $h->expected_date];
+                });
+                $schTypes = $this->fetchSchTypes($historyItems);
+                $histories = $histories->map(function ($item) use ($schTypes) {
+                        $date = \Carbon\Carbon::parse($item->expected_date)->format('Y-m-d');
+                        $key = trim($item->code) . '_' . $date;
+                        $item->sch_type = $schTypes[$key] ?? '';
                         return $item;
                 });
 
@@ -525,5 +615,36 @@ class MaintenancePlanController extends Controller
 
                 session()->put(['title' => 'Kế Hoạch Bảo Trì Tháng']);
                 return view('pages.plan.maintenance.plan_list', ['datas' => $datas]);
+        }
+
+        private function fetchSchTypes($items)
+        {
+                $lookup = [];
+                $instIds = $items->pluck('code')->filter()->unique()->toArray();
+                if (empty($instIds)) return [];
+
+                $connections = ['cal1', 'cal2'];
+                $suffixes = [1, 2, 3];
+
+                foreach ($connections as $conn) {
+                        foreach ($suffixes as $suffix) {
+                                try {
+                                        $results = DB::connection($conn)
+                                                ->table("Schedule_Master_{$suffix}")
+                                                ->whereIn('Inst_ID', $instIds)
+                                                ->select('Inst_ID', 'Sch_DueDate', 'Sch_Type')
+                                                ->get();
+
+                                        foreach ($results as $res) {
+                                                $date = \Carbon\Carbon::parse($res->Sch_DueDate)->format('Y-m-d');
+                                                $key = trim($res->Inst_ID) . '_' . $date;
+                                                $lookup[$key] = $res->Sch_Type;
+                                        }
+                                } catch (\Exception $e) {
+                                        // Skip missing tables or connection issues
+                                }
+                        }
+                }
+                return $lookup;
         }
 }

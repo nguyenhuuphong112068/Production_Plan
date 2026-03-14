@@ -13,8 +13,16 @@
                 <!-- /.card-Body -->
                 <div class="card-body">
                     @php
-                        $auth_update = user_has_permission(session('user')['userId'], 'plan_maintenance_update', 'disabled');
-                        $auth_deActive = user_has_permission(session('user')['userId'], 'plan_maintenance_deActive', 'disabled');
+                        $auth_update = user_has_permission(
+                            session('user')['userId'],
+                            'plan_maintenance_update',
+                            'disabled',
+                        );
+                        $auth_deActive = user_has_permission(
+                            session('user')['userId'],
+                            'plan_maintenance_deActive',
+                            'disabled',
+                        );
                     @endphp
 
                     @if (!$send)
@@ -48,10 +56,10 @@
 
                             <tr>
                                 <th>STT</th>
-                                <th>Block</th>
                                 <th>Mã TB Chính</th>
                                 <th>Mã Thiết Bi</th>
                                 <th>Tên Thiết Bị</th>
+                                <th>Loại BT-HC</th>
                                 <th>Thực Hiện Trước Ngày</th>
                                 <th>Phòng SX Liên Quan</th>
                                 <th>Ghi Chú</th>
@@ -65,8 +73,12 @@
 
                             @foreach ($datas as $data)
                                 <tr>
-                                    <td>{{ $loop->iteration }} </td>
-                                    <td class="text-center">{{ $data->block ?? '' }}</td>
+                                    <td>
+                                        {{ $loop->iteration }}
+                                        @if (session('user')['userGroup'] == 'Admin')
+                                            {{ $data->id }}
+                                        @endif
+                                    </td>
                                     <td>{{ $data->parent_code ?? '' }}</td>
 
                                     @if (!$data->cancel)
@@ -80,6 +92,7 @@
                                     @endif
 
                                     <td>{{ $data->name }}</td>
+                                    <td>{{ $data->sch_type ?? '' }}</td>
 
                                     <td>
                                         <div> {{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
@@ -281,10 +294,11 @@
                             history_modal.append(`
                               <tr>
                                   <td>${index + 1}</td>
-                                  <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
+                                  <td class="${index === 0 ? 'text-success' : 'text-danger'}"">
                                       <div>${item.code ?? ''}</div>
                                   </td>
                                   <td>${item.name ?? ''} </td>
+                                  <td>${item.sch_type ?? ''}</td>
                                   <td>
                                       <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
                                   </td>

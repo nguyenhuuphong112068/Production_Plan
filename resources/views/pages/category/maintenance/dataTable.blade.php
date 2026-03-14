@@ -38,6 +38,7 @@
         border-radius: .25rem;
         min-height: 38px;
     }
+
     .select2-container {
         width: 100% !important;
     }
@@ -54,10 +55,12 @@
         flex-wrap: wrap !important;
         align-items: center !important;
     }
+
     .select2-container--bootstrap4.select2-container--focus .select2-selection--multiple {
         border-color: #80bdff !important;
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25) !important;
     }
+
     .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice {
         background-color: #e9ecef !important;
         border: 1px solid #dee2e6 !important;
@@ -70,25 +73,30 @@
         font-weight: 500 !important;
         transition: all 0.2s ease;
     }
+
     .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice:hover {
         background-color: #dee2e6 !important;
         color: #212529 !important;
     }
+
     .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice__remove {
         color: #dc3545 !important;
         margin-right: 5px !important;
         font-weight: bold !important;
     }
+
     .select2-container--bootstrap4 .select2-selection--multiple .select2-selection__choice__remove:hover {
         color: #bd2130 !important;
     }
+
     .select2-container .select2-search--inline .select2-search__field {
         margin-top: 0 !important;
         height: 26px !important;
     }
 </style>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
+<link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
 
 <div class="content-wrapper">
     <!-- Main content -->
@@ -117,7 +125,7 @@
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                     <tr>
                         <th>STT</th>
-                        <th>Block</th>
+
                         <th>Mã Thiết Bị Lớn</th>
                         <th>Mã Thiết Bị Con</th>
                         <th>Tên Thiết Bị</th>
@@ -216,10 +224,7 @@
                         return meta.row + 1;
                     }
                 },
-                {
-                    data: 'block',
-                    defaultContent: ''
-                },
+
                 {
                     data: 'parent_code',
                     defaultContent: ''
@@ -248,11 +253,14 @@
                         var selectedIds = data || [];
                         var options = '';
                         @foreach ($rooms as $room)
-                            var isSelected = selectedIds.includes({{ $room->id }}) ? 'selected' : '';
-                            options += '<option value="{{ $room->id }}" ' + isSelected + '>{{ $room->code }} - {{ $room->name }}</option>';
+                            var isSelected = selectedIds.includes({{ $room->id }}) ?
+                                'selected' : '';
+                            options += '<option value="{{ $room->id }}" ' + isSelected +
+                                '>{{ $room->code }} - {{ $room->name }}</option>';
                         @endforeach
-                        
-                        return '<select class="form-control select-room" multiple="multiple" data-id="' + row.id + '">' + options + '</select>';
+
+                        return '<select class="form-control select-room" multiple="multiple" data-id="' +
+                            row.id + '">' + options + '</select>';
                     }
                 },
                 {
