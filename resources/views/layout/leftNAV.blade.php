@@ -221,9 +221,16 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="{{ route('pages.category.maintenance.list') }}" class="nav-link">
+                            <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1']) }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Bảo Trì - Hiệu Chuẩn</p>
+                                <p>Bảo Trì - Hiệu Chuẩn B1</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2']) }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Bảo Trì - Hiệu Chuẩn B2</p>
                             </a>
                         </li>
                     </ul>

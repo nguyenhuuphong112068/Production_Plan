@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Validator;
 class MaintenanceCategoryController extends Controller
 {
 
-        public function index()
+        public function index(Request $request)
         {
+                $filter_block = $request->block; // Lấy block từ request (B1 hoặc B2)
 
                 // Tối ưu hóa truy vấn: Join trực tiếp trên database cal1 và lọc Inst_Status = Active
                 // Gộp 6 bảng từ 2 khu vực (cal1, cal2) x 3 bảng (1, 2, 3) thành 1 collection
@@ -21,6 +22,12 @@ class MaintenanceCategoryController extends Controller
 
                 foreach ($connections as $conn) {
                         $block = ($conn === 'cal1') ? 'B1' : 'B2';
+                        
+                        // Nếu có filter block mà không khớp thì bỏ qua connection này
+                        if ($filter_block && $filter_block !== $block) {
+                                continue;
+                        }
+
                         foreach ($suffixes as $suffix) {
                                 $result = DB::connection($conn)
                                         ->table("Inst_Master_{$suffix} as Ins")
@@ -72,7 +79,12 @@ class MaintenanceCategoryController extends Controller
                                 DB::table('quota_maintenance')->insert($chunk);
                         }
                 }
-                $quota_maintenance = DB::table('quota_maintenance')->where('active', 1)->get();
+
+                $query = DB::table('quota_maintenance')->where('active', 1);
+                if ($filter_block) {
+                        $query->where('block', $filter_block);
+                }
+                $quota_maintenance = $query->get();
 
                 $rooms = DB::table('room')->where('deparment_code', session('user')['production_code'])->select('id', 'name', 'code')->get();
                 $room_names = $rooms->mapWithKeys(function ($room) {
@@ -96,12 +108,13 @@ class MaintenanceCategoryController extends Controller
                                 'id' => $quota->id,
                                 'code' => $quota->inst_id,
                                 'block' => $quota->block ?? '',
-                                'parent_code' => $inst->Parent_Equip_id,
-                                'name' => $inst->Inst_Name,
+                                'parent_code' => $inst->Parent_Equip_id ?? '',
+                                'name' => $inst->Inst_Name ?? '',
                                 'room_id' => $quota->room_id,
                                 'exe_room_name' => $room_names[$quota->room_id] ?? null,
-                                'room_code' => $inst->Inst_Installed_Location,
-                                'sch_type' => $inst->Inst_sch_type,
+                                'room_code' => $inst->Inst_Installed_Location ?? '',
+                                'sch_type' => $inst->Inst_sch_type ?? '',
+                                'deparment_code' => $quota->deparment_code,
                                 'quota' => $quota->exe_time,
                                 'is_HVAC' => $quota->is_HVAC,
                                 'active' =>  $quota->active,
@@ -112,10 +125,12 @@ class MaintenanceCategoryController extends Controller
                         $datas->push($item);
                 }
                 //dd($datas);
-                session()->put(['title' => 'DANH MỤC BẢO TRÌ - HIỆU CHUẨN']);
+                $title = 'DANH MỤC BẢO TRÌ - HIỆU CHUẨN' . ($filter_block ? ' ' . $filter_block : '');
+                session()->put(['title' => $title]);
                 return view('pages.category.maintenance.list', [
                         'datas' => $datas,
                         'rooms' => $rooms,
+                        'filter_block' => $filter_block,
                 ]);
         }
 
@@ -162,6 +177,18 @@ class MaintenanceCategoryController extends Controller
                         'created_by' => session('user')['fullName'],
                         'created_time' => now(),
                 ]);
+                return response()->json(['success' => true]);
+        }
+
+        public function updateDepartment(Request $request)
+        {
+                DB::table('quota_maintenance')
+                        ->where('id', $request->id)
+                        ->update([
+                                'deparment_code' => $request->deparment_code,
+                                'created_by' => session('user')['fullName'],
+                                'created_time' => now(),
+                        ]);
                 return response()->json(['success' => true]);
         }
 }

@@ -73,6 +73,7 @@ class MaintenancePlanController extends Controller
                         $quotas = DB::table('quota_maintenance')
                                 ->whereIn('inst_id', $instIds)
                                 ->where('active', 1)
+                                ->where('deparment_code', session('user')['production_code']) // Lọc theo PX của người dùng
                                 ->get()
                                 ->keyBy('inst_id');
 

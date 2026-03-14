@@ -28,7 +28,7 @@ import NoteModal from '../Components/NoteModal';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
 
 const ScheduleTest = () => {
-  
+
   const calendarRef = useRef(null);
   const selectoRef = useRef(null);
   moment.locale('vi');
@@ -41,7 +41,7 @@ const ScheduleTest = () => {
   const searchResultsRef = useRef([]);
   const currentIndexRef = useRef(-1);
   const lastQueryRef = useRef("");
-  const slotViewWeeks = ['resourceTimelineWeek1day',  'resourceTimelineWeek4h', 'resourceTimelineWeek1h', 'resourceTimelineWeek15' ];
+  const slotViewWeeks = ['resourceTimelineWeek1day', 'resourceTimelineWeek4h', 'resourceTimelineWeek1h', 'resourceTimelineWeek15'];
   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
   const [slotIndex, setSlotIndex] = useState(0);
   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
@@ -81,21 +81,21 @@ const ScheduleTest = () => {
   };
 
   function toLocalISOString(date) {
-      const pad = (n) => String(n).padStart(2, '0');
-    
-      return (
-        date.getFullYear() + '-' +
-        pad(date.getMonth() + 1) + '-' +
-        pad(date.getDate()) + 'T' +
-        pad(date.getHours()) + ':' +
-        pad(date.getMinutes()) + ':' +
-        pad(date.getSeconds()) + '.000Z'
-      );
+    const pad = (n) => String(n).padStart(2, '0');
+
+    return (
+      date.getFullYear() + '-' +
+      pad(date.getMonth() + 1) + '-' +
+      pad(date.getDate()) + 'T' +
+      pad(date.getHours()) + ':' +
+      pad(date.getMinutes()) + ':' +
+      pad(date.getSeconds()) + '.000Z'
+    );
   }
 
   // Get dữ liệu ban đầu
   useEffect(() => {
-    
+
     Swal.fire({
       title: "Đang tải...",
       allowOutsideClick: false,
@@ -110,7 +110,7 @@ const ScheduleTest = () => {
       endDate: toLocalISOString(activeEnd),
       viewtype: viewName,
     })
-    .then(res => {
+      .then(res => {
 
         let data = res.data;
 
@@ -120,30 +120,30 @@ const ScheduleTest = () => {
         }
 
 
-        setAuthorization (['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department )
+        setAuthorization(['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department)
 
-        if (data.department == 'BOD'){
-          setAuthorization (true);
+        if (data.department == 'BOD') {
+          setAuthorization(true);
         }
-          //console.log (data.events)
-          setEvents(data.events);
-          setResources(data.resources);
-          setType(data.type)
-          setStageMap(data.stageMap);
-          setSumBatchByStage(data.sumBatchByStage);
-          setReasons(data.reason)
-          setLines(data.Lines)
-          setAllLines (data.allLines)
-          sessionStorage.setItem('theoryHidden', 0);
-         
-        if (!authorization){
+        //console.log (data.events)
+        setEvents(data.events);
+        setResources(data.resources);
+        setType(data.type)
+        setStageMap(data.stageMap);
+        setSumBatchByStage(data.sumBatchByStage);
+        setReasons(data.reason)
+        setLines(data.Lines)
+        setAllLines(data.allLines)
+        sessionStorage.setItem('theoryHidden', 0);
+
+        if (!authorization) {
           setPlan(data.plan);
-          setCurrentPassword (data.currentPassword??'')
+          setCurrentPassword(data.currentPassword ?? '')
           setQuota(data.quota);
-          setOffDays (data.off_days);
-          setBkcCode (data.bkc_code);
-          setUserID (data.UesrID);
-         
+          setOffDays(data.off_days);
+          setBkcCode(data.bkc_code);
+          setUserID(data.UesrID);
+
         }
 
         switch (data.production) {
@@ -169,7 +169,7 @@ const ScheduleTest = () => {
 
         }, 100);
 
-        
+
       })
       .catch(err =>
         console.error("API error:", err)
@@ -177,43 +177,43 @@ const ScheduleTest = () => {
 
   }, [loading]);
 
-  useHotkeys("alt+q",(e) => {
-      e.preventDefault();
-     
-      handleViewChange("resourceTimelineDay");
-    },
+  useHotkeys("alt+q", (e) => {
+    e.preventDefault();
+
+    handleViewChange("resourceTimelineDay");
+  },
     { enableOnFormTags: false }
   );
 
-  useHotkeys("alt+w",(e) => {
-      e.preventDefault();
-    
-      handleViewChange("resourceTimelineWeek");
-    },
+  useHotkeys("alt+w", (e) => {
+    e.preventDefault();
+
+    handleViewChange("resourceTimelineWeek");
+  },
     { enableOnFormTags: false }
   );
 
-  useHotkeys("alt+e",(e) => {
-      e.preventDefault();
-     
-      handleViewChange("resourceTimelineMonth");
-    },
+  useHotkeys("alt+e", (e) => {
+    e.preventDefault();
+
+    handleViewChange("resourceTimelineMonth");
+  },
     { enableOnFormTags: false }
   );
 
-  useHotkeys("alt+r",(e) => {
-      e.preventDefault();
-    
-      handleViewChange("resourceTimelineQuarter");
-    },
+  useHotkeys("alt+r", (e) => {
+    e.preventDefault();
+
+    handleViewChange("resourceTimelineQuarter");
+  },
     { enableOnFormTags: false }
   );
 
-  useHotkeys("ctrl+s",(e) => {
-      e.preventDefault();
-    
-      handleSaveChanges();
-    },
+  useHotkeys("ctrl+s", (e) => {
+    e.preventDefault();
+
+    handleSaveChanges();
+  },
     { enableOnFormTags: false }
   );
 
@@ -383,14 +383,14 @@ const ScheduleTest = () => {
   };
 
   const handleShowList = () => {
-      if (!authorization) return;
+    if (!authorization) return;
 
-      setShowSidebar(true);
+    setShowSidebar(true);
   }
-      
+
   ///  Thay đôi khung thời gian
   const handleViewChange = useCallback(async (viewType = null, action = null) => {
-    
+
     const api = calendarRef.current?.getApi();
     if (!api) return;
     try {
@@ -412,7 +412,7 @@ const ScheduleTest = () => {
 
       const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
       const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
-     
+
       // 🔹 4. Gọi API backend
       const { data } = await axios.post(`/Schedual/view`, {
         startDate: toLocalISOString(activeStart),
@@ -431,7 +431,7 @@ const ScheduleTest = () => {
       setResources(cleanData.resources);
       setSumBatchByStage(cleanData.sumBatchByStage);
       setViewName(viewType);
-    }  finally {
+    } finally {
 
     }
   }, []);
@@ -440,12 +440,12 @@ const ScheduleTest = () => {
     const current = JSON.parse(sessionStorage.getItem('cleaningHidden'));
     const newHidden = !current;
     sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
-   
+
     handleViewChange(null, null);
   };
 
   // const toggleTheoryEvents = () => {
-    
+
   //   const current = JSON.parse(sessionStorage.getItem('theoryHidden'));
   //   const newTheory = !current;
   //   sessionStorage.setItem('theoryHidden', JSON.stringify(newTheory));
@@ -502,7 +502,7 @@ const ScheduleTest = () => {
 
   // Nhân Dữ liệu để tạo mới event
   const handleEventReceive = (info) => {
-    
+
     // chưa chọn row
     //if (!info?.event || !calendarRef?.current) return;
 
@@ -566,9 +566,9 @@ const ScheduleTest = () => {
       return false;
     }
 
-    
+
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-  
+
     if (selectedRows[0].stage_code !== 8) {
       axios.put('/Schedual/store', {
         room_id: resourceId,
@@ -662,13 +662,13 @@ const ScheduleTest = () => {
   };
 
   const offRanges = useMemo(
-      () => buildOffRanges(offDays),
-      [offDays]
+    () => buildOffRanges(offDays),
+    [offDays]
   );
 
   /// 3 Ham sử lý thay đôi sự kiện
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
-    
+
     if (!authorization) {
       info.revert();
       return false;
@@ -677,26 +677,26 @@ const ScheduleTest = () => {
     const draggedEvent = info.event;
     const delta = info.delta;
     const calendarApi = info.view.calendar;
-    
+
 
 
     // Nếu chưa được chọn thì tự động chọn
     if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
       info.revert();
       toggleEventSelect(draggedEvent);
-      
+
     }
 
     // Nếu đã chọn thì xử lý nhóm
     if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
       info.revert();
-    
+
       // Gom thay đổi tạm
       const batchUpdates = [];
-     
+
       selectedEvents.forEach(sel => {
         const event = calendarApi.getEventById(sel.id);
-        
+
         /// kiểm tra lại định mức
         if (event) {
 
@@ -707,46 +707,46 @@ const ScheduleTest = () => {
           let newEnd = null;
 
           // Kiêm tra điều chinh đinh mức ngày chủ nhật
-          if (!workingSunday){
-            let process_code =  event._def.extendedProps.process_code +"_"+ event._def.resourceIds[0]
+          if (!workingSunday) {
+            let process_code = event._def.extendedProps.process_code + "_" + event._def.resourceIds[0]
             let stage_code = event._def.extendedProps.stage_code
             let is_clearning = event._def.extendedProps.is_clearning
             let quota_event = quota.find(q =>
-                                      q.process_code.startsWith(process_code) &&
-                                      q.stage_code == stage_code
-                                    );
-            
-            if (quota_event === undefined){
+              q.process_code.startsWith(process_code) &&
+              q.stage_code == stage_code
+            );
 
-                Swal.fire({
-                  icon: 'warning',
-                  title: 'Thiếu Định Mức',
-                  timer: 1000,
-                  showConfirmButton: false,
-                });
-                info.revert();
-                return false;
+            if (quota_event === undefined) {
+
+              Swal.fire({
+                icon: 'warning',
+                title: 'Thiếu Định Mức',
+                timer: 1000,
+                showConfirmButton: false,
+              });
+              info.revert();
+              return false;
             }
 
             let quota_event_m_time_seconds = timeToMilliseconds(quota_event.m_time)
-            
-            let quota_event_p_time_seconds = 0 ;
 
-            if (event._def.extendedProps.first_in_campaign){
+            let quota_event_p_time_seconds = 0;
+
+            if (event._def.extendedProps.first_in_campaign) {
               quota_event_p_time_seconds = timeToMilliseconds(quota_event.p_time)
             }
-            
-            
-            if (is_clearning){
-              if(event._def.title == "VS-II"){
-                  quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
-                }else{
-                  quota_event_m_time_seconds = timeToMilliseconds(quota_event.C1_time)
-                }
-                
+
+
+            if (is_clearning) {
+              if (event._def.title == "VS-II") {
+                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
+              } else {
+                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C1_time)
+              }
+
             }
             newEnd = new Date(event_start + offset + quota_event_m_time_seconds + quota_event_p_time_seconds);
-            
+
             let safeEnd;
             do {
               safeEnd = newEnd;
@@ -757,8 +757,8 @@ const ScheduleTest = () => {
             //   newEnd = new Date(event_start + offset + quota_event_m_time_seconds + 86400000)
             // }
 
-          }else{
-              newEnd = new Date(event.end.getTime() + offset);
+          } else {
+            newEnd = new Date(event.end.getTime() + offset);
           }
 
 
@@ -834,7 +834,7 @@ const ScheduleTest = () => {
       return;
     }
 
-     // 🟨 Tạo datalist từ state "reasons"
+    // 🟨 Tạo datalist từ state "reasons"
     const htmlOptions = reasons
       .map(r => `<option value="${r}">`)
       .join("");
@@ -884,7 +884,7 @@ const ScheduleTest = () => {
 
         const saveReason = document.getElementById('saveReason');
         formValues.saveReason = saveReason.checked;
-        
+
 
         if (!reason || reason.trim() === '') {
           Swal.showValidationMessage('Bạn phải nhập hoặc chọn lý do!');
@@ -919,40 +919,40 @@ const ScheduleTest = () => {
       startDate,
       endDate
     })
-    .then(res => {
-      let data = res.data;
-      if (typeof data === "string") {
-        data = data.replace(/^<!--.*?-->/, "").trim();
-        data = JSON.parse(data);
-      }
+      .then(res => {
+        let data = res.data;
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
 
-      setEvents(data.events);
-      setSumBatchByStage(data.sumBatchByStage);
-      //setPlan(data.plan);
-      setPendingChanges([]);
-      setSaving(false);
+        setEvents(data.events);
+        setSumBatchByStage(data.sumBatchByStage);
+        //setPlan(data.plan);
+        setPendingChanges([]);
+        setSaving(false);
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Thành công!',
-        text: 'Đã lưu tất cả thay đổi.',
-        timer: 1200,
-        showConfirmButton: false,
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: 'Đã lưu tất cả thay đổi.',
+          timer: 1200,
+          showConfirmButton: false,
+        });
+
+        // Xóa border đánh dấu sự kiện đã sửa
+        document.querySelectorAll('.fc-event[data-event-id]')
+          .forEach(el => { el.style.border = 'none'; });
+      })
+      .catch(err => {
+        console.error("Lỗi khi lưu events:", err.response?.data || err.message);
+        setSaving(false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi!',
+          text: 'Không thể lưu thay đổi. Vui lòng thử lại.',
+        });
       });
-
-      // Xóa border đánh dấu sự kiện đã sửa
-      document.querySelectorAll('.fc-event[data-event-id]')
-        .forEach(el => { el.style.border = 'none'; });
-    })
-    .catch(err => {
-      console.error("Lỗi khi lưu events:", err.response?.data || err.message);
-      setSaving(false);
-      Swal.fire({
-        icon: 'error',
-        title: 'Lỗi!',
-        text: 'Không thể lưu thay đổi. Vui lòng thử lại.',
-      });
-    });
   };
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
@@ -976,11 +976,11 @@ const ScheduleTest = () => {
 
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
-   
-    const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));  
-   
+
+    const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+
     const event = clickInfo.event;
-    
+
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey && theoryHidden != 2) {
 
@@ -996,43 +996,43 @@ const ScheduleTest = () => {
       const calendar = clickInfo.view.calendar;
 
       selectedEvents.forEach(sel => {
-      const mainId = sel.id;                // "28217-main"
-      const cleanId = mainId.replace("-main", "-cleaning");
+        const mainId = sel.id;                // "28217-main"
+        const cleanId = mainId.replace("-main", "-cleaning");
 
-      const mainEvent = calendar.getEventById(mainId);
-      const cleanEvent = calendar.getEventById(cleanId);
+        const mainEvent = calendar.getEventById(mainId);
+        const cleanEvent = calendar.getEventById(cleanId);
 
-      if (!mainEvent || !cleanEvent) return;
+        if (!mainEvent || !cleanEvent) return;
 
-      // đặt event vệ sinh ngay sau event chính
-      const newStart = new Date(mainEvent.end);
-      const duration = cleanEvent.end - cleanEvent.start;
-      const newEnd = new Date(newStart.getTime() + duration);
+        // đặt event vệ sinh ngay sau event chính
+        const newStart = new Date(mainEvent.end);
+        const duration = cleanEvent.end - cleanEvent.start;
+        const newEnd = new Date(newStart.getTime() + duration);
 
-      cleanEvent.setStart(newStart);
-      cleanEvent.setEnd(newEnd);
+        cleanEvent.setStart(newStart);
+        cleanEvent.setEnd(newEnd);
 
-      // trigger pending changes
-      handleEventChange({ event: cleanEvent });
+        // trigger pending changes
+        handleEventChange({ event: cleanEvent });
       });
 
       return;
     }
 
 
-        // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
+    // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey && theoryHidden == 2) {
-     
+
 
       if (userID !== 1 && userID !== 5) {
         return;
       }
 
-      if (event._def.ui.backgroundColor != "#002af9ff"){
-        alert ('Chỉ Chọn Sự Kiện Đã Hoàn Thành' )
+      if (event._def.ui.backgroundColor != "#002af9ff") {
+        alert('Chỉ Chọn Sự Kiện Đã Hoàn Thành')
         return;
       }
-  
+
       if (selectedEvents.length === 0) {
         return;
       }
@@ -1041,43 +1041,43 @@ const ScheduleTest = () => {
       const calendar = clickInfo.view.calendar;
 
       selectedEvents.forEach(sel => {
-      
-      const mainId = sel.id;            
-      const theoryId = mainId.replace("-main", "-main-theory");
-      const cleanId = mainId.replace("-main", "-cleaning");
-      const theoryCleanId = mainId.replace("-main", "-cleaning-theory");
-      
-      const mainEvent = calendar.getEventById(mainId);
-      const theoryEvent = calendar.getEventById(theoryId);
-      const cleanEvent = calendar.getEventById(cleanId);
-      const theoryCleanEvent = calendar.getEventById(theoryCleanId);
 
-      if (!mainEvent || !theoryEvent || !cleanEvent || !theoryCleanEvent) return;
+        const mainId = sel.id;
+        const theoryId = mainId.replace("-main", "-main-theory");
+        const cleanId = mainId.replace("-main", "-cleaning");
+        const theoryCleanId = mainId.replace("-main", "-cleaning-theory");
 
-    
-      const newStart = new Date(mainEvent.start.getTime() + 15 * 60000);
-      const newEnd   = new Date(mainEvent.end.getTime() + 15 * 60000);
+        const mainEvent = calendar.getEventById(mainId);
+        const theoryEvent = calendar.getEventById(theoryId);
+        const cleanEvent = calendar.getEventById(cleanId);
+        const theoryCleanEvent = calendar.getEventById(theoryCleanId);
 
-      theoryEvent.setStart(newStart);
-      theoryEvent.setEnd(newEnd);
-      handleEventChange({ event: theoryEvent });
+        if (!mainEvent || !theoryEvent || !cleanEvent || !theoryCleanEvent) return;
 
 
+        const newStart = new Date(mainEvent.start.getTime() + 15 * 60000);
+        const newEnd = new Date(mainEvent.end.getTime() + 15 * 60000);
 
-      const newClearningStart = new Date(cleanEvent.start.getTime() + 15 * 60000);
-      const newClearningEnd   = new Date(cleanEvent.end.getTime() + 15 * 60000);
+        theoryEvent.setStart(newStart);
+        theoryEvent.setEnd(newEnd);
+        handleEventChange({ event: theoryEvent });
 
-      theoryCleanEvent.setStart(newClearningStart);
-      theoryCleanEvent.setEnd(newClearningEnd);
 
-      // trigger pending changes   
-      handleEventChange({ event: theoryCleanEvent });
+
+        const newClearningStart = new Date(cleanEvent.start.getTime() + 15 * 60000);
+        const newClearningEnd = new Date(cleanEvent.end.getTime() + 15 * 60000);
+
+        theoryCleanEvent.setStart(newClearningStart);
+        theoryCleanEvent.setEnd(newClearningEnd);
+
+        // trigger pending changes   
+        handleEventChange({ event: theoryCleanEvent });
 
       });
 
       return;
     }
-   
+
     /// Copy nội dung event
     if (clickInfo.jsEvent.shiftKey) {
       const calendar = clickInfo.view.calendar;
@@ -1087,15 +1087,15 @@ const ScheduleTest = () => {
       if (!eventsToCopy || eventsToCopy.length === 0) {
         eventsToCopy = [{ id: event.id }];
       }
-     
+
       const rows = eventsToCopy.map(sel => {
         const ev = calendar.getEventById(sel.id);
         const resourceId = Number(ev._def.resourceIds?.[0]);
-       
+
         if (!ev) return null;
         return [
           ev.title,
-          resources.find(r => r.id ==  resourceId)?.title || '',
+          resources.find(r => r.id == resourceId)?.title || '',
           ev.start?.toLocaleString(),
           ev.end?.toLocaleString(),
           stageName[ev.extendedProps.stage_code] || ''
@@ -1103,7 +1103,7 @@ const ScheduleTest = () => {
       }).filter(Boolean);
 
       const clipboardText = [
-        ['Title','Room','Start','End','Stage'].join('\t'),
+        ['Title', 'Room', 'Start', 'End', 'Stage'].join('\t'),
         ...rows
       ].join('\n');
 
@@ -1120,52 +1120,52 @@ const ScheduleTest = () => {
     }
 
     function fallbackCopy(text) {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
     }
 
     toggleEventSelect(event);
     // if ( clickInfo.jsEvent.ctrlKey) {
     //   setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
     // } else {
-      
+
     // }
 
   };
   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
   const handleClear = () => {
 
-      const sel = selectoRef.current;
-      document.querySelectorAll('.fc-event[data-event-id]').forEach(el => {el.style.border = 'none';});
+    const sel = selectoRef.current;
+    document.querySelectorAll('.fc-event[data-event-id]').forEach(el => { el.style.border = 'none'; });
 
-      // 1) Nếu thư viện expose clear trực tiếp
-      if (typeof sel?.clear === 'function') {
-        sel.clear();
-      }
-      // 2) Nếu wrapper chứa instance trong trường `selecto` hoặc `instance`
-      else if (typeof sel?.selecto?.clear === 'function') {
-        sel.selecto.clear();
-      } else if (typeof sel?.instance?.clear === 'function') {
-        sel.instance.clear();
-      }
-      // 3) Một phương án khác hay có: setSelectedTargets([])
-      else if (typeof sel?.setSelectedTargets === 'function') {
-        sel.setSelectedTargets([]);
-      }
-      // 4) Fallback: remove class selected trên DOM (giao diện) + reset state
-      else {
-        document.querySelectorAll('.fc-event.selected').forEach(el => el.classList.remove('selected'));
-      }
+    // 1) Nếu thư viện expose clear trực tiếp
+    if (typeof sel?.clear === 'function') {
+      sel.clear();
+    }
+    // 2) Nếu wrapper chứa instance trong trường `selecto` hoặc `instance`
+    else if (typeof sel?.selecto?.clear === 'function') {
+      sel.selecto.clear();
+    } else if (typeof sel?.instance?.clear === 'function') {
+      sel.instance.clear();
+    }
+    // 3) Một phương án khác hay có: setSelectedTargets([])
+    else if (typeof sel?.setSelectedTargets === 'function') {
+      sel.setSelectedTargets([]);
+    }
+    // 4) Fallback: remove class selected trên DOM (giao diện) + reset state
+    else {
+      document.querySelectorAll('.fc-event.selected').forEach(el => el.classList.remove('selected'));
+    }
 
-      // Reset react state
-      setSelectedEvents([]);
+    // Reset react state
+    setSelectedEvents([]);
 
-      // Tùy: gọi hàm un-highlight
-      handleEventUnHightLine?.();
+    // Tùy: gọi hàm un-highlight
+    handleEventUnHightLine?.();
   };
 
   const handleEventUnHightLine = () => {
@@ -1183,14 +1183,14 @@ const ScheduleTest = () => {
   };
   //Number(p.stage_code) === 3 &&
   const handleShowLine = (room) => {
-    
+
     return plan.filter(p =>
-        (
-          hasAnyRoom(p.permisson_room_filter, room) &&
-          Object.values(p.permisson_room || {}).length === 1
-        ) ||
-        p.required_room_code === room
-      )
+      (
+        hasAnyRoom(p.permisson_room_filter, room) &&
+        Object.values(p.permisson_room || {}).length === 1
+      ) ||
+      p.required_room_code === room
+    )
       .map(p => p.id);
   };
 
@@ -1287,12 +1287,12 @@ const ScheduleTest = () => {
         </div>
 
           ${hasEmptyPermission
-            ? `<p style="color:red;font-weight:600;margin-top:10px;">
+          ? `<p style="color:red;font-weight:600;margin-top:10px;">
                 ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
                 Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
               </p>`
-            : ''
-          }
+          : ''
+        }
           <hr/>
           <div class="cfg-row">
             <label class="cfg-label" for="prev_orderBy">Thứ tự công đoạn từ ĐH -> ĐG theo :</label>
@@ -1395,13 +1395,13 @@ const ScheduleTest = () => {
             offDays.map(parseToDate)
           );
 
-          
+
 
           const handleChange = (e) => {
             const dates = e.value || [];
             const selected = dates.map(formatDate);
-            setLocalDates(dates);   
-            setOffDays(selected); 
+            setLocalDates(dates);
+            setOffDays(selected);
             selectedDates = selected;
           };
 
@@ -1430,7 +1430,7 @@ const ScheduleTest = () => {
             const getClass = (value) =>
               `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""
               }`;
-           
+
             return (
               <Stepper style={{ width: "100%" }}>
                 {(emptyPermission == null || emptyPermission.stage_code >= 4) && (
@@ -1488,7 +1488,7 @@ const ScheduleTest = () => {
                   </StepperPanel>)}
 
 
-                 {(emptyPermission == null || emptyPermission.stage_code >= 7) && (
+                {(emptyPermission == null || emptyPermission.stage_code >= 7) && (
                   <StepperPanel header="CNL">
                     <div className="flex flex-column h-12rem">
                       <div
@@ -1497,7 +1497,7 @@ const ScheduleTest = () => {
                         Cân NL ➡ Cân NL Khác
                       </div>
                     </div>
-                  </StepperPanel>)} 
+                  </StepperPanel>)}
 
               </Stepper>
             );
@@ -1517,7 +1517,7 @@ const ScheduleTest = () => {
         const radios = document.querySelectorAll('input[name="sortType"]');
         const lineWrap = document.getElementById('Stage_line');
         const stageWrap = document.getElementById('stepper-container');
-        
+
         radios.forEach(radio => {
           radio.addEventListener('change', () => {
             stageWrap.style.display =
@@ -1531,28 +1531,28 @@ const ScheduleTest = () => {
                 : 'none';
           });
         });
-        
+
 
         // ------------- Thêm soure cho Lines ------------- //
         const linesSelect = document.getElementById("lines");
         if (allLines && allLines?.length) {
-            allLines.forEach(r => {
-              const opt = document.createElement("option");
-              opt.value = r.code;
-              opt.textContent = r.code + " - "+ r.name ;
-              linesSelect.appendChild(opt);
-            });
+          allLines.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r.code;
+            opt.textContent = r.code + " - " + r.name;
+            linesSelect.appendChild(opt);
+          });
         }
 
         // ------------- Thêm soure cho Phục hồi ------------- //
         const retoreList = document.getElementById("retoreList");
         if (bkcCode && bkcCode?.length) {
-            bkcCode.forEach(r => {
-              const opt = document.createElement("option");
-              opt.value = r.bkc_code;
-              opt.textContent = r.bkc_code;
-              retoreList.appendChild(opt);
-            });
+          bkcCode.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r.bkc_code;
+            opt.textContent = r.bkc_code;
+            retoreList.appendChild(opt);
+          });
         }
 
         // ================= Backup =================
@@ -1570,7 +1570,7 @@ const ScheduleTest = () => {
 
             axios.post('/Schedual/backup_schedualer')
               .then(res => {
-             
+
                 const opt = document.createElement('option');
                 opt.value = res.data.bkcCode;
                 opt.textContent = res.data.bkcCode;
@@ -1640,7 +1640,7 @@ const ScheduleTest = () => {
                     title: 'Khôi phục thất bại',
                     text: err.response?.data?.message || err.message
                   });
-              });
+                });
 
             });
           });
@@ -1656,7 +1656,7 @@ const ScheduleTest = () => {
 
         const formValues = {};
         document.querySelectorAll('.swal2-input').forEach(input => {
-            formValues[input.name] = input.value;
+          formValues[input.name] = input.value;
         });
 
         const activeStep = document.querySelector('li[data-p-active="true"]');
@@ -1671,11 +1671,11 @@ const ScheduleTest = () => {
 
         const runType = document.querySelector('input[name="sortType"]:checked')?.value;
         formValues.runType = runType;
-       
+
         formValues.selectedDates = selectedDates;
         formValues.selectedStep = activeStepText ?? "PC";
 
-        
+
 
         if (!formValues.start_date) {
           Swal.showValidationMessage('Vui lòng chọn ngày!');
@@ -1685,54 +1685,54 @@ const ScheduleTest = () => {
       },
       willClose: () => {
         const workSunday = document.getElementById('work-sunday')?.checked ?? false;
-        setWorkingSunday (workSunday);
+        setWorkingSunday(workSunday);
       }
 
     })
-    .then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({
-          title: 'Đang chạy Auto Scheduler...',
-          text: 'Vui lòng chờ trong giây lát',
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          },
-        });
-
-        const {activeStart, activeEnd} = calendarRef.current?.getApi().view;
-
-        axios.post('/Schedual/scheduleAll', {
-          ...result.value,
-          startDate: toLocalISOString(activeStart),
-          endDate: toLocalISOString(activeEnd),
-          stage_plan_ids: handleShowLine (result.value['lines']),
-          room_code: result.value['lines']
-
-        }, { timeout: 300000 })
-          .then(res => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-            }
-
-            Swal.fire({
-              icon: 'success',
-              title: 'Hoàn Thành Sắp Lịch',
-              timer: 1000,
-              showConfirmButton: false,
-            });
-            setLoading(!loading)
-
-          })
-          .catch(err => {
-
-            setLoading(!loading)
-            console.error("ScheduleAll error:", err.response?.data || err.message);
+      .then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({
+            title: 'Đang chạy Auto Scheduler...',
+            text: 'Vui lòng chờ trong giây lát',
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
           });
-      }
-    });
+
+          const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
+          axios.post('/Schedual/scheduleAll', {
+            ...result.value,
+            startDate: toLocalISOString(activeStart),
+            endDate: toLocalISOString(activeEnd),
+            stage_plan_ids: handleShowLine(result.value['lines']),
+            room_code: result.value['lines']
+
+          }, { timeout: 300000 })
+            .then(res => {
+              let data = res.data;
+              if (typeof data === "string") {
+                data = data.replace(/^<!--.*?-->/, "").trim();
+                data = JSON.parse(data);
+              }
+
+              Swal.fire({
+                icon: 'success',
+                title: 'Hoàn Thành Sắp Lịch',
+                timer: 1000,
+                showConfirmButton: false,
+              });
+              setLoading(!loading)
+
+            })
+            .catch(err => {
+
+              setLoading(!loading)
+              console.error("ScheduleAll error:", err.response?.data || err.message);
+            });
+        }
+      });
   };
 
   /// Xử lý Xóa Toàn Bộ Lịch
@@ -1874,7 +1874,7 @@ const ScheduleTest = () => {
         });
       },
 
-    preConfirm: () => {
+      preConfirm: () => {
         // Lấy giá trị deleteMode trước
         const deleteMode = document.querySelector('input[name="deleteMode"]:checked')?.value;
 
@@ -1902,7 +1902,7 @@ const ScheduleTest = () => {
         }
 
         return formValues;
-    }
+      }
 
 
     }).then((result) => {
@@ -2039,17 +2039,16 @@ const ScheduleTest = () => {
   }
 
   const finisedEvent = (dropInfo, draggedEvent) => {
-  
-    if (draggedEvent._def.ui.backgroundColor == "#002af9ff"){
-        return false;
+
+    if (draggedEvent._def.ui.backgroundColor == "#002af9ff") {
+      return false;
     }
 
-    if (userID == 1 || userID == 5 ){
-        return true;
+    if (userID == 1 || userID == 5) {
+      return true;
     }
-   
-    if (draggedEvent.extendedProps.finished) 
-      { return false;}
+
+    if (draggedEvent.extendedProps.finished) { return false; }
     return true;
   };
 
@@ -2075,13 +2074,13 @@ const ScheduleTest = () => {
       if (result.isConfirmed) {
         axios.put('/Schedual/submit')
 
-        .then(res => {
+          .then(res => {
             let data = res.data;
             if (typeof data === "string") {
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
             }
-          
+
 
             Swal.fire({
               icon: 'success',
@@ -2091,7 +2090,7 @@ const ScheduleTest = () => {
             });
 
           })
-        .catch(err => {
+          .catch(err => {
             Swal.fire({
               icon: 'error',
               title: 'Lỗi',
@@ -2099,98 +2098,99 @@ const ScheduleTest = () => {
               showConfirmButton: false,
             });
             console.error("Finished error:", err.response?.data || err.message);
-        });
+          });
 
-      }})
+      }
+    })
   }
 
   const handleAcceptQuanrantine = (e) => {
-    
-      if (!authorization) { return };
-      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-      if (!selectedEvents || selectedEvents.length === 0) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Chọn Lịch Cần Chấp Nhận',
-          showConfirmButton: false,
-          timer: 1000
-        });
-        return; // Dừng hàm ở đây
-      }
-      e.stopPropagation();
+
+    if (!authorization) { return };
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    if (!selectedEvents || selectedEvents.length === 0) {
       Swal.fire({
-        title: 'Bạn có chắc muốn chấp nhận thời gian biệt trữ hiện tại?',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Chấp Nhận',
-        cancelButtonText: 'Hủy',
-        confirmButtonColor: 'rgba(94, 221, 51, 1)',
-        cancelButtonColor: '#3085d6',
-
-      }).then((result) => {
-        if (result.isConfirmed) {
-          axios.put('/Schedual/accpectQuarantine', {
-            ids: selectedEvents,
-            startDate: toLocalISOString(activeStart),
-            endDate: toLocalISOString(activeEnd)
-          })
-            .then((res) => {
-              let data = res.data;
-              if (typeof data === "string") {
-                data = data.replace(/^<!--.*?-->/, "").trim();
-                data = JSON.parse(data);
-              }
-              setEvents(data.events);
-
-              Swal.fire({
-                icon: 'success',
-                title: 'Hoàn Thành',
-                showConfirmButton: false,
-                timer: 1500
-              });
-            })
-
-            .catch((error) => {
-              Swal.fire({
-                icon: 'error',
-                title: 'Chấp Nhận lịch thất bại',
-                text: 'Vui lòng thử lại sau.',
-              });
-              console.error("API error:", error.response?.data || error.message);
-            });
-        }
-       
+        title: 'Chọn Lịch Cần Chấp Nhận',
+        showConfirmButton: false,
+        timer: 1000
       });
+      return; // Dừng hàm ở đây
+    }
+    e.stopPropagation();
+    Swal.fire({
+      title: 'Bạn có chắc muốn chấp nhận thời gian biệt trữ hiện tại?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Chấp Nhận',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: 'rgba(94, 221, 51, 1)',
+      cancelButtonColor: '#3085d6',
+
+    }).then((result) => {
+      if (result.isConfirmed) {
+        axios.put('/Schedual/accpectQuarantine', {
+          ids: selectedEvents,
+          startDate: toLocalISOString(activeStart),
+          endDate: toLocalISOString(activeEnd)
+        })
+          .then((res) => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            setEvents(data.events);
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Hoàn Thành',
+              showConfirmButton: false,
+              timer: 1500
+            });
+          })
+
+          .catch((error) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Chấp Nhận lịch thất bại',
+              text: 'Vui lòng thử lại sau.',
+            });
+            console.error("API error:", error.response?.data || error.message);
+          });
+      }
+
+    });
   }
 
   const statusColors = {
-      "Chưa làm":        { backgroundColor: "white", color: "black" },
-      "Đã Cân":          { backgroundColor: "#e3f2fd", color: "#0d47a1" },
-      "Đã PC":      { backgroundColor: "#bbdefb", color: "#0d47a1" },
-      "Đã THT":          { backgroundColor: "#90caf9", color: "#0d47a1" },
-      "Đã ĐH":    { backgroundColor: "#64b5f6", color: "white" },
-      "Đã BP":     { backgroundColor: "#1e88e5", color: "white" },
-      "Hoàn Tất":     { backgroundColor: "#0d47a1", color: "white" }
-    
+    "Chưa làm": { backgroundColor: "white", color: "black" },
+    "Đã Cân": { backgroundColor: "#e3f2fd", color: "#0d47a1" },
+    "Đã PC": { backgroundColor: "#bbdefb", color: "#0d47a1" },
+    "Đã THT": { backgroundColor: "#90caf9", color: "#0d47a1" },
+    "Đã ĐH": { backgroundColor: "#64b5f6", color: "white" },
+    "Đã BP": { backgroundColor: "#1e88e5", color: "white" },
+    "Hoàn Tất": { backgroundColor: "#0d47a1", color: "white" }
+
   };
 
   const getStatusStyleString = (status) => {
-      const style = statusColors[status];
-      if (!style) return '';
+    const style = statusColors[status];
+    if (!style) return '';
 
-      return `
+    return `
         background-color: ${style.backgroundColor};
         color: ${style.color};
       `;
-    };
+  };
 
   const EventContent = (arg) => {
     const event = arg.event;
     const props = event._def.extendedProps;
     const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
-  
-    if (event.title == undefined){
-      console.log (event)
+
+    if (event.title == undefined) {
+      console.log(event)
     }
 
     let html = `
@@ -2213,29 +2213,29 @@ const ScheduleTest = () => {
             </span>
           ` : ''}
 
-          <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle:''} </b>
+          <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>
           ${!isTimelineMonth ? `
             <br/>
             ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
-              `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
-            : ''}
+          `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
+          : ''}
           ` : ''}
       </div>
     `;
 
-    if (!props.is_clearning && showRenderBadge  && authorization) {
-          html += `
+    if (!props.is_clearning && showRenderBadge && authorization) {
+      html += `
               <div 
                 class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
                 title="% biệt trữ"
-              ><b>${props.campaign_code  ?? ''}</b></div>`;
-    } 
+              ><b>${props.campaign_code ?? ''}</b></div>`;
+    }
 
 
     if (!props.is_clearning && showRenderBadge && props.status) {
-          const style = getStatusStyleString(props.status);
+      const style = getStatusStyleString(props.status);
 
-          html += `
+      html += `
             <div 
               class="absolute top-[-20px] right-5 px-1 rounded shadow"
               style="${style}"
@@ -2246,9 +2246,9 @@ const ScheduleTest = () => {
           `;
     }
 
-        
 
-    
+
+
     html += `</div>`;
     return { html };
   };
@@ -2264,43 +2264,43 @@ const ScheduleTest = () => {
   };
 
   const calendarEvents = useMemo(() => {
-        return [
-                ...events,                     // event sản xuất
-                ...buildOffDayEvents(offDays), // background ngày nghỉ
-                ];
+    return [
+      ...events,                     // event sản xuất
+      ...buildOffDayEvents(offDays), // background ngày nghỉ
+    ];
   }, [events, offDays]);
 
- const handleConfirmClearningValidation = (e) => {
-      const ids = selectedEvents.map(row =>
-          Number(row.id.split('-')[0])
-      );
-         
+  const handleConfirmClearningValidation = (e) => {
+    const ids = selectedEvents.map(row =>
+      Number(row.id.split('-')[0])
+    );
+
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-    axios.put('/Schedual/clearningValidation', { 
+    axios.put('/Schedual/clearningValidation', {
       ids: ids,
       startDate: toLocalISOString(activeStart),
       endDate: toLocalISOString(activeEnd)
-     })
-      . then (res => {
-                    let data = res.data;
-                    if (typeof data === "string") {
-                      data = data.replace(/^<!--.*?-->/, "").trim();
-                      data = JSON.parse(data);
-                    }
-                    setEvents(data.events);
-                    setSelectedEvents ([]);
-                  }
-      ).catch (err => {
-                    Swal.fire({
-                      icon: 'error',
-                      title: 'Lỗi',
-                      timer: 1500
-                    });
-                    console.error("API error:", err.response?.data || err.message);
-                }
+    })
+      .then(res => {
+        let data = res.data;
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
+        setEvents(data.events);
+        setSelectedEvents([]);
+      }
+      ).catch(err => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          timer: 1500
+        });
+        console.error("API error:", err.response?.data || err.message);
+      }
       );
-     
-      return;
+
+    return;
   }
 
   return (
@@ -2316,7 +2316,7 @@ const ScheduleTest = () => {
         eventResourceEditable={true}
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
-     
+
         locale="vi"
         resourceAreaWidth="250px"
         expandRows={false}
@@ -2328,19 +2328,19 @@ const ScheduleTest = () => {
 
         //slotDuration="01:00:00"
         eventDurationEditable={true}
-        
-       
-        eventClick={authorization? handleEventClick: false}
-        eventResize={authorization? handleEventChange: false}
-        eventDrop={authorization? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange):false}
-        eventReceive={authorization? handleEventReceive: false}
-        dateClick={authorization? handleClear: false}
+
+
+        eventClick={authorization ? handleEventClick : false}
+        eventResize={authorization ? handleEventChange : false}
+        eventDrop={authorization ? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange) : false}
+        eventReceive={authorization ? handleEventReceive : false}
+        dateClick={authorization ? handleClear : false}
         eventAllow={finisedEvent}
 
         resourceGroupField="stage_name"
         resourceOrder='order_by'
-     
-        
+
+
         resourceGroupLabelContent={(arg) => {
 
           const stage_code = stageMap[arg.groupValue] || {};
@@ -2492,7 +2492,7 @@ const ScheduleTest = () => {
             </div>
           `;
 
-          return { html }; 
+          return { html };
         }}
 
         resourceLabelDidMount={(info) => {
@@ -2513,33 +2513,33 @@ const ScheduleTest = () => {
               sheet,
               checked
             })
-            .then(res => {
-              const updated = res.data.update;
+              .then(res => {
+                const updated = res.data.update;
 
-              setResources(prev =>
-                prev.map(r =>
-                  r.code !== room
-                    ? r
-                    : { ...r, ...updated }
-                )
-              );
+                setResources(prev =>
+                  prev.map(r =>
+                    r.code !== room
+                      ? r
+                      : { ...r, ...updated }
+                  )
+                );
 
-              Swal.fire({
-                icon: 'success',
-                title: 'Hoàn Thành',
-                timer: 600,
-                showConfirmButton: false,
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Hoàn Thành',
+                  timer: 600,
+                  showConfirmButton: false,
+                });
+              })
+              .catch(err => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Lỗi',
+                  timer: 1500,
+                  showConfirmButton: false,
+                });
+                console.error(err);
               });
-            })
-            .catch(err => {
-              Swal.fire({
-                icon: 'error',
-                title: 'Lỗi',
-                timer: 1500,
-                showConfirmButton: false,
-              });
-              console.error(err);
-            });
           };
 
           info.el.addEventListener("change", handler);
@@ -2553,7 +2553,7 @@ const ScheduleTest = () => {
             info.el.removeEventListener("change", info.el._sheetHandler);
           }
         }}
-          
+
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation',
           center: 'title',
@@ -2692,14 +2692,16 @@ const ScheduleTest = () => {
             click: handleDeleteScheduale,
             hint: 'Xóa lịch được chọn: Chọn các lịch cần xóa, sau đó bấm 🚫'
           },
-      
-          searchBox: { text: '',
-            hint: 'Thay đổi font chữ'
-           },
-          fontSizeBox: { text: '' ,
+
+          searchBox: {
+            text: '',
             hint: 'Thay đổi font chữ'
           },
-         
+          fontSizeBox: {
+            text: '',
+            hint: 'Thay đổi font chữ'
+          },
+
           // formDate: {
           //   text: '📅',
           //   click: () => setCustomStartDate ('2026-01-15'),
@@ -2747,17 +2749,17 @@ const ScheduleTest = () => {
           if (pm === activePlanMasterId) {
             return ['fc-event-focus'];
           }
-          
+
           return ['fc-event-hidden'];
         }}
-        
+
 
         eventDidMount={(info) => {
 
           // gắn data-event-id để tìm kiếm
           info.el.setAttribute("data-event-id", info.event.id);
           info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
-          
+
           // cho select evetn => pendingChanges
           const isPending = pendingChanges.some(e => e.id === info.event.id);
           if (isPending) {
@@ -2765,16 +2767,16 @@ const ScheduleTest = () => {
           }
 
           info.el.addEventListener("dblclick", (e) => {
-            
+
             e.stopPropagation();
-             if (!e.ctrlKey)return;
+            if (!e.ctrlKey) return;
             //handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
             const pm = info.event.extendedProps.plan_master_id;
-    
-            setActivePlanMasterId(prev => 
+
+            setActivePlanMasterId(prev =>
               prev === pm ? null : pm   // dbl click lần nữa → reset
             );
-                      
+
           });
         }}
 
@@ -2788,9 +2790,9 @@ const ScheduleTest = () => {
 
       />
       <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
-      
+
       {/* <div className="modal-sidebar"> */}
-      { authorization && (
+      {authorization && (
         <ModalSidebar
           visible={showSidebar}
           onClose={setShowSidebar}
@@ -2803,15 +2805,15 @@ const ScheduleTest = () => {
           quota={quota}
           resources={resources}
           type={type}
-          currentPassword = {currentPassword}
-          lines = {lines}
-          multiStage = {multiStage}
-          setMultiStage = {setMultiStage}
+          currentPassword={currentPassword}
+          lines={lines}
+          multiStage={multiStage}
+          setMultiStage={setMultiStage}
         />)}
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
-      { authorization && (
-      <Selecto
+      {authorization && (
+        <Selecto
           ref={selectoRef}
           // ✅ Khu vực cho phép kéo chọn
           container=".calendar-wrapper"
@@ -2819,7 +2821,7 @@ const ScheduleTest = () => {
           selectableTargets={[".fc-event"]}
           // ✅ Phải giữ Shift mới kích hoạt (nếu không thì FullCalendar drag event)
           onDragStart={(e) => {
-            if (!e.inputEvent.shiftKey) e.stop(); 
+            if (!e.inputEvent.shiftKey) e.stop();
           }}
           selectByClick={false}
           selectFromInside={true}
@@ -2854,12 +2856,12 @@ const ScheduleTest = () => {
                   ? "5px solid yellow"
                   : "none";
               });
-              
+
               return merged;
             });
           }}
-      />
-        )}
+        />
+      )}
     </div>
 
 
@@ -2868,4 +2870,3 @@ const ScheduleTest = () => {
 
 export default ScheduleTest;
 
-  

@@ -59,7 +59,7 @@
 
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                     <tr>
-                        <th>STT</th>
+                         <th>STT</th>
                         <th>Block</th>
                         <th>Mã Thiết Bị Lớn</th>
                         <th>Mã Thiết Bị Con</th>
@@ -67,6 +67,7 @@
                         <th>Tần Suất BT-HC</th>
                         <th>Vị Trí Lắp Đặt</th>
                         <th>Phòng SX Liên Quan</th>
+                        <th>Phân Xưởng</th>
                         <th>Thời gian Thực Hiện</th>
                         <th>Có Thuộc Hệ Thống HVAC?</th>
                         <th>Người Tạo/Ngày Tạo</th>
@@ -104,12 +105,19 @@
         var authUpdate = '{{ $auth_update }}';
         var disabledAttr = authUpdate ? 'disabled' : '';
 
-        // Danh sách phòng cho select option
+         // Danh sách phòng cho select option
         var roomOptions = '<option value="">-- Phòng Thực Hiện --</option>';
         @foreach ($rooms as $room)
             roomOptions +=
                 '<option value="{{ $room->id }}">{{ $room->code }} - {{ $room->name }}</option>';
         @endforeach
+
+        // Danh sách phân xưởng
+        var departmentOptions = '<option value="">-- Chọn PX --</option>';
+        var depts = ['PXV1', 'PXV2', 'PXVH', 'PXDN', 'PXTN'];
+        depts.forEach(function(dept) {
+            departmentOptions += '<option value="' + dept + '">' + dept + '</option>';
+        });
 
         // Dữ liệu JSON từ server
         var tableData = @json($datas);
@@ -178,6 +186,17 @@
                             'value="' + (row.room_id || '') + '" selected'
                         );
                         return '<select class="form-control select-room" name="room_id" data-id="' +
+                            row.id + '">' + opts + '</select>';
+                    }
+                },
+                {
+                    data: 'deparment_code',
+                    render: function(data, type, row) {
+                        var opts = departmentOptions.replace(
+                            'value="' + (data || '') + '"',
+                            'value="' + (data || '') + '" selected'
+                        );
+                        return '<select class="form-control select-department" name="deparment_code" data-id="' +
                             row.id + '">' + opts + '</select>';
                     }
                 },
@@ -346,7 +365,7 @@
             });
         });
 
-        // AJAX cập nhật Phòng Thực Hiện
+         // AJAX cập nhật Phòng Thực Hiện
         $(document).on('change', '.select-room', function() {
             let id = $(this).data('id');
             let room_id = $(this).val();
@@ -371,6 +390,37 @@
                         }).fire({
                             icon: 'success',
                             title: 'Cập nhật phòng thực hiện thành công'
+                        });
+                    }
+                }
+            });
+        });
+
+        // AJAX cập nhật Phân Xưởng
+        $(document).on('change', '.select-department', function() {
+            let id = $(this).data('id');
+            let deparment_code = $(this).val();
+            if (!deparment_code) return;
+
+            $.ajax({
+                url: "{{ route('pages.category.maintenance.updateDepartment') }}",
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: id,
+                    deparment_code: deparment_code
+                },
+                success: function(res) {
+                    if (res.success) {
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).fire({
+                            icon: 'success',
+                            title: 'Cập nhật phân xưởng thành công'
                         });
                     }
                 }
