@@ -847,12 +847,13 @@ class DailyReportController extends Controller
                 $validator = Validator::make($request->all(), [
                     'in_production' => 'required',
                     'start' => 'required',
-                    'end' => 'required',
+                    'end' => 'required|after:start',
                 ],[
             
                     'in_production.required' => 'Hoạt Động Không Được Để Trống', 
                     'start.required' => 'Nhập Giờ Bắt Đầu',  
                     'end.required' => 'Nhập Giờ Kết Thúc',
+                    'end.after' => 'Thời Gian Kết Thúc Phải Lớn Hơn Thời Gian Bắt Đầu',
                 ]);
 
                 if ($validator->fails()) {
@@ -880,12 +881,13 @@ class DailyReportController extends Controller
                     'id' => 'required',
                     'in_production' => 'required',
                     'start' => 'required',
-                    'end' => 'required',
+                    'end' => 'required|after:start',
                 ],[
                     'id.required' => 'Chọn Hoạt Động Cần Sửa', 
                     'in_production.required' => 'Hoạt Động Không Được Để Trống', 
                     'start.required' => 'Nhập Giờ Bắt Đầu',  
                     'end.required' => 'Nhập Giờ Kết Thúc',
+                    'end.after' => 'Thời Gian Kết Thúc Phải Lớn Hơn Thời Gian Bắt Đầu',
                 ]);
 
                 //dd ($request->all(), $validator->fails());
