@@ -329,6 +329,20 @@
             z-index: 2000;
         }
 
+        .chat-window.maximized .chat-window-content,
+        .chat-window.maximized .chat-window-footer {
+            padding: 10px 5px;
+        }
+
+        .chat-window.maximized .msg-text {
+            font-size: 16px;
+        }
+
+        .chat-window.maximized .chat-input {
+            font-size: 16px;
+            padding: 10px;
+        }
+
         body.chat-maximized {
             overflow: hidden;
         }
@@ -369,22 +383,35 @@
         }
 
         .msg-item {
-            margin-bottom: 10px;
-            max-width: 85%;
+            margin-bottom: 8px;
+            max-width: 90%;
+            padding: 8px 12px;
+            position: relative;
+            align-self: flex-start; /* Tất cả căn trái */
         }
 
         .msg-item.me {
-            align-self: flex-end;
-            background: #d1ecf1;
-            padding: 6px 10px;
-            border-radius: 12px 12px 0 12px;
+            background: #003A4F;
+            color: white;
+            border-radius: 0 12px 12px 12px;
+            border-left: 3px solid #CDC717;
+            margin-left: 0;
+        }
+
+        .msg-item.me .msg-text {
+            color: white;
+        }
+
+        .msg-item.me .msg-status, .msg-item.me .msg-sender {
+            color: #ccc;
         }
 
         .msg-item.other {
             align-self: flex-start;
             background: #f1f1f1;
-            padding: 6px 10px;
-            border-radius: 12px 12px 12px 0;
+            color: #333;
+            border-radius: 0 12px 12px 12px;
+            border-left: 3px solid #ccc;
         }
 
         .msg-sender {
@@ -394,15 +421,15 @@
         }
 
         .msg-status {
-            font-size: 9px;
+            font-size: 10px;
             color: #999;
-            margin-top: 2px;
+            margin-top: 4px;
             display: flex;
-            justify-content: flex-end;
-            gap: 5px;
+            justify-content: flex-start;
+            gap: 10px;
         }
 
-        .msg-item.other .msg-status {
+        .msg-item.me .msg-status {
             justify-content: flex-start;
         }
 
@@ -711,6 +738,11 @@
             // --- HỆ THỐNG CHAT MỚI ---
             let openChatGroups = []; // Danh sách các nhóm đang mở cửa sổ chat
             let chatGroupLastTimes = {}; // Lưu trữ thời gian tin nhắn cuối cùng của từng nhóm
+            // task.md
+            // - [x] Tối ưu giao diện toàn màn hình, căn lề sát trái <!-- id: 51 -->
+            // - [x] Sửa lỗi 404 khi mở file đính kèm <!-- id: 52 -->
+            // - [x] Giảm padding ngang trong .chat-window.maximized .chat-window-content <!-- id: 53 -->
+            // - [x] Kiểm tra và tối ưu hóa hiệu năng <!-- id: 32 -->
             let currentUserId = {{ session('user')['userId'] }};
 
             function playChatSound() {
