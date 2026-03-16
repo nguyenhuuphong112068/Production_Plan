@@ -84,6 +84,8 @@ class ChatController extends Controller
      */
     public function getMessages($groupId)
     {
+        $userId = session('user')['userId'];
+
         $messages = DB::table('chat_messages as cm')
             ->join('user_management as u', 'cm.sender_id', '=', 'u.id')
             ->where('cm.group_id', $groupId)
@@ -91,7 +93,16 @@ class ChatController extends Controller
             ->orderBy('cm.created_at', 'asc')
             ->get();
 
-        return response()->json($messages);
+        // Lấy thời gian đọc cuối cùng của các thành viên khác để xác định trạng thái "Đã xem"
+        $othersLastRead = DB::table('chat_group_members')
+            ->where('group_id', $groupId)
+            ->where('user_id', '!=', $userId)
+            ->pluck('last_read_at');
+
+        return response()->json([
+            'messages' => $messages,
+            'others_last_read' => $othersLastRead
+        ]);
     }
 
     /**

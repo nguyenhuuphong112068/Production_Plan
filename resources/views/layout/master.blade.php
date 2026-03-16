@@ -223,7 +223,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: #CDC717;
+            background: #003A4F;
             color: white;
             display: flex;
             align-items: center;
@@ -319,7 +319,7 @@
 
         .chat-window-header {
             padding: 8px 12px;
-            background: #CDC717;
+            background: #003A4F;
             color: white;
             border-radius: 7px 7px 0 0;
             display: flex;
@@ -377,13 +377,20 @@
             margin-bottom: 2px;
         }
 
+        .msg-status {
+            font-size: 9px;
+            color: #999;
+            margin-top: 2px;
+            text-align: right;
+        }
+
         .chat-trigger {
             position: fixed;
             bottom: 20px;
             right: 20px;
             width: 50px;
             height: 50px;
-            background: #CDC717;
+            background: #003A4F;
             color: white;
             border-radius: 50%;
             display: flex;
@@ -897,10 +904,13 @@
 
             function loadChatMessages(groupId) {
                 let url = "{{ route('chat.messages', ':groupId') }}".replace(':groupId', groupId);
-                $.get(url, function(data) {
+                $.get(url, function(res) {
                     let html = '';
                     let currentUserId = {{ session('user')['userId'] }};
-                    data.forEach(m => {
+                    let messages = res.messages;
+                    let othersLastRead = res.others_last_read;
+
+                    messages.forEach(m => {
                         let side = m.sender_id == currentUserId ? 'me' : 'other';
                         let content = m.message || '';
                         if (m.file_path) {
@@ -912,10 +922,22 @@
                                     `<div class="mt-1"><a href="/storage/${m.file_path}" target="_blank" class="text-primary"><i class="fas fa-file-download"></i> ${m.file_name}</a></div>`;
                             }
                         }
+
+                        let statusHtml = '';
+                        if (side === 'me') {
+                            let isSeen = false;
+                            if (othersLastRead && othersLastRead.length > 0) {
+                                // Nếu có ít nhất 1 người đã đọc sau khi tin nhắn được gửi
+                                isSeen = othersLastRead.some(time => time && time >= m.created_at);
+                            }
+                            statusHtml = `<div class="msg-status">${isSeen ? 'Đã xem' : 'Đã gửi'}</div>`;
+                        }
+
                         html += `
                             <div class="msg-item ${side}">
                                 ${side === 'other' ? `<div class="msg-sender">${m.sender_name}</div>` : ''}
                                 <div class="msg-text">${content}</div>
+                                ${statusHtml}
                             </div>
                         `;
                     });
