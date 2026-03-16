@@ -506,6 +506,7 @@
                                         {{ $data->history_count ?? 0 }}
                                     </span>
                                 </button>
+                                </button>
                             </td>
 
                             <td class="text-center align-middle">
