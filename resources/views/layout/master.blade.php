@@ -281,6 +281,26 @@
             margin-left: 5px;
         }
 
+        .chat-trigger {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            background: #28a745; /* Xanh lá */
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+
+        .chat-trigger:hover {
+            transform: scale(1.1);
+        }
+
         .chat-trigger .unread-badge-total {
             position: absolute;
             top: -5px;
@@ -288,10 +308,11 @@
             background: #dc3545;
             color: white;
             border-radius: 50%;
-            padding: 2px 6px;
-            font-size: 11px;
+            padding: 1px 5px;
+            font-size: 10px;
             font-weight: bold;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
         }
 
         .online-dot {
@@ -459,27 +480,7 @@
             justify-content: flex-start;
         }
 
-        .chat-trigger {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            background: #28a745; /* Xanh lá */
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            transition: transform 0.2s;
-        }
 
-        .chat-trigger:hover {
-            transform: scale(1.1);
-        }
 
         @keyframes chat-blink {
             0% { transform: scale(1); box-shadow: 0 2px 10px rgba(40, 167, 69, 0.2); }
@@ -586,10 +587,6 @@
 
         <div id="chat-window-container" class="chat-window-container"></div>
 
-        <div class="chat-trigger" onclick="toggleChat(true)">
-            <i class="fas fa-comments"></i>
-            <span id="unread-total-badge" class="unread-badge-total d-none">0</span>
-        </div>
 
         <!-- Modal Tạo Nhóm Chat -->
         <div class="modal fade" id="createGroupModal" tabindex="-1">
