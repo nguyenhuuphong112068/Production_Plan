@@ -172,6 +172,248 @@
             padding: 3px 5px;
             font-size: 10px;
         }
+
+        /* --- CHAT CSS --- */
+        .chat-sidebar {
+            position: fixed;
+            right: -320px;
+            top: 0;
+            width: 320px;
+            height: 100%;
+            background: #fff;
+            box-shadow: -2px 0 15px rgba(0, 0, 0, 0.1);
+            z-index: 1051;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-sidebar.active {
+            right: 0;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .chat-group-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f1f1f1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .chat-group-item:hover {
+            background: #f8f9fa;
+        }
+
+        .user-initials {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #CDC717;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 14px;
+        }
+
+        .chat-group-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chat-group-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-group-last-msg {
+            font-size: 12px;
+            color: #777;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .unread-badge {
+            background: #dc3545;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            min-width: 18px;
+            text-align: center;
+            display: inline-block;
+            margin-left: 5px;
+        }
+
+        .chat-trigger .unread-badge-total {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Floating Windows */
+        .chat-window-container {
+            position: fixed;
+            bottom: 0;
+            right: 60px;
+            /* Offset from sidebar trigger if any */
+            display: flex;
+            flex-direction: row-reverse;
+            align-items: flex-end;
+            z-index: 1050;
+            pointer-events: none;
+        }
+
+        .chat-window {
+            width: 300px;
+            height: 400px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            margin-left: 10px;
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+        }
+
+        .chat-window-header {
+            padding: 8px 12px;
+            background: #CDC717;
+            color: white;
+            border-radius: 7px 7px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .chat-window-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: #fdfdfd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-window-footer {
+            padding: 8px;
+            border-top: 1px solid #eee;
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 5px;
+            font-size: 13px;
+        }
+
+        .msg-item {
+            margin-bottom: 10px;
+            max-width: 85%;
+        }
+
+        .msg-item.me {
+            align-self: flex-end;
+            background: #d1ecf1;
+            padding: 6px 10px;
+            border-radius: 12px 12px 0 12px;
+        }
+
+        .msg-item.other {
+            align-self: flex-start;
+            background: #f1f1f1;
+            padding: 6px 10px;
+            border-radius: 12px 12px 12px 0;
+        }
+
+        .msg-sender {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+
+        .chat-trigger {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #CDC717;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1040;
+            font-size: 24px;
+            transition: transform 0.2s;
+        }
+
+        .chat-trigger:hover {
+            transform: scale(1.1);
+        }
+
+        .emoji-picker {
+            position: absolute;
+            bottom: 50px;
+            right: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 5px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1060;
+        }
+
+        .emoji-item {
+            cursor: pointer;
+            font-size: 18px;
+            padding: 2px;
+            text-align: center;
+        }
+
+        .emoji-item:hover {
+            background: #f0f0f0;
+        }
     </style>
 
 </head>
@@ -208,9 +450,81 @@
             </div>
         </div>
 
+        <!-- CHAT CENTER -->
+        <div id="chat-overlay"
+            style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:1050;"
+            onclick="toggleChat(false)"></div>
+        <div id="chat-sidebar" class="chat-sidebar">
+            <div class="chat-header">
+                <h5 class="mb-0">TIN NHẮN</h5>
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="showCreateGroupModal()">
+                        <i class="fas fa-plus"></i> Nhóm
+                    </button>
+                    <button class="btn btn-sm btn-light" onclick="toggleChat(false)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-2 border-bottom">
+                <input type="text" class="form-control form-control-sm" placeholder="Tìm kiếm đồng nghiệp..."
+                    id="chatSearch" onkeyup="searchChat()">
+            </div>
+            <div class="notif-tabs" style="border-top:none;">
+                <div class="notif-tab active" id="tab-conversations" onclick="switchChatTab('conv')">Hội thoại</div>
+                <div class="notif-tab" id="tab-contacts" onclick="switchChatTab('contacts')">Danh bạ</div>
+            </div>
+            <div class="chat-list" id="chatList">
+                <!-- Data will be loaded here -->
+            </div>
+            <div class="chat-list d-none" id="contactList">
+                <!-- Users will be loaded here -->
+            </div>
+        </div>
+
+        <div id="chat-window-container" class="chat-window-container"></div>
+
+        <div class="chat-trigger" onclick="toggleChat(true)">
+            <i class="fas fa-comments"></i>
+            <span id="unread-total-badge" class="unread-badge-total d-none">0</span>
+        </div>
+
+        <!-- Modal Tạo Nhóm Chat -->
+        <div class="modal fade" id="createGroupModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tạo nhóm chat mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tên nhóm</label>
+                            <input type="text" id="newGroupName" class="form-control" placeholder="Nhập tên nhóm...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Chọn thành viên</label>
+                            <div id="userListForGroup"
+                                style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;">
+                                <!-- User list will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="button" class="btn btn-primary" onclick="submitCreateGroup()">Tạo nhóm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         @yield('model')
 
         @yield('script')
+
+        <!-- Audio for notifications -->
+        <audio id="chat-notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
+            preload="auto"></audio>
 
 
     </div>
@@ -343,7 +657,7 @@
                     notification_id: id
                 }, function() {
                     loadNotifications();
-                    
+
                     // ĐIỀU HƯỚNG ĐỘNG TỪ DATABASE
                     if (targetUrl && targetUrl !== 'null' && targetUrl !== 'undefined') {
                         window.location.href = targetUrl;
@@ -353,6 +667,344 @@
 
             loadNotifications();
             setInterval(loadNotifications, 60000);
+
+            // --- HỆ THỐNG CHAT MỚI ---
+            let openChatGroups = []; // Danh sách các nhóm đang mở cửa sổ chat
+            let chatGroupLastTimes = {}; // Lưu trữ thời gian tin nhắn cuối cùng của từng nhóm
+            let currentUserId = {{ session('user')['userId'] }};
+
+            function playChatSound() {
+                try { document.getElementById('chat-notif-sound').play(); } catch(e) {}
+            }
+
+            let blinkInterval = null;
+            let originalTitle = document.title;
+            function blinkTitle(msg) {
+                if (blinkInterval) return;
+                blinkInterval = setInterval(() => {
+                    document.title = document.title === originalTitle ? msg : originalTitle;
+                }, 1000);
+            }
+            $(window).on('focus click keydown', function() {
+                if (blinkInterval) {
+                    clearInterval(blinkInterval);
+                    blinkInterval = null;
+                    document.title = originalTitle;
+                }
+            });
+
+            window.toggleChat = function(show) {
+                if (show) {
+                    $('#chat-sidebar').addClass('active');
+                    $('#chat-overlay').fadeIn();
+                    loadChatGroups();
+                    loadContacts();
+                } else {
+                    $('#chat-sidebar').removeClass('active');
+                    $('#chat-overlay').fadeOut();
+                }
+            };
+
+            window.switchChatTab = function(tab) {
+                $('.chat-sidebar .notif-tab').removeClass('active');
+                if (tab === 'conv') {
+                    $('#tab-conversations').addClass('active');
+                    $('#chatList').removeClass('d-none');
+                    $('#contactList').addClass('d-none');
+                } else {
+                    $('#tab-contacts').addClass('active');
+                    $('#chatList').addClass('d-none');
+                    $('#contactList').removeClass('d-none');
+                }
+            };
+
+            function loadChatGroups() {
+                $.get("{{ route('chat.groups') }}", function(data) {
+                    let html = '';
+                    let totalUnread = 0;
+
+                    data.forEach(g => {
+                        let unreadHtml = g.unread_count > 0 ? `<span class="unread-badge">${g.unread_count}</span>` : '';
+                        totalUnread += g.unread_count;
+
+                        html += `
+                            <div class="chat-group-item" onclick="openChatWindow(${g.id}, '${g.display_name}')">
+                                <div class="chat-group-info">
+                                    <div class="chat-group-name">
+                                        <b>${g.display_name}</b>
+                                        ${unreadHtml}
+                                    </div>
+                                    <div class="chat-group-last-msg">${g.last_message || 'Chưa có tin nhắn'}</div>
+                                </div>
+                            </div>
+                        `;
+
+                        // Tự động mở cửa sổ chat nếu có tin nhắn mới và không phải mình gửi
+                        if (g.last_time) {
+                            if (chatGroupLastTimes[g.id] && g.last_time > chatGroupLastTimes[g.id]) {
+                                if (g.last_sender_id != currentUserId) {
+                                    playChatSound();
+                                    blinkTitle("Có tin nhắn mới...");
+                                    if (!openChatGroups.includes(g.id)) {
+                                        openChatWindow(g.id, g.display_name);
+                                    }
+                                }
+                            }
+                            chatGroupLastTimes[g.id] = g.last_time;
+                        }
+                    });
+
+                    // The original code had a block here to update lastChatCheckTime, which is now handled by chatGroupLastTimes
+                    // if (data.length > 0) {
+                    //     let maxTime = data.reduce((max, obj) => obj.last_time > max ? obj.last_time : max, lastChatCheckTime);
+                    //     lastChatCheckTime = maxTime;
+                    // }
+
+                    if (totalUnread > 0) {
+                        $('#unread-total-badge').text(totalUnread).removeClass('d-none');
+                    } else {
+                        $('#unread-total-badge').addClass('d-none');
+                    }
+
+                    $('#chatList').html(html ||
+                        '<div class="text-center p-3 text-muted">Chưa có hội thoại nào</div>');
+                });
+            }
+
+            function loadContacts() {
+                $.get("{{ route('chat.users') }}", function(data) {
+                    let html = '';
+                    data.forEach(u => {
+                        html += `
+                            <div class="chat-group-item contact-item" onclick="startDirectChat(${u.id}, '${u.fullName}')">
+                                <div class="chat-group-info">
+                                    <div class="chat-group-name"><b>${u.fullName}</b></div>
+                                    <div class="chat-group-last-msg">@${u.userName}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    $('#contactList').html(html);
+                });
+            }
+
+            window.startDirectChat = function(userId, fullName) {
+                $.post("{{ route('chat.getDirectChat') }}", {
+                    _token: "{{ csrf_token() }}",
+                    target_user_id: userId
+                }, function(group) {
+                    openChatWindow(group.id, fullName);
+                });
+            };
+
+            window.searchChat = function() {
+                let val = $('#chatSearch').val().toLowerCase();
+                $('.chat-group-item').each(function() {
+                    let text = $(this).text().toLowerCase();
+                    $(this).toggle(text.indexOf(val) > -1);
+                });
+            };
+
+            window.openChatWindow = function(groupId, groupName) {
+                if (openChatGroups.includes(groupId)) return;
+                if (openChatGroups.length >= 3) {
+                    let oldest = openChatGroups.shift();
+                    $(`#chat-window-${oldest}`).remove();
+                }
+
+                openChatGroups.push(groupId);
+                let html = `
+                    <div class="chat-window" id="chat-window-${groupId}">
+                        <div class="chat-window-header" onclick="toggleChatWindowMin(${groupId})">
+                            <span class="chat-window-title"><b>${groupName}</b></span>
+                            <div class="chat-window-actions">
+                                <i class="fas fa-minus me-2"></i>
+                                <i class="fas fa-times" onclick="closeChatWindow(event, ${groupId})"></i>
+                            </div>
+                        </div>
+                        <div class="chat-window-content" id="chat-content-${groupId}">
+                            <!-- Messages -->
+                        </div>
+                        <div class="chat-window-footer">
+                            <label class="mb-0 me-2" style="cursor:pointer">
+                                <i class="fas fa-paperclip text-muted"></i>
+                                <input type="file" style="display:none" onchange="uploadFile(this, ${groupId})">
+                            </label>
+                            <input type="text" class="chat-input" placeholder="Nhập tin nhắn..." 
+                                onkeypress="if(event.key === 'Enter') sendChatMessage(${groupId}, this)">
+                            <i class="far fa-smile ms-2 text-muted" style="cursor:pointer" onclick="toggleEmojiPicker(${groupId})"></i>
+                        </div>
+                    </div>
+                `;
+                $('#chat-window-container').append(html);
+                loadChatMessages(groupId);
+                markChatAsRead(groupId);
+                toggleChat(false);
+            };
+
+            window.markChatAsRead = function(groupId) {
+                $.post("{{ route('chat.markAsRead') }}", {
+                    _token: "{{ csrf_token() }}",
+                    group_id: groupId
+                }, function() {
+                    loadChatGroups();
+                });
+            };
+
+            window.closeChatWindow = function(event, groupId) {
+                event.stopPropagation();
+                openChatGroups = openChatGroups.filter(id => id !== groupId);
+                $(`#chat-window-${groupId}`).remove();
+            };
+
+            window.toggleChatWindowMin = function(groupId) {
+                let win = $(`#chat-window-${groupId}`);
+                if (win.height() > 50) {
+                    win.css('height', '40px');
+                } else {
+                    win.css('height', '400px');
+                }
+            };
+
+            function loadChatMessages(groupId) {
+                let url = "{{ route('chat.messages', ':groupId') }}".replace(':groupId', groupId);
+                $.get(url, function(data) {
+                    let html = '';
+                    let currentUserId = {{ session('user')['userId'] }};
+                    data.forEach(m => {
+                        let side = m.sender_id == currentUserId ? 'me' : 'other';
+                        let content = m.message || '';
+                        if (m.file_path) {
+                            if (m.file_type && m.file_type.startsWith('image/')) {
+                                content +=
+                                    `<div class="mt-1"><img src="/storage/${m.file_path}" style="max-width:100%; border-radius:5px;"></div>`;
+                            } else {
+                                content +=
+                                    `<div class="mt-1"><a href="/storage/${m.file_path}" target="_blank" class="text-primary"><i class="fas fa-file-download"></i> ${m.file_name}</a></div>`;
+                            }
+                        }
+                        html += `
+                            <div class="msg-item ${side}">
+                                ${side === 'other' ? `<div class="msg-sender">${m.sender_name}</div>` : ''}
+                                <div class="msg-text">${content}</div>
+                            </div>
+                        `;
+                    });
+                    $(`#chat-content-${groupId}`).html(html);
+                    let contentDiv = document.getElementById(`chat-content-${groupId}`);
+                    contentDiv.scrollTop = contentDiv.scrollHeight;
+                });
+            }
+
+            window.sendChatMessage = function(groupId, input) {
+                let msg = input.value;
+                if (!msg.trim()) return;
+
+                $.post("{{ route('chat.send') }}", {
+                    _token: "{{ csrf_token() }}",
+                    group_id: groupId,
+                    message: msg
+                }, function() {
+                    input.value = '';
+                    loadChatMessages(groupId);
+                });
+            };
+
+            window.uploadFile = function(input, groupId) {
+                if (!input.files || !input.files[0]) return;
+                let formData = new FormData();
+                formData.append('file', input.files[0]);
+                formData.append('group_id', groupId);
+                formData.append('_token', "{{ csrf_token() }}");
+
+                $.ajax({
+                    url: "{{ route('chat.send') }}",
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function() {
+                        loadChatMessages(groupId);
+                    }
+                });
+            };
+
+            // Polling cập nhật tin nhắn
+            setInterval(function() {
+                openChatGroups.forEach(groupId => {
+                    loadChatMessages(groupId);
+                });
+                if ($('#chat-sidebar').hasClass('active')) {
+                    loadChatGroups();
+                }
+            }, 3000);
+
+            // --- CÁC HÀM XỬ LÝ NHÓM & EMOJI ---
+            window.showCreateGroupModal = function() {
+                $.get("{{ route('chat.users') }}", function(users) {
+                    let html = '';
+                    users.forEach(u => {
+                        html += `
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="${u.id}" id="user-${u.id}" name="group_members">
+                                <label class="form-check-label" for="user-${u.id}">
+                                    ${u.fullName} (@${u.userName})
+                                </label>
+                            </div>
+                        `;
+                    });
+                    $('#userListForGroup').html(html);
+                    $('#createGroupModal').modal('show');
+                });
+            };
+
+            window.submitCreateGroup = function() {
+                let name = $('#newGroupName').val();
+                let members = [];
+                $('input[name="group_members"]:checked').each(function() {
+                    members.push($(this).val());
+                });
+
+                if (!name || members.length === 0) {
+                    alert('Vui lòng nhập tên nhóm và chọn ít nhất 1 thành viên');
+                    return;
+                }
+
+                $.post("{{ route('chat.createGroup') }}", {
+                    _token: "{{ csrf_token() }}",
+                    name: name,
+                    member_ids: members
+                }, function(res) {
+                    $('#createGroupModal').modal('hide');
+                    loadChatGroups();
+                    openChatWindow(res.id, name);
+                });
+            };
+
+            const commonEmojis = ['😀', '😂', '😍', '👍', '🙏', '❤️', '🔥', '👏', '🙄', '😮', '😢', '😡', '✅', '❌',
+                '🚀'];
+
+            window.toggleEmojiPicker = function(groupId) {
+                let existing = $(`#emoji-picker-${groupId}`);
+                if (existing.length) {
+                    existing.remove();
+                    return;
+                }
+
+                let html = `<div class="emoji-picker" id="emoji-picker-${groupId}">`;
+                commonEmojis.forEach(e => {
+                    html += `<span class="emoji-item" onclick="addEmoji(${groupId}, '${e}')">${e}</span>`;
+                });
+                html += `</div>`;
+                $(`#chat-window-${groupId}`).append(html);
+            };
+
+            window.addEmoji = function(groupId, emoji) {
+                let input = $(`#chat-window-${groupId} .chat-input`);
+                input.val(input.val() + emoji);
+                input.focus();
+                $(`#emoji-picker-${groupId}`).remove();
+            };
         })();
     </script>
 </body>
