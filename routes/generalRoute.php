@@ -20,6 +20,9 @@ Route::get('/home', [HomeController::class, 'showHomeForm'])->name('pages.genera
 
 Route::get('/switch', [SwitchProductionController::class, 'switchProduction'])->name('switch')->middleware(CheckLogin::class);
 
+Route::post('/push/subscribe', [App\Http\Controllers\General\PushController::class, 'store'])->name('push.subscribe')->middleware(CheckLogin::class);
+Route::post('/push/unsubscribe', [App\Http\Controllers\General\PushController::class, 'destroy'])->name('push.unsubscribe')->middleware(CheckLogin::class);
+
 
 
 

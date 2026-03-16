@@ -11,6 +11,7 @@
 
     @include('layout.css')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tributejs@5.1.3/dist/tribute.css">
+    <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key') }}">
     <style>
         /* NOTIFICATION DRAWER CSS */
         #notification-drawer {
@@ -1314,6 +1315,73 @@
                 input.focus();
                 $(`#emoji-picker-${groupId}`).remove();
             };
+            // --- WEB PUSH NOTIFICATION REGISTRATION ---
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                navigator.serviceWorker.register("{{ asset('sw.js') }}")
+                    .then(function(reg) {
+                        console.log('Service Worker Registered!', reg);
+                        initialiseUI(reg);
+                    })
+                    .catch(function(err) {
+                        console.log('Service Worker registration failed: ', err);
+                    });
+            }
+
+            function initialiseUI(reg) {
+                reg.pushManager.getSubscription()
+                    .then(function(subscription) {
+                        if (subscription) {
+                            console.log('User IS subscribed.');
+                            sendSubscriptionToServer(subscription);
+                        } else {
+                            console.log('User is NOT subscribed. Requesting permission...');
+                            subscribeUser(reg);
+                        }
+                    });
+            }
+
+            function subscribeUser(reg) {
+                const publicKey = document.querySelector('meta[name="vapid-public-key"]').content;
+                const applicationServerKey = urlB64ToUint8Array(publicKey);
+                
+                reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                })
+                .then(function(subscription) {
+                    console.log('User is subscribed:', subscription);
+                    sendSubscriptionToServer(subscription);
+                })
+                .catch(function(err) {
+                    console.log('Failed to subscribe the user: ', err);
+                });
+            }
+
+            function sendSubscriptionToServer(subscription) {
+                $.post("{{ route('push.subscribe') }}", {
+                    _token: "{{ csrf_token() }}",
+                    endpoint: subscription.endpoint,
+                    keys: {
+                        auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')))),
+                        p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))))
+                    }
+                });
+            }
+
+            function urlB64ToUint8Array(base64String) {
+                const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                const base64 = (base64String + padding)
+                    .replace(/\-/g, '+')
+                    .replace(/_/g, '/');
+
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+                return outputArray;
+            }
         })();
     </script>
 </body>
