@@ -319,8 +319,8 @@
         }
 
         .chat-window {
-            width: 300px;
-            height: 400px;
+            width: 450px;
+            height: 600px;
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px 8px 0 0;
