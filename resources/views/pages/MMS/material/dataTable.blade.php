@@ -1,4 +1,35 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+<style>
+    /* GRN hình tròn */
+    .status-circle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #007bff;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #007bff;
+    }
+
+    /* QC bo góc */
+    .status-pill {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 8px;
+        border: 1px solid #999;
+        font-size: 11px;
+    }
+
+    /* Approved */
+    .status-approved {
+        background: #28a745;
+        color: white;
+        border-color: #28a745;
+    }
+</style>
 <div class="content-wrapper">
     <div class="card">
 
@@ -8,50 +39,6 @@
 
         <!-- /.card-Body -->
         <div class="card-body ">
-            @php
-               $material_status = [
-                    0 => "Biệt Trữ",
-                    1 => "Approver Bởi Thủ Kho",
-                    2 => "Đã Lấy Mẫu Gọp",
-                    3 => "3 ??",
-                    4 => "Chờ Lấy Mẫu ĐT",
-                    5 => "Đã Lấy Mẫu ĐT",
-                    6 => "6 ??",
-                    7 => "Chờ Tái Kiểm",
-               ];
-
-              function lable_status(int $GRNSts, ?string $IntBatchNo): array{
-                    // Chờ tái kiểm
-                    if (!empty($IntBatchNo) && $GRNSts == 7) {
-                        return [
-                            'text'  => 'Chờ Tái Kiểm',
-                            'color' => '#dc2626', // đỏ đậm
-                        ];
-                    }
-
-                    // Chấp nhận
-                    if (!empty($IntBatchNo) && $GRNSts >= 2 && $GRNSts <= 5) {
-                        return [
-                            'text'  => 'Chấp Nhận',
-                            'color' => '#166534', // xanh lá đậm
-                        ];
-                    }
-
-                    // Đã lấy mẫu
-                    if (empty($IntBatchNo) && $GRNSts >= 2 && $GRNSts <= 5) {
-                        return [
-                            'text'  => 'Đã Lấy Mẫu',
-                            'color' => '#ca8a04', // vàng đậm
-                        ];
-                    }
-
-                    // Biệt trữ
-                    return [
-                        'text'  => 'Biệt Trữ',
-                        'color' =>  '#facc15', // vàng nhạt
-                    ];
-            }
-            @endphp
 
             <table id="data_table" class="table table-bordered table-striped">
 
@@ -60,7 +47,7 @@
                     <tr>
                         <th style = "width: 15px">STT</th>
                         <th>Mã Nguyên Liệu/GRN No.</th>
-                     
+
                         <th>Tên Nguyên Liệu</th>
                         <th>Nhà Sản Xuất</th>
                         <th>Nhà Cung Cấp</th>
@@ -71,11 +58,14 @@
                         <th>Nhập</th>
                         <th>Tồn</th>
                         <th>Định Khu</th>
-                        <th>Tình Trạng Lấy Mẫu</th>
-                        <th>Tình Trạng Nhãn/ 
-                            CoA No.
+                        {{-- <th>Tình Trạng Lấy Mẫu</th> --}}
+                        <th style="width: 5%">CoA</th>
+                        <th style="width: 1%">
+                            {{ 'GRN Status' }}
+                            <br>
+                            {{ 'Approve Status' }}
                         </th>
-                       
+
                     </tr>
                 </thead>
                 <tbody>
@@ -83,56 +73,46 @@
                     @foreach ($datas as $data)
                         <tr>
                             <td>{{ $loop->iteration }} </td>
-                            <td>{{ $data->MatID }} 
-                                {{ $data->GRNNO }}  
+                            <td>{{ $data->MatID }}
+                                {{ $data->GRNNO }}
                             </td>
                             <td>{{ $data->MatNM }} </td>
                             <td>{{ $data->Mfg }} </td>
                             <td>{{ $data->Supplier }} </td>
                             <td>{{ $data->Mfgbatchno }} </td>
                             <td>{{ $data->ARNO }} </td>
-                            <td>{{ $data->Expirydate?\Carbon\Carbon::parse($data->Expirydate)->format('d/m/Y') : '' }}</td>
-                            <td>{{ $data->Retestdate?\Carbon\Carbon::parse($data->Retestdate)->format('d/m/Y') : '' }}</td>
-                            <td>{{ round($data->{'ReceiptQuantity'},4) . " " . $data->MatUOM }} </td>
-                            <td>{{ round($data->{'Total Qty'},4) . " " . $data->MatUOM }} </td>
-                            <td>{{ $data->warehouse_id}} </td>
-                            <td>{{ $material_status[$data->GRNSts] }} </td>
-                          
-                            @php
-                                $label = lable_status($data->GRNSts, $data->warehouse_id);
-                            @endphp
+                            <td>{{ $data->Expirydate ? \Carbon\Carbon::parse($data->Expirydate)->format('d/m/Y') : '' }}
+                            </td>
+                            <td>{{ $data->Retestdate ? \Carbon\Carbon::parse($data->Retestdate)->format('d/m/Y') : '' }}
+                            </td>
+                            <td>{{ round($data->{'ReceiptQuantity'}, 4) . ' ' . $data->MatUOM }} </td>
+                            <td>{{ round($data->{'Total Qty'}, 4) . ' ' . $data->MatUOM }} </td>
+                            <td>{{ $data->warehouse_id }} </td>
+                            {{-- <td>{{ $material_status[$data->GRNSts] }} </td> --}}
+
+                            <td>{{ $data->IntBatchNo }} </td>
 
                             <td class="text-center">
-                                <span style="
-                                        background-color: {{ $label['color'] }};
-                                        color: white;
-                                        padding: 4px 12px;
-                                        border-radius: 0px;
-                                        font-size: 0.85rem;
-                                        font-weight: 600;
-                                        white-space: nowrap;
-                                ">
-                                    {{ $label['text'] }}
+                                <span class="status-circle">
+                                    {{ $data->GRNSts }}
                                 </span>
                                 <br>
-                                {{ $data->IntBatchNo }}
-
-                                
-                                @if (session('user')['userGroup'] == 'Admin')
-                                    <div> {{ $data->GRNSts }} </div>
-                                @endif
-                                
+                                <span
+                                    class="status-pill 
+                                {{ strtolower(trim($data->QCSTS)) == 'approved' ? 'status-approved' : '' }}">
+                                    {{ $data->QCSTS }}
+                                </span>
                             </td>
 
-                           
-                            
+
+
                         </tr>
                     @endforeach
 
                 </tbody>
-                </div>
-            </table>
-        
+        </div>
+        </table>
+
         <!-- /.card-body -->
     </div>
     <!-- /.card -->
@@ -170,10 +150,6 @@
                 }
             }
         });
-        
+
     });
-
-
-
-
 </script>
