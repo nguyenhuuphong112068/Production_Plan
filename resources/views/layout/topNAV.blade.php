@@ -17,10 +17,17 @@
     <ul class="navbar-nav ms-auto">
         <!-- Thông báo cũ đã được chuyển sang Floating Button -->
 
-        <li class="nav-item d-flex align-items-center" style="margin-right: 100px;">
-            <div id="notif-bell-btn">
-                <i class="far fa-bell" style="font-size: 18px; color: #555;"></i>
-                <span class="badge badge-warning" id="notif-badge-navbar" style="display:none;">0</span>
+        <li class="nav-item d-flex align-items-center" style="margin-right: 20px;">
+            <div id="notif-bell-btn" style="border: 2px solid #dc3545; border-radius: 50%; width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; cursor: pointer;">
+                <i class="far fa-bell" style="font-size: 18px; color: #dc3545;"></i>
+                <span class="badge badge-warning" id="notif-badge-navbar" style="display:none; position: absolute; top: 0; right: 0;">0</span>
+            </div>
+        </li>
+
+        <li class="nav-item d-flex align-items-center" style="margin-right: 40px;">
+            <div class="chat-trigger" onclick="toggleChat(true)">
+                <i class="fas fa-comments"></i>
+                <span id="unread-total-badge" class="unread-badge-total d-none">0</span>
             </div>
         </li>
 

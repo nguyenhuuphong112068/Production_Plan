@@ -2618,6 +2618,36 @@ class SchedualController extends Controller
                         DB::table('stage_plan_history')->insert($chunk->toArray());
                 });
 
+
+                /// Gửi thông Báo
+                $senderName = session('user')['fullName'];
+                $productionName = session('user')['production_name'];
+                $sendDate = now()->format('d/m/Y H:i');
+                $message = "{$senderName} đã Submit Lịch Sản Xuất ngày {$sendDate} PX {$productionName}";
+                $targetUrl = route('pages.Schedual.index');
+                // Logic lọc người nhận: Không gửi cho 4 phân xưởng còn lại nếu người gửi thuộc 1 trong 5 phân xưởng
+                $workshops = ['PXV1', 'PXV2', 'PXDN', 'PXTN', 'PXVH'];
+                $myWorkshop = session('user')['production_code'];
+                $targetUserIds = 'all';
+
+                if (in_array($myWorkshop, $workshops)) {
+                        $excludeWorkshops = array_diff($workshops, [$myWorkshop]);
+                        $targetUserIds = DB::table('user_management')
+                                ->where('isActive', 1)
+                                ->whereNotIn('deparment', $excludeWorkshops)
+                                ->pluck('id')
+                                ->toArray();
+                }
+          
+                \App\Http\Controllers\General\NotificationController::sendNotification(
+                        $message,
+                        'Submit Lịch Sản Xuất',
+                        null,
+                        $targetUserIds,
+                        [],
+                        $targetUrl
+                );
+
                 return response()->json(['message' => "Đã submit " . $updatedRows->count() . " lịch."]);
         }
 
