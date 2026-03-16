@@ -126,6 +126,9 @@ class ProductionPlanController extends Controller
                                         'batch_qty_pending' => $rows
                                                 ->where('status', 'Chưa làm')
                                                 ->sum('batch_qty'),
+                                        'batch_qty_not_finished' => $rows
+                                                ->whereNotIn('status', ['Hoàn Tất ĐG', 'Hủy'])
+                                                ->sum('batch_qty'),
                                 ];
                         });
 
@@ -149,6 +152,8 @@ class ProductionPlanController extends Controller
                         $item->status_counts = $summary->status_counts ?? collect();
 
                         $item->batch_qty_pending = $summary->batch_qty_pending ?? 0;
+
+                        $item->batch_qty_not_finished = $summary->batch_qty_not_finished ?? 0;
 
                         return $item;
                 });
@@ -209,7 +214,7 @@ class ProductionPlanController extends Controller
                                         }
                                 }
 
-                                $pending_plan->total_batch_qty += $item->batch_qty_pending ?? 0;
+                                $pending_plan->total_batch_qty += $item->batch_qty_not_finished ?? 0;
                         }
                 }
 
