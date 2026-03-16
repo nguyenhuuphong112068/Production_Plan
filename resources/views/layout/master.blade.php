@@ -964,6 +964,9 @@
                                 onkeypress="if(event.key === 'Enter') sendChatMessage(${groupId}, this)"
                                 onpaste="handleChatPaste(event, ${groupId})">
                             <i class="far fa-smile ms-2 text-muted" style="cursor:pointer" onclick="toggleEmojiPicker(${groupId})"></i>
+                            <button class="btn btn-sm text-success p-1 ms-1" onclick="sendChatMessage(${groupId}, $(this).siblings('.chat-input')[0])">
+                                <i class="fas fa-paper-plane" style="font-size: 1.2rem;"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -1155,13 +1158,19 @@
                 let msg = input.value;
                 if (!msg.trim()) return;
 
+                // Xóa input ngay lập tức để tạo cảm giác phản hồi nhanh
+                input.value = '';
+
                 $.post("{{ route('chat.send') }}", {
                     _token: "{{ csrf_token() }}",
                     group_id: groupId,
                     message: msg
-                }, function() {
-                    input.value = '';
+                }).done(function() {
                     loadChatMessages(groupId, true); // Force scroll khi mình gửi tin
+                }).fail(function() {
+                    // Nếu lỗi thì hoàn lại tin nhắn cho người dùng đỡ phải gõ lại
+                    input.value = msg;
+                    alert('Gửi tin nhắn thất bại, vui lòng thử lại.');
                 });
             };
 
