@@ -221,6 +221,9 @@
                 text: 'Bạn Đã Không Sử Dụng Phần Mềm Hơn 15 Phút, Tính Năng Autologout Được Kích Hoạt. Vui Lòng Đăng Nhập Lại',
                 confirmButtonColor: '#003A4F',
                 confirmButtonText: 'Đồng ý'
+            }).then(() => {
+                // Xóa tham số ?timeout=true trên URL mà không load lại trang
+                window.history.replaceState({}, document.title, window.location.pathname);
             });
         }
     });
