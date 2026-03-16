@@ -280,6 +280,17 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            background: #28a745;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 5px;
+            vertical-align: middle;
+            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        }
+
         /* Floating Windows */
         .chat-window-container {
             position: fixed;
@@ -725,6 +736,7 @@
 
                     data.forEach(g => {
                         let unreadHtml = g.unread_count > 0 ? `<span class="unread-badge">${g.unread_count}</span>` : '';
+                        let onlineHtml = g.is_online ? `<span class="online-dot" title="Online"></span>` : '';
                         totalUnread += g.unread_count;
 
                         html += `
@@ -732,6 +744,7 @@
                                 <div class="chat-group-info">
                                     <div class="chat-group-name">
                                         <b>${g.display_name}</b>
+                                        ${onlineHtml}
                                         ${unreadHtml}
                                     </div>
                                     <div class="chat-group-last-msg">${g.last_message || 'Chưa có tin nhắn'}</div>
@@ -775,10 +788,14 @@
                 $.get("{{ route('chat.users') }}", function(data) {
                     let html = '';
                     data.forEach(u => {
+                        let onlineHtml = u.is_online ? `<span class="online-dot" title="Online"></span>` : '';
                         html += `
                             <div class="chat-group-item contact-item" onclick="startDirectChat(${u.id}, '${u.fullName}')">
                                 <div class="chat-group-info">
-                                    <div class="chat-group-name"><b>${u.fullName}</b></div>
+                                    <div class="chat-group-name">
+                                        <b>${u.fullName}</b>
+                                        ${onlineHtml}
+                                    </div>
                                     <div class="chat-group-last-msg">@${u.userName}</div>
                                 </div>
                             </div>
