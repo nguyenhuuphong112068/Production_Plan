@@ -461,7 +461,7 @@
 
         .chat-trigger {
             position: fixed;
-            bottom: 20px;
+            top: 100px;
             right: 20px;
             width: 50px;
             height: 50px;
@@ -479,6 +479,16 @@
 
         .chat-trigger:hover {
             transform: scale(1.1);
+        }
+
+        @keyframes chat-blink {
+            0% { transform: scale(1); box-shadow: 0 2px 10px rgba(40, 167, 69, 0.2); }
+            50% { transform: scale(1.1); box-shadow: 0 0 20px rgba(40, 167, 69, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 2px 10px rgba(40, 167, 69, 0.2); }
+        }
+
+        .chat-trigger.blinking {
+            animation: chat-blink 1s infinite;
         }
 
         .emoji-picker {
@@ -867,8 +877,10 @@
 
                     if (totalUnread > 0) {
                         $('#unread-total-badge').text(totalUnread).removeClass('d-none');
+                        $('.chat-trigger').addClass('blinking');
                     } else {
                         $('#unread-total-badge').addClass('d-none');
+                        $('.chat-trigger').removeClass('blinking');
                     }
 
                     $('#chatList').html(html ||
@@ -1170,13 +1182,12 @@
             };
 
             // Polling cập nhật tin nhắn
+            loadChatGroups(); // Gọi ngay lần đầu khi load trang
             setInterval(function() {
                 openChatGroups.forEach(groupId => {
                     loadChatMessages(groupId);
                 });
-                if ($('#chat-sidebar').hasClass('active')) {
-                    loadChatGroups();
-                }
+                loadChatGroups(); // Luôn gọi để cập nhật Badge chưa đọc và hiệu ứng nhấp nháy
             }, 3000);
 
             // --- CÁC HÀM XỬ LÝ NHÓM & EMOJI ---
