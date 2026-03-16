@@ -57,6 +57,19 @@ class ChatController extends Controller
             }
             
             $group->unread_count = $query->count();
+
+            // Tính trạng thái online (nếu là chat 1-1)
+            if ($group->type == 0) {
+                $otherMember = DB::table('chat_group_members as cgm')
+                    ->join('user_management as u', 'cgm.user_id', '=', 'u.id')
+                    ->where('cgm.group_id', $group->id)
+                    ->where('cgm.user_id', '!=', $userId)
+                    ->select('u.last_activity')
+                    ->first();
+                
+                $fiveMinsAgo = now()->subMinutes(5);
+                $group->is_online = ($otherMember && $otherMember->last_activity && $otherMember->last_activity > $fiveMinsAgo);
+            }
         }
 
         return response()->json($groups);
@@ -156,11 +169,17 @@ class ChatController extends Controller
      */
     public function getAllUsers()
     {
+        $fiveMinsAgo = now()->subMinutes(5);
         $users = DB::table('user_management')
             ->where('isActive', 1)
             ->where('id', '!=', session('user')['userId'])
-            ->select('id', 'fullName', 'userName')
+            ->select('id', 'fullName', 'userName', 'last_activity')
             ->get();
+            
+        foreach ($users as $user) {
+            $user->is_online = ($user->last_activity && $user->last_activity > $fiveMinsAgo);
+        }
+        
         return response()->json($users);
     }
 
