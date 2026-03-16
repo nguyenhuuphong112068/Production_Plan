@@ -68,7 +68,7 @@
 
         function logout() {
             // Chuyển hướng người dùng về trang login kèm tham số báo hết hạn
-            window.location.href = "{{ route('login') }}?timeout=true";
+            window.location.replace("{{ route('login') }}?timeout=true");
         }
 
         // Các sự kiện được coi là người dùng đang hoạt động
