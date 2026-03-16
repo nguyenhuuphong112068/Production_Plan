@@ -329,7 +329,18 @@
             display: flex;
             flex-direction: column;
             pointer-events: auto;
-            transition: width 0.3s, height 0.3s;
+            position: relative;
+        }
+
+        .chat-resizer {
+            width: 15px;
+            height: 15px;
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            cursor: nw-resize;
+            z-index: 10;
+            background: transparent;
         }
 
         .chat-window.maximized {
@@ -755,7 +766,8 @@
             // task.md
             // - [x] Tối ưu giao diện toàn màn hình, căn lề sát trái <!-- id: 51 -->
             // - [x] Sửa lỗi 404 khi mở file đính kèm <!-- id: 52 -->
-            // - [x] Giảm padding ngang trong .chat-window.maximized .chat-window-content <!-- id: 53 -->
+            // - [x] Tinh chỉnh màu sắc chat nhẹ nhàng, dễ nhìn <!-- id: 54 -->
+            // - [x] Sửa lỗi tự động cuộn khi đang xem tin nhắn cũ <!-- id: 55 -->
             // - [x] Kiểm tra và tối ưu hóa hiệu năng <!-- id: 32 -->
             let currentUserId = {{ session('user')['userId'] }};
 
@@ -916,6 +928,7 @@
                 openChatGroups.push(groupId);
                 let html = `
                     <div class="chat-window" id="chat-window-${groupId}">
+                        <div class="chat-resizer" onmousedown="initChatResize(event, ${groupId})"></div>
                         <div class="chat-window-header" onclick="handleChatHeaderClick(${groupId})" ondblclick="toggleChatWindowMax(${groupId})">
                             <span class="chat-window-title">
                                 ${onlineHtml}
@@ -935,13 +948,14 @@
                                 <input type="file" style="display:none" onchange="uploadFile(this, ${groupId})">
                             </label>
                             <input type="text" class="chat-input" placeholder="Nhập tin nhắn..." 
-                                onkeypress="if(event.key === 'Enter') sendChatMessage(${groupId}, this)">
+                                onkeypress="if(event.key === 'Enter') sendChatMessage(${groupId}, this)"
+                                onpaste="handleChatPaste(event, ${groupId})">
                             <i class="far fa-smile ms-2 text-muted" style="cursor:pointer" onclick="toggleEmojiPicker(${groupId})"></i>
                         </div>
                     </div>
                 `;
                 $('#chat-window-container').append(html);
-                loadChatMessages(groupId);
+                loadChatMessages(groupId, true);
                 markChatAsRead(groupId);
                 toggleChat(false);
             };
@@ -1010,8 +1024,13 @@
                 }, 350);
             };
 
-            function loadChatMessages(groupId) {
+            function loadChatMessages(groupId, forceScroll = false) {
                 let url = "{{ route('chat.messages', ':groupId') }}".replace(':groupId', groupId);
+                let contentDiv = document.getElementById(`chat-content-${groupId}`);
+                
+                // Kiểm tra xem người dùng có đang ở gần đáy không (sai số 50px)
+                let isAtBottom = contentDiv ? (contentDiv.scrollHeight - contentDiv.scrollTop <= contentDiv.clientHeight + 50) : true;
+
                 $.get(url, function(res) {
                     let html = '';
                     let currentUserId = {{ session('user')['userId'] }};
@@ -1054,8 +1073,11 @@
                         `;
                     });
                     $(`#chat-content-${groupId}`).html(html);
-                    let contentDiv = document.getElementById(`chat-content-${groupId}`);
-                    contentDiv.scrollTop = contentDiv.scrollHeight;
+                    
+                    if (forceScroll || isAtBottom) {
+                        let div = document.getElementById(`chat-content-${groupId}`);
+                        if (div) div.scrollTop = div.scrollHeight;
+                    }
                 });
             }
 
@@ -1069,18 +1091,36 @@
                     message: msg
                 }, function() {
                     input.value = '';
-                    loadChatMessages(groupId);
+                    loadChatMessages(groupId, true); // Force scroll khi mình gửi tin
                 });
             };
 
             window.uploadFile = function(input, groupId) {
                 if (!input.files || !input.files[0]) return;
-                let file = input.files[0];
+                performFileUpload(input.files[0], groupId, function() {
+                    input.value = ''; // Reset input
+                });
+            };
+
+            window.handleChatPaste = function(event, groupId) {
+                let items = (event.clipboardData || event.originalEvent.clipboardData).items;
+                for (let index in items) {
+                    let item = items[index];
+                    if (item.kind === 'file' && item.type.startsWith('image/')) {
+                        let blob = item.getAsFile();
+                        let fileName = "pasted_image_" + moment().format('YYYYMMDD_HHmmss') + ".png";
+                        let file = new File([blob], fileName, { type: item.type });
+                        performFileUpload(file, groupId);
+                    }
+                }
+            };
+
+            function performFileUpload(file, groupId, callback = null) {
                 let formData = new FormData();
                 formData.append('file', file);
                 formData.append('group_id', groupId);
                 formData.append('_token', "{{ csrf_token() }}");
-                formData.append('message', '[File đính kèm: ' + file.name + ']');
+                formData.append('message', '[Hình ảnh dán: ' + file.name + ']');
 
                 $.ajax({
                     url: "{{ route('chat.send') }}",
@@ -1088,18 +1128,45 @@
                     data: formData,
                     processData: false,
                     contentType: false,
-                    beforeSend: function() {
-                        // Có thể thêm loading indicator ở đây
-                    },
                     success: function(res) {
-                        input.value = ''; // Reset input
-                        loadChatMessages(groupId);
-                        loadChatGroups(); // Cập nhật tin nhắn mới nhất ở sidebar
+                        if (callback) callback();
+                        loadChatMessages(groupId, true);
+                        loadChatGroups();
                     },
                     error: function(xhr) {
-                        alert('Lỗi tải lên file: ' + (xhr.responseJSON?.message || 'Vui lòng thử lại'));
+                        alert('Lỗi tải lên hình ảnh: ' + (xhr.responseJSON?.message || 'Vui lòng thử lại'));
                     }
                 });
+            }
+
+            window.initChatResize = function(e, groupId) {
+                let win = document.getElementById(`chat-window-${groupId}`);
+                if (!win || win.classList.contains('maximized')) return;
+
+                let startX = e.clientX;
+                let startY = e.clientY;
+                let startWidth = win.offsetWidth;
+                let startHeight = win.offsetHeight;
+
+                function doResize(e) {
+                    let newWidth = startWidth + (startX - e.clientX);
+                    let newHeight = startHeight + (startY - e.clientY);
+
+                    // Limits
+                    if (newWidth >= 250 && newWidth <= 800) win.style.width = newWidth + 'px';
+                    
+                    // Giới hạn chiều cao: Tối thiểu 100px, tối đa là chiều cao màn hình trừ đi 100px để không vượt quá header phần mềm
+                    let maxHeight = window.innerHeight - 100;
+                    if (newHeight >= 100 && newHeight <= maxHeight) win.style.height = newHeight + 'px';
+                }
+
+                function stopResize() {
+                    window.removeEventListener('mousemove', doResize);
+                    window.removeEventListener('mouseup', stopResize);
+                }
+
+                window.addEventListener('mousemove', doResize);
+                window.addEventListener('mouseup', stopResize);
             };
 
             // Polling cập nhật tin nhắn
