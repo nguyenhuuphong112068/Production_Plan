@@ -206,6 +206,19 @@
             overflow-y: auto;
         }
 
+        .chat-tab-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: #666;
+            border-bottom: 2px solid transparent;
+        }
+
+        .chat-tab-item.active {
+            color: #28a745;
+            border-bottom: 2px solid #28a745;
+            font-weight: bold;
+        }
+
         .chat-group-item {
             padding: 12px 15px;
             border-bottom: 1px solid #f1f1f1;
@@ -222,15 +235,15 @@
         .user-initials {
             width: 40px;
             height: 40px;
-            border-radius: 50%;
-            background: #003A4F;
+            background: #28a745; /* Màu xanh lá chủ đạo */
             color: white;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             margin-right: 12px;
-            font-size: 14px;
+            font-size: 16px;
         }
 
         .chat-group-info {
@@ -244,6 +257,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: #28a745; /* Màu tên người dùng */
         }
 
         .chat-group-last-msg {
@@ -349,7 +363,7 @@
 
         .chat-window-header {
             padding: 8px 12px;
-            background: #003A4F;
+            background: #28a745; /* Xanh lá */
             color: white;
             border-radius: 7px 7px 0 0;
             display: flex;
@@ -362,7 +376,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 10px;
-            background: #fdfdfd;
+            background: #ffffff; /* Trắng tinh khiết cho thoáng */
             display: flex;
             flex-direction: column;
         }
@@ -391,33 +405,34 @@
         }
 
         .msg-item.me {
-            background: #003A4F;
-            color: white;
+            background: #e8f5e9; /* Xanh lá cực nhạt */
+            color: #1b5e20; /* Chữ xanh lá đậm */
             border-radius: 0 12px 12px 12px;
-            border-left: 3px solid #CDC717;
+            border-left: 3px solid #81c784; /* Viền xanh lá sáng */
             margin-left: 0;
         }
 
         .msg-item.me .msg-text {
-            color: white;
+            color: #1b5e20;
         }
 
         .msg-item.me .msg-status, .msg-item.me .msg-sender {
-            color: #ccc;
+            color: #666;
         }
 
         .msg-item.other {
             align-self: flex-start;
-            background: #f1f1f1;
+            background: #f5f5f5; /* Xám cực nhạt */
             color: #333;
             border-radius: 0 12px 12px 12px;
-            border-left: 3px solid #ccc;
+            border-left: 3px solid #e0e0e0; /* Viền xám nhạt */
         }
 
         .msg-sender {
-            font-size: 10px;
-            color: #888;
-            margin-bottom: 2px;
+            font-size: 11px;
+            color: #28a745; /* Màu tên người gửi trong chat */
+            font-weight: bold;
+            margin-bottom: 4px;
         }
 
         .msg-status {
@@ -439,16 +454,15 @@
             right: 20px;
             width: 50px;
             height: 50px;
-            background: #003A4F;
+            background: #28a745; /* Xanh lá */
             color: white;
             border-radius: 50%;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            z-index: 1040;
-            font-size: 24px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
             transition: transform 0.2s;
         }
 
