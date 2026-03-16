@@ -976,12 +976,13 @@
                         let side = m.sender_id == currentUserId ? 'me' : 'other';
                         let content = m.message || '';
                         if (m.file_path) {
+                            let fPath = m.file_path.startsWith('http') ? m.file_path : (m.file_path.startsWith('/') ? m.file_path : '/storage/' + m.file_path);
                             if (m.file_type && m.file_type.startsWith('image/')) {
                                 content +=
-                                    `<div class="mt-1"><img src="/storage/${m.file_path}" style="max-width:100%; border-radius:5px;"></div>`;
+                                    `<div class="mt-1"><img src="${fPath}" style="max-width:100%; border-radius:5px; cursor:pointer;" onclick="window.open('${fPath}', '_blank')"></div>`;
                             } else {
                                 content +=
-                                    `<div class="mt-1"><a href="/storage/${m.file_path}" target="_blank" class="text-primary"><i class="fas fa-file-download"></i> ${m.file_name}</a></div>`;
+                                    `<div class="mt-1"><a href="${fPath}" target="_blank" class="text-primary font-weight-bold"><i class="fas fa-file-download"></i> ${m.file_name || 'Tải xuống File'}</a></div>`;
                             }
                         }
 
@@ -1028,10 +1029,12 @@
 
             window.uploadFile = function(input, groupId) {
                 if (!input.files || !input.files[0]) return;
+                let file = input.files[0];
                 let formData = new FormData();
-                formData.append('file', input.files[0]);
+                formData.append('file', file);
                 formData.append('group_id', groupId);
                 formData.append('_token', "{{ csrf_token() }}");
+                formData.append('message', '[File đính kèm: ' + file.name + ']');
 
                 $.ajax({
                     url: "{{ route('chat.send') }}",
@@ -1039,8 +1042,16 @@
                     data: formData,
                     processData: false,
                     contentType: false,
-                    success: function() {
+                    beforeSend: function() {
+                        // Có thể thêm loading indicator ở đây
+                    },
+                    success: function(res) {
+                        input.value = ''; // Reset input
                         loadChatMessages(groupId);
+                        loadChatGroups(); // Cập nhật tin nhắn mới nhất ở sidebar
+                    },
+                    error: function(xhr) {
+                        alert('Lỗi tải lên file: ' + (xhr.responseJSON?.message || 'Vui lòng thử lại'));
                     }
                 });
             };
