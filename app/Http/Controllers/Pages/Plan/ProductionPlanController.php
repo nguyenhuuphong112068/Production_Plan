@@ -1291,6 +1291,31 @@ class ProductionPlanController extends Controller
                         'send_date' => now(),
                 ]);
 
+                // --- GỬI THÔNG BÁO TỰ ĐỘNG ---
+                $plan = DB::table('plan_list')->where('id', $request->plan_list_id)->first();
+                $senderName = session('user')['fullName'];
+                $productionName = session('user')['production_name'];
+                $sendDate = date('d/m/Y H:i');
+
+                $message = "{$senderName} đã Gửi {$plan->name} ngày {$sendDate} PX {$productionName}";
+                $targetUrl = route('pages.plan.production.open', [
+                        '_token' => csrf_token(),
+                        'plan_list_id' => $request->plan_list_id,
+                        'month' => $plan->month,
+                        'send' => $plan->send,
+                        'name' => $plan->name
+                ]);
+
+                \App\Http\Controllers\General\NotificationController::sendNotification(
+                        $message,
+                        'Gửi Kế Hoạch',
+                        $request->plan_list_id,
+                        'all',
+                        [],
+                        $targetUrl
+                );
+                // -----------------------------
+
                 return redirect()->route('pages.plan.production.list');
         }
 

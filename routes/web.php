@@ -21,6 +21,7 @@ require_once(__DIR__ . '/MMSRoute.php');
 
 require_once(__DIR__ . '/exportExcelRoute.php');
 require_once(__DIR__ . '/n8nRoute.php');
+require_once(__DIR__ . '/NotificationRoute.php');
 
 ?>
 
