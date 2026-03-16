@@ -91,8 +91,11 @@ class ChatController extends Controller
             ->join('user_management as u', 'cm.sender_id', '=', 'u.id')
             ->where('cm.group_id', $groupId)
             ->select('cm.*', 'u.fullName as sender_name')
-            ->orderBy('cm.created_at', 'asc')
-            ->get();
+            ->orderBy('cm.created_at', 'desc')
+            ->limit(20)
+            ->get()
+            ->reverse()
+            ->values();
 
         // Lấy thời gian đọc cuối cùng của các thành viên khác để xác định trạng thái "Đã xem"
         $othersLastRead = DB::table('chat_group_members')
@@ -123,7 +126,36 @@ class ChatController extends Controller
             $file = $request->file('file');
             $fileName = $file->getClientOriginalName();
             $fileType = $file->getClientMimeType();
-            $filePath = $file->store('chat_files', 'public');
+            
+            // LOGIC NÉN ẢNH TỰ ĐỘNG
+            if (Str::startsWith($fileType, 'image/') && extension_loaded('gd')) {
+                $uniqueName = Str::random(40) . '.jpg'; // Luôn lưu dạng jpg để nén tốt nhất
+                $tempPath = storage_path('app/temp_' . $uniqueName);
+                
+                // Tạo ảnh từ file nguồn
+                $image = null;
+                if ($fileType == 'image/jpeg' || $fileType == 'image/jpg') $image = imagecreatefromjpeg($file->getRealPath());
+                elseif ($fileType == 'image/png') $image = imagecreatefrompng($file->getRealPath());
+                elseif ($fileType == 'image/gif') $image = imagecreatefromgif($file->getRealPath());
+                elseif ($fileType == 'image/webp') $image = imagecreatefromwebp($file->getRealPath());
+
+                if ($image) {
+                    // Tự động xoay ảnh nếu có EXIF (nếu cần, bỏ qua cho nhẹ)
+                    // Nén và lưu với chất lượng 70%
+                    imagejpeg($image, $tempPath, 70);
+                    imagedestroy($image);
+                    
+                    $filePath = 'chat_files/' . $uniqueName;
+                    Storage::disk('public')->put($filePath, file_get_contents($tempPath));
+                    unlink($tempPath); // Xóa file tạm
+                    $fileType = 'image/jpeg';
+                    $fileName = Str::slug(pathinfo($fileName, PATHINFO_FILENAME)) . '.jpg';
+                } else {
+                    $filePath = $file->store('chat_files', 'public');
+                }
+            } else {
+                $filePath = $file->store('chat_files', 'public');
+            }
         }
 
         $messageId = DB::table('chat_messages')->insertGetId([
