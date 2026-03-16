@@ -381,7 +381,13 @@
             font-size: 9px;
             color: #999;
             margin-top: 2px;
-            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 5px;
+        }
+
+        .msg-item.other .msg-status {
+            justify-content: flex-start;
         }
 
         .chat-trigger {
@@ -924,13 +930,16 @@
                         }
 
                         let statusHtml = '';
+                        let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
+
                         if (side === 'me') {
                             let isSeen = false;
                             if (othersLastRead && othersLastRead.length > 0) {
-                                // Nếu có ít nhất 1 người đã đọc sau khi tin nhắn được gửi
                                 isSeen = othersLastRead.some(time => time && time >= m.created_at);
                             }
-                            statusHtml = `<div class="msg-status">${isSeen ? 'Đã xem' : 'Đã gửi'}</div>`;
+                            statusHtml = `<div class="msg-status">${timeHtml} <span>${isSeen ? 'Đã xem' : 'Đã gửi'}</span></div>`;
+                        } else {
+                            statusHtml = `<div class="msg-status">${timeHtml}</div>`;
                         }
 
                         html += `
