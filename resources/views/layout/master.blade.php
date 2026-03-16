@@ -970,6 +970,13 @@
                 loadChatMessages(groupId, true);
                 markChatAsRead(groupId);
                 toggleChat(false);
+
+                // Thêm sự kiện cuộn để tải thêm tin nhắn
+                $(`#chat-content-${groupId}`).on('scroll', function() {
+                    if ($(this).scrollTop() === 0) {
+                        loadMoreMessages(groupId);
+                    }
+                });
             };
 
             window.markChatAsRead = function(groupId) {
@@ -1039,56 +1046,106 @@
             function loadChatMessages(groupId, forceScroll = false) {
                 let url = "{{ route('chat.messages', ':groupId') }}".replace(':groupId', groupId);
                 let contentDiv = document.getElementById(`chat-content-${groupId}`);
-                
-                // Kiểm tra xem người dùng có đang ở gần đáy không (sai số 50px)
                 let isAtBottom = contentDiv ? (contentDiv.scrollHeight - contentDiv.scrollTop <= contentDiv.clientHeight + 50) : true;
 
                 $.get(url, function(res) {
-                    let html = '';
+                    let container = $(`#chat-content-${groupId}`);
                     let currentUserId = {{ session('user')['userId'] }};
                     let messages = res.messages;
                     let othersLastRead = res.others_last_read;
 
-                    messages.forEach(m => {
-                        let side = m.sender_id == currentUserId ? 'me' : 'other';
-                        let content = m.message || '';
-                        if (m.file_path) {
-                            let fPath = m.file_path.startsWith('http') ? m.file_path : (m.file_path.startsWith('/') ? m.file_path : '/storage/' + m.file_path);
-                            if (m.file_type && m.file_type.startsWith('image/')) {
-                                content +=
-                                    `<div class="mt-1"><img src="${fPath}" style="max-width:100%; border-radius:5px; cursor:pointer;" onclick="window.open('${fPath}', '_blank')"></div>`;
-                            } else {
-                                content +=
-                                    `<div class="mt-1"><a href="${fPath}" target="_blank" class="text-primary font-weight-bold"><i class="fas fa-file-download"></i> ${m.file_name || 'Tải xuống File'}</a></div>`;
+                    // Nếu là lần đầu load hoặc forceScroll, nạp lại toàn bộ
+                    if (forceScroll || container.find('.msg-item').length === 0) {
+                        let html = renderMessages(messages, currentUserId, othersLastRead);
+                        container.html(html);
+                        if (forceScroll || isAtBottom) {
+                            let div = document.getElementById(`chat-content-${groupId}`);
+                            if (div) div.scrollTop = div.scrollHeight;
+                        }
+                    } else {
+                        // Polling: Chỉ thêm tin nhắn mới nhất nếu chưa có
+                        let lastId = container.find('.msg-item').last().data('id');
+                        let newMessages = messages.filter(m => m.id > (lastId || 0));
+                        if (newMessages.length > 0) {
+                            container.append(renderMessages(newMessages, currentUserId, othersLastRead));
+                            if (isAtBottom) {
+                                let div = document.getElementById(`chat-content-${groupId}`);
+                                if (div) div.scrollTop = div.scrollHeight;
                             }
                         }
+                        // Cập nhật trạng thái "Đã xem" cho tin nhắn cũ hơn
+                        updateMessagesStatus(groupId, othersLastRead);
+                    }
+                });
+            }
 
-                        let statusHtml = '';
-                        let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
+            function loadMoreMessages(groupId) {
+                let container = $(`#chat-content-${groupId}`);
+                let firstMsg = container.find('.msg-item').first();
+                let firstId = firstMsg.data('id');
+                if (!firstId) return;
 
-                        if (side === 'me') {
-                            let isSeen = false;
-                            if (othersLastRead && othersLastRead.length > 0) {
-                                isSeen = othersLastRead.some(time => time && time >= m.created_at);
-                            }
-                            statusHtml = `<div class="msg-status">${timeHtml} <span>${isSeen ? 'Đã xem' : 'Đã gửi'}</span></div>`;
-                        } else {
-                            statusHtml = `<div class="msg-status">${timeHtml}</div>`;
-                        }
+                // Tránh gọi liên tục
+                if (container.data('loading')) return;
+                container.data('loading', true);
 
-                        html += `
-                            <div class="msg-item ${side}">
-                                ${side === 'other' ? `<div class="msg-sender">${m.sender_name}</div>` : ''}
-                                <div class="msg-text">${content}</div>
-                                ${statusHtml}
-                            </div>
-                        `;
-                    });
-                    $(`#chat-content-${groupId}`).html(html);
+                let url = "{{ route('chat.messages', ':groupId') }}".replace(':groupId', groupId);
+                $.get(url, { before_id: firstId }, function(res) {
+                    container.data('loading', false);
+                    let messages = res.messages;
+                    if (messages.length === 0) return;
+
+                    let currentUserId = {{ session('user')['userId'] }};
+                    let othersLastRead = res.others_last_read;
                     
-                    if (forceScroll || isAtBottom) {
-                        let div = document.getElementById(`chat-content-${groupId}`);
-                        if (div) div.scrollTop = div.scrollHeight;
+                    let oldScrollHeight = container[0].scrollHeight;
+                    container.prepend(renderMessages(messages, currentUserId, othersLastRead));
+                    
+                    // Giữ vị trí cuộn
+                    container.scrollTop(container[0].scrollHeight - oldScrollHeight);
+                });
+            }
+
+            function renderMessages(messages, currentUserId, othersLastRead) {
+                let html = '';
+                messages.forEach(m => {
+                    let side = m.sender_id == currentUserId ? 'me' : 'other';
+                    let content = m.message || '';
+                    if (m.file_path) {
+                        let fPath = m.file_path.startsWith('http') ? m.file_path : (m.file_path.startsWith('/') ? m.file_path : '/storage/' + m.file_path);
+                        if (m.file_type && m.file_type.startsWith('image/')) {
+                            content += `<div class="mt-1"><img src="${fPath}" style="max-width:100%; border-radius:5px; cursor:pointer;" onclick="window.open('${fPath}', '_blank')"></div>`;
+                        } else {
+                            content += `<div class="mt-1"><a href="${fPath}" target="_blank" class="text-primary font-weight-bold"><i class="fas fa-file-download"></i> ${m.file_name || 'Tải xuống File'}</a></div>`;
+                        }
+                    }
+
+                    let statusHtml = '';
+                    let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
+                    if (side === 'me') {
+                        let isSeen = othersLastRead && othersLastRead.some(time => time && time >= m.created_at);
+                        statusHtml = `<div class="msg-status" data-time="${m.created_at}">${timeHtml} <span>${isSeen ? 'Đã xem' : 'Đã gửi'}</span></div>`;
+                    } else {
+                        statusHtml = `<div class="msg-status">${timeHtml}</div>`;
+                    }
+
+                    html += `
+                        <div class="msg-item ${side}" data-id="${m.id}" data-time="${m.created_at}">
+                            ${side === 'other' ? `<div class="msg-sender">${m.sender_name}</div>` : ''}
+                            <div class="msg-text">${content}</div>
+                            ${statusHtml}
+                        </div>
+                    `;
+                });
+                return html;
+            }
+
+            function updateMessagesStatus(groupId, othersLastRead) {
+                $(`#chat-content-${groupId} .msg-item.me`).each(function() {
+                    let msgTime = $(this).data('time');
+                    let isSeen = othersLastRead && othersLastRead.some(time => time && time >= msgTime);
+                    if (isSeen) {
+                        $(this).find('.msg-status span').text('Đã xem');
                     }
                 });
             }

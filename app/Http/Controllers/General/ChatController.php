@@ -83,15 +83,21 @@ class ChatController extends Controller
     /**
      * Lấy danh sách tin nhắn trong một phòng
      */
-    public function getMessages($groupId)
+    public function getMessages(Request $request, $groupId)
     {
         $userId = session('user')['userId'];
+        $beforeId = $request->query('before_id');
 
-        $messages = DB::table('chat_messages as cm')
+        $query = DB::table('chat_messages as cm')
             ->join('user_management as u', 'cm.sender_id', '=', 'u.id')
             ->where('cm.group_id', $groupId)
-            ->select('cm.*', 'u.fullName as sender_name')
-            ->orderBy('cm.created_at', 'desc')
+            ->select('cm.*', 'u.fullName as sender_name');
+
+        if ($beforeId) {
+            $query->where('cm.id', '<', $beforeId);
+        }
+
+        $messages = $query->orderBy('cm.created_at', 'desc')
             ->limit(20)
             ->get()
             ->reverse()
