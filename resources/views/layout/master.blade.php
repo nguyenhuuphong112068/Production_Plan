@@ -285,8 +285,9 @@
             position: relative;
             width: 38px;
             height: 38px;
-            background: #28a745; /* Xanh lá */
-            color: white;
+            background: transparent; 
+            border: 2px solid #CDC717;
+            color: #CDC717;
             border-radius: 50%;
             display: flex;
             justify-content: center;
@@ -299,6 +300,8 @@
 
         .chat-trigger:hover {
             transform: scale(1.1);
+            border-color: #e5df18;
+            color: #e5df18;
         }
 
         .chat-trigger .unread-badge-total {
@@ -483,9 +486,9 @@
 
 
         @keyframes chat-blink {
-            0% { transform: scale(1); box-shadow: 0 2px 10px rgba(40, 167, 69, 0.2); }
-            50% { transform: scale(1.1); box-shadow: 0 0 20px rgba(40, 167, 69, 0.6); }
-            100% { transform: scale(1); box-shadow: 0 2px 10px rgba(40, 167, 69, 0.2); }
+            0% { transform: scale(1); box-shadow: 0 0 5px rgba(205, 199, 23, 0.2); }
+            50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(205, 199, 23, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 0 5px rgba(205, 199, 23, 0.2); }
         }
 
         .chat-trigger.blinking {
