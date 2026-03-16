@@ -277,7 +277,7 @@
             padding: 2px 6px;
             font-size: 11px;
             font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
         .online-dot {
@@ -286,9 +286,9 @@
             background: #28a745;
             border-radius: 50%;
             display: inline-block;
-            margin-left: 5px;
+            margin-right: 5px;
             vertical-align: middle;
-            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+            box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
         }
 
         /* Floating Windows */
@@ -685,11 +685,14 @@
             let currentUserId = {{ session('user')['userId'] }};
 
             function playChatSound() {
-                try { document.getElementById('chat-notif-sound').play(); } catch(e) {}
+                try {
+                    document.getElementById('chat-notif-sound').play();
+                } catch (e) {}
             }
 
             let blinkInterval = null;
             let originalTitle = document.title;
+
             function blinkTitle(msg) {
                 if (blinkInterval) return;
                 blinkInterval = setInterval(() => {
@@ -735,16 +738,18 @@
                     let totalUnread = 0;
 
                     data.forEach(g => {
-                        let unreadHtml = g.unread_count > 0 ? `<span class="unread-badge">${g.unread_count}</span>` : '';
-                        let onlineHtml = g.is_online ? `<span class="online-dot" title="Online"></span>` : '';
+                        let unreadHtml = g.unread_count > 0 ?
+                            `<span class="unread-badge">${g.unread_count}</span>` : '';
+                        let onlineHtml = g.is_online ?
+                            `<span class="online-dot" title="Online"></span>` : '';
                         totalUnread += g.unread_count;
 
                         html += `
-                            <div class="chat-group-item" onclick="openChatWindow(${g.id}, '${g.display_name}')">
+                            <div class="chat-group-item" onclick="openChatWindow(${g.id}, '${g.display_name}', ${g.is_online || false})">
                                 <div class="chat-group-info">
                                     <div class="chat-group-name">
-                                        <b>${g.display_name}</b>
                                         ${onlineHtml}
+                                        <b>${g.display_name}</b>
                                         ${unreadHtml}
                                     </div>
                                     <div class="chat-group-last-msg">${g.last_message || 'Chưa có tin nhắn'}</div>
@@ -759,7 +764,7 @@
                                     playChatSound();
                                     blinkTitle("Có tin nhắn mới...");
                                     if (!openChatGroups.includes(g.id)) {
-                                        openChatWindow(g.id, g.display_name);
+                                        openChatWindow(g.id, g.display_name, g.is_online || false);
                                     }
                                 }
                             }
@@ -788,13 +793,14 @@
                 $.get("{{ route('chat.users') }}", function(data) {
                     let html = '';
                     data.forEach(u => {
-                        let onlineHtml = u.is_online ? `<span class="online-dot" title="Online"></span>` : '';
+                        let onlineHtml = u.is_online ?
+                            `<span class="online-dot" title="Online"></span>` : '';
                         html += `
-                            <div class="chat-group-item contact-item" onclick="startDirectChat(${u.id}, '${u.fullName}')">
+                            <div class="chat-group-item contact-item" onclick="startDirectChat(${u.id}, '${u.fullName}', ${u.is_online || false})">
                                 <div class="chat-group-info">
                                     <div class="chat-group-name">
-                                        <b>${u.fullName}</b>
                                         ${onlineHtml}
+                                        <b>${u.fullName}</b>
                                     </div>
                                     <div class="chat-group-last-msg">@${u.userName}</div>
                                 </div>
@@ -805,12 +811,12 @@
                 });
             }
 
-            window.startDirectChat = function(userId, fullName) {
+            window.startDirectChat = function(userId, fullName, isOnline) {
                 $.post("{{ route('chat.getDirectChat') }}", {
                     _token: "{{ csrf_token() }}",
                     target_user_id: userId
                 }, function(group) {
-                    openChatWindow(group.id, fullName);
+                    openChatWindow(group.id, fullName, isOnline);
                 });
             };
 
@@ -822,18 +828,24 @@
                 });
             };
 
-            window.openChatWindow = function(groupId, groupName) {
+            window.openChatWindow = function(groupId, groupName, isOnline) {
                 if (openChatGroups.includes(groupId)) return;
                 if (openChatGroups.length >= 3) {
                     let oldest = openChatGroups.shift();
                     $(`#chat-window-${oldest}`).remove();
                 }
 
+                let onlineHtml = isOnline ?
+                    `<span class="online-dot me-1" title="Online" style="border: 1px solid white;"></span>` : '';
+
                 openChatGroups.push(groupId);
                 let html = `
                     <div class="chat-window" id="chat-window-${groupId}">
                         <div class="chat-window-header" onclick="toggleChatWindowMin(${groupId})">
-                            <span class="chat-window-title"><b>${groupName}</b></span>
+                            <span class="chat-window-title">
+                                ${onlineHtml}
+                                <b>${groupName}</b>
+                            </span>
                             <div class="chat-window-actions">
                                 <i class="fas fa-minus me-2"></i>
                                 <i class="fas fa-times" onclick="closeChatWindow(event, ${groupId})"></i>
@@ -999,7 +1011,8 @@
             };
 
             const commonEmojis = ['😀', '😂', '😍', '👍', '🙏', '❤️', '🔥', '👏', '🙄', '😮', '😢', '😡', '✅', '❌',
-                '🚀'];
+                '🚀'
+            ];
 
             window.toggleEmojiPicker = function(groupId) {
                 let existing = $(`#emoji-picker-${groupId}`);
