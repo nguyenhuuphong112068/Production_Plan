@@ -20,8 +20,12 @@ class ChatController extends Controller
         $groups = DB::table('chat_groups as cg')
             ->join('chat_group_members as cgm', 'cg.id', '=', 'cgm.group_id')
             ->where('cgm.user_id', $userId)
-            ->select('cg.*', 'cgm.last_read_at')
-            ->orderBy('cg.created_at', 'desc')
+            ->leftJoin('chat_messages as last_m', function($join) {
+                $join->on('cg.id', '=', 'last_m.group_id')
+                     ->whereRaw('last_m.id = (SELECT id FROM chat_messages WHERE group_id = cg.id ORDER BY created_at DESC LIMIT 1)');
+            })
+            ->select('cg.*', 'cgm.last_read_at', 'last_m.created_at as last_m_time')
+            ->orderByRaw('COALESCE(last_m.created_at, cg.created_at) DESC')
             ->get();
 
         foreach ($groups as $group) {
@@ -119,6 +123,12 @@ class ChatController extends Controller
             'file_type' => $fileType,
             'created_at' => now(),
         ]);
+
+        // Cập nhật last_read_at cho chính người gửi để tránh hiện thông báo tin nhắn mình vừa gửi
+        DB::table('chat_group_members')
+            ->where('group_id', $groupId)
+            ->where('user_id', $userId)
+            ->update(['last_read_at' => now()]);
 
         return response()->json([
             'success' => true,
