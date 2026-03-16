@@ -315,6 +315,22 @@
             display: flex;
             flex-direction: column;
             pointer-events: auto;
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .chat-window.maximized {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            border-radius: 0;
+            z-index: 2000;
+        }
+
+        body.chat-maximized {
+            overflow: hidden;
         }
 
         .chat-window-header {
@@ -854,7 +870,7 @@
                 openChatGroups.push(groupId);
                 let html = `
                     <div class="chat-window" id="chat-window-${groupId}">
-                        <div class="chat-window-header" onclick="toggleChatWindowMin(${groupId})">
+                        <div class="chat-window-header" onclick="handleChatHeaderClick(${groupId})" ondblclick="toggleChatWindowMax(${groupId})">
                             <span class="chat-window-title">
                                 ${onlineHtml}
                                 <b>${groupName}</b>
@@ -899,13 +915,53 @@
                 $(`#chat-window-${groupId}`).remove();
             };
 
+            let chatClickTimer = null;
+            window.handleChatHeaderClick = function(groupId) {
+                if (chatClickTimer) {
+                    clearTimeout(chatClickTimer);
+                    chatClickTimer = null;
+                    return;
+                }
+                chatClickTimer = setTimeout(() => {
+                    toggleChatWindowMin(groupId);
+                    chatClickTimer = null;
+                }, 250); // Đợi 250ms để xem có click thứ 2 không
+            };
+
             window.toggleChatWindowMin = function(groupId) {
                 let win = $(`#chat-window-${groupId}`);
                 if (win.height() > 50) {
+                    win.data('old-height', win.height());
                     win.css('height', '40px');
                 } else {
-                    win.css('height', '400px');
+                    let oldH = win.data('old-height') || '400px';
+                    win.css('height', oldH);
                 }
+            };
+
+            window.toggleChatWindowMax = function(groupId) {
+                if (chatClickTimer) {
+                    clearTimeout(chatClickTimer);
+                    chatClickTimer = null;
+                }
+                let win = $(`#chat-window-${groupId}`);
+                let isMax = win.hasClass('maximized');
+                
+                // Đóng các cửa sổ khác nếu đang phóng to (tùy chọn, để đỡ rối)
+                if (!isMax) {
+                    $('.chat-window').not(win).removeClass('maximized');
+                    $('body').addClass('chat-maximized');
+                } else {
+                    $('body').removeClass('chat-maximized');
+                }
+
+                win.toggleClass('maximized');
+                
+                // Cuộn xuống cuối sau khi phóng to
+                setTimeout(() => {
+                    let contentDiv = document.getElementById(`chat-content-${groupId}`);
+                    if (contentDiv) contentDiv.scrollTop = contentDiv.scrollHeight;
+                }, 350);
             };
 
             function loadChatMessages(groupId) {
