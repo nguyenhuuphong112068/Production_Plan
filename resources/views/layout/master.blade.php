@@ -174,6 +174,13 @@
             font-size: 10px;
         }
 
+        .msg-text {
+            word-wrap: break-word;
+            word-break: break-word;
+            font-size: 1.35rem; /* Tăng 1.5 lần */
+            line-height: 1.4;
+        }
+
         /* --- CHAT CSS --- */
         .chat-sidebar {
             position: fixed;
@@ -346,17 +353,17 @@
         }
 
         .chat-window {
-            width: 450px;
-            height: 600px;
+            width: 450px; /* Tăng chiều rộng để phù hợp chữ to */
+            height: 550px;
             background: white;
-            border: 1px solid #ddd;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             border-radius: 8px 8px 0 0;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            margin-left: 10px;
             display: flex;
             flex-direction: column;
-            pointer-events: auto;
             position: relative;
+            z-index: 1050;
+            margin-left: 10px;
+            pointer-events: auto;
         }
 
         .chat-resizer {
@@ -432,8 +439,10 @@
             flex: 1;
             border: none;
             outline: none;
-            padding: 5px;
-            font-size: 13px;
+            padding: 8px 12px;
+            font-size: 1.35rem; /* Tăng 1.5 lần */
+            border-radius: 20px;
+            background: #f0f2f5;
         }
 
         .msg-item {
