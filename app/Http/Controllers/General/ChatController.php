@@ -180,32 +180,6 @@ class ChatController extends Controller
             ->where('user_id', $userId)
             ->update(['last_read_at' => now()]);
 
-        // GỬI PUSH NOTIFICATION CHO CÁC THÀNH VIÊN KHÁC
-        try {
-            $sender = DB::table('user_management')->where('id', $userId)->first();
-            $group = DB::table('chat_groups')->where('id', $groupId)->first();
-            $title = $group->type == 1 ? "Nhóm $group->name" : $sender->fullName;
-            $pushMsg = $fileType ? "[Hình ảnh/Tệp tin]" : $message;
-
-            $members = DB::table('chat_group_members')
-                ->where('group_id', $groupId)
-                ->where('user_id', '!=', $userId)
-                ->pluck('user_id');
-
-            foreach ($members as $mId) {
-                $user = \App\Models\User::find($mId);
-                if ($user) {
-                    $user->notify(new \App\Notifications\WebPushNotification(
-                        $title,
-                        $pushMsg,
-                        url('/home') // Bạn có thể tinh chỉnh URL nếu cần
-                    ));
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('WebPush Error: ' . $e->getMessage());
-        }
-
         return response()->json([
             'success' => true,
             'message_id' => $messageId

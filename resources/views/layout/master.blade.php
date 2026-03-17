@@ -11,7 +11,6 @@
 
     @include('layout.css')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tributejs@5.1.3/dist/tribute.css">
-    <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key') }}">
     <style>
         /* NOTIFICATION DRAWER CSS */
         #notification-drawer {
@@ -145,56 +144,6 @@
             display: none;
         }
 
-        /* WEB PUSH TOGGLE CSS */
-        .push-setting-item {
-            padding: 15px 20px;
-            background: #fdfdfd;
-            border-bottom: 1px solid #f0f0f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .push-status-label {
-            font-size: 13px;
-            color: #555;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .push-status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ccc;
-        }
-        .push-status-dot.active { background: #28a745; }
-        
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px; width: 16px;
-            left: 2px; bottom: 2px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: #28a745; }
-        input:checked + .slider:before { transform: translateX(20px); }
 
         /* FLOATING BELL BUTTON - Now integrated into Header */
         #notif-bell-btn {
@@ -599,16 +548,6 @@
             <div class="notif-tabs">
                 <div class="notif-tab active" data-tab="all">Tất cả</div>
                 <div class="notif-tab" data-tab="unread">Chưa đọc</div>
-            </div>
-            <div class="push-setting-item">
-                <div class="push-status-label">
-                    <div class="push-status-dot" id="push-status-dot"></div>
-                    <span>Thông báo trình duyệt</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="push-toggle-checkbox" onchange="toggleWebPush(this)">
-                    <span class="slider"></span>
-                </label>
             </div>
             <div id="notification-drawer-items">
                 <!-- Items will be loaded here -->
@@ -1385,127 +1324,6 @@
                 input.focus();
                 $(`#emoji-picker-${groupId}`).remove();
             };
-            // --- WEB PUSH NOTIFICATION REGISTRATION ---
-            if ('serviceWorker' in navigator && 'PushManager' in window) {
-                navigator.serviceWorker.register("{{ asset('sw.js') }}")
-                    .then(function(reg) {
-                        console.log('Service Worker Registered!', reg);
-                        initialiseUI(reg);
-                        updatePushUI(reg);
-                    })
-                    .catch(function(err) {
-                        console.log('Service Worker registration failed: ', err);
-                    });
-            }
-
-            function initialiseUI(reg) {
-                console.log('InitialiseUI called');
-                reg.pushManager.getSubscription()
-                    .then(function(subscription) {
-                        if (subscription) {
-                            console.log('User IS subscribed.', subscription.endpoint);
-                            sendSubscriptionToServer(subscription);
-                        } else {
-                            console.log('User is NOT subscribed.');
-                        }
-                    });
-            }
-
-            function subscribeUser(reg) {
-                const publicKey = document.querySelector('meta[name="vapid-public-key"]').content;
-                if (!publicKey) {
-                    console.error('VAPID Public Key is missing!');
-                    alert('Lỗi: Server chưa cấu hình VAPID Public Key trong file .env. Hãy kiểm tra lại cấu hình trên server.');
-                    return;
-                }
-                const applicationServerKey = urlB64ToUint8Array(publicKey);
-                
-                reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: applicationServerKey
-                })
-                .then(function(subscription) {
-                    console.log('User is subscribed:', subscription);
-                    sendSubscriptionToServer(subscription);
-                })
-                .catch(function(err) {
-                    console.log('Failed to subscribe the user: ', err);
-                    alert('Không thể đăng ký thông báo: ' + err.message + '\n\nLưu ý: Bạn phải truy cập web qua HTTPS mới có thể sử dụng tính năng này.');
-                });
-            }
-
-            function sendSubscriptionToServer(subscription) {
-                console.log('Sending subscription to server...', subscription);
-                $.post("{{ route('push.subscribe') }}", {
-                    _token: "{{ csrf_token() }}",
-                    endpoint: subscription.endpoint,
-                    keys: {
-                        auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')))),
-                        p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))))
-                    }
-                }).done(function(res) {
-                    console.log('Successfully saved subscription on server', res);
-                    updatePushUI();
-                }).fail(function(xhr) {
-                    console.error('Server Error:', xhr.status, xhr.responseJSON);
-                    alert('Lỗi khi lưu đăng ký lên Server (Mã lỗi: ' + xhr.status + ').\n\n- Nếu lỗi 419: Hãy thử F5 lại trang.\n- Nếu lỗi 500: Hãy kiểm tra file .env xem đã có VAPID_PRIVATE_KEY chưa.');
-                });
-            }
-
-            function urlB64ToUint8Array(base64String) {
-                const padding = '='.repeat((4 - base64String.length % 4) % 4);
-                const base64 = (base64String + padding)
-                    .replace(/\-/g, '+')
-                    .replace(/_/g, '/');
-
-                const rawData = window.atob(base64);
-                const outputArray = new Uint8Array(rawData.length);
-
-                for (let i = 0; i < rawData.length; ++i) {
-                    outputArray[i] = rawData.charCodeAt(i);
-                }
-                return outputArray;
-            }
-
-            window.updatePushUI = function(reg) {
-                if (!reg) {
-                    navigator.serviceWorker.ready.then(r => updatePushUI(r));
-                    return;
-                }
-                reg.pushManager.getSubscription().then(sub => {
-                    const isSubscribed = !!sub;
-                    $('#push-toggle-checkbox').prop('checked', isSubscribed);
-                    if (isSubscribed) {
-                        $('#push-status-dot').addClass('active');
-                    } else {
-                        $('#push-status-dot').removeClass('active');
-                    }
-                });
-            };
-
-            window.toggleWebPush = function(checkbox) {
-                navigator.serviceWorker.ready.then(reg => {
-                    if (checkbox.checked) {
-                        subscribeUser(reg);
-                    } else {
-                        reg.pushManager.getSubscription().then(sub => {
-                            if (sub) {
-                                sub.unsubscribe().then(() => {
-                                    sendUnsubscriptionToServer(sub.endpoint);
-                                    updatePushUI(reg);
-                                });
-                            }
-                        });
-                    }
-                });
-            };
-
-            function sendUnsubscriptionToServer(endpoint) {
-                $.post("{{ route('push.unsubscribe') }}", {
-                    _token: "{{ csrf_token() }}",
-                    endpoint: endpoint
-                });
-            }
         })();
     </script>
 </body>
