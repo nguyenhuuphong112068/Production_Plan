@@ -236,7 +236,8 @@
         .user-initials {
             width: 40px;
             height: 40px;
-            background: #28a745; /* Màu xanh lá chủ đạo */
+            background: #28a745;
+            /* Màu xanh lá chủ đạo */
             color: white;
             border-radius: 50%;
             display: flex;
@@ -258,7 +259,8 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: #28a745; /* Màu tên người dùng */
+            color: #28a745;
+            /* Màu tên người dùng */
         }
 
         .chat-group-last-msg {
@@ -286,7 +288,7 @@
             position: relative;
             width: 38px;
             height: 38px;
-            background: transparent; 
+            background: transparent;
             border: 2px solid #CDC717;
             color: #CDC717;
             border-radius: 50%;
@@ -399,7 +401,8 @@
 
         .chat-window-header {
             padding: 8px 12px;
-            background: #28a745; /* Xanh lá */
+            background: #28a745;
+            /* Xanh lá */
             color: white;
             border-radius: 7px 7px 0 0;
             display: flex;
@@ -412,7 +415,8 @@
             flex: 1;
             overflow-y: auto;
             padding: 10px;
-            background: #ffffff; /* Trắng tinh khiết cho thoáng */
+            background: #ffffff;
+            /* Trắng tinh khiết cho thoáng */
             display: flex;
             flex-direction: column;
         }
@@ -437,14 +441,18 @@
             max-width: 90%;
             padding: 8px 12px;
             position: relative;
-            align-self: flex-start; /* Tất cả căn trái */
+            align-self: flex-start;
+            /* Tất cả căn trái */
         }
 
         .msg-item.me {
-            background: #e8f5e9; /* Xanh lá cực nhạt */
-            color: #1b5e20; /* Chữ xanh lá đậm */
+            background: #e8f5e9;
+            /* Xanh lá cực nhạt */
+            color: #1b5e20;
+            /* Chữ xanh lá đậm */
             border-radius: 0 12px 12px 12px;
-            border-left: 3px solid #81c784; /* Viền xanh lá sáng */
+            border-left: 3px solid #81c784;
+            /* Viền xanh lá sáng */
             margin-left: 0;
         }
 
@@ -452,21 +460,25 @@
             color: #1b5e20;
         }
 
-        .msg-item.me .msg-status, .msg-item.me .msg-sender {
+        .msg-item.me .msg-status,
+        .msg-item.me .msg-sender {
             color: #666;
         }
 
         .msg-item.other {
             align-self: flex-start;
-            background: #f5f5f5; /* Xám cực nhạt */
+            background: #f5f5f5;
+            /* Xám cực nhạt */
             color: #333;
             border-radius: 0 12px 12px 12px;
-            border-left: 3px solid #e0e0e0; /* Viền xám nhạt */
+            border-left: 3px solid #e0e0e0;
+            /* Viền xám nhạt */
         }
 
         .msg-sender {
             font-size: 11px;
-            color: #28a745; /* Màu tên người gửi trong chat */
+            color: #28a745;
+            /* Màu tên người gửi trong chat */
             font-weight: bold;
             margin-bottom: 4px;
         }
@@ -484,18 +496,19 @@
             justify-content: flex-start;
         }
 
+        /* Chat Upgrades */
         .recalled-msg {
             font-style: italic;
-            color: #999 !important;
+            color: #999;
         }
 
         .reply-wrapper {
-            background: rgba(0,0,0,0.05);
-            border-left: 3px solid #28a745;
+            background: rgba(0, 0, 0, 0.05);
+            border-left: 3px solid #007bff;
             padding: 5px 8px;
             margin-bottom: 5px;
-            font-size: 12px;
             border-radius: 4px;
+            font-size: 0.85em;
             cursor: pointer;
         }
 
@@ -1028,12 +1041,10 @@
                         <div class="chat-window-content" id="chat-content-${groupId}">
                             <!-- Messages -->
                         </div>
-                        <div id="reply-preview-${groupId}" class="reply-preview-box" style="display:none; padding: 5px 10px; background: #f0f0f0; border-top: 1px solid #ddd; font-size: 11px;">
-                            <div class="d-flex justify-content-between">
-                                <span class="reply-to-name font-weight-bold text-success"></span>
-                                <i class="fas fa-times cursor-pointer" onclick="cancelReply(${groupId})"></i>
-                            </div>
-                            <div class="reply-to-text text-truncate text-muted"></div>
+                        <div id="reply-preview-${groupId}" class="reply-preview" style="display:none;">
+                            <i class="fas fa-times close-reply" onclick="cancelReply(${groupId})"></i>
+                            <div class="reply-to-name"></div>
+                            <div class="reply-to-text"></div>
                         </div>
                         <div class="chat-window-footer">
                             <label class="mb-0 me-2" style="cursor:pointer">
@@ -1143,6 +1154,7 @@
                     if (forceScroll || container.find('.msg-item').length === 0) {
                         let html = renderMessages(messages, currentUserId, othersLastRead);
                         container.html(html);
+                        attachMessageActions(groupId); // Gắn sự kiện
                         if (forceScroll || isAtBottom) {
                             let div = document.getElementById(`chat-content-${groupId}`);
                             if (div) div.scrollTop = div.scrollHeight;
@@ -1153,6 +1165,7 @@
                         let newMessages = messages.filter(m => m.id > (lastId || 0));
                         if (newMessages.length > 0) {
                             container.append(renderMessages(newMessages, currentUserId, othersLastRead));
+                            attachMessageActions(groupId); // Gắn sự kiện cho tin mới
                             if (isAtBottom) {
                                 let div = document.getElementById(`chat-content-${groupId}`);
                                 if (div) div.scrollTop = div.scrollHeight;
@@ -1212,8 +1225,8 @@
                     if (m.reply_to_id && m.reply_to_content) {
                         let rText = m.reply_to_content.is_recalled ? 'Tin nhắn đã bị thu hồi' : m.reply_to_content.message;
                         replyHtml = `
-                            <div class="reply-wrapper" onclick="scrollToMessage(${m.group_id}, ${m.reply_to_id})">
-                                <span class="reply-sender">${m.reply_to_content.sender_name}</span>
+                            <div class="reply-wrapper" data-reply-id="${m.reply_to_id}">
+                                <span class="reply-sender">${m.reply_to_content.sender_name || 'Người dùng'}</span>
                                 <span class="reply-content">${rText}</span>
                             </div>
                         `;
@@ -1231,10 +1244,17 @@
                     // Actions (Reply, Recall)
                     let actionsHtml = '';
                     if (!isRecalled) {
+                        let safeText = (m.message || 'File').replace(/'/g, "&apos;").replace(/"/g, "&quot;").replace(/\n/g, " ");
+                        let safeName = (m.sender_name || 'Người dùng').replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                         actionsHtml = `
                             <div class="msg-actions">
-                                <span class="msg-action-btn" title="Trả lời" onclick="setReply(${m.group_id}, ${m.id}, '${m.sender_name.replace(/'/g, "\\'")}', '${(m.message || 'File').replace(/'/g, "\\'").replace(/\n/g, " ")}')"><i class="fas fa-reply"></i></span>
-                                ${side === 'me' ? `<span class="msg-action-btn text-danger" title="Thu hồi" onclick="recallMessage(${m.group_id}, ${m.id})"><i class="fas fa-undo"></i></span>` : ''}
+                                <span class="msg-action-btn btn-reply" title="Trả lời" 
+                                    data-msg-id="${m.id}" data-name="${safeName}" data-text="${safeText}">
+                                    <i class="fas fa-reply"></i>
+                                </span>
+                                ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi" data-msg-id="${m.id}">
+                                    <i class="fas fa-undo"></i>
+                                </span>` : ''}
                             </div>
                         `;
                     }
@@ -1250,6 +1270,24 @@
                     `;
                 });
                 return html;
+            }
+
+            function attachMessageActions(groupId) {
+                let win = $(`#chat-window-${groupId}`);
+                win.find('.btn-reply').off('click').on('click', function() {
+                    let id = $(this).data('msg-id');
+                    let name = $(this).data('name');
+                    let text = $(this).data('text');
+                    setReply(groupId, id, name, text);
+                });
+                win.find('.btn-recall').off('click').on('click', function() {
+                    let id = $(this).data('msg-id');
+                    recallMessage(groupId, id);
+                });
+                win.find('.reply-wrapper').off('click').on('click', function() {
+                    let id = $(this).data('reply-id');
+                    scrollToMessage(groupId, id);
+                });
             }
 
             function updateMessagesStatus(groupId, othersLastRead) {
@@ -1329,6 +1367,7 @@
                     reply_to_id: replyId
                 }).done(function() {
                     loadChatMessages(groupId, true);
+                    loadChatGroups(); // Cập nhật danh sách trái
                 }).fail(function() {
                     input.value = msg;
                     alert('Gửi tin nhắn thất bại, vui lòng thử lại.');

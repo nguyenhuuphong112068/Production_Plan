@@ -182,29 +182,20 @@ class ChatController extends Controller
             'file_path' => $filePath,
             'file_name' => $fileName,
             'file_type' => $fileType,
-            'reply_to_id' => $request->reply_to_id, // Nhận reply_to_id
+            'reply_to_id' => is_numeric($request->reply_to_id) ? $request->reply_to_id : null, 
             'created_at' => now(),
         ]);
 
         // Xử lý Tag @mention trong nhóm chat
         if (preg_match_all('/@(.+?)\[(\d+)\]/', $message, $matches)) {
             $taggedUserIds = $matches[2];
-            $senderName = session('user')['fullName'];
             
-            foreach (array_unique($taggedUserIds) as $tUserId) {
-                if ($tUserId != $userId) {
-                    // Gửi thông báo in-app (sử dụng NotificationController hoặc DB trực tiếp nếu chưa có controller)
-                    DB::table('notifications')->insert([
-                        'user_id' => $tUserId,
-                        'sender_id' => $userId,
-                        'activity_type' => 'đã nhắc đến bạn trong một tin nhắn',
-                        'message' => $message,
-                        'url' => null, // Có thể cập nhật URL để mở đúng cửa sổ chat
-                        'is_read' => 0,
-                        'created_at' => now(),
-                    ]);
-                }
-            }
+            \App\Http\Controllers\General\NotificationController::sendNotification(
+                session('user')['fullName'] . " đã nhắc đến bạn trong một tin nhắn chat: " . $message,
+                'Nhắc tên',
+                $groupId,
+                array_unique($taggedUserIds)
+            );
         }
 
         // Cập nhật last_read_at cho chính người gửi để tránh hiện thông báo tin nhắn mình vừa gửi
