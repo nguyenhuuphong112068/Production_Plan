@@ -10,17 +10,32 @@ use Illuminate\Support\Facades\Validator;
 
 class MaintenancePlanController extends Controller
 {
-        public function index()
+        public function index(Request $request)
         {
-                $datas = DB::table('plan_list')
-                        ->where('active', 1)
-                        ->where('type', 0)
-                        ->orderBy('created_at', 'desc')->get();
+                $type = $request->type; // 1: HC, 2: BT, 3: TI
+                $type_names = [
+                        1 => 'HIỆU CHUẨN',
+                        2 => 'BẢO TRÌ',
+                        3 => 'TIỆN ÍCH'
+                ];
 
-                session()->put(['title' => 'KẾ HOẠCH BẢO TRÌ THÁNG']);
+                $query = DB::table('plan_list')
+                        ->where('active', 1)
+                        ->where('type', 0); // 0 là loại KHBT theo cấu trúc cũ
+
+                if ($type) {
+                        $typeName = $type_names[$type];
+                        $query->where('name', 'like', "KH {$typeName}%");
+                }
+
+                $datas = $query->orderBy('created_at', 'desc')->get();
+
+                $title = $type ? "KẾ HOẠCH {$type_names[$type]} THÁNG" : 'KẾ HOẠCH BẢO TRÌ THÁNG';
+                session()->put(['title' => $title]);
 
                 return view('pages.plan.maintenance.plan_list', [
-                        'datas' => $datas
+                        'datas' => $datas,
+                        'type' => $type
                 ]);
         }
 
@@ -28,15 +43,16 @@ class MaintenancePlanController extends Controller
         {
                 $startDate = $request->from_date ?? date('Y-m-01');
                 $endDate = $request->to_date ?? date('Y-m-t');
+                $type = $request->type;
                 $departmentCode = session('user')['production_code'];
 
                 try {
-                        $result = $this->generateMaintenancePlan($startDate, $endDate, $departmentCode);
+                        $result = $this->generateMaintenancePlan($startDate, $endDate, $departmentCode, $type);
                         if ($result['success']) {
                                 return redirect()->back()->with('success', $result['message']);
                         } else {
-                                $type = $result['total_devices'] === 0 ? 'warning' : 'error';
-                                return redirect()->back()->with($type, $result['message']);
+                                $typeMsg = $result['total_devices'] === 0 ? 'warning' : 'error';
+                                return redirect()->back()->with($typeMsg, $result['message']);
                         }
                 } catch (\Exception $e) {
                         return redirect()->back()->with('error', 'Lỗi: ' . $e->getMessage());
@@ -47,6 +63,7 @@ class MaintenancePlanController extends Controller
         {
                 $startDate = $request->from_date;
                 $endDate = $request->to_date;
+                $type = $request->type;
                 $departments = $request->departments; // mảng các PX
 
                 if (empty($departments)) {
@@ -57,12 +74,12 @@ class MaintenancePlanController extends Controller
                 $successCount = 0;
                 $totalNewDevices = 0;
 
-                // Fetch ALL schedules once for all departments to be processed
-                $schedules = $this->fetchAllSchedules($startDate, $endDate);
+                // Fetch schedules based on type
+                $schedules = $this->fetchAllSchedules($startDate, $endDate, $type);
 
                 foreach ($departments as $dept) {
                         try {
-                                $res = $this->generateMaintenancePlan($startDate, $endDate, $dept, $schedules);
+                                $res = $this->generateMaintenancePlan($startDate, $endDate, $dept, $type, $schedules);
                                 if ($res['success']) {
                                         $successCount++;
                                         $totalNewDevices += $res['count'];
@@ -80,11 +97,11 @@ class MaintenancePlanController extends Controller
                 }
         }
 
-        private function fetchAllSchedules($startDate, $endDate)
+        private function fetchAllSchedules($startDate, $endDate, $type = null)
         {
                 $schedules = collect();
                 $connections = ['cal1', 'cal2'];
-                $suffixes = [1, 2, 3];
+                $suffixes = $type ? [$type] : [1, 2, 3];
 
                 foreach ($connections as $conn) {
                         foreach ($suffixes as $suffix) {
@@ -105,16 +122,29 @@ class MaintenancePlanController extends Controller
                 return $schedules;
         }
 
-        private function generateMaintenancePlan($startDate, $endDate, $departmentCode, $schedules = null)
+        private function generateMaintenancePlan($startDate, $endDate, $departmentCode, $type, $schedules = null)
         {
                 $fromDisplay = \Carbon\Carbon::parse($startDate)->format('d/m/Y');
                 $toDisplay = \Carbon\Carbon::parse($endDate)->format('d/m/Y');
                 $month = \Carbon\Carbon::parse($startDate)->format('m');
                 $year = \Carbon\Carbon::parse($startDate)->format('Y');
-                $name = "KHBT-HC T{$month}/{$year} ({$fromDisplay}-{$toDisplay})";
+
+                $type_names = [
+                        1 => 'Hiệu Chuẩn',
+                        2 => 'Bảo Trì',
+                        3 => 'Tiện Ích'
+                ];
+                $type_prefix = [
+                        1 => 'HC',
+                        2 => 'BT',
+                        3 => 'TI'
+                ];
+
+                $typeName = $type_names[$type] ?? 'BT-HC';
+                $name = "KH {$typeName} T{$month}/{$year} ({$fromDisplay}-{$toDisplay})";
 
                 if (!$schedules) {
-                        $schedules = $this->fetchAllSchedules($startDate, $endDate);
+                        $schedules = $this->fetchAllSchedules($startDate, $endDate, $type);
                 }
 
                 DB::beginTransaction();
@@ -132,21 +162,27 @@ class MaintenancePlanController extends Controller
 
                         // 3. Map Inst_ID → quota_maintenance
                         $instIds = $schedules->pluck('Inst_ID')->unique()->toArray();
-                        $quotas = DB::table('quota_maintenance')
+                        $query = DB::table('quota_maintenance')
                                 ->whereIn('inst_id', $instIds)
                                 ->where('active', 1)
-                                ->where('deparment_code', $departmentCode)
-                                ->get()
-                                ->keyBy('inst_id');
+                                ->where('deparment_code', $departmentCode);
+                        
+                        // Lọc theo prefix block HC, BT, TI
+                        if ($type && isset($type_prefix[$type])) {
+                                $query->where('block', 'like', $type_prefix[$type] . '-%');
+                        }
+
+                        $quotas = $query->get()->keyBy('inst_id');
 
                         // 4. Insert plan_master + plan_master_history
                         $now = now();
                         $preparedBy = session('user')['fullName'];
                         $count = 0;
 
-                        // Lấy danh sách đã tồn tại để tránh tạo trùng
+                        // Lấy danh sách đã tồn tại để tránh tạo trùng (trong cùng phân xưởng)
                         $existing = DB::table('plan_master')
                                 ->where('active', 1)
+                                ->where('deparment_code', $departmentCode)
                                 ->select('product_caterogy_id', 'expected_date')
                                 ->get()
                                 ->map(function ($item) {

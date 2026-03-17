@@ -220,18 +220,58 @@
                                 <p>Thành Phẩm</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1']) }}" class="nav-link">
+                        <li class="nav-item has-treeview">
+                            <a href="#" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Bảo Trì - Hiệu Chuẩn B1</p>
+                                <p> BT - HC B1 <i class="right fas fa-angle-left"></i></p>
                             </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 1]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Hiệu Chuẩn B1</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 2]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Bảo Trì B1</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 3]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Tiện Ích B1</p>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
 
-                        <li class="nav-item">
-                            <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2']) }}" class="nav-link">
+                        <li class="nav-item has-treeview">
+                            <a href="#" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Bảo Trì - Hiệu Chuẩn B2</p>
+                                <p> BT - HC B2 <i class="right fas fa-angle-left"></i></p>
                             </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 1]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Hiệu Chuẩn B2</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 2]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Bảo Trì B2</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 3]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Tiện Ích B2</p>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     </ul>
                 </li>
@@ -339,11 +379,34 @@
                 </a>
               </li> --}}
 
-                        <li class="nav-item">
-                            <a href="{{ route('pages.plan.maintenance.list') }}" class="nav-link">
+                        <li class="nav-item has-treeview">
+                            <a href="#" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Kế Hoạch Bảo Trì</p>
+                                <p>
+                                    Kế Hoạch Bảo Trì
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
                             </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 1]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Hiệu Chuẩn</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 2]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Bảo Trì</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 3]) }}" class="nav-link">
+                                        <i class="far fa-dot-circle nav-icon"></i>
+                                        <p>Tiện Ích</p>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
 
                     </ul>

@@ -128,6 +128,14 @@
                                 <input type="date" class="form-control" name="to_date" id="m_to_date"
                                     value="{{ date('Y-m-t') }}" required>
                             </div>
+                            <div class="form-group">
+                                <label for="m_type">Loại Kế Hoạch:</label>
+                                <select class="form-control" name="type" id="m_type" required>
+                                    <option value="1" {{ request('type') == 1 ? 'selected' : '' }}>Hiệu Chuẩn</option>
+                                    <option value="2" {{ request('type') == 2 ? 'selected' : '' }}>Bảo Trì</option>
+                                    <option value="3" {{ request('type') == 3 ? 'selected' : '' }}>Tiện Ích</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="col-md-6 pl-4">
                             <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-industry"></i> 2. Chọn Phân
