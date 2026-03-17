@@ -1399,20 +1399,25 @@
             }
 
             function initialiseUI(reg) {
+                console.log('InitialiseUI called');
                 reg.pushManager.getSubscription()
                     .then(function(subscription) {
                         if (subscription) {
-                            console.log('User IS subscribed.');
+                            console.log('User IS subscribed.', subscription.endpoint);
                             sendSubscriptionToServer(subscription);
                         } else {
-                            console.log('User is NOT subscribed. Requesting permission...');
-                            subscribeUser(reg);
+                            console.log('User is NOT subscribed.');
                         }
                     });
             }
 
             function subscribeUser(reg) {
                 const publicKey = document.querySelector('meta[name="vapid-public-key"]').content;
+                if (!publicKey) {
+                    console.error('VAPID Public Key is missing!');
+                    alert('Lỗi: Server chưa cấu hình VAPID Public Key trong file .env. Hãy kiểm tra lại cấu hình trên server.');
+                    return;
+                }
                 const applicationServerKey = urlB64ToUint8Array(publicKey);
                 
                 reg.pushManager.subscribe({
@@ -1425,10 +1430,12 @@
                 })
                 .catch(function(err) {
                     console.log('Failed to subscribe the user: ', err);
+                    alert('Không thể đăng ký thông báo: ' + err.message + '\n\nLưu ý: Bạn phải truy cập web qua HTTPS mới có thể sử dụng tính năng này.');
                 });
             }
 
             function sendSubscriptionToServer(subscription) {
+                console.log('Sending subscription to server...', subscription);
                 $.post("{{ route('push.subscribe') }}", {
                     _token: "{{ csrf_token() }}",
                     endpoint: subscription.endpoint,
@@ -1436,6 +1443,12 @@
                         auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')))),
                         p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))))
                     }
+                }).done(function(res) {
+                    console.log('Successfully saved subscription on server', res);
+                    updatePushUI();
+                }).fail(function(xhr) {
+                    console.error('Server Error:', xhr.status, xhr.responseJSON);
+                    alert('Lỗi khi lưu đăng ký lên Server (Mã lỗi: ' + xhr.status + ').\n\n- Nếu lỗi 419: Hãy thử F5 lại trang.\n- Nếu lỗi 500: Hãy kiểm tra file .env xem đã có VAPID_PRIVATE_KEY chưa.');
                 });
             }
 

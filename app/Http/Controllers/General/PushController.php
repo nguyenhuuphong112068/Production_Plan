@@ -16,26 +16,42 @@ class PushController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'endpoint'    => 'required',
-            'keys.auth'   => 'required',
-            'keys.p256dh' => 'required'
-        ]);
+        \Log::info('Push Subscription Request:', $request->all());
 
-        $endpoint = $request->endpoint;
-        $key = $request->keys['p256dh'];
-        $token = $request->keys['auth'];
-        
-        // Lấy user hiện tại từ session
-        $userId = session('user')['userId'];
-        $user = User::find($userId);
+        try {
+            $request->validate([
+                'endpoint'    => 'required',
+                'keys.auth'   => 'required',
+                'keys.p256dh' => 'required'
+            ]);
 
-        if ($user) {
-            $user->updatePushSubscription($endpoint, $key, $token);
-            return response()->json(['success' => true]);
+            $endpoint = $request->endpoint;
+            $key = $request->keys['p256dh'];
+            $token = $request->keys['auth'];
+            
+            // Lấy user hiện tại từ session
+            $sessionUser = session('user');
+            if (!$sessionUser || !isset($sessionUser['userId'])) {
+                \Log::warning('Push Subscription: Session user not found');
+                return response()->json(['success' => false, 'message' => 'Session expired'], 401);
+            }
+
+            $userId = $sessionUser['userId'];
+            $user = User::find($userId);
+
+            if ($user) {
+                \Log::info('Push Subscription: Saving for user ID ' . $userId);
+                $user->updatePushSubscription($endpoint, $key, $token);
+                return response()->json(['success' => true]);
+            }
+
+            \Log::error('Push Subscription: User ID ' . $userId . ' not found in DB');
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
+
+        } catch (\Exception $e) {
+            \Log::error('Push Subscription Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        return response()->json(['success' => false, 'message' => 'User not found'], 404);
     }
 
     /**
