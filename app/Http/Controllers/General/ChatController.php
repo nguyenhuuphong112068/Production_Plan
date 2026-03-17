@@ -233,7 +233,7 @@ class ChatController extends Controller
         $users = DB::table('user_management')
             ->where('isActive', 1)
             ->where('id', '!=', session('user')['userId'])
-            ->select('id', 'fullName', 'userName', 'last_activity')
+            ->select('id', 'fullName', 'userName', 'last_activity', 'deparment')
             ->get();
             
         foreach ($users as $user) {
