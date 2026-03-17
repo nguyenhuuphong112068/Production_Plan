@@ -371,6 +371,11 @@
     // --- TÍCH HỢP TRIBUTE.JS CHO @MENTION ---
     let tribute;
     function initMentions() {
+        if (typeof Tribute === 'undefined') {
+            setTimeout(initMentions, 200);
+            return;
+        }
+
         $.get("{{ route('chat.users') }}", function(users) {
             let mentionValues = users.map(u => ({
                 key: u.fullName,
@@ -384,14 +389,14 @@
                 }
             });
 
-            // Gắn vào các ô input hiện có và cả các ô mới (nếu có)
+            // Gắn vào các ô input hiện có
             tribute.attach(document.querySelectorAll('.chat-input'));
         });
     }
 
     initMentions();
 
-    // Re-attach khi DataTable vẽ lại (nếu cần)
+    // Re-attach khi DataTable vẽ lại
     $('#data_table_Schedual_list').on('draw.dt', function() {
         if (tribute) {
             tribute.attach(document.querySelectorAll('.chat-input'));
