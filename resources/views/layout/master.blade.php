@@ -598,7 +598,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Tạo nhóm chat mới</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -606,15 +606,24 @@
                             <input type="text" id="newGroupName" class="form-control" placeholder="Nhập tên nhóm...">
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Phòng ban</label>
+                            <div class="d-flex gap-2">
+                                <select id="deptFilter" class="form-control" onchange="filterUsersByDepartment()">
+                                    <option value="all">Tất cả phòng ban</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-success text-nowrap" onclick="selectAllInDept()">Chọn tất cả</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Chọn thành viên</label>
                             <div id="userListForGroup"
-                                style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;">
+                                style="max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;">
                                 <!-- User list will be loaded here -->
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
                         <button type="button" class="btn btn-primary" onclick="submitCreateGroup()">Tạo nhóm</button>
                     </div>
                 </div>
@@ -1259,22 +1268,63 @@
             }, 3000);
 
             // --- CÁC HÀM XỬ LÝ NHÓM & EMOJI ---
+            let allUsersForGroup = [];
+
             window.showCreateGroupModal = function() {
                 $.get("{{ route('chat.users') }}", function(users) {
-                    let html = '';
-                    users.forEach(u => {
-                        html += `
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="${u.id}" id="user-${u.id}" name="group_members">
-                                <label class="form-check-label" for="user-${u.id}">
-                                    ${u.fullName} (@${u.userName})
-                                </label>
-                            </div>
-                        `;
+                    allUsersForGroup = users;
+                    
+                    // Xây dựng danh sách phòng ban
+                    let depts = [...new Set(users.map(u => u.deparment).filter(d => d))].sort();
+                    let deptHtml = '<option value="all">Tất cả phòng ban</option>';
+                    depts.forEach(d => {
+                        deptHtml += `<option value="${d}">${d}</option>`;
                     });
-                    $('#userListForGroup').html(html);
+                    $('#deptFilter').html(deptHtml);
+
+                    renderUserListForGroup(users);
+                    $('#newGroupName').val('');
                     $('#createGroupModal').modal('show');
                 });
+            };
+
+            function renderUserListForGroup(users) {
+                let html = '';
+                users.forEach(u => {
+                    html += `
+                        <div class="form-check mb-1 user-check-item" data-dept="${u.deparment || ''}">
+                            <input class="form-check-input" type="checkbox" value="${u.id}" id="user-${u.id}" name="group_members">
+                            <label class="form-check-label" for="user-${u.id}" style="cursor:pointer">
+                                ${u.fullName} (@${u.userName}) <small class="text-muted">-${u.deparment || ''}</small>
+                            </label>
+                        </div>
+                    `;
+                });
+                $('#userListForGroup').html(html || '<div class="text-center text-muted">Không có người dùng nào</div>');
+            }
+
+            window.filterUsersByDepartment = function() {
+                let dept = $('#deptFilter').val();
+                if (dept === 'all') {
+                    $('.user-check-item').show();
+                } else {
+                    $('.user-check-item').each(function() {
+                        $(this).toggle($(this).data('dept') === dept);
+                    });
+                }
+            };
+
+            window.selectAllInDept = function() {
+                let dept = $('#deptFilter').val();
+                if (dept === 'all') {
+                    $('input[name="group_members"]').prop('checked', true);
+                } else {
+                    $('.user-check-item').each(function() {
+                        if ($(this).data('dept') === dept) {
+                            $(this).find('input').prop('checked', true);
+                        }
+                    });
+                }
             };
 
             window.submitCreateGroup = function() {
