@@ -125,13 +125,12 @@
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                     <tr>
                         <th>STT</th>
-
                         <th>Mã Thiết Bị Lớn</th>
                         <th>Mã Thiết Bị Con</th>
-                        <th>Tên Thiết Bị</th>
+                        <th style="width: 20%;">Tên Thiết Bị</th>
                         <th>Tần Suất BT-HC</th>
                         <th>Vị Trí Lắp Đặt</th>
-                        <th>Phòng SX Liên Quan</th>
+                        <th style="width: 20%;">Phòng SX Liên Quan</th>
                         <th>Phân Xưởng</th>
                         <th>Thời gian Thực Hiện</th>
                         <th>Có Thuộc Hệ Thống HVAC?</th>
@@ -189,7 +188,7 @@
             // Hỗ trợ cả block cũ (B1, B2) và block mới (HC-B1, BT-B1...)
             var blockSuffix = block.includes('-') ? block.split('-')[1] : block;
             var depts = deptOptionsMap[blockSuffix] || ['PXV1', 'PXV2', 'PXVH', 'PXDN', 'PXTN'];
-            
+
             depts.forEach(function(dept) {
                 var selected = (dept === selectedValue) ? ' selected' : '';
                 options += '<option value="' + dept + '"' + selected + '>' + dept + '</option>';

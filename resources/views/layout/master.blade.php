@@ -998,7 +998,7 @@
             }
 
             window.startDirectChat = function(userId, fullName, isOnline) {
-                $.post("{{ route('chat.getDirectChat') }}", {
+                $.post("{{ route('chat.getDirectChat', [], false) }}", {
                     _token: "{{ csrf_token() }}",
                     target_user_id: userId
                 }, function(group) {
@@ -1076,7 +1076,7 @@
             };
 
             window.markChatAsRead = function(groupId) {
-                $.post("{{ route('chat.markAsRead') }}", {
+                $.post("{{ route('chat.markAsRead', [], false) }}", {
                     _token: "{{ csrf_token() }}",
                     group_id: groupId
                 }, function() {
@@ -1140,7 +1140,7 @@
             };
 
             function loadChatMessages(groupId, forceScroll = false) {
-                let url = "{{ route('chat.messages', ':groupId') }}".replace(':groupId', groupId);
+                let url = "{{ route('chat.messages', ':groupId', false) }}".replace(':groupId', groupId);
                 let contentDiv = document.getElementById(`chat-content-${groupId}`);
                 let isAtBottom = contentDiv ? (contentDiv.scrollHeight - contentDiv.scrollTop <= contentDiv.clientHeight + 50) : true;
 
@@ -1187,7 +1187,7 @@
                 if (container.data('loading')) return;
                 container.data('loading', true);
 
-                let url = "{{ route('chat.messages', ':groupId') }}".replace(':groupId', groupId);
+                let url = "{{ route('chat.messages', ':groupId', false) }}".replace(':groupId', groupId);
                 $.get(url, { before_id: firstId }, function(res) {
                     container.data('loading', false);
                     let messages = res.messages;
@@ -1338,7 +1338,7 @@
                     cancelButtonText: 'Hủy'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        $.post("{{ route('chat.recall') }}", {
+                        $.post("{{ route('chat.recall', [], false) }}", {
                             _token: "{{ csrf_token() }}",
                             message_id: messageId
                         }).done(function() {
@@ -1360,7 +1360,7 @@
                 input.value = '';
                 cancelReply(groupId);
 
-                $.post("{{ route('chat.send') }}", {
+                $.post("{{ route('chat.send', [], false) }}", {
                     _token: "{{ csrf_token() }}",
                     group_id: groupId,
                     message: msg,
@@ -1402,7 +1402,7 @@
                 formData.append('message', '[Hình ảnh dán: ' + file.name + ']');
 
                 $.ajax({
-                    url: "{{ route('chat.send') }}",
+                    url: "{{ route('chat.send', [], false) }}",
                     type: 'POST',
                     data: formData,
                     processData: false,
