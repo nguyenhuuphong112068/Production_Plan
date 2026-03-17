@@ -186,7 +186,10 @@
 
         function getDepartmentOptions(block, selectedValue) {
             var options = '<option value="">-- Chọn PX --</option>';
-            var depts = deptOptionsMap[block] || ['PXV1', 'PXV2', 'PXVH', 'PXDN', 'PXTN'];
+            // Hỗ trợ cả block cũ (B1, B2) và block mới (HC-B1, BT-B1...)
+            var blockSuffix = block.includes('-') ? block.split('-')[1] : block;
+            var depts = deptOptionsMap[blockSuffix] || ['PXV1', 'PXV2', 'PXVH', 'PXDN', 'PXTN'];
+            
             depts.forEach(function(dept) {
                 var selected = (dept === selectedValue) ? ' selected' : '';
                 options += '<option value="' + dept + '"' + selected + '>' + dept + '</option>';

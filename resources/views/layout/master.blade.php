@@ -484,6 +484,69 @@
             justify-content: flex-start;
         }
 
+        .recalled-msg {
+            font-style: italic;
+            color: #999 !important;
+        }
+
+        .reply-wrapper {
+            background: rgba(0,0,0,0.05);
+            border-left: 3px solid #28a745;
+            padding: 5px 8px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .reply-sender {
+            font-weight: bold;
+            color: #28a745;
+            display: block;
+        }
+
+        .reply-content {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .msg-actions {
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            display: none;
+            gap: 5px;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 5px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .msg-item:hover .msg-actions {
+            display: flex;
+        }
+
+        .msg-action-btn {
+            font-size: 11px;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .msg-action-btn:hover {
+            color: #28a745;
+        }
+
+        #reply-preview-container {
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+        }
+
 
 
         @keyframes chat-blink {
@@ -965,6 +1028,13 @@
                         <div class="chat-window-content" id="chat-content-${groupId}">
                             <!-- Messages -->
                         </div>
+                        <div id="reply-preview-${groupId}" class="reply-preview-box" style="display:none; padding: 5px 10px; background: #f0f0f0; border-top: 1px solid #ddd; font-size: 11px;">
+                            <div class="d-flex justify-content-between">
+                                <span class="reply-to-name font-weight-bold text-success"></span>
+                                <i class="fas fa-times cursor-pointer" onclick="cancelReply(${groupId})"></i>
+                            </div>
+                            <div class="reply-to-text text-truncate text-muted"></div>
+                        </div>
                         <div class="chat-window-footer">
                             <label class="mb-0 me-2" style="cursor:pointer">
                                 <i class="fas fa-paperclip text-muted"></i>
@@ -984,6 +1054,7 @@
                 loadChatMessages(groupId, true);
                 markChatAsRead(groupId);
                 toggleChat(false);
+                initTribute(groupId); // Khởi tạo tag @
 
                 // Thêm sự kiện cuộn để tải thêm tin nhắn
                 $(`#chat-content-${groupId}`).on('scroll', function() {
@@ -1124,8 +1195,10 @@
                 let html = '';
                 messages.forEach(m => {
                     let side = m.sender_id == currentUserId ? 'me' : 'other';
-                    let content = m.message || '';
-                    if (m.file_path) {
+                    let isRecalled = m.is_recalled == 1;
+                    let content = isRecalled ? '<span class="recalled-msg">Tin nhắn đã được thu hồi</span>' : (m.message || '');
+                    
+                    if (!isRecalled && m.file_path) {
                         let fPath = m.file_path.startsWith('http') ? m.file_path : (m.file_path.startsWith('/') ? m.file_path : '/storage/' + m.file_path);
                         if (m.file_type && m.file_type.startsWith('image/')) {
                             content += `<div class="mt-1"><img src="${fPath}" style="max-width:100%; border-radius:5px; cursor:pointer;" onclick="window.open('${fPath}', '_blank')"></div>`;
@@ -1134,20 +1207,45 @@
                         }
                     }
 
+                    // Render Reply Content
+                    let replyHtml = '';
+                    if (m.reply_to_id && m.reply_to_content) {
+                        let rText = m.reply_to_content.is_recalled ? 'Tin nhắn đã bị thu hồi' : m.reply_to_content.message;
+                        replyHtml = `
+                            <div class="reply-wrapper" onclick="scrollToMessage(${m.group_id}, ${m.reply_to_id})">
+                                <span class="reply-sender">${m.reply_to_content.sender_name}</span>
+                                <span class="reply-content">${rText}</span>
+                            </div>
+                        `;
+                    }
+
                     let statusHtml = '';
                     let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
                     if (side === 'me') {
                         let isSeen = othersLastRead && othersLastRead.some(time => time && time >= m.created_at);
-                        statusHtml = `<div class="msg-status" data-time="${m.created_at}">${timeHtml} <span>${isSeen ? 'Đã xem' : 'Đã gửi'}</span></div>`;
+                        statusHtml = `<div class="msg-status" data-time="${m.created_at}">${timeHtml} <span>${isRecalled ? '' : (isSeen ? 'Đã xem' : 'Đã gửi')}</span></div>`;
                     } else {
                         statusHtml = `<div class="msg-status">${timeHtml}</div>`;
                     }
 
+                    // Actions (Reply, Recall)
+                    let actionsHtml = '';
+                    if (!isRecalled) {
+                        actionsHtml = `
+                            <div class="msg-actions">
+                                <span class="msg-action-btn" title="Trả lời" onclick="setReply(${m.group_id}, ${m.id}, '${m.sender_name.replace(/'/g, "\\'")}', '${(m.message || 'File').replace(/'/g, "\\'").replace(/\n/g, " ")}')"><i class="fas fa-reply"></i></span>
+                                ${side === 'me' ? `<span class="msg-action-btn text-danger" title="Thu hồi" onclick="recallMessage(${m.group_id}, ${m.id})"><i class="fas fa-undo"></i></span>` : ''}
+                            </div>
+                        `;
+                    }
+
                     html += `
-                        <div class="msg-item ${side}" data-id="${m.id}" data-time="${m.created_at}">
+                        <div class="msg-item ${side}" data-id="${m.id}" data-time="${m.created_at}" id="msg-${m.id}">
                             ${side === 'other' ? `<div class="msg-sender">${m.sender_name}</div>` : ''}
+                            ${replyHtml}
                             <div class="msg-text">${content}</div>
                             ${statusHtml}
+                            ${actionsHtml}
                         </div>
                     `;
                 });
@@ -1164,21 +1262,74 @@
                 });
             }
 
+            let currentReplyTo = {}; // {groupId: messageId}
+
+            window.setReply = function(groupId, messageId, senderName, messageText) {
+                currentReplyTo[groupId] = messageId;
+                let preview = $(`#reply-preview-${groupId}`);
+                preview.find('.reply-to-name').text(senderName);
+                preview.find('.reply-to-text').text(messageText);
+                preview.show();
+                $(`#chat-window-${groupId} .chat-input`).focus();
+            };
+
+            window.cancelReply = function(groupId) {
+                delete currentReplyTo[groupId];
+                $(`#reply-preview-${groupId}`).hide();
+            };
+
+            window.scrollToMessage = function(groupId, messageId) {
+                let msgElement = $(`#msg-${messageId}`);
+                if (msgElement.length) {
+                    let contentDiv = $(`#chat-content-${groupId}`);
+                    contentDiv.animate({
+                        scrollTop: contentDiv.scrollTop() + msgElement.position().top - 50
+                    }, 500);
+                    msgElement.css('background', '#fff9c4');
+                    setTimeout(() => msgElement.css('background', ''), 2000);
+                }
+            };
+
+            window.recallMessage = function(groupId, messageId) {
+                Swal.fire({
+                    title: 'Thu hồi tin nhắn?',
+                    text: 'Bạn không thể hoàn tác hành động này.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Đồng ý',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("{{ route('chat.recall') }}", {
+                            _token: "{{ csrf_token() }}",
+                            message_id: messageId
+                        }).done(function() {
+                            loadChatMessages(groupId, true);
+                        }).fail(function(xhr) {
+                            Swal.fire('Lỗi', xhr.responseJSON?.message || 'Không thể thu hồi tin nhắn', 'error');
+                        });
+                    }
+                });
+            };
+
             window.sendChatMessage = function(groupId, input) {
                 let msg = input.value;
                 if (!msg.trim()) return;
 
-                // Xóa input ngay lập tức để tạo cảm giác phản hồi nhanh
+                let replyId = currentReplyTo[groupId] || null;
+
+                // Xóa input ngay lập tức
                 input.value = '';
+                cancelReply(groupId);
 
                 $.post("{{ route('chat.send') }}", {
                     _token: "{{ csrf_token() }}",
                     group_id: groupId,
-                    message: msg
+                    message: msg,
+                    reply_to_id: replyId
                 }).done(function() {
-                    loadChatMessages(groupId, true); // Force scroll khi mình gửi tin
+                    loadChatMessages(groupId, true);
                 }).fail(function() {
-                    // Nếu lỗi thì hoàn lại tin nhắn cho người dùng đỡ phải gõ lại
                     input.value = msg;
                     alert('Gửi tin nhắn thất bại, vui lòng thử lại.');
                 });
@@ -1374,6 +1525,23 @@
                 input.val(input.val() + emoji);
                 input.focus();
                 $(`#emoji-picker-${groupId}`).remove();
+            };
+
+            // --- TRIBUTE.JS (TAG @USER) ---
+            window.initTribute = function(groupId) {
+                $.get("{{ route('chat.users') }}", function(users) {
+                    let tribute = new Tribute({
+                        values: users.map(u => ({
+                            key: u.fullName,
+                            value: `@${u.fullName}[${u.id}]`
+                        })),
+                        selectTemplate: function(item) {
+                            return item.original.value;
+                        }
+                    });
+                    let input = document.querySelector(`#chat-window-${groupId} .chat-input`);
+                    if (input) tribute.attach(input);
+                });
             };
         })();
     </script>

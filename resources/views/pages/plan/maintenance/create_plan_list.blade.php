@@ -27,7 +27,17 @@
             <div class="form-group">
               <label for="name">Tên Kế Hoạch</label>
               <input type="text" class="form-control" name="name" 
-                value="{{ old('name') }}">
+                value="{{ old('name') }}" placeholder="Để trống để tự động tạo tên">
+            </div>
+
+            {{-- TYPE --}}
+            <div class="form-group">
+              <label for="type">Loại Kế Hoạch</label>
+              <select class="form-control" name="type" required>
+                <option value="1" {{ request('type') == 1 ? 'selected' : '' }}>Hiệu Chuẩn</option>
+                <option value="2" {{ request('type') == 2 ? 'selected' : '' }}>Bảo Trì</option>
+                <option value="3" {{ request('type') == 3 ? 'selected' : '' }}>Tiện Ích</option>
+              </select>
             </div>
             @error('name', 'createErrors')
                 <div class="alert alert-danger">{{ $message }}</div>
