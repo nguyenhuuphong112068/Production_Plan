@@ -578,13 +578,13 @@
                     id="chatSearch" onkeyup="searchChat()">
             </div>
             <div class="notif-tabs" style="border-top:none;">
-                <div class="notif-tab active" id="tab-conversations" onclick="switchChatTab('conv')">Hội thoại</div>
-                <div class="notif-tab" id="tab-contacts" onclick="switchChatTab('contacts')">Danh bạ</div>
+                <div class="notif-tab" id="tab-conversations" onclick="switchChatTab('conv')">Hội thoại</div>
+                <div class="notif-tab active" id="tab-contacts" onclick="switchChatTab('contacts')">Danh bạ</div>
             </div>
-            <div class="chat-list" id="chatList">
+            <div class="chat-list d-none" id="chatList">
                 <!-- Data will be loaded here -->
             </div>
-            <div class="chat-list d-none" id="contactList">
+            <div class="chat-list" id="contactList">
                 <!-- Users will be loaded here -->
             </div>
         </div>
@@ -811,6 +811,7 @@
                     $('#chat-overlay').fadeIn();
                     loadChatGroups();
                     loadContacts();
+                    switchChatTab('contacts');
                 } else {
                     $('#chat-sidebar').removeClass('active');
                     $('#chat-overlay').fadeOut();
@@ -1326,6 +1327,7 @@
             };
         })();
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/tributejs@5.1.3/dist/tribute.min.js"></script>
 </body>
 
 </html>
