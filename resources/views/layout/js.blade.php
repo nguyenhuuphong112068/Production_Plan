@@ -5,8 +5,7 @@
         <script src="{{asset ('dataTable/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js')}}"></script>
         <script src="{{asset ('dataTable/plugins/datatables-responsive/js/dataTables.responsive.min.js')}}"></script>
         <script src="{{asset ('dataTable/plugins/datatables-responsive/js/responsive.bootstrap4.min.js')}}"></script>
-        <script src="{{asset ('dataTable/dist/js/adminlte.min.js')}}"></script>
-        <script src="{{asset ('dataTable/dist/js/demo.js')}}"></script>
+        <script src="{{ asset('dataTable/dist/js/adminlte.min.js') }}"></script>
 
         <!-- Select2 -->
         <script src="{{asset ('dataTable/plugins/select2/js/select2.full.min.js')}}"></script>
@@ -28,9 +27,8 @@
         
      
         <script src="{{ asset('dataTable/plugins/chart.js/Chart.min.js') }}"></script>
-
-        <script src="{{asset ('dataTable/dist/js/demo.js')}}"></script>
-        <script src="{{asset ('dataTable/dist/js/pages/dashboard3.js')}}"></script>
+        <script src="{{ asset('dataTable/dist/js/demo.js') }}?v={{ filemtime(public_path('dataTable/dist/js/demo.js')) }}"></script>
+        <script src="{{ asset('dataTable/dist/js/pages/dashboard3.js') }}?v={{ filemtime(public_path('dataTable/dist/js/pages/dashboard3.js')) }}"></script>
 
         <!-- Thêm DataTables CSS -->
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
