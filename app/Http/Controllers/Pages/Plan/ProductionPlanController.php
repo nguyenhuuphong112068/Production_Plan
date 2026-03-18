@@ -1648,7 +1648,6 @@ class ProductionPlanController extends Controller
 
                 try {
 
-
                         $maxStageFinished = DB::table('stage_plan')
                                 ->select(
                                         'plan_master_id',
@@ -1698,9 +1697,16 @@ class ProductionPlanController extends Controller
                                 )
 
                                 ->when(
-                                        $request->has('material_packaging_type'),
+                                        $request->has('material_packaging_type') && $request->material_packaging_type == 0,
                                         fn($q) => $q->where('pmm.material_packaging_type', $request->material_packaging_type)
+                                                ->where('pm.only_parkaging', 0),
                                 )
+
+                                ->when(
+                                        $request->has('material_packaging_type') && $request->material_packaging_type == 1,
+                                        fn($q) => $q->where('pmm.material_packaging_type', $request->material_packaging_type),
+                                )
+
 
                                 ->selectRaw("
                                         pmm.material_packaging_code,
@@ -1793,8 +1799,14 @@ class ProductionPlanController extends Controller
                                 )
 
                                 ->when(
-                                        $request->has('material_packaging_type'),
+                                        $request->has('material_packaging_type') && $request->material_packaging_type == 0,
                                         fn($q) => $q->where('pmm.material_packaging_type', $request->material_packaging_type)
+                                                ->where('pm.only_parkaging', 0),
+                                )
+
+                                ->when(
+                                        $request->has('material_packaging_type') && $request->material_packaging_type == 1,
+                                        fn($q) => $q->where('pmm.material_packaging_type', $request->material_packaging_type),
                                 )
 
                                 ->selectRaw("
@@ -1945,6 +1957,9 @@ class ProductionPlanController extends Controller
                         ]);
                 }
         }
+
+
+
 
         public function open_bacth_detail(Request  $request)
         {
