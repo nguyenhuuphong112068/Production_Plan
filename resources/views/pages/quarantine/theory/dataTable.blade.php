@@ -227,7 +227,10 @@
     });
 
     // 🎯 Vẽ biểu đồ
-    const ctx = document.getElementById(`stageChart${stage_code}`).getContext("2d");
+    const canvasElement = document.getElementById(`stageChart${stage_code}`);
+    if (!canvasElement) return;
+
+    const ctx = canvasElement.getContext("2d");
     new Chart(ctx, {
       type: "line",
       data: {
