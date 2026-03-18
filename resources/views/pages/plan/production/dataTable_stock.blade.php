@@ -304,8 +304,7 @@
             const plan_master_ids_text = btn.data('plan_master_ids');
 
             const plan_master_ids = plan_master_ids_text ?
-                String(plan_master_ids_text).split('_') :
-                [];
+                String(plan_master_ids_text).split('_') : [];
 
             if (!plan_master_ids.length) return;
 
@@ -376,8 +375,12 @@
 
                         batchTable.row.add([
                             `
-                        <div>${index + 1}</div>
-                        ${data.userGroup === "Admin" ? `<div>${data.id}</div>` : ''}
+                        <div>
+                            ${index + 1}
+                            <br>
+                            ${data.userGroup === "Admin" ? `<div>${data.id}</div>` : ''}
+                        </div>
+                        
                         `,
                             `
                         <div class="text-center"
