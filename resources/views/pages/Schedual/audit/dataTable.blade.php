@@ -1,7 +1,6 @@
-
 <div class="content-wrapper">
 
-    <div class="card" >
+    <div class="card">
 
         <div class="card-header mt-4">
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
@@ -51,11 +50,11 @@
 
                 </div>
             </form> --}}
-            
+
             <form id="filterForm" method="GET" action="{{ route('pages.Schedual.audit.index') }}"
-                    class="d-flex flex-wrap gap-2">
-                    @csrf
-                    {{-- <div class="row w-100 align-items-center">
+                class="d-flex flex-wrap gap-2">
+                @csrf
+                {{-- <div class="row w-100 align-items-center">
                         <!-- Stage Selector -->
                         <div class="col-md-4 d-flex justify-content-center align-items-center"
                             style="gap: 10px; height: 40px;">
@@ -93,28 +92,27 @@
                     <div class="col-md-4 d-flex gap-2"></div>
 
                     <!-- Stage Selector -->
-                    <div class="col-md-4 d-flex justify-content-end"
-                        style="gap: 10px; height: 40px;">
+                    <div class="col-md-4 d-flex justify-content-end" style="gap: 10px; height: 40px;">
                         <div class="form-group" style="width: 177px">
-                                <select class="form-control" name="stage_code" style="text-align-last: center;"
-                                    onchange="document.getElementById('filterForm').submit();">
-                                    <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
-                                    <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
-                                    <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
-                                    <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
-                                    <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
-                                    <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
-                                    <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
-                                </select>
+                            <select class="form-control" name="stage_code" style="text-align-last: center;"
+                                onchange="document.getElementById('filterForm').submit();">
+                                <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
+                                <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
+                                <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
+                                <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
+                                <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
+                                <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
+                                <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
+                            </select>
                         </div>
-                        
+
                     </div>
-                
+
 
                 </div>
 
 
-         
+
             </form>
 
             <table id="data_table_Schedual_list" class="table table-bordered table-striped" style="font-size: 20px">
@@ -140,8 +138,10 @@
 
                     @foreach ($datas as $data)
                         <tr>
-                            <td>{{ $loop->iteration }} 
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                            <td>{{ $loop->iteration }}
+                                @if (session('user')['userGroup'] == 'Admin')
+                                    <div> {{ $data->id }} </div>
+                                @endif
                             </td>
                             <td>
                                 <div> {{ $data->intermediate_code }} </div>
@@ -173,7 +173,7 @@
                                 <div>{{ \Carbon\Carbon::parse($data->schedualed_at)->format('d/m/Y') }} </div>
                             </td>
                             <td>
-                                {{$data->version}}
+                                {{ $data->version }}
                             </td>
 
                             {{-- <td class="text-center align-middle">
@@ -231,7 +231,7 @@
             },
         });
 
-    
+
     });
 </script>
 
@@ -249,17 +249,17 @@
         stageCodeEl.value = stages[currentIndex].stage_code;
     }
 
-    document.getElementById("prevStage").addEventListener("click", function() {
-        currentIndex = (currentIndex > 0) ? currentIndex - 1 : stages.length - 1;
-        updateStage();
-        filterForm.submit();
-    });
+    // document.getElementById("prevStage").addEventListener("click", function() {
+    //     currentIndex = (currentIndex > 0) ? currentIndex - 1 : stages.length - 1;
+    //     updateStage();
+    //     filterForm.submit();
+    // });
 
-    document.getElementById("nextStage").addEventListener("click", function() {
-        currentIndex = (currentIndex < stages.length - 1) ? currentIndex + 1 : 0;
-        updateStage();
-        filterForm.submit();
-    });
+    // document.getElementById("nextStage").addEventListener("click", function() {
+    //     currentIndex = (currentIndex < stages.length - 1) ? currentIndex + 1 : 0;
+    //     updateStage();
+    //     filterForm.submit();
+    // });
 </script>
 
 
@@ -287,4 +287,3 @@
         });
     });
 </script> --}}
-                             
