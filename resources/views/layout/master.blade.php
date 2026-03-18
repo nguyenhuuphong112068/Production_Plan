@@ -1482,7 +1482,7 @@
                     loadChatMessages(groupId);
                 });
                 loadChatGroups(); // Luôn gọi để cập nhật Badge chưa đọc và hiệu ứng nhấp nháy
-            }, 3000);
+            }, 10000);
 
             // --- CÁC HÀM XỬ LÝ NHÓM & EMOJI ---
             let allUsersForGroup = [];

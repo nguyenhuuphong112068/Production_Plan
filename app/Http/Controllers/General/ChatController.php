@@ -21,60 +21,30 @@ class ChatController extends Controller
         $groups = DB::table('chat_groups as cg')
             ->join('chat_group_members as cgm', 'cg.id', '=', 'cgm.group_id')
             ->where('cgm.user_id', $userId)
-            ->leftJoin('chat_messages as last_m', function($join) {
-                $join->on('cg.id', '=', 'last_m.group_id')
-                     ->whereRaw('last_m.id = (SELECT id FROM chat_messages WHERE group_id = cg.id ORDER BY created_at DESC LIMIT 1)');
-            })
-            ->select('cg.*', 'cgm.last_read_at', 'last_m.created_at as last_m_time')
-            ->orderByRaw('COALESCE(last_m.created_at, cg.created_at) DESC')
+            ->select(
+                'cg.*',
+                'cgm.last_read_at',
+                DB::raw("(SELECT message FROM chat_messages WHERE group_id = cg.id ORDER BY created_at DESC LIMIT 1) as last_message"),
+                DB::raw("(SELECT created_at FROM chat_messages WHERE group_id = cg.id ORDER BY created_at DESC LIMIT 1) as last_time"),
+                DB::raw("(SELECT sender_id FROM chat_messages WHERE group_id = cg.id ORDER BY created_at DESC LIMIT 1) as last_sender_id"),
+                DB::raw("(SELECT COUNT(*) FROM chat_messages 
+                          WHERE group_id = cg.id AND sender_id != $userId 
+                          AND (cgm.last_read_at IS NULL OR created_at > cgm.last_read_at)) as unread_count"),
+                DB::raw("(CASE WHEN cg.type = 0 THEN 
+                           (SELECT u.fullName FROM user_management u JOIN chat_group_members m ON u.id = m.user_id 
+                            WHERE m.group_id = cg.id AND m.user_id != $userId LIMIT 1) 
+                          ELSE cg.name END) as display_name"),
+                DB::raw("(CASE WHEN cg.type = 0 THEN 
+                           (SELECT u.last_activity FROM user_management u JOIN chat_group_members m ON u.id = m.user_id 
+                            WHERE m.group_id = cg.id AND m.user_id != $userId LIMIT 1) 
+                          ELSE NULL END) as last_activity")
+            )
+            ->orderByRaw('COALESCE((SELECT created_at FROM chat_messages WHERE group_id = cg.id ORDER BY created_at DESC LIMIT 1), cg.created_at) DESC')
             ->get();
 
+        $fiveMinsAgo = now()->subMinutes(5);
         foreach ($groups as $group) {
-            // Nếu là chat 1-1 (type = 0), lấy tên người kia làm tên phòng
-            if ($group->type == 0) {
-                $otherUser = DB::table('chat_group_members as cgm')
-                    ->join('user_management as u', 'cgm.user_id', '=', 'u.id')
-                    ->where('cgm.group_id', $group->id)
-                    ->where('cgm.user_id', '!=', $userId)
-                    ->select('u.fullName')
-                    ->first();
-                $group->display_name = $otherUser ? $otherUser->fullName : 'Unknown';
-            } else {
-                $group->display_name = $group->name;
-            }
-
-            // Lấy tin nhắn cuối cùng
-            $lastMsg = DB::table('chat_messages')
-                ->where('group_id', $group->id)
-                ->orderBy('created_at', 'desc')
-                ->first();
-            $group->last_message = $lastMsg ? $lastMsg->message : '';
-            $group->last_time = $lastMsg ? $lastMsg->created_at : $group->created_at;
-            $group->last_sender_id = $lastMsg ? $lastMsg->sender_id : null;
-
-            // Tính số tin nhắn chưa đọc
-            $query = DB::table('chat_messages')
-                ->where('group_id', $group->id)
-                ->where('sender_id', '!=', $userId);
-            
-            if ($group->last_read_at) {
-                $query->where('created_at', '>', $group->last_read_at);
-            }
-            
-            $group->unread_count = $query->count();
-
-            // Tính trạng thái online (nếu là chat 1-1)
-            if ($group->type == 0) {
-                $otherMember = DB::table('chat_group_members as cgm')
-                    ->join('user_management as u', 'cgm.user_id', '=', 'u.id')
-                    ->where('cgm.group_id', $group->id)
-                    ->where('cgm.user_id', '!=', $userId)
-                    ->select('u.last_activity')
-                    ->first();
-                
-                $fiveMinsAgo = now()->subMinutes(5);
-                $group->is_online = ($otherMember && $otherMember->last_activity && $otherMember->last_activity > $fiveMinsAgo);
-            }
+            $group->is_online = ($group->type == 0 && $group->last_activity && $group->last_activity > $fiveMinsAgo);
         }
 
         return response()->json($groups);
