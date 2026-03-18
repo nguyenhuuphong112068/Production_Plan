@@ -447,41 +447,39 @@
 
         .msg-item {
             margin-bottom: 8px;
-            max-width: 90%;
-            padding: 8px 12px;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
             position: relative;
-            align-self: flex-start;
-            /* Tất cả căn trái */
         }
 
-        .msg-item.me {
-            background: #e8f5e9;
-            /* Xanh lá cực nhạt */
-            color: #1b5e20;
-            /* Chữ xanh lá đậm */
-            border-radius: 0 12px 12px 12px;
-            border-left: 3px solid #81c784;
-            /* Viền xanh lá sáng */
-            margin-left: 0;
+        .msg-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 100%; /* Tăng max-width của hàng */
         }
 
-        .msg-item.me .msg-text {
-            color: #1b5e20;
-        }
-
-        .msg-item.me .msg-status,
-        .msg-item.me .msg-sender {
-            color: #666;
-        }
-
-        .msg-item.other {
-            align-self: flex-start;
+        .msg-bubble {
+            padding: 8px 12px;
+            border-radius: 12px;
+            position: relative;
+            z-index: 1;
             background: #f5f5f5;
-            /* Xám cực nhạt */
             color: #333;
-            border-radius: 0 12px 12px 12px;
             border-left: 3px solid #e0e0e0;
-            /* Viền xám nhạt */
+        }
+
+        .msg-item.me .msg-bubble {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border-left: 3px solid #81c784;
+            border-radius: 12px 0 12px 12px;
+        }
+
+        .msg-item.other .msg-bubble {
+            border-radius: 0 12px 12px 12px;
         }
 
         .msg-sender {
@@ -534,16 +532,18 @@
             display: block;
         }
 
-        .msg-actions {
-            position: absolute;
-            top: 2px;
-            right: 5px;
+        .msg-item .msg-actions {
             display: none;
-            gap: 5px;
-            background: rgba(255,255,255,0.9);
-            padding: 2px 5px;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            gap: 8px;
+            background: transparent;
+            padding: 0;
+            box-shadow: none;
+            position: static;
+            transform: none;
+        }
+
+        .msg-row:hover .msg-actions {
+            display: flex;
         }
 
         .msg-item:hover .msg-actions {
@@ -608,6 +608,86 @@
 
         .emoji-item:hover {
             background: #f0f0f0;
+        }
+        .reaction-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .reaction-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+        .reaction-item {
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            border: 1px solid transparent;
+        }
+        .reaction-item.me {
+            background: #e8f5e9;
+            border-color: #81c784;
+        }
+        .reaction-item:hover {
+            background: #e0e0e0;
+        }
+        .btn-reaction {
+            position: relative;
+        }
+        .reaction-picker-mini {
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 5px 10px;
+            display: none;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1070;
+            white-space: nowrap;
+        }
+
+        /* Thêm vùng đệm bằng pseudo-element để tránh mất hover khi di chuyển chuột */
+        .reaction-picker-mini::before {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            height: 15px;
+            background: transparent;
+        }
+        .msg-actions:hover .reaction-picker-mini {
+            /* display: flex;  -- Sẽ điều khiển bằng click hoặc hover tùy ý, ở đây dùng hover cho nhanh */
+        }
+        .reaction-emoji-btn {
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.1s;
+        }
+        .reaction-emoji-btn:hover {
+            transform: scale(1.3);
+        }
+        .reaction-emoji-btn:active {
+            transform: scale(0.9);
+        }
+        
+        /* Hiệu ứng nhấp nháy khi vừa thả cảm xúc để người dùng biết đã thành công */
+        .reaction-item.just-added {
+            animation: pulse-green 0.5s;
+        }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+            100% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
         }
     </style>
 
@@ -1268,13 +1348,42 @@
                         statusHtml = `<div class="msg-status">${timeHtml}</div>`;
                     }
 
-                    // Actions (Reply, Recall)
+                    // Render Reactions
+                    let reactionsHtml = '<div class="reaction-list">';
+                    if (m.reactions_summary) {
+                        for (let emoji in m.reactions_summary) {
+                            let r = m.reactions_summary[emoji];
+                            let usersTitle = r.users.join(', ');
+                            reactionsHtml += `
+                                <div class="reaction-item ${r.me ? 'me' : ''}" title="${usersTitle}" onclick="toggleReaction(${m.id}, '${emoji}')">
+                                    <span>${emoji}</span>
+                                    <span class="reaction-count">${r.count}</span>
+                                </div>
+                            `;
+                        }
+                    }
+                    reactionsHtml += '</div>';
+
+                    // Actions (Reply, Recall, Reaction)
                     let actionsHtml = '';
                     if (!isRecalled) {
                         let safeText = (m.message || 'File').replace(/'/g, "&apos;").replace(/"/g, "&quot;").replace(/\n/g, " ");
                         let safeName = (m.sender_name || 'Người dùng').replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                         actionsHtml = `
                             <div class="msg-actions">
+                                <div class="btn-reaction" onmouseenter="$(this).find('.reaction-picker-mini').css('display', 'flex')" onmouseleave="$(this).find('.reaction-picker-mini').hide()">
+                                    <span class="msg-action-btn" title="Thả cảm xúc">
+                                        <i class="far fa-smile"></i>
+                                    </span>
+                                    <div class="reaction-picker-mini">
+                                        <span class="reaction-emoji-btn" onclick="toggleReaction(${m.id}, '👍')">👍</span>
+                                        <span class="reaction-emoji-btn" onclick="toggleReaction(${m.id}, '❤️')">❤️</span>
+                                        <span class="reaction-emoji-btn" onclick="toggleReaction(${m.id}, '😄')">😄</span>
+                                        <span class="reaction-emoji-btn" onclick="toggleReaction(${m.id}, '😮')">😮</span>
+                                        <span class="reaction-emoji-btn" onclick="toggleReaction(${m.id}, '😢')">😢</span>
+                                        <span class="reaction-emoji-btn" onclick="toggleReaction(${m.id}, '🔥')">🔥</span>
+                                    </div>
+                                </div>
                                 <span class="msg-action-btn btn-reply" title="Trả lời" 
                                     data-msg-id="${m.id}" data-name="${safeName}" data-text="${safeText}">
                                     <i class="fas fa-reply"></i>
@@ -1288,14 +1397,38 @@
 
                     html += `
                         <div class="msg-item ${side}" data-id="${m.id}" data-time="${m.created_at}" id="msg-${m.id}">
-                            ${side === 'other' ? `<div class="msg-sender">${m.sender_name}</div>` : ''}
-                            ${replyHtml}
-                            <div class="msg-text">${content}</div>
-                            ${statusHtml}
-                            ${actionsHtml}
+                            ${side === 'other' ? `<div class="msg-sender" style="margin-left: 0;">${m.sender_name}</div>` : ''}
+                            <div class="msg-row">
+                                <div class="msg-bubble">
+                                    ${replyHtml}
+                                    <div class="msg-text">${content}</div>
+                                    ${statusHtml}
+                                </div>
+                                <div class="reaction-container">
+                                    ${renderReactions(m.reactions_summary, m.id)}
+                                </div>
+                                ${actionsHtml}
+                            </div>
                         </div>
                     `;
                 });
+                return html;
+            }
+
+            function renderReactions(summary, messageId) {
+                if (!summary || Object.keys(summary).length === 0) return '';
+                let html = '<div class="reaction-list">';
+                for (let emoji in summary) {
+                    let r = summary[emoji];
+                    let usersTitle = r.users.join(', ');
+                    html += `
+                        <div class="reaction-item ${r.me ? 'me' : ''}" title="${usersTitle}" onclick="toggleReaction(${messageId}, '${emoji}')">
+                            <span>${emoji}</span>
+                            <span class="reaction-count">${r.count}</span>
+                        </div>
+                    `;
+                }
+                html += '</div>';
                 return html;
             }
 
@@ -1326,6 +1459,24 @@
                     }
                 });
             }
+
+            window.toggleReaction = function(messageId, emoji) {
+                $.post("{{ route('chat.reaction', [], false) }}", {
+                    _token: "{{ csrf_token() }}",
+                    message_id: messageId,
+                    reaction: emoji
+                }, function(res) {
+                    if (res.success) {
+                        // Cập nhật DOM ngay lập tức
+                        let reactionContainer = $(`#msg-${messageId} .reaction-container`);
+                        if (reactionContainer.length) {
+                            reactionContainer.html(renderReactions(res.reactions_summary, messageId));
+                        }
+                    }
+                }).fail(function(err) {
+                    console.error("Lỗi khi thả cảm xúc:", err);
+                });
+            };
 
             let currentReplyTo = {}; // {groupId: messageId}
 

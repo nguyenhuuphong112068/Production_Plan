@@ -73,8 +73,9 @@ class ChatController extends Controller
             ->reverse()
             ->values();
 
-        // Lấy thông tin tin nhắn được reply (nếu có)
+        // Lấy thông tin tin nhắn được reply và Reactions
         foreach ($messages as $msg) {
+            // Reply
             if ($msg->reply_to_id) {
                 $msg->reply_to_content = DB::table('chat_messages as cm')
                     ->join('user_management as u', 'cm.sender_id', '=', 'u.id')
@@ -82,6 +83,9 @@ class ChatController extends Controller
                     ->select('cm.message', 'cm.is_recalled', 'u.fullName as sender_name')
                     ->first();
             }
+
+            // Reactions
+            $msg->reactions_summary = $this->getReactionsSummary($msg->id, $userId);
         }
 
         // Lấy thời gian đọc cuối cùng của các thành viên khác để xác định trạng thái "Đã xem"
@@ -332,5 +336,81 @@ class ChatController extends Controller
             ->update(['last_read_at' => now()]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Thả hoặc gỡ cảm xúc cho tin nhắn
+     */
+    public function toggleReaction(Request $request)
+    {
+        $userId = session('user')['userId'];
+        $messageId = $request->message_id;
+        $reaction = $request->reaction;
+
+        $existing = DB::table('chat_message_reactions')
+            ->where('message_id', $messageId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($existing) {
+            if ($existing->reaction === $reaction) {
+                // Nếu trùng reaction cũ -> Gỡ bỏ
+                DB::table('chat_message_reactions')
+                    ->where('id', $existing->id)
+                    ->delete();
+            } else {
+                // Nếu khác reaction cũ -> Cập nhật
+                DB::table('chat_message_reactions')
+                    ->where('id', $existing->id)
+                    ->update([
+                        'reaction' => $reaction,
+                        'created_at' => now()
+                    ]);
+            }
+        } else {
+            // Chưa có -> Thêm mới
+            DB::table('chat_message_reactions')->insert([
+                'message_id' => $messageId,
+                'user_id' => $userId,
+                'reaction' => $reaction,
+                'created_at' => now()
+            ]);
+        }
+
+        // Trả về summary mới nhất để Frontend cập nhật ngay
+        $summary = $this->getReactionsSummary($messageId, $userId);
+        return response()->json([
+            'success' => true,
+            'reactions_summary' => $summary
+        ]);
+    }
+
+    /**
+     * Helper lấy tổng hợp cảm xúc của một tin nhắn
+     */
+    private function getReactionsSummary($messageId, $userId)
+    {
+        $reactions = DB::table('chat_message_reactions as r')
+            ->join('user_management as u', 'r.user_id', '=', 'u.id')
+            ->where('r.message_id', $messageId)
+            ->select('r.reaction', 'u.fullName', 'u.id as user_id')
+            ->get();
+
+        $summary = [];
+        foreach ($reactions as $r) {
+            if (!isset($summary[$r->reaction])) {
+                $summary[$r->reaction] = [
+                    'count' => 0,
+                    'users' => [],
+                    'me' => false
+                ];
+            }
+            $summary[$r->reaction]['count']++;
+            $summary[$r->reaction]['users'][] = $r->fullName;
+            if ($r->user_id == $userId) {
+                $summary[$r->reaction]['me'] = true;
+            }
+        }
+        return $summary;
     }
 }

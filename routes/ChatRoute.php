@@ -17,4 +17,5 @@ Route::prefix('/chat')
         Route::post('/create-group', 'createGroupChat')->name('createGroup');
         Route::post('/mark-as-read', 'markAsRead')->name('markAsRead');
         Route::post('/recall', 'recallMessage')->name('recall');
+        Route::post('/reaction', 'toggleReaction')->name('reaction');
     });
