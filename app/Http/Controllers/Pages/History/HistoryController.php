@@ -51,7 +51,11 @@ class HistoryController extends Controller
                                 'finished_product_category.unit_batch_qty',
                                 'market.name as market',
                                 'product_name.name as name',
-                                DB::raw("COALESCE(y_sum.sum_actual_yeild,0) as sum_actual_yeild")
+                                DB::raw("
+TRIM(TRAILING '.' FROM TRIM(TRAILING '0' 
+FROM FORMAT(COALESCE(y_sum.sum_actual_yeild,0), 3)
+)) as sum_actual_yeild
+")
                         )
                         ->where('stage_plan.deparment_code', $production)
                         ->whereBetween('stage_plan.actual_start', [$fromDate, $toDate])
