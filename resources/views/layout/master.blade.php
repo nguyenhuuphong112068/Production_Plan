@@ -458,7 +458,8 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            max-width: 100%; /* Tăng max-width của hàng */
+            max-width: 100%;
+            width: 100%; /* Đảm bảo hàng chiếm hết không gian nếu cần */
         }
 
         .msg-bubble {
@@ -469,6 +470,8 @@
             background: #f5f5f5;
             color: #333;
             border-left: 3px solid #e0e0e0;
+            max-width: calc(100% - 120px); /* Giới hạn chiều rộng để chừa chỗ cho Toolbar */
+            word-break: break-word; /* Chống tràn chữ quá dài */
         }
 
         .msg-item.me .msg-bubble {
@@ -540,6 +543,8 @@
             box-shadow: none;
             position: static;
             transform: none;
+            flex-shrink: 0; /* Không cho phép bị co lại */
+            white-space: nowrap; /* Giữ icon trên 1 hàng */
         }
 
         .msg-row:hover .msg-actions {
@@ -612,6 +617,7 @@
         .reaction-container {
             display: flex;
             align-items: center;
+            flex-shrink: 0; /* Không cho phép bị co lại */
         }
 
         .reaction-list {
