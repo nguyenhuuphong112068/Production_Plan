@@ -821,9 +821,7 @@
 
         @yield('script')
 
-        <!-- Audio for notifications -->
-        <audio id="chat-notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
-            preload="auto"></audio>
+
 
 
     </div>
@@ -978,11 +976,7 @@
             // - [x] Kiểm tra và tối ưu hóa hiệu năng <!-- id: 32 -->
             let currentUserId = {{ session('user')['userId'] }};
 
-            function playChatSound() {
-                try {
-                    document.getElementById('chat-notif-sound').play();
-                } catch (e) {}
-            }
+
 
             let blinkInterval = null;
             let originalTitle = document.title;
@@ -1062,7 +1056,7 @@
                         if (g.last_time) {
                             if (chatGroupLastTimes[g.id] && g.last_time > chatGroupLastTimes[g.id]) {
                                 if (g.last_sender_id != currentUserId) {
-                                    playChatSound();
+    
                                     blinkTitle("Có tin nhắn mới...");
                                     if (!openChatGroups.includes(g.id)) {
                                         openChatWindow(g.id, g.display_name, g.is_online || false);
