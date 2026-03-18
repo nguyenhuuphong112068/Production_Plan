@@ -156,7 +156,23 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => (function() {
+        $domain = env('SESSION_DOMAIN');
+        if (!$domain) return null;
+        
+        // Kiểm tra xem ứng dụng có đang chạy trong môi trường console (artisan) không
+        if (app()->runningInConsole()) return $domain;
+
+        $host = request()->getHost();
+        $pureDomain = ltrim($domain, '.');
+        
+        // Nếu host khớp hoặc kết thúc bằng domain (vd: pms.stellapharm.int)
+        if ($host === $pureDomain || str_ends_with($host, '.' . $pureDomain)) {
+            return $domain;
+        }
+        
+        return null;
+    })(),
 
     /*
     |--------------------------------------------------------------------------
