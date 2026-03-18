@@ -536,23 +536,26 @@
         }
 
         .msg-item .msg-actions {
-            display: none;
+            display: flex; /* Luôn là flex để giữ layout ổn định */
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
             gap: 8px;
             background: transparent;
             padding: 0;
             box-shadow: none;
             position: static;
             transform: none;
-            flex-shrink: 0; /* Không cho phép bị co lại */
-            white-space: nowrap; /* Giữ icon trên 1 hàng */
+            flex-shrink: 0;
+            white-space: nowrap;
+            transition: opacity 0.2s, visibility 0.2s;
         }
 
-        .msg-row:hover .msg-actions {
-            display: flex;
-        }
-
+        .msg-row:hover .msg-actions,
         .msg-item:hover .msg-actions {
-            display: flex;
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .msg-action-btn {
@@ -655,11 +658,21 @@
             border: 1px solid #ddd;
             border-radius: 20px;
             padding: 5px 10px;
-            display: none;
+            display: flex; /* Mặc định là flex để tránh thay đổi layout khi hiện */
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
             gap: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             z-index: 1070;
             white-space: nowrap;
+            transition: opacity 0.2s;
+        }
+
+        .btn-reaction:hover .reaction-picker-mini {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
         }
 
         /* Thêm vùng đệm bằng pseudo-element để tránh mất hover khi di chuyển chuột */
@@ -1377,7 +1390,7 @@
                         let safeName = (m.sender_name || 'Người dùng').replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                         actionsHtml = `
                             <div class="msg-actions">
-                                <div class="btn-reaction" onmouseenter="$(this).find('.reaction-picker-mini').css('display', 'flex')" onmouseleave="$(this).find('.reaction-picker-mini').hide()">
+                                <div class="btn-reaction">
                                     <span class="msg-action-btn" title="Thả cảm xúc">
                                         <i class="far fa-smile"></i>
                                     </span>
@@ -1440,6 +1453,14 @@
 
             function attachMessageActions(groupId) {
                 let win = $(`#chat-window-${groupId}`);
+                
+                // Gắn sự kiện hover để quản lý trạng thái tương tác
+                win.find('.msg-row').off('mouseenter mouseleave').on('mouseenter', function() {
+                    isUserInteracting = true;
+                }).on('mouseleave', function() {
+                    isUserInteracting = false;
+                });
+
                 win.find('.btn-reply').off('click').on('click', function() {
                     let id = $(this).data('msg-id');
                     let name = $(this).data('name');
@@ -1739,15 +1760,25 @@
                 let existing = $(`#emoji-picker-${groupId}`);
                 if (existing.length) {
                     existing.remove();
+                    isUserInteracting = false; // Mở lại cuộn nếu đóng picker
                     return;
                 }
 
+                isUserInteracting = true; // Khóa cuộn khi đang chọn emoji
                 let html = `<div class="emoji-picker" id="emoji-picker-${groupId}">`;
                 commonEmojis.forEach(e => {
                     html += `<span class="emoji-item" onclick="addEmoji(${groupId}, '${e}')">${e}</span>`;
                 });
                 html += `</div>`;
                 $(`#chat-window-${groupId}`).append(html);
+                
+                // Đóng khi click ngoài
+                $(document).one('mousedown', function(e) {
+                    if (!$(e.target).closest('.emoji-picker, .btn-emoji').length) {
+                        $(`#emoji-picker-${groupId}`).remove();
+                        isUserInteracting = false;
+                    }
+                });
             };
 
             window.addEmoji = function(groupId, emoji) {
@@ -1755,6 +1786,7 @@
                 input.val(input.val() + emoji);
                 input.focus();
                 $(`#emoji-picker-${groupId}`).remove();
+                isUserInteracting = false; // Mở lại cuộn sau khi chọn xong
             };
 
             // --- TRIBUTE.JS (TAG @USER) ---
