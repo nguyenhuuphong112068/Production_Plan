@@ -148,7 +148,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div id="chart-container-{{$stage->stage_code}}" style="height:600px; width:100%;">
+                                            <div id="chart-container-{{$stage->stage_code}}-{{$loop->index}}" style="height:600px; width:100%;">
                                                 <canvas id="weight-chart-{{$stage->stage_code}}-{{$loop->index}}"></canvas>
                                             </div>
                                         </div>
@@ -318,10 +318,10 @@
   const groupedCycles = @json($groupedCycles);
   const charts = {}; // Lưu chart đã render
 
-  function renderStageChart(stageCode) {
-      const data = groupedCycles[stageCode] || [];
-      const container = document.getElementById(`chart-container-${stageCode}`);
-      const canvas = document.getElementById(`weight-chart-${stageCode}`);
+  function renderStageChart(stageId) {
+      const data = groupedCycles[parseInt(stageId)] || [];
+      const container = document.getElementById(`chart-container-${stageId}`);
+      const canvas = document.getElementById(`weight-chart-${stageId}`);
 
       // Nếu không có canvas hoặc không có data thì ẩn chart
       if (!canvas || !data.length) {
@@ -380,7 +380,7 @@
   }
 
   @foreach($datas as $stage)
-      renderStageChart({{ $stage->stage_code }}-{{$loop->index}});
+      renderStageChart("{{ $stage->stage_code }}-{{$loop->index}}");
   @endforeach
 </script>
 
