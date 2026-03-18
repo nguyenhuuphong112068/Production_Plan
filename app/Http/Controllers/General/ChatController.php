@@ -186,6 +186,23 @@ class ChatController extends Controller
             'created_at' => now(),
         ]);
 
+        // Xử lý Phản hồi tự động nếu gửi cho AI Agent (ID: 9999)
+        $targetUser = DB::table('chat_group_members')
+            ->where('group_id', $groupId)
+            ->where('user_id', 9999)
+            ->exists();
+
+        if ($targetUser && $userId != 9999) {
+            $aiResponse = \App\Services\AIService::getResponse($message);
+            
+            DB::table('chat_messages')->insert([
+                'group_id' => $groupId,
+                'sender_id' => 9999,
+                'message' => $aiResponse,
+                'created_at' => now()->addSecond(), // Đảm bảo sau tin nhắn người dùng
+            ]);
+        }
+
         // Xử lý Tag @mention trong nhóm chat
         if (preg_match_all('/@(.+?)\[(\d+)\]/', $message, $matches)) {
             $taggedUserIds = $matches[2];
@@ -294,6 +311,8 @@ class ChatController extends Controller
             ->where('isActive', 1)
             ->where('id', '!=', session('user')['userId'])
             ->select('id', 'fullName', 'userName', 'last_activity', 'deparment')
+            ->orderByRaw('CASE WHEN id = 9999 THEN 0 ELSE 1 END') // AI Agent luôn ở đầu
+            ->orderBy('fullName', 'asc')
             ->get();
             
         foreach ($users as $user) {

@@ -934,6 +934,12 @@
                     let totalUnread = 0;
 
                     data.forEach(g => {
+                        // Ẩn hội thoại với AI Agent nếu không phải Admin
+                        let userGroup = "{{ session('user')['userGroup'] }}";
+                        if (g.type == 0 && g.display_name === 'AI Agent Search PMS' && userGroup !== 'Admin') {
+                            return;
+                        }
+
                         let unreadHtml = g.unread_count > 0 ?
                             `<span class="unread-badge">${g.unread_count}</span>` : '';
                         let onlineHtml = g.is_online ?
@@ -991,14 +997,23 @@
                 $.get("{{ route('chat.users') }}", function(data) {
                     let html = '';
                     data.forEach(u => {
-                        let onlineHtml = u.is_online ?
+                        let isAI = u.id == 9999;
+                        
+                        // Ẩn AI Agent nếu không phải Admin
+                        let userGroup = "{{ session('user')['userGroup'] }}";
+                        if (isAI && userGroup !== 'Admin') {
+                            return;
+                        }
+
+                        let badgeHtml = isAI ? `<span class="badge badge-primary ml-1" style="font-size: 10px; background: #007bff;">AI BOT</span>` : '';
+                        let onlineHtml = (u.is_online || isAI) ?
                             `<span class="online-dot" title="Online"></span>` : '';
                         html += `
-                            <div class="chat-group-item contact-item" onclick="startDirectChat(${u.id}, '${u.fullName}', ${u.is_online || false})">
+                            <div class="chat-group-item contact-item ${isAI ? 'ai-agent-item' : ''}" onclick="startDirectChat(${u.id}, '${u.fullName}', ${u.is_online || isAI})">
                                 <div class="chat-group-info">
                                     <div class="chat-group-name">
                                         ${onlineHtml}
-                                        <b>${u.fullName}</b>
+                                        <b>${u.fullName}</b> ${badgeHtml}
                                     </div>
                                     <div class="chat-group-last-msg">@${u.userName}</div>
                                 </div>

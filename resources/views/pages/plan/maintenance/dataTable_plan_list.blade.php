@@ -105,9 +105,13 @@
         <div class="modal-content">
             <form action="{{ route('pages.plan.maintenance.auto_create_plan') }}" method="POST" id="form_auto_create">
                 @csrf
-                <div class="modal-header bg-success">
-                    <h5 class="modal-title" id="modalLabel">
-                        <i class="fas fa-magic"></i> Tạo Kế Hoạch Tự Động
+                @php
+                    $planType = request('type', 1);
+                    $typeName = ['1' => 'Hiệu Chuẩn', '2' => 'Bảo Trì', '3' => 'Tiện Ích'][$planType] ?? 'Hiệu Chuẩn';
+                @endphp
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="autoGenerateModalLabel">
+                        <i class="fas fa-magic"></i> Tạo Kế Hoạch {{ $typeName }} Tự Động
                     </h5>
                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -128,14 +132,7 @@
                                 <input type="date" class="form-control" name="to_date" id="m_to_date"
                                     value="{{ date('Y-m-t') }}" required>
                             </div>
-                            <div class="form-group">
-                                <label for="m_type">Loại Kế Hoạch:</label>
-                                <select class="form-control" name="type" id="m_type" required>
-                                    <option value="1" {{ request('type') == 1 ? 'selected' : '' }}>Hiệu Chuẩn</option>
-                                    <option value="2" {{ request('type') == 2 ? 'selected' : '' }}>Bảo Trì</option>
-                                    <option value="3" {{ request('type') == 3 ? 'selected' : '' }}>Tiện Ích</option>
-                                </select>
-                            </div>
+                            <input type="hidden" name="type" value="{{ $planType }}">
                         </div>
                         <div class="col-md-6 pl-4">
                             <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-industry"></i> 2. Chọn Phân
