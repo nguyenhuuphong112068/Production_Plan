@@ -708,6 +708,43 @@
             0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
             100% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
         }
+
+        /* --- CHAT SEARCH CSS --- */
+        .chat-search-container {
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chat-search-input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 13px;
+            outline: none;
+        }
+        .chat-search-input:focus {
+            border-color: #28a745;
+        }
+        .search-highlight {
+            background-color: #ffeb3b;
+            color: #000;
+            padding: 0 2px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        .search-highlight.current-match {
+            background-color: #ff9800;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .chat-search-stats {
+            font-size: 11px;
+            color: #666;
+            white-space: nowrap;
+        }
     </style>
 
 </head>
@@ -1154,8 +1191,18 @@
                                 <b>${groupName}</b>
                             </span>
                             <div class="chat-window-actions">
+                                <i class="fas fa-search me-2" title="Tìm kiếm tin nhắn" onclick="toggleChatSearch(${groupId})"></i>
                                 <i class="fas fa-minus me-2"></i>
                                 <i class="fas fa-times" onclick="closeChatWindow(event, ${groupId})"></i>
+                            </div>
+                        </div>
+                        <div class="chat-search-container d-none" id="chat-search-container-${groupId}">
+                            <input type="text" class="chat-search-input" id="chat-search-input-${groupId}" placeholder="Tìm tin nhắn..." onkeyup="if(event.key === 'Enter') executeChatSearch(${groupId})">
+                            <div class="chat-search-stats d-none" id="chat-search-stats-${groupId}">0/0</div>
+                            <div class="d-flex gap-1">
+                                <i class="fas fa-chevron-up text-muted cursor-pointer" onclick="navigateChatSearch(${groupId}, -1)"></i>
+                                <i class="fas fa-chevron-down text-muted cursor-pointer" onclick="navigateChatSearch(${groupId}, 1)"></i>
+                                <i class="fas fa-times text-muted cursor-pointer ms-1" onclick="toggleChatSearch(${groupId})"></i>
                             </div>
                         </div>
                         <div class="chat-window-content" id="chat-content-${groupId}">
@@ -1799,6 +1846,93 @@
                     if (input) tribute.attach(input);
                 });
             };
+
+            // --- CHAT SEARCH LOGIC ---
+            let chatSearchResults = {}; // {groupId: {indices: [], current: -1}}
+
+            window.toggleChatSearch = function(groupId) {
+                let container = $(`#chat-search-container-${groupId}`);
+                let input = $(`#chat-search-input-${groupId}`);
+                if (container.hasClass('d-none')) {
+                    container.removeClass('d-none');
+                    input.focus();
+                } else {
+                    container.addClass('d-none');
+                    clearChatSearch(groupId);
+                }
+            };
+
+            function clearChatSearch(groupId) {
+                let content = $(`#chat-content-${groupId}`);
+                content.find('.search-highlight').each(function() {
+                    $(this).replaceWith($(this).text());
+                });
+                $(`#chat-search-stats-${groupId}`).addClass('d-none');
+                chatSearchResults[groupId] = { indices: [], current: -1 };
+            }
+
+            window.executeChatSearch = function(groupId) {
+                let query = $(`#chat-search-input-${groupId}`).val().trim().toLowerCase();
+                clearChatSearch(groupId);
+                if (!query) return;
+
+                let content = $(`#chat-content-${groupId}`);
+                let matches = [];
+                
+                content.find('.msg-text').each(function() {
+                    let text = $(this).text();
+                    let lowerText = text.toLowerCase();
+                    if (lowerText.includes(query)) {
+                        // Use regex to replace all occurrences with case-insensitive support
+                        let regex = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+                        let newHtml = text.replace(regex, '<span class="search-highlight">$1</span>');
+                        $(this).html(newHtml);
+                    }
+                });
+
+                let allHighlights = content.find('.search-highlight');
+                if (allHighlights.length > 0) {
+                    chatSearchResults[groupId] = {
+                        indices: allHighlights,
+                        current: 0
+                    };
+                    $(`#chat-search-stats-${groupId}`).text(`1/${allHighlights.length}`).removeClass('d-none');
+                    scrollToMatch(groupId, 0);
+                } else {
+                    $(`#chat-search-stats-${groupId}`).text('0/0').removeClass('d-none');
+                }
+            };
+
+            window.navigateChatSearch = function(groupId, direction) {
+                let results = chatSearchResults[groupId];
+                if (!results || results.indices.length === 0) return;
+
+                results.current += direction;
+                if (results.current < 0) results.current = results.indices.length - 1;
+                if (results.current >= results.indices.length) results.current = 0;
+
+                $(`#chat-search-stats-${groupId}`).text(`${results.current + 1}/${results.indices.length}`);
+                scrollToMatch(groupId, results.current);
+            };
+
+            function scrollToMatch(groupId, index) {
+                let results = chatSearchResults[groupId];
+                if (!results) return;
+
+                let highlights = results.indices;
+                highlights.removeClass('current-match');
+                
+                let target = $(highlights[index]);
+                target.addClass('current-match');
+
+                let contentDiv = $(`#chat-content-${groupId}`);
+                let scrollTop = contentDiv.scrollTop();
+                let targetTop = target.offset().top - contentDiv.offset().top + scrollTop;
+
+                contentDiv.animate({
+                    scrollTop: targetTop - (contentDiv.height() / 2)
+                }, 300);
+            }
         })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/tributejs@5.1.3/dist/tribute.min.js"></script>
