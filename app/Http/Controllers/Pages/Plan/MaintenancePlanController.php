@@ -108,7 +108,7 @@ class MaintenancePlanController extends Controller
                                 try {
                                         $result = DB::connection($conn)
                                                 ->table("Schedule_Master_{$suffix}")
-                                                //->table("Schedule_Master_1")
+                                                // ->table("Schedule_Master_3")
                                                 ->whereBetween('Sch_DueDate', [$startDate, $endDate])
                                                 ->where('Sch_Result_Status', 'Pending')
                                                 ->select('Inst_ID', 'Sch_DueDate', 'Sch_Remark')
@@ -116,7 +116,7 @@ class MaintenancePlanController extends Controller
 
                                         $schedules = $schedules->merge($result);
 
-                                        dd($schedules);
+                                        // dd($schedules);
                                 } catch (\Exception $e) {
                                         Log::warning("Could not fetch schedules from {$conn}.Schedule_Master_{$suffix}: " . $e->getMessage());
                                 }
@@ -545,6 +545,10 @@ class MaintenancePlanController extends Controller
                         ]);
                 }
 
+
+                if ($request->ajax()) {
+                        return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái thành công!']);
+                }
 
                 return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }

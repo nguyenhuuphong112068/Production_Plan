@@ -64,9 +64,9 @@
                                 <th>Phòng SX Liên Quan</th>
                                 <th>Ghi Chú</th>
                                 <th>Người Tạo/ Ngày Tạo</th>
-                                <th style="width:1%">Cập Nhật</th>
-                                <th style="width:1%">Vô Hiệu</th>
-                                <th style="width:1%">Lịch Sử</th>
+
+                                <th style="width:1%">Bỏ Qua</th>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -109,7 +109,7 @@
 
 
 
-                                    <td class="text-center align-middle">
+                                    {{-- <td class="text-center align-middle">
                                         <button type="button" class="btn btn-warning btn-edit"
                                             {{ $data->active ? '' : 'disabled' }} {{ $auth_update }}
                                             data-id="{{ $data->id }}" data-name="{{ $data->name }}"
@@ -119,36 +119,43 @@
                                             data-target="#update_modal">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                    </td>
+                                    </td> --}}
 
                                     <td class="text-center align-middle">
-
-                                        <form class="form-deActive"
-                                            action="{{ route('pages.plan.maintenance.deActive') }}" method="post">
-                                            @csrf
-                                            <input type="hidden" name="id" value = "{{ $data->id }}">
-                                            <input type="hidden" name="active" value="{{ $data->active }}">
-
+                                        <div class="d-flex justify-content-center gap-1">
                                             @if ($data->active == true && $send == false)
-                                                <button type="submit" {{ $auth_deActive }} class="btn btn-danger"
-                                                    data-type="delete" data-name="{{ $data->name }}">
-                                                    <i class="fas fa-trash"></i>
+                                                <button type="button" {{ $auth_deActive }} 
+                                                    class="btn btn-danger btn-deactive-ajax"
+                                                    data-id="{{ $data->id }}" 
+                                                    data-type="delete" 
+                                                    data-name="{{ $data->name }}"
+                                                    title="Bỏ qua">
+                                                    <i class="fas fa-step-forward"></i>
                                                 </button>
                                             @elseif ($data->cancel == false && $send == true)
-                                                <button type="submit" {{ $auth_deActive }} class="btn btn-danger"
-                                                    data-type="cancel" data-name="{{ $data->name }}">
-                                                    <i class="fas fa-lock"></i>
+                                                <button type="button" {{ $auth_deActive }} 
+                                                    class="btn btn-danger btn-deactive-ajax"
+                                                    data-id="{{ $data->id }}" 
+                                                    data-type="cancel" 
+                                                    data-name="{{ $data->name }}"
+                                                    title="Hủy bỏ">
+                                                    <i class="fas fa-step-forward"></i>
                                                 </button>
                                             @elseif ($data->cancel == true && $send == true)
-                                                <button type="submit" {{ $auth_deActive }} class="btn btn-success"
-                                                    data-type="restore" data-name="{{ $data->name }}">
-                                                    <i class="fas fa-unlock"></i>
+                                                <button type="button" {{ $auth_deActive }} 
+                                                    class="btn btn-success btn-deactive-ajax"
+                                                    data-id="{{ $data->id }}" 
+                                                    data-type="restore" 
+                                                    data-name="{{ $data->name }}"
+                                                    title="Khôi phục">
+                                                    <i class="fas fa-step-forward"></i>
                                                 </button>
                                             @endif
-                                        </form>
-
+                                        </div>
                                     </td>
 
+
+                                    {{-- 
                                     <td class="text-center align-middle">
                                         <button type="button" class="btn btn-primary btn-history position-relative"
                                             data-id="{{ $data->id }}" data-toggle="modal"
@@ -159,7 +166,7 @@
                                                 {{ $data->history_count ?? 0 }}
                                             </span>
                                         </button>
-                                    </td>
+                                    </td> --}}
                                 </tr>
                             @endforeach
 
@@ -214,55 +221,75 @@
 
 
 
-        $('.form-deActive').on('submit', function(e) {
-            e.preventDefault(); // chặn submit mặc định
-            const form = this;
-            const productName = $(form).find('button[type="submit"]').data('name');
-            const type = $(form).find('button[type="submit"]').data('type');
+        $('.btn-deactive-ajax').on('click', function() {
+            const btn = $(this);
+            const id = btn.data('id');
+            const type = btn.data('type');
+            const productName = btn.data('name');
+            let title = "";
 
             if (type == "delete") {
-                title = "Bạn chắc chắn muốn xóa kế hoạch?"
+                title = "Bạn chắc chắn muốn bỏ qua thiết bị này?";
             } else if (type == "cancel") {
-                title = "Bạn chắc chắn muốn hủy kế hoạch?"
+                title = "Bạn chắc chắn muốn hủy kế hoạch?";
             } else {
-                title = "Bạn chắc chắn muốn phục hồi kế hoạch?"
+                title = "Bạn chắc chắn muốn phục hồi kế hoạch?";
             }
 
             Swal.fire({
                 title: title,
-                text: `Sản phẩm: ${productName}`,
+                text: `Thiết bị: ${productName}`,
                 icon: 'warning',
-                input: 'textarea', // ô nhập lý do
-                inputPlaceholder: 'Nhập lý do hủy...',
-                inputAttributes: {
-                    'aria-label': 'Nhập lý do hủy'
-                },
+                input: (type === 'cancel' || type === 'delete') ? 'textarea' : null,
+                inputPlaceholder: 'Nhập lý do...',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#d33',
                 confirmButtonText: 'Đồng ý',
                 cancelButtonText: 'Hủy',
                 preConfirm: (reason) => {
-                    if (!reason) {
+                    if ((type === 'cancel' || type === 'delete') && !reason) {
                         Swal.showValidationMessage('Bạn phải nhập lý do');
                     }
                     return reason;
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Tạo 1 input hidden trong form để gửi lý do
-                    $('<input>').attr({
-                        type: 'hidden',
-                        name: 'deactive_reason',
-                        value: result.value
-                    }).appendTo(form);
-                    $('<input>').attr({
-                        type: 'hidden',
-                        name: 'type',
-                        value: type
-                    }).appendTo(form);
-
-                    form.submit(); // submit sau khi xác nhận
+                    $.ajax({
+                        url: "{{ route('pages.plan.maintenance.deActive') }}",
+                        type: 'POST',
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            id: id,
+                            type: type,
+                            deactive_reason: result.value
+                        },
+                        success: function(res) {
+                            if (res.success) {
+                                Swal.fire({
+                                    title: 'Thành công!',
+                                    text: res.message,
+                                    icon: 'success',
+                                    timer: 1000,
+                                    showConfirmButton: false
+                                });
+                                // Update UI without reload
+                                if (type === 'delete') {
+                                    btn.closest('tr').fadeOut(500, function() {
+                                        $(this).remove();
+                                    });
+                                } else {
+                                    // For cancel/restore, we might need more complex UI toggle, 
+                                    // but for now, simple reload or hide is easiest if it changes multiple things.
+                                    // Let's try to reload for cancel/restore as they change many things in the row
+                                    location.reload(); 
+                                }
+                            }
+                        },
+                        error: function(xhr) {
+                            Swal.fire('Lỗi!', 'Không thể cập nhật trạng thái.', 'error');
+                        }
+                    });
                 }
             });
         });
