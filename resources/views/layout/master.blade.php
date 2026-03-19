@@ -1191,7 +1191,7 @@
                                 <b>${groupName}</b>
                             </span>
                             <div class="chat-window-actions">
-                                <i class="fas fa-search me-2" title="Tìm kiếm tin nhắn" onclick="toggleChatSearch(${groupId})"></i>
+                                <i class="fas fa-search me-2" title="Tìm kiếm tin nhắn" onclick="event.stopPropagation(); toggleChatSearch(${groupId})"></i>
                                 <i class="fas fa-minus me-2"></i>
                                 <i class="fas fa-times" onclick="closeChatWindow(event, ${groupId})"></i>
                             </div>
