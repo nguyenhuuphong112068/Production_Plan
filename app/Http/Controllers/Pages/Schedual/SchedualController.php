@@ -2152,6 +2152,96 @@ class SchedualController extends Controller
                 ]);
         }
 
+
+        public function cleaninglevelchange(Request $request)
+        {
+                $ids = $request->ids;
+
+                if (is_array($ids)) {
+                        $ids = array_values($ids);
+                }
+
+                if (empty($ids)) {
+                        return response()->json(['error' => 'No id provided'], 400);
+                }
+
+                try {
+                        $clearning_type = $request->clearning_type;
+                        $this->loadOffDate('asc');
+
+                        foreach ($ids as $id) {
+                                // 1. Lấy thông tin hiện tại của stage_plan để xác định process_code và thời gian bắt đầu vệ sinh
+                                $plan = DB::table('stage_plan as sp')
+                                        ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+                                        ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                                        ->where('sp.id', $id)
+                                        ->select(
+                                                'sp.id',
+                                                'sp.stage_code',
+                                                'sp.resourceId',
+                                                'sp.end', // Thời gian kết thúc sản xuất = Bắt đầu vệ sinh
+                                                'fpc.intermediate_code',
+                                                'fpc.finished_product_code'
+                                        )
+                                        ->first();
+
+                                if (!$plan) continue;
+
+                                // 2. Xác định process_code để tra cứu quota
+                                if ($plan->stage_code < 7) {
+                                        $process_code = $plan->intermediate_code . "_NA_" . $plan->resourceId;
+                                } else if ($plan->stage_code === 7) {
+                                        $process_code = $plan->intermediate_code . "_" . $plan->finished_product_code . "_" . $plan->resourceId;
+                                } else {
+                                        // Với các stage_code >= 8 (bảo trì hoặc khác), chỉ cập nhật title
+                                        DB::table('stage_plan')->where('id', $id)->update(['title_clearning' => $clearning_type]);
+                                        continue;
+                                }
+
+                                // 3. Tra cứu quota
+                                $quota = DB::table('quota')
+                                        ->select(
+                                                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+                                        )
+                                        ->where('process_code', 'like', $process_code . '%')
+                                        ->first();
+
+                                if ($quota) {
+                                        $duration = ($clearning_type === 'VS-I') ? (float)$quota->C1_time_minutes : (float)$quota->C2_time_minutes;
+                                        
+                                        // 4. Cập nhật start_clearning (bằng thời gian kết thúc sản xuất) và end_clearning
+                                        $start_clearning = Carbon::parse($plan->end);
+                                        $new_end_clearning = $this->addWorkingMinutes($start_clearning->copy(), $duration, $plan->resourceId, $this->work_sunday);
+
+                                        DB::table('stage_plan')
+                                                ->where('id', $id)
+                                                ->update([
+                                                        'title_clearning' => $clearning_type,
+                                                        'start_clearning' => $start_clearning,
+                                                        'end_clearning'   => $new_end_clearning
+                                                ]);
+                                } else {
+                                        // Nếu không tìm thấy quota, chỉ cập nhật tên cấp vệ sinh
+                                        DB::table('stage_plan')->where('id', $id)->update(['title_clearning' => $clearning_type]);
+                                }
+                        }
+                } catch (\Exception $e) {
+                        Log::error('Lỗi toggle title_clearning', [
+                                'error' => $e->getMessage(),
+                                'line'  => $e->getLine(),
+                        ]);
+
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
+                }
+
+                $events = $this->getEvents(session('user')['production_code'], $request->startDate, $request->endDate, true, $this->theory);
+                return response()->json([
+                        'events' => $events,
+
+                ]);
+        }
+
         public function createManualCampainStage(Request $request)
         {
 

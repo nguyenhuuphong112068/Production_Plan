@@ -2303,6 +2303,76 @@ const ScheduleTest = () => {
     return;
   }
 
+  const handleCleaninglevelchange = (e) => {
+    const ids = selectedEvents.map(row =>
+      Number(row.id.split('-')[0])
+    );
+
+    if (ids.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Thông báo',
+        text: 'Vui lòng chọn ít nhất một lịch sản xuất để thay đổi cấp vệ sinh.',
+        timer: 2000
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: 'Chọn cấp vệ sinh',
+      input: 'select',
+      inputOptions: {
+        'VS-I': 'Vệ sinh cấp I (VS-I)',
+        'VS-II': 'Vệ sinh cấp II (VS-II)'
+      },
+      inputPlaceholder: '--- Chọn cấp vệ sinh ---',
+      showCancelButton: true,
+      confirmButtonText: 'Xác nhận',
+      cancelButtonText: 'Hủy',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Bạn cần chọn một cấp vệ sinh!';
+        }
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const clearning_type = result.value;
+        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+        
+        axios.put('/Schedual/cleaninglevelchange', {
+          ids: ids,
+          startDate: toLocalISOString(activeStart),
+          endDate: toLocalISOString(activeEnd),
+          clearning_type: clearning_type,
+        })
+          .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            setEvents(data.events);
+            setSelectedEvents([]);
+            Swal.fire({
+              icon: 'success',
+              title: 'Thành công',
+              text: 'Đã cập nhật cấp vệ sinh và định mức thành công.',
+              timer: 1500
+            });
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              text: 'Có lỗi xảy ra khi cập nhật cấp vệ sinh.',
+              timer: 2000
+            });
+            console.error("API error:", err.response?.data || err.message);
+          });
+      }
+    });
+  }
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
@@ -2555,7 +2625,7 @@ const ScheduleTest = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -2734,9 +2804,9 @@ const ScheduleTest = () => {
           },
 
           Cleaninglevelchange: {
-            text: '🚿',
-            click: handleConfirmClearningValidation,
-            hint: 'Xác Định Lịch Thẩm Định Vệ Sinh: Chọn lịch cần xác định sau đó bám nút 🚿'
+            text: '1️⃣🔁2️⃣',
+            click: handleCleaninglevelchange,
+            hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 1️⃣🔁2️⃣'
           },
 
 
