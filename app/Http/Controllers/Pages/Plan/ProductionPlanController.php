@@ -1865,7 +1865,7 @@ class ProductionPlanController extends Controller
 
                         if ($source == 'backup' && $selectedBackupName) {
                                 $StockOverview = DB::table('inventory_backups as s')
-                                        ->where('s.plan_list_id', $db_plan_list_id)
+                                        //->where('s.plan_list_id', $db_plan_list_id)
                                         ->where('s.backup_name', $selectedBackupName)
                                         ->whereIn('s.mat_id', $material_packaging_code)
                                         ->select(
