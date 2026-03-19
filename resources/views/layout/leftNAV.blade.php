@@ -227,21 +227,24 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 1]) }}" class="nav-link">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 1]) }}"
+                                        class="nav-link mx-4">
                                         <i class="far fa-dot-circle nav-icon"></i>
-                                        <p>Hiệu Chuẩn B1</p>
+                                        <p>Hiệu Chuẩn</p>
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 2]) }}" class="nav-link">
+                                <li class="nav-item mx-4">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 2]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
-                                        <p>Bảo Trì B1</p>
+                                        <p>Bảo Trì</p>
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 3]) }}" class="nav-link">
+                                <li class="nav-item mx-4">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B1', 'type' => 3]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
-                                        <p>Tiện Ích B1</p>
+                                        <p>Tiện Ích</p>
                                     </a>
                                 </li>
                             </ul>
@@ -253,22 +256,25 @@
                                 <p> BT - HC B2 <i class="right fas fa-angle-left"></i></p>
                             </a>
                             <ul class="nav nav-treeview">
-                                <li class="nav-item">
-                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 1]) }}" class="nav-link">
+                                <li class="nav-item mx-4">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 1]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
-                                        <p>Hiệu Chuẩn B2</p>
+                                        <p>Hiệu Chuẩn</p>
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 2]) }}" class="nav-link">
+                                <li class="nav-item mx-4">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 2]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
-                                        <p>Bảo Trì B2</p>
+                                        <p>Bảo Trì</p>
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 3]) }}" class="nav-link">
+                                <li class="nav-item mx-4">
+                                    <a href="{{ route('pages.category.maintenance.list', ['block' => 'B2', 'type' => 3]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
-                                        <p>Tiện Ích B2</p>
+                                        <p>Tiện Ích</p>
                                     </a>
                                 </li>
                             </ul>
@@ -389,19 +395,22 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 1]) }}" class="nav-link">
+                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 1]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
                                         <p>Hiệu Chuẩn</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 2]) }}" class="nav-link">
+                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 2]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
                                         <p>Bảo Trì</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 3]) }}" class="nav-link">
+                                    <a href="{{ route('pages.plan.maintenance.list', ['type' => 3]) }}"
+                                        class="nav-link">
                                         <i class="far fa-dot-circle nav-icon"></i>
                                         <p>Tiện Ích</p>
                                     </a>

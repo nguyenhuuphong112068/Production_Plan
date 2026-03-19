@@ -53,7 +53,8 @@ class MaintenanceCategoryController extends Controller
                                                 'Ins.Created_By',
                                                 'Ins.Created_On',
                                                 'Ins.Parent_Equip_id',
-                                                'Eqp.Eqp_ID as Parent_Eqp_ID'
+                                                'Eqp.Eqp_ID as Parent_Eqp_ID',
+                                                'Eqp.Eqp_name'
                                         )
                                         ->get()
                                         ->map(function ($item) use ($internal_block) {
@@ -68,8 +69,8 @@ class MaintenanceCategoryController extends Controller
 
                 // Lấy danh sách định mức hiện có
                 $quota_maintenance = DB::table('quota_maintenance')->get();
-                $existing_lookup = $quota_maintenance->mapWithKeys(function($q) {
-                    return [$q->inst_id . '_' . $q->block => true];
+                $existing_lookup = $quota_maintenance->mapWithKeys(function ($q) {
+                        return [$q->inst_id . '_' . $q->block => true];
                 })->toArray();
 
                 // Kiểm tra và tạo mới định mức
@@ -81,6 +82,7 @@ class MaintenanceCategoryController extends Controller
                                         'inst_id' => $inst->Inst_id,
                                         'exe_time' => '00:00',
                                         'block' => $inst->internal_block,
+                                        'is_HVAC' => str_starts_with($inst->internal_block, 'TI') ? 1 : 0,
                                         'created_by' => session('user')['fullName'] ?? 'System',
                                         'created_time' => now(),
                                 ];
@@ -95,12 +97,12 @@ class MaintenanceCategoryController extends Controller
 
                 // Lấy dữ liệu hiển thị
                 $query = DB::table('quota_maintenance')->where('active', 1);
-                
+
                 if ($filter_block && $filter_type) {
-                    $type_code = ($filter_type == 1) ? 'HC' : (($filter_type == 2) ? 'BT' : 'TI');
-                    $query->where('block', "{$type_code}-{$filter_block}");
+                        $type_code = ($filter_type == 1) ? 'HC' : (($filter_type == 2) ? 'BT' : 'TI');
+                        $query->where('block', "{$type_code}-{$filter_block}");
                 } elseif ($filter_block) {
-                    $query->where('block', 'like', "%-{$filter_block}");
+                        $query->where('block', 'like', "%-{$filter_block}");
                 }
 
                 $quota_maintenance = $query->get();
@@ -108,9 +110,9 @@ class MaintenanceCategoryController extends Controller
                 $rooms = DB::table('room')->select('id', 'name', 'code', 'deparment_code')->get();
                 $room_names = $rooms->pluck('full_name_with_code', 'id')->toArray();
                 if (empty($room_names)) {
-                    $room_names = $rooms->mapWithKeys(function ($room) {
-                        return [$room->id => $room->code . ' - ' . $room->name];
-                    })->toArray();
+                        $room_names = $rooms->mapWithKeys(function ($room) {
+                                return [$room->id => $room->code . ' - ' . $room->name];
+                        })->toArray();
                 }
 
                 $inst_lookup = [];
@@ -124,8 +126,8 @@ class MaintenanceCategoryController extends Controller
                 foreach ($quota_maintenance as $quota) {
                         $inst = $inst_lookup[$quota->inst_id . '_' . $quota->block] ?? null;
                         if (!$inst && !$filter_block) {
-                            // Nếu không lọc mà không tìm thấy inst trong đợt quét này, có thể quét thêm nếu cần
-                            // Nhưng thường sẽ có vì chúng ta vừa quét ở trên
+                                // Nếu không lọc mà không tìm thấy inst trong đợt quét này, có thể quét thêm nếu cần
+                                // Nhưng thường sẽ có vì chúng ta vừa quét ở trên
                         }
 
                         $assigned_room_ids = $quota_rooms->get($quota->id, collect())->pluck('room_id')->toArray();
@@ -137,7 +139,8 @@ class MaintenanceCategoryController extends Controller
                                 'block' => explode('-', $quota->block)[1] ?? 'B1',
                                 'internal_block' => $quota->block,
                                 'parent_code' => $inst->Parent_Equip_id ?? '',
-                                'name' => $inst->Inst_Name ?? '',
+                                'Eqp_name' => $inst->Eqp_name ?? '',
+                                'Inst_Name' => $inst->Inst_Name ?? '',
                                 'room_ids' => $assigned_room_ids,
                                 'exe_room_name' => implode(', ', $exe_room_names),
                                 'room_code' => $inst->Inst_Installed_Location ?? '',
@@ -152,7 +155,7 @@ class MaintenanceCategoryController extends Controller
                 }
 
                 $typeName = $filter_type ? $type_names[$filter_type] : 'Bảo Trì - Hiệu Chuẩn';
-                $title = "DANH MỤC {$typeName}" . ($filter_block ? " {$filter_block}" : "");
+                $title = strtoupper("DANH MỤC {$typeName}" . ($filter_block ? " {$filter_block}" : ""));
                 session()->put(['title' => $title]);
 
                 return view('pages.category.maintenance.list', [
@@ -255,6 +258,6 @@ class MaintenanceCategoryController extends Controller
                                 'created_by' => session('user')['fullName'],
                                 'created_time' => now(),
                         ]);
-        return response()->json(['success' => true]);
+                return response()->json(['success' => true]);
         }
 }

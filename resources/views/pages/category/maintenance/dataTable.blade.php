@@ -126,14 +126,15 @@
                     <tr>
                         <th>STT</th>
                         <th>Mã Thiết Bị Lớn</th>
+                        <th style="width: 15%;">Tên Thiết Bị Lớn</th>
                         <th>Mã Thiết Bị Con</th>
-                        <th style="width: 20%;">Tên Thiết Bị</th>
+                        <th style="width: 15%;">Tên Thiết Bị Con</th>
                         <th>Tần Suất BT-HC</th>
                         <th>Vị Trí Lắp Đặt</th>
-                        <th style="width: 20%;">Phòng SX Liên Quan</th>
-                        <th>Phân Xưởng</th>
+                        <th style="width: 10%;">Phân Xưởng</th>
+                        <th style="width: 15%;">Phòng SX Liên Quan</th>
                         <th>Thời gian Thực Hiện</th>
-                        <th>Có Thuộc Hệ Thống HVAC?</th>
+                        {{-- <th>Có Thuộc Hệ Thống HVAC?</th> --}}
                         <th>Người Tạo/Ngày Tạo</th>
                         <th>Vô Hiệu</th>
                     </tr>
@@ -232,13 +233,17 @@
                     defaultContent: ''
                 },
                 {
+                    data: 'Eqp_name',
+                    defaultContent: ''
+                },
+                {
                     data: 'code',
                     render: function(data, type, row) {
                         return '<span class="text-success">' + (data || '') + '</span>';
                     }
                 },
                 {
-                    data: 'name',
+                    data: 'Inst_Name',
                     defaultContent: ''
                 },
                 {
@@ -248,6 +253,14 @@
                 {
                     data: 'room_code',
                     defaultContent: ''
+                },
+                {
+                    data: 'deparment_code',
+                    render: function(data, type, row) {
+                        var opts = getDepartmentOptions(row.block, data);
+                        return '<select class="form-control select-department" name="deparment_code" data-id="' +
+                            row.id + '">' + opts + '</select>';
+                    }
                 },
                 {
                     data: 'room_ids',
@@ -265,14 +278,7 @@
                             row.id + '">' + options + '</select>';
                     }
                 },
-                {
-                    data: 'deparment_code',
-                    render: function(data, type, row) {
-                        var opts = getDepartmentOptions(row.block, data);
-                        return '<select class="form-control select-department" name="deparment_code" data-id="' +
-                            row.id + '">' + opts + '</select>';
-                    }
-                },
+
                 {
                     data: 'quota',
                     render: function(data, type, row) {
@@ -280,18 +286,18 @@
                             '') + '" data-id="' + row.id + '" ' + disabledAttr + '>';
                     }
                 },
-                {
-                    data: 'is_HVAC',
-                    className: 'text-center',
-                    render: function(data, type, row) {
-                        var checked = (data == 1 || data == '1' || data === true) ? 'checked' :
-                            '';
-                        return '<div class="form-check form-switch text-center">' +
-                            '<input class="form-check-input step-checkbox" type="checkbox" role="switch" data-id="' +
-                            row.id + '" ' + checked + '>' +
-                            '</div>';
-                    }
-                },
+                // {
+                //     data: 'is_HVAC',
+                //     className: 'text-center',
+                //     render: function(data, type, row) {
+                //         var checked = (data == 1 || data == '1' || data === true) ? 'checked' :
+                //             '';
+                //         return '<div class="form-check form-switch text-center">' +
+                //             '<input class="form-check-input step-checkbox" type="checkbox" role="switch" data-id="' +
+                //             row.id + '" ' + checked + '>' +
+                //             '</div>';
+                //     }
+                // },
                 {
                     data: null,
                     render: function(data, type, row) {
@@ -316,7 +322,7 @@
                     searchable: false,
                     render: function(data, type, row) {
                         return '<button type="button" class="btn btn-danger btn-sm btn-deActive" data-id="' +
-                            row.id + '" data-name="' + (row.name || '') + '">' +
+                            row.id + '" data-name="' + (row.Inst_Name || '') + '">' +
                             '<i class="fas fa-trash"></i></button>';
                     }
                 }

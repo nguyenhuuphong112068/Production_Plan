@@ -77,7 +77,9 @@
                         <th>Phòng BT</th>
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
-                        @if (session('user')['userName'] == 'Admin' || session('user')['userName'] == '19764')
+                        @if (session('user')['userName'] == 'Admin' ||
+                                session('user')['userName'] == '19764' ||
+                                session('user')['userName'] == '19713')
                             <th>Return</th>
                         @endif
                     </tr>
@@ -132,7 +134,9 @@
                                 <div>{{ \Carbon\Carbon::parse($data->finished_date)->format('d/m/Y') }} </div>
                             </td>
 
-                            @if (session('user')['userName'] == 'Admin' || session('user')['userName'] == '19764')
+                            @if (session('user')['userName'] == 'Admin' ||
+                                    session('user')['userName'] == '19764' ||
+                                    session('user')['userName'] == '19713')
                                 <td class="text-center align-middle">
                                     <button type="button" class="btn btn-return btn-danger"
                                         data-id =  "{{ $data->id }}">
