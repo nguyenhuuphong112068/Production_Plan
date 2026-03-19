@@ -108,12 +108,15 @@ class MaintenancePlanController extends Controller
                                 try {
                                         $result = DB::connection($conn)
                                                 ->table("Schedule_Master_{$suffix}")
+                                                //->table("Schedule_Master_1")
                                                 ->whereBetween('Sch_DueDate', [$startDate, $endDate])
                                                 ->where('Sch_Result_Status', 'Pending')
                                                 ->select('Inst_ID', 'Sch_DueDate', 'Sch_Remark')
                                                 ->get();
 
                                         $schedules = $schedules->merge($result);
+
+                                        dd($schedules);
                                 } catch (\Exception $e) {
                                         Log::warning("Could not fetch schedules from {$conn}.Schedule_Master_{$suffix}: " . $e->getMessage());
                                 }
@@ -166,7 +169,7 @@ class MaintenancePlanController extends Controller
                                 ->whereIn('inst_id', $instIds)
                                 ->where('active', 1)
                                 ->where('deparment_code', $departmentCode);
-                        
+
                         // Lọc theo prefix block HC, BT, TI
                         if ($type && isset($type_prefix[$type])) {
                                 $query->where('block', 'like', $type_prefix[$type] . '-%');
