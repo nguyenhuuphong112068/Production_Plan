@@ -1841,26 +1841,67 @@ class ProductionPlanController extends Controller
 
                         $material_packaging_code =  $plan_master_materials->pluck('material_packaging_code');
 
-                        $StockOverview = DB::connection('mms')
-                                ->table('yf_RMPMStockOverview_pms as s')
-                                ->whereIn('s.MatID', $material_packaging_code)
-                                ->select(
-                                        's.GRNNO',
-                                        's.Mfgbatchno',
-                                        's.ARNO',
-                                        's.Expirydate',
-                                        's.Retestdate',
-                                        's.MatUOM',
-                                        's.MatID',
-                                        's.GRNSts',
-                                        's.Mfg',
-                                        's.QCSTS',
+                        $source = $request->input('stock_source', 'live');
+                        $db_plan_list_id = $request->plan_list_id < 0 ? 0 : $request->plan_list_id;
 
-                                        DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
-                                        DB::raw('SUM([Total Qty]) as Total_Qty'),
+                        // Lấy danh sách các bản sao lưu có sẵn
+                        $backupList = DB::table('inventory_backups')
+                                ->where('plan_list_id', $db_plan_list_id)
+                                ->select('backup_name', DB::raw('MIN(created_at) as created_at'))
+                                ->groupBy('backup_name')
+                                ->orderBy('created_at', 'desc')
+                                ->get();
 
-                                        // Gộp warehouse_id
-                                        DB::raw("
+                        $selectedBackupName = $request->input('backup_name');
+                        if (!$selectedBackupName && $backupList->isNotEmpty()) {
+                                $selectedBackupName = $backupList->first()->backup_name;
+                        }
+
+                        $lastBackup = $backupList->first(); // Để tương thích với UI cũ nếu cần
+
+                        if ($source == 'backup' && $selectedBackupName) {
+                                $StockOverview = DB::table('inventory_backups as s')
+                                        ->where('s.plan_list_id', $db_plan_list_id)
+                                        ->where('s.backup_name', $selectedBackupName)
+                                        ->whereIn('s.mat_id', $material_packaging_code)
+                                        ->select(
+                                                's.grn_no as GRNNO',
+                                                's.mfg_batch_no as Mfgbatchno',
+                                                's.ar_no as ARNO',
+                                                's.expiry_date as Expirydate',
+                                                's.retest_date as Retestdate',
+                                                's.mat_uom as MatUOM',
+                                                's.mat_id as MatID',
+                                                's.grn_sts as GRNSts',
+                                                's.mfg as Mfg',
+                                                's.qc_sts as QCSTS',
+                                                's.receipt_quantity as ReceiptQuantity',
+                                                's.total_qty as Total_Qty',
+                                                's.warehouse_list',
+                                                's.coa_list'
+                                        )
+                                        ->get();
+                        } else {
+                                $StockOverview = DB::connection('mms')
+                                        ->table('yf_RMPMStockOverview_pms as s')
+                                        ->whereIn('s.MatID', $material_packaging_code)
+                                        ->select(
+                                                's.GRNNO',
+                                                's.Mfgbatchno',
+                                                's.ARNO',
+                                                's.Expirydate',
+                                                's.Retestdate',
+                                                's.MatUOM',
+                                                's.MatID',
+                                                's.GRNSts',
+                                                's.Mfg',
+                                                's.QCSTS',
+
+                                                DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
+                                                DB::raw('SUM([Total Qty]) as Total_Qty'),
+
+                                                // Gộp warehouse_id
+                                                DB::raw("
                                         STUFF((
                                                 SELECT DISTINCT ', ' + 
                                                 LEFT(s2.warehouse_id, CHARINDEX('.', s2.warehouse_id + '.') - 1)
@@ -1870,8 +1911,8 @@ class ProductionPlanController extends Controller
                                         ), 1, 2, '') as warehouse_list
                                         "),
 
-                                        // Gộp IntBatchNo
-                                        DB::raw("
+                                                // Gộp IntBatchNo
+                                                DB::raw("
                                         STUFF((
                                                 SELECT DISTINCT ', ' + s3.IntBatchNo
                                                 FROM yf_RMPMStockOverview_pms s3
@@ -1879,20 +1920,22 @@ class ProductionPlanController extends Controller
                                                 FOR XML PATH('')
                                         ), 1, 2, '') as coa_list
                                         "),
-                                )
-                                ->groupBy(
-                                        's.GRNNO',
-                                        's.Mfgbatchno',
-                                        's.ARNO',
-                                        's.Expirydate',
-                                        's.Retestdate',
-                                        's.MatUOM',
-                                        's.MatID',
-                                        's.GRNSts',
-                                        's.Mfg',
-                                        's.QCSTS',
-                                )
-                                ->get();
+                                        )
+                                        ->groupBy(
+                                                's.GRNNO',
+                                                's.Mfgbatchno',
+                                                's.ARNO',
+                                                's.Expirydate',
+                                                's.Retestdate',
+                                                's.MatUOM',
+                                                's.MatID',
+                                                's.GRNSts',
+                                                's.Mfg',
+                                                's.QCSTS',
+                                        )
+                                        ->get();
+                        }
+
 
                         // dd ($StockOverview);
 
@@ -1936,7 +1979,11 @@ class ProductionPlanController extends Controller
                                 'month' => $request->month,
                                 'production' => $request->production,
                                 'send' => $request->send ?? 1,
-                                'current_url' => $request->current_url ?? null
+                                'current_url' => $request->current_url ?? null,
+                                'lastBackup' => $lastBackup,
+                                'stock_source' => $source,
+                                'backupList' => $backupList,
+                                'selectedBackupName' => $selectedBackupName,
                         ]);
                 } catch (\Throwable $e) {
 
@@ -1959,7 +2006,128 @@ class ProductionPlanController extends Controller
         }
 
 
+        public function backup_stock(Request $request)
+        {
+                $plan_list_id = $request->plan_list_id;
 
+                if (!$plan_list_id) {
+                        return response()->json(['success' => false, 'message' => 'Thiếu ID kế hoạch.']);
+                }
+
+                try {
+                        // 2. Lấy TOÀN BỘ dữ liệu từ MMS (không phụ thuộc plan_master như yêu cầu)
+                        $stockOverview = DB::connection('mms')
+                                ->table('yf_RMPMStockOverview_pms as s')
+                                ->select(
+                                        's.GRNNO',
+                                        's.Mfgbatchno',
+                                        's.ARNO',
+                                        's.Expirydate',
+                                        's.Retestdate',
+                                        's.MatUOM',
+                                        's.MatID',
+                                        's.GRNSts',
+                                        's.Mfg',
+                                        's.QCSTS',
+                                        DB::raw('SUM(s.ReceiptQuantity) as ReceiptQuantity'),
+                                        DB::raw('SUM([Total Qty]) as Total_Qty'),
+                                        DB::raw("
+                                        STUFF((
+                                                SELECT DISTINCT ', ' + LEFT(s2.warehouse_id, CHARINDEX('.', s2.warehouse_id + '.') - 1)
+                                                FROM yf_RMPMStockOverview_pms s2
+                                                WHERE s2.GRNNO = s.GRNNO
+                                                FOR XML PATH('')
+                                        ), 1, 2, '') as warehouse_list
+                                        "),
+                                        DB::raw("
+                                        STUFF((
+                                                SELECT DISTINCT ', ' + s3.IntBatchNo
+                                                FROM yf_RMPMStockOverview_pms s3
+                                                WHERE s3.GRNNO = s.GRNNO
+                                                FOR XML PATH('')
+                                        ), 1, 2, '') as coa_list
+                                        "),
+                                )
+                                ->groupBy(
+                                        's.GRNNO',
+                                        's.Mfgbatchno',
+                                        's.ARNO',
+                                        's.Expirydate',
+                                        's.Retestdate',
+                                        's.MatUOM',
+                                        's.MatID',
+                                        's.GRNSts',
+                                        's.Mfg',
+                                        's.QCSTS'
+                                )
+                                ->get();
+
+                        $db_plan_list_id = $plan_list_id < 0 ? 0 : $plan_list_id;
+                        $backup_name = (session('user')['fullName'] ?? 'User') . '_' . now()->format('d/m/Y H:i:s');
+
+                        // 3. Lưu vào database
+                        DB::beginTransaction();
+                        try {
+                                $insertData = [];
+                                foreach ($stockOverview as $stock) {
+                                        $insertData[] = [
+                                                'plan_list_id'    => $db_plan_list_id,
+                                                'backup_name'     => $backup_name,
+                                                'mat_id'          => $stock->MatID,
+                                                'grn_no'          => $stock->GRNNO,
+                                                'mfg_batch_no'    => $stock->Mfgbatchno,
+                                                'ar_no'           => $stock->ARNO,
+                                                'expiry_date'     => $stock->Expirydate,
+                                                'retest_date'     => $stock->Retestdate,
+                                                'mat_uom'         => $stock->MatUOM,
+                                                'grn_sts'         => $stock->GRNSts,
+                                                'mfg'             => $stock->Mfg,
+                                                'qc_sts'          => $stock->QCSTS,
+                                                'receipt_quantity' => $stock->ReceiptQuantity,
+                                                'total_qty'       => $stock->Total_Qty,
+                                                'warehouse_list'  => $stock->warehouse_list,
+                                                'coa_list'        => $stock->coa_list,
+                                                'created_at'      => now(),
+                                                'updated_at'      => now(),
+                                        ];
+                                }
+
+                                if (!empty($insertData)) {
+                                        // Chia nhỏ batch nếu quá lớn (vd: 500 records mỗi lần)
+                                        foreach (array_chunk($insertData, 500) as $chunk) {
+                                                DB::table('inventory_backups')->insert($chunk);
+                                        }
+                                }
+
+                                // 4. Giới hạn 30 bản sao lưu cho mỗi plan_list_id
+                                $allBackups = DB::table('inventory_backups')
+                                        ->where('plan_list_id', $db_plan_list_id)
+                                        ->select('backup_name', DB::raw('MIN(created_at) as created_at'))
+                                        ->groupBy('backup_name')
+                                        ->orderBy('created_at', 'desc')
+                                        ->get();
+
+                                if ($allBackups->count() > 30) {
+                                        $toDelete = $allBackups->slice(30);
+                                        foreach ($toDelete as $old) {
+                                                DB::table('inventory_backups')
+                                                        ->where('plan_list_id', $db_plan_list_id)
+                                                        ->where('backup_name', $old->backup_name)
+                                                        ->delete();
+                                        }
+                                }
+
+                                DB::commit();
+
+                                return response()->json(['success' => true, 'message' => 'Sao lưu dữ liệu tồn kho thành công! (' . $backup_name . ')']);
+                        } catch (\Exception $ex) {
+                                DB::rollBack();
+                                return response()->json(['success' => false, 'message' => 'Lỗi lưu database: ' . $ex->getMessage()]);
+                        }
+                } catch (\Exception $e) {
+                        return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+                }
+        }
 
         public function open_bacth_detail(Request  $request)
         {

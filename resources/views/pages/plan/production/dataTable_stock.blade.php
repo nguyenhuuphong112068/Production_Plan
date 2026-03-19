@@ -1,4 +1,5 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
 <style>
     .step-checkbox {
@@ -89,16 +90,59 @@
 
             {{-- SEARCH --}}
             <div class="row mb-2">
-                <div class="col-md-9">
+                <div class="col-md-5">
                     <button type="button" class="btn btn-success"
                         onclick="window.location.href='{{ url()->previous() }}'">
                         <i class="fas fa-arrow-left"></i> Trở Về
                     </button>
+                    @if (user_has_permission(session('user')['userId'], 'plan_production_backup', 'boolean'))
+                        <button type="button" class="btn btn-info ml-2" id="btnBackupStock">
+                            <i class="fas fa-save"></i> Sao lưu tồn kho MMS
+                        </button>
+                    @endif
+
                 </div>
+
+                <div class="col-md-4 text-center">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="stock_source" id="source_live"
+                                value="live" {{ $stock_source == 'live' ? 'checked' : '' }}
+                                onchange="changeStockSource(this.value)">
+                            <label class="form-check-label text-primary" for="source_live">
+                                <i class="fas fa-bolt"></i> Hiện hành (MMS)
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline ml-3">
+                            <input class="form-check-input" type="radio" name="stock_source" id="source_backup"
+                                value="backup" {{ $stock_source == 'backup' ? 'checked' : '' }}
+                                onchange="changeStockSource(this.value)">
+                            <label class="form-check-label text-success" for="source_backup">
+                                <i class="fas fa-history"></i> Bản sao lưu:
+                            </label>
+                        </div>
+
+                        @if ($backupList && $backupList->count() > 0)
+                            <select class="form-control form-control-sm d-inline-block ml-2"
+                                style="width: auto; height: 30px; padding: 2px 5px;" id="selectBackupName"
+                                onchange="loadBackup(this.value)">
+                                @foreach ($backupList as $backup)
+                                    <option value="{{ $backup->backup_name }}"
+                                        {{ $selectedBackupName == $backup->backup_name ? 'selected' : '' }}>
+                                        {{ $backup->backup_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
+                    </div>
+                </div>
+
                 <div class="col-md-3">
                     <input id="globalSearch" class="form-control" placeholder="🔍 Tìm kiếm nguyên liệu / sản phẩm / lô">
                 </div>
             </div>
+
+
 
             <div class="table-scroll-wrapper mt-1">
                 <table id="data_table_raw_material" class="table table-bordered table-striped"
@@ -114,7 +158,27 @@
                             <th rowspan="2" style="width: 4%">Lượng Tổng Cần Dùng</th>
                             <th rowspan="2">Tổng Tồn MMS</th>
                             <th rowspan="2">Lượng Thiếu Hụt (Nếu có)</th>
-                            <th colspan="9" class="text-center">Chi Tiết Tồn Kho Hiện Hành</th>
+                            <th colspan="9" class="text-center">
+                                {{-- Chi Tiết Tồn Kho {{ ($stock_source ?? 'live') == 'live' ?
+                                 'Hiện Hành' : 'Đã Lưu (' . ($lastBackup ?
+                                  \Carbon\Carbon::parse($lastBackup->created_at)->format('d/m/Y H:i') : '') . ')' }} --}}
+
+                                <div class="mt-3">
+                                    <h5 class="text-center">
+                                        @if ($stock_source == 'live')
+                                            <i class="fas fa-bolt text-primary"></i> <span class="text-primary">Chi Tiết
+                                                Tồn Kho Hiện Hành
+                                                (MMS)</span>
+                                        @else
+                                            <i class="fas fa-history text-success"></i> <span class="text-success">Chi
+                                                Tiết Tồn Kho - Bản
+                                                sao lưu: <strong>{{ $selectedBackupName }}</strong></span>
+                                        @endif
+                                    </h5>
+
+                                </div>
+
+                            </th>
                         </tr>
                         <tr>
                             <th>Tồn</th>
@@ -581,6 +645,78 @@
         let d = new Date(date);
         return d.toLocaleDateString('vi-VN');
     }
+
+    function changeStockSource(val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('stock_source', val);
+        if (val === 'live') {
+            url.searchParams.delete('backup_name');
+        }
+        window.location.href = url.toString();
+    }
+
+    function loadBackup(backupName) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('stock_source', 'backup');
+        url.searchParams.set('backup_name', backupName);
+        window.location.href = url.toString();
+    }
+
+    $('#btnBackupStock').on('click', function() {
+        Swal.fire({
+            title: 'Sao lưu tồn kho?',
+            text: "Dữ liệu tồn kho hiện hành từ MMS sẽ được lưu lại. Hệ thống sẽ giữ tối đa 30 bản sao lưu gần nhất.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Đồng ý',
+            cancelButtonText: 'Hủy'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading
+                Swal.fire({
+                    title: 'Đang sao lưu...',
+                    text: 'Vui lòng chờ trong giây lát',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: "{{ route('pages.plan.production.backup_stock') }}",
+                    type: 'POST',
+                    data: {
+                        plan_list_id: "{{ $plan_list_id }}",
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                title: 'Thành công!',
+                                text: response.message,
+                                icon: 'success'
+                            }).then(() => {
+                                // Tải lại trang để cập nhật danh sách và hiển thị bản vừa sao lưu
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('stock_source', 'backup');
+                                // Tự động chọn bản vừa lưu (backend sẽ chọn bản mới nhất nếu không có backup_name)
+                                url.searchParams.delete('backup_name');
+                                window.location.href = url.toString();
+                            });
+                        } else {
+                            Swal.fire('Lỗi!', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Lỗi!', 'Có lỗi xảy ra trong quá trình sao lưu.',
+                            'error');
+                    }
+                });
+            }
+        })
+    });
 </script>
 
 @if (isset($js_error))

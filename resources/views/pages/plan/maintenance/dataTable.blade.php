@@ -57,6 +57,7 @@
                             <tr>
                                 <th>STT</th>
                                 <th>Mã TB Chính</th>
+                                <th>Tên TB Chính</th>
                                 <th>Mã Thiết Bi</th>
                                 <th>Tên Thiết Bị</th>
                                 <th>Loại BT-HC</th>
@@ -80,6 +81,7 @@
                                         @endif
                                     </td>
                                     <td>{{ $data->parent_code ?? '' }}</td>
+                                    <td>{{ $data->Eqp_name ?? '' }}</td>
 
                                     @if (!$data->cancel)
                                         <td class="text-success">

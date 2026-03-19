@@ -282,6 +282,7 @@ class MaintenancePlanController extends Controller
                         ->leftJoin('quota_maintenance', 'plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
                         ->leftJoin('room', 'quota_maintenance.room_id', '=', 'room.id')
                         ->orderBy('level', 'asc')
+                        ->orderBy('code', 'asc')
                         ->orderBy('expected_date', 'asc')
                         ->get()
                         ->groupBy('id')
@@ -308,9 +309,10 @@ class MaintenancePlanController extends Controller
                         foreach ($connections as $conn) {
                                 foreach ($suffixes as $suffix) {
                                         $result = DB::connection($conn)
-                                                ->table("Inst_Master_{$suffix}")
-                                                ->whereIn('Inst_id', $instIds)
-                                                ->select('Inst_id', 'Inst_Name', 'Parent_Equip_id')
+                                                ->table("Inst_Master_{$suffix} as Ins")
+                                                ->leftJoin("Eqp_mst_{$suffix} as Eqp", 'Eqp.Eqp_ID', '=', 'Ins.Parent_Equip_id')
+                                                ->whereIn('Ins.Inst_id', $instIds)
+                                                ->select('Ins.Inst_id', 'Ins.Inst_Name', 'Ins.Parent_Equip_id', 'Eqp.Eqp_name')
                                                 ->get()
                                                 ->keyBy('Inst_id');
                                         $instruments = $instruments->merge($result);
@@ -322,6 +324,7 @@ class MaintenancePlanController extends Controller
                         $inst = $instruments[$item->code] ?? null;
                         $item->name = $inst->Inst_Name ?? $item->code;
                         $item->parent_code = $inst->Parent_Equip_id ?? '';
+                        $item->Eqp_name = $inst->Eqp_name ?? '';
                         return $item;
                 });
 
