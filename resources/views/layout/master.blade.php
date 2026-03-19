@@ -1459,7 +1459,7 @@
                     let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
                     if (side === 'me') {
                         let isSeen = othersLastRead && othersLastRead.some(time => time && time >= m
-                        .created_at);
+                            .created_at);
                         statusHtml =
                             `<div class="msg-status" data-time="${m.created_at}">${timeHtml} <span>${isRecalled ? '' : (isSeen ? 'Đã xem' : 'Đã gửi')}</span></div>`;
                     } else {
@@ -1509,8 +1509,8 @@
                                     <i class="fas fa-reply"></i>
                                 </span>
                                 ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi, sau 30p sẽ không được thu hồi" data-msg-id="${m.id}">
-                                        <i class="fas fa-undo"></i>
-                                    </span>` : ''}
+                                            <i class="fas fa-undo"></i>
+                                        </span>` : ''}
                             </div>
                         `;
                     }
@@ -1637,7 +1637,7 @@
             window.recallMessage = function(groupId, messageId) {
                 Swal.fire({
                     title: 'Thu hồi tin nhắn?',
-                    text: 'Bạn không thể hoàn tác hành động này.',
+                    text: 'Bạn không thể hoàn tác hành động này sau 30p.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Đồng ý',
@@ -1800,7 +1800,7 @@
                     `;
                 });
                 $('#userListForGroup').html(html ||
-                '<div class="text-center text-muted">Không có người dùng nào</div>');
+                    '<div class="text-center text-muted">Không có người dùng nào</div>');
             }
 
             window.filterUsersByDepartment = function() {
@@ -1959,7 +1959,7 @@
                     if (lowerText.includes(query)) {
                         // Use regex to replace all occurrences with case-insensitive support
                         let regex = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`,
-                        'gi');
+                            'gi');
                         let newHtml = text.replace(regex, '<span class="search-highlight">$1</span>');
                         $(this).html(newHtml);
                     }
