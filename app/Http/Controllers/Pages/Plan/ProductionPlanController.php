@@ -23,6 +23,12 @@ class ProductionPlanController extends Controller
                 */
 
                 $datas = DB::table('plan_list')
+                        ->when(
+                                !user_has_permission(session('user')['userId'], 'plan_view_pending_production_plan', 'boolean'),
+                                function ($q) {
+                                        return $q->where('plan_list.send', 1);
+                                }
+                        )
                         ->where('active', 1)
                         ->where('deparment_code', $production_code)
                         ->where('type', 1)

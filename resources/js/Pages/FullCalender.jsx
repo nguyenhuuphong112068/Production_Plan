@@ -2702,11 +2702,7 @@ const ScheduleTest = () => {
             hint: 'Thay đổi font chữ'
           },
 
-          // formDate: {
-          //   text: '📅',
-          //   click: () => setCustomStartDate ('2026-01-15'),
-          //   hint: 'Thay đổi ngày bắt đầu hiển thị lịch'
-          // },
+
           slotDuration: {
             text: 'Slot',
             click: toggleSlotDuration,
@@ -2736,6 +2732,13 @@ const ScheduleTest = () => {
             click: handleConfirmClearningValidation,
             hint: 'Xác Định Lịch Thẩm Định Vệ Sinh: Chọn lịch cần xác định sau đó bám nút 🚿'
           },
+
+          Cleaninglevelchange: {
+            text: '🚿',
+            click: handleConfirmClearningValidation,
+            hint: 'Xác Định Lịch Thẩm Định Vệ Sinh: Chọn lịch cần xác định sau đó bám nút 🚿'
+          },
+
 
         }}
 
