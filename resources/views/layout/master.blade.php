@@ -177,7 +177,8 @@
         .msg-text {
             word-wrap: break-word;
             word-break: break-word;
-            font-size: 1.35rem; /* Tăng 1.5 lần */
+            font-size: 1.35rem;
+            /* Tăng 1.5 lần */
             line-height: 1.4;
         }
 
@@ -353,10 +354,11 @@
         }
 
         .chat-window {
-            width: 450px; /* Tăng chiều rộng để phù hợp chữ to */
+            width: 450px;
+            /* Tăng chiều rộng để phù hợp chữ to */
             height: 550px;
             background: white;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             border-radius: 8px 8px 0 0;
             display: flex;
             flex-direction: column;
@@ -440,7 +442,8 @@
             border: none;
             outline: none;
             padding: 8px 12px;
-            font-size: 1.35rem; /* Tăng 1.5 lần */
+            font-size: 1.35rem;
+            /* Tăng 1.5 lần */
             border-radius: 20px;
             background: #f0f2f5;
         }
@@ -459,7 +462,8 @@
             align-items: center;
             gap: 8px;
             max-width: 100%;
-            width: 100%; /* Đảm bảo hàng chiếm hết không gian nếu cần */
+            width: 100%;
+            /* Đảm bảo hàng chiếm hết không gian nếu cần */
         }
 
         .msg-bubble {
@@ -470,8 +474,10 @@
             background: #f5f5f5;
             color: #333;
             border-left: 3px solid #e0e0e0;
-            max-width: calc(100% - 120px); /* Giới hạn chiều rộng để chừa chỗ cho Toolbar */
-            word-break: break-word; /* Chống tràn chữ quá dài */
+            max-width: calc(100% - 120px);
+            /* Giới hạn chiều rộng để chừa chỗ cho Toolbar */
+            word-break: break-word;
+            /* Chống tràn chữ quá dài */
         }
 
         .msg-item.me .msg-bubble {
@@ -536,7 +542,8 @@
         }
 
         .msg-item .msg-actions {
-            display: flex; /* Luôn là flex để giữ layout ổn định */
+            display: flex;
+            /* Luôn là flex để giữ layout ổn định */
             visibility: hidden;
             opacity: 0;
             pointer-events: none;
@@ -580,9 +587,20 @@
 
 
         @keyframes chat-blink {
-            0% { transform: scale(1); box-shadow: 0 0 5px rgba(205, 199, 23, 0.2); }
-            50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(205, 199, 23, 0.6); }
-            100% { transform: scale(1); box-shadow: 0 0 5px rgba(205, 199, 23, 0.2); }
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 5px rgba(205, 199, 23, 0.2);
+            }
+
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 15px rgba(205, 199, 23, 0.6);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 5px rgba(205, 199, 23, 0.2);
+            }
         }
 
         .chat-trigger.blinking {
@@ -598,12 +616,15 @@
             border-radius: 8px;
             padding: 10px;
             display: grid;
-            grid-template-columns: repeat(8, 1fr); /* Tăng số cột */
+            grid-template-columns: repeat(8, 1fr);
+            /* Tăng số cột */
             gap: 5px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             z-index: 1060;
-            max-height: 200px; /* Thêm giới hạn chiều cao */
-            overflow-y: auto; /* Thêm thanh cuộn */
+            max-height: 200px;
+            /* Thêm giới hạn chiều cao */
+            overflow-y: auto;
+            /* Thêm thanh cuộn */
             width: 280px;
         }
 
@@ -617,10 +638,12 @@
         .emoji-item:hover {
             background: #f0f0f0;
         }
+
         .reaction-container {
             display: flex;
             align-items: center;
-            flex-shrink: 0; /* Không cho phép bị co lại */
+            flex-shrink: 0;
+            /* Không cho phép bị co lại */
         }
 
         .reaction-list {
@@ -628,6 +651,7 @@
             flex-wrap: wrap;
             gap: 3px;
         }
+
         .reaction-item {
             background: #f0f0f0;
             border-radius: 10px;
@@ -640,16 +664,20 @@
             gap: 2px;
             border: 1px solid transparent;
         }
+
         .reaction-item.me {
             background: #e8f5e9;
             border-color: #81c784;
         }
+
         .reaction-item:hover {
             background: #e0e0e0;
         }
+
         .btn-reaction {
             position: relative;
         }
+
         .reaction-picker-mini {
             position: absolute;
             bottom: calc(100% + 5px);
@@ -658,12 +686,13 @@
             border: 1px solid #ddd;
             border-radius: 20px;
             padding: 5px 10px;
-            display: flex; /* Mặc định là flex để tránh thay đổi layout khi hiện */
+            display: flex;
+            /* Mặc định là flex để tránh thay đổi layout khi hiện */
             visibility: hidden;
             opacity: 0;
             pointer-events: none;
             gap: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             z-index: 1070;
             white-space: nowrap;
             transition: opacity 0.2s;
@@ -685,28 +714,38 @@
             height: 15px;
             background: transparent;
         }
+
         .msg-actions:hover .reaction-picker-mini {
             /* display: flex;  -- Sẽ điều khiển bằng click hoặc hover tùy ý, ở đây dùng hover cho nhanh */
         }
+
         .reaction-emoji-btn {
             cursor: pointer;
             font-size: 18px;
             transition: transform 0.1s;
         }
+
         .reaction-emoji-btn:hover {
             transform: scale(1.3);
         }
+
         .reaction-emoji-btn:active {
             transform: scale(0.9);
         }
-        
+
         /* Hiệu ứng nhấp nháy khi vừa thả cảm xúc để người dùng biết đã thành công */
         .reaction-item.just-added {
             animation: pulse-green 0.5s;
         }
+
         @keyframes pulse-green {
-            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
-            100% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+            }
+
+            100% {
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
         }
 
         /* --- CHAT SEARCH CSS --- */
@@ -718,6 +757,7 @@
             align-items: center;
             gap: 8px;
         }
+
         .chat-search-input {
             flex: 1;
             border: 1px solid #ddd;
@@ -726,9 +766,11 @@
             font-size: 13px;
             outline: none;
         }
+
         .chat-search-input:focus {
             border-color: #28a745;
         }
+
         .search-highlight {
             background-color: #ffeb3b;
             color: #000;
@@ -736,10 +778,12 @@
             border-radius: 2px;
             font-weight: bold;
         }
+
         .search-highlight.current-match {
             background-color: #ff9800;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
         }
+
         .chat-search-stats {
             font-size: 11px;
             color: #666;
@@ -835,7 +879,8 @@
                                 <select id="deptFilter" class="form-control" onchange="filterUsersByDepartment()">
                                     <option value="all">Tất cả phòng ban</option>
                                 </select>
-                                <button type="button" class="btn btn-sm btn-outline-success text-nowrap" onclick="selectAllInDept()">Chọn tất cả</button>
+                                <button type="button" class="btn btn-sm btn-outline-success text-nowrap"
+                                    onclick="selectAllInDept()">Chọn tất cả</button>
                             </div>
                         </div>
                         <div class="mb-3">
@@ -1066,7 +1111,8 @@
                     data.forEach(g => {
                         // Ẩn hội thoại với AI Agent nếu không phải Admin
                         let userGroup = "{{ session('user')['userGroup'] }}";
-                        if (g.type == 0 && g.display_name === 'AI Agent Search PMS' && userGroup !== 'Admin') {
+                        if (g.type == 0 && g.display_name === 'AI Agent Search PMS' && userGroup !==
+                            'Admin') {
                             return;
                         }
 
@@ -1093,7 +1139,7 @@
                         if (g.last_time) {
                             if (chatGroupLastTimes[g.id] && g.last_time > chatGroupLastTimes[g.id]) {
                                 if (g.last_sender_id != currentUserId) {
-    
+
                                     blinkTitle("Có tin nhắn mới...");
                                     if (!openChatGroups.includes(g.id)) {
                                         openChatWindow(g.id, g.display_name, g.is_online || false);
@@ -1128,14 +1174,16 @@
                     let html = '';
                     data.forEach(u => {
                         let isAI = u.id == 9999;
-                        
+
                         // Ẩn AI Agent nếu không phải Admin
                         let userGroup = "{{ session('user')['userGroup'] }}";
                         if (isAI && userGroup !== 'Admin') {
                             return;
                         }
 
-                        let badgeHtml = isAI ? `<span class="badge badge-primary ml-1" style="font-size: 10px; background: #007bff;">AI BOT</span>` : '';
+                        let badgeHtml = isAI ?
+                            `<span class="badge badge-primary ml-1" style="font-size: 10px; background: #007bff;">AI BOT</span>` :
+                            '';
                         let onlineHtml = (u.is_online || isAI) ?
                             `<span class="online-dot" title="Online"></span>` : '';
                         html += `
@@ -1288,7 +1336,7 @@
                 }
                 let win = $(`#chat-window-${groupId}`);
                 let isMax = win.hasClass('maximized');
-                
+
                 // Đóng các cửa sổ khác nếu đang phóng to (tùy chọn, để đỡ rối)
                 if (!isMax) {
                     $('.chat-window').not(win).removeClass('maximized');
@@ -1298,7 +1346,7 @@
                 }
 
                 win.toggleClass('maximized');
-                
+
                 // Cuộn xuống cuối sau khi phóng to
                 setTimeout(() => {
                     let contentDiv = document.getElementById(`chat-content-${groupId}`);
@@ -1309,7 +1357,8 @@
             function loadChatMessages(groupId, forceScroll = false) {
                 let url = "{{ route('chat.messages', ':groupId', false) }}".replace(':groupId', groupId);
                 let contentDiv = document.getElementById(`chat-content-${groupId}`);
-                let isAtBottom = contentDiv ? (contentDiv.scrollHeight - contentDiv.scrollTop <= contentDiv.clientHeight + 50) : true;
+                let isAtBottom = contentDiv ? (contentDiv.scrollHeight - contentDiv.scrollTop <= contentDiv
+                    .clientHeight + 50) : true;
 
                 $.get(url, function(res) {
                     let container = $(`#chat-content-${groupId}`);
@@ -1355,17 +1404,19 @@
                 container.data('loading', true);
 
                 let url = "{{ route('chat.messages', ':groupId', false) }}".replace(':groupId', groupId);
-                $.get(url, { before_id: firstId }, function(res) {
+                $.get(url, {
+                    before_id: firstId
+                }, function(res) {
                     container.data('loading', false);
                     let messages = res.messages;
                     if (messages.length === 0) return;
 
                     let currentUserId = {{ session('user')['userId'] }};
                     let othersLastRead = res.others_last_read;
-                    
+
                     let oldScrollHeight = container[0].scrollHeight;
                     container.prepend(renderMessages(messages, currentUserId, othersLastRead));
-                    
+
                     // Giữ vị trí cuộn
                     container.scrollTop(container[0].scrollHeight - oldScrollHeight);
                 });
@@ -1376,21 +1427,26 @@
                 messages.forEach(m => {
                     let side = m.sender_id == currentUserId ? 'me' : 'other';
                     let isRecalled = m.is_recalled == 1;
-                    let content = isRecalled ? '<span class="recalled-msg">Tin nhắn đã được thu hồi</span>' : (m.message || '');
-                    
+                    let content = isRecalled ? '<span class="recalled-msg">Tin nhắn đã được thu hồi</span>' : (m
+                        .message || '');
+
                     if (!isRecalled && m.file_path) {
-                        let fPath = m.file_path.startsWith('http') ? m.file_path : (m.file_path.startsWith('/') ? m.file_path : '/storage/' + m.file_path);
+                        let fPath = m.file_path.startsWith('http') ? m.file_path : (m.file_path.startsWith(
+                            '/') ? m.file_path : '/storage/' + m.file_path);
                         if (m.file_type && m.file_type.startsWith('image/')) {
-                            content += `<div class="mt-1"><img src="${fPath}" style="max-width:100%; border-radius:5px; cursor:pointer;" onclick="window.open('${fPath}', '_blank')"></div>`;
+                            content +=
+                                `<div class="mt-1"><img src="${fPath}" style="max-width:100%; border-radius:5px; cursor:pointer;" onclick="window.open('${fPath}', '_blank')"></div>`;
                         } else {
-                            content += `<div class="mt-1"><a href="${fPath}" target="_blank" class="text-primary font-weight-bold"><i class="fas fa-file-download"></i> ${m.file_name || 'Tải xuống File'}</a></div>`;
+                            content +=
+                                `<div class="mt-1"><a href="${fPath}" target="_blank" class="text-primary font-weight-bold"><i class="fas fa-file-download"></i> ${m.file_name || 'Tải xuống File'}</a></div>`;
                         }
                     }
 
                     // Render Reply Content
                     let replyHtml = '';
                     if (m.reply_to_id && m.reply_to_content) {
-                        let rText = m.reply_to_content.is_recalled ? 'Tin nhắn đã bị thu hồi' : m.reply_to_content.message;
+                        let rText = m.reply_to_content.is_recalled ? 'Tin nhắn đã bị thu hồi' : m
+                            .reply_to_content.message;
                         replyHtml = `
                             <div class="reply-wrapper" data-reply-id="${m.reply_to_id}">
                                 <span class="reply-sender">${m.reply_to_content.sender_name || 'Người dùng'}</span>
@@ -1402,8 +1458,10 @@
                     let statusHtml = '';
                     let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
                     if (side === 'me') {
-                        let isSeen = othersLastRead && othersLastRead.some(time => time && time >= m.created_at);
-                        statusHtml = `<div class="msg-status" data-time="${m.created_at}">${timeHtml} <span>${isRecalled ? '' : (isSeen ? 'Đã xem' : 'Đã gửi')}</span></div>`;
+                        let isSeen = othersLastRead && othersLastRead.some(time => time && time >= m
+                        .created_at);
+                        statusHtml =
+                            `<div class="msg-status" data-time="${m.created_at}">${timeHtml} <span>${isRecalled ? '' : (isSeen ? 'Đã xem' : 'Đã gửi')}</span></div>`;
                     } else {
                         statusHtml = `<div class="msg-status">${timeHtml}</div>`;
                     }
@@ -1427,8 +1485,10 @@
                     // Actions (Reply, Recall, Reaction)
                     let actionsHtml = '';
                     if (!isRecalled) {
-                        let safeText = (m.message || 'File').replace(/'/g, "&apos;").replace(/"/g, "&quot;").replace(/\n/g, " ");
-                        let safeName = (m.sender_name || 'Người dùng').replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                        let safeText = (m.message || 'File').replace(/'/g, "&apos;").replace(/"/g, "&quot;")
+                            .replace(/\n/g, " ");
+                        let safeName = (m.sender_name || 'Người dùng').replace(/'/g, "&apos;").replace(/"/g,
+                            "&quot;");
                         actionsHtml = `
                             <div class="msg-actions">
                                 <div class="btn-reaction">
@@ -1448,9 +1508,9 @@
                                     data-msg-id="${m.id}" data-name="${safeName}" data-text="${safeText}">
                                     <i class="fas fa-reply"></i>
                                 </span>
-                                ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi" data-msg-id="${m.id}">
-                                    <i class="fas fa-undo"></i>
-                                </span>` : ''}
+                                ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi, sau 30p sẽ không được thu hồi" data-msg-id="${m.id}">
+                                        <i class="fas fa-undo"></i>
+                                    </span>` : ''}
                             </div>
                         `;
                     }
@@ -1494,7 +1554,7 @@
 
             function attachMessageActions(groupId) {
                 let win = $(`#chat-window-${groupId}`);
-                
+
                 // Gắn sự kiện hover để quản lý trạng thái tương tác
                 win.find('.msg-row').off('mouseenter mouseleave').on('mouseenter', function() {
                     isUserInteracting = true;
@@ -1590,7 +1650,8 @@
                         }).done(function() {
                             loadChatMessages(groupId, true);
                         }).fail(function(xhr) {
-                            Swal.fire('Lỗi', xhr.responseJSON?.message || 'Không thể thu hồi tin nhắn', 'error');
+                            Swal.fire('Lỗi', xhr.responseJSON?.message ||
+                                'Không thể thu hồi tin nhắn', 'error');
                         });
                     }
                 });
@@ -1634,7 +1695,9 @@
                     if (item.kind === 'file' && item.type.startsWith('image/')) {
                         let blob = item.getAsFile();
                         let fileName = "pasted_image_" + moment().format('YYYYMMDD_HHmmss') + ".png";
-                        let file = new File([blob], fileName, { type: item.type });
+                        let file = new File([blob], fileName, {
+                            type: item.type
+                        });
                         performFileUpload(file, groupId);
                     }
                 }
@@ -1679,7 +1742,7 @@
 
                     // Limits
                     if (newWidth >= 250 && newWidth <= 800) win.style.width = newWidth + 'px';
-                    
+
                     // Giới hạn chiều cao: Tối thiểu 100px, tối đa là chiều cao màn hình trừ đi 100px để không vượt quá header phần mềm
                     let maxHeight = window.innerHeight - 100;
                     if (newHeight >= 100 && newHeight <= maxHeight) win.style.height = newHeight + 'px';
@@ -1709,7 +1772,7 @@
             window.showCreateGroupModal = function() {
                 $.get("{{ route('chat.users') }}", function(users) {
                     allUsersForGroup = users;
-                    
+
                     // Xây dựng danh sách phòng ban
                     let depts = [...new Set(users.map(u => u.deparment).filter(d => d))].sort();
                     let deptHtml = '<option value="all">Tất cả phòng ban</option>';
@@ -1736,7 +1799,8 @@
                         </div>
                     `;
                 });
-                $('#userListForGroup').html(html || '<div class="text-center text-muted">Không có người dùng nào</div>');
+                $('#userListForGroup').html(html ||
+                '<div class="text-center text-muted">Không có người dùng nào</div>');
             }
 
             window.filterUsersByDepartment = function() {
@@ -1787,13 +1851,20 @@
             };
 
             const commonEmojis = [
-                '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '☺️', '🙂', '🤗', '🤩',
-                '🤔', '🤨', '😐', '😑', '😶', '🙄', '😏', '😣', '😥', '😮', '🤐', '😯', '😪', '😫', '🥱', '😴', '😌', '😛', '😜', '😝', '🤤', '😒', '😓', '😔', '😕', '🙃', '🤑', '😲',
-                '☹️', '🙁', '😖', '😞', '😟', '😤', '😢', '😭', '😦', '😧', '😨', '😩', '🤯', '😬', '😰', '😱', '🥵', '🥶', '😳', '🤪', '😵', '😡', '😠', '🤬', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '😇', '🥳',
-                '🤫', '🤭', '🧐', '🤓', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '🤖', '💩', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾',
-                '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏',
-                '✍️', '💅', '🤳', '💪', '🦾', '🦵', '🦿', '🦶', '👂', '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋', '🩸',
-                '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟',
+                '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗',
+                '😙', '😚', '☺️', '🙂', '🤗', '🤩',
+                '🤔', '🤨', '😐', '😑', '😶', '🙄', '😏', '😣', '😥', '😮', '🤐', '😯', '😪', '😫', '🥱', '😴',
+                '😌', '😛', '😜', '😝', '🤤', '😒', '😓', '😔', '😕', '🙃', '🤑', '😲',
+                '☹️', '🙁', '😖', '😞', '😟', '😤', '😢', '😭', '😦', '😧', '😨', '😩', '🤯', '😬', '😰', '😱',
+                '🥵', '🥶', '😳', '🤪', '😵', '😡', '😠', '🤬', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '😇', '🥳',
+                '🤫', '🤭', '🧐', '🤓', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '🤖', '💩', '😺', '😸', '😹',
+                '😻', '😼', '😽', '🙀', '😿', '😾',
+                '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕',
+                '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏',
+                '✍️', '💅', '🤳', '💪', '🦾', '🦵', '🦿', '🦶', '👂', '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️',
+                '👅', '👄', '💋', '🩸',
+                '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖',
+                '💘', '💝', '💟',
                 '✨', '🔥', '⚡', '💥', '❄️', '🌈', '⭐', '🌟', '☁️', '☀️', '📌', '📍', '✅', '❌', '🚀', '🎯', '⌛', '⏰'
             ];
 
@@ -1812,7 +1883,7 @@
                 });
                 html += `</div>`;
                 $(`#chat-window-${groupId}`).append(html);
-                
+
                 // Đóng khi click ngoài
                 $(document).one('mousedown', function(e) {
                     if (!$(e.target).closest('.emoji-picker, .btn-emoji').length) {
@@ -1868,7 +1939,10 @@
                     $(this).replaceWith($(this).text());
                 });
                 $(`#chat-search-stats-${groupId}`).addClass('d-none');
-                chatSearchResults[groupId] = { indices: [], current: -1 };
+                chatSearchResults[groupId] = {
+                    indices: [],
+                    current: -1
+                };
             }
 
             window.executeChatSearch = function(groupId) {
@@ -1878,13 +1952,14 @@
 
                 let content = $(`#chat-content-${groupId}`);
                 let matches = [];
-                
+
                 content.find('.msg-text').each(function() {
                     let text = $(this).text();
                     let lowerText = text.toLowerCase();
                     if (lowerText.includes(query)) {
                         // Use regex to replace all occurrences with case-insensitive support
-                        let regex = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+                        let regex = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`,
+                        'gi');
                         let newHtml = text.replace(regex, '<span class="search-highlight">$1</span>');
                         $(this).html(newHtml);
                     }
@@ -1921,7 +1996,7 @@
 
                 let highlights = results.indices;
                 highlights.removeClass('current-match');
-                
+
                 let target = $(highlights[index]);
                 target.addClass('current-match');
 

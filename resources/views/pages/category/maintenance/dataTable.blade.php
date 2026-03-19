@@ -395,6 +395,24 @@
             let oldValue = $(this).data('old-value');
             if (time === oldValue) return;
 
+            if (name != "note") {
+                const pattern = /^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/;
+                if (time && !pattern.test(time)) {
+                    Swal.fire({
+                        title: 'Lỗi định dạng!',
+                        text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                        icon: 'error',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    $(this).focus();
+                    $(this).css('border', '1px solid red');
+                    return;
+                } else {
+                    $(this).css('border', '');
+                }
+            }
+
             $.ajax({
                 url: "{{ route('pages.category.maintenance.updateTime') }}",
                 type: 'POST',
