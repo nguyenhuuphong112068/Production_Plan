@@ -1683,13 +1683,16 @@ class ProductionPlanController extends Controller
                                         ['pmm.active', 1]
                                 ])
 
-                                ->where(function ($q) {
-                                        $q->where('pmm.material_packaging_type', '!=', 0)
-                                                ->orWhere(function ($sub) {
-                                                        $sub->where('pmm.material_packaging_type', 0)
-                                                                ->whereNull('sp_max.max_stage_code');
-                                                });
-                                })
+                                ->when(
+                                        $request->plan_list_id < 0,
+                                        fn($q) => $q->where(function ($q) {
+                                                $q->where('pmm.material_packaging_type', '!=', 0)
+                                                        ->orWhere(function ($sub) {
+                                                                $sub->where('pmm.material_packaging_type', 0)
+                                                                        ->whereNull('sp_max.max_stage_code');
+                                                        });
+                                        })
+                                )
 
                                 ->when(
                                         $request->has('selected'),
@@ -1773,9 +1776,20 @@ class ProductionPlanController extends Controller
                                         $request->plan_list_id < 0,
                                         fn($q) => $q->where(function ($sub) {
                                                 $sub->whereNull('sp_max.max_stage_code')
-                                                        ->orWhere('sp_max.max_stage_code', '<', 7);
+                                                        ->orWhere('sp_max.max_stage_code', '<', 7)
+                                                ;
                                         }),
                                         fn($q) => $q->where('pm.plan_list_id', $request->plan_list_id)
+                                )
+                                ->when(
+                                        $request->plan_list_id < 0,
+                                        fn($q) => $q->where(function ($q) {
+                                                $q->where('pmm.material_packaging_type', '!=', 0)
+                                                        ->orWhere(function ($sub) {
+                                                                $sub->where('pmm.material_packaging_type', 0)
+                                                                        ->whereNull('sp_max.max_stage_code');
+                                                        });
+                                        })
                                 )
 
                                 ->where([
@@ -1784,14 +1798,6 @@ class ProductionPlanController extends Controller
                                         ['pm.active', 1],
                                         ['pmm.active', 1]
                                 ])
-
-                                ->where(function ($q) {
-                                        $q->where('pmm.material_packaging_type', '!=', 0)
-                                                ->orWhere(function ($sub) {
-                                                        $sub->where('pmm.material_packaging_type', 0)
-                                                                ->whereNull('sp_max.max_stage_code');
-                                                });
-                                })
 
                                 ->when(
                                         $request->has('selected'),
@@ -1832,9 +1838,7 @@ class ProductionPlanController extends Controller
                                         'pmm.material_packaging_type',
                                         'pmm.unit_bom'
                                 )
-
                                 ->orderBy('pmm.material_packaging_code')
-
                                 ->get();
 
 
@@ -1846,7 +1850,7 @@ class ProductionPlanController extends Controller
 
                         // Lấy danh sách các bản sao lưu có sẵn
                         $backupList = DB::table('inventory_backups')
-                                ->where('plan_list_id', $db_plan_list_id)
+                                //->where('plan_list_id', $db_plan_list_id)
                                 ->select('backup_name', DB::raw('MIN(created_at) as created_at'))
                                 ->groupBy('backup_name')
                                 ->orderBy('created_at', 'desc')
