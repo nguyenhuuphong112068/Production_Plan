@@ -88,15 +88,17 @@ class ChatController extends Controller
             $msg->reactions_summary = $this->getReactionsSummary($msg->id, $userId);
         }
 
-        // Lấy thời gian đọc cuối cùng của các thành viên khác để xác định trạng thái "Đã xem"
-        $othersLastRead = DB::table('chat_group_members')
-            ->where('group_id', $groupId)
-            ->where('user_id', '!=', $userId)
-            ->pluck('last_read_at');
+           // Lấy thời gian đọc cuối cùng của các thành viên khác để xác định trạng thái "Đã xem" chi tiết
+        $groupMembersReadStatus = DB::table('chat_group_members as cgm')
+            ->join('user_management as u', 'cgm.user_id', '=', 'u.id')
+            ->where('cgm.group_id', $groupId)
+            ->where('cgm.user_id', '!=', $userId)
+            ->select('u.id as user_id', 'u.fullName', 'cgm.last_read_at')
+            ->get();
 
         return response()->json([
             'messages' => $messages,
-            'others_last_read' => $othersLastRead
+            'group_members_read_status' => $groupMembersReadStatus
         ]);
     }
 
