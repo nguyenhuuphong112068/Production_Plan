@@ -15,11 +15,12 @@ import axios from "axios";
 
 const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow, 
                       setPercentShow, selectedRows, setSelectedRows, resources, 
-                      type, currentPassword, lines , multiStage, setMultiStage }) => {
+                      type, currentPassword, lines , multiStage, setMultiStage, 
+                      isMaintenance = false, excludeMaintenance = false }) => {
 
    const wrapperRef = useRef(null);
 
-  const [stageFilter, setStageFilter] = useState(1);
+  const [stageFilter, setStageFilter] = useState(isMaintenance ? 8 : 1);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState(""); 
   const sizes = ["close", "100%" ,"30%" ];
@@ -387,10 +388,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     8: 'Hiệu Chuẩn - Bảo Trì', 
     9: 'Sự Kiện Khác',
   };
-  const stageOptions = Object.keys(stageNames).map(key => ({
-    label: `${key}. ${stageNames[key]}`,
-    value: Number(key),
-  }));
+  const stageOptions = Object.keys(stageNames)
+    .filter(key => !excludeMaintenance || Number(key) !== 8)
+    .map(key => ({
+      label: `${key}. ${stageNames[key]}`,
+      value: Number(key),
+    }));
 
   const handleSelectionChange = (e) => {
     const currentSelection = e.value ?? null;
@@ -1611,7 +1614,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
           <Col md={6}>
             <div className="p-inputgroup flex-1">
-              {percentShow === "100%" && !isShowLine ? (
+              {isMaintenance ? (
+                <div className="maintenance-title w-full text-center p-2 rounded bg-blue-50 text-blue-800 fw-bold border border-blue-200">
+                  <i className="fas fa-tools me-2"></i>HIỆU CHUẨN - BẢO TRÌ
+                </div>
+              ) : percentShow === "100%" && !isShowLine ? (
                   <>
                       <Dropdown
                         value={stageFilter}

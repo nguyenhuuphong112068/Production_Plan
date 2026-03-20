@@ -725,6 +725,7 @@ class SchedualController extends Controller
                         ->whereNull('sp.start')
                         ->where('sp.active', 1)
                         ->where('sp.finished', 0)
+                        ->where('sp.stage_code', '!=', 8)
                         ->where('sp.deparment_code', $production)
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                         ->leftJoin('plan_list', 'sp.plan_list_id', '=', 'plan_list.id')
@@ -736,10 +737,6 @@ class SchedualController extends Controller
                         ->leftJoin('product_name', function ($join) {
                                 $join->on('finished_product_category.product_name_id', '=', 'product_name.id')
                                         ->where('sp.stage_code', '<=', 7);
-                        })
-                        ->leftJoin('quota_maintenance', function ($join) {
-                                $join->on('sp.product_caterogy_id', '=', 'quota_maintenance.id')
-                                        ->where('sp.stage_code', '=', 8);
                         })
                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
                         ->select(
@@ -781,32 +778,16 @@ class SchedualController extends Controller
                                 'source_material.name as source_material_name',
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code',
-                                DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE quota_maintenance.inst_id END as name"),
-                                DB::raw("CASE WHEN sp.stage_code = 8 THEN quota_maintenance.inst_id END as instrument_code"),
-                                DB::raw("CASE WHEN sp.stage_code = 8 THEN quota_maintenance.is_HVAC END as is_HVAC")
+                                DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE sp.code END as name")
                         )
                         ->orderBy($order_by_column, 'asc')
                         ->get();
-
-                // $target_item = $plan_waiting->firstWhere('id', 35047);
-                // if ($target_item) {
-                //         Log::info("DEBUG: Plan waiting item with ID 35047:", (array) $target_item);
-                // } else {
-                //         Log::info("DEBUG: Plan waiting item with ID 35047 NOT FOUND");
-                // }
-
-
 
                 if ($plan_waiting->isEmpty()) {
                         return $plan_waiting;
                 }
 
                 // 3️⃣ Lấy dữ liệu liên quan chỉ 1 lần
-                $maintenance_category = DB::table('maintenance_category')
-                        ->where('active', 1)
-                        ->where('deparment_code', $production)
-                        ->get(['id', 'code', 'room_id']);
-
                 $quota = DB::table('quota')
                         ->leftJoin('room', 'quota.room_id', '=', 'room.id')
                         ->where('quota.active', 1)
@@ -830,20 +811,14 @@ class SchedualController extends Controller
                 });
 
 
-                $quotaByRoom = $quota->groupBy('room_id');
-                $roomIdByInstrument = $maintenance_category->pluck('room_id', 'code');
-
                 // 4️⃣ Map dữ liệu permission_room (cực nhanh)
-                $plan_waiting->transform(function ($plan) use ($quotaByIntermediate, $quotaByFinished, $quotaByRoom, $roomIdByInstrument) {
+                $plan_waiting->transform(function ($plan) use ($quotaByIntermediate, $quotaByFinished) {
                         if ($plan->stage_code <= 6) {
                                 $key = $plan->intermediate_code . '_' . $plan->stage_code;
                                 $matched = $quotaByIntermediate[$key] ?? collect();
                         } elseif ($plan->stage_code == 7) {
                                 $key = $plan->intermediate_code . '_' .  $plan->finished_product_code . '_' . $plan->stage_code;
                                 $matched = $quotaByFinished[$key] ?? collect();
-                        } elseif ($plan->stage_code == 8) {
-                                $room_id = $roomIdByInstrument[$plan->instrument_code] ?? null;
-                                $matched = $room_id ? ($quotaByRoom[$room_id] ?? collect()) : collect();
                         } else {
                                 $matched = collect();
                         }
@@ -7242,6 +7217,8 @@ class SchedualController extends Controller
 
 
 }
+
+
 function toMinutes($time)
 {
         [$hours, $minutes] = explode(':', $time);

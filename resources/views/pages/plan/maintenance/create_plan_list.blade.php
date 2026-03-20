@@ -60,7 +60,7 @@
 @if ($errors->createErrors->any())
     <script>
         $(document).ready(function() {
-            $('#create_modal').modal('show');
+            $('#create_plan_list_modal').modal('show');
         });
     </script>
 @endif

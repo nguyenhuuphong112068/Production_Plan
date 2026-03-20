@@ -14,5 +14,5 @@
 @endsection
 @section('model')
     {{-- @include('pages.plan.maintenance.history')  --}}
-    @include('pages.plan.maintenance.update')
+    {{-- @include('pages.plan.maintenance.update') --}}
 @endsection

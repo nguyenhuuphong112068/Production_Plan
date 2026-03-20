@@ -1,7 +1,7 @@
 
 import 'primereact/resources/themes/lara-light-indigo/theme.css';
-import 'primereact/resources/primereact.min.css';                
-import 'primeicons/primeicons.css';    
+import 'primereact/resources/primereact.min.css';
+import 'primeicons/primeicons.css';
 import '../css/app.css';
 
 import React from "react";
@@ -10,7 +10,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import NoteModal from './Components/NoteModal';
 import ScheduleTest from "./Pages/FullCalender.jsx";
 import AssignmentCalender from './Pages/AssignmentCalender.jsx';
-
+import MaintenanceCalender from "./Pages/MaintenanceCalender .jsx";
 
 
 createRoot(document.getElementById("root")).render(
@@ -18,8 +18,9 @@ createRoot(document.getElementById("root")).render(
     <Routes>
       <Route path="/Schedual" element={<ScheduleTest />} />
       <Route path="/assignment" element={<AssignmentCalender />} />
+      <Route path="/maintenance-calendar" element={<MaintenanceCalender />} />
     </Routes>
   </BrowserRouter>
-  
+
 );
 
