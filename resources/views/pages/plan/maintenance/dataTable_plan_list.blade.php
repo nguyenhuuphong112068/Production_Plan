@@ -5,13 +5,18 @@
             <div class="row">
                 <div class="col-12">
                     <!-- /.card-header -->
+                    @php
+                        $planType = request('type', 1);
+                        $typeName =
+                            ['1' => 'Hiệu Chuẩn', '2' => 'Bảo Trì', '3' => 'Tiện Ích'][$planType] ?? 'Hiệu Chuẩn';
+                    @endphp
                     <div class="card">
                         <!-- /.card-Body -->
                         <div class="card-body mt-5">
                             @if (user_has_permission(session('user')['userId'], 'plan_maintenance_create_plan_list', 'boolean'))
-                                <button type="button" class="btn btn-success mb-3" style="width: 200px"
+                                <button type="button" class="btn btn-success mb-3" style="width: 300px"
                                     data-toggle="modal" data-target="#modal_auto_create">
-                                    <i class="fas fa-magic"></i> Tạo Tự Động
+                                    <i class="fas fa-magic"></i> Tạo Kế Hoạch {{ $typeName }}
                                 </button>
                             @endif
 
@@ -72,6 +77,7 @@
                                                     <input type="hidden" name="month" value="{{ $data->month }}">
                                                     <input type="hidden" name="send" value="{{ $data->send }}">
                                                     <input type="hidden" name="name" value="{{ $data->name }}">
+                                                    <input type="hidden" name="type" value="{{ $planType }}">
                                                     <button type="submit" class="btn btn-success">
                                                         <i class="fas fa-eye"></i>
                                                     </button>
@@ -195,9 +201,10 @@
 @if (session('error'))
     <script>
         Swal.fire({
-            title: 'Lỗi!',
-            text: '{{ session('error') }}',
-            icon: 'error',
+            title: 'Cảnh báo!',
+            html: `{!! session('error') !!}`,
+            icon: 'warning',
+            width: '80%',
             showConfirmButton: true
         });
     </script>
@@ -207,8 +214,9 @@
     <script>
         Swal.fire({
             title: 'Cảnh báo!',
-            text: '{{ session('warning') }}',
+            html: `{!! session('warning') !!}`,
             icon: 'warning',
+            width: '30%',
             showConfirmButton: true
         });
     </script>

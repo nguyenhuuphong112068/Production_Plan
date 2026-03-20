@@ -39,6 +39,7 @@
 
                                     @csrf
                                     <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
+                                    <input type="hidden" name="type" value="{{ request('type') }}">
                                     @if (user_has_permission(session('user')['userId'], 'plan_maintenance_send', 'boolean'))
                                         <button class="btn btn-success btn-create mb-2 " style="width: 177px;">
                                             <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
@@ -126,30 +127,24 @@
                                     <td class="text-center align-middle">
                                         <div class="d-flex justify-content-center gap-1">
                                             @if ($data->active == true && $send == false)
-                                                <button type="button" {{ $auth_deActive }} 
+                                                <button type="button" {{ $auth_deActive }}
                                                     class="btn btn-danger btn-deactive-ajax"
-                                                    data-id="{{ $data->id }}" 
-                                                    data-type="delete" 
-                                                    data-name="{{ $data->name }}"
-                                                    title="Bỏ qua">
+                                                    data-id="{{ $data->id }}" data-type="delete"
+                                                    data-name="{{ $data->name }}" title="Bỏ qua">
                                                     <i class="fas fa-step-forward"></i>
                                                 </button>
                                             @elseif ($data->cancel == false && $send == true)
-                                                <button type="button" {{ $auth_deActive }} 
+                                                <button type="button" {{ $auth_deActive }}
                                                     class="btn btn-danger btn-deactive-ajax"
-                                                    data-id="{{ $data->id }}" 
-                                                    data-type="cancel" 
-                                                    data-name="{{ $data->name }}"
-                                                    title="Hủy bỏ">
+                                                    data-id="{{ $data->id }}" data-type="cancel"
+                                                    data-name="{{ $data->name }}" title="Hủy bỏ">
                                                     <i class="fas fa-step-forward"></i>
                                                 </button>
                                             @elseif ($data->cancel == true && $send == true)
-                                                <button type="button" {{ $auth_deActive }} 
+                                                <button type="button" {{ $auth_deActive }}
                                                     class="btn btn-success btn-deactive-ajax"
-                                                    data-id="{{ $data->id }}" 
-                                                    data-type="restore" 
-                                                    data-name="{{ $data->name }}"
-                                                    title="Khôi phục">
+                                                    data-id="{{ $data->id }}" data-type="restore"
+                                                    data-name="{{ $data->name }}" title="Khôi phục">
                                                     <i class="fas fa-step-forward"></i>
                                                 </button>
                                             @endif
@@ -198,6 +193,32 @@
             icon: 'success',
             timer: 1000, // tự đóng sau 2 giây
             showConfirmButton: false
+        });
+    </script>
+@endif
+
+@if (session('warning'))
+    <script>
+        Swal.fire({
+            title: 'Cảnh báo!',
+            html: `{!! session('warning') !!}`,
+            icon: 'warning',
+            width: '80%',
+            confirmButtonText: 'Đóng',
+            confirmButtonColor: '#ffc107',
+        });
+    </script>
+@endif
+
+@if (session('error'))
+    <script>
+        Swal.fire({
+            title: 'Lỗi!',
+            html: `{!! session('error') !!}`,
+            icon: 'error',
+            width: '80%',
+            confirmButtonText: 'Đóng',
+            confirmButtonColor: '#dc3545',
         });
     </script>
 @endif
@@ -284,12 +305,13 @@
                                     // For cancel/restore, we might need more complex UI toggle, 
                                     // but for now, simple reload or hide is easiest if it changes multiple things.
                                     // Let's try to reload for cancel/restore as they change many things in the row
-                                    location.reload(); 
+                                    location.reload();
                                 }
                             }
                         },
                         error: function(xhr) {
-                            Swal.fire('Lỗi!', 'Không thể cập nhật trạng thái.', 'error');
+                            Swal.fire('Lỗi!', 'Không thể cập nhật trạng thái.',
+                                'error');
                         }
                     });
                 }

@@ -27,7 +27,7 @@ import NoteModal from '../Components/NoteModal';
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
 
-const ScheduleTest = () => {
+const MaintenanceCalender = () => {
 
   const calendarRef = useRef(null);
   const selectoRef = useRef(null);
@@ -105,7 +105,7 @@ const ScheduleTest = () => {
     });
 
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-    axios.post("/Schedual/view", {
+    axios.post("/MaintenanceSchedual/view", {
       startDate: toLocalISOString(activeStart),
       endDate: toLocalISOString(activeEnd),
       viewtype: viewName,
@@ -574,7 +574,7 @@ const ScheduleTest = () => {
 
     if (selectedRows[0].stage_code !== 8) {
 
-      axios.put('/Schedual/store', {
+      axios.put('/MaintenanceSchedual/store', {
         room_id: resourceId,
         stage_code: selectedRows[0].stage_codes,
         start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
@@ -605,7 +605,7 @@ const ScheduleTest = () => {
         });
     } else if (selectedRows[0].stage_code == 8) {
 
-      axios.put('/Schedual/store_maintenance', {
+      axios.put('/MaintenanceSchedual/store', {
         stage_code: 8,
         start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
         products: selectedRows,
@@ -2910,7 +2910,7 @@ const ScheduleTest = () => {
           lines={lines}
           multiStage={multiStage}
           setMultiStage={setMultiStage}
-          excludeMaintenance={true}
+          isMaintenance={true}
         />)}
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
@@ -2970,5 +2970,5 @@ const ScheduleTest = () => {
   );
 };
 
-export default ScheduleTest;
+export default MaintenanceCalender;
 

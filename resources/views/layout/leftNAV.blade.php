@@ -43,6 +43,7 @@
         overflow-y: auto;
     }
 </style>
+
 <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
     <div class="sidebar">
         <!-- Brand Logo -->
@@ -179,11 +180,11 @@
                         @endif
 
                         {{-- <li class="nav-item">
-                <a href="{{ route ('pages.materData.source_material.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>BOM Giả Định</p>
-                </a>
-              </li> --}}
+                    <a href="{{ route ('pages.materData.source_material.list') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>BOM Giả Định</p>
+                    </a>
+                </li> --}}
 
                         {{-- <li class="nav-item">
                 <a href="{{ route ('pages.materData.Instrument.list') }}" class="nav-link">
@@ -301,12 +302,12 @@
                             </a>
                         </li>
 
-                        {{-- <li class="nav-item">
-                <a href="{{ route ('pages.category.product.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Bảo Trì</p>
-                </a>
-              </li> --}}
+                        <li class="nav-item">
+                            <a href="{{ route('pages.category.product.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Bảo Trì</p>
+                            </a>
+                        </li>
 
                     </ul>
                 </li>
@@ -379,11 +380,11 @@
                         </li>
 
                         {{-- <li class="nav-item">
-                <a href="{{ route ('pages.plan.production.list') }}" class="nav-link">
-                  <i class="far fa-circle nav-icon"></i>
-                  <p>Lệnh Sản Xuất</p>
-                </a>
-              </li> --}}
+                            <a href="{{ route ('pages.plan.production.list') }}" class="nav-link">
+                            <i class="far fa-circle nav-icon"></i>
+                            <p>Lệnh Sản Xuất</p>
+                            </a>
+                        </li> --}}
 
                         <li class="nav-item has-treeview">
                             <a href="#" class="nav-link">
@@ -509,8 +510,32 @@
                     </ul>
                 </li>
 
-                <!-- Droplist ABCD -->
                 @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
+                    <li class="nav-item has-treeview">
+                        <a href="#" class="nav-link">
+                            <i class="nav-icon fas fa-user-check"></i>
+                            <p>
+                                Lịch BT - HC
+                                <i class="right fas fa-angle-left"></i>
+                            </p>
+                        </a>
+
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a href="/maintenance-calendar" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p> Lịch BT - HC </p>
+                                </a>
+                            </li>
+
+
+
+                        </ul>
+                    </li>
+                @endif
+
+                <!-- Droplist ABCD -->
+                {{-- @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
                     <li class="nav-item has-treeview">
                         <a href="#" class="nav-link">
 
@@ -540,7 +565,7 @@
 
                         </ul>
                     </li>
-                @endif
+                @endif --}}
 
                 <!-- Droplist Menu Báo Cáo  -->
                 @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
@@ -742,7 +767,7 @@
 
                 @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
                     <li class="nav-item">
-                        <a href="/plan/production/update_plan_master_material" class="nav-link">
+                        <a href="#" class="nav-link">
                             <i class="nav-icon fas fa-th"></i>
                             <p>
                                 Test Route

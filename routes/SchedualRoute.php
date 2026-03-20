@@ -11,6 +11,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualQuarantineRoomController;
 use App\Http\Controllers\Pages\Schedual\SchedualReportController;
 use App\Http\Controllers\Pages\Schedual\SchedualStepController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
+use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController;
 use App\Http\Controllers\Pages\Schedual\ShedualYieldController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
@@ -73,6 +74,18 @@ Route::get('/assignment/{any?}', function () {
         return view('app');
 })->where('any', '.*')
         ->middleware(CheckLogin::class);
+
+Route::get('/maintenance-calendar/{any?}', [MaintenanceSchedualController::class, 'index'])
+        ->where('any', '.*')
+        ->middleware(CheckLogin::class);
+
+Route::prefix('/MaintenanceSchedual')
+        ->controller(MaintenanceSchedualController::class)
+        ->middleware(CheckLogin::class)
+        ->group(function () {
+                Route::post('view', 'view');
+                Route::put('store', 'store');
+        });
 
 
 

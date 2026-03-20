@@ -41,6 +41,7 @@ class MaintenancePlanController extends Controller
 
         public function create_plan_list(Request $request)
         {
+
                 $startDate = $request->from_date ?? date('Y-m-01');
                 $endDate = $request->to_date ?? date('Y-m-t');
                 $type = $request->type;
@@ -61,6 +62,8 @@ class MaintenancePlanController extends Controller
 
         public function autoCreatePlan(Request $request)
         {
+
+
                 $startDate = $request->from_date;
                 $endDate = $request->to_date;
                 $type = $request->type;
@@ -77,9 +80,80 @@ class MaintenancePlanController extends Controller
                 // Fetch schedules based on type
                 $schedules = $this->fetchAllSchedules($startDate, $endDate, $type);
 
+                if ($schedules->isEmpty()) {
+                        return redirect()->back()->with('warning', 'Không tìm thấy lịch bảo trì nào trong khoảng thời gian này.');
+                }
+
+                // --- Bước tiền kiểm tra (Validation) Quota ---
+                $instIds = $schedules->pluck('Inst_ID')->map(fn($id) => trim($id))->unique()->toArray();
+                $allQuotas = DB::table('quota_maintenance')
+                        ->whereIn('inst_id', $instIds)
+                        ->where('active', 1)
+                        ->get()
+                        ->groupBy(function ($item) {
+                                return trim($item->inst_id);
+                        });
+
+                $invalidInsts = [];
+                foreach ($departments as $dept) {
+                        $deptSchedules = $schedules->filter(function ($s) use ($dept) {
+                                if (in_array($dept, ['PXV1', 'PXTN'])) return $s->connection === 'cal1';
+                                if (in_array($dept, ['PXVH', 'PXDN', 'PXV2'])) return $s->connection === 'cal2';
+                                return true;
+                        });
+
+                        foreach ($deptSchedules as $sch) {
+                                $instId = trim($sch->Inst_ID);
+                                $deviceQuotas = $allQuotas->get($instId);
+
+                                if ($deviceQuotas) {
+                                        foreach ($deviceQuotas as $quota) {
+                                                // Kiểm tra nếu là bản ghi cho PX hiện tại hoặc bản ghi bị thiếu PX
+                                                if ($quota->deparment_code == $dept || empty($quota->deparment_code)) {
+                                                        $errors = [];
+                                                        if (empty($quota->deparment_code)) $errors[] = "thiếu Phân xưởng";
+                                                        if (empty($quota->room_id)) $errors[] = "thiếu Phòng/Khu vực";
+                                                        if (empty($quota->exe_time) || $quota->exe_time == '00:00') $errors[] = "thời gian thực hiện = 00:00";
+
+                                                        if (!empty($errors)) {
+                                                                $invalidInsts[$instId][] = "PX {$dept}: " . implode(", ", $errors);
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+
+                if (!empty($invalidInsts)) {
+                        $errorMsg = "Một số thiết bị có thông tin cấu hình Quota chưa đầy đủ. Vui lòng kiểm tra lại:<br>";
+                        foreach ($invalidInsts as $id => $errs) {
+                                $uniqueErrs = array_unique($errs);
+                                $errorMsg .= "<br>• <b>{$id}</b>: " . implode(" | ", $uniqueErrs);
+                        }
+
+                        return redirect()->back()->with('warning', $errorMsg)->withInput();
+                }
+                // --- Kết thúc Validation ---
+
                 foreach ($departments as $dept) {
                         try {
-                                $res = $this->generateMaintenancePlan($startDate, $endDate, $dept, $type, $schedules);
+                                // Lọc schedules theo PX và connection
+                                $deptSchedules = $schedules->filter(function ($s) use ($dept) {
+                                        if (in_array($dept, ['PXV1', 'PXTN'])) {
+                                                return $s->connection === 'cal1';
+                                        }
+                                        if (in_array($dept, ['PXVH', 'PXDN', 'PXV2'])) {
+                                                return $s->connection === 'cal2';
+                                        }
+                                        return true; // PX khác (nếu có) thì lấy tất cả
+                                });
+
+                                if ($deptSchedules->isEmpty()) {
+                                        $results[$dept] = 'Không có lịch bảo trì cho phân xưởng này từ nguồn dữ liệu tương ứng.';
+                                        continue;
+                                }
+
+                                $res = $this->generateMaintenancePlan($startDate, $endDate, $dept, $type, $deptSchedules);
                                 if ($res['success']) {
                                         $successCount++;
                                         $totalNewDevices += $res['count'];
@@ -99,6 +173,7 @@ class MaintenancePlanController extends Controller
 
         private function fetchAllSchedules($startDate, $endDate, $type = null)
         {
+
                 $schedules = collect();
                 $connections = ['cal1', 'cal2'];
                 $suffixes = $type ? [$type] : [1, 2, 3];
@@ -108,11 +183,12 @@ class MaintenancePlanController extends Controller
                                 try {
                                         $result = DB::connection($conn)
                                                 ->table("Schedule_Master_{$suffix}")
-                                                // ->table("Schedule_Master_3")
+
                                                 ->whereBetween('Sch_DueDate', [$startDate, $endDate])
                                                 ->where('Sch_Result_Status', 'Pending')
-                                                ->select('Inst_ID', 'Sch_DueDate', 'Sch_Remark')
+                                                ->select('Inst_ID', 'Sch_DueDate', 'Sch_Remark', 'Sch_Type', DB::raw("'$conn' as connection"))
                                                 ->get();
+                                        // ->table("Schedule_Master_3")
 
                                         $schedules = $schedules->merge($result);
 
@@ -195,26 +271,48 @@ class MaintenancePlanController extends Controller
                                 ->toArray();
                         $existingSet = array_flip($existing);
 
-                        foreach ($schedules as $sch) {
-                                $quota = $quotas[$sch->Inst_ID] ?? null;
+                        // 4. Group schedules by Inst_ID
+                        $groupedSchedules = $schedules->groupBy(function ($item) {
+                                return trim($item->Inst_ID);
+                        });
+
+                        foreach ($groupedSchedules as $instId => $group) {
+                                $quota = $quotas[$instId] ?? null;
                                 if (!$quota) continue;
 
-                                // Kiểm tra trùng: cùng thiết bị + cùng ngày đã tạo rồi thì bỏ qua
-                                $schDate = \Carbon\Carbon::parse($sch->Sch_DueDate)->format('Y-m-d');
+                                // Lấy ngày gần nhất
+                                $minDate = $group->min('Sch_DueDate');
+                                $schDate = \Carbon\Carbon::parse($minDate)->format('Y-m-d');
+
+                                // Kiểm tra trùng: cùng thiết bị + cùng ngày gần nhất đã tạo rồi thì bỏ qua
                                 $key = $quota->id . '_' . $schDate;
                                 if (isset($existingSet[$key])) continue;
+
+                                // Tổng hợp loại và ngày: Loai1 (ngày), Loai2 (ngày)
+                                $typeInfoArray = $group->map(function ($g) {
+                                        $datePart = \Carbon\Carbon::parse($g->Sch_DueDate)->format('d/m');
+                                        return "{$g->Sch_Type} ({$datePart})";
+                                })->unique()->toArray();
+
+                                $typeSummary = implode(", ", $typeInfoArray);
+
+                                // Tổng hợp ghi chú gốc (nếu có)
+                                $originalNotes = $group->pluck('Sch_Remark')->filter(fn($n) => !empty($n) && $n !== 'NA')->unique()->implode(" | ");
+
+                                // Tag đặc biệt để Parser sau này biết đây là bản ghi gộp
+                                $finalNote = "[GỘP: {$typeSummary}]" . ($originalNotes ? " | " . $originalNotes : "");
 
                                 $pmId = DB::table('plan_master')->insertGetId([
                                         'product_caterogy_id' => $quota->id,
                                         'plan_list_id' => $planListId,
                                         'batch' => 'NA',
-                                        'expected_date' => $sch->Sch_DueDate,
+                                        'expected_date' => $minDate,
                                         'level' => 1,
                                         'is_val' => 0,
                                         'percent_parkaging' => 1,
                                         'only_parkaging' => 0,
                                         'number_parkaging' => 1,
-                                        'note' => $sch->Sch_Remark ?? 'NA',
+                                        'note' => $finalNote,
                                         'deparment_code' => $departmentCode,
                                         'prepared_by' => $preparedBy,
                                         'created_at' => $now,
@@ -225,19 +323,19 @@ class MaintenancePlanController extends Controller
                                         'plan_list_id' => $planListId,
                                         'product_caterogy_id' => $quota->id,
                                         'batch' => 'NA',
-                                        'expected_date' => $sch->Sch_DueDate,
+                                        'expected_date' => $minDate,
                                         'level' => 1,
                                         'is_val' => 0,
                                         'percent_parkaging' => 1,
                                         'only_parkaging' => 0,
                                         'number_parkaging' => 1,
-                                        'note' => $sch->Sch_Remark ?? 'NA',
+                                        'note' => $finalNote,
                                         'deparment_code' => $departmentCode,
                                         'prepared_by' => $preparedBy,
                                         'created_at' => $now,
                                         'updated_at' => $now,
                                         'version' => 1,
-                                        'reason' => 'Tạo tự động từ lịch bảo trì',
+                                        'reason' => 'Tạo tự động (Gộp nhóm)',
                                 ]);
 
                                 $count++;
@@ -333,7 +431,13 @@ class MaintenancePlanController extends Controller
                 $datas = $datas->map(function ($item) use ($schTypes) {
                         $date = \Carbon\Carbon::parse($item->expected_date)->format('Y-m-d');
                         $key = trim($item->code) . '_' . $date;
-                        $item->sch_type = $schTypes[$key] ?? '';
+
+                        // Ưu tiên lấy từ Note nếu là bản ghi GỘP
+                        if (preg_match('/\[GỘP: (.*?)\]/', $item->note, $matches)) {
+                                $item->sch_type = $matches[1];
+                        } else {
+                                $item->sch_type = $schTypes[$key] ?? '';
+                        }
                         return $item;
                 });
 
@@ -502,7 +606,13 @@ class MaintenancePlanController extends Controller
                 $histories = $histories->map(function ($item) use ($schTypes) {
                         $date = \Carbon\Carbon::parse($item->expected_date)->format('Y-m-d');
                         $key = trim($item->code) . '_' . $date;
-                        $item->sch_type = $schTypes[$key] ?? '';
+
+                        // Ưu tiên lấy từ Note nếu là bản ghi GỘP
+                        if (preg_match('/\[GỘP: (.*?)\]/', $item->note, $matches)) {
+                                $item->sch_type = $matches[1];
+                        } else {
+                                $item->sch_type = $schTypes[$key] ?? '';
+                        }
                         return $item;
                 });
 
@@ -658,13 +768,26 @@ class MaintenancePlanController extends Controller
                 ]);
 
 
-                $datas = DB::table('plan_list')
-                        ->where('active', 1)
-                        ->where('type', 0)
-                        ->orderBy('created_at', 'desc')->get();
+                // $datas = DB::table('plan_list')
+                //         ->where('active', 1)
+                //         ->where('type', 0)
+                //         ->orderBy('created_at', 'desc')->get();
 
-                session()->put(['title' => 'Kế Hoạch Bảo Trì Tháng']);
-                return view('pages.plan.maintenance.plan_list', ['datas' => $datas]);
+
+
+                $type = $request->type ?? 1;
+
+                $type_names = [
+                        1 => 'HIỆU CHUẨN',
+                        2 => 'BẢO TRÌ',
+                        3 => 'TIỆN ÍCH'
+                ];
+
+                $title = $type ? "KẾ HOẠCH {$type_names[$type]} THÁNG" : 'KẾ HOẠCH BẢO TRÌ THÁNG';
+                session()->put(['title' => $title]);
+
+                return redirect()->route('pages.plan.maintenance.list', ['type' => $type])
+                        ->with('success', 'Đã gửi kế hoạch thành công!');
         }
 
         private function fetchSchTypes($items)
