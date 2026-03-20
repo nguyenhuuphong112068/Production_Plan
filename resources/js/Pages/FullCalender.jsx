@@ -509,6 +509,9 @@ const ScheduleTest = () => {
     const start = info.event.start;
     const now = new Date();
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
+    const slotDuration = calendarRef.current?.getApi().currentData.options.slotDuration['days'];
+
+    console.log(slotDuration)
     info.event.remove();
 
     if (selectedRows.length === 0) {
@@ -567,9 +570,10 @@ const ScheduleTest = () => {
     }
 
 
-    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    const { activeStart, activeEnd, type: view_type, props: viewProps } = calendarRef.current?.getApi().view;
 
     if (selectedRows[0].stage_code !== 8) {
+
       axios.put('/Schedual/store', {
         room_id: resourceId,
         stage_code: selectedRows[0].stage_codes,
@@ -578,7 +582,8 @@ const ScheduleTest = () => {
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
         offdate: offDays,
-        multiStage: multiStage
+        multiStage: multiStage,
+        slotDuration: slotDuration
       })
         .then(res => {
           let data = res.data;
@@ -588,7 +593,7 @@ const ScheduleTest = () => {
           }
 
           setEvents(data.events);
-          setResources(data.resources);
+          if (data.resources) setResources(data.resources);
           setSumBatchByStage(data.sumBatchByStage);
           setPlan(data.plan);
 
@@ -615,7 +620,7 @@ const ScheduleTest = () => {
             data = JSON.parse(data);
           }
           setEvents(data.events);
-          setResources(data.resources);
+          if (data.resources) setResources(data.resources);
           setSumBatchByStage(data.sumBatchByStage);
           setPlan(data.plan);
 
@@ -927,6 +932,7 @@ const ScheduleTest = () => {
         }
 
         setEvents(data.events);
+        if (data.resources) setResources(data.resources);
         setSumBatchByStage(data.sumBatchByStage);
         //setPlan(data.plan);
         setPendingChanges([]);
@@ -2304,9 +2310,31 @@ const ScheduleTest = () => {
   }
 
   const handleCleaninglevelchange = (e) => {
-    const ids = selectedEvents.map(row =>
-      Number(row.id.split('-')[0])
-    );
+
+
+    const hasInvalidEvent = selectedEvents.some(row => {
+      const type = row.id.split('-')[1];
+      // Chỉ cho phép 'cleaning' hoặc 'cleaning-theory'. Nếu là 'main' hoặc không phải cleaning thì là invalid.
+      const isCleaning = type && type.includes('cleaning');
+      const isFinished = row.finished == 1; // Giả sử model có field finished. Nếu không, kiểm tra id. split('-')[2] == 'theory' có thể coi là OK? 
+      // User nói "event chính hoặc event đã hoàn thành"
+      return !isCleaning || isFinished;
+    });
+
+    if (hasInvalidEvent) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi chọn lịch',
+        text: 'Chỉ được chọn các lịch Vệ sinh chưa hoàn thành. Vui lòng kiểm tra lại.',
+        timer: 3000
+      });
+      return;
+    }
+
+    const ids = selectedEvents.map(row => Number(row.id.split('-')[0]));
+
+
+
 
     if (ids.length === 0) {
       Swal.fire({
@@ -2338,7 +2366,7 @@ const ScheduleTest = () => {
       if (result.isConfirmed) {
         const clearning_type = result.value;
         const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-        
+
         axios.put('/Schedual/cleaninglevelchange', {
           ids: ids,
           startDate: toLocalISOString(activeStart),
@@ -2587,7 +2615,7 @@ const ScheduleTest = () => {
                 const updated = res.data.update;
 
                 setResources(prev =>
-                  prev.map(r =>
+                  (prev || []).map(r =>
                     r.code !== room
                       ? r
                       : { ...r, ...updated }
@@ -2804,9 +2832,9 @@ const ScheduleTest = () => {
           },
 
           Cleaninglevelchange: {
-            text: '1️⃣🔁2️⃣',
+            text: '🆚',
             click: handleCleaninglevelchange,
-            hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 1️⃣🔁2️⃣'
+            hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 🆚 hộp thoại chọn cấp vệ sinh xuất hiện, chọn cấp vệ sinh cần thay đổi. Bấm Lưu'
           },
 
 
