@@ -1374,11 +1374,11 @@
                     let container = $(`#chat-content-${groupId}`);
                     let currentUserId = {{ session('user')['userId'] }};
                     let messages = res.messages;
-                    let othersLastRead = res.others_last_read;
+                    let groupMembersReadStatus = res.group_members_read_status;
 
                     // Nếu là lần đầu load hoặc forceScroll, nạp lại toàn bộ
                     if (forceScroll || container.find('.msg-item').length === 0) {
-                        let html = renderMessages(messages, currentUserId, othersLastRead);
+                        let html = renderMessages(messages, currentUserId, groupMembersReadStatus);
                         container.html(html);
                         attachMessageActions(groupId); // Gắn sự kiện
                         if (forceScroll || isAtBottom) {
@@ -1390,7 +1390,7 @@
                         let lastId = container.find('.msg-item').last().data('id');
                         let newMessages = messages.filter(m => m.id > (lastId || 0));
                         if (newMessages.length > 0) {
-                            container.append(renderMessages(newMessages, currentUserId, othersLastRead));
+                            container.append(renderMessages(newMessages, currentUserId, groupMembersReadStatus));
                             attachMessageActions(groupId); // Gắn sự kiện cho tin mới
                             if (isAtBottom) {
                                 let div = document.getElementById(`chat-content-${groupId}`);
@@ -1398,7 +1398,7 @@
                             }
                         }
                         // Cập nhật trạng thái "Đã xem" cho tin nhắn cũ hơn
-                        updateMessagesStatus(groupId, othersLastRead);
+                        updateMessagesStatus(groupId, groupMembersReadStatus);
                     }
                 });
             }
@@ -1422,17 +1422,17 @@
                     if (messages.length === 0) return;
 
                     let currentUserId = {{ session('user')['userId'] }};
-                    let othersLastRead = res.others_last_read;
+                    let groupMembersReadStatus = res.group_members_read_status;
 
                     let oldScrollHeight = container[0].scrollHeight;
-                    container.prepend(renderMessages(messages, currentUserId, othersLastRead));
+                    container.prepend(renderMessages(messages, currentUserId, groupMembersReadStatus));
 
                     // Giữ vị trí cuộn
                     container.scrollTop(container[0].scrollHeight - oldScrollHeight);
                 });
             }
 
-            function renderMessages(messages, currentUserId, othersLastRead) {
+            function renderMessages(messages, currentUserId, groupMembersReadStatus) {
                 let html = '';
                 messages.forEach(m => {
                     let side = m.sender_id == currentUserId ? 'me' : 'other';
@@ -1468,10 +1468,16 @@
                     let statusHtml = '';
                     let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
                     if (side === 'me') {
-                        let isSeen = othersLastRead && othersLastRead.some(time => time && time >= m
-                            .created_at);
+                        let seenUsers = groupMembersReadStatus ? groupMembersReadStatus.filter(u => u.last_read_at && u
+                            .last_read_at >= m.created_at) : [];
+                        let isSeen = seenUsers.length > 0;
+                        let seenInfo = isSeen ? 'Đã xem bởi: ' + seenUsers.map(u => u.fullName).join(', ') : 'Đã gửi';
+                        
                         statusHtml =
-                            `<div class="msg-status" data-time="${m.created_at}">${timeHtml} <span>${isRecalled ? '' : (isSeen ? 'Đã xem' : 'Đã gửi')}</span></div>`;
+                            `<div class="msg-status" data-time="${m.created_at}" title="${isSeen ? seenInfo : ''}">
+                                ${timeHtml} 
+                                <span>${isRecalled ? '' : (isSeen ? 'Đã xem ('+seenUsers.length+')' : 'Đã gửi')}</span>
+                            </div>`;
                     } else {
                         statusHtml = `<div class="msg-status">${timeHtml}</div>`;
                     }
@@ -1588,12 +1594,22 @@
                 });
             }
 
-            function updateMessagesStatus(groupId, othersLastRead) {
+            function updateMessagesStatus(groupId, groupMembersReadStatus) {
                 $(`#chat-content-${groupId} .msg-item.me`).each(function() {
+                    let msgId = $(this).data('id');
                     let msgTime = $(this).data('time');
-                    let isSeen = othersLastRead && othersLastRead.some(time => time && time >= msgTime);
+                    let isRecalled = $(this).find('.recalled-msg').length > 0;
+                    if (isRecalled) return;
+
+                    let seenUsers = groupMembersReadStatus ? groupMembersReadStatus.filter(u => u.last_read_at && u
+                        .last_read_at >= msgTime) : [];
+                    let isSeen = seenUsers.length > 0;
+
                     if (isSeen) {
-                        $(this).find('.msg-status span').text('Đã xem');
+                        let seenInfo = 'Đã xem bởi: ' + seenUsers.map(u => u.fullName).join(', ');
+                        let statusSpan = $(this).find('.msg-status span:not(.msg-time)');
+                        statusSpan.text('Đã xem (' + seenUsers.length + ')');
+                        $(this).find('.msg-status').attr('title', seenInfo);
                     }
                 });
             }
