@@ -884,6 +884,16 @@
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Nhóm người dùng (UserGroup)</label>
+                            <div class="d-flex gap-2">
+                                <select id="userGroupFilter" class="form-control" onchange="filterUsersByUserGroup()">
+                                    <option value="all">Tất cả nhóm</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-info text-nowrap"
+                                    onclick="selectAllInUserGroup()">Chọn tất cả</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Chọn thành viên</label>
                             <div id="userListForGroup"
                                 style="max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;">
@@ -1781,20 +1791,30 @@
                     });
                     $('#deptFilter').html(deptHtml);
 
+                    // Xây dựng danh sách Nhóm người dùng (UserGroup)
+                    let groups = [...new Set(users.map(u => u.userGroup).filter(g => g))].sort();
+                    let groupHtml = '<option value="all">Tất cả nhóm</option>';
+                    groups.forEach(g => {
+                        groupHtml += `<option value="${g}">${g}</option>`;
+                    });
+                    $('#userGroupFilter').html(groupHtml);
+
                     renderUserListForGroup(users);
                     $('#newGroupName').val('');
                     $('#createGroupModal').modal('show');
                 });
             };
 
-            function renderUserListForGroup(users) {
+            window.renderUserListForGroup = function(users) {
                 let html = '';
                 users.forEach(u => {
                     html += `
-                        <div class="form-check mb-1 user-check-item" data-dept="${u.deparment || ''}">
+                        <div class="form-check mb-1 user-check-item" data-dept="${u.deparment || ''}" data-group="${u.userGroup || ''}">
                             <input class="form-check-input" type="checkbox" value="${u.id}" id="user-${u.id}" name="group_members">
                             <label class="form-check-label" for="user-${u.id}" style="cursor:pointer">
-                                ${u.fullName} (@${u.userName}) <small class="text-muted">-${u.deparment || ''}</small>
+                                ${u.fullName} (@${u.userName}) 
+                                <small class="text-muted">-${u.deparment || ''}</small>
+                                <small class="text-info font-italic">[${u.userGroup || ''}]</small>
                             </label>
                         </div>
                     `;
@@ -1805,26 +1825,36 @@
 
             window.filterUsersByDepartment = function() {
                 let dept = $('#deptFilter').val();
-                if (dept === 'all') {
-                    $('.user-check-item').show();
-                } else {
-                    $('.user-check-item').each(function() {
-                        $(this).toggle($(this).data('dept') === dept);
-                    });
-                }
+                let ugroup = $('#userGroupFilter').val();
+                
+                $('.user-check-item').each(function() {
+                    let matchDept = (dept === 'all' || $(this).data('dept') === dept);
+                    let matchGroup = (ugroup === 'all' || $(this).data('group') === ugroup);
+                    $(this).toggle(matchDept && matchGroup);
+                });
+            };
+
+            window.filterUsersByUserGroup = function() {
+                // Sử dụng cùng logic filter kết hợp
+                filterUsersByDepartment();
             };
 
             window.selectAllInDept = function() {
                 let dept = $('#deptFilter').val();
-                if (dept === 'all') {
-                    $('input[name="group_members"]').prop('checked', true);
-                } else {
-                    $('.user-check-item').each(function() {
-                        if ($(this).data('dept') === dept) {
-                            $(this).find('input').prop('checked', true);
-                        }
-                    });
-                }
+                let ugroup = $('#userGroupFilter').val();
+
+                $('.user-check-item').each(function() {
+                    let matchDept = (dept === 'all' || $(this).data('dept') === dept);
+                    let matchGroup = (ugroup === 'all' || $(this).data('group') === ugroup);
+                    if (matchDept && matchGroup) {
+                        $(this).find('input').prop('checked', true);
+                    }
+                });
+            };
+
+            window.selectAllInUserGroup = function() {
+                // Sử dụng cùng logic chọn tất cả dựa trên filter hiện tại
+                selectAllInDept();
             };
 
             window.submitCreateGroup = function() {

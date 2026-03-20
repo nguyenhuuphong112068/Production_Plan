@@ -1069,7 +1069,7 @@ class SchedualController extends Controller
 
         public function store(Request $request)
         {
-
+                Log::info($request->all());
                 $this->selectedDates =  $request->offdate ?? []; //giữ để tạo $this->offdate
                 $this->loadOffDate('asc'); // Tạo  $this->offdate
 
@@ -1082,9 +1082,26 @@ class SchedualController extends Controller
                         // Sắp xếp products theo batch
                         $products = collect($request->products)->sortBy('batch')->values();
 
-
                         // Thời gian bắt đầu ban đầu
                         $current_start = Carbon::parse($request->start);
+
+                        $slotDuration = $request->slotDuration;
+                        
+                        if ($request->has('slotDuration') &&  $request->slotDuration == 1){
+                                $room = DB::table('room')->where('id', $request->room_id)->first();
+                      
+                                if ($room) {
+                                        if ($room->sheet_regular == 1) {
+                                                $current_start->setTime(7, 15, 0);
+                                        } elseif ($room->sheet_1 == 1) {
+                                                $current_start->setTime(6, 0, 0);
+                                        } elseif ($room->sheet_1 == 0 && $room->sheet_2 == 1) {
+                                                $current_start->setTime(14, 0, 0);
+                                        } else {
+                                                $current_start->setTime(6, 0, 0);
+                                        }
+                                }
+                        }
 
                         // 🔥 KIỂM TRA NGAY TỪ ĐẦU NẾU current_start NẰM TRONG OFFDATE
                         foreach ($products as $index => $product) {
@@ -1687,10 +1704,12 @@ class SchedualController extends Controller
                 $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
                 //$plan_waiting = $this->getPlanWaiting($production);
                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                $resources = $this->getResources($production, $request->startDate, $request->endDate);
 
                 return response()->json([
                         'events' => $events,
                         //'plan' => $plan_waiting,
+                        'resources' => $resources,
                         'sumBatchByStage' => $sumBatchByStage,
                 ]);
         }
@@ -1804,11 +1823,13 @@ class SchedualController extends Controller
                 $production = session('user')['production_code'];
                 $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
                 $plan_waiting = $this->getPlanWaiting($production);
-                $sumBatchByStage = $this->yield($request->start, $request->end, "stage_code");
+                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                $resources = $this->getResources($production, $request->startDate, $request->endDate);
 
                 return response()->json([
                         'events' => $events,
                         'plan' => $plan_waiting,
+                        'resources' => $resources,
                         'sumBatchByStage' => $sumBatchByStage,
                 ]);
         }
@@ -1880,9 +1901,11 @@ class SchedualController extends Controller
                                 $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
                                 $plan_waiting = $this->getPlanWaiting($production);
                                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                                $resources = $this->getResources($production, $request->startDate, $request->endDate);
                                 return response()->json([
                                         'events' => $events,
                                         'plan' => $plan_waiting,
+                                        'resources' => $resources,
                                         'sumBatchByStage' => $sumBatchByStage,
                                 ]);
                         }

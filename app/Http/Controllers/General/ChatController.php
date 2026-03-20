@@ -284,7 +284,7 @@ class ChatController extends Controller
         $users = DB::table('user_management')
             ->where('isActive', 1)
             ->where('id', '!=', session('user')['userId'])
-            ->select('id', 'fullName', 'userName', 'last_activity', 'deparment')
+            ->select('id', 'fullName', 'userName', 'last_activity', 'deparment', 'userGroup')
             ->orderByRaw('CASE WHEN id = 9999 THEN 0 ELSE 1 END') // AI Agent luôn ở đầu
             ->orderBy('fullName', 'asc')
             ->get();
