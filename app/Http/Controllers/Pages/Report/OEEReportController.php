@@ -52,6 +52,7 @@ class OEEReportController extends Controller
         $datas = DB::table('room')
             ->where('room.active', 1)
             ->where('room.deparment_code', session('user')['production_code'])
+            ->whereNotIn('room.stage_code', [1, 2])
             ->leftJoin('room_sheet_month', function($join) use ($reportedMonth, $reportedYear) {
                 $join->on('room.id', '=', 'room_sheet_month.room_id')
                      ->where('room_sheet_month.reported_month', '=', $reportedMonth)
