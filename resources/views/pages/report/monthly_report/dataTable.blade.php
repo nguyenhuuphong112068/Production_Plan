@@ -131,11 +131,29 @@
 
                     </thead>
 
-                    @php $current_Stage = 0 ;@endphp
-
                     <tbody>
+                        @php
+                            $current_Stage = null;
+                            $stage_theory_total = 0;
+                            $stage_actual_total = 0;
+                        @endphp
 
                         @foreach ($datas as $data)
+                            @if ($current_Stage !== null && $current_Stage != $data->stage_code)
+                                {{-- Summary row for previous stage --}}
+                                <tr class="stage-row-total" data-stage="{{ $current_Stage }}" style="background-color: #f8f9fa; font-weight: bold;">
+                                    <td colspan="6" class="text-right">Tổng
+                                        {{ $stage_name[$current_Stage] ?? 'Công đoạn ' . $current_Stage }}:</td>
+                                    <td class="text-end">{{ number_format($stage_theory_total) }}</td>
+                                    <td class="text-end">{{ number_format($stage_actual_total) }}</td>
+                                    <td colspan="6"></td>
+                                </tr>
+                                @php
+                                    $stage_theory_total = 0;
+                                    $stage_actual_total = 0;
+                                @endphp
+                            @endif
+
                             @if ($current_Stage != $data->stage_code)
                                 <tr style="background:#CDC717; color:#003A4F; font-weight:bold; cursor: pointer;"
                                     class="stage-header" data-stage="{{ $data->stage_code }}">
@@ -143,11 +161,11 @@
                                         <button type="button" class="btn btn-sm btn-info toggle-stage"
                                             style="width: 20px; height: 20px; padding: 0; line-height: 0; font-weight: bold; margin-right: 10px;"
                                             data-stage="{{ $data->stage_code }}">-</button>
-                                        Công Đoạn {{ $stage_name[$data->stage_code] }}
+                                        Công Đoạn {{ $stage_name[$data->stage_code] ?? $data->stage_code }}
                                     </td>
                                 </tr>
 
-                                @php $current_Stage = $data->stage_code ;@endphp
+                                @php $current_Stage = $data->stage_code; @endphp
                             @endif
 
                             <tr class="stage-child stage-{{ $data->stage_code }}">
@@ -184,8 +202,22 @@
                                 <td> {{ $data->loading }} </td>
                                 <td> {{ $data->TEEP }} </td>
                             </tr>
-                        @endforeach
+                            @php
+                                $stage_theory_total += $data->output_thery;
+                                $stage_actual_total += $data->yield_actual;
+                            @endphp
 
+                            @if ($loop->last)
+                                {{-- Final summary row --}}
+                                <tr class="stage-row-total" data-stage="{{ $current_Stage }}" style="background-color: #f8f9fa; font-weight: bold;">
+                                    <td colspan="6" class="text-right">Tổng
+                                        {{ $stage_name[$current_Stage] ?? 'Công đoạn ' . $current_Stage }}:</td>
+                                    <td class="text-end">{{ number_format($stage_theory_total) }}</td>
+                                    <td class="text-end">{{ number_format($stage_actual_total) }}</td>
+                                    <td colspan="6"></td>
+                                </tr>
+                            @endif
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -278,7 +310,7 @@
             var $btn = $(this).find(".toggle-stage");
             var isExpanding = $btn.text() === "+";
 
-            $(".stage-" + stage).toggle(isExpanding);
+            $(".stage-" + stage + ", .stage-row-total[data-stage='" + stage + "']").toggle(isExpanding);
             $btn.text(isExpanding ? "-" : "+");
         });
 
@@ -291,7 +323,7 @@
                 $(".stage-header").each(function() {
                     var stage = $(this).data("stage");
                     var isExpanded = $(this).find(".toggle-stage").text() === "-";
-                    $(".stage-" + stage).toggle(isExpanded);
+                    $(".stage-" + stage + ", .stage-row-total[data-stage='" + stage + "']").toggle(isExpanded);
                     $(this).show();
                 });
                 return;
@@ -308,7 +340,8 @@
                 var stage = $(this).data("stage");
                 var hasVisibleRows = $(".stage-" + stage + ":visible").length > 0;
                 $(this).toggle(hasVisibleRows);
-
+                $(".stage-row-total[data-stage='" + stage + "']").toggle(hasVisibleRows);
+                
                 // Nếu có kết quả tìm kiếm, tự động đổi dấu thành "-" (đang mở)
                 if (hasVisibleRows) {
                     $(this).find(".toggle-stage").text("-");
