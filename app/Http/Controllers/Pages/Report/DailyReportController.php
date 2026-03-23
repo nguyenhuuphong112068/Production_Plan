@@ -48,6 +48,7 @@ class DailyReportController extends Controller
             ->where('t.finished', 1)
             ->select(
                 DB::raw("SUM(t.yields) as sum_yields"),
+                DB::raw("SUM(t.yields_batch_qty) as sum_yields_unit"),
                 DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
                 DB::raw("MIN(room.production_group) as production_group"),
                 DB::raw("MIN(room.stage) as stage"),
@@ -532,6 +533,9 @@ class DailyReportController extends Controller
         // 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
         // ------------------------------
         $stage_plan_100 = DB::table("stage_plan as sp")
+            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
             ->where('sp.active', 1)
             ->whereRaw('(sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
@@ -552,16 +556,24 @@ class DailyReportController extends Controller
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
                     END as unit
-                ')
+                '),
+                DB::raw("
+                    CASE 
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%phim%' THEN 'coating'
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%nang%' THEN 'capsule'
+                        WHEN sp.stage_code = 5 THEN 'tablet'
+                        ELSE 'NA'
+                    END as table_type
+                ")
             )
-            ->groupBy("sp.$group_By", "unit")
+            ->groupBy("sp.$group_By", "unit", "table_type")
             ->get();
 
 
-        // ------------------------------
-        // 2️⃣ Giai đoạn giao nhau 1 phần
-        // ------------------------------
         $stage_plan_part = DB::table("stage_plan as sp")
+            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
             ->where('sp.active', 1)
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
@@ -591,9 +603,17 @@ class DailyReportController extends Controller
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
                     END as unit
-                ')
+                '),
+                DB::raw("
+                    CASE 
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%phim%' THEN 'coating'
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%nang%' THEN 'capsule'
+                        WHEN sp.stage_code = 5 THEN 'tablet'
+                        ELSE 'NA'
+                    END as table_type
+                ")
             )
-            ->groupBy("sp.$group_By", "unit")
+            ->groupBy("sp.$group_By", "unit", "table_type")
             ->get();
 
 
@@ -602,7 +622,7 @@ class DailyReportController extends Controller
         // ------------------------------
         $merged = $stage_plan_100->merge($stage_plan_part)
             ->groupBy(function ($item) use ($group_By) {
-                return $item->$group_By . '-' . $item->unit;
+                return $item->$group_By . '-' . $item->unit . '-' . $item->table_type;
             })
             ->map(function ($items) use ($group_By) {
                 $first = $items->first();
@@ -624,7 +644,8 @@ class DailyReportController extends Controller
                         'room_name' => $room->name ?? null,
                         'unit' => $first->unit,
                         'total_qty' => $total_qty,
-                        'total_qty_unit' => $total_qty_unit
+                        'total_qty_unit' => $total_qty_unit,
+                        'table_type' => $first->table_type
                     ];
                 }
 
@@ -633,7 +654,8 @@ class DailyReportController extends Controller
                     $group_By => $first->$group_By,
                     'unit' => $first->unit,
                     'total_qty' => $total_qty,
-                    'total_qty_unit' => $total_qty_unit
+                    'total_qty_unit' => $total_qty_unit,
+                    'table_type' => $first->table_type
                 ];
             })
             ->values();
@@ -656,7 +678,8 @@ class DailyReportController extends Controller
                 'order_by'    => $room->order_by,
                 'unit'        => $found->unit ?? null,
                 'total_qty'   => $found->total_qty ?? 0,
-                'total_qty_unit' => $found->total_qty_unit ?? 0
+                'total_qty_unit' => $found->total_qty_unit ?? 0,
+                'table_type'  => $found->table_type ?? 'NA'
             ];
         })->sortBy('order_by')->values();
 
@@ -693,7 +716,10 @@ class DailyReportController extends Controller
 
 
         $totalForDay = DB::table("stage_plan as sp")
-            ->join('room as r', 'sp.resourceId', '=', 'r.id')
+            ->leftJoin('room as r', 'sp.resourceId', '=', 'r.id')
+            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->whereNotNull('sp.start')
             ->where('sp.active', 1)
@@ -722,9 +748,17 @@ class DailyReportController extends Controller
                         WHEN sp.stage_code <= 4 THEN "Kg"
                         ELSE "ĐVL"
                     END as unit
-                ')
+                '),
+                DB::raw("
+                    CASE 
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%phim%' THEN 'coating'
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%nang%' THEN 'capsule'
+                        WHEN sp.stage_code = 5 THEN 'tablet'
+                        ELSE 'NA'
+                    END as table_type
+                ")
             )
-            ->groupBy("sp.$group_By", "r.code", "r.name", "r.stage_code", "unit")
+            ->groupBy("sp.$group_By", "r.code", "r.name", "r.stage_code", "unit", "table_type")
             ->get();
 
         foreach ($totalForDay as $item) {
@@ -737,6 +771,7 @@ class DailyReportController extends Controller
                 "date" => $dayStart->format('Y-m-d'),
                 "total_qty" => round($item->total_qty ?? 0, 2),
                 "total_qty_unit" => round($item->total_qty_unit ?? 0, 2),
+                "table_type" => $item->table_type ?? 'NA'
             ]);
         }
 

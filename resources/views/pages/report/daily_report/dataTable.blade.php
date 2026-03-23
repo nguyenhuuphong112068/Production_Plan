@@ -126,6 +126,10 @@
                                                 $sum_coating = $dayTT->where('stage_code', 5)->where('table_type', 'coating')->sum('total_qty');
                                                 $sum_capsule= $dayTT->where('stage_code', 5)->where('table_type', 'capsule')->sum('total_qty'); 
                                                 $sum_tablet= $dayTT->where('stage_code', 5)->where('table_type', 'tablet')->sum('total_qty'); 
+
+                                                $sum_theory_coating = $dayLT->where('stage_code', 5)->where('table_type', 'coating')->sum('total_qty');
+                                                $sum_theory_capsule = $dayLT->where('stage_code', 5)->where('table_type', 'capsule')->sum('total_qty'); 
+                                                $sum_theory_tablet = $dayLT->where('stage_code', 5)->where('table_type', 'tablet')->sum('total_qty'); 
                                         }  
                                         
                                         if ($stage_code == 4){
@@ -151,14 +155,21 @@
                                                 {{ number_format($stageLT, 2) }} 
                                                 {{$stage_code == 4 ? "# " . number_format($stageLT_unit, 2) : '' }} 
                                                 
+                                                @if($stage_code == 5)
+                                                    <br><b>Tablet:</b>{{ number_format($sum_theory_tablet, 2) }}
+                                                    <br><b>Coating:</b>{{ number_format($sum_theory_coating, 2) }}
+                                                    <br><b>Capsule:</b>{{ number_format($sum_theory_capsule, 2) }}
+                                                @endif
                                             </td>
                                             <td class="text-center">
                                                 {{ number_format($stageTT, 2) }} 
                                                 {{$stage_code == 4 ? "# " . number_format($stageTT_unit, 2) : '' }}
-                                                {{$stage_code == 5 ? "Tablet:" . number_format($sum_tablet, 2) : '' }}
-                                                {{$stage_code == 5 ? "Coating:" . number_format($sum_coating, 2) : '' }}
-                                                {{$stage_code == 5 ? "Capsule:" . number_format($sum_capsule, 2) : '' }}
                                                 
+                                                @if($stage_code == 5)
+                                                    <br><b>Tablet:</b>{{ number_format($sum_tablet, 2) }}
+                                                    <br><b>Coating:</b>{{ number_format($sum_coating, 2) }}
+                                                    <br><b>Capsule:</b>{{ number_format($sum_capsule, 2) }}
+                                                @endif
                                             </td>
                                             <td class="text-center " 
                                                 style="background: {{ number_format($stagePercent, 2) < 90 ? 'red' : '#CDC717' }}">
@@ -456,7 +467,12 @@
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->next_room }}</td>
                                             <td>{{ $data->stage }}</td>
-                                            <td>{{ $data->sum_yields }} {{$data->stage_code<=5?"Kg":"ĐVL"}}  </td>
+                                            <td>
+                                                {{ number_format($data->sum_yields, 2) }} {{$data->stage_code<=5?"Kg":"ĐVL"}} 
+                                                @if ($data->stage_code == 5)
+                                                    # {{ number_format($data->sum_yields_unit ?? 0, 2) }} ĐVL
+                                                @endif
+                                            </td>
 
                                            <td class="text-center align-middle">
                                                 <button type="button" class="btn btn-primary btn-detial"
