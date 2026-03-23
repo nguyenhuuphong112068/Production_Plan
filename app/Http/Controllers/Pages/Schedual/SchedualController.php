@@ -53,42 +53,75 @@ class SchedualController extends Controller
         public function getRoomStatistics($startDate, $endDate)
         {
                 // chuẩn hoá ngày giờ (chuỗi dạng MySQL)
-                $start = Carbon::parse($startDate)->format('Y-m-d H:i:s') ?? '2026-01-01 00:00:00';
-                $end   = Carbon::parse($endDate)->format('Y-m-d H:i:s') ?? '2026-01-31 00:00:00';
+                $start = Carbon::parse($startDate)->format('Y-m-d H:i:s');
+                $end   = Carbon::parse($endDate)->format('Y-m-d H:i:s');
+                $startCarbon = Carbon::parse($start);
+                $endCarbon = Carbon::parse($end);
+                $totalSeconds = $startCarbon->diffInSeconds($endCarbon);
 
-                $totalSeconds = Carbon::parse($start)->diffInSeconds(Carbon::parse($end));
+                if ($totalSeconds <= 0) {
+                        return collect();
+                }
 
-                $selectRaw = '
-                        sp.resourceId,
-                        ? / 3600 as total_hours,
-                        SUM(
-                        GREATEST(
-                                0,
-                                TIMESTAMPDIFF(
-                                SECOND,
-                                GREATEST(sp.start, ?),
-                                LEAST( COALESCE(sp.end_clearning, sp.end, sp.start), ? )
-                                )
-                        )
-                        ) / 3600 as busy_hours
-                ';
-
-                $query = DB::table("stage_plan as sp")
-                        ->selectRaw($selectRaw, [$totalSeconds, $start, $end])
+                // Lấy tất cả các bản ghi chồng lấn với khoảng thời gian yêu cầu
+                $plans = DB::table("stage_plan as sp")
+                        ->select('sp.resourceId', 'sp.start', 'sp.end', 'sp.end_clearning')
                         ->where('sp.deparment_code', session('user')['production_code'])
                         ->whereRaw('GREATEST(sp.start, ?) < LEAST(COALESCE(sp.end_clearning, sp.end, sp.start), ?)', [$start, $end])
-                        ->groupBy('sp.resourceId');
+                        ->get();
 
-                $data = $query->get();
+                // Nhóm theo resourceId
+                $grouped = $plans->groupBy('resourceId');
 
-                // bảo đảm không null và tính free_hours
-                $result = $data->map(function ($item) {
-                        $item->busy_hours = $item->busy_hours ?? 0;
-                        $item->free_hours = ($item->total_hours ?? 0) - $item->busy_hours;
-                        return $item;
-                });
+                $result = $grouped->map(function ($items, $resourceId) use ($start, $end, $totalSeconds) {
+                        $intervals = [];
+                        foreach ($items as $item) {
+                                $e = $item->end_clearning ?? $item->end ?? $item->start;
+                                $itemStart = max(strtotime($item->start), strtotime($start));
+                                $itemEnd = min(strtotime($e), strtotime($end));
 
-                //dd ( $result);
+                                if ($itemStart < $itemEnd) {
+                                        $intervals[] = [
+                                                'start' => $itemStart,
+                                                'end'   => $itemEnd
+                                        ];
+                                }
+                        }
+
+                        // Thuật toán gộp các khoảng thời gian (Merge Intervals)
+                        usort($intervals, function ($a, $b) {
+                                return $a['start'] <=> $b['start'];
+                        });
+
+                        $merged = [];
+                        if (!empty($intervals)) {
+                                $current = $intervals[0];
+                                for ($i = 1; $i < count($intervals); $i++) {
+                                        if ($intervals[$i]['start'] <= $current['end']) {
+                                                $current['end'] = max($current['end'], $intervals[$i]['end']);
+                                        } else {
+                                                $merged[] = $current;
+                                                $current = $intervals[$i];
+                                        }
+                                }
+                                $merged[] = $current;
+                        }
+
+                        $busySeconds = 0;
+                        foreach ($merged as $interval) {
+                                $busySeconds += ($interval['end'] - $interval['start']);
+                        }
+
+                        $busy_hours = $busySeconds / 3600;
+                        $total_hours = $totalSeconds / 3600;
+
+                        return (object)[
+                                'resourceId'  => $resourceId,
+                                'total_hours' => $total_hours,
+                                'busy_hours'  => $busy_hours,
+                                'free_hours'  => $total_hours - $busy_hours
+                        ];
+                })->values();
 
                 return $result;
         }

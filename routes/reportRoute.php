@@ -40,5 +40,12 @@ use Illuminate\Support\Facades\Route;
         
     });
 
+    Route::prefix('/report/oee_report')
+        ->controller(\App\Http\Controllers\Pages\Report\OEEReportController::class)
+        ->name('pages.report.oee_report.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+    });
+
 
 ?>
