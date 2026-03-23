@@ -18,8 +18,8 @@
                                     <!-- Filter From/To -->
                                     <div class="col-md-6 d-flex gap-2">
                                         @php
-                                            
-                                            $defaultFrom =\Carbon\Carbon::now()->subMonth(1)->toDateString();
+
+                                            $defaultFrom = \Carbon\Carbon::now()->subMonth(1)->toDateString();
                                             $defaultTo = \Carbon\Carbon::now()->addMonth(1)->toDateString();
                                             $defaultWeek = \Carbon\Carbon::parse($defaultTo)->weekOfYear; // số tuần trong năm
                                             $defaultMonth = \Carbon\Carbon::parse($defaultTo)->month; // tháng
@@ -97,17 +97,18 @@
                                                         <th class ="text-center" style="width:3%">Mã Sản Phẩm</th>
                                                         <th class ="text-center" style="width:15%">Tên Sản Phẩm</th>
                                                         <th class ="text-center">Thống Kê</th>
-                                                       
+
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @foreach ($products as $product)
                                                         <tr class = "mb-0">
                                                             <td>{{ $loop->iteration }} </td>
-                                                            <td> 
-                                                                <span>{{$product->finished_product_code}}</span>
-                                                                <span>{{$product->intermediate_code}}</span>
-                                                            <td> {{ $product->name . '-' . $product->batch_qty . $product->unit_batch_qty}} </td>
+                                                            <td>
+                                                                <span>{{ $product->finished_product_code }}</span>
+                                                                <span>{{ $product->intermediate_code }}</span>
+                                                            <td> {{ $product->name . '-' . $product->batch_qty . $product->unit_batch_qty }}
+                                                            </td>
                                                             <td>
                                                                 <div class="row mb-0">
                                                                     <div class="col-md-3">
@@ -115,7 +116,8 @@
                                                                             <span class="info-box-icon bg-info"><i
                                                                                     class="fas fa-box"></i></span>
                                                                             <div class="info-box-content">
-                                                                                <span class="info-box-text">Số Lượng Lô Sản Xuất</span>
+                                                                                <span class="info-box-text">Số Lượng Lô
+                                                                                    Sản Xuất</span>
                                                                                 <span
                                                                                     class="info-box-number">{{ $product->so_lo }}</span>
                                                                             </div>
@@ -127,15 +129,31 @@
                                                                             <span class="info-box-icon bg-danger"><i
                                                                                     class="fas fa-clock"></i></span>
                                                                             <div class="info-box-content">
-                                                                                <span class="info-box-text">Thời Gian: {{ $totalHours }}h
-                                                                                    </span>
+                                                                                <span class="info-box-text">Thời Gian:
+                                                                                    {{ $totalHours }}h
+                                                                                </span>
                                                                                 <span class="info-box-number">
                                                                                     @php
-                                                                                      $H_SX = round(($product->tong_thoi_gian_sanxuat / $totalHours) * 100, 2);
-                                                                                      $H_VS = round(($product->tong_thoi_gian_vesinh / $totalHours) * 100, 2);
+                                                                                        $H_SX = round(
+                                                                                            ($product->tong_thoi_gian_sanxuat /
+                                                                                                $totalHours) *
+                                                                                                100,
+                                                                                            2,
+                                                                                        );
+                                                                                        $H_VS = round(
+                                                                                            ($product->tong_thoi_gian_vesinh /
+                                                                                                $totalHours) *
+                                                                                                100,
+                                                                                            2,
+                                                                                        );
                                                                                     @endphp
-                                                                                    <span>SX: {{ $product->tong_thoi_gian_sanxuat }}h # {{ $H_SX }}% - </span>
-                                                                                    <span>VS: {{ $product->tong_thoi_gian_vesinh }}h # {{ $H_VS }}% </span>
+                                                                                    <span>SX:
+                                                                                        {{ $product->tong_thoi_gian_sanxuat }}h
+                                                                                        # {{ $H_SX }}% -
+                                                                                    </span>
+                                                                                    <span>VS:
+                                                                                        {{ $product->tong_thoi_gian_vesinh }}h
+                                                                                        # {{ $H_VS }}% </span>
                                                                                 </span>
                                                                             </div>
                                                                         </div>
@@ -147,10 +165,11 @@
                                                                                     class="fas fa-crosshairs"
                                                                                     style="color: white;"></i></span>
                                                                             <div class="info-box-content">
-                                                                                <span class="info-box-text">Tổng Sản Lượng Lý Thuyết</span>
+                                                                                <span class="info-box-text">Tổng Sản
+                                                                                    Lượng Lý Thuyết</span>
                                                                                 <span
                                                                                     class="info-box-number">{{ number_format($product->san_luong_ly_thuyet) }}
-                                                                                    {{$product->stage_code >=5?"ĐVL":"Kg"}}</span>
+                                                                                    {{ $product->stage_code >= 5 ? 'ĐVL' : 'Kg' }}</span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -160,13 +179,20 @@
                                                                             <span class="info-box-icon bg-primary"><i
                                                                                     class="fas fa-flag-checkered"></i></span>
                                                                             <div class="info-box-content">
-                                                                                <span class="info-box-text">Tổng Sản Lượng Thực Tế</span>
+                                                                                <span class="info-box-text">Tổng Sản
+                                                                                    Lượng Thực Tế</span>
                                                                                 @php
-                                                                                    $H = round(($product->san_luong_thuc_te / $product->san_luong_ly_thuyet) * 100, 2);
+                                                                                    $H = round(
+                                                                                        ($product->san_luong_thuc_te /
+                                                                                            $product->san_luong_ly_thuyet) *
+                                                                                            100,
+                                                                                        2,
+                                                                                    );
                                                                                 @endphp
                                                                                 <span
-                                                                                    class="info-box-number">{{ number_format($product->san_luong_thuc_te)}}
-                                                                                     {{$product->stage_code >=5?"ĐVL":"Kg"}} # {{ $H }}% </span>
+                                                                                    class="info-box-number">{{ number_format($product->san_luong_thuc_te) }}
+                                                                                    {{ $product->stage_code >= 5 ? 'ĐVL' : 'Kg' }}
+                                                                                    # {{ $H }}% </span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -181,7 +207,7 @@
                                         </div>
                                     </div>
 
-                     
+
                                 </div>
                         </div>
                     </div>
@@ -215,6 +241,7 @@
 
 
 <script>
+    document.body.style.overflowY = "auto";
     const form = document.getElementById('filterForm');
     const fromInput = document.getElementById('from_date');
     const toInput = document.getElementById('to_date');
@@ -340,4 +367,3 @@
         submitForm();
     });
 </script>
-
