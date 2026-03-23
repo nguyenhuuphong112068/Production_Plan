@@ -600,7 +600,13 @@
                                         <p> Báo Cáo Tháng </p>
                                     </a>
                                 </li>
-                            @endif
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.report.oee_report.index') }}" class="nav-link">
+                                        <i class="far fa-circle nav-icon text-info"></i>
+                                        <p> Báo Cáo OEE </p>
+                                    </a>
+                                </li>
+@endif
 
                         </ul>
                     </li>
