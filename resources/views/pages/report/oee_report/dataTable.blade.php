@@ -107,10 +107,14 @@
                             @endif
 
                             @if ($current_Stage != $data->stage_code)
-                                <tr style="background:#CDC717; color:#003A4F; font-weight:bold;" class="stage-header"
-                                    data-stage="{{ $data->stage_code }}">
-                                    <td colspan="14">Công Đoạn
-                                        {{ $stage_name[$data->stage_code] ?? $data->stage_code }}</td>
+                                <tr style="background:#CDC717; color:#003A4F; font-weight:bold; cursor: pointer;"
+                                    class="stage-header" data-stage="{{ $data->stage_code }}">
+                                    <td colspan="14">
+                                        <button type="button" class="btn btn-sm btn-info toggle-stage"
+                                            style="width: 20px; height: 20px; padding: 0; line-height: 0; font-weight: bold; margin-right: 10px;"
+                                            data-stage="{{ $data->stage_code }}">-</button>
+                                        Công Đoạn {{ $stage_name[$data->stage_code] ?? $data->stage_code }}
+                                    </td>
                                 </tr>
                                 @php $current_Stage = $data->stage_code; @endphp
                             @endif
@@ -161,21 +165,52 @@
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
+
+        // Mặc định hiện tất cả các phòng khi load trang
+        // (Không gọi .hide() ở đây)
+
+        // Xử lý thu nhỏ/phóng to bằng cách click vào hàng tiêu đề công đoạn
+        $(document).on("click", ".stage-header", function() {
+            var stage = $(this).data("stage");
+            var $btn = $(this).find(".toggle-stage");
+            var isExpanding = $btn.text() === "+";
+
+            $(".data-row[data-stage='" + stage + "'], .stage-row-total[data-stage='" + stage + "']").toggle(isExpanding);
+            $btn.text(isExpanding ? "-" : "+");
+        });
+
+        // Xử lý tìm kiếm
         $("#customSearchInput").on("keyup", function() {
             var value = $(this).val().toLowerCase();
 
+            if (value === "") {
+                // Nếu xóa trắng ô tìm kiếm, quay về trạng thái dựa trên các nút +/- hiện thời
+                $(".stage-header").each(function() {
+                    var stage = $(this).data("stage");
+                    var isExpanded = $(this).find(".toggle-stage").text() === "-";
+                    $(".data-row[data-stage='" + stage + "'], .stage-row-total[data-stage='" + stage + "']").toggle(isExpanded);
+                    $(this).show();
+                });
+                return;
+            }
+            
             // Lọc các dòng dữ liệu (data-row)
-            $("#oee_table tbody .data-row").filter(function() {
-                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            $("#oee_table tbody .data-row").each(function() {
+                var matches = $(this).text().toLowerCase().indexOf(value) > -1;
+                $(this).toggle(matches);
             });
 
-            // Sau khi lọc, ẩn các tiêu đề công đoạn và dòng tổng nếu không có dòng dữ liệu nào hiển thị
+            // Sau khi lọc, hiện các tiêu đề công đoạn và dòng tổng nếu có dòng dữ liệu hiển thị
             $(".stage-header").each(function() {
                 var stage = $(this).data("stage");
-                var hasVisibleRows = $(".data-row[data-stage='" + stage + "']:visible").length >
-                    0;
+                var hasVisibleRows = $(".data-row[data-stage='" + stage + "']:visible").length > 0;
                 $(this).toggle(hasVisibleRows);
                 $(".stage-row-total[data-stage='" + stage + "']").toggle(hasVisibleRows);
+                
+                // Nếu có kết quả tìm kiếm, tự động đổi dấu thành "-" (đang mở)
+                if (hasVisibleRows) {
+                    $(this).find(".toggle-stage").text("-");
+                }
             });
         });
     });
