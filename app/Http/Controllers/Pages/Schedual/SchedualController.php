@@ -922,7 +922,7 @@ class SchedualController extends Controller
         public function view(Request $request)
         {
 
-                //Log::info ($request->all());
+                Log::info($request->all());
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";
@@ -1094,10 +1094,10 @@ class SchedualController extends Controller
                         $current_start = Carbon::parse($request->start);
 
                         $slotDuration = $request->slotDuration;
-                        
-                        if ($request->has('slotDuration') &&  $request->slotDuration == 1){
+
+                        if ($request->has('slotDuration') &&  $request->slotDuration == 1) {
                                 $room = DB::table('room')->where('id', $request->room_id)->first();
-                      
+
                                 if ($room) {
                                         if ($room->sheet_regular == 1) {
                                                 $current_start->setTime(7, 15, 0);
@@ -2240,7 +2240,7 @@ class SchedualController extends Controller
 
                                 if ($quota) {
                                         $duration = ($clearning_type === 'VS-I') ? (float)$quota->C1_time_minutes : (float)$quota->C2_time_minutes;
-                                        
+
                                         // 4. Cập nhật start_clearning (bằng thời gian kết thúc sản xuất) và end_clearning
                                         $start_clearning = Carbon::parse($plan->end);
                                         $new_end_clearning = $this->addWorkingMinutes($start_clearning->copy(), $duration, $plan->resourceId, $this->work_sunday);
@@ -2759,7 +2759,7 @@ class SchedualController extends Controller
                                 ->pluck('id')
                                 ->toArray();
                 }
-          
+
                 \App\Http\Controllers\General\NotificationController::sendNotification(
                         $message,
                         'Submit Lịch Sản Xuất',

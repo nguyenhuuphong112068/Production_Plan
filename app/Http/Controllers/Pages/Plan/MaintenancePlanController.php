@@ -726,6 +726,22 @@ class MaintenancePlanController extends Controller
 
         public function send(Request $request)
         {
+                $type = $request->type ?? 1;
+
+                $type_names = [
+                        1 => 'HIỆU CHUẨN',
+                        2 => 'BẢO TRÌ',
+                        3 => 'TIỆN ÍCH'
+                ];
+
+                $prefixes = [
+                        1 => 'HC',
+                        2 => 'TB',
+                        3 => 'TI'
+                ];
+
+                $prefix = $prefixes[$type] ?? 'HC';
+
                 $plans = DB::table('plan_master')
                         ->where('plan_master.plan_list_id', $request->plan_list_id)
                         ->where('plan_master.active', 1)
@@ -753,7 +769,7 @@ class MaintenancePlanController extends Controller
                                 'stage_code' => 8,
                                 'campaign_code' => $campaignCode,
                                 'order_by' =>  $plan->id,
-                                'code' =>  $plan->id . "_8",
+                                'code' =>  $plan->id . "_" . $prefix,
                                 'deparment_code' => session('user')['production_code'],
                                 'created_date' => now(),
                         ];
@@ -768,20 +784,6 @@ class MaintenancePlanController extends Controller
                 ]);
 
 
-                // $datas = DB::table('plan_list')
-                //         ->where('active', 1)
-                //         ->where('type', 0)
-                //         ->orderBy('created_at', 'desc')->get();
-
-
-
-                $type = $request->type ?? 1;
-
-                $type_names = [
-                        1 => 'HIỆU CHUẨN',
-                        2 => 'BẢO TRÌ',
-                        3 => 'TIỆN ÍCH'
-                ];
 
                 $title = $type ? "KẾ HOẠCH {$type_names[$type]} THÁNG" : 'KẾ HOẠCH BẢO TRÌ THÁNG';
                 session()->put(['title' => $title]);
