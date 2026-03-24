@@ -16,6 +16,7 @@ class ChatController extends Controller
      */
     public function getGroups()
     {
+        /* 
         $userId = session('user')['userId'];
 
         $groups = DB::table('chat_groups as cg')
@@ -48,6 +49,8 @@ class ChatController extends Controller
         }
 
         return response()->json($groups);
+        */
+        return response()->json([]);
     }
 
     /**
@@ -55,6 +58,7 @@ class ChatController extends Controller
      */
     public function getMessages(Request $request, $groupId)
     {
+        /* 
         $userId = session('user')['userId'];
         $beforeId = $request->query('before_id');
 
@@ -88,7 +92,7 @@ class ChatController extends Controller
             $msg->reactions_summary = $this->getReactionsSummary($msg->id, $userId);
         }
 
-           // Lấy thời gian đọc cuối cùng của các thành viên khác để xác định trạng thái "Đã xem" chi tiết
+        // Lấy thời gian đọc cuối cùng của các thành viên khác để xác định trạng thái "Đã xem" chi tiết
         $groupMembersReadStatus = DB::table('chat_group_members as cgm')
             ->join('user_management as u', 'cgm.user_id', '=', 'u.id')
             ->where('cgm.group_id', $groupId)
@@ -100,6 +104,11 @@ class ChatController extends Controller
             'messages' => $messages,
             'group_members_read_status' => $groupMembersReadStatus
         ]);
+        */
+        return response()->json([
+            'messages' => [],
+            'group_members_read_status' => []
+        ]);
     }
 
     /**
@@ -110,7 +119,7 @@ class ChatController extends Controller
         $userId = session('user')['userId'];
         $groupId = $request->group_id;
         $message = $request->message;
-        
+
         $filePath = null;
         $fileName = null;
         $fileType = null;
@@ -119,12 +128,12 @@ class ChatController extends Controller
             $file = $request->file('file');
             $fileName = $file->getClientOriginalName();
             $fileType = $file->getClientMimeType();
-            
+
             // LOGIC NÉN ẢNH TỰ ĐỘNG
             if (Str::startsWith($fileType, 'image/') && extension_loaded('gd')) {
                 $uniqueName = Str::random(40) . '.jpg'; // Luôn lưu dạng jpg để nén tốt nhất
                 $tempPath = storage_path('app/temp_' . $uniqueName);
-                
+
                 // Tạo ảnh từ file nguồn
                 $image = null;
                 if ($fileType == 'image/jpeg' || $fileType == 'image/jpg') $image = imagecreatefromjpeg($file->getRealPath());
@@ -137,7 +146,7 @@ class ChatController extends Controller
                     // Nén và lưu với chất lượng 70%
                     imagejpeg($image, $tempPath, 70);
                     imagedestroy($image);
-                    
+
                     $filePath = 'chat_files/' . $uniqueName;
                     Storage::disk('public')->put($filePath, file_get_contents($tempPath));
                     unlink($tempPath); // Xóa file tạm
@@ -158,10 +167,11 @@ class ChatController extends Controller
             'file_path' => $filePath,
             'file_name' => $fileName,
             'file_type' => $fileType,
-            'reply_to_id' => is_numeric($request->reply_to_id) ? $request->reply_to_id : null, 
+            'reply_to_id' => is_numeric($request->reply_to_id) ? $request->reply_to_id : null,
             'created_at' => now(),
         ]);
 
+        /* 
         // Xử lý Phản hồi tự động nếu gửi cho AI Agent (ID: 9999)
         $targetUser = DB::table('chat_group_members')
             ->where('group_id', $groupId)
@@ -170,7 +180,7 @@ class ChatController extends Controller
 
         if ($targetUser && $userId != 9999) {
             $aiResponse = \App\Services\AIService::getResponse($message);
-            
+
             DB::table('chat_messages')->insert([
                 'group_id' => $groupId,
                 'sender_id' => 9999,
@@ -178,11 +188,13 @@ class ChatController extends Controller
                 'created_at' => now()->addSecond(), // Đảm bảo sau tin nhắn người dùng
             ]);
         }
+        */
 
+        /* 
         // Xử lý Tag @mention trong nhóm chat
         if (preg_match_all('/@(.+?)\[(\d+)\]/', $message, $matches)) {
             $taggedUserIds = $matches[2];
-            
+
             \App\Http\Controllers\General\NotificationController::sendNotification(
                 session('user')['fullName'] . " đã nhắc đến bạn trong một tin nhắn chat: " . $message,
                 'Nhắc tên',
@@ -190,6 +202,7 @@ class ChatController extends Controller
                 array_unique($taggedUserIds)
             );
         }
+        */
 
         // Cập nhật last_read_at cho chính người gửi để tránh hiện thông báo tin nhắn mình vừa gửi
         DB::table('chat_group_members')
@@ -290,11 +303,11 @@ class ChatController extends Controller
             ->orderByRaw('CASE WHEN id = 9999 THEN 0 ELSE 1 END') // AI Agent luôn ở đầu
             ->orderBy('fullName', 'asc')
             ->get();
-            
+
         foreach ($users as $user) {
             $user->is_online = ($user->last_activity && $user->last_activity > $fiveMinsAgo);
         }
-        
+
         return response()->json($users);
     }
 

@@ -16,7 +16,7 @@ class SchedualQuarantineRoomController extends Controller
 
                 //$fromDate = $request->from_date ?? Carbon::now()->toDateString();
                 //$toDate   = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString(); 
-                $stage_code = $request->stage_code ?? 1;
+                $stage_code = $request->stage_code ?? 3;
                 $production = session('user')['production_code'];
 
                 $yieldSub = DB::table('yields')
@@ -85,6 +85,7 @@ class SchedualQuarantineRoomController extends Controller
                         ->leftJoin('room', 'stage_plan.stage_code', '=', 'room.stage_code')
                         ->where('stage_plan.deparment_code', $production)
                         ->where('stage_plan.stage_code', '<', 7)
+                        ->where('stage_plan.stage_code', '>=', 3)
                         ->distinct()
                         ->orderBy('stage_plan.stage_code')
                         ->get();
