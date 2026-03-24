@@ -120,12 +120,9 @@ const MaintenanceCalender = () => {
         }
 
 
-        setAuthorization(['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department)
+        const isAuthorized = (['Admin', 'Schedualer', 'Leader'].includes(data.authorization) && data.production == data.department) || data.department == 'BOD';
+        setAuthorization(isAuthorized);
 
-        if (data.department == 'BOD') {
-          setAuthorization(true);
-        }
-        //console.log (data.events)
         setEvents(data.events);
         setResources(data.resources);
         setType(data.type)
@@ -136,14 +133,13 @@ const MaintenanceCalender = () => {
         setAllLines(data.allLines)
         sessionStorage.setItem('theoryHidden', 0);
 
-        if (!authorization) {
+        if (isAuthorized) {
           setPlan(data.plan);
           setCurrentPassword(data.currentPassword ?? '')
           setQuota(data.quota);
           setOffDays(data.off_days);
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
-
         }
 
         switch (data.production) {
@@ -414,7 +410,7 @@ const MaintenanceCalender = () => {
       const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
 
       // 🔹 4. Gọi API backend
-      const { data } = await axios.post(`/Schedual/view`, {
+      const { data } = await axios.post(`/MaintenanceSchedual/view`, {
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
         viewtype: currentView,

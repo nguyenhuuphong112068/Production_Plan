@@ -21,6 +21,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
    const wrapperRef = useRef(null);
 
   const [stageFilter, setStageFilter] = useState(isMaintenance ? 8 : 1);
+  const [maintenanceType, setMaintenanceType] = useState('HC'); // HC, TB, TI
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState(""); 
   const sizes = ["close", "100%" ,"30%" ];
@@ -82,14 +83,26 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   }, [resources, stageFilter]); 
 
   useEffect(() => {
-
     if (waitPlan && waitPlan.length > 0) {
+      let filtered = waitPlan.filter(event => Number(event.stage_code) === stageFilter);
+      
+      if (isMaintenance && stageFilter === 8) {
+        filtered = filtered.filter(event => {
+          if (!event.code) return false;
+          const code = String(event.code);
+          if (code.endsWith(`_${maintenanceType}`)) return true;
+          // Backward compatibility: show legacy _8 items in the 'TB' (Bảo Trì) category
+          if (maintenanceType === 'TB' && code.endsWith('_8')) return true;
+          return false;
+        });
+      }
 
-      const filtered = waitPlan.filter(event => Number(event.stage_code) === stageFilter)
       setTableData(filtered);
-      setUnQuota (tableData.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
+      setUnQuota(filtered.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length);
+    } else {
+      setTableData([]);
     }
-  }, [waitPlan]);
+  }, [waitPlan, stageFilter, maintenanceType, isMaintenance]);
 
   // chọn các cột cần show ở các độ rộng của modalsidebar
   useEffect(() => {
@@ -455,9 +468,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
    
     if (isSaving) return;
     setIsSaving(true);
-    let stage_plan = waitPlan.filter(event => Number(event.stage_code) === selected_stage)
-    setTableData(stage_plan);
-    setUnQuota (stage_plan.filter(event => Array.isArray(event.permisson_room) && event.permisson_room.length === 0).length)
 
     setStageFilter(selected_stage);
 
@@ -1615,8 +1625,34 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
           <Col md={6}>
             <div className="p-inputgroup flex-1">
               {isMaintenance ? (
-                <div className="maintenance-title w-full text-center p-2 rounded bg-blue-50 text-blue-800 fw-bold border border-blue-200">
-                  <i className="fas fa-tools me-2"></i>HIỆU CHUẨN - BẢO TRÌ
+                <div className="d-flex justify-content-center gap-2 w-full p-1 bg-blue-50 rounded border border-blue-200">
+                  <Button 
+                    label="Hiệu Chuẩn" 
+                    icon="pi pi-check-circle"
+                    badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_HC')).length || 0)}
+                    badgeClassName="p-badge-info"
+                    className={`p-button-sm ${maintenanceType === 'HC' ? '' : 'p-button-outlined p-button-secondary'}`}
+                    onClick={() => setMaintenanceType('HC')}
+                    style={{ flex: 1, fontSize: '0.8rem' }}
+                  />
+                  <Button 
+                    label="Bảo Trì" 
+                    icon="pi pi-cog"
+                    badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && (e.code?.endsWith('_TB') || e.code?.endsWith('_8'))).length || 0)}
+                    badgeClassName="p-badge-warning"
+                    className={`p-button-sm ${maintenanceType === 'TB' ? '' : 'p-button-outlined p-button-secondary'}`}
+                    onClick={() => setMaintenanceType('TB')}
+                    style={{ flex: 1, fontSize: '0.8rem' }}
+                  />
+                  <Button 
+                    label="Tiện Ích" 
+                    icon="pi pi-bolt"
+                    badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_TI')).length || 0)}
+                    badgeClassName="p-badge-success"
+                    className={`p-button-sm ${maintenanceType === 'TI' ? '' : 'p-button-outlined p-button-secondary'}`}
+                    onClick={() => setMaintenanceType('TI')}
+                    style={{ flex: 1, fontSize: '0.8rem' }}
+                  />
                 </div>
               ) : percentShow === "100%" && !isShowLine ? (
                   <>
