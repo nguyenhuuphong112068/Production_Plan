@@ -903,7 +903,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
-                        <button type="button" class="btn btn-primary" onclick="submitCreateGroup()">Tạo nhóm</button>
+                        <button type="button" class="btn btn-primary" onclick="submitCreateGroup()">Tạo
+                            nhóm</button>
                     </div>
                 </div>
             </div>
@@ -1091,8 +1092,8 @@
                 if (show) {
                     $('#chat-sidebar').addClass('active');
                     $('#chat-overlay').fadeIn();
-                    loadChatGroups();
-                    loadContacts();
+                    // loadChatGroups();
+                    // loadContacts();
                     switchChatTab('contacts');
                 } else {
                     $('#chat-sidebar').removeClass('active');
@@ -1113,104 +1114,104 @@
                 }
             };
 
-            function loadChatGroups() {
-                $.get("{{ route('chat.groups') }}", function(data) {
-                    let html = '';
-                    let totalUnread = 0;
+            // function loadChatGroups() {
+            //     $.get("{{ route('chat.groups') }}", function(data) {
+            //         let html = '';
+            //         let totalUnread = 0;
 
-                    data.forEach(g => {
-                        // Ẩn hội thoại với AI Agent nếu không phải Admin
-                        let userGroup = "{{ session('user')['userGroup'] }}";
-                        if (g.type == 0 && g.display_name === 'AI Agent Search PMS' && userGroup !==
-                            'Admin') {
-                            return;
-                        }
+            //         data.forEach(g => {
+            //             // Ẩn hội thoại với AI Agent nếu không phải Admin
+            //             let userGroup = "{{ session('user')['userGroup'] }}";
+            //             if (g.type == 0 && g.display_name === 'AI Agent Search PMS' && userGroup !==
+            //                 'Admin') {
+            //                 return;
+            //             }
 
-                        let unreadHtml = g.unread_count > 0 ?
-                            `<span class="unread-badge">${g.unread_count}</span>` : '';
-                        let onlineHtml = g.is_online ?
-                            `<span class="online-dot" title="Online"></span>` : '';
-                        totalUnread += g.unread_count;
+            //             let unreadHtml = g.unread_count > 0 ?
+            //                 `<span class="unread-badge">${g.unread_count}</span>` : '';
+            //             let onlineHtml = g.is_online ?
+            //                 `<span class="online-dot" title="Online"></span>` : '';
+            //             totalUnread += g.unread_count;
 
-                        html += `
-                            <div class="chat-group-item" onclick="openChatWindow(${g.id}, '${g.display_name}', ${g.is_online || false})">
-                                <div class="chat-group-info">
-                                    <div class="chat-group-name">
-                                        ${onlineHtml}
-                                        <b>${g.display_name}</b>
-                                        ${unreadHtml}
-                                    </div>
-                                    <div class="chat-group-last-msg">${g.last_message || 'Chưa có tin nhắn'}</div>
-                                </div>
-                            </div>
-                        `;
+            //             html += `
+        //                 <div class="chat-group-item" onclick="openChatWindow(${g.id}, '${g.display_name}', ${g.is_online || false})">
+        //                     <div class="chat-group-info">
+        //                         <div class="chat-group-name">
+        //                             ${onlineHtml}
+        //                             <b>${g.display_name}</b>
+        //                             ${unreadHtml}
+        //                         </div>
+        //                         <div class="chat-group-last-msg">${g.last_message || 'Chưa có tin nhắn'}</div>
+        //                     </div>
+        //                 </div>
+        //             `;
 
-                        // Tự động mở cửa sổ chat nếu có tin nhắn mới và không phải mình gửi
-                        if (g.last_time) {
-                            if (chatGroupLastTimes[g.id] && g.last_time > chatGroupLastTimes[g.id]) {
-                                if (g.last_sender_id != currentUserId) {
+            //             // Tự động mở cửa sổ chat nếu có tin nhắn mới và không phải mình gửi
+            //             if (g.last_time) {
+            //                 if (chatGroupLastTimes[g.id] && g.last_time > chatGroupLastTimes[g.id]) {
+            //                     if (g.last_sender_id != currentUserId) {
 
-                                    blinkTitle("Có tin nhắn mới...");
-                                    if (!openChatGroups.includes(g.id)) {
-                                        openChatWindow(g.id, g.display_name, g.is_online || false);
-                                    }
-                                }
-                            }
-                            chatGroupLastTimes[g.id] = g.last_time;
-                        }
-                    });
+            //                         blinkTitle("Có tin nhắn mới...");
+            //                         if (!openChatGroups.includes(g.id)) {
+            //                             openChatWindow(g.id, g.display_name, g.is_online || false);
+            //                         }
+            //                     }
+            //                 }
+            //                 chatGroupLastTimes[g.id] = g.last_time;
+            //             }
+            //         });
 
-                    // The original code had a block here to update lastChatCheckTime, which is now handled by chatGroupLastTimes
-                    // if (data.length > 0) {
-                    //     let maxTime = data.reduce((max, obj) => obj.last_time > max ? obj.last_time : max, lastChatCheckTime);
-                    //     lastChatCheckTime = maxTime;
-                    // }
+            //         // The original code had a block here to update lastChatCheckTime, which is now handled by chatGroupLastTimes
+            //         // if (data.length > 0) {
+            //         //     let maxTime = data.reduce((max, obj) => obj.last_time > max ? obj.last_time : max, lastChatCheckTime);
+            //         //     lastChatCheckTime = maxTime;
+            //         // }
 
-                    if (totalUnread > 0) {
-                        $('#unread-total-badge').text(totalUnread).removeClass('d-none');
-                        $('.chat-trigger').addClass('blinking');
-                    } else {
-                        $('#unread-total-badge').addClass('d-none');
-                        $('.chat-trigger').removeClass('blinking');
-                    }
+            //         if (totalUnread > 0) {
+            //             $('#unread-total-badge').text(totalUnread).removeClass('d-none');
+            //             $('.chat-trigger').addClass('blinking');
+            //         } else {
+            //             $('#unread-total-badge').addClass('d-none');
+            //             $('.chat-trigger').removeClass('blinking');
+            //         }
 
-                    $('#chatList').html(html ||
-                        '<div class="text-center p-3 text-muted">Chưa có hội thoại nào</div>');
-                });
-            }
+            //         $('#chatList').html(html ||
+            //             '<div class="text-center p-3 text-muted">Chưa có hội thoại nào</div>');
+            //     });
+            // }
 
-            function loadContacts() {
-                $.get("{{ route('chat.users') }}", function(data) {
-                    let html = '';
-                    data.forEach(u => {
-                        let isAI = u.id == 9999;
+            // function loadContacts() {
+            //     $.get("{{ route('chat.users') }}", function(data) {
+            //         let html = '';
+            //         data.forEach(u => {
+            //             let isAI = u.id == 9999;
 
-                        // Ẩn AI Agent nếu không phải Admin
-                        let userGroup = "{{ session('user')['userGroup'] }}";
-                        if (isAI && userGroup !== 'Admin') {
-                            return;
-                        }
+            //             // Ẩn AI Agent nếu không phải Admin
+            //             let userGroup = "{{ session('user')['userGroup'] }}";
+            //             if (isAI && userGroup !== 'Admin') {
+            //                 return;
+            //             }
 
-                        let badgeHtml = isAI ?
-                            `<span class="badge badge-primary ml-1" style="font-size: 10px; background: #007bff;">AI BOT</span>` :
-                            '';
-                        let onlineHtml = (u.is_online || isAI) ?
-                            `<span class="online-dot" title="Online"></span>` : '';
-                        html += `
-                            <div class="chat-group-item contact-item ${isAI ? 'ai-agent-item' : ''}" onclick="startDirectChat(${u.id}, '${u.fullName}', ${u.is_online || isAI})">
-                                <div class="chat-group-info">
-                                    <div class="chat-group-name">
-                                        ${onlineHtml}
-                                        <b>${u.fullName}</b> ${badgeHtml}
-                                    </div>
-                                    <div class="chat-group-last-msg">@${u.userName}</div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    $('#contactList').html(html);
-                });
-            }
+            //             let badgeHtml = isAI ?
+            //                 `<span class="badge badge-primary ml-1" style="font-size: 10px; background: #007bff;">AI BOT</span>` :
+            //                 '';
+            //             let onlineHtml = (u.is_online || isAI) ?
+            //                 `<span class="online-dot" title="Online"></span>` : '';
+            //             html += `
+        //                 <div class="chat-group-item contact-item ${isAI ? 'ai-agent-item' : ''}" onclick="startDirectChat(${u.id}, '${u.fullName}', ${u.is_online || isAI})">
+        //                     <div class="chat-group-info">
+        //                         <div class="chat-group-name">
+        //                             ${onlineHtml}
+        //                             <b>${u.fullName}</b> ${badgeHtml}
+        //                         </div>
+        //                         <div class="chat-group-last-msg">@${u.userName}</div>
+        //                     </div>
+        //                 </div>
+        //             `;
+            //         });
+            //         $('#contactList').html(html);
+            //     });
+            // }
 
             window.startDirectChat = function(userId, fullName, isOnline) {
                 $.post("{{ route('chat.getDirectChat', [], false) }}", {
@@ -1390,7 +1391,8 @@
                         let lastId = container.find('.msg-item').last().data('id');
                         let newMessages = messages.filter(m => m.id > (lastId || 0));
                         if (newMessages.length > 0) {
-                            container.append(renderMessages(newMessages, currentUserId, groupMembersReadStatus));
+                            container.append(renderMessages(newMessages, currentUserId,
+                                groupMembersReadStatus));
                             attachMessageActions(groupId); // Gắn sự kiện cho tin mới
                             if (isAtBottom) {
                                 let div = document.getElementById(`chat-content-${groupId}`);
@@ -1468,11 +1470,13 @@
                     let statusHtml = '';
                     let timeHtml = `<span class="msg-time">${moment(m.created_at).format('HH:mm')}</span>`;
                     if (side === 'me') {
-                        let seenUsers = groupMembersReadStatus ? groupMembersReadStatus.filter(u => u.last_read_at && u
+                        let seenUsers = groupMembersReadStatus ? groupMembersReadStatus.filter(u => u
+                            .last_read_at && u
                             .last_read_at >= m.created_at) : [];
                         let isSeen = seenUsers.length > 0;
-                        let seenInfo = isSeen ? 'Đã xem bởi: ' + seenUsers.map(u => u.fullName).join(', ') : 'Đã gửi';
-                        
+                        let seenInfo = isSeen ? 'Đã xem bởi: ' + seenUsers.map(u => u.fullName).join(', ') :
+                            'Đã gửi';
+
                         statusHtml =
                             `<div class="msg-status" data-time="${m.created_at}" title="${isSeen ? seenInfo : ''}">
                                 ${timeHtml} 
@@ -1525,8 +1529,8 @@
                                     <i class="fas fa-reply"></i>
                                 </span>
                                 ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi, sau 30p sẽ không được thu hồi" data-msg-id="${m.id}">
-                                            <i class="fas fa-undo"></i>
-                                        </span>` : ''}
+                                                    <i class="fas fa-undo"></i>
+                                                </span>` : ''}
                             </div>
                         `;
                     }
@@ -1601,7 +1605,8 @@
                     let isRecalled = $(this).find('.recalled-msg').length > 0;
                     if (isRecalled) return;
 
-                    let seenUsers = groupMembersReadStatus ? groupMembersReadStatus.filter(u => u.last_read_at && u
+                    let seenUsers = groupMembersReadStatus ? groupMembersReadStatus.filter(u => u
+                        .last_read_at && u
                         .last_read_at >= msgTime) : [];
                     let isSeen = seenUsers.length > 0;
 
@@ -1783,6 +1788,7 @@
                 window.addEventListener('mouseup', stopResize);
             };
 
+            /* 
             // Polling cập nhật tin nhắn
             loadChatGroups(); // Gọi ngay lần đầu khi load trang
             setInterval(function() {
@@ -1791,6 +1797,7 @@
                 });
                 loadChatGroups(); // Luôn gọi để cập nhật Badge chưa đọc và hiệu ứng nhấp nháy
             }, 10000);
+            */
 
             // --- CÁC HÀM XỬ LÝ NHÓM & EMOJI ---
             let allUsersForGroup = [];
@@ -1842,7 +1849,7 @@
             window.filterUsersByDepartment = function() {
                 let dept = $('#deptFilter').val();
                 let ugroup = $('#userGroupFilter').val();
-                
+
                 $('.user-check-item').each(function() {
                     let matchDept = (dept === 'all' || $(this).data('dept') === dept);
                     let matchGroup = (ugroup === 'all' || $(this).data('group') === ugroup);
