@@ -171,9 +171,9 @@ const ScheduleTest = () => {
 
 
       })
-      .catch(err =>
-        console.error("API error:", err)
-      );
+      .catch(err => {
+        // console.error("API error:", err)
+      });
 
   }, [loading]);
 
@@ -545,7 +545,6 @@ const ScheduleTest = () => {
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
     const slotDuration = calendarRef.current?.getApi().currentData.options.slotDuration['days'];
 
-    console.log(slotDuration)
     info.event.remove();
 
     if (selectedRows.length === 0) {
@@ -635,7 +634,7 @@ const ScheduleTest = () => {
           setSelectedRows([]);
         })
         .catch(err => {
-          console.error("Lỗi tạo lịch:", err.response?.data || err.message);
+          // Lỗi tạo lịch
         });
     } else if (selectedRows[0].stage_code == 8) {
 
@@ -661,7 +660,7 @@ const ScheduleTest = () => {
           setSelectedRows([]);
         })
         .catch(err => {
-          console.error("Lỗi tạo lịch bảo trì:", err.response?.data || err.message);
+          // Lỗi tạo lịch bảo trì
         });
     }
   };

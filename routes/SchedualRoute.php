@@ -85,6 +85,7 @@ Route::prefix('/MaintenanceSchedual')
         ->group(function () {
                 Route::post('view', 'view');
                 Route::put('store', 'store')->name('store');
+                Route::put('deActive', 'deActive')->name('deActive');
         });
 
 

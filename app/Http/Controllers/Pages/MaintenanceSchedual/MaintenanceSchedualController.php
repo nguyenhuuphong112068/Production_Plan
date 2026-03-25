@@ -16,11 +16,6 @@ class MaintenanceSchedualController extends SchedualController
         return view('app');
     }
 
-    /**
-     * Ghi đè phương thức view để chuyên biệt hóa cho Bảo trì.
-     */
-
-
     public function view(Request $request)
     {
 
@@ -129,10 +124,6 @@ class MaintenanceSchedualController extends SchedualController
         }
     }
 
-    /**
-     * Ghi đè phương thức store để xử lý lưu lịch bảo trì.
-     * Tận dụng parent::store_maintenance() đã có sẵn ở SchedualController.
-     */
 
     public function getPlanWaiting($production, $order_by_type = false)
     {
@@ -207,10 +198,7 @@ class MaintenanceSchedualController extends SchedualController
             return $item;
         });
     }
-    /**
-     * Ở SchedualController cha, getQuota có thể đang lấy quota sản xuất.
-     * Ta ghi đè để lấy dữ liệu liên quan bảo trì.
-     */
+
     protected function getQuota($production)
     {
         $result = DB::table('quota_maintenance as q ')
@@ -226,7 +214,6 @@ class MaintenanceSchedualController extends SchedualController
         Log::info($result);
         return $result;
     }
-
 
     protected function toMinutes($time)
     {
@@ -380,6 +367,83 @@ class MaintenanceSchedualController extends SchedualController
             'events' => $events,
             'plan' => $plan_waiting,
             'sumBatchByStage' => $sumBatchByStage,
+        ]);
+    }
+
+
+    public function deActive(Request $request)
+    {
+
+        $items = collect($request->input('ids'));
+        try {
+
+            foreach ($items as $item) {
+                $rowId = explode('-', $item['id'])[0];   // lấy id trước dấu -
+                $stageCode = $item['stage_code'];
+
+                if ($stageCode <= 2 || $stageCode >= 8) {
+                    // chỉ cóa cân k xóa các công đoạn khác
+
+
+                    DB::table('stage_plan')
+                        ->where('id', $rowId)
+                        ->where('finished', 0)
+                        ->where('stage_code', '=', $stageCode)
+                        ->update([
+                            'start'            => null,
+                            'end'              => null,
+                            'start_clearning'  => null,
+                            'end_clearning'    => null,
+                            'resourceId'       => null,
+                            'title'            => null,
+                            'title_clearning'  => null,
+                            'accept_quarantine' => 0,
+                            'schedualed'       => 0,
+                            'AHU_group' => 0,
+                            'schedualed_by'    => session('user')['fullName'],
+                            'schedualed_at'    => now(),
+                        ]);
+                } else {
+
+                    $plan = DB::table('stage_plan')->where('id', $rowId)->first();
+
+                    DB::table('stage_plan')
+                        ->where('finished', 0)
+                        ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)
+                        ->update([
+                            'start'            => null,
+                            'end'              => null,
+                            'start_clearning'  => null,
+                            'end_clearning'    => null,
+                            'resourceId'       => null,
+                            'title'            => null,
+                            'title_clearning'  => null,
+                            'accept_quarantine' => 0,
+                            'schedualed'       => 0,
+                            'schedualed_by'    => session('user')['fullName'],
+                            'schedualed_at'    => now(),
+                        ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+
+
+
+        $production = session('user')['production_code'];
+        $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+        $plan_waiting = parent::getPlanWaiting($production);
+        $resources = $this->getResources($production, $request->startDate, $request->endDate);
+        $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+
+        return response()->json([
+            'events' => $events,
+            'plan' => $plan_waiting,
+            'resources' => $resources,
+            'sumBatchByStage' => $sumBatchByStage,
+
         ]);
     }
 }
