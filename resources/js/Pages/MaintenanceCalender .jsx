@@ -59,6 +59,7 @@ const MaintenanceCalender = () => {
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
   const [stageMap, setStageMap] = useState({});
+  const [maintenanceType, setMaintenanceType] = useState('HC'); // HC, TB, TI
   const [type, setType] = useState(true);
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
@@ -177,6 +178,34 @@ const MaintenanceCalender = () => {
       );
 
   }, [loading]);
+
+  useEffect(() => {
+    if (selectedRows.length > 0) {
+      const firstRow = selectedRows[0];
+      const related = firstRow.related_rooms || [];
+      if (related.length > 0) {
+        const firstRoomCode = related[0].room_code;
+        // Tìm resource có mã khớp với phòng đầu tiên liên quan
+        const resource = resources.find(r => r.code === firstRoomCode);
+        if (resource) {
+          // Sử dụng setTimeout để đảm bảo lịch đã render xong
+          setTimeout(() => {
+            const api = calendarRef.current?.getApi();
+            // Cách 1: Thử sử dụng API chính thức của FullCalendar (nếu phiên bản hỗ trợ)
+            if (api?.view?.scrollToResource) {
+              api.view.scrollToResource(resource.id);
+            } else {
+              // Cách 2: Cuộn bằng DOM nhưng dùng 'nearest' để tránh cuộn cả trang web làm mất header
+              const el = document.querySelector(`[data-resource-id="${resource.id}"]`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+            }
+          }, 100);
+        }
+      }
+    }
+  }, [selectedRows, resources]);
 
   useEffect(() => {
     const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
@@ -499,10 +528,7 @@ const MaintenanceCalender = () => {
       });
       return false;
     }
-
-
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
 
     axios.put('/MaintenanceSchedual/store', {
       room_id: resourceId,
@@ -511,7 +537,8 @@ const MaintenanceCalender = () => {
       products: selectedRows,
       startDate: toLocalISOString(activeStart),
       endDate: toLocalISOString(activeEnd),
-      slotDuration: slotDuration
+      slotDuration: slotDuration,
+      type: maintenanceType
     })
       .then(res => {
         let data = res.data;
@@ -525,7 +552,13 @@ const MaintenanceCalender = () => {
         setSelectedRows([]);
       })
       .catch(err => {
-        console.error("Lỗi tạo lịch:", err.response?.data || err.message);
+        const errorMsg = err.response?.data?.message || err.message || "Lỗi không xác định";
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi tạo lịch',
+          html: errorMsg,
+        });
+        console.error("Lỗi tạo lịch:", err);
       });
 
   };
@@ -1622,15 +1655,8 @@ const MaintenanceCalender = () => {
           const efficiency = ((busy / total) * 100).toFixed(1);
 
           const highlight = selectedRows.some(row => {
-            if (!row.permisson_room) return false;
-
-            if (Array.isArray(row.permisson_room)) {
-              return row.permisson_room.includes(res.code);
-            } else if (typeof row.permisson_room === "object") {
-              return Object.values(row.permisson_room).includes(res.code);
-            } else {
-              return row.permisson_room == arg.resource.id;
-            }
+            const related = row.related_rooms || [];
+            return related.some(r => r.room_code === res.code);
           });
 
           const bgColor = highlight ? "#c6f7d0" : "transparent";
@@ -2040,6 +2066,8 @@ const MaintenanceCalender = () => {
           currentPassword={currentPassword}
           userID={userID}
           isMaintenance={true}
+          maintenanceType={maintenanceType}
+          setMaintenanceType={setMaintenanceType}
         />)}
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}

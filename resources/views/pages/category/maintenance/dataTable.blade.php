@@ -396,11 +396,11 @@
             if (time === oldValue) return;
 
             if (name != "note") {
-                const pattern = /^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/;
+                const pattern = /^\d{1,2}:[0-5]\d$/;
                 if (time && !pattern.test(time)) {
                     Swal.fire({
                         title: 'Lỗi định dạng!',
-                        text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                        text: 'Thời gian phải có dạng hh:mm (ví dụ 01:30, giờ từ 0-99, phút từ 0-59)',
                         icon: 'error',
                         timer: 2000,
                         showConfirmButton: false

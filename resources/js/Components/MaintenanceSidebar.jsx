@@ -14,12 +14,11 @@ import axios from "axios";
 
 const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   setPercentShow, selectedRows, setSelectedRows, resources,
-  currentPassword, userID, isMaintenance = true }) => {
+  currentPassword, userID, isMaintenance = true, maintenanceType, setMaintenanceType }) => {
 
   const wrapperRef = useRef(null);
 
   const [stageFilter] = useState(8); // Luôn là 8 cho bảo trì
-  const [maintenanceType, setMaintenanceType] = useState('HC'); // HC, TB, TI
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const sizes = ["close", "100%", "30%"];
@@ -32,15 +31,16 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     Parent_Equip_id: '150px',
     Eqp_name: '200px',
     PM: '120px',
-    related_room: '250px',
+    related_rooms: '250px',
     name: '150px',
     note: '250px',
   };
 
   const columnWidths30 = {
-    name: '150px',
-    Inst_Name: '200px',
+    name: '120px',
+    Inst_Name: '180px',
     PM: '100px',
+    related_rooms: '180px',
   };
 
   useEffect(() => {
@@ -69,7 +69,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     }
 
     if (percentShow === "100%") {
-      const order = ["stt", "id", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "related_room", "PM", "note"];
+      const order = ["stt", "id", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "related_rooms", "PM", "note"];
       visibleCols = order.map(f => {
         const col = allColumns.find(c => c.field === f);
         if (!col) return null;
@@ -85,11 +85,19 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         };
       }).filter(Boolean);
     } else {
-      visibleCols = allColumns.filter(col => ["stt", "name", "Inst_Name", "PM"].includes(col.field))
-        .map(col => ({
-          ...col,
-          style: { ...col.style, minWidth: columnWidths30[col.field] || col.style?.width || 'auto', maxWidth: columnWidths30[col.field] || col.style?.width || 'auto' }
-        }));
+      visibleCols = allColumns.filter(col => ["stt", "name", "Inst_Name", "related_rooms", "PM"].includes(col.field))
+        .map(col => {
+          let header = col.header;
+          if (col.field === "name") header = "Mã Thiết Bị";
+          if (col.field === "related_rooms") header = "Phòng SX";
+          if (col.field === "PM") header = "TG thực hiện";
+
+          return {
+            ...col,
+            header,
+            style: { ...col.style, minWidth: columnWidths30[col.field] || col.style?.width || 'auto', maxWidth: columnWidths30[col.field] || col.style?.width || 'auto' }
+          };
+        });
     }
     setVisibleColumns(visibleCols);
   }, [percentShow]);
@@ -113,9 +121,19 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   };
 
   const relatedRoomBodyTemplate = (rowData) => {
-    if (!rowData.room_code) return "NA";
-    return `${rowData.room_code} - ${rowData.room_name}`;
-  }
+    const rooms = rowData.related_rooms || [];
+    if (rooms.length === 0) return <span className="text-muted">NA</span>;
+
+    return (
+      <div className="d-flex flex-wrap gap-1">
+        {rooms.map((room, idx) => (
+          <div key={idx} className="room-badge" title={room.room_name}>
+            {room.room_code}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const isAdmin = (userID == 1 || userID == 5);
 
@@ -127,7 +145,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     { field: "Inst_Name", header: "Tên Thiết Bị", sortable: true, body: naBody("Inst_Name") },
     { field: "Parent_Equip_id", header: "Mã Thiết Bị Lớn", sortable: true, body: naBody("Parent_Equip_id") },
     { field: "Eqp_name", header: "Tên Thiết Bị Lớn", sortable: true, body: naBody("Eqp_name") },
-    { field: "related_room", header: "Phòng sản xuất liên quan", sortable: true, body: relatedRoomBodyTemplate },
+    { field: "related_rooms", header: "Phòng sản xuất liên quan", sortable: true, body: relatedRoomBodyTemplate },
     { field: "PM", header: "Thời gian thực hiện", sortable: true, body: naBody("PM") },
     { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") },
   ];
