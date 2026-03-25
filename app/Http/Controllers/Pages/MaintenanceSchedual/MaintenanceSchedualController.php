@@ -133,29 +133,64 @@ class MaintenanceSchedualController extends SchedualController
      * Ghi đè phương thức store để xử lý lưu lịch bảo trì.
      * Tận dụng parent::store_maintenance() đã có sẵn ở SchedualController.
      */
-    public function store(Request $request)
-    {
-        return $this->store_maintenance($request);
-    }
+
     public function getPlanWaiting($production, $order_by_type = false)
     {
-        return DB::table("stage_plan as sp")
+        $plans = DB::table("stage_plan as sp")
             ->whereNull('sp.start')
             ->where('sp.active', 1)
             ->where('sp.finished', 0)
             ->where('sp.deparment_code', $production)
             ->where('sp.stage_code', 8)
             ->leftJoin('quota_maintenance', 'sp.product_caterogy_id', '=', 'quota_maintenance.id')
+            ->leftJoin('room', 'quota_maintenance.room_id', '=', 'room.id')
             ->select(
                 'sp.*',
                 'quota_maintenance.inst_id as name',
                 'quota_maintenance.inst_id as instrument_code',
-                'quota_maintenance.is_HVAC'
+                'quota_maintenance.is_HVAC',
+                'quota_maintenance.exe_time',
+                'room.code as room_code',
+                'room.name as room_name'
             )
             ->get();
+
+        $instIds = $plans->pluck('instrument_code')->filter()->unique()->toArray();
+        $instruments = collect();
+
+        if (!empty($instIds)) {
+            $connections = ['cal1', 'cal2'];
+            $suffixes = [1, 2, 3];
+            foreach ($connections as $conn) {
+                foreach ($suffixes as $suffix) {
+                    try {
+                        $result = DB::connection($conn)
+                            ->table("Inst_Master_{$suffix} as Ins")
+                            ->leftJoin("Eqp_mst_{$suffix} as Eqp", 'Eqp.Eqp_ID', '=', 'Ins.Parent_Equip_id')
+                            ->whereIn('Ins.Inst_id', $instIds)
+                            ->select('Ins.Inst_id', 'Ins.Inst_Name', 'Ins.Parent_Equip_id', 'Eqp.Eqp_name')
+                            ->get()
+                            ->keyBy('Inst_id');
+                        $instruments = $instruments->merge($result);
+                    } catch (\Exception $e) {
+                        Log::error("Error fetching instrument from {$conn}-{$suffix}: " . $e->getMessage());
+                    }
+                }
+            }
+        }
+
+        return $plans->map(function ($item) use ($instruments) {
+            $inst = $instruments[$item->instrument_code] ?? null;
+            $item->Inst_Name = $inst->Inst_Name ?? $item->instrument_code;
+            $item->Parent_Equip_id = $inst->Parent_Equip_id ?? '';
+            $item->Eqp_name = $inst->Eqp_name ?? '';
+
+            // Tính tổng thời gian thực hiện
+            $item->PM = $item->exe_time ?? '00:00';
+
+            return $item;
+        });
     }
-
-
     /**
      * Ở SchedualController cha, getQuota có thể đang lấy quota sản xuất.
      * Ta ghi đè để lấy dữ liệu liên quan bảo trì.
@@ -168,13 +203,93 @@ class MaintenanceSchedualController extends SchedualController
             ->where('q.deparment_code', $production)
             ->get()
             ->map(function ($item) {
-                $toSeconds = fn($time) => (($h = (int)explode(':', $time)[0]) * 3600) + ((int)explode(':', $time)[1] * 60);
-                $toTime = fn($seconds) => sprintf('%02d:%02d', floor($seconds / 3600), floor(($seconds % 3600) / 60));
-                $item->PM = $toTime($toSeconds($item->p_time) + $toSeconds($item->m_time));
+                $item->PM = $item->exe_time ?? '00:00';
                 return $item;
             });
 
         Log::info($result);
         return $result;
+    }
+
+    public function store(Request $request)
+    {
+        log::info($request->all());
+
+        DB::beginTransaction();
+        try {
+
+            // Sắp xếp products theo batch
+            $products = collect($request->products)->sortBy('batch')->values();
+
+            // Thời gian bắt đầu ban đầu
+            $current_start = Carbon::parse($request->start);
+            $current_end = Carbon::parse($request->end);
+
+
+            // 🔥 KIỂM TRA NGAY TỪ ĐẦU NẾU current_start NẰM TRONG OFFDATE
+            foreach ($products as $product) {
+
+                DB::table('stage_plan')
+                    ->where('id', $product['id'])
+                    ->update([
+                        'start'           => $current_start,
+                        'end'             => $current_end,
+                        // 'start_clearning' => $end_man,
+                        // 'end_clearning'   => $end_clearning,
+                        'resourceId'      => $request->room_id,
+                        'title'           => 'NA',
+                        'schedualed'      => 1,
+                        'schedualed_by'   => session('user')['fullName'],
+                        'schedualed_at'   => now(),
+
+                    ]);
+            }
+
+            $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
+
+            if ($submit == 1) {
+                $last_version = DB::table('stage_plan_history')
+                    ->where('stage_plan_id', $product['id'])
+                    ->max('version') ?? 0;
+
+                // DB::table('stage_plan_history')->insert([
+                //     'stage_plan_id'  => $product['id'],
+                //     'version'        => $last_version + 1,
+                //     'start'          => $current_start,
+                //     'end'            => $end_man,
+                //     'resourceId'     => $request->room_id,
+                //     'schedualed_by'  => session('user')['fullName'],
+                //     'schedualed_at'  => now(),
+                //     'deparment_code' => session('user')['production_code'],
+                //     'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
+                // ]);
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+            Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
+        /*
+                |--------------------------------------------------------------------------
+                | TRẢ KẾT QUẢ
+                |--------------------------------------------------------------------------
+                */
+        $production = session('user')['production_code'];
+        $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+        $plan_waiting = $this->getPlanWaiting($production);
+        $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+
+        return response()->json([
+            'events' => $events,
+            'plan' => $plan_waiting,
+            'sumBatchByStage' => $sumBatchByStage,
+        ]);
     }
 }
