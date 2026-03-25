@@ -84,7 +84,7 @@ Route::prefix('/MaintenanceSchedual')
         ->middleware(CheckLogin::class)
         ->group(function () {
                 Route::post('view', 'view');
-                Route::put('store', 'store');
+                Route::put('store', 'store')->name('store');
         });
 
 

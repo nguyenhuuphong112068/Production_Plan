@@ -12,16 +12,19 @@ use Illuminate\Support\Facades\Log;
 
 class SchedualFinisedController extends Controller
 {
-        public function index(Request $request){
-              
-                $stage_code = $request->stage_code??1;
+        public function index(Request $request)
+        {
+
+                $stage_code = $request->stage_code ?? 1;
 
                 $stage_code_room =  $stage_code;
 
-                if ($stage_code == 2){ $stage_code_room = 1;}
-                
+                if ($stage_code == 2) {
+                        $stage_code_room = 1;
+                }
+
                 $production = session('user')['production_code'];
-      
+
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
                 $datas = DB::table('stage_plan as sp')
                         ->leftJoin(
@@ -97,68 +100,69 @@ class SchedualFinisedController extends Controller
                         // 🔹 finished logic
                         ->where(function ($q) {
                                 $q->where('sp.finished', 0)
-                                ->orWhere(function ($q2) {
-                                $q2->where('sp.finished', 1)
-                                        ->whereNull('sp.actual_start_clearning');
-                                });
+                                        ->orWhere(function ($q2) {
+                                                $q2->where('sp.finished', 1)
+                                                        ->whereNull('sp.actual_start_clearning');
+                                        });
                         })
 
                         // 🔹 loại trừ bản ghi lỗi
                         ->whereNot(function ($q) {
                                 $q->where('sp.finished', 1)
-                                ->whereNull('sp.actual_start')
-                                ->whereNull('sp.start');
+                                        ->whereNull('sp.actual_start')
+                                        ->whereNull('sp.start');
                         })
 
                         ->orderBy('sp.start')
-                ->get();
-             
+                        ->get();
+
                 //dd ($datas);
 
                 $stages = DB::table('stage_plan')
-                ->select(
-                        'stage_plan.stage_code',
-                        DB::raw("
+                        ->select(
+                                'stage_plan.stage_code',
+                                DB::raw("
                         CASE 
                                 WHEN stage_plan.stage_code = 2 THEN 'Cân Nguyên Liệu Khác'
                                 ELSE room.stage
                         END AS stage
                         ")
-                )
-                ->leftJoin('room', 'stage_plan.stage_code', '=', 'room.stage_code')
-                ->where('stage_plan.deparment_code', $production)
-                ->distinct()
-                ->orderBy('stage_plan.stage_code')
-                ->get();
+                        )
+                        ->leftJoin('room', 'stage_plan.stage_code', '=', 'room.stage_code')
+                        ->where('stage_plan.deparment_code', $production)
+                        ->distinct()
+                        ->orderBy('stage_plan.stage_code')
+                        ->get();
 
-            
+
 
                 //dd ($stages);
 
                 $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
                 $room_stages = DB::table('room')
-                        ->where ('stage_code', $stage_code_room)
-                         ->where('deparment_code', $production)
-                         ->get();
+                        ->where('stage_code', $stage_code_room)
+                        ->where('deparment_code', $production)
+                        ->get();
 
 
                 //dd ($datas);
-                session()->put(['title'=> 'XÁC NHẬN HOÀN THÀNH LÔ SẢN XUẤT']);
-                return view('pages.Schedual.finised.list',[
+                session()->put(['title' => 'XÁC NHẬN HOÀN THÀNH LÔ SẢN XUẤT']);
+                return view('pages.Schedual.finised.list', [
 
                         'datas' => $datas,
                         'stages' => $stages,
                         'stageCode' => $stageCode,
                         'room_stages' => $room_stages
                         //'quarantine_room' => $quarantine_room
-                    
+
                 ]);
         }
 
-        public function store(Request $request){
+        public function store(Request $request)
+        {
 
-              
-                
+
+
                 /* ===============================
                 1. FORMAT DATE (GIỮ DẠNG CARBON)
                 =============================== */
@@ -193,18 +197,17 @@ class SchedualFinisedController extends Controller
                 if ($request->actionType === 'finised') {
 
                         if (!$actualStart || !$actualEnd || !$actualStartCleaning || !$actualEndCleaning)
-                        return response()->json(['message' => '❌ Thời gian Sản Xuất Không Hợp Lệ'], 422);
+                                return response()->json(['message' => '❌ Thời gian Sản Xuất Không Hợp Lệ'], 422);
 
                         if ($actualStartCleaning->gt($now))
-                        return response()->json(['message' => '❌ Thời gian bắt đầu vệ sinh lớn hơn hiện tại'], 422);
+                                return response()->json(['message' => '❌ Thời gian bắt đầu vệ sinh lớn hơn hiện tại'], 422);
 
                         if ($actualEndCleaning->gt($now))
-                        return response()->json(['message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'], 422);
-
+                                return response()->json(['message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'], 422);
                 } else {
 
                         if (!$actualStart || !$actualEnd)
-                        return response()->json(['message' => '❌ Thời gian Sản Xuất / Vệ Sinh Không Hợp Lệ'], 422);
+                                return response()->json(['message' => '❌ Thời gian Sản Xuất / Vệ Sinh Không Hợp Lệ'], 422);
                 }
 
                 if (!$request->resourceId)
@@ -213,25 +216,25 @@ class SchedualFinisedController extends Controller
                 /* ===============================
                 3. VALIDATE YIELD RANGE & OVERLAP
                 =============================== */
-               
+
                 if ($actualStartYield && $actualEnd) {
 
                         // phải nằm trong khoảng production
                         if ($actualStartYield->lt($actualStart) || $actualEnd->gt($actualEnd))
-                        return response()->json(['message' => '❌ Thời gian Yield phải nằm trong khoảng sản xuất'], 422);
+                                return response()->json(['message' => '❌ Thời gian Yield phải nằm trong khoảng sản xuất'], 422);
 
                         // không overlap
                         $overlap = DB::table('yields')
-                        ->where('stage_plan_id', $request->id)
-                        ->where(function ($q) use ($actualStartYield, $actualEnd) {
-                                $q->where('start', '<', $actualEnd)
-                                ->where('end', '>', $actualStartYield);
-                        })
-                        ->exists();
+                                ->where('stage_plan_id', $request->id)
+                                ->where(function ($q) use ($actualStartYield, $actualEnd) {
+                                        $q->where('start', '<', $actualEnd)
+                                                ->where('end', '>', $actualStartYield);
+                                })
+                                ->exists();
 
                         if ($overlap)
-                        
-                        return response()->json(['message' => '❌ Khoảng thời gian vừa nhập bị chồng lấp với các lần xác nhận trước đó, vui lòng kiểm tra lại'], 422);
+
+                                return response()->json(['message' => '❌ Khoảng thời gian vừa nhập bị chồng lấp với các lần xác nhận trước đó, vui lòng kiểm tra lại'], 422);
                 }
 
                 /* ===============================
@@ -247,19 +250,19 @@ class SchedualFinisedController extends Controller
                 if ((int)$stage_code === 4) {
 
                         $stagePlan = DB::table('stage_plan')
-                        ->where('id', $request->id)
-                        ->first();
+                                ->where('id', $request->id)
+                                ->first();
 
                         if ($stagePlan && $stagePlan->Theoretical_yields > 0) {
 
-                        $batch_qty = DB::table('finished_product_category')
-                                ->where('id', $stagePlan->product_caterogy_id)
-                                ->value('batch_qty');
+                                $batch_qty = DB::table('finished_product_category')
+                                        ->where('id', $stagePlan->product_caterogy_id)
+                                        ->value('batch_qty');
 
-                        $yields_batch_qty = round(
-                                ($request->yields / $stagePlan->Theoretical_yields) * $batch_qty,
-                                2
-                        );
+                                $yields_batch_qty = round(
+                                        ($request->yields / $stagePlan->Theoretical_yields) * $batch_qty,
+                                        2
+                                );
                         }
                 }
 
@@ -270,22 +273,22 @@ class SchedualFinisedController extends Controller
                 $newYield = 0;
                 if ($actualStartYield) {
                         $previousYield = DB::table('yields')
-                                        ->where('stage_plan_id', $request->id)
-                                        ->value('yield');
+                                ->where('stage_plan_id', $request->id)
+                                ->value('yield');
 
                         $Theoretical_yields = DB::table('stage_plan')
-                                        ->where('id', $request->id)
-                                        ->value('Theoretical_yields');
+                                ->where('id', $request->id)
+                                ->value('Theoretical_yields');
 
                         $previousYield = $previousYield ?? 0;
 
                         $newYield = ($request->yields ?? 0) + $previousYield;
 
-                        if ($newYield > $Theoretical_yields * 1.05){
-                                return response()->json(['message' => '❌ Sản Lượng Không Vượt Quá 105% Sản Lượng Lý Thuyết'], 422); 
+                        if ($newYield > $Theoretical_yields * 1.05) {
+                                return response()->json(['message' => '❌ Sản Lượng Không Vượt Quá 105% Sản Lượng Lý Thuyết'], 422);
                         }
                 }
-                
+
                 /* ===============================
                 5. UPDATE + INSERT (TRANSACTION)
                 =============================== */
@@ -305,24 +308,24 @@ class SchedualFinisedController extends Controller
                         $stage_code,
                         $newYield
                 ) {
-                         /* ===============================
+                        /* ===============================
                         1. LẤY TỔNG YIELD TRƯỚC ĐÓ
                         =============================== */
 
 
-                        
+
                         $updateData = [
-                        'title'            => $request->title,
-                        'resourceId'       => $request->resourceId,
-                        'actual_start'     => $actualStart,
-                        'actual_end'       => $actualEnd,
-                        'yields'           => $newYield,
-                        'yields_batch_qty' => $yields_batch_qty,
-                        'number_of_boxes'  => $request->number_of_boxes ?? 1,
-                        'note'             => $request->note ?? 'NA',
-                        'finished_by'      => session('user')['fullName'],
-                        'finished_date'    => now(),
-                        'finished'         => 1
+                                'title'            => $request->title,
+                                'resourceId'       => $request->resourceId,
+                                'actual_start'     => $actualStart,
+                                'actual_end'       => $actualEnd,
+                                'yields'           => $newYield,
+                                'yields_batch_qty' => $yields_batch_qty,
+                                'number_of_boxes'  => $request->number_of_boxes ?? 1,
+                                'note'             => $request->note ?? 'NA',
+                                'finished_by'      => session('user')['fullName'],
+                                'finished_date'    => now(),
+                                'finished'         => 1
                         ];
 
                         if ($request->actionType === 'finised') {
@@ -343,22 +346,22 @@ class SchedualFinisedController extends Controller
                         if ($request->actionType != 'finised' || !empty($actualStartYield)) {
                                 DB::table('yields')->updateOrInsert(
                                         [
-                                        'stage_plan_id' => $request->id,
-                                        'start' => $actualStart,
-                                        // 'end'   => $actualStartYield,
-                                        'yield'   => $request->yields
+                                                'stage_plan_id' => $request->id,
+                                                'start' => $actualStart,
+                                                // 'end'   => $actualStartYield,
+                                                'yield'   => $request->yields
                                         ],
                                         [
-                                        'start'        => $actualStartYield,
-                                        'end'          => $actualEnd,
-                                        'yield'        => $request->yields ?? 0,
-                                        'created_by'   => session('user')['fullName'],
-                                        'created_date' => now(),
+                                                'start'        => $actualStartYield,
+                                                'end'          => $actualEnd,
+                                                'yield'        => $request->yields ?? 0,
+                                                'created_by'   => session('user')['fullName'],
+                                                'created_date' => now(),
                                         ]
                                 );
                         }
 
-                        
+
 
                         if ($request->actual_batch) {
 
@@ -367,16 +370,14 @@ class SchedualFinisedController extends Controller
                                         ->value('plan_master_id');
 
                                 DB::table('plan_master')
-                                        ->where('id', $plan_master_id)
+                                        ->where('main_parkaging_id', $plan_master_id)
                                         ->update([
-                                        'actual_batch' => $request->actual_batch,
-                                        'weighed'      => 1
+                                                'actual_batch' => $request->actual_batch,
+                                                'weighed'      => 1
                                         ]);
                         }
                 });
 
                 return back()->with('success', '✅ Cập nhật công đoạn thành công!');
         }
-
-
 }

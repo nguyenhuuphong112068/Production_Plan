@@ -21,7 +21,7 @@ import Swal from 'sweetalert2';
 import './calendar.css';
 import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
-import ModalSidebar from '../Components/ModalSidebar';
+import MaintenanceSidebar from '../Components/MaintenanceSidebar';
 import NoteModal from '../Components/NoteModal';
 
 //import History from '../Components/History';
@@ -133,6 +133,9 @@ const MaintenanceCalender = () => {
         setAllLines(data.allLines)
         sessionStorage.setItem('theoryHidden', 0);
 
+
+
+
         if (isAuthorized) {
           setPlan(data.plan);
           setCurrentPassword(data.currentPassword ?? '')
@@ -141,6 +144,8 @@ const MaintenanceCalender = () => {
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
         }
+
+
 
         switch (data.production) {
           case "PXV1":
@@ -172,6 +177,22 @@ const MaintenanceCalender = () => {
       );
 
   }, [loading]);
+
+  useEffect(() => {
+    const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
+    if (!toolbarEl) return;
+
+    const container = document.createElement("div");
+    toolbarEl.appendChild(container);
+
+    const root = ReactDOM.createRoot(container);
+    root.render(<EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} />);
+
+    return () => {
+      root.unmount();
+      toolbarEl.removeChild(container);
+    };
+  }, [eventFontSize]); // chỉ chạy 1 lần
 
   useHotkeys("alt+q", (e) => {
     e.preventDefault();
@@ -215,12 +236,15 @@ const MaintenanceCalender = () => {
 
   /// Get dư liệu row được chọn
   useEffect(() => {
+
     if (!authorization) return;
 
     const externalEl = document.getElementById('external-events');
-    if (!externalEl) return;
+    if (!externalEl) {
+      console.warn("Draggable: Không tìm thấy element #external-events");
+      return;
+    }
 
-    // Tạo instance draggable
     const draggable = new Draggable(externalEl, {
       itemSelector: '.fc-event',
       eventData: (eventEl) => {
@@ -228,18 +252,17 @@ const MaintenanceCalender = () => {
         return {
           title:
             draggedData.length > 1
-              ? `(${draggedData.length}) sản phẩm`
-              : draggedData[0]?.product_code || 'Trống',
+              ? `(${draggedData.length}) thiết bị`
+              : draggedData[0]?.code || draggedData[0]?.name || 'Bảo trì',
           extendedProps: { rows: draggedData },
         };
       },
     });
 
-    // 🧹 Cleanup khi component unmount hoặc re-run effect
     return () => {
       draggable.destroy();
     };
-  }, [authorization, selectedRows]);
+  }, [authorization, selectedRows, plan]);
 
   /// UseEffect cho render nut search
   useEffect(() => {
@@ -268,23 +291,6 @@ const MaintenanceCalender = () => {
     };
 
   }, []);
-
-  ///
-  useEffect(() => {
-    const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
-    if (!toolbarEl) return;
-
-    const container = document.createElement("div");
-    toolbarEl.appendChild(container);
-
-    const root = ReactDOM.createRoot(container);
-    root.render(<EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} />);
-
-    return () => {
-      root.unmount();
-      toolbarEl.removeChild(container);
-    };
-  }, [eventFontSize]); // chỉ chạy 1 lần
 
   ///
   const handleSearch = (query, direction = "next") => {
@@ -440,14 +446,6 @@ const MaintenanceCalender = () => {
     handleViewChange(null, null);
   };
 
-  // const toggleTheoryEvents = () => {
-
-  //   const current = JSON.parse(sessionStorage.getItem('theoryHidden'));
-  //   const newTheory = !current;
-  //   sessionStorage.setItem('theoryHidden', JSON.stringify(newTheory));
-  //   handleViewChange(null, null);
-  // };
-
   const toggleTheoryEvents = () => {
     const current = Number(sessionStorage.getItem('theoryHidden')) || 0;
     const next = (current + 1) % 3; // 0 → 1 → 2 → 0
@@ -457,57 +455,14 @@ const MaintenanceCalender = () => {
     handleViewChange(null, null);
   };
 
-  /// Tô màu các event trùng khớp
-  const handleEventHighlightGroup = (event, isCtrlPressed = false) => {
-    const calendarApi = calendarRef.current?.getApi();
-    if (!calendarApi) return;
-
-    const pm = event.extendedProps.plan_master_id;
-
-    if (!isCtrlPressed) {
-      searchResultsRef.current = [];
-      currentIndexRef.current = -1;
-    }
-
-    // Lấy tất cả event có cùng plan_master_id
-    const matches = calendarApi.getEvents().filter(
-      ev => ev.extendedProps.plan_master_id === pm
-    );
-
-    // Gộp vào danh sách (tránh trùng nếu đã có)
-    matches.forEach(m => {
-      if (!searchResultsRef.current.some(ev => ev.id === m.id)) {
-        searchResultsRef.current.push(m);
-      }
-    });
-
-    // Sau khi có matches
-    setSelectedEvents(
-      matches.map(ev => ({
-        id: ev.id,
-        stage_code: ev.extendedProps.stage_code,
-        plan_master_id: ev.extendedProps.plan_master_id
-      }))
-    );
-
-    // Đặt index ở phần tử đầu tiên
-    currentIndexRef.current = searchResultsRef.current.length > 0 ? 0 : -1;
-
-    highlightAllEvents();
-  };
-
   // Nhân Dữ liệu để tạo mới event
   const handleEventReceive = (info) => {
-
-    // chưa chọn row
-    //if (!info?.event || !calendarRef?.current) return;
-
-    const start = info.event.start;
     const now = new Date();
+    const start = info.event.start;
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
-    const slotDuration = calendarRef.current?.getApi().currentData.options.slotDuration['days'];
+    const api = calendarRef.current?.getApi();
+    const slotDuration = api.currentData.options.slotDuration;
 
-    console.log(slotDuration)
     info.event.remove();
 
     if (selectedRows.length === 0) {
@@ -519,46 +474,26 @@ const MaintenanceCalender = () => {
       });
       return false
     }
-    // chưa định mức
-    if (selectedRows[0].permisson_room.length == 0 && selectedRows[0].stage_code !== 9) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Sản Phẩm Chưa Được Định Mức',
-        timer: 1000,
-        showConfirmButton: false,
-      });
-      return false;
-    }
 
     // Phòng được chọn và định mực k giống
-    const hasPermission = selectedRows.some(row => {
-      if (!row.permisson_room) return false;
+    // const hasPermission = selectedRows.some(row => {
+    //   if (!row.permisson_room) return false;
 
-      if (Array.isArray(row.permisson_room)) {
-        // Nếu backend trả mảng thì check trực tiếp
-        return row.permisson_room.includes(resourceId);
-      } else if (typeof row.permisson_room === "object") {
-        // Nếu backend trả object {id_room: code}
-        return Object.keys(row.permisson_room).includes(String(resourceId));
-      }
-      return false;
-    });
+    //   if (Array.isArray(row.permisson_room)) {
+    //     // Nếu backend trả mảng thì check trực tiếp
+    //     return row.permisson_room.includes(resourceId);
+    //   } else if (typeof row.permisson_room === "object") {
+    //     // Nếu backend trả object {id_room: code}
+    //     return Object.keys(row.permisson_room).includes(String(resourceId));
+    //   }
+    //   return false;
+    // });
 
-    if (!hasPermission && selectedRows[0].stage_code < 8) {
-      Swal.fire({
-        icon: "warning",
-        title: "Sản Phẩm Sắp Lịch Không Đúng Phòng Đã Định Mức",
-        timer: 1000,
-        showConfirmButton: false,
-      });
-
-      return false;
-    }
 
     if (start <= now) {
       Swal.fire({
         icon: "warning",
-        title: "Thời gian bắt đầu nhỏ hơn thời gian hiện tại!",
+        title: "Thời gian bắt đầu sắp lịch nhỏ hơn thời gian hiện tại!",
         timer: 1000,
         showConfirmButton: false,
       });
@@ -566,66 +501,33 @@ const MaintenanceCalender = () => {
     }
 
 
-    const { activeStart, activeEnd, type: view_type, props: viewProps } = calendarRef.current?.getApi().view;
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
-    if (selectedRows[0].stage_code !== 8) {
 
-      axios.put('/MaintenanceSchedual/store', {
-        room_id: resourceId,
-        stage_code: selectedRows[0].stage_codes,
-        start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
-        products: selectedRows,
-        startDate: toLocalISOString(activeStart),
-        endDate: toLocalISOString(activeEnd),
-        offdate: offDays,
-        multiStage: multiStage,
-        slotDuration: slotDuration
+    axios.put('/MaintenanceSchedual/store', {
+      room_id: resourceId,
+      stage_code: 8,
+      start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+      products: selectedRows,
+      startDate: toLocalISOString(activeStart),
+      endDate: toLocalISOString(activeEnd),
+      slotDuration: slotDuration
+    })
+      .then(res => {
+        let data = res.data;
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
+
+        setEvents(data.events);
+        setPlan(data.plan);
+        setSelectedRows([]);
       })
-        .then(res => {
-          let data = res.data;
-          if (typeof data === "string") {
-            data = data.replace(/^<!--.*?-->/, "").trim();
-            data = JSON.parse(data);
-          }
+      .catch(err => {
+        console.error("Lỗi tạo lịch:", err.response?.data || err.message);
+      });
 
-          setEvents(data.events);
-          if (data.resources) setResources(data.resources);
-          setSumBatchByStage(data.sumBatchByStage);
-          setPlan(data.plan);
-
-
-          setSelectedRows([]);
-        })
-        .catch(err => {
-          console.error("Lỗi tạo lịch:", err.response?.data || err.message);
-        });
-    } else if (selectedRows[0].stage_code == 8) {
-
-      axios.put('/MaintenanceSchedual/store', {
-        stage_code: 8,
-        start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
-        products: selectedRows,
-        is_HVAC: selectedRows[0]?.is_HVAC ?? false,
-        startDate: toLocalISOString(activeStart),
-        endDate: toLocalISOString(activeEnd),
-      })
-        .then(res => {
-          let data = res.data;
-          if (typeof data === "string") {
-            data = data.replace(/^<!--.*?-->/, "").trim();
-            data = JSON.parse(data);
-          }
-          setEvents(data.events);
-          if (data.resources) setResources(data.resources);
-          setSumBatchByStage(data.sumBatchByStage);
-          setPlan(data.plan);
-
-          setSelectedRows([]);
-        })
-        .catch(err => {
-          console.error("Lỗi tạo lịch bảo trì:", err.response?.data || err.message);
-        });
-    }
   };
 
   const timeToMilliseconds = (time) => {
@@ -1174,569 +1076,6 @@ const MaintenanceCalender = () => {
     document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
   };
 
-  const hasAnyRoom = (filterStr, userRoomStr) => {
-    if (!filterStr || !userRoomStr) return false;
-
-    const filterArr = filterStr
-      .split(',')
-      .map(r => r.trim());
-
-    return filterArr.includes(userRoomStr.trim());
-  };
-  //Number(p.stage_code) === 3 &&
-  const handleShowLine = (room) => {
-
-    return plan.filter(p =>
-      (
-        hasAnyRoom(p.permisson_room_filter, room) &&
-        Object.values(p.permisson_room || {}).length === 1
-      ) ||
-      p.required_room_code === room
-    )
-      .map(p => p.id);
-  };
-
-  /// Xử lý Chạy Lịch Tư Động
-  let emptyPermission = null;
-
-  const handleAutoSchedualer = () => {
-
-    if (!authorization) return;
-    let plansort = plan.sort((a, b) => a.stage_code - b.stage_code);
-
-    const hasEmptyPermission = plansort.some(item => {
-      const perm = item.permisson_room
-      const isEmptyArray = Array.isArray(perm) && perm.length === 0;
-
-      const matched = (
-        item.stage_code >= 3 &&
-        item.stage_code <= 7 &&
-        isEmptyArray
-      );
-
-      if (matched) {
-        emptyPermission = item; // 🔹 Ghi ra biến bên ngoài
-      }
-
-      return matched; // some() sẽ dừng ngay khi true
-    });
-
-    let selectedDates = [...offDays];
-
-    Swal.fire({
-      title: 'Cấu Hình Chung Sắp Lịch',
-      html: `
-      <div class="cfg-wrapper">
-
-        <!-- Cột trái -->
-        <div class="cfg-card cfg-left">
-          <div class="cfg-row">
-            <label class="cfg-label" for="schedule-date">Ngày bắt đầu sắp lịch:</label>
-            <input id="schedule-date" type="date"
-                  class="swal2-input cfg-input cfg-input--half"
-                  name="start_date"
-                  value="${new Date().toISOString().split('T')[0]}">
-          </div>
-          <hr/>
-          <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
-          <div class="cfg-row cfg-grid-2">
-            <div class="cfg-col">
-              <label class="cfg-label">Trộn Hoàn Tất Lô Thẩm Định</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="1">
-              <label class="cfg-label">Định Hình Lô Thẩm Định</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
-              <label class="cfg-label">Bao Phim Lô Thẩm Định</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
-              <label class="cfg-label">Đóng Gói Lô Thẩm Định</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
-            </div>
-
-            <div class="cfg-col">
-              <label class="cfg-label">Trộn Hoàn Tất Lô Thương Mại</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
-              <label class="cfg-label">Định Hình Lô Thương Mại</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
-              <label class="cfg-label">Bao Phim Lô Thương Mại</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
-              <label class="cfg-label">Đóng Gói Lô Thương Mại</label>
-              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
-            </div>
-          </div>
-        <hr/>
-
-        <div style="text-align:center">
-          <div class="sort-option">
-            <label class="sort-card">
-              <input type="radio" name="sortType" value="stage" checked>
-              <span> Sắp Lich Theo Công Đoạn</span>
-            </label>
-
-            <label class="sort-card">
-              <input type="radio" name="sortType" value="line">
-              <span> Sắp Lich Theo Line</span>
-            </label>
-          </div>
-        </div>
-
-
-        <div id="stepper-container" style="margin-top: 15px;"></div>
-
-        <div id="Stage_line" class="response-date-wrap text-center" style="display:none;">
-          <label class="cfg-label">Chọn Line Sắp Lịch</label>
-          <select id="lines" class="swal2-input response-date-input" name="lines">
-            <option value="">-- Chọn Line --</option>
-          </select>
-        </div>
-
-          ${hasEmptyPermission
-          ? `<p style="color:red;font-weight:600;margin-top:10px;">
-                ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
-                Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
-              </p>`
-          : ''
-        }
-          <hr/>
-          <div class="cfg-row">
-            <label class="cfg-label" for="prev_orderBy">Thứ tự công đoạn từ ĐH -> ĐG theo :</label>
-            <label class="switch">
-              <input id="prev_orderBy" type="checkbox">
-              <span class="slider round"></span>
-              <span class="switch-labels">
-                <span class="off">KHCĐ</span>
-                <span class="on">CĐT</span>
-              </span>
-            </label>
-          </div>
-
-        </div>
-
-        <!-- Cột phải -->
-        <div class="cfg-card cfg-right">
-          <div class="cfg-row" style="display:none;">
-            <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
-            <label class="switch">
-              <input id="work-sunday" type="checkbox">
-              <span class="slider round"></span>
-              <span class="switch-labels">
-                <span class="off">No</span>
-                <span class="on">Yes</span>
-              </span>
-            </label>
-          </div>
-
-          <hr/>
-
-          <div class="cfg-row">
-            <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label>
-            <div id="calendar-container" style="margin-top: 15px;"></div>
-          </div>
-
-          <hr/>
-
-          <div class="cfg-row">
-            <label class="cfg-label" for="reason">Lý do chạy Auto Scheduler:</label>
-            <input id="reason" type="text"
-                  class="swal2-input cfg-input cfg-input--full"
-                  name="reason"
-                  placeholder="Nhập lý do..."
-                  required>
-          </div>
-
-          
-          <div class="cfg-row">
-             
-
-              <button id="btn-backup" class="btn btn-primary mx-2">Tạo bản sao lưu</button>
-              <button id="btn-restore" class="btn btn-success mx-2">Khôi phục</button>
-
-              <div class="response-date-wrap text-center" style="display:block;">
-                <label class="cfg-label">Chọn Mã bản sao lưu </label>
-                <select id="retoreList" class="swal2-input response-date-input" name="bkc_code">
-                  <option value="">-- Chọn mã cần khôi phục --</option>
-                </select>
-              </div>
-          </div>
-
-
-
-        </div>
-      </div>
-      `,
-
-      width: '1200px',
-      customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
-      showCancelButton: true,
-      confirmButtonText: 'Chạy',
-      cancelButtonText: 'Hủy',
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-
-      didOpen: () => {
-        // ------------------ Calendar ------------------
-        const calendarContainer = document.getElementById("calendar-container");
-        const calendarRoot = ReactDOM.createRoot(calendarContainer);
-
-        const CalendarPopup = () => {
-
-          // convert string yyyy-mm-dd -> Date
-          const parseToDate = (str) => {
-            const [y, m, d] = str.split("-");
-            return new Date(y, m - 1, d);
-          };
-
-          // convert Date -> yyyy-mm-dd
-          const formatDate = (date) => {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, "0");
-            const d = String(date.getDate()).padStart(2, "0");
-            return `${y}-${m}-${d}`;
-          };
-
-          // state hiển thị cho Calendar (Date[])
-          const [localDates, setLocalDates] = React.useState(
-            offDays.map(parseToDate)
-          );
-
-
-
-          const handleChange = (e) => {
-            const dates = e.value || [];
-            const selected = dates.map(formatDate);
-            setLocalDates(dates);
-            setOffDays(selected);
-            selectedDates = selected;
-          };
-
-          return (
-            <div className="card flex justify-content-center">
-              <Calendar
-                value={localDates}
-                onChange={handleChange}
-                selectionMode="multiple"
-                inline
-                readOnlyInput
-              />
-            </div>
-          );
-        };
-        calendarRoot.render(<CalendarPopup />);
-
-        // ------------------ Stepper ------------------
-        const stepperContainer = document.getElementById("stepper-container");
-        if (stepperContainer) {
-          const stepperRoot = createRoot(stepperContainer);
-
-          const StepperPopup = () => {
-            const [selected, setSelected] = React.useState(null);
-
-            const getClass = (value) =>
-              `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""
-              }`;
-
-            return (
-              <Stepper style={{ width: "100%" }}>
-                {(emptyPermission == null || emptyPermission.stage_code >= 4) && (
-                  <StepperPanel header="PC" >
-                    <div className="flex flex-column h-12rem" >
-                      <div
-                        className={getClass("Pha Chế")}>
-                        Pha Chế
-                      </div>
-                    </div>
-                  </StepperPanel>)}
-
-                {(emptyPermission == null || emptyPermission.stage_code >= 5) && (
-                  <StepperPanel header="THT" readOnlyInput>
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("THT")}
-                      >
-                        Pha Chế ➡ Trộn Hoàn Tất
-                      </div>
-                    </div>
-                  </StepperPanel>)}
-                {(emptyPermission == null || emptyPermission.stage_code >= 6) && (
-                  <StepperPanel header="ĐH">
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("ĐH")}
-
-                      >
-                        Pha Chế ➡ Định Hình
-                      </div>
-                    </div>
-                  </StepperPanel>)}
-                {(emptyPermission == null || emptyPermission.stage_code >= 7) && (
-                  <StepperPanel header="BP" disabled={true}>
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("BP")}
-
-                      >
-                        Pha Chế ➡ Bao Phim
-                      </div>
-                    </div>
-                  </StepperPanel>)}
-                {(emptyPermission == null || emptyPermission.stage_code >= 8) && (
-                  <StepperPanel header="ĐG">
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("ĐG")}
-
-                      >
-                        Pha Chế ➡ Đóng Gói
-                      </div>
-                    </div>
-                  </StepperPanel>)}
-
-
-                {(emptyPermission == null || emptyPermission.stage_code >= 7) && (
-                  <StepperPanel header="CNL">
-                    <div className="flex flex-column h-12rem">
-                      <div
-                        className={getClass("CNL")}
-                      >
-                        Cân NL ➡ Cân NL Khác
-                      </div>
-                    </div>
-                  </StepperPanel>)}
-
-              </Stepper>
-            );
-          };
-
-          stepperRoot.render(<StepperPopup />);
-        }
-
-        // ------------------ Disable Confirm if missing permission ------------------
-        if (emptyPermission != null && emptyPermission.stage_code < 4) {
-          const confirmBtn = Swal.getConfirmButton();
-          confirmBtn.disabled = false;
-          confirmBtn.style.opacity = "0.5";
-          confirmBtn.style.cursor = "not-allowed";
-        }
-
-        const radios = document.querySelectorAll('input[name="sortType"]');
-        const lineWrap = document.getElementById('Stage_line');
-        const stageWrap = document.getElementById('stepper-container');
-
-        radios.forEach(radio => {
-          radio.addEventListener('change', () => {
-            stageWrap.style.display =
-              radio.value === 'line' && radio.checked
-                ? 'none'
-                : 'block';
-
-            lineWrap.style.display =
-              radio.value === 'line' && radio.checked
-                ? 'block'
-                : 'none';
-          });
-        });
-
-
-        // ------------- Thêm soure cho Lines ------------- //
-        const linesSelect = document.getElementById("lines");
-        if (allLines && allLines?.length) {
-          allLines.forEach(r => {
-            const opt = document.createElement("option");
-            opt.value = r.code;
-            opt.textContent = r.code + " - " + r.name;
-            linesSelect.appendChild(opt);
-          });
-        }
-
-        // ------------- Thêm soure cho Phục hồi ------------- //
-        const retoreList = document.getElementById("retoreList");
-        if (bkcCode && bkcCode?.length) {
-          bkcCode.forEach(r => {
-            const opt = document.createElement("option");
-            opt.value = r.bkc_code;
-            opt.textContent = r.bkc_code;
-            retoreList.appendChild(opt);
-          });
-        }
-
-        // ================= Backup =================
-        const btnBackup = document.getElementById('btn-backup');
-        const bkcSelect = document.getElementById('retoreList');
-
-        if (btnBackup) {
-          btnBackup.addEventListener('click', () => {
-
-            Swal.fire({
-              title: 'Đang tạo bản sao lưu...',
-              allowOutsideClick: false,
-              didOpen: () => Swal.showLoading()
-            });
-
-            axios.post('/Schedual/backup_schedualer')
-              .then(res => {
-
-                const opt = document.createElement('option');
-                opt.value = res.data.bkcCode;
-                opt.textContent = res.data.bkcCode;
-                opt.selected = true;
-                bkcSelect.appendChild(opt);
-
-                Swal.fire({
-                  icon: 'success',
-                  title: 'Đã sao lưu',
-                  timer: 1500,
-                  showConfirmButton: false
-                });
-              })
-              .catch(err => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Lỗi sao lưu',
-                  text: err.response?.data?.message || err.message
-                });
-              });
-
-
-          });
-        }
-
-        // ================= Restore =================
-        const btnRestore = document.getElementById('btn-restore');
-
-        if (btnRestore) {
-          btnRestore.addEventListener('click', () => {
-            const bkcCode = bkcSelect.value;
-
-            if (!bkcCode) {
-              Swal.fire('Vui lòng chọn mã sao lưu!');
-              return;
-            }
-
-            Swal.fire({
-              title: 'Xác nhận khôi phục?',
-              text: `Khôi phục theo mã: ${bkcCode}`,
-              icon: 'warning',
-              showCancelButton: true,
-              confirmButtonText: 'Khôi phục'
-            }).then(r => {
-              if (!r.isConfirmed) return;
-
-              Swal.fire({
-                title: 'Đang khôi phục...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-              });
-
-              axios.post('/Schedual/restore_schedualer', { bkc_code: bkcCode })
-                .then(() => {
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Khôi phục thành công',
-                    timer: 1500,
-                    showConfirmButton: false
-                  });
-
-                  setLoading(v => !v); // reload calendar
-                })
-                .catch(err => {
-                  Swal.fire({
-                    icon: 'error',
-                    title: 'Khôi phục thất bại',
-                    text: err.response?.data?.message || err.message
-                  });
-                });
-
-            });
-          });
-        }
-      }
-      ,
-      preConfirm: () => {
-
-        if (emptyPermission != null && emptyPermission.stage_code < 4) {
-          Swal.showValidationMessage('Vui lòng định mức đầy đủ ít nhất một công đoạn trước khi sắp lịch tự động!');
-          return false;
-        }
-
-        const formValues = {};
-        document.querySelectorAll('.swal2-input').forEach(input => {
-          formValues[input.name] = input.value;
-        });
-
-        const activeStep = document.querySelector('li[data-p-active="true"]');
-        const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
-
-
-        const workSunday = document.getElementById('work-sunday');
-        formValues.work_sunday = workSunday.checked;
-
-        const prev_orderBy = document.getElementById('prev_orderBy');
-        formValues.prev_orderBy = prev_orderBy.checked;
-
-        const runType = document.querySelector('input[name="sortType"]:checked')?.value;
-        formValues.runType = runType;
-
-        formValues.selectedDates = selectedDates;
-        formValues.selectedStep = activeStepText ?? "PC";
-
-
-
-        if (!formValues.start_date) {
-          Swal.showValidationMessage('Vui lòng chọn ngày!');
-          return false;
-        }
-        return formValues;
-      },
-      willClose: () => {
-        const workSunday = document.getElementById('work-sunday')?.checked ?? false;
-        setWorkingSunday(workSunday);
-      }
-
-    })
-      .then((result) => {
-        if (result.isConfirmed) {
-          Swal.fire({
-            title: 'Đang chạy Auto Scheduler...',
-            text: 'Vui lòng chờ trong giây lát',
-            allowOutsideClick: false,
-            didOpen: () => {
-              Swal.showLoading();
-            },
-          });
-
-          const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
-          axios.post('/Schedual/scheduleAll', {
-            ...result.value,
-            startDate: toLocalISOString(activeStart),
-            endDate: toLocalISOString(activeEnd),
-            stage_plan_ids: handleShowLine(result.value['lines']),
-            room_code: result.value['lines']
-
-          }, { timeout: 300000 })
-            .then(res => {
-              let data = res.data;
-              if (typeof data === "string") {
-                data = data.replace(/^<!--.*?-->/, "").trim();
-                data = JSON.parse(data);
-              }
-
-              Swal.fire({
-                icon: 'success',
-                title: 'Hoàn Thành Sắp Lịch',
-                timer: 1000,
-                showConfirmButton: false,
-              });
-              setLoading(!loading)
-
-            })
-            .catch(err => {
-
-              setLoading(!loading)
-              console.error("ScheduleAll error:", err.response?.data || err.message);
-            });
-        }
-      });
-  };
-
   /// Xử lý Xóa Toàn Bộ Lịch
   const handleDeleteAllScheduale = () => {
     if (!authorization) return;
@@ -2042,15 +1381,16 @@ const MaintenanceCalender = () => {
 
   const finisedEvent = (dropInfo, draggedEvent) => {
 
-    if (draggedEvent._def.ui.backgroundColor == "#002af9ff") {
-      return false;
-    }
+    // if (draggedEvent._def.extendedProps.stage_code != 8) {
+    //   return false;
+    // }
 
-    if (userID == 1 || userID == 5) {
-      return true;
-    }
+    // if (userID == 1 || userID == 5) {
+    //   return true;
+    // }
 
-    if (draggedEvent.extendedProps.finished) { return false; }
+    //if (draggedEvent.extendedProps.finished) { return false; }
+
     return true;
   };
 
@@ -2104,65 +1444,6 @@ const MaintenanceCalender = () => {
 
       }
     })
-  }
-
-  const handleAcceptQuanrantine = (e) => {
-
-    if (!authorization) { return };
-    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-    if (!selectedEvents || selectedEvents.length === 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Chọn Lịch Cần Chấp Nhận',
-        showConfirmButton: false,
-        timer: 1000
-      });
-      return; // Dừng hàm ở đây
-    }
-    e.stopPropagation();
-    Swal.fire({
-      title: 'Bạn có chắc muốn chấp nhận thời gian biệt trữ hiện tại?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Chấp Nhận',
-      cancelButtonText: 'Hủy',
-      confirmButtonColor: 'rgba(94, 221, 51, 1)',
-      cancelButtonColor: '#3085d6',
-
-    }).then((result) => {
-      if (result.isConfirmed) {
-        axios.put('/Schedual/accpectQuarantine', {
-          ids: selectedEvents,
-          startDate: toLocalISOString(activeStart),
-          endDate: toLocalISOString(activeEnd)
-        })
-          .then((res) => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-            }
-            setEvents(data.events);
-
-            Swal.fire({
-              icon: 'success',
-              title: 'Hoàn Thành',
-              showConfirmButton: false,
-              timer: 1500
-            });
-          })
-
-          .catch((error) => {
-            Swal.fire({
-              icon: 'error',
-              title: 'Chấp Nhận lịch thất bại',
-              text: 'Vui lòng thử lại sau.',
-            });
-            console.error("API error:", error.response?.data || error.message);
-          });
-      }
-
-    });
   }
 
   const statusColors = {
@@ -2271,131 +1552,6 @@ const MaintenanceCalender = () => {
       ...buildOffDayEvents(offDays), // background ngày nghỉ
     ];
   }, [events, offDays]);
-
-  const handleConfirmClearningValidation = (e) => {
-    const ids = selectedEvents.map(row =>
-      Number(row.id.split('-')[0])
-    );
-
-    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-    axios.put('/Schedual/clearningValidation', {
-      ids: ids,
-      startDate: toLocalISOString(activeStart),
-      endDate: toLocalISOString(activeEnd)
-    })
-      .then(res => {
-        let data = res.data;
-        if (typeof data === "string") {
-          data = data.replace(/^<!--.*?-->/, "").trim();
-          data = JSON.parse(data);
-        }
-        setEvents(data.events);
-        setSelectedEvents([]);
-      }
-      ).catch(err => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Lỗi',
-          timer: 1500
-        });
-        console.error("API error:", err.response?.data || err.message);
-      }
-      );
-
-    return;
-  }
-
-  const handleCleaninglevelchange = (e) => {
-
-
-    const hasInvalidEvent = selectedEvents.some(row => {
-      const type = row.id.split('-')[1];
-      // Chỉ cho phép 'cleaning' hoặc 'cleaning-theory'. Nếu là 'main' hoặc không phải cleaning thì là invalid.
-      const isCleaning = type && type.includes('cleaning');
-      const isFinished = row.finished == 1; // Giả sử model có field finished. Nếu không, kiểm tra id. split('-')[2] == 'theory' có thể coi là OK? 
-      // User nói "event chính hoặc event đã hoàn thành"
-      return !isCleaning || isFinished;
-    });
-
-    if (hasInvalidEvent) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Lỗi chọn lịch',
-        text: 'Chỉ được chọn các lịch Vệ sinh chưa hoàn thành. Vui lòng kiểm tra lại.',
-        timer: 3000
-      });
-      return;
-    }
-
-    const ids = selectedEvents.map(row => Number(row.id.split('-')[0]));
-
-
-
-
-    if (ids.length === 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Thông báo',
-        text: 'Vui lòng chọn ít nhất một lịch sản xuất để thay đổi cấp vệ sinh.',
-        timer: 2000
-      });
-      return;
-    }
-
-    Swal.fire({
-      title: 'Chọn cấp vệ sinh',
-      input: 'select',
-      inputOptions: {
-        'VS-I': 'Vệ sinh cấp I (VS-I)',
-        'VS-II': 'Vệ sinh cấp II (VS-II)'
-      },
-      inputPlaceholder: '--- Chọn cấp vệ sinh ---',
-      showCancelButton: true,
-      confirmButtonText: 'Xác nhận',
-      cancelButtonText: 'Hủy',
-      inputValidator: (value) => {
-        if (!value) {
-          return 'Bạn cần chọn một cấp vệ sinh!';
-        }
-      }
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const clearning_type = result.value;
-        const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
-        axios.put('/Schedual/cleaninglevelchange', {
-          ids: ids,
-          startDate: toLocalISOString(activeStart),
-          endDate: toLocalISOString(activeEnd),
-          clearning_type: clearning_type,
-        })
-          .then(res => {
-            let data = res.data;
-            if (typeof data === "string") {
-              data = data.replace(/^<!--.*?-->/, "").trim();
-              data = JSON.parse(data);
-            }
-            setEvents(data.events);
-            setSelectedEvents([]);
-            Swal.fire({
-              icon: 'success',
-              title: 'Thành công',
-              text: 'Đã cập nhật cấp vệ sinh và định mức thành công.',
-              timer: 1500
-            });
-          })
-          .catch(err => {
-            Swal.fire({
-              icon: 'error',
-              title: 'Lỗi',
-              text: 'Có lỗi xảy ra khi cập nhật cấp vệ sinh.',
-              timer: 2000
-            });
-            console.error("API error:", err.response?.data || err.message);
-          });
-      }
-    });
-  }
 
   return (
 
@@ -2649,7 +1805,7 @@ const MaintenanceCalender = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory deleteAllScheduale changeSchedualer unSelect ShowBadge',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -2720,7 +1876,7 @@ const MaintenanceCalender = () => {
           },
 
           customList: {
-            text: 'KHSX',
+            text: 'Kế Hoạch',
             click: handleShowList,
             hint: 'Mở kế hoạch chờ sắp lịch'
           },
@@ -2764,12 +1920,7 @@ const MaintenanceCalender = () => {
             hint: 'Hiển thị lịch lý thuyết đôi với các lịch đã hoàn thành'
           },
 
-          autoSchedualer: {
-            text: '🤖',
-            click: handleAutoSchedualer,
-            hint: 'Sắp lịch tự động'
 
-          },
           deleteAllScheduale: {
             text: '🗑️',
             click: handleDeleteAllScheduale,
@@ -2791,6 +1942,7 @@ const MaintenanceCalender = () => {
             text: '',
             hint: 'Thay đổi font chữ'
           },
+
           fontSizeBox: {
             text: '',
             hint: 'Thay đổi font chữ'
@@ -2815,23 +1967,8 @@ const MaintenanceCalender = () => {
             hint: 'Submit Lịch: Sau khi hoàn thành sắp lịch để các bộ phận khác có thể thấy bấm 📤'
           },
 
-          AcceptQuarantine: {
-            text: '✅',
-            click: handleAcceptQuanrantine,
-            hint: 'Chấp nhận lô quá hạn biệt trữ: Chọn lịch cần chấp nhận sau đó bám nút ✅'
-          },
 
-          clearningValidation: {
-            text: '🚿',
-            click: handleConfirmClearningValidation,
-            hint: 'Xác Định Lịch Thẩm Định Vệ Sinh: Chọn lịch cần xác định sau đó bám nút 🚿'
-          },
 
-          Cleaninglevelchange: {
-            text: '🆚',
-            click: handleCleaninglevelchange,
-            hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 🆚 hộp thoại chọn cấp vệ sinh xuất hiện, chọn cấp vệ sinh cần thay đổi. Bấm Lưu'
-          },
 
 
         }}
@@ -2890,7 +2027,7 @@ const MaintenanceCalender = () => {
 
       {/* <div className="modal-sidebar"> */}
       {authorization && (
-        <ModalSidebar
+        <MaintenanceSidebar
           visible={showSidebar}
           onClose={setShowSidebar}
           waitPlan={plan}
@@ -2899,13 +2036,9 @@ const MaintenanceCalender = () => {
           setPercentShow={setPercentShow}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
-          quota={quota}
           resources={resources}
-          type={type}
           currentPassword={currentPassword}
-          lines={lines}
-          multiStage={multiStage}
-          setMultiStage={setMultiStage}
+          userID={userID}
           isMaintenance={true}
         />)}
 

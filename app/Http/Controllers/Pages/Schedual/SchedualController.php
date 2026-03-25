@@ -1077,7 +1077,7 @@ class SchedualController extends Controller
 
         public function store(Request $request)
         {
-                Log::info($request->all());
+
                 $this->selectedDates =  $request->offdate ?? []; //giữ để tạo $this->offdate
                 $this->loadOffDate('asc'); // Tạo  $this->offdate
 
