@@ -361,8 +361,6 @@ class SchedualFinisedController extends Controller
                                 );
                         }
 
-
-
                         if ($request->actual_batch) {
 
                                 $plan_master_id = DB::table('stage_plan')

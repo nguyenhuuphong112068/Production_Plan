@@ -133,28 +133,9 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   ];
 
   const handleSelectionChange = (e) => {
+    // Cho phép chọn bất kỳ hàng được chọn (đa chọn), hỗ trợ toggle bỏ chọn nếu đã chọn
     const selection = e.value ?? [];
-
-    if (selection.length === 0) {
-      setSelectedRows([]);
-      return;
-    }
-
-    // Lấy dòng cuối cùng vừa được chọn
-    const lastSelected = selection[selection.length - 1];
-    const targetRoom = lastSelected.room_code;
-
-    // Lấy 2 ký tự cuối của mã code (ví dụ: HC, TB, TI)
-    const targetType = lastSelected.code ? String(lastSelected.code).slice(-2) : "";
-
-    // Tìm tất cả các máy cùng phòng và cùng 2 ký tự cuối (cùng loại bảo trì)
-    const sameGroup = waitPlan.filter((row) => {
-      const rowType = row.code ? String(row.code).slice(-2) : "";
-      return row.room_code === targetRoom && rowType === targetType;
-    });
-
-    // Cập nhật danh sách chọn thành toàn bộ nhóm đó
-    setSelectedRows(sameGroup.map(ev => ({ ...ev })));
+    setSelectedRows(selection);
   };
 
   const handleRowReorder = (e) => {

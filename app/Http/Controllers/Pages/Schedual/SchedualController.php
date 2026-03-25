@@ -255,7 +255,7 @@ class SchedualController extends Controller
 
                                 DB::raw("
                                 CASE
-                                        WHEN sp.stage_code = 9 THEN sp.title
+                                        WHEN sp.stage_code >=8 THEN sp.title
                                         ELSE CONCAT(
                                         product_name.name,
                                         '-',
@@ -653,7 +653,7 @@ class SchedualController extends Controller
 
                 $overExpected = ($Stage_plan_7 && $plan->expected_date < $Stage_plan_7->end) || $plan->expected_date < $plan->end;
 
-                if ($overExpected && $plan->stage_code < 9) {
+                if ($overExpected && $plan->stage_code <= 7) {
                         $color_event = '#e54a4aff';
                         $endStage7 = $Stage_plan_7 && $Stage_plan_7->end ? Carbon::parse($Stage_plan_7->end)->format('d/m/y') : 'Chưa xác định';
                         $subtitle = "➡️ Ngày dự kiến KCS: " . Carbon::parse($plan->expected_date)->format('d/m/y') . " | Ngày KT ĐG: " . $endStage7;

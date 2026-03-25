@@ -211,6 +211,13 @@ class MaintenanceSchedualController extends SchedualController
         return $result;
     }
 
+
+    protected function toMinutes($time)
+    {
+        [$hours, $minutes] = explode(':', $time);
+        return ((int)$hours) * 60 + (int)$minutes;
+    }
+
     public function store(Request $request)
     {
         log::info($request->all());
@@ -218,51 +225,50 @@ class MaintenanceSchedualController extends SchedualController
         DB::beginTransaction();
         try {
 
-            // Sắp xếp products theo batch
             $products = collect($request->products)->sortBy('batch')->values();
 
-            // Thời gian bắt đầu ban đầu
-            $current_start = Carbon::parse($request->start);
-            $current_end = Carbon::parse($request->end);
-
+            $start = Carbon::parse($request->start);
 
             // 🔥 KIỂM TRA NGAY TỪ ĐẦU NẾU current_start NẰM TRONG OFFDATE
             foreach ($products as $product) {
 
+                $end = $start->addMinutes($this->toMinutes($product['PM']));
                 DB::table('stage_plan')
                     ->where('id', $product['id'])
                     ->update([
-                        'start'           => $current_start,
-                        'end'             => $current_end,
+                        'start'           => $start,
+                        'end'             => $end,
                         // 'start_clearning' => $end_man,
                         // 'end_clearning'   => $end_clearning,
                         'resourceId'      => $request->room_id,
-                        'title'           => 'NA',
-                        'schedualed'      => 1,
+                        'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                         'schedualed_by'   => session('user')['fullName'],
                         'schedualed_at'   => now(),
 
                     ]);
-            }
 
-            $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
+                $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
 
-            if ($submit == 1) {
-                $last_version = DB::table('stage_plan_history')
-                    ->where('stage_plan_id', $product['id'])
-                    ->max('version') ?? 0;
+                if ($submit == 1) {
+                    $last_version = DB::table('stage_plan_history')
+                        ->where('stage_plan_id', $product['id'])
+                        ->max('version') ?? 0;
 
-                // DB::table('stage_plan_history')->insert([
-                //     'stage_plan_id'  => $product['id'],
-                //     'version'        => $last_version + 1,
-                //     'start'          => $current_start,
-                //     'end'            => $end_man,
-                //     'resourceId'     => $request->room_id,
-                //     'schedualed_by'  => session('user')['fullName'],
-                //     'schedualed_at'  => now(),
-                //     'deparment_code' => session('user')['production_code'],
-                //     'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
-                // ]);
+                    DB::table('stage_plan_history')->insert([
+                        'stage_plan_id'  => $product['id'],
+                        'version'        => $last_version + 1,
+                        'start'           => $start,
+                        'end'             => $end,
+                        'resourceId'     => $request->room_id,
+                        'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
+                        'schedualed_by'   => session('user')['fullName'],
+                        'schedualed_at'  => now(),
+                        'deparment_code' => session('user')['production_code'],
+                        'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
+                    ]);
+                }
+
+                $start = $end;
             }
             DB::commit();
         } catch (\Exception $e) {
