@@ -75,3 +75,15 @@
 .maintenance-badge-hc { background-color: #3b82f6 !important; }
 .maintenance-badge-tb { background-color: #f59e0b !important; }
 .maintenance-badge-ti { background-color: #10b981 !important; }
+
+.room-badge {
+  background-color: #f1f3f5;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  color: #495057;
+  white-space: nowrap;
+  display: inline-block;
+}
+

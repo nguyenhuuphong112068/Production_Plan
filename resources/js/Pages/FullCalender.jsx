@@ -290,6 +290,40 @@ const ScheduleTest = () => {
     };
   }, [eventFontSize]); // chỉ chạy 1 lần
 
+  useEffect(() => {
+    if (selectedRows.length > 0) {
+      const firstRow = selectedRows[0];
+      const permissions = firstRow.permisson_room || {};
+      let firstRoomCode = null;
+
+      // Xử lý cả trường hợp mảng hoặc object định mức
+      if (Array.isArray(permissions)) {
+        firstRoomCode = permissions[0];
+      } else if (typeof permissions === "object" && Object.values(permissions).length > 0) {
+        firstRoomCode = Object.values(permissions)[0];
+      }
+
+      if (firstRoomCode) {
+        const resource = resources.find(r => r.code === firstRoomCode);
+        if (resource) {
+          setTimeout(() => {
+            const api = calendarRef.current?.getApi();
+            // Ưu tiên dùng API nội bộ của FullCalendar
+            if (api?.view?.scrollToResource) {
+              api.view.scrollToResource(resource.id);
+            } else {
+              // Fallback DOM cuộn an toàn không mất header
+              const el = document.querySelector(`[data-resource-id="${resource.id}"]`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+            }
+          }, 100);
+        }
+      }
+    }
+  }, [selectedRows, resources]);
+
   ///
   const handleSearch = (query, direction = "next") => {
     const calendarApi = calendarRef.current?.getApi();

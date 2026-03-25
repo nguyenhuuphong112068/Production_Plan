@@ -756,40 +756,75 @@ class MaintenancePlanController extends Controller
                         )
                         ->get();
 
+                $roomsByQuota = collect();
+                if ($type == 3) {
+                        $quotaIds = $plans->pluck('product_caterogy_id')->unique()->toArray();
+                        $roomsByQuota = DB::table('quota_maintenance_rooms')
+                                ->join('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
+                                ->whereIn('quota_maintenance_id', $quotaIds)
+                                ->select('quota_maintenance_id', 'room.code as room_code')
+                                ->get()
+                                ->groupBy('quota_maintenance_id');
+                }
+
                 $dataToInsert = [];
 
                 foreach ($plans as $plan) {
                         $mmyy = $plan->expected_date ? \Carbon\Carbon::parse($plan->expected_date)->format('my') : '0000';
                         $campaignCode = trim($plan->inst_id) . '_' . $mmyy;
 
-                        $dataToInsert[] = [
-                                'plan_list_id' => $plan->plan_list_id,
-                                'plan_master_id' => $plan->id,
-                                'product_caterogy_id' => $plan->product_caterogy_id,
-                                'stage_code' => 8,
-                                'campaign_code' => $campaignCode,
-                                'order_by' =>  $plan->id,
-                                'code' =>  $plan->id . "_" . $prefix,
-                                'deparment_code' => session('user')['production_code'],
-                                'created_date' => now(),
-                        ];
+                        // Nếu là Tiện ích và có phòng liên quan thì tạo n dòng
+                        if ($type == 3 && isset($roomsByQuota[$plan->product_caterogy_id])) {
+                                foreach ($roomsByQuota[$plan->product_caterogy_id] as $room) {
+                                        $dataToInsert[] = [
+                                                'plan_list_id' => $plan->plan_list_id,
+                                                'plan_master_id' => $plan->id,
+                                                'product_caterogy_id' => $plan->product_caterogy_id,
+                                                'stage_code' => 8,
+                                                'campaign_code' => $campaignCode,
+                                                'order_by' =>  $plan->id,
+                                                'code' =>  $plan->id . "_" . $prefix,
+                                                'required_room_code' => $room->room_code,
+                                                'deparment_code' => session('user')['production_code'],
+                                                'created_date' => now(),
+                                        ];
+                                }
+                        } else {
+                                // Mặc định HC, BT hoặc TI không có cấu hình phòng
+                                $dataToInsert[] = [
+                                        'plan_list_id' => $plan->plan_list_id,
+                                        'plan_master_id' => $plan->id,
+                                        'product_caterogy_id' => $plan->product_caterogy_id,
+                                        'stage_code' => 8,
+                                        'campaign_code' => $campaignCode,
+                                        'order_by' =>  $plan->id,
+                                        'code' =>  $plan->id . "_" . $prefix,
+                                        'deparment_code' => session('user')['production_code'],
+                                        'created_date' => now(),
+                                ];
+                        }
                 }
 
-                DB::table('stage_plan')->insert($dataToInsert);
+                DB::beginTransaction();
+                try {
+                        DB::table('stage_plan')->insert($dataToInsert);
 
-                DB::table('plan_list')->where('id', $request->plan_list_id)->update([
-                        'send' => 1,
-                        'send_by' => session('user')['fullName'],
-                        'send_date' => now(),
-                ]);
+                        DB::table('plan_list')->where('id', $request->plan_list_id)->update([
+                                'send' => 1,
+                                'send_by' => session('user')['fullName'],
+                                'send_date' => now(),
+                        ]);
 
+                        $title = $type ? "KẾ HOẠCH {$type_names[$type]} THÁNG" : 'KẾ HOẠCH BẢO TRÌ THÁNG';
+                        session()->put(['title' => $title]);
 
-
-                $title = $type ? "KẾ HOẠCH {$type_names[$type]} THÁNG" : 'KẾ HOẠCH BẢO TRÌ THÁNG';
-                session()->put(['title' => $title]);
-
-                return redirect()->route('pages.plan.maintenance.list', ['type' => $type])
-                        ->with('success', 'Đã gửi kế hoạch thành công!');
+                        DB::commit();
+                        return redirect()->route('pages.plan.maintenance.list', ['type' => $type])
+                                ->with('success', 'Đã gửi kế hoạch thành công!');
+                } catch (\Exception $e) {
+                        DB::rollBack();
+                        return redirect()->back()->with('error', 'Lỗi khi gửi kế hoạch: ' . $e->getMessage());
+                }
         }
 
         private function fetchSchTypes($items)
