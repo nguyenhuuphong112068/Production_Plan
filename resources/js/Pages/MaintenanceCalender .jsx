@@ -173,9 +173,9 @@ const MaintenanceCalender = () => {
 
 
       })
-      .catch(err =>
-        console.error("API error:", err)
-      );
+      .catch(err => {
+        // console.error("API error:", err)
+      });
 
   }, [loading]);
 
@@ -270,7 +270,6 @@ const MaintenanceCalender = () => {
 
     const externalEl = document.getElementById('external-events');
     if (!externalEl) {
-      console.warn("Draggable: Không tìm thấy element #external-events");
       return;
     }
 
@@ -558,7 +557,6 @@ const MaintenanceCalender = () => {
           title: 'Lỗi tạo lịch',
           html: errorMsg,
         });
-        console.error("Lỗi tạo lịch:", err);
       });
 
   };
@@ -841,7 +839,7 @@ const MaintenanceCalender = () => {
     let startDate = toLocalISOString(activeStart);
     let endDate = toLocalISOString(activeEnd);
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
-    axios.put('/Schedual/update', {
+    axios.put('/MaintenanceSchedual/update', {
       reason, // 🟢 gửi thêm lý do
       theory: theoryHidden,
       changes: pendingChanges.map(change => ({
@@ -882,7 +880,6 @@ const MaintenanceCalender = () => {
           .forEach(el => { el.style.border = 'none'; });
       })
       .catch(err => {
-        console.error("Lỗi khi lưu events:", err.response?.data || err.message);
         setSaving(false);
         Swal.fire({
           icon: 'error',
@@ -1109,221 +1106,6 @@ const MaintenanceCalender = () => {
     document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
   };
 
-  /// Xử lý Xóa Toàn Bộ Lịch
-  const handleDeleteAllScheduale = () => {
-    if (!authorization) return;
-
-    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-
-    Swal.fire({
-      width: '700px',
-      title: 'Bạn có chắc muốn xóa toàn bộ lịch?',
-      html: `
-        <div class="cfg-wrapper">
-          <div class="cfg-card">
-
-            <div class="cfg-row">
-              <div class="cfg-col">
-                <label class="cfg-label" for="schedule-date">Xóa Lịch Từ Ngày:</label>
-                <input id="schedule-date" type="date"
-                        class="swal2-input cfg-input cfg-input--half" name="start_date"
-                        value="${new Date().toISOString().split('T')[0]}">
-              </div>
-            </div>
-
-            <div class="cfg-row">
-              <!-- 🔘 Chọn chế độ xóa -->
-              <div style="margin-bottom: 15px;">
-                <label><b>Chọn chế độ xóa:</b></label><br>
-                <label><input type="radio" name="deleteMode" value="step" checked> Xóa theo công đoạn</label>
-                &nbsp;&nbsp;
-                <label><input type="radio" name="deleteMode" value="resource"> Xóa theo phòng SX</label>
-              </div>
-
-              <!-- ✅ Stepper -->
-              <div id="stepper-container" style="margin-top: 15px;"></div>
-
-              <!-- ✅ Resource Dropdown -->
-              <div id="resource-container" style="margin-top:20px; display:none; text-align:center;">
-                <label for="resource-select" style="display:block; margin-bottom:5px;">Chọn Nguồn (Resource):</label>
-                <select 
-                  id="resource-select" 
-                  class="swal2-select" 
-                  style="width:90%; max-width:600px; padding:5px; margin:auto; display:block;">
-                  <option value="">-- Tất cả --</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Xóa',
-      cancelButtonText: 'Hủy',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-
-      didOpen: () => {
-
-        // ------------------ Stepper ------------------
-        const stepperContainer = document.getElementById("stepper-container");
-
-        if (stepperContainer) {
-          const stepperRoot = createRoot(stepperContainer);
-          const StepperPopup = () => {
-            const [selected, setSelected] = React.useState(null);
-
-            const getClass = (value) =>
-              `border-2 border-dashed surface-border border-round surface-ground flex justify-content-center align-items-center h-12rem fs-4 cursor-pointer ${selected === value ? "bg-primary text-white" : ""}`;
-
-            return (
-              <Stepper style={{ width: "100%" }}>
-                <StepperPanel header="PC">
-                  <div className="flex flex-column h-12rem">
-                    <div className={getClass("Pha Chế")}>Pha Chế ➡ Đóng Gói</div>
-                  </div>
-                </StepperPanel>
-                <StepperPanel header="THT">
-                  <div className="flex flex-column h-12rem">
-                    <div className={getClass("THT")}>Trộn Hoàn Tất ➡ Đóng Gói</div>
-                  </div>
-                </StepperPanel>
-                <StepperPanel header="ĐH">
-                  <div className="flex flex-column h-12rem">
-                    <div className={getClass("ĐH")}>Định Hình ➡ Đóng Gói</div>
-                  </div>
-                </StepperPanel>
-                <StepperPanel header="BP" disabled={true}>
-                  <div className="flex flex-column h-12rem">
-                    <div className={getClass("BP")}>Bao Phim ➡ Đóng Gói</div>
-                  </div>
-                </StepperPanel>
-                <StepperPanel header="ĐG">
-                  <div className="flex flex-column h-12rem">
-                    <div className={getClass("ĐG")}>Đóng Gói</div>
-                  </div>
-                </StepperPanel>
-
-                <StepperPanel header="CNL">
-                  <div className="flex flex-column h-12rem">
-                    <div className={getClass("CNL")}>Cân</div>
-                  </div>
-                </StepperPanel>
-
-
-              </Stepper>
-            );
-          };
-
-          stepperRoot.render(<StepperPopup />);
-        }
-
-        // ✅ Thêm resource options
-        const resourceSelect = document.getElementById("resource-select");
-        if (resourceSelect && resources?.length) {
-          resources.forEach(r => {
-            const opt = document.createElement("option");
-            opt.value = r.id;
-            opt.textContent = r.title ?? r.name ?? `Resource ${r.id}`;
-            resourceSelect.appendChild(opt);
-          });
-        }
-
-        // ✅ Toggle giữa 2 chế độ
-        const radios = document.querySelectorAll('input[name="deleteMode"]');
-        const stepperDiv = document.getElementById("stepper-container");
-        const resourceDiv = document.getElementById("resource-container");
-
-        radios.forEach(r => {
-          r.addEventListener("change", e => {
-            if (e.target.value === "step") {
-              stepperDiv.style.display = "block";
-              resourceDiv.style.display = "none";
-            } else {
-              stepperDiv.style.display = "none";
-              resourceDiv.style.display = "block";
-            }
-          });
-        });
-      },
-
-      preConfirm: () => {
-        // Lấy giá trị deleteMode trước
-        const deleteMode = document.querySelector('input[name="deleteMode"]:checked')?.value;
-
-        // Tạo object formValues ban đầu
-        const formValues = { mode: deleteMode };
-
-        // Lấy các input từ Swal (nếu có)
-        document.querySelectorAll('.swal2-input').forEach(input => {
-          formValues[input.name] = input.value;
-        });
-
-        // Nếu chọn xóa theo step
-        if (deleteMode === "step") {
-          const activeStep = document.querySelector('li[data-p-active="true"]');
-          const activeStepText = activeStep
-            ? activeStep.querySelector('span.p-stepper-title')?.textContent
-            : null;
-          formValues.selectedStep = activeStepText ?? "PC";
-        }
-
-        // Nếu chọn xóa theo resource
-        if (deleteMode === "resource") {
-          const resourceSelect = document.getElementById("resource-select");
-          formValues.resourceId = resourceSelect?.value || null;
-        }
-
-        return formValues;
-      }
-
-
-    }).then((result) => {
-      if (!result.isConfirmed) return;
-
-      Swal.fire({
-        title: "Đang tải...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
-
-      axios.put('/Schedual/deActiveAll', {
-        ...result.value,
-        startDate: toLocalISOString(activeStart),
-        endDate: toLocalISOString(activeEnd),
-
-      })
-        .then(res => {
-          let data = res.data;
-          if (typeof data === "string") {
-            data = data.replace(/^<!--.*?-->/, "").trim();
-            data = JSON.parse(data);
-          }
-
-          setLoading(!loading);
-          Swal.close();
-
-          Swal.fire({
-            icon: 'success',
-            title: 'Đã xóa lịch thành công',
-            showConfirmButton: false,
-            timer: 1500
-          });
-        })
-        .catch(err => {
-          Swal.close();
-          Swal.fire({
-            icon: 'error',
-            title: 'Xóa lịch thất bại',
-            text: 'Vui lòng thử lại sau.',
-            timer: 1500
-          });
-          console.error("API error:", err.response?.data || err.message);
-        });
-    });
-  };
-
   /// Xử lý xoa các lịch được chọn
   const handleDeleteScheduale = (e) => {
 
@@ -1350,7 +1132,7 @@ const MaintenanceCalender = () => {
 
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.put('/Schedual/deActive', {
+        axios.put('/MaintenanceSchedual/deActive', {
           ids: selectedEvents,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd)
@@ -1379,7 +1161,6 @@ const MaintenanceCalender = () => {
               title: 'Xóa lịch thất bại',
               text: 'Vui lòng thử lại sau.',
             });
-            console.error("API error:", error.response?.data || error.message);
           });
       }
       setSelectedEvents([]);
@@ -1447,7 +1228,7 @@ const MaintenanceCalender = () => {
 
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.put('/Schedual/submit')
+        axios.put('/MaintenanceSchedual/submit')
 
           .then(res => {
             let data = res.data;
@@ -1784,7 +1565,7 @@ const MaintenanceCalender = () => {
             const sheet = target.dataset.sheet;
             const checked = target.checked;
 
-            axios.put('/Schedual/change_sheet', {
+            axios.put('/MaintenanceSchedual/change_sheet', {
               room_code: room,
               sheet,
               checked
@@ -1831,7 +1612,7 @@ const MaintenanceCalender = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory deleteAllScheduale changeSchedualer unSelect ShowBadge',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory changeSchedualer unSelect ShowBadge',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -1944,13 +1725,6 @@ const MaintenanceCalender = () => {
             text: '🧭',
             click: toggleTheoryEvents,
             hint: 'Hiển thị lịch lý thuyết đôi với các lịch đã hoàn thành'
-          },
-
-
-          deleteAllScheduale: {
-            text: '🗑️',
-            click: handleDeleteAllScheduale,
-            hint: 'Xóa lịch theo CĐ hoặc Line: chọn ngày bắt đầu xóa, chọn chế độ xóa, bấm Lưu'
           },
 
           changeSchedualer: {
