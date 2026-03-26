@@ -302,12 +302,12 @@
                             </a>
                         </li>
 
-                        <li class="nav-item">
+                        {{-- <li class="nav-item">
                             <a href="{{ route('pages.category.product.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Bảo Trì</p>
                             </a>
-                        </li>
+                        </li> --}}
 
                     </ul>
                 </li>
@@ -606,7 +606,7 @@
                                         <p> Báo Cáo OEE </p>
                                     </a>
                                 </li>
-@endif
+                            @endif
 
                         </ul>
                     </li>
