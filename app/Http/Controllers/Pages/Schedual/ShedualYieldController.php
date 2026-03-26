@@ -39,13 +39,14 @@ class ShedualYieldController extends Controller
 
         // --- 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
         $stage_plan_100 = DB::table("stage_plan as sp")
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [$startDate->toDateTimeString(), $endDate->toDateTimeString()])
             ->whereNotNull('sp.start')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
                 //'sp.start',
-                DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
+                DB::raw('SUM(CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) as total_qty'),
                 DB::raw('SUM(sp.Theoretical_yields_qty) as total_qty_unit'),
                 DB::raw('
                     CASE
@@ -61,6 +62,7 @@ class ShedualYieldController extends Controller
 
         // --- 2️⃣ Giai đoạn chỉ giao nhau 1 phần
         $stage_plan_part = DB::table("stage_plan as sp")
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
             ->whereNotNull('sp.start')
             ->where('sp.deparment_code', session('user')['production_code'])
@@ -68,7 +70,7 @@ class ShedualYieldController extends Controller
                 "sp.$group_By",
                 DB::raw('
                     SUM(
-                        sp.Theoretical_yields *
+                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -154,6 +156,7 @@ class ShedualYieldController extends Controller
             $dayEnd = $date->copy()->addDay()->setTime(6, 0, 0);
 
             $totalForDay = DB::table("stage_plan as sp")
+                ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                 ->join('room as r', 'sp.resourceId', '=', 'r.id') // 👈 JOIN thêm bảng room
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->where('r.deparment_code', session('user')['production_code'])
@@ -166,7 +169,7 @@ class ShedualYieldController extends Controller
                     'r.stage_code as stage_code',
                     DB::raw('
                         SUM(
-                            sp.Theoretical_yields *
+                            (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
                             TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $dayEnd . '"), GREATEST(sp.start, "' . $dayStart . '"))) /
                             TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                         ) as total_qty
