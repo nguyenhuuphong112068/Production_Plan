@@ -553,6 +553,6 @@ class MaintenanceSchedualController extends SchedualController
             return $first;
         })->values();
 
-        return $productionEvents->concat($groupedMaintenance);
+        return $productionEvents->concat($groupedMaintenance)->values();
     }
 }

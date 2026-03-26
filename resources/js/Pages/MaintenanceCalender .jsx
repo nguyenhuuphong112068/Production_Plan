@@ -376,8 +376,8 @@ const MaintenanceCalender = () => {
 
     el.scrollIntoView({
       behavior: "auto", // không smooth để tránh rung
-      block: "center",
-      inline: "center",
+      block: "nearest",
+      inline: "nearest",
     });
 
     setTimeout(() => {
@@ -523,6 +523,21 @@ const MaintenanceCalender = () => {
         setEvents(data.events);
         setPlan(data.plan);
         setSelectedRows([]);
+
+        // Tự động cuộn đến vị trí vừa sắp lịch
+        setTimeout(() => {
+          const api = calendarRef.current?.getApi();
+          if (api) {
+            // Cuộn ngang đến thời gian bắt đầu
+            api.scrollToTime(moment(start).format("HH:mm:ss"));
+            
+            // Cuộn dọc đến phòng máy (Resource)
+            const resourceCell = document.querySelector(`[data-resource-id="${resourceId}"]`);
+            if (resourceCell) {
+              resourceCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }
+        }, 300);
       })
       .catch(err => {
         const errorMsg = err.response?.data?.message || err.message || "Lỗi không xác định";
@@ -838,6 +853,21 @@ const MaintenanceCalender = () => {
         if (data.resources) setResources(data.resources);
         setSumBatchByStage(data.sumBatchByStage);
         //setPlan(data.plan);
+        // Tự động cuộn đến vị trí vừa thay đổi
+        if (pendingChanges.length > 0) {
+          const firstChange = pendingChanges[0];
+          setTimeout(() => {
+            const api = calendarRef.current?.getApi();
+            if (api) {
+              api.scrollToTime(dayjs(firstChange.start).format("HH:mm:ss"));
+              const resourceCell = document.querySelector(`[data-resource-id="${firstChange.resourceId}"]`);
+              if (resourceCell) {
+                resourceCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+            }
+          }, 300);
+        }
+
         setPendingChanges([]);
         setSaving(false);
 
@@ -1336,15 +1366,16 @@ const MaintenanceCalender = () => {
 
   const calendarEvents = useMemo(() => {
     return [
-      ...events,                     // event sản xuất
-      ...buildOffDayEvents(offDays), // background ngày nghỉ
+      ...(Array.isArray(events) ? events : []),                     // event sản xuất
+      ...buildOffDayEvents(Array.isArray(offDays) ? offDays : []), // background ngày nghỉ
     ];
   }, [events, offDays]);
 
   // Lọc Resource dựa trên danh sách thiết bị sản xuất được chọn
   const resourceFiltered = useMemo(() => {
     // Nếu không có dòng nào được chọn, hiển thị toàn bộ resource
-    if (selectedRows.length === 0) return resources;
+    const resList = Array.isArray(resources) ? resources : [];
+    if (selectedRows.length === 0) return resList;
 
     // Lấy tập hợp tất cả các mã phòng (room_code) hợp lệ từ các thiết bị đang chọn
     const validRoomCodes = new Set();
@@ -1357,7 +1388,7 @@ const MaintenanceCalender = () => {
     });
 
     // Chỉ giữ lại các Resource có mã phòng khớp với danh sách hợp lệ
-    return (resources || []).filter(res => validRoomCodes.has(res.code));
+    return resList.filter(res => validRoomCodes.has(res.code));
   }, [resources, selectedRows]);
 
   return (

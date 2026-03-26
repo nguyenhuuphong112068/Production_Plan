@@ -186,7 +186,7 @@ class MaintenancePlanController extends Controller
 
                                                 ->whereBetween('Sch_DueDate', [$startDate, $endDate])
                                                 ->where('Sch_Result_Status', 'Pending')
-                                                ->select('Inst_ID', 'Sch_DueDate', 'Sch_Remark', 'Sch_Type', DB::raw("'$conn' as connection"))
+                                                ->select('Sch_ID', 'Inst_ID', 'Sch_DueDate', 'Sch_Remark', 'Sch_Type', DB::raw("'$conn' as connection"))
                                                 ->get();
                                         // ->table("Schedule_Master_3")
 
@@ -296,6 +296,9 @@ class MaintenancePlanController extends Controller
 
                                 $typeSummary = implode(", ", $typeInfoArray);
 
+                                // Tổng hợp Sch_ID để lưu mối liên hệ
+                                $allSchIds = $group->pluck('Sch_ID')->filter()->unique()->implode(",");
+
                                 // Tổng hợp ghi chú gốc (nếu có)
                                 $originalNotes = $group->pluck('Sch_Remark')->filter(fn($n) => !empty($n) && $n !== 'NA')->unique()->implode(" | ");
 
@@ -305,7 +308,7 @@ class MaintenancePlanController extends Controller
                                 $pmId = DB::table('plan_master')->insertGetId([
                                         'product_caterogy_id' => $quota->id,
                                         'plan_list_id' => $planListId,
-                                        'batch' => 'NA',
+                                        'batch' => !empty($allSchIds) ? $allSchIds : 'NA',
                                         'expected_date' => $minDate,
                                         'level' => 1,
                                         'is_val' => 0,
@@ -322,7 +325,7 @@ class MaintenancePlanController extends Controller
                                         'plan_master_id' => $pmId,
                                         'plan_list_id' => $planListId,
                                         'product_caterogy_id' => $quota->id,
-                                        'batch' => 'NA',
+                                        'batch' => !empty($allSchIds) ? $allSchIds : 'NA',
                                         'expected_date' => $minDate,
                                         'level' => 1,
                                         'is_val' => 0,
