@@ -281,258 +281,13 @@ class DailyReportController extends Controller
         ];
     }
 
-    // public function yield_actual_detial ($startDate, $endDate, $group_By){
-
-    //         $startDateStr = $startDate->format('Y-m-d H:i:s');
-    //         $endDateStr   = $endDate->format('Y-m-d H:i:s');
-
-    //         // 1) FULL PRODUCTION
-    //         $production_full = DB::table("stage_plan as sp")
-    //             ->leftJoin('yields', 'sp.id', 'yields.stage_plan_id')
-    //             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-    //             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-    //             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
-    //             ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
-    //             ->leftJoin('dosage as d', 'intermediate_category.dosage_id', '=', 'd.id')
-    //             ->whereNotNull('sp.actual_start')
-    //             ->whereNotNull('sp.actual_end')
-    //             ->whereRaw('(sp.actual_start >= ? AND sp.actual_end <= ?)', [$startDate, $endDate])
-    //             ->where('sp.deparment_code', session('user')['production_code'])
-    //             ->select(
-    //                 "sp.$group_By",
-    //                 DB::raw("CONCAT(sp.id, '-main') AS id"),
-    //                 DB::raw("CONCAT(product_name.name,'-',COALESCE(plan_master.actual_batch, plan_master.batch)) AS title"),
-    //                 "sp.actual_start",
-    //                 "sp.actual_end",
-    //                 "sp.yields",
-    //                 "sp.yields_batch_qty",
-    //                 "sp.note",
-    //                 "sp.stage_code",
-    //                 DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END as unit'),
-    //                 DB::raw("CASE 
-    //                     WHEN sp.stage_code = 5 AND d.name LIKE '%phim%' THEN 'coating'
-    //                     WHEN sp.stage_code = 5 AND d.name LIKE '%nang%' THEN 'capsule'
-    //                     WHEN sp.stage_code = 5 AND  (d.name NOT LIKE '%phim%' OR d.name IS NULL) AND (d.name NOT LIKE '%nang%' OR d.name IS NULL) THEN 'tablet'
-    //                     ELSE 'NA' END as table_type
-    //                     "),
-    //             )->get();
-
-    //         // 2) FULL CLEANING
-    //         $cleaning_full = DB::table("stage_plan as sp")
-    //             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-    //             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-    //             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
-    //             ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
-    //             ->whereNotNull('sp.actual_start_clearning')
-    //             ->whereNotNull('sp.actual_end_clearning')
-    //             ->whereRaw('(sp.actual_start_clearning >= ? AND sp.actual_end_clearning <= ?)', [$startDate, $endDate])
-    //             ->where('sp.deparment_code', session('user')['production_code'])
-    //             ->select(
-    //                 "sp.$group_By",
-    //                 DB::raw("CONCAT(sp.id, '-clearning') AS id"),
-    //                 DB::raw("CONCAT(sp.title_clearning, ' (', sp.title, ') ') AS title"),
-    //                // "sp.title_clearning as title",
-    //                 "sp.actual_start_clearning",
-    //                 "sp.actual_end_clearning",
-    //                 "sp.stage_code",
-
-    //         )->get();
-
-    //         // 3) PARTIAL PRODUCTION
-    //         $production_partial = DB::table("stage_plan as sp")
-    //             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-    //             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-    //             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
-    //             ->leftJoin('product_name','finished_product_category.product_name_id','product_name.id')
-    //             ->leftJoin('dosage as d', 'intermediate_category.dosage_id', '=', 'd.id')
-    //             ->whereNotNull('sp.actual_start')
-    //             ->whereNotNull('sp.actual_end')
-    //             ->whereRaw('(sp.actual_start < ? AND sp.actual_end > ?)', [$endDate, $startDate])
-    //             ->where('sp.deparment_code', session('user')['production_code'])
-    //             ->select(
-    //                 "sp.$group_By",
-    //                 "sp.stage_code",
-    //                 DB::raw("CONCAT(product_name.name,'-',COALESCE(plan_master.actual_batch, plan_master.batch)) AS title"),
-    //                 "sp.note",
-    //                 DB::raw("CONCAT(sp.id, '-main') AS id"),
-
-    //                 // 🔹 clamp thời gian
-    //                 DB::raw("CASE WHEN sp.actual_start < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start END AS actual_start"),
-    //                 DB::raw("CASE WHEN sp.actual_end   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end   END AS actual_end"),
-
-    //                 // 🔹 yield overlap
-    //                 DB::raw("
-    //                     ROUND(
-    //                         sp.yields *
-    //                         TIME_TO_SEC(
-    //                             TIMEDIFF(LEAST(sp.actual_end, '$endDateStr'),GREATEST(sp.actual_start, '$startDateStr'))) /
-    //                             NULLIF(TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start)), 0),
-    //                     2) AS yield_overlap
-    //                 "),
-
-    //                 // 🔹 yields_batch_qty overlap (CHỈ stage 4)
-    //                 DB::raw("
-    //                     CASE 
-    //                         WHEN sp.stage_code = 4 THEN
-    //                             ROUND(
-    //                                 sp.yields_batch_qty *
-    //                                 TIME_TO_SEC(
-    //                                     TIMEDIFF(
-    //                                         LEAST(sp.actual_end, '$endDateStr'),
-    //                                         GREATEST(sp.actual_start, '$startDateStr')
-    //                                     )
-    //                                 ) /
-    //                                 NULLIF(TIME_TO_SEC(TIMEDIFF(sp.actual_end, sp.actual_start)), 0),
-    //                             2)
-    //                         ELSE 0
-    //                     END AS yields_batch_qty_overlap
-    //                 "),
-
-    //                 // 🔹 đơn vị
-    //                 DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
-    //                 DB::raw("CASE 
-    //                     WHEN sp.stage_code = 5 AND d.name LIKE '%phim%' THEN 'coating'
-    //                     WHEN sp.stage_code = 5 AND d.name LIKE '%nang%' THEN 'capsule'
-    //                     WHEN sp.stage_code = 5 AND  (d.name NOT LIKE '%phim%' OR d.name IS NULL) AND (d.name NOT LIKE '%nang%' OR d.name IS NULL) THEN 'tablet'
-    //                     ELSE 'NA' END as table_type
-    //                     "),
-
-    //             )
-    //         ->get();
-    //         // 4) PARTIAL CLEANING
-    //         $cleaning_partial = DB::table("stage_plan as sp")
-    //             ->whereNotNull('sp.actual_start_clearning')
-    //             ->whereNotNull('sp.actual_end_clearning')
-    //             ->whereRaw('(sp.actual_start_clearning < ? AND sp.actual_end_clearning > ?)', [$endDate, $startDate])
-    //             ->where('sp.deparment_code', session('user')['production_code'])
-    //             ->select(
-    //                 "sp.$group_By",
-    //                 "sp.stage_code",
-    //                 //"sp.title_clearning as title",
-    //                 DB::raw("CONCAT(sp.title_clearning, ' (', sp.title,') ') AS title"),
-    //                 DB::raw("CONCAT(sp.id, '-clearning') AS id"),
-    //                 DB::raw("CASE WHEN sp.actual_start_clearning < '$startDateStr' THEN '$startDateStr' ELSE sp.actual_start_clearning END AS actual_start_clearning"),
-    //                 DB::raw("CASE WHEN sp.actual_end_clearning   > '$endDateStr'   THEN '$endDateStr'   ELSE sp.actual_end_clearning   END AS actual_end_clearning")
-    //             )->get();
-
-    //         // 5) ROOM_STATUS
-
-    //         $order_action_full = DB::table("room_status as sp")
-    //             ->leftJoin('room', 'sp.room_id', 'room.id')
-    //             ->whereNotNull('sp.start')
-    //             ->whereNotNull('sp.end')
-    //             ->where ('sp.is_daily_report', 1)
-    //             ->where ('sp.active', 1)
-    //             ->whereRaw('(sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
-    //             ->where('sp.deparment_code', session('user')['production_code'])
-    //             ->select(
-    //                 "sp.id",
-    //                 "room.stage_code",
-    //                 //DB::raw("CONCAT(sp.id, '-action') AS id"),
-    //                 "sp.room_id as $group_By",
-    //                 "sp.start as actual_start",
-    //                 "sp.end as actual_end",
-    //                 "sp.notification as note",
-    //                 "sp.in_production as title",
-    //                 'sp.is_daily_report'
-    //             )->get();
-
-    //             //dd ($order_action_full);
-
-    //         // 6) ROOM_STATUS_parti      
-
-    //         $order_action_partial = DB::table("room_status as sp")
-    //             ->leftJoin('room', 'sp.room_id', 'room.id')
-    //             ->whereNotNull('sp.start')
-    //             ->whereNotNull('sp.end')
-    //             ->where('sp.is_daily_report', 1)
-    //             ->where('sp.active', 1)
-    //             ->where('sp.deparment_code', session('user')['production_code'])
-
-    //             // Giao nhau
-    //             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate])
-
-    //             // Nhưng loại bỏ FULL
-    //             ->whereRaw('NOT (sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
-
-    //             ->select(
-
-    //                 "sp.id",
-    //                 //DB::raw("CONCAT(sp.id, '-action') AS id"),
-    //                 "sp.room_id as $group_By",
-    //                 "room.stage_code",
-    //                 // Cắt thời gian đang vượt ra ngoài khoảng
-    //                 DB::raw("CASE WHEN sp.start < '$startDate' THEN '$startDate' ELSE sp.start END AS actual_start"),
-    //                 DB::raw("CASE WHEN sp.end   > '$endDate'   THEN '$endDate'   ELSE sp.end END AS actual_end"),
-
-    //                 "sp.notification as note",
-    //                 "sp.in_production as title",
-    //                 'sp.is_daily_report'
-    //             )
-    //         ->get();
-
-
-
-    //         $actual_detail = collect()
-    //             ->concat($production_full)
-    //             ->concat($cleaning_full)
-    //             ->concat($production_partial)
-    //             ->concat($cleaning_partial)
-    //             ->concat($order_action_full)
-    //             ->concat($order_action_partial)
-    //             ->unique('id')
-    //             ->map(function ($item) use ($group_By) {
-    //                 return (object)[
-    //                     'resourceId'    => $item->$group_By,
-    //                     'reported_date' => substr($item->actual_start ?? $item->actual_start_clearning, 0, 10),
-    //                     'id'            => $item->id,
-    //                     'title'         => $item->title,
-    //                     'start'         => $item->actual_start ?? $item->actual_start_clearning,
-    //                     'end'           => $item->actual_end ?? $item->actual_end_clearning,
-    //                     'yields'        => $item->yield_overlap ?? $item->yields ?? null,
-    //                     'yields_batch_qty'        => $item->yields_batch_qty_overlap ?? $item->yields_batch_qty ?? null,
-    //                     'unit'          => $item->unit ?? null,
-    //                     "note"          => $item->note ?? null,
-    //                     "is_order_action"          => $item->is_daily_report ?? 0,
-    //                     'table_type' =>  $item->table_type ?? 'NA',
-    //                     "stage_code"  =>  $item->stage_code
-    //                 ];
-    //             })
-    //             ->sortBy('start')
-    //         ->values();
-
-    //         $yield_day = collect($actual_detail)
-    //             ->groupBy('resourceId')
-    //             ->map(function ($items) {
-    //                 return [
-    //                     'resourceId' => $items->first()->resourceId,
-    //                     'total_qty' => round($items->sum(function ($item) {
-    //                         return (float) ($item->yields ?? 0);
-    //                     }), 2),
-    //                     'total_qty_unit' => round($items->sum(function ($item) {
-    //                         return (float) ($item->yields_batch_qty ?? 0);
-    //                     }), 2),
-    //                     'unit' => $items->first()->unit,
-    //                     'table_type' => $items->first()->table_type,
-    //                     'stage_code' => $items->first()->stage_code,
-    //                 ];
-    //             })
-    //             ->values();
-
-    //         //dd ($yield_day) ;
-
-    //         return [
-    //             'actual_detail'  => $actual_detail,
-    //             'yield_day'   => $yield_day
-    //         ];
-    // }
-
     public function yield_theory($startDate, $endDate, $group_By)
     {
         // ------------------------------
         // 1️⃣ Giai đoạn nằm hoàn toàn trong khoảng
         // ------------------------------
         $stage_plan_100 = DB::table("stage_plan as sp")
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
@@ -542,7 +297,7 @@ class DailyReportController extends Controller
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
-                DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
+                DB::raw('SUM(CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) as total_qty'),
                 DB::raw('
                     SUM(
                         CASE
@@ -571,6 +326,7 @@ class DailyReportController extends Controller
 
 
         $stage_plan_part = DB::table("stage_plan as sp")
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
@@ -582,7 +338,7 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 DB::raw('
                     SUM(
-                        sp.Theoretical_yields *
+                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -716,6 +472,7 @@ class DailyReportController extends Controller
 
 
         $totalForDay = DB::table("stage_plan as sp")
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('room as r', 'sp.resourceId', '=', 'r.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
@@ -731,7 +488,7 @@ class DailyReportController extends Controller
                 'r.stage_code as stage_code',
                 DB::raw('
                     SUM(
-                        sp.Theoretical_yields *
+                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $dayEnd . '"), GREATEST(sp.start, "' . $dayStart . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -774,16 +531,6 @@ class DailyReportController extends Controller
                 "table_type" => $item->table_type ?? 'NA'
             ]);
         }
-
-
-        //$dailyTotals1 = $dailyTotals->groupBy("date");
-
-
-        //dd ($dailyTotals, $yield_stage);
-        // ------------------------------
-        // 7️⃣ Trả về dữ liệu
-        // ------------------------------
-
 
         return [
             'yield_room' => $yield_room,
