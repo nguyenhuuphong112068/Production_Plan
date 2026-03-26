@@ -179,33 +179,7 @@ const MaintenanceCalender = () => {
 
   }, [loading]);
 
-  useEffect(() => {
-    if (selectedRows.length > 0) {
-      const firstRow = selectedRows[0];
-      const related = firstRow.related_rooms || [];
-      if (related.length > 0) {
-        const firstRoomCode = related[0].room_code;
-        // Tìm resource có mã khớp với phòng đầu tiên liên quan
-        const resource = resources.find(r => r.code === firstRoomCode);
-        if (resource) {
-          // Sử dụng setTimeout để đảm bảo lịch đã render xong
-          setTimeout(() => {
-            const api = calendarRef.current?.getApi();
-            // Cách 1: Thử sử dụng API chính thức của FullCalendar (nếu phiên bản hỗ trợ)
-            if (api?.view?.scrollToResource) {
-              api.view.scrollToResource(resource.id);
-            } else {
-              // Cách 2: Cuộn bằng DOM nhưng dùng 'nearest' để tránh cuộn cả trang web làm mất header
-              const el = document.querySelector(`[data-resource-id="${resource.id}"]`);
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }
-            }
-          }, 100);
-        }
-      }
-    }
-  }, [selectedRows, resources]);
+
 
   useEffect(() => {
     const toolbarEl = document.querySelector(".fc-fontSizeBox-button");

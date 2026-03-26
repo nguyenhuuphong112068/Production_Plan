@@ -45,7 +45,8 @@ class MaintenanceSchedualController extends SchedualController
 
             $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
 
-            $events = parent::getEvents($production, $startDate, $endDate, $clearing, $this->theory);
+            $eventsRaw = parent::getEvents($production, $startDate, $endDate, $clearing, $this->theory);
+            $events = $this->groupMaintenanceEvents($eventsRaw);
 
             $sumBatchByStage = parent::yield($startDate, $endDate, "stage_code");
 
@@ -293,23 +294,24 @@ class MaintenanceSchedualController extends SchedualController
                 }
             } else {
 
-                // 🔥 KIỂM TRA NGAY TỪ ĐẦU NẾU current_start NẰM TRONG OFFDATE
+                // 1. Tính tổng thời gian PM của tất cả thiết bị được chọn
+                $totalMinutes = 0;
                 foreach ($products as $product) {
+                    $totalMinutes += $this->toMinutes($product['PM']);
+                }
+                $overallEnd = $start->copy()->addMinutes($totalMinutes);
 
-                    $end = $start->addMinutes($this->toMinutes($product['PM']));
-
+                // 2. Cập nhật tất cả bản ghi về cùng một khung thời gian
+                foreach ($products as $product) {
                     DB::table('stage_plan')
                         ->where('id', $product['id'])
                         ->update([
                             'start'           => $start,
-                            'end'             => $end,
-                            // 'start_clearning' => $end_man,
-                            // 'end_clearning'   => $end_clearning,
+                            'end'             => $overallEnd,
                             'resourceId'      => $request->room_id,
                             'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                             'schedualed_by'   => session('user')['fullName'],
                             'schedualed_at'   => now(),
-
                         ]);
 
                     $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
@@ -323,7 +325,7 @@ class MaintenanceSchedualController extends SchedualController
                             'stage_plan_id'  => $product['id'],
                             'version'        => $last_version + 1,
                             'start'           => $start,
-                            'end'             => $end,
+                            'end'             => $overallEnd,
                             'resourceId'     => $request->room_id,
                             'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                             'schedualed_by'   => session('user')['fullName'],
@@ -332,8 +334,6 @@ class MaintenanceSchedualController extends SchedualController
                             'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
                         ]);
                     }
-
-                    $start = $end;
                 }
             }
 
@@ -359,7 +359,8 @@ class MaintenanceSchedualController extends SchedualController
                 |--------------------------------------------------------------------------
                 */
         $production = session('user')['production_code'];
-        $events = parent::getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+        $eventsRaw = parent::getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+        $events = $this->groupMaintenanceEvents($eventsRaw);
         $sumBatchByStage = parent::yield($request->startDate, $request->endDate, "stage_code");
         $plan_waiting = $this->getPlanWaiting($production);
 
@@ -367,6 +368,75 @@ class MaintenanceSchedualController extends SchedualController
             'events' => $events,
             'plan' => $plan_waiting,
             'sumBatchByStage' => $sumBatchByStage,
+        ]);
+    }
+
+    public function update(Request $request)
+    {
+        $changes = $request->input('changes', []);
+        $this->theory = (int)$request->theory ?? 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($changes as $change) {
+                $idParts = explode('-', $change['id']);
+                $realIdRaw = $idParts[0] ?? null;
+
+                if (!$realIdRaw) continue;
+
+                $ids = explode(',', $realIdRaw);
+
+                // Cập nhật tất cả bản ghi trong nhóm
+                DB::table('stage_plan')
+                    ->whereIn('id', $ids)
+                    ->update([
+                        'start'           => $change['start'],
+                        'end'             => $change['end'],
+                        'resourceId'      => $change['resourceId'],
+                        'schedualed_by'   => session('user')['fullName'],
+                        'schedualed_at'   => now(),
+                    ]);
+
+                // Ghi lịch sử cho từng thiết bị nếu đã submit
+                foreach ($ids as $id) {
+                    $row = DB::table('stage_plan')->where('id', $id)->first();
+                    if ($row && $row->submit == 1) {
+                        $last_version = DB::table('stage_plan_history')
+                            ->where('stage_plan_id', $id)
+                            ->max('version') ?? 0;
+
+                        DB::table('stage_plan_history')->insert([
+                            'stage_plan_id'  => $id,
+                            'version'        => $last_version + 1,
+                            'start'           => $change['start'],
+                            'end'             => $change['end'],
+                            'resourceId'     => $change['resourceId'],
+                            'title'           => $row->title,
+                            'schedualed_by'   => session('user')['fullName'],
+                            'schedualed_at'  => now(),
+                            'deparment_code' => session('user')['production_code'],
+                            'type_of_change' => $request->reason['reason'] ?? "Cập Nhật Lịch Bảo Trì",
+                        ]);
+                    }
+                }
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Lỗi cập nhật lịch bảo trì:', ['error' => $e->getMessage()]);
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+
+        $production = session('user')['production_code'];
+        $eventsRaw = parent::getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+        $events = $this->groupMaintenanceEvents($eventsRaw);
+        $plan_waiting = $this->getPlanWaiting($production);
+        $resources = parent::getResources($production, $request->startDate, $request->endDate);
+
+        return response()->json([
+            'events' => $events,
+            'plan' => $plan_waiting,
+            'resources' => $resources,
         ]);
     }
 
@@ -386,7 +456,7 @@ class MaintenanceSchedualController extends SchedualController
 
 
                     DB::table('stage_plan')
-                        ->where('id', $rowId)
+                        ->whereIn('id', explode(',', $rowId))
                         ->where('finished', 0)
                         ->where('stage_code', '=', $stageCode)
                         ->update([
@@ -405,7 +475,8 @@ class MaintenanceSchedualController extends SchedualController
                         ]);
                 } else {
 
-                    $plan = DB::table('stage_plan')->where('id', $rowId)->first();
+                    $ids = explode(',', $rowId);
+                    $plan = DB::table('stage_plan')->where('id', $ids[0])->first();
 
                     DB::table('stage_plan')
                         ->where('finished', 0)
@@ -433,9 +504,10 @@ class MaintenanceSchedualController extends SchedualController
 
 
         $production = session('user')['production_code'];
-        $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+        $eventsRaw = parent::getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+        $events = $this->groupMaintenanceEvents($eventsRaw);
         $plan_waiting = parent::getPlanWaiting($production);
-        $resources = $this->getResources($production, $request->startDate, $request->endDate);
+        $resources = parent::getResources($production, $request->startDate, $request->endDate);
         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
         return response()->json([
@@ -445,5 +517,42 @@ class MaintenanceSchedualController extends SchedualController
             'sumBatchByStage' => $sumBatchByStage,
 
         ]);
+    }
+
+    private function groupMaintenanceEvents($events)
+    {
+        if ($events instanceof \Illuminate\Support\Collection) {
+            $events = $events;
+        } else {
+            $events = collect($events);
+        }
+
+        $maintenanceEvents = $events->where('stage_code', '=', 8);
+        $productionEvents = $events->where('stage_code', '<', 8);
+
+        $groupedMaintenance = $maintenanceEvents->groupBy(function ($event) {
+            $e = (object)$event;
+            // Nhóm theo thời gian và phòng
+            return $e->start . '_' . $e->end . '_' . $e->resourceId;
+        })->map(function ($group) {
+            $first = (object)$group->first();
+            $first = clone $first; // Tránh làm thay đổi object gốc nếu cần
+
+            if ($group->count() > 1) {
+                // Gom tất cả ID lại để xử lý xóa/sửa sau này
+                $allIds = $group->pluck('id')->toArray();
+                $first->id = implode(',', $allIds);
+
+                // Gom tiêu đề các thiết bị (lấy phần cuối sau dấu -)
+                $allTitles = $group->pluck('title')->unique()->map(function ($t) {
+                    $parts = explode(' - ', $t);
+                    return count($parts) > 1 ? end($parts) : $t;
+                })->toArray();
+                $first->title = "BT NHÓM: " . implode(" | ", $allTitles);
+            }
+            return $first;
+        })->values();
+
+        return $productionEvents->concat($groupedMaintenance);
     }
 }

@@ -261,7 +261,10 @@ class SchedualController extends Controller
                                         '-',
                                         COALESCE(plan_master.actual_batch, plan_master.batch)
                                         )
-                                END AS title
+                                END AS title,
+                                product_name.name as product_name,
+                                COALESCE(plan_master.actual_batch, plan_master.batch) as batch_name,
+                                plan_master.actual_batch as actual_batch
                         "),
                                 DB::raw("
                                 CASE
@@ -366,6 +369,7 @@ class SchedualController extends Controller
 
                 // 5️⃣ Duyệt từng nhóm (theo batch sản xuất)
                 foreach ($groupedPlans as $plans) {
+
                         $plans = $plans->values(); // sắp sẵn theo stage_code ở query
                         for ($i = 0, $n = $plans->count(); $i < $n; $i++) {
                                 $storage_capacity = null;
@@ -399,7 +403,10 @@ class SchedualController extends Controller
                                                 'subtitle' => $subtitle,
                                                 'campaign_code' => $plan->campaign_code,
                                                 'status'  => $plan->status,
-                                                'first_in_campaign' => $plan->first_in_campaign
+                                                'first_in_campaign' => $plan->first_in_campaign,
+                                                'product_name' => $plan->product_name,
+                                                'batch_name' => $plan->batch_name,
+                                                'actual_batch' => $plan->actual_batch
                                         ]);
                                 }
                                 // 🎯 Lịch đã hoàn thành
@@ -420,6 +427,10 @@ class SchedualController extends Controller
                                                 'is_clearning' => true,
                                                 'finished' => $plan->finished,
                                                 'process_code' => $plan->process_code,
+                                                'campaign_code' => $plan->campaign_code,
+                                                'product_name' => $plan->product_name,
+                                                'batch_name' => $plan->batch_name,
+                                                'actual_batch' => $plan->actual_batch
                                         ]);
                                 }
 
@@ -445,6 +456,10 @@ class SchedualController extends Controller
                                                         'keep_dry' => $plan->keep_dry,
                                                         'tank' => $plan->tank,
                                                         'storage_capacity' => $storage_capacity,
+                                                        'campaign_code' => $plan->campaign_code,
+                                                        'product_name' => $plan->product_name,
+                                                        'batch_name' => $plan->batch_name,
+                                                        'actual_batch' => $plan->actual_batch,
 
                                                 ]);
                                                 // event Lich VS thực tế
@@ -463,6 +478,10 @@ class SchedualController extends Controller
                                                                 'is_clearning' => true,
                                                                 'finished' => $plan->finished,
                                                                 'process_code' => $plan->process_code,
+                                                                'campaign_code' => $plan->campaign_code,
+                                                                'product_name' => $plan->product_name,
+                                                                'batch_name' => $plan->batch_name,
+                                                                'actual_batch' => $plan->actual_batch,
                                                         ]);
                                                 }
                                         } else if ($theory == 1) {
@@ -484,7 +503,11 @@ class SchedualController extends Controller
                                                                 'process_code' => $plan->process_code,
                                                                 'keep_dry' => $plan->keep_dry,
                                                                 'tank' => $plan->tank,
-                                                                'storage_capacity' => $storage_capacity
+                                                                'storage_capacity' => $storage_capacity,
+                                                                'campaign_code' => $plan->campaign_code,
+                                                                'product_name' => $plan->product_name,
+                                                                'batch_name' => $plan->batch_name,
+                                                                'actual_batch' => $plan->actual_batch
                                                         ]);
                                                 }
                                                 // event Lich VS lý thuyết
@@ -503,6 +526,10 @@ class SchedualController extends Controller
                                                                 'is_clearning' => true,
                                                                 'finished' => $plan->finished,
                                                                 'process_code' => $plan->process_code,
+                                                                'campaign_code' => $plan->campaign_code,
+                                                                'product_name' => $plan->product_name,
+                                                                'batch_name' => $plan->batch_name,
+                                                                'actual_batch' => $plan->actual_batch
                                                         ]);
                                                 }
                                         } else if ($theory == 2) {
@@ -524,7 +551,11 @@ class SchedualController extends Controller
                                                         'process_code' => $plan->process_code,
                                                         'keep_dry' => $plan->keep_dry,
                                                         'tank' => $plan->tank,
-                                                        'storage_capacity' => $storage_capacity
+                                                        'storage_capacity' => $storage_capacity,
+                                                        'campaign_code' => $plan->campaign_code,
+                                                        'product_name' => $plan->product_name,
+                                                        'batch_name' => $plan->batch_name,
+                                                        'actual_batch' => $plan->actual_batch
                                                 ]);
 
                                                 // event Lich VS thực tế
@@ -543,6 +574,10 @@ class SchedualController extends Controller
                                                                 'is_clearning' => true,
                                                                 'finished' => $plan->finished,
                                                                 'process_code' => $plan->process_code,
+                                                                'campaign_code' => $plan->campaign_code,
+                                                                'product_name' => $plan->product_name,
+                                                                'batch_name' => $plan->batch_name,
+                                                                'actual_batch' => $plan->actual_batch
                                                         ]);
                                                 }
 
@@ -565,7 +600,11 @@ class SchedualController extends Controller
                                                                 'process_code' => $plan->process_code,
                                                                 'keep_dry' => $plan->keep_dry,
                                                                 'tank' => $plan->tank,
-                                                                'storage_capacity' => $storage_capacity
+                                                                'storage_capacity' => $storage_capacity,
+                                                                'campaign_code' => $plan->campaign_code,
+                                                                'product_name' => $plan->product_name,
+                                                                'batch_name' => $plan->batch_name,
+                                                                'actual_batch' => $plan->actual_batch
                                                         ]);
                                                 }
                                                 // event Lich VS lý thuyết
@@ -584,6 +623,10 @@ class SchedualController extends Controller
                                                                 'is_clearning' => true,
                                                                 'finished' => $plan->finished,
                                                                 'process_code' => $plan->process_code,
+                                                                'campaign_code' => $plan->campaign_code,
+                                                                'product_name' => $plan->product_name,
+                                                                'batch_name' => $plan->batch_name,
+                                                                'actual_batch' => $plan->actual_batch
                                                         ]);
                                                 }
                                         }
@@ -591,6 +634,55 @@ class SchedualController extends Controller
                         }
                 }
 
+                // 🔥 Gộp các công đoạn 1 & 2 mang cùng Campaign, thời gian, phòng
+                $weighingStages = $events->whereIn('stage_code', [1, 2]);
+                $otherStages = $events->whereNotIn('stage_code', [1, 2]);
+
+                $groupedWeighing = $weighingStages->groupBy(function ($event) {
+                        $e = (object)$event;
+                        $isTheory = strpos($e->id, '-theory') !== false;
+                        $isFinished = ($e->finished ?? 0) == 1;
+
+                        // Tiêu đề yêu cầu mới: Chỉ so khớp start, resourceId và stage_code
+                        // Vẫn giữ is_clearning và isTheory để tránh gộp Main và Cleaning hoặc Theory và Actual
+                        return $e->start . '_' . $e->resourceId . '_' . $e->stage_code . '_' . ($e->is_clearning ? 'CL' : 'MN') . '_' . ($isTheory ? 'TH' : 'AC');
+                })->map(function ($group) {
+                        $first = (object)$group->first();
+                        $first = clone $first;
+
+                        $isTheory = strpos($first->id, '-theory') !== false;
+                        $isFinished = ($first->finished ?? 0) == 1;
+
+                        if ($group->count() > 1) {
+                                $pureIds = $group->pluck('plan_id')->toArray();
+                                $suffix = $isTheory ? '-theory' : '';
+                                $typeSuffix = $first->is_clearning ? '-cleaning' : '-main';
+                                $first->id = implode(',', $pureIds) . $typeSuffix . $suffix;
+
+                                // Tính toán min Start và max End cho tất cả các sự kiện gộp Stage 1 & 2
+                                $first->start = $group->min('start');
+                                $first->end = $group->max('end');
+
+                                if (!$first->is_clearning) {
+                                        // Gom danh sách số lô (batch) - Ưu tiên actual_batch cho Finished/Theory
+                                        $batchField = ($isFinished || $isTheory) ? 'actual_batch' : 'batch_name';
+                                        $allBatches = $group->pluck($batchField)->unique()->filter()->toArray();
+
+                                        // Fallback nếu actual_batch trống (đặc biệt cho Theory)
+                                        if (empty($allBatches)) {
+                                                $allBatches = $group->pluck('batch_name')->unique()->filter()->toArray();
+                                        }
+
+                                        // Tiêu đề gộp: Product_Name (Batch1, Batch2...)
+                                        $productName = $first->product_name ?? $first->title ?? "Sản phẩm";
+                                        $batchList = implode(", ", $allBatches);
+                                        $first->title = "{$productName} ({$batchList})";
+                                }
+                        }
+                        return $first;
+                })->values();
+
+                $events = $otherStages->concat($groupedWeighing)->values();
 
                 return $events;
         }
@@ -922,7 +1014,7 @@ class SchedualController extends Controller
         public function view(Request $request)
         {
 
-                Log::info($request->all());
+
                 $startDate = $request->startDate ?? Carbon::now();
                 $endDate = $request->endDate ?? Carbon::now()->addDays(7);
                 $viewtype = $request->viewtype ?? "resourceTimelineWeek";
@@ -1614,9 +1706,10 @@ class SchedualController extends Controller
                 $this->theory = (int)$request->theory ?? 0;
                 try {
                         foreach ($changes as $change) {
-                                // Tách id: "102-main" -> 102
+                                // Tách id: "101,102-main" -> [0] => "101,102", [1] => "main"
                                 $idParts = explode('-', $change['id']);
                                 $realId = $idParts[0] ?? null;
+                                $type = $idParts[1] ?? null;
 
                                 if (!$realId) {
                                         continue; // bỏ qua nếu id không hợp lệ
@@ -1632,10 +1725,10 @@ class SchedualController extends Controller
                                                 ]);
                                 }
 
-                                // Nếu là sự kiện vệ sinh (title chứa "VS-")
-                                if (strpos($change['title'], "VS-") !== false) {
+                                // Sử dụng hậu tố ID để xác định loại sự kiện (chính xác hơn strpos title)
+                                if ($type && strpos($type, 'cleaning') !== false) {
                                         DB::table('stage_plan')
-                                                ->where('id', $realId)
+                                                ->whereIn('id', explode(',', $realId))
                                                 ->update([
                                                         'start_clearning' => $change['start'],
                                                         'end_clearning'   => $change['end'],
@@ -1654,8 +1747,10 @@ class SchedualController extends Controller
                                         }
 
 
+                                        $idsArray = explode(',', $realId);
+
                                         DB::table('stage_plan')
-                                                ->where('id', $realId)
+                                                ->whereIn('id', $idsArray)
                                                 ->update([
                                                         'start'           => $change['start'],
                                                         'end'             => $change['end'],
@@ -1669,37 +1764,39 @@ class SchedualController extends Controller
 
                                                 ]);
 
-                                        $update_row = DB::table('stage_plan')->where('id', $realId)->first();
+                                        foreach ($idsArray as $sid) {
+                                                $update_row = DB::table('stage_plan')->where('id', $sid)->first();
 
-                                        if ($update_row->submit == 1) {
-                                                $check = DB::table('stage_plan_history')
-                                                        ->insert([
-                                                                'stage_plan_id' => $realId,
-                                                                'campaign_code' => $update_row->campaign_code,
-                                                                'code' => $update_row->code,
-                                                                'order_by' => $update_row->order_by,
-                                                                'schedualed' => $update_row->schedualed,
-                                                                'stage_code' => $update_row->stage_code,
-                                                                'title' => $update_row->title,
-                                                                'start' => $update_row->start,
-                                                                'end' => $update_row->end,
-                                                                'resourceId' => $update_row->resourceId,
-                                                                'title_clearning' => $update_row->title_clearning,
-                                                                'start_clearning' => $update_row->start_clearning,
-                                                                'end_clearning' => $update_row->end_clearning,
-                                                                'tank' => $update_row->tank,
-                                                                'keep_dry' => $update_row->keep_dry,
-                                                                'AHU_group' => $update_row->AHU_group,
-                                                                'schedualed_by' => $update_row->schedualed_by,
-                                                                'schedualed_at' => $update_row->schedualed_at,
-                                                                'version' =>  DB::table('stage_plan_history')->where('stage_plan_id', $realId)->max('version') + 1 ?? 1,
-                                                                'note' => $update_row->note,
-                                                                'deparment_code' => session('user')['production_code'],
-                                                                'type_of_change' => $request->reason['reason'],
-                                                                'created_date' => now(),
-                                                                'created_by' => session('user')['fullName'],
+                                                if ($update_row && $update_row->submit == 1) {
+                                                        DB::table('stage_plan_history')
+                                                                ->insert([
+                                                                        'stage_plan_id' => $sid,
+                                                                        'campaign_code' => $update_row->campaign_code,
+                                                                        'code' => $update_row->code,
+                                                                        'order_by' => $update_row->order_by,
+                                                                        'schedualed' => $update_row->schedualed,
+                                                                        'stage_code' => $update_row->stage_code,
+                                                                        'title' => $update_row->title,
+                                                                        'start' => $update_row->start,
+                                                                        'end' => $update_row->end,
+                                                                        'resourceId' => $update_row->resourceId,
+                                                                        'title_clearning' => $update_row->title_clearning,
+                                                                        'start_clearning' => $update_row->start_clearning,
+                                                                        'end_clearning' => $update_row->end_clearning,
+                                                                        'tank' => $update_row->tank,
+                                                                        'keep_dry' => $update_row->keep_dry,
+                                                                        'AHU_group' => $update_row->AHU_group,
+                                                                        'schedualed_by' => $update_row->schedualed_by,
+                                                                        'schedualed_at' => $update_row->schedualed_at,
+                                                                        'version' =>  DB::table('stage_plan_history')->where('stage_plan_id', $sid)->max('version') + 1 ?? 1,
+                                                                        'note' => $update_row->note,
+                                                                        'deparment_code' => session('user')['production_code'],
+                                                                        'type_of_change' => $request->reason['reason'],
+                                                                        'created_date' => now(),
+                                                                        'created_by' => session('user')['fullName'],
 
-                                                        ]);
+                                                                ]);
+                                                }
                                         }
                                 }
                         }
@@ -1782,9 +1879,8 @@ class SchedualController extends Controller
 
 
                                         DB::table('stage_plan')
-                                                ->where('id', $rowId)
+                                                ->whereIn('id', explode(',', $rowId))
                                                 ->where('finished', 0)
-                                                ->where('stage_code', '=', $stageCode)
                                                 ->update([
                                                         'start'            => null,
                                                         'end'              => null,

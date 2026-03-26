@@ -1237,8 +1237,6 @@ const ScheduleTest = () => {
 
     // Reset react state
     setSelectedEvents([]);
-    selectedEventsRef.current = [];
-    setActivePlanMasterIds([]);
 
     // Tùy: gọi hàm un-highlight
     handleEventUnHightLine?.();
@@ -2365,7 +2363,6 @@ const ScheduleTest = () => {
         }
         setEvents(data.events);
         setSelectedEvents([]);
-        selectedEventsRef.current = [];
       }
       ).catch(err => {
         Swal.fire({
@@ -2452,7 +2449,6 @@ const ScheduleTest = () => {
             }
             setEvents(data.events);
             setSelectedEvents([]);
-            selectedEventsRef.current = [];
             Swal.fire({
               icon: 'success',
               title: 'Thành công',
@@ -2941,7 +2937,7 @@ const ScheduleTest = () => {
 
         eventClassNames={(arg) => {
           if (activePlanMasterIds.length === 0) return [];
-
+          
           const pm = arg.event.extendedProps.plan_master_id;
           if (activePlanMasterIds.includes(pm)) {
             return ['fc-event-focus'];
@@ -2950,43 +2946,42 @@ const ScheduleTest = () => {
         }}
 
 
-        eventDidMount={(info) => {
-          // gắn data-event-id và data-plan_master_id để truy xuất nhanh
-          info.el.setAttribute("data-event-id", info.event.id);
-          info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
-          info.el.setAttribute("data-plan_master_id", info.event.extendedProps.plan_master_id);
+          eventDidMount={(info) => {
+            // gắn data-event-id và data-plan_master_id để truy xuất nhanh
+            info.el.setAttribute("data-event-id", info.event.id);
+            info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
+            info.el.setAttribute("data-plan_master_id", info.event.extendedProps.plan_master_id);
 
-          // cho select evetn => pendingChanges
-          const isPending = pendingChanges.some(e => e.id === info.event.id);
-          if (isPending) {
-            info.el.style.border = '2px dashed orange';
-          }
+            // cho select evetn => pendingChanges
+            const isPending = pendingChanges.some(e => e.id === info.event.id);
+            if (isPending) {
+              info.el.style.border = '2px dashed orange';
+            }
 
-          info.el.addEventListener("dblclick", (e) => {
-            e.stopPropagation();
-            if (!e.ctrlKey) return;
-
-            const currentPm = info.event.extendedProps.plan_master_id;
-
-            setActivePlanMasterIds(prev => {
-              const currentSelected = selectedEventsRef.current || [];
-              // Nếu đã chọn nhiều sự kiện, lấy ALL plan_master_id từ chúng
-              if (currentSelected.length > 0) {
-                const uniquePms = [...new Set(currentSelected.map(ev => ev.plan_master_id))];
-
-                // Toggle: Nếu mảng hiện tại khớp hoàn toàn với uniquePms của nhóm vừa chọn -> reset
-                const isCurrentGroup = prev.length === uniquePms.length && uniquePms.every(id => prev.includes(id));
-                return isCurrentGroup ? [] : uniquePms;
-              }
-
-              // Nếu không có selection, xử lý toggle cho riêng dòng click (tương tự logic cũ)
-              if (prev.length === 1 && prev[0] === currentPm) {
-                return [];
-              }
-              return [currentPm];
+            info.el.addEventListener("dblclick", (e) => {
+              e.stopPropagation();
+              if (!e.ctrlKey) return;
+              
+              const currentPm = info.event.extendedProps.plan_master_id;
+              
+              setActivePlanMasterIds(prev => {
+                // Nếu đã chọn nhiều sự kiện, lấy ALL plan_master_id từ chúng
+                if (selectedEvents.length > 0) {
+                  const uniquePms = [...new Set(selectedEvents.map(ev => ev.plan_master_id))];
+                  
+                  // Toggle: Nếu mảng hiện tại khớp hoàn toàn với uniquePms của nhóm vừa chọn -> reset
+                  const isCurrentGroup = prev.length === uniquePms.length && uniquePms.every(id => prev.includes(id));
+                  return isCurrentGroup ? [] : uniquePms;
+                }
+                
+                // Nếu không có selection, xử lý toggle cho riêng dòng click (tương tự logic cũ)
+                if (prev.length === 1 && prev[0] === currentPm) {
+                  return [];
+                }
+                return [currentPm];
+              });
             });
-          });
-        }}
+          }}
 
         slotLaneDidMount={(info) => {
           if (info.date < new Date()) {
@@ -3067,9 +3062,8 @@ const ScheduleTest = () => {
                   : "none";
               });
 
-               selectedEventsRef.current = merged;
-               return merged;
-             });
+              return merged;
+            });
           }}
         />
       )}
