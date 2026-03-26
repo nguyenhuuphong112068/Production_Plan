@@ -130,6 +130,7 @@ class ProductionQuotaController extends Controller
                                 ->leftJoin('product_name', 'product_name.id', '=', "{$category}.product_name_id")
                                 ->leftJoin('quota', function ($join) use ($stage_code, $production, $category, $joinField) {
                                         $join->on("{$category}.{$joinField}", '=', "quota.{$joinField}")
+                                                ->on("{$category}.intermediate_code", '=', "quota.intermediate_code")
                                                 ->where('quota.stage_code', '=', $stage_code)
                                                 ->where('quota.deparment_code', '=', $production);
                                 })
@@ -142,7 +143,7 @@ class ProductionQuotaController extends Controller
                                           ->from($category)
                                           ->where('active', true)
                                           ->where('deparment_code', $production)
-                                          ->groupBy($joinField);
+                                          ->groupBy($joinField, 'intermediate_code');
                                 })
                                 ->orderBy('quota.id', 'desc');
 
