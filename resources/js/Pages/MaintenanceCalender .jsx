@@ -1367,6 +1367,25 @@ const MaintenanceCalender = () => {
     ];
   }, [events, offDays]);
 
+  // Lọc Resource dựa trên danh sách thiết bị sản xuất được chọn
+  const resourceFiltered = useMemo(() => {
+    // Nếu không có dòng nào được chọn, hiển thị toàn bộ resource
+    if (selectedRows.length === 0) return resources;
+
+    // Lấy tập hợp tất cả các mã phòng (room_code) hợp lệ từ các thiết bị đang chọn
+    const validRoomCodes = new Set();
+    selectedRows.forEach(row => {
+      if (row.related_rooms && Array.isArray(row.related_rooms)) {
+        row.related_rooms.forEach(room => {
+          validRoomCodes.add(room.room_code);
+        });
+      }
+    });
+
+    // Chỉ giữ lại các Resource có mã phòng khớp với danh sách hợp lệ
+    return (resources || []).filter(res => validRoomCodes.has(res.code));
+  }, [resources, selectedRows]);
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
@@ -1378,7 +1397,7 @@ const MaintenanceCalender = () => {
         firstDay={1}
         events={calendarEvents}
         eventResourceEditable={true}
-        resources={resources}
+        resources={resourceFiltered}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
         locale="vi"

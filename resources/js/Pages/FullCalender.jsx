@@ -2434,6 +2434,34 @@ const ScheduleTest = () => {
     });
   }
 
+  // Lọc Resource dựa trên danh sách sản phẩm được chọn
+  const resourceFiltered = useMemo(() => {
+    if (selectedRows.length === 0) return resources;
+
+    const validRoomCodes = new Set();
+    const validRoomIds = new Set();
+
+    selectedRows.forEach(row => {
+      const perms = row.permisson_room;
+      if (!perms) return;
+
+      if (Array.isArray(perms)) {
+        perms.forEach(code => validRoomCodes.add(code));
+      } else if (typeof perms === "object") {
+        // Trường hợp backend trả object {id: code}
+        Object.values(perms).forEach(code => validRoomCodes.add(code));
+        Object.keys(perms).forEach(id => validRoomIds.add(String(id)));
+      } else {
+        // Trường hợp id đơn lẻ
+        validRoomIds.add(String(perms));
+      }
+    });
+
+    return (resources || []).filter(res => {
+      return validRoomCodes.has(res.code) || validRoomIds.has(String(res.id));
+    });
+  }, [resources, selectedRows]);
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
@@ -2445,7 +2473,7 @@ const ScheduleTest = () => {
         firstDay={1}
         events={calendarEvents}
         eventResourceEditable={true}
-        resources={resources}
+        resources={resourceFiltered}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
         locale="vi"
