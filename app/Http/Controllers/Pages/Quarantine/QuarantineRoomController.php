@@ -115,93 +115,97 @@ class QuarantineRoomController extends Controller
 
     public function index_actual(Request $request)
     {
-        // 1) Truy vấn 1 lần duy nhất toàn bộ dữ liệu cần thiết cho cả 2 phần
-        // Tối ưu: Loại bỏ COALESCE trong WHERE để MySQL dùng được Index
-        $datasRaw = DB::table('stage_plan as t')
-            ->leftJoin('stage_plan as t2', 't2.code', '=', 't.nextcessor_code')
-            ->leftJoin('plan_master', 't.plan_master_id', '=', 'plan_master.id')
-            ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
-            ->leftJoin('product_name', 'fc.product_name_id', '=', 'product_name.id')
-            ->leftJoin('quarantine_room', 't.quarantine_room_code', '=', 'quarantine_room.code')
-            ->leftJoin('room', 't2.resourceId', '=', 'room.id')
-            ->whereNotNull('t.actual_start')
-            ->whereNotNull('t.yields')
-            ->where('t.active', 1)
-            ->where('t.finished', 1)
-            ->where('t2.finished', 0)
-            ->where('t.deparment_code', session('user')['production_code'])
-            ->where('t2.deparment_code', session('user')['production_code'])
-            ->where(function ($q) {
-                $now = now();
-                $q->where(function ($sub) use ($now) {
+        try {
+            // 1) Truy vấn 1 lần duy nhất toàn bộ dữ liệu cần thiết cho cả 2 phần
+            // Tối ưu: Loại bỏ COALESCE trong WHERE để MySQL dùng được Index
+            $datasRaw = DB::table('stage_plan as t')
+                ->leftJoin('stage_plan as t2', 't2.code', '=', 't.nextcessor_code')
+                ->leftJoin('plan_master', 't.plan_master_id', '=', 'plan_master.id')
+                ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
+                ->leftJoin('product_name', 'fc.product_name_id', '=', 'product_name.id')
+                ->leftJoin('quarantine_room', 't.quarantine_room_code', '=', 'quarantine_room.code')
+                ->leftJoin('room', 't2.resourceId', '=', 'room.id')
+                ->whereNotNull('t.actual_start')
+                ->whereNotNull('t.yields')
+                ->where('t.active', 1)
+                ->where('t.finished', 1)
+                ->where('t2.finished', 0)
+                ->where('t.deparment_code', session('user')['production_code'])
+                ->where('t2.deparment_code', session('user')['production_code'])
+                ->where(function ($q) {
+                    $now = now();
+                    $q->where(function ($sub) use ($now) {
                         $sub->whereNotNull('t2.actual_start')->where('t2.actual_start', '>', $now);
                     })
-                    ->orWhere(function ($sub) use ($now) {
-                        $sub->whereNull('t2.actual_start')->where('t2.start', '>', $now);
-                    })
-                    ->orWhere(function ($sub) {
-                        $sub->whereNull('t2.actual_start')->whereNull('t2.start');
-                    });
-            })
-            ->select(
-                'fc.finished_product_code',
-                'fc.intermediate_code',
-                't.plan_master_id',
-                'product_name.name as product_name',
-                DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
-                't.quarantine_room_code',
-                'quarantine_room.name as quarantine_room_name',
-                't.yields',
-                't.stage_code',
-                't.number_of_boxes',
-                't.finished_by',
-                't.finished_date',
-                't2.stage_code as next_stage',
-                't2.start as next_start',
-                't2.resourceId as next_room_id',
-                DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
-                'room.production_group',
-                'room.stage',
-                'room.group_code'
-            )
-            ->get();
+                        ->orWhere(function ($sub) use ($now) {
+                            $sub->whereNull('t2.actual_start')->where('t2.start', '>', $now);
+                        })
+                        ->orWhere(function ($sub) {
+                            $sub->whereNull('t2.actual_start')->whereNull('t2.start');
+                        });
+                })
+                ->select(
+                    'fc.finished_product_code',
+                    'fc.intermediate_code',
+                    't.plan_master_id',
+                    'product_name.name as product_name',
+                    DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
+                    't.quarantine_room_code',
+                    'quarantine_room.name as quarantine_room_name',
+                    't.yields',
+                    't.stage_code',
+                    't.number_of_boxes',
+                    't.finished_by',
+                    't.finished_date',
+                    't2.stage_code as next_stage',
+                    't2.start as next_start',
+                    't2.resourceId as next_room_id',
+                    DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
+                    'room.production_group',
+                    'room.stage',
+                    'room.group_code'
+                )
+                ->get();
 
-        // 2) Group theo phòng Biệt Trữ (Dùng cho bảng Details)
-        // Chỉ lấy những dòng có quarantine_room_code
-        $datas = $datasRaw->whereNotNull('quarantine_room_code')
-            ->groupBy('quarantine_room_code')
-            ->map(function ($items) {
-                return [
-                    'room_name' => $items->first()->quarantine_room_name,
-                    'total_yields' => $items->sum('number_of_boxes'),
-                    'details' => $items
-                ];
-            });
+            // 2) Group theo phòng Biệt Trữ (Dùng cho bảng Details)
+            // Chỉ lấy những dòng có quarantine_room_code
+            $datas = $datasRaw->whereNotNull('quarantine_room_code')
+                ->groupBy('quarantine_room_code')
+                ->map(function ($items) {
+                    return [
+                        'room_name' => $items->first()->quarantine_room_name,
+                        'total_yields' => $items->sum('number_of_boxes'),
+                        'details' => $items
+                    ];
+                });
 
-        // 3) Tổng hợp theo Phòng Kế Tiếp (Sử dụng Collection để tính toán trong RAM - cực nhanh)
-        $sum_by_next_room = $datasRaw->filter(fn($r) => !empty($r->next_room))
-            ->groupBy('next_room')
-            ->map(function ($items) {
-                return (object)[
-                    'sum_yields' => $items->sum('yields'),
-                    'next_room' => $items->first()->next_room,
-                    'production_group' => $items->first()->production_group,
-                    'stage' => $items->first()->stage,
-                    'next_stage' => $items->first()->next_stage, // Lấy stage code của phòng kế tiếp
-                    'group_code' => $items->first()->group_code,
-                    'room_id' => $items->first()->next_room_id,
-                ];
-            })
-            ->sortBy('next_stage')
-            ->values();
+            // 3) Tổng hợp theo Phòng Kế Tiếp (Sử dụng Collection để tính toán trong RAM - cực nhanh)
+            $sum_by_next_room = $datasRaw->filter(fn($r) => !empty($r->next_room))
+                ->groupBy('next_room')
+                ->map(function ($items) {
+                    return (object)[
+                        'sum_yields' => $items->sum('yields'),
+                        'next_room' => $items->first()->next_room,
+                        'production_group' => $items->first()->production_group,
+                        'stage' => $items->first()->stage,
+                        'next_stage' => $items->first()->next_stage, // Lấy stage code của phòng kế tiếp
+                        'group_code' => $items->first()->group_code,
+                        'room_id' => $items->first()->next_room_id,
+                    ];
+                })
+                ->sortBy('next_stage')
+                ->values();
 
 
-        session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
+            session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
 
-        return view('pages.quarantine.actual.list', [
-            'datas' => $datas,
-            'sum_by_next_room' => $sum_by_next_room,
-        ]);
+            return view('pages.quarantine.actual.list', [
+                'datas' => $datas,
+                'sum_by_next_room' => $sum_by_next_room,
+            ]);
+        } catch (\Exception $e) {
+            dd($e->getMessage());
+        }
     }
 
     public function detail(Request $request)
