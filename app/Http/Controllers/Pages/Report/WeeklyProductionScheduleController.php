@@ -52,6 +52,7 @@ class WeeklyProductionScheduleController extends Controller
                 'r.name as room_name',
                 'r.code as room_code',
                 'r.stage',
+                DB::raw("CASE WHEN r.stage_code IN (3, 4) THEN 'Pha chế' ELSE r.stage END as stage_name"),
                 'r.order_by',
                 'sp.id as sp_id',
                 'sp.start as planned_start',

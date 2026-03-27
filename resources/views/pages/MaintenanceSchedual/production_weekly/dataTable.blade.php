@@ -2,10 +2,9 @@
     use Carbon\Carbon;
     $defaultFrom = $selectedDate ? Carbon::parse($selectedDate)->format('Y-m-d') : Carbon::now()->format('Y-m-d');
 
-    // Group rooms by stage for the table display
-    // We'll use the 'stage' field we added to the query
-$groupedByStage = $groupedByRoom->groupBy(function ($rooms) {
-    return $rooms->first()->stage ?? 'Không xác định';
+    // Group rooms by stage_name for the table display
+    $groupedByStage = $groupedByRoom->groupBy(function ($rooms) {
+        return $rooms->first()->stage_name ?? 'Không xác định';
     });
 @endphp
 
