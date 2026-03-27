@@ -127,17 +127,37 @@
                     <div class="row">
                         <div class="col-md-6 border-right">
                             <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-calendar-alt"></i> 1. Chọn
-                                Khoảng Thời Gian</h6>
-                            <div class="form-group">
-                                <label for="m_from_date">Từ Ngày:</label>
-                                <input type="date" class="form-control" name="from_date" id="m_from_date"
-                                    value="{{ date('Y-m-01') }}" required>
+                                Tháng/Năm</h6>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label for="m_month">Tháng:</label>
+                                        <select class="form-control" id="m_month" required>
+                                            @for ($m = 1; $m <= 12; $m++)
+                                                <option value="{{ sprintf('%02d', $m) }}"
+                                                    {{ $m == date('m') ? 'selected' : '' }}>Tháng {{ $m }}
+                                                </option>
+                                            @endfor
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label for="m_year">Năm:</label>
+                                        <select class="form-control" id="m_year" required>
+                                            @for ($y = date('Y') - 1; $y <= date('Y') + 2; $y++)
+                                                <option value="{{ $y }}" {{ $y == date('Y') ? 'selected' : '' }}>
+                                                    {{ $y }}</option>
+                                            @endfor
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="m_to_date">Đến Ngày:</label>
-                                <input type="date" class="form-control" name="to_date" id="m_to_date"
-                                    value="{{ date('Y-m-t') }}" required>
-                            </div>
+
+                            {{-- Hidden fields for BE compatibility --}}
+                            <input type="hidden" name="from_date" id="m_from_date">
+                            <input type="hidden" name="to_date" id="m_to_date">
                             <input type="hidden" name="type" value="{{ $planType }}">
                         </div>
                         <div class="col-md-6 pl-4">
@@ -226,6 +246,26 @@
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
 
+        function updateDates() {
+            const month = $('#m_month').val();
+            const year = $('#m_year').val();
+            if (month && year) {
+                const fromDate = `${year}-${month}-01`;
+                // Lấy ngày cuối cùng của tháng bằng cách sang tháng sau và lùi 1 ngày
+                const nextMonth = new Date(year, month, 0);
+                const toDate = `${year}-${month}-${String(nextMonth.getDate()).padStart(2, '0')}`;
+
+                $('#m_from_date').val(fromDate);
+                $('#m_to_date').val(toDate);
+            }
+        }
+
+        // Chạy lần đầu khi mở modal hoặc trang load
+        updateDates();
+
+        // Cập nhật khi thay đổi select
+        $('#m_month, #m_year').on('change', updateDates);
+
         // Chọn/Bỏ chọn tất cả PX
         $('#chk_all_depts').on('change', function() {
             $('.dept-checkbox').prop('checked', $(this).is(':checked'));
@@ -251,8 +291,8 @@
             const fromDate = $('#m_from_date').val();
             const toDate = $('#m_to_date').val();
 
-            if (new Date(fromDate) > new Date(toDate)) {
-                Swal.fire('Lỗi', 'Ngày bắt đầu không được lớn hơn ngày kết thúc!', 'error');
+            if (!fromDate || !toDate) {
+                Swal.fire('Lỗi', 'Vui lòng chọn thời gian hợp lệ!', 'error');
                 return;
             }
 

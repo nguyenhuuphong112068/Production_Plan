@@ -530,7 +530,7 @@ const MaintenanceCalender = () => {
           if (api) {
             // Cuộn ngang đến thời gian bắt đầu
             api.scrollToTime(moment(start).format("HH:mm:ss"));
-            
+
             // Cuộn dọc đến phòng máy (Resource)
             const resourceCell = document.querySelector(`[data-resource-id="${resourceId}"]`);
             if (resourceCell) {
@@ -1198,17 +1198,15 @@ const MaintenanceCalender = () => {
   }
 
   const finisedEvent = (dropInfo, draggedEvent) => {
+    const stageCode = draggedEvent._def.extendedProps.stage_code;
 
-    // if (draggedEvent._def.extendedProps.stage_code != 8) {
-    //   return false;
-    // }
+    // Nếu là sự kiện đã tồn tại trên lịch (có stage_code)
+    // Chỉ cho phép kéo thả nếu đó là công đoạn bảo trì (8)
+    if (stageCode !== undefined && stageCode !== null && stageCode != 8) {
+      return false;
+    }
 
-    // if (userID == 1 || userID == 5) {
-    //   return true;
-    // }
-
-    //if (draggedEvent.extendedProps.finished) { return false; }
-
+    // Cho phép đối với sự kiện bảo trì hoặc sự kiện mới từ Sidebar (chưa có stage_code)
     return true;
   };
 

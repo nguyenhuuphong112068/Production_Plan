@@ -703,7 +703,17 @@ class SchedualController extends Controller
                 if ($plan->stage_code <= 7) {
                         $color_event = '#4CAF50';
                 } elseif ($plan->stage_code == 8) {
+                        // Mặc định cho Bảo trì (BT)
                         $color_event = '#003A4F';
+
+                        // Tinh chỉnh màu theo loại block (HC, BT, TI)
+                        if (isset($plan->code)) {
+                                if (substr($plan->code, -2) === 'HC') {
+                                        $color_event = '#9a1b72ff'; // Tím đậm cho Hiệu chuẩn
+                                } elseif (substr($plan->code, -2) === 'TI') {
+                                        $color_event = '#830cbfff'; // Cam đất cho Tiện ích
+                                }
+                        }
                 }
 
                 /* 3️⃣ VALIDATION OK */
@@ -1901,7 +1911,9 @@ class SchedualController extends Controller
 
                                         DB::table('stage_plan')
                                                 ->where('finished', 0)
-                                                ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)
+                                                ->where('plan_master_id', $plan->plan_master_id)
+                                                ->where('stage_code', '>=', $stageCode)
+                                                ->where('stage_code', '!=', 8) // CHẶN: không xóa lan tỏa tới bảo trì
                                                 ->update([
                                                         'start'            => null,
                                                         'end'              => null,
@@ -2045,6 +2057,7 @@ class SchedualController extends Controller
 
                         DB::table('stage_plan')
                                 ->whereIn('id',  $ids)
+                                ->where('stage_code', '!=', 8) // CHẶN: không xóa trắng công đoạn bảo trì
                                 ->update([
                                         'start' => null,
                                         'end' => null,

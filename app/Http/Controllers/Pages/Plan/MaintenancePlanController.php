@@ -110,13 +110,12 @@ class MaintenancePlanController extends Controller
                                         foreach ($deviceQuotas as $quota) {
                                                 // Kiểm tra nếu là bản ghi cho PX hiện tại hoặc bản ghi bị thiếu PX
                                                 if ($quota->deparment_code == $dept || empty($quota->deparment_code)) {
-                                                        $errors = [];
-                                                        if (empty($quota->deparment_code)) $errors[] = "thiếu Phân xưởng";
-                                                        if (empty($quota->room_id)) $errors[] = "thiếu Phòng/Khu vực";
-                                                        if (empty($quota->exe_time) || $quota->exe_time == '00:00') $errors[] = "thời gian thực hiện = 00:00";
+                                                        $blockingErrors = [];
+                                                        if (empty($quota->room_id)) $blockingErrors[] = "thiếu Phòng/Khu vực";
+                                                        if (empty($quota->exe_time) || $quota->exe_time == '00:00') $blockingErrors[] = "thời gian thực hiện = 00:00";
 
-                                                        if (!empty($errors)) {
-                                                                $invalidInsts[$instId][] = "PX {$dept}: " . implode(", ", $errors);
+                                                        if (!empty($blockingErrors)) {
+                                                                $invalidInsts[$instId][] = "PX {$dept}: " . implode(", ", $blockingErrors);
                                                         }
                                                 }
                                         }
@@ -192,7 +191,7 @@ class MaintenancePlanController extends Controller
 
                                         $schedules = $schedules->merge($result);
 
-                                        // dd($schedules);
+                                        //dd($schedules);
                                 } catch (\Exception $e) {
                                         Log::warning("Could not fetch schedules from {$conn}.Schedule_Master_{$suffix}: " . $e->getMessage());
                                 }
@@ -220,7 +219,18 @@ class MaintenancePlanController extends Controller
                 ];
 
                 $typeName = $type_names[$type] ?? 'BT-HC';
-                $name = "KH {$typeName} T{$month}/{$year} ({$fromDisplay}-{$toDisplay})";
+
+                // Đếm số lượng kế hoạch cùng loại, cùng tháng/năm/PX đã tồn tại để đặt tên (lần X)
+                $existingCount = DB::table('plan_list')
+                        ->where('month', $month)
+                        ->where('year', $year)
+                        ->where('deparment_code', $departmentCode)
+                        ->where('active', 1)
+                        ->where('name', 'like', "KH {$typeName}%")
+                        ->count();
+
+                $version = $existingCount + 1;
+                $name = "KH {$typeName} T{$month}/{$year} (lần {$version})";
 
                 if (!$schedules) {
                         $schedules = $this->fetchAllSchedules($startDate, $endDate, $type);
@@ -232,6 +242,7 @@ class MaintenancePlanController extends Controller
                         $planListId = DB::table('plan_list')->insertGetId([
                                 'name' => $name,
                                 'month' => $month,
+                                'year' => $year,
                                 'type' => 0,
                                 'send' => false,
                                 'deparment_code' => $departmentCode,
@@ -240,18 +251,24 @@ class MaintenancePlanController extends Controller
                         ]);
 
                         // 3. Map Inst_ID → quota_maintenance
-                        $instIds = $schedules->pluck('Inst_ID')->unique()->toArray();
+                        $instIds = $schedules->pluck('Inst_ID')->map(fn($id) => trim($id))->unique()->toArray();
                         $query = DB::table('quota_maintenance')
                                 ->whereIn('inst_id', $instIds)
                                 ->where('active', 1)
-                                ->where('deparment_code', $departmentCode);
+                                ->where(function ($q) use ($departmentCode) {
+                                        $q->where('deparment_code', $departmentCode)
+                                                ->orWhereNull('deparment_code')
+                                                ->orWhere('deparment_code', '');
+                                });
 
                         // Lọc theo prefix block HC, BT, TI
                         if ($type && isset($type_prefix[$type])) {
                                 $query->where('block', 'like', $type_prefix[$type] . '-%');
                         }
 
-                        $quotas = $query->get()->keyBy('inst_id');
+                        $quotas = $query->get()->mapWithKeys(function ($item) {
+                                return [trim($item->inst_id) => $item];
+                        });
 
                         // 4. Insert plan_master + plan_master_history
                         $now = now();
@@ -559,7 +576,6 @@ class MaintenancePlanController extends Controller
                 }
         }
 
-
         public function history(Request $request)
         {
                 $histories = DB::table('plan_master_history')
@@ -671,60 +687,167 @@ class MaintenancePlanController extends Controller
 
         public function update(Request $request)
         {
-                //dd ($request->all());
-                $validator = Validator::make($request->all(), [
-                        'expected_date' => 'required',
-                ], [
-                        'expected_date.required' => 'Vui lòng chọn ngày dự kiến KCS',
-                ]);
+                $offDays = DB::table('off_days')
+                        ->whereDate('off_date', '>=', now())
+                        ->pluck('off_date')
+                        ->toArray();
 
-                if ($validator->fails()) {
-                        return redirect()->back()->withErrors($validator, 'update_Errors')->withInput();
+                $changes = $request->input('changes', []);
+
+                DB::beginTransaction();
+                try {
+                        // Nếu gửi lẻ (từ form modal của bảng kế hoạch)
+                        if (empty($changes) && $request->expected_date) {
+                                $codes = explode(',', $request->code);
+                                $codes = array_map('trim', $codes);
+                                $ids = DB::table('quota_maintenance')->whereIn('inst_id', $codes)->pluck('id')->toArray();
+
+                                $pmQuery = DB::table('plan_master');
+                                if ($request->id) {
+                                        $pmQuery->where('id', $request->id);
+                                } else {
+                                        $pmQuery->whereIn('product_caterogy_id', $ids);
+                                        if ($request->plan_list_id) {
+                                                $pmQuery->where('plan_list_id', $request->plan_list_id);
+                                        }
+                                }
+                                $targetPlans = $pmQuery->get();
+                                
+                                foreach ($targetPlans as $plan) {
+                                        $changes[] = [
+                                                'id' => $plan->id, // Giả định id này sẽ được xử lý phía dưới
+                                                'is_pm' => true,   // Đánh dấu đây là plan_master ID
+                                                'expected_date' => $request->expected_date,
+                                                'note' => $request->note,
+                                                'reason' => $request->reason
+                                        ];
+                                }
+                        }
+
+                        foreach ($changes as $change) {
+                                // Xử lý reason nếu có yêu cầu lưu
+                                if (isset($request->reason['saveReason']) && $request->reason['saveReason']) {
+                                        DB::table('reason')->updateOrInsert(
+                                                [
+                                                        'name' => $request->reason['reason'],
+                                                        'deparment_code' => session('user')['production_code']
+                                                ],
+                                                [
+                                                        'created_by' => session('user')['fullName'],
+                                                        'created_at' => now(),
+                                                ]
+                                        );
+                                }
+
+                                // Xác định ID và loại (nếu từ calendar gửi về dạng "ID-type")
+                                $idRaw = is_array($change) ? ($change['id'] ?? null) : null;
+                                if (!$idRaw) continue;
+
+                                $idParts = explode('-', $idRaw);
+                                $realIds = explode(',', $idParts[0]);
+                                
+                                // Nếu là cập nhật từ Calendar (stage_plan)
+                                if (!isset($change['is_pm']) && strpos($idRaw, 'maintenance') === false) {
+                                        // Tính toán ngày nhận (tham khảo SchedualController stage 1/2)
+                                        $newStart = \Carbon\Carbon::parse($change['start']);
+                                        $receiveDate = $newStart->copy()->subDay();
+                                        while (in_array($receiveDate->toDateString(), $offDays)) {
+                                                $receiveDate->subDay();
+                                        }
+
+                                        // Cập nhật stage_plan
+                                        DB::table('stage_plan')
+                                                ->whereIn('id', $realIds)
+                                                ->update([
+                                                        'start' => $change['start'],
+                                                        'end' => $change['end'],
+                                                        'resourceId' => $change['resourceId'],
+                                                        'receive_packaging_date' => $receiveDate,
+                                                        'receive_second_packaging_date' => $receiveDate,
+                                                        'schedualed_by' => session('user')['fullName'],
+                                                        'schedualed_at' => now(),
+                                                ]);
+
+                                        // Đồng bộ ngược về plan_master
+                                        $pmIds = DB::table('stage_plan')->whereIn('id', $realIds)->pluck('plan_master_id')->unique()->toArray();
+                                        foreach ($pmIds as $pmId) {
+                                                $this->syncAndLogPlanMaster($pmId, $newStart->format('Y-m-d'), $request->reason['reason'] ?? "Cập nhật từ lịch");
+                                        }
+                                } 
+                                // Nếu là cập nhật trực tiếp plan_master (từ bảng hoặc sync)
+                                else {
+                                        $expectedDate = $change['expected_date'] ?? \Carbon\Carbon::parse($change['start'] ?? now())->format('Y-m-d');
+                                        $note = $change['note'] ?? ($request->note ?? "NA");
+                                        
+                                        foreach ($realIds as $pmId) {
+                                                DB::table('plan_master')->where('id', $pmId)->update([
+                                                        'expected_date' => $expectedDate,
+                                                        'note' => $note,
+                                                        'updated_at' => now()
+                                                ]);
+
+                                                // Đồng bộ xuôi tới stage_plan
+                                                $stagePlans = DB::table('stage_plan')->where('plan_master_id', $pmId)->get();
+                                                foreach ($stagePlans as $sp) {
+                                                        if ($sp->start) {
+                                                                $newD = \Carbon\Carbon::parse($expectedDate);
+                                                                $newS = \Carbon\Carbon::parse($sp->start)->setDate($newD->year, $newD->month, $newD->day);
+                                                                $newE = \Carbon\Carbon::parse($sp->end)->setDate($newD->year, $newD->month, $newD->day);
+
+                                                                DB::table('stage_plan')->where('id', $sp->id)->update([
+                                                                        'start' => $newS,
+                                                                        'end' => $newE,
+                                                                        'updated_at' => now()
+                                                                ]);
+                                                        }
+                                                }
+
+                                                $this->syncAndLogPlanMaster($pmId, $expectedDate, $request->reason['reason'] ?? ($request->reason ?? "Cập nhật kế hoạch"), $note);
+                                        }
+                                }
+                        }
+                        DB::commit();
+                } catch (\Exception $e) {
+                        DB::rollBack();
+                        Log::error('Lỗi update MaintenancePlan:', ['error' => $e->getMessage()]);
+                        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
                 }
-                $ids = DB::table('quota_maintenance')->where('inst_id', $request->code)->pluck('id')->toArray();
 
-                // Update dữ liệu chính
-                DB::table('plan_master')->whereIn('product_caterogy_id', $ids)->update([
-                        "expected_date" => $request->expected_date,
-                        "note" => $request->note ?? "NA",
-                        'prepared_by' => session('user')['fullName'],
-                        'updated_at' => now(),
-                ]);
-
-                // Lấy dữ liệu gốc từ plan_master
-                $plans = DB::table('plan_master')
-                        ->whereIn('product_caterogy_id', $ids)
-                        ->get();
-
-
-                foreach ($plans as $plan) {
-                        $lastVersion = DB::table('plan_master_history')
-                                ->where('plan_master_id', $plan->id)
-                                ->max('version');
-
-                        $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-
-                        DB::table('plan_master_history')->insert([
-                                'plan_master_id'     => $plan->id,
-                                'plan_list_id'       => $plan->plan_list_id,
-                                'product_caterogy_id' => $plan->product_caterogy_id,
-                                'version'            => $newVersion,
-                                'level'              => 1,
-                                'batch'              => "NA",
-                                'expected_date'      => $request->expected_date,
-                                'is_val'             => 0,
-                                'percent_parkaging'  => 1,
-                                'only_parkaging'     => 0,
-                                'note'               => $request->note,
-                                'reason'             => $request->reason ?? "NA",
-                                'deparment_code'     => session('user')['production_code'],
-                                'prepared_by'        => session('user')['fullName'],
-                                'created_at'         => now(),
-                                'updated_at'         => now(),
+                if ($request->ajax() || $request->wantsJson()) {
+                        $production = session('user')['production_code'];
+                        // Lấy lại dữ liệu để cập nhật UI calendar nếu cần
+                        return response()->json([
+                                'success' => true,
+                                'message' => 'Cập nhật thành công và đồng bộ hóa!',
                         ]);
                 }
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
+        }
+
+        private function syncAndLogPlanMaster($pmId, $newDate, $reason, $note = null)
+        {
+                $pm = DB::table('plan_master')->where('id', $pmId)->first();
+                if (!$pm) return;
+
+                $lastVersion = DB::table('plan_master_history')
+                        ->where('plan_master_id', $pmId)
+                        ->max('version') ?? 0;
+
+                DB::table('plan_master_history')->insert([
+                        'plan_master_id'     => $pm->id,
+                        'plan_list_id'       => $pm->plan_list_id,
+                        'product_caterogy_id' => $pm->product_caterogy_id,
+                        'version'            => $lastVersion + 1,
+                        'batch'              => $pm->batch,
+                        'expected_date'      => $newDate,
+                        'note'               => $note ?? $pm->note,
+                        'reason'             => $reason,
+                        'deparment_code'     => session('user')['production_code'],
+                        'prepared_by'        => session('user')['fullName'],
+                        'created_at'         => now(),
+                        'updated_at'         => now(),
+                ]);
         }
 
         public function send(Request $request)
