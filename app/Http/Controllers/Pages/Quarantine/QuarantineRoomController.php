@@ -118,6 +118,7 @@ class QuarantineRoomController extends Controller
         ini_set('display_errors', 1);
         ini_set('display_startup_errors', 1);
         error_reporting(E_ALL);
+
         try {
             // 1) Truy vấn 1 lần duy nhất toàn bộ dữ liệu cần thiết cho cả 2 phần
             // Tối ưu: Loại bỏ COALESCE trong WHERE để MySQL dùng được Index
@@ -170,6 +171,7 @@ class QuarantineRoomController extends Controller
                 )
                 ->get();
 
+
             // 2) Group theo phòng Biệt Trữ (Dùng cho bảng Details)
             // Chỉ lấy những dòng có quarantine_room_code
             $datas = $datasRaw->whereNotNull('quarantine_room_code')
@@ -201,7 +203,7 @@ class QuarantineRoomController extends Controller
 
 
             session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
-
+            dd($datas);
             return view('pages.quarantine.actual.list', [
                 'datas' => $datas,
                 'sum_by_next_room' => $sum_by_next_room,
