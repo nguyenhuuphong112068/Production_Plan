@@ -38,9 +38,6 @@
                     <button class="btn btn-primary" onclick="window.print()">
                         <i class="fas fa-print"></i> In Báo Cáo
                     </button>
-                    <button class="btn btn-secondary" onclick="toggleAllStages()">
-                        <i class="fas fa-arrows-alt-v"></i> Thu/Phóng Tất Cả
-                    </button>
                 </div>
             </div>
 
@@ -119,8 +116,11 @@
                                                             @php
                                                                 $start = \Carbon\Carbon::parse($e->planned_start);
                                                                 $end = \Carbon\Carbon::parse($e->planned_end);
-                                                                $hours = $start->diffInHours($end);
-                                                                $mins = $start->diffInMinutes($end) % 60;
+                                                                
+                                                                $totalMins = $start->diffInMinutes($end);
+                                                                $hours = (int)($totalMins / 60);
+                                                                $mins = $totalMins % 60;
+                                                                
                                                                 $typeClass = ($e->type_name == 'Hiệu chuẩn') ? 'badge-primary' : (($e->type_name == 'Tiện ích') ? 'badge-info' : 'badge-secondary');
                                                             @endphp
                                                             <div class="mb-2 p-1 border-bottom last-child-no-border" style="line-height: 1.3;">
@@ -172,7 +172,7 @@
         .card-header mt-4, .card-tools, #filterForm, .btn-primary, .btn-secondary, .toggle-icon { display: none !important; }
         .content-wrapper { margin: 0 !important; padding: 0 !important; }
         #maintenance_weekly_table { width: 100% !important; font-size: 10px !important; }
-        .stage-header { background-color: #f1f1f1 !important; color: black !important; -webkit-print-color-adjust: exact; }
+        .stage-header { background-color: #d1b400 !important; color: #003a4f !important; -webkit-print-color-adjust: exact; }
     }
 </style>
 
