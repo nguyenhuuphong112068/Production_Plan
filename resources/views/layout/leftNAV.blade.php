@@ -42,6 +42,20 @@
         /* đúng bằng chiều rộng sidebar */
         overflow-y: auto;
     }
+
+    /* Gentle Stella Gold (Semi-transparent rgba) Active State */
+    .nav-pills .nav-link.active,
+    .nav-item.menu-open > .nav-link {
+        background-color: rgba(205, 199, 23, 0.4) !important; /* Vàng Stella mờ nhẹ */
+        color: #003a4f !important; /* Chữ Navy cho rõ nét */
+        border-radius: 4px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    
+    .nav-pills .nav-link.active i,
+    .nav-item.menu-open > .nav-link i {
+        color: #003a4f !important;
+    }
 </style>
 
 <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
@@ -118,8 +132,8 @@
                 </li>
 
                 <!-- Droplist Menu Dữ Liệu Gốc  -->
-                <li class="nav-item has-treeview">
-                    <a href="#" class="nav-link">
+                <li class="nav-item has-treeview {{ str_contains(url()->current(), 'materData') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link {{ str_contains(url()->current(), 'materData') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-database"></i>
                         <p>
                             Dữ Liệu Gốc
@@ -197,8 +211,8 @@
                 </li>
 
                 <!-- Droplist Menu Danh Muc  -->
-                <li class="nav-item has-treeview">
-                    <a href="#" class="nav-link">
+                <li class="nav-item has-treeview {{ str_contains(url()->current(), 'category') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link {{ str_contains(url()->current(), 'category') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-newspaper"></i>
                         <p>
                             Danh Mục
@@ -284,8 +298,8 @@
                 </li>
 
                 <!-- Định Mức  -->
-                <li class="nav-item has-treeview">
-                    <a href="#" class="nav-link">
+                <li class="nav-item has-treeview {{ str_contains(url()->current(), 'quota') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link {{ str_contains(url()->current(), 'quota') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-chart-line"></i>
                         <p>
                             Định Mức
@@ -314,8 +328,8 @@
 
                 <!-- Droplist MMS-->
                 @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
-                    <li class="nav-item has-treeview">
-                        <a href="#" class="nav-link">
+                    <li class="nav-item has-treeview {{ str_contains(url()->current(), 'MMS') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ str_contains(url()->current(), 'MMS') ? 'active' : '' }}">
 
                             <i class="nav-icon fas fa-warehouse"></i>
                             <p>
@@ -353,8 +367,8 @@
                     </li>
                 @endif
                 <!-- Droplist Kế Hoạch-->
-                <li class="nav-item has-treeview">
-                    <a href="#" class="nav-link">
+                <li class="nav-item has-treeview {{ str_contains(url()->current(), 'plan') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link {{ str_contains(url()->current(), 'plan') ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-file-import"></i>
                         <p>
@@ -423,9 +437,9 @@
                 </li>
 
                 <!-- Droplist Menu Lịch SX -->
-                <li class="nav-item has-treeview">
-                    <a href="#" class="nav-link">
-                        <i class="nav-icon fas fa-calendar-alt"></i>
+                <li class="nav-item {{ str_contains(url()->current(), 'weekly-production-schedule') || str_contains(url()->current(), 'Schedual') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link {{ str_contains(url()->current(), 'weekly-production-schedule') || str_contains(url()->current(), 'Schedual') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-industry"></i>
                         <p>
                             Lịch Sản Xuất
                             <i class="right fas fa-angle-left"></i>
@@ -442,7 +456,7 @@
                             </li>
 
                             <li class="nav-item">
-                                <a href="{{ route('pages.report.weekly_production_schedule.index') }}" class="nav-link">
+                                <a href="{{ route('pages.report.weekly_production_schedule.index') }}" class="nav-link {{ str_contains(url()->current(), 'weekly-production-schedule') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p> Lịch Sản Xuất Tuần </p>
                                 </a>
@@ -517,9 +531,9 @@
                 </li>
 
                 @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
-                    <li class="nav-item has-treeview">
-                        <a href="#" class="nav-link">
-                            <i class="nav-icon fas fa-user-check"></i>
+                    <li class="nav-item {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tools"></i>
                             <p>
                                 Lịch BT-HC
                                 <i class="right fas fa-angle-left"></i>
@@ -535,7 +549,7 @@
                             </li>
 
                             <li class="nav-item">
-                                <a href="{{ route('pages.report.maintenance_weekly_report.index') }}" class="nav-link">
+                                <a href="{{ route('pages.report.maintenance_weekly_report.index') }}" class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p> Lịch BT-HC Tuần </p>
                                 </a>
@@ -583,8 +597,8 @@
 
                 <!-- Droplist Menu Báo Cáo  -->
                 @if (user_has_permission(session('user')['userId'], 'layout_daily_report', 'boolean'))
-                    <li class="nav-item has-treeview">
-                        <a href="#" class="nav-link">
+                    <li class="nav-item has-treeview {{ str_contains(url()->current(), 'daily_report') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ str_contains(url()->current(), 'daily_report') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-crosshairs"></i>
                             <p>
                                 Báo Cáo
