@@ -210,52 +210,54 @@ class QuarantineRoomController extends Controller
 
     public function detail(Request $request)
     {
+        try {
+            $detial = DB::table('stage_plan as t')
+                ->leftJoin('stage_plan as t2', function ($join) {
+                    $join->on('t2.code', '=', 't.nextcessor_code');
+                })
+                ->leftJoin('plan_master', 't.plan_master_id', 'plan_master.id')
+                ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
+                ->leftJoin('product_name', 'fc.product_name_id', 'product_name.id')
+                ->leftJoin('quarantine_room', 't.quarantine_room_code', 'quarantine_room.code')
+                ->leftJoin('room', 't.resourceId', 'room.id')
+                ->whereNotNull('t.start')
+                ->whereNotNull('t.yields')
+                ->where('t2.resourceId', $request->room_id)
+                ->where('t.active', 1)
+                ->where('t.finished', 1)
+                ->where('t2.finished', 0)
+                ->where('t.deparment_code', session('user')['production_code'])
+                ->where('t2.deparment_code', session('user')['production_code'])
+                ->where(function ($q) {
+                    $q->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
+                        ->orWhere(function ($q2) {
+                            $q2->whereNull('t2.start')
+                                ->whereNull('t2.actual_start');
+                        });
+                })
+                ->select(
+                    'fc.finished_product_code',
+                    'fc.intermediate_code',
+                    'product_name.name as product_name',
+                    DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
+                    't.quarantine_room_code',
+                    'quarantine_room.name',
+                    't.yields',
+                    't.stage_code',
+                    't2.stage_code as next_stage',
+                    't2.start as next_start',
+                    DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as pre_room"),
+                    'room.production_group as production_group',
+                    'room.stage as stage',
+                    'room.group_code',
 
-
-        $detial = DB::table('stage_plan as t')
-            ->leftJoin('stage_plan as t2', function ($join) {
-                $join->on('t2.code', '=', 't.nextcessor_code');
-            })
-            ->leftJoin('plan_master', 't.plan_master_id', 'plan_master.id')
-            ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
-            ->leftJoin('product_name', 'fc.product_name_id', 'product_name.id')
-            ->leftJoin('quarantine_room', 't.quarantine_room_code', 'quarantine_room.code')
-            ->leftJoin('room', 't.resourceId', 'room.id')
-            ->whereNotNull('t.start')
-            ->whereNotNull('t.yields')
-            ->where('t2.resourceId', $request->room_id)
-            ->where('t.active', 1)
-            ->where('t.finished', 1)
-            ->where('t2.finished', 0)
-            ->where('t.deparment_code', session('user')['production_code'])
-            ->where('t2.deparment_code', session('user')['production_code'])
-            ->where(function ($q) {
-                $q->whereRaw('COALESCE(t2.actual_start, t2.start) > ?', [now()])
-                    ->orWhere(function ($q2) {
-                        $q2->whereNull('t2.start')
-                            ->whereNull('t2.actual_start');
-                    });
-            })
-            ->select(
-                'fc.finished_product_code',
-                'fc.intermediate_code',
-                'product_name.name as product_name',
-                DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
-                't.quarantine_room_code',
-                'quarantine_room.name',
-                't.yields',
-                't.stage_code',
-                't2.stage_code as next_stage',
-                't2.start as next_start',
-                DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as pre_room"),
-                'room.production_group as production_group',
-                'room.stage as stage',
-                'room.group_code',
-
-            )
-            ->orderBy('t.plan_master_id')
-            ->orderBy('t.stage_code')
-            ->get();
-        return response()->json($detial);
+                )
+                ->orderBy('t.plan_master_id')
+                ->orderBy('t.stage_code')
+                ->get();
+            return response()->json($detial);
+        } catch (\Exception $e) {
+            dd($e->getMessage());
+        }
     }
 }
