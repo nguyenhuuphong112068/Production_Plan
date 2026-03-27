@@ -3,8 +3,20 @@
     <div class="card">
 
         <div class="card-header mt-4">
-            {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-
+            <form action="{{ route('pages.AuditTrail.list') }}" method="GET">
+                <div class="row align-items-end">
+                    <div class="col-md-3">
+                        <label for="startDate">Từ ngày</label>
+                        <input type="date" name="startDate" id="startDate" class="form-control"
+                            value="{{ $startDate }}" onchange="this.form.submit()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="endDate">Đến ngày</label>
+                        <input type="date" name="endDate" id="endDate" class="form-control"
+                            value="{{ $endDate }}" onchange="this.form.submit()">
+                    </div>
+                </div>
+            </form>
         </div>
 
         <!-- /.card-Body -->
