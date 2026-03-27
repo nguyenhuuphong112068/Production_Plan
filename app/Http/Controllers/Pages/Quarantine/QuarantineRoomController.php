@@ -115,6 +115,9 @@ class QuarantineRoomController extends Controller
 
     public function index_actual(Request $request)
     {
+        ini_set('display_errors', 1);
+        ini_set('display_startup_errors', 1);
+        error_reporting(E_ALL);
         try {
             // 1) Truy vấn 1 lần duy nhất toàn bộ dữ liệu cần thiết cho cả 2 phần
             // Tối ưu: Loại bỏ COALESCE trong WHERE để MySQL dùng được Index
