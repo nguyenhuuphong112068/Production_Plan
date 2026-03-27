@@ -49,8 +49,6 @@ class QuarantineRoomController extends Controller
                 't.theoretical_yields',
                 't.nextcessor_code',
                 't.start',
-
-
                 't2.start as next_start'
             )
             ->orderBy('t.plan_master_id')
@@ -80,10 +78,7 @@ class QuarantineRoomController extends Controller
 
         foreach ($results as $timePoint => $stages) {
             foreach ($stages as $stageCode => $entries) {
-                // Tính tổng theoretical_stock cho stage_code này
                 $sum = collect($entries)->sum('theoretical_stock');
-
-                // Lưu kết quả
                 $totals[$stageCode][$timePoint] = $sum;
             }
         }
@@ -95,13 +90,12 @@ class QuarantineRoomController extends Controller
                 $stageTimeSeries[$stageCode][] = [
                     'stage_code'   => $stageCode,
                     'time_point'   => $timePoint,
-                    'room_id'      => 0, // giả lập vì không có room
-                    'room_name'    => 'Tổng tồn', // tên hiển thị trên legend
+                    'room_id'      => 0,
+                    'room_name'    => 'Tổng tồn',
                     'total_stock'  => $value,
                 ];
             }
         }
-
 
         session()->put(['title' => 'TỒN BÁN THÀNH PHẨM THEO CÔNG ĐOẠN']);
 
@@ -115,13 +109,8 @@ class QuarantineRoomController extends Controller
 
     public function index_actual(Request $request)
     {
-        ini_set('display_errors', 1);
-        ini_set('display_startup_errors', 1);
-        error_reporting(E_ALL);
-
         try {
             // 1) Truy vấn 1 lần duy nhất toàn bộ dữ liệu cần thiết cho cả 2 phần
-            // Tối ưu: Loại bỏ COALESCE trong WHERE để MySQL dùng được Index
             $datasRaw = DB::table('stage_plan as t')
                 ->leftJoin('stage_plan as t2', 't2.code', '=', 't.nextcessor_code')
                 ->leftJoin('plan_master', 't.plan_master_id', '=', 'plan_master.id')
@@ -171,9 +160,7 @@ class QuarantineRoomController extends Controller
                 )
                 ->get();
 
-
             // 2) Group theo phòng Biệt Trữ (Dùng cho bảng Details)
-            // Chỉ lấy những dòng có quarantine_room_code
             $datas = $datasRaw->whereNotNull('quarantine_room_code')
                 ->groupBy('quarantine_room_code')
                 ->map(function ($items) {
@@ -184,7 +171,7 @@ class QuarantineRoomController extends Controller
                     ];
                 });
 
-            // 3) Tổng hợp theo Phòng Kế Tiếp (Sử dụng Collection để tính toán trong RAM - cực nhanh)
+            // 3) Tổng hợp theo Phòng Kế Tiếp
             $sum_by_next_room = $datasRaw->filter(fn($r) => !empty($r->next_room))
                 ->groupBy('next_room')
                 ->map(function ($items) {
@@ -193,17 +180,16 @@ class QuarantineRoomController extends Controller
                         'next_room' => $items->first()->next_room,
                         'production_group' => $items->first()->production_group,
                         'stage' => $items->first()->stage,
-                        'next_stage' => $items->first()->next_stage, // Lấy stage code của phòng kế tiếp
+                        'stage_code' => $items->first()->next_stage,
                         'group_code' => $items->first()->group_code,
                         'room_id' => $items->first()->next_room_id,
                     ];
                 })
-                ->sortBy('next_stage')
+                ->sortBy('stage_code')
                 ->values();
 
-
             session()->put(['title' => 'QUẢN LÝ BIỆT TRỮ']);
-            dd($datas);
+
             return view('pages.quarantine.actual.list', [
                 'datas' => $datas,
                 'sum_by_next_room' => $sum_by_next_room,
@@ -255,7 +241,6 @@ class QuarantineRoomController extends Controller
                     'room.production_group as production_group',
                     'room.stage as stage',
                     'room.group_code',
-
                 )
                 ->orderBy('t.plan_master_id')
                 ->orderBy('t.stage_code')
