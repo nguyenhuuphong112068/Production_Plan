@@ -538,40 +538,40 @@
                     </ul>
                 </li>
 
-                @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
-                    <li
-                        class="nav-item {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'menu-open' : '' }}">
-                        <a href="#"
-                            class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-tools"></i>
-                            <p>
-                                Lịch BT-HC
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
-                        </a>
 
-                        <ul class="nav nav-treeview">
-                            <li class="nav-item">
-                                <a href="/maintenance-calendar" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p> Lịch BT-HC Chart </p>
-                                </a>
-                            </li>
+                <li
+                    class="nav-item {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'menu-open' : '' }}">
+                    <a href="#"
+                        class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-tools"></i>
+                        <p>
+                            Lịch BT-HC
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
 
-                            <li class="nav-item">
-                                <a href="{{ route('pages.report.maintenance_weekly_report.index') }}"
-                                    class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') ? 'active' : '' }}">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p> Lịch BT-HC Tuần </p>
-                                </a>
-                            </li>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="/maintenance-calendar" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p> Lịch BT-HC Chart </p>
+                            </a>
+                        </li>
 
-
+                        <li class="nav-item">
+                            <a href="{{ route('pages.report.maintenance_weekly_report.index') }}"
+                                class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') ? 'active' : '' }}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p> Lịch BT-HC Tuần </p>
+                            </a>
+                        </li>
 
 
-                        </ul>
-                    </li>
-                @endif
+
+
+                    </ul>
+                </li>
+
 
                 <!-- Droplist ABCD -->
                 {{-- @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
