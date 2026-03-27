@@ -81,11 +81,14 @@ Route::get('/maintenance-calendar/{any?}', [MaintenanceSchedualController::class
 
 Route::prefix('/MaintenanceSchedual')
         ->controller(MaintenanceSchedualController::class)
+        ->name('pages.schedual.maintenance.')
         ->middleware(CheckLogin::class)
         ->group(function () {
-                Route::post('view', 'view');
+                Route::post('view', 'view')->name('view');
                 Route::put('store', 'store')->name('store');
+                Route::put('update', 'update')->name('update');
                 Route::put('deActive', 'deActive')->name('deActive');
+                Route::post('syncExternal', 'syncExternal')->name('syncExternal');
         });
 
 

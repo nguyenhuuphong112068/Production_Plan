@@ -434,12 +434,19 @@
 
                     <ul class="nav nav-treeview">
 
-                        <li class="nav-item">
-                            <a href="/Schedual" class="nav-link">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p> Lịch Sản Xuất </p>
-                            </a>
-                        </li>
+                            <li class="nav-item">
+                                <a href="/Schedual" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p> Lịch Sản Xuất Chart</p>
+                                </a>
+                            </li>
+
+                            <li class="nav-item">
+                                <a href="{{ route('pages.report.weekly_production_schedule.index') }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p> Lịch Sản Xuất Tuần </p>
+                                </a>
+                            </li>
 
                         @if (user_has_permission(session('user')['userId'], 'layout_report', 'boolean'))
                             <li class="nav-item">
@@ -499,13 +506,12 @@
                                     <p>Xác Nhận Hoàn Thành</p>
                                 </a>
                             </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.Schedual.quarantine_room.index') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Xác Định Phòng BT</p>
-                                </a>
-                            </li>
+                        <li class="nav-item">
+                            <a href="{{ route('pages.Schedual.quarantine_room.index') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Xác Định Phòng BT</p>
+                            </a>
+                        </li>
                         @endif
                     </ul>
                 </li>
@@ -515,7 +521,7 @@
                         <a href="#" class="nav-link">
                             <i class="nav-icon fas fa-user-check"></i>
                             <p>
-                                Lịch BT - HC
+                                Lịch BT-HC
                                 <i class="right fas fa-angle-left"></i>
                             </p>
                         </a>
@@ -524,9 +530,17 @@
                             <li class="nav-item">
                                 <a href="/maintenance-calendar" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
-                                    <p> Lịch BT - HC </p>
+                                    <p> Lịch BT-HC Chart </p>
                                 </a>
                             </li>
+
+                            <li class="nav-item">
+                                <a href="{{ route('pages.report.maintenance_weekly_report.index') }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p> Lịch BT-HC Tuần </p>
+                                </a>
+                            </li>
+
 
 
 
@@ -582,7 +596,14 @@
                             <li class="nav-item">
                                 <a href="{{ route('pages.report.daily_report.index') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
-                                    <p> Báo Cáo Ngày </p>
+                                    <p> Báo Cáo Ngày SX </p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('pages.report.maintenance_daily_report.index') }}"
+                                    class="nav-link">
+                                    <i class="far fa-circle nav-icon text-warning"></i>
+                                    <p> Báo Cáo Ngày BT </p>
                                 </a>
                             </li>
                             @if (user_has_permission(session('user')['userId'], 'layout_weekly_report', 'boolean'))

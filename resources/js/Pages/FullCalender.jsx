@@ -2116,7 +2116,7 @@ const ScheduleTest = () => {
 
   const finisedEvent = (dropInfo, draggedEvent) => {
 
-    if (draggedEvent._def.ui.backgroundColor == "#002af9ff") {
+    if (draggedEvent._def.ui.backgroundColor == "#002af9ff" || draggedEvent._def.extendedProps.stage_code == 8) {
       return false;
     }
 
@@ -3067,9 +3067,9 @@ const ScheduleTest = () => {
                   : "none";
               });
 
-               selectedEventsRef.current = merged;
-               return merged;
-             });
+              selectedEventsRef.current = merged;
+              return merged;
+            });
           }}
         />
       )}

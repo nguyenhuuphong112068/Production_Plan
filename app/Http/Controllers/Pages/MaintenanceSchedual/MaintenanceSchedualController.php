@@ -373,11 +373,18 @@ class MaintenanceSchedualController extends SchedualController
 
     public function update(Request $request)
     {
+
+
         $changes = $request->input('changes', []);
         $this->theory = (int)$request->theory ?? 0;
 
         DB::beginTransaction();
         try {
+            $offDays = DB::table('off_days')
+                ->whereDate('off_date', '>=', now())
+                ->pluck('off_date')
+                ->toArray();
+
             foreach ($changes as $change) {
                 $idParts = explode('-', $change['id']);
                 $realIdRaw = $idParts[0] ?? null;
@@ -386,19 +393,116 @@ class MaintenanceSchedualController extends SchedualController
 
                 $ids = explode(',', $realIdRaw);
 
-                // Cập nhật tất cả bản ghi trong nhóm
-                DB::table('stage_plan')
-                    ->whereIn('id', $ids)
-                    ->update([
-                        'start'           => $change['start'],
-                        'end'             => $change['end'],
-                        'resourceId'      => $change['resourceId'],
-                        'schedualed_by'   => session('user')['fullName'],
-                        'schedualed_at'   => now(),
+                // Tính toán ngày nhận (tham khảo SchedualController stage 1/2)
+                $newStart = \Carbon\Carbon::parse($change['start']);
+                $receiveDate = $newStart->copy()->subDay();
+                while (in_array($receiveDate->toDateString(), $offDays)) {
+                    $receiveDate->subDay();
+                }
+
+                // KIỂM TRA TI: Nếu là TI, ta tác động lên toàn bộ stage_plan có cùng code
+                $sourceStagePlans = DB::table('stage_plan')->whereIn('id', $ids)->get();
+                $codes = $sourceStagePlans->pluck('code')->filter()->unique()->toArray();
+                $allAffectedIds = $ids;
+
+                $isTI = DB::table('plan_master')
+                    ->join('quota_maintenance', 'plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
+                    ->whereIn('plan_master.id', $sourceStagePlans->pluck('plan_master_id')->unique()->toArray())
+                    ->where('quota_maintenance.block', 'like', 'TI-%')
+                    ->exists();
+
+                if ($isTI && !empty($codes)) {
+                    // 1. Cập nhật các bản ghi gốc (cả thời gian và resourceId)
+                    DB::table('stage_plan')
+                        ->whereIn('id', $ids)
+                        ->update([
+                            'start'           => $change['start'],
+                            'end'             => $change['end'],
+                            'resourceId'      => $change['resourceId'],
+                            'receive_packaging_date' => $receiveDate,
+                            'receive_second_packaging_date' => $receiveDate,
+                            'schedualed_by'   => session('user')['fullName'],
+                            'schedualed_at'   => now(),
+                        ]);
+
+                    // 2. Tìm các bản ghi liên đới cùng code nhưng khác ID gốc
+                    $otherIds = DB::table('stage_plan')
+                        ->whereIn('code', $codes)
+                        ->whereNotIn('id', $ids)
+                        ->pluck('id')->toArray();
+
+                    if (!empty($otherIds)) {
+                        DB::table('stage_plan')
+                            ->whereIn('id', $otherIds)
+                            ->update([
+                                'start'           => $change['start'],
+                                'end'             => $change['end'],
+                                // KHÔNG thay đổi resourceId cho các bản ghi liên đới
+                                'receive_packaging_date' => $receiveDate,
+                                'receive_second_packaging_date' => $receiveDate,
+                                'schedualed_by'   => session('user')['fullName'],
+                                'schedualed_at'   => now(),
+                            ]);
+                    }
+                    $allAffectedIds = array_unique(array_merge($ids, $otherIds));
+                } else {
+                    // Logic cũ cho Non-TI: Cập nhật tất cả bản ghi được xác định (bao gồm resourceId)
+                    DB::table('stage_plan')
+                        ->whereIn('id', $allAffectedIds)
+                        ->update([
+                            'start'           => $change['start'],
+                            'end'             => $change['end'],
+                            'resourceId'      => $change['resourceId'],
+                            'receive_packaging_date' => $receiveDate,
+                            'receive_second_packaging_date' => $receiveDate,
+                            'schedualed_by'   => session('user')['fullName'],
+                            'schedualed_at'   => now(),
+                        ]);
+                }
+
+                // ĐỒNG BỘ NGƯỢC: Cập nhật expected_date trong plan_master
+                $newDate = $newStart->format('Y-m-d');
+                $planMasterIds = DB::table('stage_plan')
+                    ->whereIn('id', $allAffectedIds)
+                    ->whereNotNull('plan_master_id')
+                    ->pluck('plan_master_id')
+                    ->unique()
+                    ->toArray();
+
+                if (!empty($planMasterIds)) {
+                    DB::table('plan_master')->whereIn('id', $planMasterIds)->update([
+                        'expected_date' => $newDate,
+                        'updated_at' => now()
                     ]);
 
-                // Ghi lịch sử cho từng thiết bị nếu đã submit
-                foreach ($ids as $id) {
+                    // Ghi lịch sử cho plan_master
+                    foreach ($planMasterIds as $pmId) {
+                        if (!$pmId) continue;
+                        $pm = DB::table('plan_master')->where('id', $pmId)->first();
+
+                        if ($pm) {
+                            $lastVersion = DB::table('plan_master_history')->where('plan_master_id', $pmId)->max('version') ?? 0;
+
+                            DB::table('plan_master_history')->insert([
+                                'plan_master_id' => $pmId,
+                                'plan_list_id' => $pm->plan_list_id,
+                                'product_caterogy_id' => $pm->product_caterogy_id,
+                                'version' => $lastVersion + 1,
+                                'batch' => $pm->batch,
+                                'expected_date' => $newDate,
+                                'note' => $pm->note,
+                                'reason' => $request->reason['reason'] ?? "Cập nhật từ lịch bảo trì",
+                                'deparment_code' => session('user')['production_code'],
+                                'prepared_by' => session('user')['fullName'],
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                    }
+                }
+
+                // Ghi lịch sử cho từng thiết bị nếu đã submit (stage_plan_history)
+                foreach ($allAffectedIds as $id) {
                     $row = DB::table('stage_plan')->where('id', $id)->first();
                     if ($row && $row->submit == 1) {
                         $last_version = DB::table('stage_plan_history')
@@ -433,10 +537,13 @@ class MaintenanceSchedualController extends SchedualController
         $plan_waiting = $this->getPlanWaiting($production);
         $resources = parent::getResources($production, $request->startDate, $request->endDate);
 
+        $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+
         return response()->json([
             'events' => $events,
             'plan' => $plan_waiting,
             'resources' => $resources,
+            'sumBatchByStage' => $sumBatchByStage,
         ]);
     }
 
@@ -448,15 +555,28 @@ class MaintenanceSchedualController extends SchedualController
         try {
 
             foreach ($items as $item) {
-                $rowId = explode('-', $item['id'])[0];   // lấy id trước dấu -
+                $rowIdStr = explode('-', $item['id'])[0];   // lấy id trước dấu -
                 $stageCode = $item['stage_code'];
+                $ids = explode(',', $rowIdStr);
+
+                // KIỂM TRA TI: Nếu là TI, tác động lên toàn bộ stage_plan có cùng code
+                $sourceStagePlans = DB::table('stage_plan')->whereIn('id', $ids)->get();
+                $codes = $sourceStagePlans->pluck('code')->filter()->unique()->toArray();
+                $allAffectedIds = $ids;
+
+                $isTI = DB::table('plan_master')
+                    ->join('quota_maintenance', 'plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
+                    ->whereIn('plan_master.id', $sourceStagePlans->pluck('plan_master_id')->unique()->toArray())
+                    ->where('quota_maintenance.block', 'like', 'TI-%')
+                    ->exists();
+
+                if ($isTI && !empty($codes)) {
+                    $allAffectedIds = DB::table('stage_plan')->whereIn('code', $codes)->pluck('id')->toArray();
+                }
 
                 if ($stageCode <= 2 || $stageCode >= 8) {
-                    // chỉ cóa cân k xóa các công đoạn khác
-
-
                     DB::table('stage_plan')
-                        ->whereIn('id', explode(',', $rowId))
+                        ->whereIn('id', $allAffectedIds)
                         ->where('finished', 0)
                         ->where('stage_code', '=', $stageCode)
                         ->update([
@@ -474,10 +594,7 @@ class MaintenanceSchedualController extends SchedualController
                             'schedualed_at'    => now(),
                         ]);
                 } else {
-
-                    $ids = explode(',', $rowId);
-                    $plan = DB::table('stage_plan')->where('id', $ids[0])->first();
-
+                    $plan = $sourceStagePlans->first();
                     DB::table('stage_plan')
                         ->where('finished', 0)
                         ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)
@@ -539,11 +656,15 @@ class MaintenanceSchedualController extends SchedualController
             $first = clone $first; // Tránh làm thay đổi object gốc nếu cần
 
             if ($group->count() > 1) {
-                // Gom tất cả ID lại để xử lý xóa/sửa sau này
-                $allIds = $group->pluck('id')->toArray();
-                $first->id = implode(',', $allIds);
+                // Gom tất cả ID lại (chỉ lấy phần số thực tế trước dấu gạch nối)
+                $allIds = $group->pluck('id')->map(function ($id) {
+                    return explode('-', $id)[0];
+                })->toArray();
 
-                // Gom tiêu đề các thiết bị (lấy phần cuối sau dấu -)
+                // Nối lại bằng dấu phẩy và thêm hậu tố chung để hàm update bóc tách chính xác
+                $first->id = implode(',', $allIds) . '-maintenance';
+
+                // Gom tiêu đề các thiết bị
                 $allTitles = $group->pluck('title')->unique()->map(function ($t) {
                     $parts = explode(' - ', $t);
                     return count($parts) > 1 ? end($parts) : $t;
@@ -554,5 +675,91 @@ class MaintenanceSchedualController extends SchedualController
         })->values();
 
         return $productionEvents->concat($groupedMaintenance)->values();
+    }
+
+    public function syncExternal(Request $request)
+    {
+        $production = session('user')['production_code'];
+        $connections = ['cal1', 'cal2'];
+        $suffixes = [1, 2, 3];
+        $count = 0;
+
+        // 1. Tìm các stage_plan bảo trì chưa xong (finished = 0)
+        $pendingPlans = DB::table('stage_plan as sp')
+            ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            ->where('sp.stage_code', 8)
+            ->where('sp.finished', 0)
+            ->where('sp.deparment_code', $production)
+            ->whereNotNull('pm.batch')
+            ->select('sp.id as sp_id', 'pm.batch as sch_ids')
+            ->get();
+
+        if ($pendingPlans->isEmpty()) {
+            return response()->json(['success' => true, 'message' => 'Không có lịch bảo trì nào cần đồng bộ.', 'count' => 0]);
+        }
+
+        // Tạo map SCH_ID -> danh sách stage_plan id liên quan
+        $schIdMap = [];
+        foreach ($pendingPlans as $p) {
+            $ids = explode(',', $p->sch_ids);
+            foreach ($ids as $id) {
+                $schIdMap[trim($id)][] = $p->sp_id;
+            }
+        }
+
+        $allSchIds = array_keys($schIdMap);
+
+        DB::beginTransaction();
+        try {
+            foreach ($connections as $conn) {
+                foreach ($suffixes as $suffix) {
+                    try {
+                        $remoteResults = DB::connection($conn)
+                            ->table("Schedule_Master_{$suffix}")
+                            ->whereIn('SCH_ID', $allSchIds)
+                            ->where('sch_ap_sts', 1) 
+                            ->get();
+
+                        foreach ($remoteResults as $res) {
+                            $schId = (string)$res->SCH_ID;
+                            if (isset($schIdMap[$schId])) {
+                                foreach ($schIdMap[$schId] as $spId) {
+                                    // Map Sch_Result_Status to yields (Pass=1, Fail=0, Skip=2)
+                                    $yield = 1; 
+                                    $statusRaw = trim($res->Sch_Result_Status ?? 'Pass');
+                                    if ($statusRaw == 'Fail') $yield = 0;
+                                    elseif ($statusRaw == 'Skip') $yield = 2;
+
+                                    // Cập nhật stage_plan thực tế
+                                    DB::table('stage_plan')->where('id', $spId)->where('finished', 0)->update([
+                                        'actual_start' => $res->Sch_caldone_to,
+                                        'actual_end'   => $res->Sch_caldone_to,
+                                        'finished_by'  => $res->Sch_cal_Done_by ?? null,
+                                        'finished'     => 1,
+                                        'yields'       => $yield,
+                                        'updated_at'   => now()
+                                    ]);
+                                    $count++;
+                                }
+                                unset($schIdMap[$schId]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // Skip if table or connection not available
+                    }
+                }
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Lỗi sync bảo trì:', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Lỗi đồng bộ: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã đồng bộ thành công {$count} lệnh bảo trì.",
+            'count' => $count
+        ]);
     }
 }

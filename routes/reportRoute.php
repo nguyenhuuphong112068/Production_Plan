@@ -47,5 +47,24 @@ use Illuminate\Support\Facades\Route;
             Route::get('','index')->name('index');
     });
 
+    Route::prefix('/report/maintenance_daily_report')
+        ->controller(App\Http\Controllers\Pages\Report\MaintenanceDailyReportController::class)
+        ->name('pages.report.maintenance_daily_report.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+        });
 
+    Route::prefix('/weekly-maintenance-report')
+        ->controller(App\Http\Controllers\Pages\Report\MaintenanceWeeklyReportController::class)
+        ->name('pages.report.maintenance_weekly_report.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+        });
+
+    Route::prefix('/weekly-production-schedule')
+        ->controller(App\Http\Controllers\Pages\Report\WeeklyProductionScheduleController::class)
+        ->name('pages.report.weekly_production_schedule.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+        });
 ?>

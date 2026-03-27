@@ -70,22 +70,44 @@ class MaintenanceCategoryController extends Controller
                 // Lấy danh sách định mức hiện có
                 $quota_maintenance = DB::table('quota_maintenance')->get();
                 $existing_lookup = $quota_maintenance->mapWithKeys(function ($q) {
-                        return [$q->inst_id . '_' . $q->block => true];
+                        return [$q->inst_id . '_' . $q->block => $q];
                 })->toArray();
 
-                // Kiểm tra và tạo mới định mức
+                // Kiểm tra và tạo mới hoặc cập nhật Eqp_name cho định mức
                 $new_quotas = [];
                 foreach ($instruments as $inst) {
                         $key = $inst->Inst_id . '_' . $inst->internal_block;
                         if (!isset($existing_lookup[$key])) {
                                 $new_quotas[] = [
                                         'inst_id' => $inst->Inst_id,
+                                        'Eqp_name' => $inst->Eqp_name ?? '',
+                                        'inst_name' => $inst->Inst_Name ?? '',
+                                        'parent_eqp_id' => $inst->Parent_Equip_id ?? '',
                                         'exe_time' => '00:00',
                                         'block' => $inst->internal_block,
                                         'is_HVAC' => str_starts_with($inst->internal_block, 'TI') ? 1 : 0,
                                         'created_by' => session('user')['fullName'] ?? 'System',
                                         'created_time' => now(),
                                 ];
+                        } else {
+                                // Cập nhật Eqp_name, inst_name, parent_eqp_id nếu cũ bị rỗng hoặc khác
+                                $existing = $existing_lookup[$key];
+                                $update_data = [];
+                                if (empty($existing->Eqp_name) && !empty($inst->Eqp_name)) {
+                                        $update_data['Eqp_name'] = $inst->Eqp_name;
+                                }
+                                if (empty($existing->inst_name) && !empty($inst->Inst_Name)) {
+                                        $update_data['inst_name'] = $inst->Inst_Name;
+                                }
+                                if (empty($existing->parent_eqp_id) && !empty($inst->Parent_Equip_id)) {
+                                        $update_data['parent_eqp_id'] = $inst->Parent_Equip_id;
+                                }
+
+                                if (!empty($update_data)) {
+                                        DB::table('quota_maintenance')
+                                                ->where('id', $existing->id)
+                                                ->update($update_data);
+                                }
                         }
                 }
 
@@ -138,9 +160,9 @@ class MaintenanceCategoryController extends Controller
                                 'code' => $quota->inst_id,
                                 'block' => explode('-', $quota->block)[1] ?? 'B1',
                                 'internal_block' => $quota->block,
-                                'parent_code' => $inst->Parent_Equip_id ?? '',
-                                'Eqp_name' => $inst->Eqp_name ?? '',
-                                'Inst_Name' => $inst->Inst_Name ?? '',
+                                'parent_code' => $quota->parent_eqp_id ?? $inst->Parent_Equip_id ?? '',
+                                'Eqp_name' => $quota->Eqp_name ?? $inst->Eqp_name ?? '',
+                                'Inst_Name' => $quota->inst_name ?? $inst->Inst_Name ?? '',
                                 'room_ids' => $assigned_room_ids,
                                 'exe_room_name' => implode(', ', $exe_room_names),
                                 'room_code' => $inst->Inst_Installed_Location ?? '',
