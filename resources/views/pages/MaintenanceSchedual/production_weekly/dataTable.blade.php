@@ -52,7 +52,7 @@ $groupedByStage = $groupedByRoom->groupBy(function ($rooms) {
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table id="production_weekly_table" class="table table-bordered" style="font-size: 13px;">
-                            <thead class="bg-light" style="position: sticky; top: 0; z-index: 1020;">
+                            <thead class="bg-light">
                                 <tr style="color:#003A4F; font-size: 16px; font-weight: bold;">
                                     <th class="text-center align-middle" width="40" rowspan="2">#</th>
                                     <th class="text-center align-middle" style="min-width: 150px;" rowspan="2">Phòng
@@ -167,6 +167,24 @@ $groupedByStage = $groupedByRoom->groupBy(function ($rooms) {
 </div>
 
 <style>
+    /* Professional Sticky Header */
+    #production_weekly_table thead th {
+        background-color: #ffffff !important;
+        z-index: 1050 !important;
+        border-bottom: 2px solid #dee2e6 !important;
+        color: #003a4f !important;
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+        position: sticky;
+    }
+
+    #production_weekly_table thead tr:nth-child(1) th {
+        top: 0;
+    }
+
+    #production_weekly_table thead tr:nth-child(2) th {
+        top: 45px; /* Adjust based on the exact height of the first row */
+    }
+
     .last-child-no-border:last-child {
         border-bottom: none !important;
     }
