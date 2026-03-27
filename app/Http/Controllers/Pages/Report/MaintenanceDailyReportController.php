@@ -115,6 +115,8 @@ class MaintenanceDailyReportController extends Controller
             ->select('sp.id as sp_id', 'pm.batch as sch_ids')
             ->get();
 
+
+
         if ($pendingPlans->isEmpty()) return;
 
         $schIdMap = [];
@@ -124,7 +126,10 @@ class MaintenanceDailyReportController extends Controller
             }
         }
 
+
+
         $allSchIds = array_keys($schIdMap);
+
 
         foreach ($connections as $conn) {
             foreach ($suffixes as $suffix) {
@@ -136,22 +141,29 @@ class MaintenanceDailyReportController extends Controller
                         ->get();
 
                     foreach ($remoteResults as $res) {
+
                         $schId = (string)$res->SCH_ID;
+
+
+
                         if (isset($schIdMap[$schId])) {
+
                             foreach ($schIdMap[$schId] as $spId) {
                                 $yield = 1;
                                 $statusRaw = trim($res->Sch_Result_Status ?? 'Pass');
                                 if ($statusRaw == 'Fail') $yield = 0;
                                 elseif ($statusRaw == 'Skip') $yield = 2;
 
-                                DB::table('stage_plan')->where('id', $spId)->where('finished', 0)->update([
-                                    'actual_start' => $res->Sch_caldone_to,
-                                    'actual_end'   => $res->Sch_caldone_to,
-                                    'finished_by'  => $res->Sch_cal_Done_by ?? null,
-                                    'finished'     => 1,
-                                    'yields'       => $yield,
-                                    'updated_at'   => now()
-                                ]);
+                                DB::table('stage_plan')->where('id', $spId)
+                                    ->where('finished', 0)
+                                    ->update([
+                                        'actual_start' => $res->Sch_caldone_to,
+                                        'actual_end'   => $res->Sch_CalDone_On,
+                                        'finished_by'  => $res->Sch_Cal_Done_by ?? null,
+                                        'finished'     => 1,
+                                        'yields'       => $yield,
+                                        'finished_date'   => now()
+                                    ]);
                             }
                             unset($schIdMap[$schId]);
                         }
