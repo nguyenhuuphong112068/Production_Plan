@@ -896,6 +896,11 @@ const MaintenanceCalender = () => {
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
   const selectedEventsRef = useRef([]);
   const toggleEventSelect = (event) => {
+    // Không cho phép chọn sự kiện đã hoàn thành hoặc không phải là lịch bảo trì (stage_code != 8)
+    if (event.extendedProps.finished == 1 || event.extendedProps.stage_code != 8) {
+      return;
+    }
+
     setSelectedEvents((prevSelected) => {
       const exists = prevSelected.some(ev => ev.id === event.id);
       const newSelected = exists
@@ -1074,6 +1079,8 @@ const MaintenanceCalender = () => {
     // }
 
   };
+
+
   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
   const handleClear = () => {
 
@@ -1199,9 +1206,14 @@ const MaintenanceCalender = () => {
 
   const finisedEvent = (dropInfo, draggedEvent) => {
     const stageCode = draggedEvent._def.extendedProps.stage_code;
+    const finished = draggedEvent._def.extendedProps.finished;
 
     // Nếu là sự kiện đã tồn tại trên lịch (có stage_code)
     // Chỉ cho phép kéo thả nếu đó là công đoạn bảo trì (8)
+    if (finished == 1) {
+      return false;
+    }
+
     if (stageCode !== undefined && stageCode !== null && stageCode != 8) {
       return false;
     }
@@ -1391,7 +1403,7 @@ const MaintenanceCalender = () => {
 
   return (
 
-    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
+    <div className={`calendar-wrapper transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
@@ -1815,6 +1827,7 @@ const MaintenanceCalender = () => {
           // gắn data-event-id để tìm kiếm
           info.el.setAttribute("data-event-id", info.event.id);
           info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
+          info.el.setAttribute("data-finished", info.event.extendedProps.finished);
 
           // cho select evetn => pendingChanges
           const isPending = pendingChanges.some(e => e.id === info.event.id);
@@ -1885,10 +1898,15 @@ const MaintenanceCalender = () => {
 
           // 🎯 Khi kết thúc kéo chọn
           onSelectEnd={(e) => {
-            const newlySelected = e.selected.map((el) => ({
-              id: el.getAttribute("data-event-id"),
-              stage_code: el.getAttribute("data-stage_code"),
-            }));
+            const newlySelected = e.selected
+              .filter(el =>
+                el.getAttribute("data-finished") != "1" &&
+                el.getAttribute("data-stage_code") == "8"
+              ) // Không chọn lịch đã hoàn thành và chỉ chọn lịch bảo trì
+              .map((el) => ({
+                id: el.getAttribute("data-event-id"),
+                stage_code: el.getAttribute("data-stage_code"),
+              }));
 
             setSelectedEvents((prev) => {
               // ✅ Gộp với vùng chọn cũ, tránh trùng
