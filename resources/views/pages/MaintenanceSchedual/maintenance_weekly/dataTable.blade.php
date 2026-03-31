@@ -141,11 +141,19 @@
                                                                         : ($e->type_name == 'Tiện ích'
                                                                             ? 'badge-info'
                                                                             : 'badge-secondary');
+                                                                
+                                                                if ($e->finished == 1) {
+                                                                    $typeClass = 'badge-primary';
+                                                                }
                                                             @endphp
                                                             <div class="mb-2 p-1 border-bottom last-child-no-border"
                                                                 style="line-height: 1.3;">
-                                                                <div class="badge {{ $typeClass }} mb-1"
-                                                                    style="font-size: 10px;">{{ $e->type_name }}</div>
+                                                                <div class="badge {{ $typeClass }} mb-1" style="font-size: 10px;">
+                                                                    {{ $e->type_name }}
+                                                                    @if($e->finished == 1)
+                                                                        <i class="fas fa-check-circle ml-1"></i> Đã hoàn thành
+                                                                    @endif
+                                                                </div>
                                                                 <div style="font-size: 12px; color: #333;">
                                                                     <b>{{ $eventIdx++ }}.</b>
                                                                     @if ($e->parent_eqp_id == $e->inst_id && $e->Eqp_name == $e->inst_name)

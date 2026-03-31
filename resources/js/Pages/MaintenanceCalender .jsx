@@ -58,6 +58,7 @@ const MaintenanceCalender = () => {
   const [sumBatchByStage, setSumBatchByStage] = useState([]);
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
+
   const [stageMap, setStageMap] = useState({});
   const [maintenanceType, setMaintenanceType] = useState('HC'); // HC, TB, TI
   const [type, setType] = useState(true);
@@ -414,6 +415,7 @@ const MaintenanceCalender = () => {
       // 🔹 3. Lấy khoảng thời gian hiện tại sau khi chuyển view
       const { activeStart, activeEnd, type: currentView } = api.view;
 
+      const productionHidden = JSON.parse(sessionStorage.getItem('productionHidden'));
       const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
       const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
 
@@ -422,7 +424,8 @@ const MaintenanceCalender = () => {
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
         viewtype: currentView,
-        clearning: cleaningHidden,
+        production: !productionHidden, // Trình trạng hiện/ẩn sản xuất
+        clearning: !cleaningHidden,   // Vẫn giữ logic vệ sinh nếu cần
         theory: theoryHidden,
       });
 
@@ -440,10 +443,10 @@ const MaintenanceCalender = () => {
     }
   }, []);
 
-  const toggleCleaningEvents = () => {
-    const current = JSON.parse(sessionStorage.getItem('cleaningHidden'));
+  const toggleProductionEvents = () => {
+    const current = JSON.parse(sessionStorage.getItem('productionHidden'));
     const newHidden = !current;
-    sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
+    sessionStorage.setItem('productionHidden', JSON.stringify(newHidden));
 
     handleViewChange(null, null);
   };
@@ -463,7 +466,7 @@ const MaintenanceCalender = () => {
     const start = info.event.start;
     const resourceId = info.event.getResources?.()[0]?.id ?? null;
     const api = calendarRef.current?.getApi();
-    const slotDuration = api.currentData.options.slotDuration;
+    const slotDuration = api.currentData.options.slotDuration['days'];
 
     info.event.remove();
 
@@ -511,7 +514,8 @@ const MaintenanceCalender = () => {
       startDate: toLocalISOString(activeStart),
       endDate: toLocalISOString(activeEnd),
       slotDuration: slotDuration,
-      type: maintenanceType
+      type: maintenanceType,
+
     })
       .then(res => {
         let data = res.data;
@@ -1401,14 +1405,47 @@ const MaintenanceCalender = () => {
     return resList.filter(res => validRoomCodes.has(res.code));
   }, [resources, selectedRows]);
 
+  const calendarWidth = useMemo(() => {
+    if (!showSidebar) return '100%';
+    if (percentShow === "close") return '100%';
+    const isFull = percentShow === '100%' || (typeof percentShow === 'string' && percentShow.includes('calc'));
+    if (isFull) return '0%';
+    if (percentShow === '30%') return '70%';
+    if (typeof percentShow === 'string' && percentShow.includes('px')) {
+      return `calc(100% - ${percentShow})`;
+    }
+    return '100%';
+  }, [showSidebar, percentShow]);
+
+  useEffect(() => {
+    let timer;
+    if (calendarRef.current && calendarRef.current.getApi) {
+      const api = calendarRef.current.getApi();
+      if (api && typeof api.updateSize === 'function') {
+        api.updateSize();
+        // Cần thêm timeout để đảm bảo kích thước sau animation
+        timer = setTimeout(() => {
+          if (calendarRef.current) {
+            const apiAsync = calendarRef.current.getApi();
+            apiAsync?.updateSize();
+          }
+        }, 350);
+      }
+    }
+    return () => clearTimeout(timer);
+  }, [showSidebar, percentShow]);
+
   return (
 
-    <div className={`calendar-wrapper transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
+    <div
+      className="calendar-wrapper transition-all duration-300 float-left pt-4 pl-2 pr-2"
+      style={{ width: calendarWidth, overflow: 'hidden' }}
+    >
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
-        initialView="resourceTimelineMonth1d"
+        initialView="resourceTimelineWeek"
         firstDay={1}
         events={calendarEvents}
         eventResourceEditable={true}
@@ -1749,10 +1786,10 @@ const MaintenanceCalender = () => {
             click: toggleNoteModal,
             hint: 'Ẩn/ Hiện chú thích màu của lịch'
           },
-          hiddenClearning: {
-            text: '🙈',
-            click: toggleCleaningEvents,
-            hint: 'Ẩn/ Hiện lịch vệ sinh'
+          hiddenProduction: {
+            text: '🏭',
+            click: toggleProductionEvents,
+            hint: 'Ẩn/ Hiện lịch sản xuất'
           },
 
           hiddenTheory: {

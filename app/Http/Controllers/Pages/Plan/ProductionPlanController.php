@@ -74,6 +74,15 @@ class ProductionPlanController extends Controller
                         )
                         ->groupBy('plan_master_id');
 
+                $maxPossibleStage = DB::table('stage_plan')
+                        ->where('active', 1)
+                        ->where('deparment_code', $production_code)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_possible_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
 
                 /*
                 |--------------------------------------------------------------------------
@@ -84,6 +93,9 @@ class ProductionPlanController extends Controller
                 $batch_status = DB::table('plan_master as pm')
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
                                 $join->on('pm.id', '=', 'sp_max.plan_master_id');
+                        })
+                        ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                                $join->on('pm.id', '=', 'sp_possible.plan_master_id');
                         })
                         ->leftJoin('stage_plan as sp', function ($join) {
                                 $join->on('pm.id', '=', 'sp.plan_master_id')
@@ -101,6 +113,7 @@ class ProductionPlanController extends Controller
                                 DB::raw("
                                 CASE
                                 WHEN pm.cancel = 1 THEN 'Hủy'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất ĐG'
                                 WHEN sp.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
                                 WHEN sp.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
                                 WHEN sp.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
@@ -272,6 +285,17 @@ class ProductionPlanController extends Controller
                         )
                         ->groupBy('plan_master_id');
 
+                $maxPossibleStage = DB::table('stage_plan')
+                        ->when($request->plan_list_id >= 0, function ($q) use ($request) {
+                                $q->where('stage_plan.plan_list_id', $request->plan_list_id);
+                        })
+                        ->where('active', 1)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_possible_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
                 $datas = DB::table('plan_master')
                         ->select(
                                 'plan_master.*',
@@ -290,6 +314,7 @@ class ProductionPlanController extends Controller
                                 DB::raw("
                                 CASE
                                         WHEN plan_master.cancel = 1 THEN 'Hủy'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất ĐG'
                                         WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
                                         WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
                                         WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
@@ -328,8 +353,11 @@ class ProductionPlanController extends Controller
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
                                 $join->on('plan_master.main_parkaging_id', '=', 'sp_max.plan_master_id');
                         })
+                        ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                                $join->on('plan_master.main_parkaging_id', '=', 'sp_possible.plan_master_id');
+                        })
                         ->leftJoin('stage_plan', function ($join) {
-                                $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id') //
+                                $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id')
                                         ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
                         })
 

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import moment from 'moment';
+
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -24,23 +26,56 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const sizes = ["close", "100%", "30%"];
   const [currentIndex, setCurrentIndex] = useState(1);
   const [tableData, setTableData] = useState([]);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 350 && newWidth < window.innerWidth - 250) {
+        setPercentShow(`${newWidth}px`);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+      // Hiệu ứng hoàn thành resize
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none'; // Chặn bôi đen khi kéo
+    } else {
+      document.body.style.userSelect = 'auto';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setPercentShow]);
 
 
   const columnWidths100 = {
-    Inst_Name: '200px',
-    Parent_Equip_id: '150px',
-    Eqp_name: '200px',
-    PM: '120px',
-    related_rooms: '250px',
-    name: '150px',
-    note: '250px',
+    Inst_Name: '180px',
+    Parent_Equip_id: '130px',
+    Eqp_name: '180px',
+    PM: '100px',
+    related_rooms: '200px',
+    expected_date: '120px',
+    name: '130px',
+    note: '200px',
   };
 
   const columnWidths30 = {
-    name: '120px',
-    Inst_Name: '180px',
+    name: '100px',
+    Inst_Name: '150px',
     PM: '100px',
-    related_rooms: '180px',
+    related_rooms: '150px',
+    expected_date: '100px',
   };
 
   useEffect(() => {
@@ -68,8 +103,12 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       return;
     }
 
-    if (percentShow === "100%") {
-      const order = ["stt", "id", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "related_rooms", "PM", "note"];
+    const currentWidthPx = typeof percentShow === 'string' && percentShow.includes('px')
+      ? parseInt(percentShow)
+      : (percentShow === '100%' ? window.innerWidth : window.innerWidth * 0.3);
+
+    if (currentWidthPx > window.innerWidth * 0.6) { // Chế độ xem rộng
+      const order = ["stt", "id", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "related_rooms", "PM", "expected_date", "note"];
       visibleCols = order.map(f => {
         const col = allColumns.find(c => c.field === f);
         if (!col) return null;
@@ -85,12 +124,13 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         };
       }).filter(Boolean);
     } else {
-      visibleCols = allColumns.filter(col => ["stt", "name", "Inst_Name", "related_rooms", "PM"].includes(col.field))
+      visibleCols = allColumns.filter(col => ["name", "Inst_Name", "related_rooms", "PM", "expected_date"].includes(col.field))
         .map(col => {
           let header = col.header;
           if (col.field === "name") header = "Mã Thiết Bị";
           if (col.field === "related_rooms") header = "Phòng SX";
           if (col.field === "PM") header = "TG thực hiện";
+          if (col.field === "expected_date") header = "Hạn BT";
 
           return {
             ...col,
@@ -109,7 +149,8 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       onClose(false)
     } else {
       setCurrentIndex(nextIndex);
-      setPercentShow(sizes[nextIndex]);
+      const newSize = sizes[nextIndex] === "100%" ? `calc(100vw - 250px)` : sizes[nextIndex];
+      setPercentShow(newSize);
       setSelectedRows([]);
     }
   };
@@ -137,12 +178,49 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
   const isAdmin = (userID == 1 || userID == 5);
 
+  const expectedDateBodyTemplate = (rowData) => {
+    if (!rowData.expected_date) return <span className="text-muted">NA</span>;
+
+    const today = moment().startOf('day');
+    const expDate = moment(rowData.expected_date).startOf('day');
+    const diff = expDate.diff(today, 'days');
+
+    let className = "";
+    // User requested: Expected Date >= Today (Đỏ), Distance < 7 days (Vàng)
+    // Most logical interpretation for maintenance:
+    // Red: Past due or Today (diff <= 0)
+    // Yellow: Upcoming within 7 days (0 < diff < 7)
+    if (diff <= 0) {
+      className = "expected-date future";
+    } else if (diff < 7) {
+      className = "expected-date near";
+    }
+
+    return (
+      <div className={className} style={{ textAlign: 'center', fontWeight: className ? 'bold' : 'normal', borderRadius: '4px' }}>
+        {moment(rowData.expected_date).format('DD/MM/YYYY')}
+      </div>
+    );
+  };
+
+  const rowClassName = (rowData) => {
+    if (!rowData.expected_date) return '';
+    const today = moment().startOf('day');
+    const expDate = moment(rowData.expected_date).startOf('day');
+    const diff = expDate.diff(today, 'days');
+
+    if (diff <= 0) return 'row-maintenance-critical';
+    if (diff < 7) return 'row-maintenance-warning';
+    return '';
+  };
+
   const allColumns = [
-    { rowReorder: true, style: { width: '3rem' }, headerStyle: { width: '3rem' } },
+    // { rowReorder: true, style: { width: '3rem' }, headerStyle: { width: '3rem' } },
     { field: "stt", header: "STT", body: indexBodyTemplate, style: { width: '50px', textAlign: 'center' } },
     { field: "id", header: "ID", sortable: true, body: naBody("id"), visible: isAdmin, style: { width: '80px', textAlign: 'center' } },
     { field: "name", header: "Mã Thiết Bị", sortable: true, body: naBody("name") },
     { field: "Inst_Name", header: "Tên Thiết Bị", sortable: true, body: naBody("Inst_Name") },
+    { field: "expected_date", header: "Hạn Bảo Trì", sortable: true, body: expectedDateBodyTemplate },
     { field: "Parent_Equip_id", header: "Mã Thiết Bị Lớn", sortable: true, body: naBody("Parent_Equip_id") },
     { field: "Eqp_name", header: "Tên Thiết Bị Lớn", sortable: true, body: naBody("Eqp_name") },
     { field: "related_rooms", header: "Phòng sản xuất liên quan", sortable: true, body: relatedRoomBodyTemplate },
@@ -223,20 +301,38 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     <div
       ref={wrapperRef}
       onDragOver={handleDragOver}
-      className="maintenance-sidebar-container bg-white shadow-lg"
-      style={{ height: "600px", overflow: "hidden" }}>
+      className="maintenance-sidebar-container">
 
       <div id="external-events"
-        className={`absolute right-0 h-100 z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed right-0 h-full z-50 bg-white shadow-2xl ${visible ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300`}
         style={{
           width: percentShow,
-          maxWidth: "100%",
-          boxShadow: "-2px 0 15px rgba(0,0,0,0.15)",
+          maxWidth: "calc(100vw - 250px)",
           display: "flex",
           flexDirection: "column",
-          top: "40px"
+          top: "40px",
+          height: 'calc(100vh - 40px)',
+          transition: isResizing ? 'none' : 'transform 0.3s ease-in-out, width 0.3s ease-in-out'
         }}
       >
+        {/* Resize Handle */}
+        <div
+          className="maintenance-resizer"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: '8px',
+            height: '100%',
+            cursor: 'ew-resize',
+            zIndex: 1000,
+            backgroundColor: isResizing ? '#3b82f6' : 'transparent'
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+          }}
+        />
         {/* Header Section */}
         {/* Header Section */}
         <div className="p-2 border-bottom bg-light">
@@ -309,6 +405,16 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             className="maintenance-datatable p-datatable-gridlines p-datatable-sm shadow-sm"
             selectionMode="multiple"
             dataKey="id"
+            rowClassName={rowClassName}
+            tableStyle={{
+              minWidth: (typeof percentShow === 'string' && parseInt(percentShow) > window.innerWidth * 0.5) || percentShow === '100%'
+                ? "1300px" : "850px"
+            }}
+            paginator
+            rows={10}
+            rowsPerPageOptions={[5, 10, 20, 50, 100, 500]}
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Đang xem {first} đến {last} trong tổng số {totalRecords} mục"
           >
             <Column rowReorder style={{ width: '3rem' }} />
             <Column selectionMode="multiple" headerStyle={{ width: '3rem' }}></Column>
