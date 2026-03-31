@@ -10,24 +10,26 @@ export default function NoteModal({ show, setShow }) {
     { color: "#e4e405e2", label: "Lô Thẩm Định Vệ Sinh" },
     { color: "#bda124ff", label: "Quá Hạn Biệt Trữ" },
     { color: "#f99e02ff", label: "Nguyên Liệu Hoặc Bao Bì Không Đáp Ứng Kế Hoạch" },
-    { color: "#dc02f9ff", label: "Sản Phẩm Có Nguồn Nguyên Liệu Chưa Được Khai Báo Tại Phòng Sản Xuất"},
-    { color: "#e54a4aff", label: "Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch"},
-    { color: "#920000ff", label: "Cảnh Báo Ngày Đáp Ứng NL/BB"},
+    { color: "#e54a4aff", label: "Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch" },
+    { color: "#920000ff", label: "Cảnh Báo Ngày Đáp Ứng NL/BB" },
     { color: "#a1a2a2ff", label: "Vệ Sinh Phòng" },
-    { color: "#003A4F", label: "Hiệu Chuẩn - Bảo Trì" },
     { color: "#eb0cb3ff", label: "Sự Kiện Khác Ngoài Kế Hoạch" },
     { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước" },
     { color: "#002af9ff", label: "Lịch Sản Xuất Lý Thực Tế" },
     { color: "#8195f5ff", label: "Lịch Sản Xuất Lý Thuyết" },
-   
+    { color: "#003A4F", label: "Lịch Hiệu Chuẩn" },
+    { color: "#9a1b72ff", label: "Lịch Bảo Trì Thiết Bị" },
+    { color: "#830cbfff", label: "Lịch Bảo Trì Tiện Ích" },
+
+
   ];
 
   return (
     <>
       <Modal show={show} onHide={handleClose} centered size="lg">
         <Modal.Header closeButton>
-           <img src="/img/iconstella.svg" style={{width: '40px', height: '40px'}} />
-          <Modal.Title style={{color: '#CDC717', textAlign: 'center'}} className="mx-auto fw-bold">Chú Thích Màu Sự Kiện</Modal.Title>
+          <img src="/img/iconstella.svg" style={{ width: '40px', height: '40px' }} />
+          <Modal.Title style={{ color: '#CDC717', textAlign: 'center' }} className="mx-auto fw-bold">Chú Thích Màu Sự Kiện</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Table bordered hover size="sm">
@@ -50,7 +52,7 @@ export default function NoteModal({ show, setShow }) {
                       }}
                     ></div>
                   </td>
-                  <td style={{fontSize:'18px' }}>{item.label}</td>
+                  <td style={{ fontSize: '18px' }}>{item.label}</td>
                 </tr>
               ))}
             </tbody>

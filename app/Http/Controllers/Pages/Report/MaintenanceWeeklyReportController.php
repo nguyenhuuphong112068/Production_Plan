@@ -52,6 +52,7 @@ class MaintenanceWeeklyReportController extends Controller
                 'sp.id as sp_id',
                 'sp.start as planned_start',
                 'sp.end as planned_end',
+                'sp.finished',
                 'qm.inst_id',
                 'qm.inst_name',
                 'qm.Eqp_name',

@@ -30,6 +30,7 @@ class MaintenanceSchedualController extends SchedualController
             $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
 
             $clearing = $request->clearning ?? true;
+            $showProduction = $request->production ?? true;
 
             if ($viewtype == "resourceTimelineQuarter") {
                 $clearing = false;
@@ -46,6 +47,12 @@ class MaintenanceSchedualController extends SchedualController
             $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
 
             $eventsRaw = parent::getEvents($production, $startDate, $endDate, $clearing, $this->theory);
+
+            // 🔹 Ẩn lịch sản xuất nếu người dùng yêu cầu
+            if (!$showProduction) {
+                $eventsRaw = $eventsRaw->filter(fn($e) => (int)$e->stage_code >= 8);
+            }
+
             $events = $this->groupMaintenanceEvents($eventsRaw);
 
             $sumBatchByStage = parent::yield($startDate, $endDate, "stage_code");
@@ -131,12 +138,14 @@ class MaintenanceSchedualController extends SchedualController
             ->where('sp.deparment_code', $production)
             ->where('sp.stage_code', 8)
             ->leftJoin('quota_maintenance', 'sp.product_caterogy_id', '=', 'quota_maintenance.id')
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->select(
                 'sp.*',
                 'quota_maintenance.inst_id as name',
                 'quota_maintenance.inst_id as instrument_code',
                 'quota_maintenance.is_HVAC',
-                'quota_maintenance.exe_time'
+                'quota_maintenance.exe_time',
+                'plan_master.expected_date'
             )
             ->get()
             ->groupBy('plan_master_id')
@@ -220,10 +229,11 @@ class MaintenanceSchedualController extends SchedualController
 
     public function store(Request $request)
     {
-        log::info($request->all());
 
         $type = $request->type;
         $targetRoomId = $request->room_id;
+        Log::info($request->all());
+
 
         DB::beginTransaction();
         try {
@@ -231,6 +241,10 @@ class MaintenanceSchedualController extends SchedualController
             $products = collect($request->products)->sortBy('id')->values();
 
             $start = Carbon::parse($request->start);
+
+            if ($request->has('slotDuration')  &&   $request->slotDuration  ==  1) {
+                $start->setTime(7,  15,  0);
+            }
 
             // 1. Kiểm tra phòng hợp lệ cho HC và BT
             if ($type != 'TI') {
@@ -619,7 +633,7 @@ class MaintenanceSchedualController extends SchedualController
         $production = session('user')['production_code'];
         $eventsRaw = parent::getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
         $events = $this->groupMaintenanceEvents($eventsRaw);
-        $plan_waiting = parent::getPlanWaiting($production);
+        $plan_waiting = $this->getPlanWaiting($production);
         $resources = parent::getResources($production, $request->startDate, $request->endDate);
         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
 
@@ -665,7 +679,7 @@ class MaintenanceSchedualController extends SchedualController
                     $parts = explode(' - ', $t);
                     return count($parts) > 1 ? end($parts) : $t;
                 })->toArray();
-                $first->title = "BT NHÓM: " . implode(" | ", $allTitles);
+                $first->title = "BT Thiết Bị: " . implode(" | ", $allTitles);
             }
             return $first;
         })->values();

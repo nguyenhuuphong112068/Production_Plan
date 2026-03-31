@@ -1,8 +1,23 @@
-
 .maintenance-sidebar-container {
   display: flex;
   flex-direction: column;
+}
+
+.maintenance-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
   height: 100%;
+  cursor: ew-resize;
+  z-index: 1000;
+  transition: background-color 0.2s;
+}
+
+.maintenance-resizer:hover,
+.maintenance-resizer:active {
+  background-color: #3b82f6;
+  width: 8px;
 }
 
 .maintenance-header {
@@ -55,7 +70,7 @@
 }
 
 /* Premium DataTable Styling */
-.maintenance-datatable .p-datatable-thead > tr > th {
+.maintenance-datatable .p-datatable-thead>tr>th {
   background-color: #f9fafb;
   color: #374151;
   font-weight: 600;
@@ -63,18 +78,26 @@
   padding: 0.75rem 0.5rem;
 }
 
-.maintenance-datatable .p-datatable-tbody > tr > td {
+.maintenance-datatable .p-datatable-tbody>tr>td {
   font-size: 0.85rem;
   padding: 0.5rem;
 }
 
-.maintenance-datatable .p-datatable-tbody > tr:hover {
+.maintenance-datatable .p-datatable-tbody>tr:hover {
   background-color: #f3f4f6 !important;
 }
 
-.maintenance-badge-hc { background-color: #3b82f6 !important; }
-.maintenance-badge-tb { background-color: #f59e0b !important; }
-.maintenance-badge-ti { background-color: #10b981 !important; }
+.maintenance-badge-hc {
+  background-color: #3b82f6 !important;
+}
+
+.maintenance-badge-tb {
+  background-color: #f59e0b !important;
+}
+
+.maintenance-badge-ti {
+  background-color: #10b981 !important;
+}
 
 .room-badge {
   background-color: #f1f3f5;
@@ -87,3 +110,31 @@
   display: inline-block;
 }
 
+
+/* Expected Date Highlighting */
+.expected-date.near {
+  padding: 2px 4px;
+}
+
+.expected-date.future {
+  padding: 2px 4px;
+}
+
+/* Whole Row Highlighting */
+.row-maintenance-critical {
+  background-color: #f16d6d !important;
+  /* Very light red */
+}
+
+.row-maintenance-critical:hover {
+  background-color: #fecaca !important;
+}
+
+.row-maintenance-warning {
+  background-color: #fdc678 !important;
+  /* Very light yellow */
+}
+
+.row-maintenance-warning:hover {
+  background-color: #fde68a !important;
+}

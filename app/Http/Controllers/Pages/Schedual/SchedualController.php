@@ -1109,7 +1109,6 @@ class SchedualController  extends  Controller
         
 
         public  function  getPlanWaiting($production,  $order_by_type  =  false)
-        
         {
                 
 
