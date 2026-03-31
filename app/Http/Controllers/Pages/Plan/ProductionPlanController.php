@@ -113,7 +113,7 @@ class ProductionPlanController extends Controller
                                 DB::raw("
                                 CASE
                                 WHEN pm.cancel = 1 THEN 'Hủy'
-                                WHEN sp.finished = 1 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất ĐG'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code < 7 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất'
                                 WHEN sp.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
                                 WHEN sp.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
                                 WHEN sp.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
@@ -213,7 +213,7 @@ class ProductionPlanController extends Controller
                 foreach ($datas as $item) {
                         //dd ($item);
                         $notFinished = collect($item->status_counts)
-                                ->except(['Hoàn Tất ĐG', 'Hủy'])
+                                ->except(['Hoàn Tất ĐG', 'Hoàn Tất', 'Hủy'])
                                 ->sum();
 
                         if ($notFinished > 0) {
@@ -223,7 +223,7 @@ class ProductionPlanController extends Controller
                                 // cộng từng trạng thái
                                 foreach ($item->status_counts as $status => $count) {
 
-                                        if (!in_array($status, ['Hoàn Tất ĐG', 'Hủy'])) {
+                                        if (!in_array($status, ['Hoàn Tất ĐG', 'Hoàn Tất', 'Hủy'])) {
 
                                                 if (!isset($pending_plan->status_counts[$status])) {
                                                         $pending_plan->status_counts[$status] = 0;
@@ -314,7 +314,7 @@ class ProductionPlanController extends Controller
                                 DB::raw("
                                 CASE
                                         WHEN plan_master.cancel = 1 THEN 'Hủy'
-                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất ĐG'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất'
                                         WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
                                         WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
                                         WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
@@ -336,7 +336,7 @@ class ProductionPlanController extends Controller
                                                 //->where('plan_master.only_parkaging', 0)
                                                 ->where(function ($sub) {
                                                         $sub->whereNull('sp_max.max_stage_code')
-                                                                ->orWhere('sp_max.max_stage_code', '<', 7);
+                                                                ->orWhereRaw('sp_max.max_stage_code < sp_possible.max_possible_stage_code');
                                                 });
                                 },
                                 function ($q) use ($request) {

@@ -238,7 +238,8 @@
                                             'Đã THT' => 'background-color: #90caf9; color: #0d47a1;',
                                             'Đã định hình' => 'background-color: #64b5f6; color: white;',
                                             'Đã Bao phim' => 'background-color: #1e88e5; color: white;',
-                                            'Hoàn Tất ĐG' => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
+                                            'Hoàn Tất ĐG' => 'background-color: #0d47a1; color: white;',
+                                            'Hoàn Tất' => 'background-color: #0d47a1; color: white;', // xanh đậm nhất
                                             'Hủy' => 'background-color: red; color: white;',
                                         ];
                                     @endphp
