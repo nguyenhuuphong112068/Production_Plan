@@ -50,11 +50,7 @@ class MaintenanceSchedualController extends SchedualController
 
             $sumBatchByStage = parent::yield($startDate, $endDate, "stage_code");
 
-            $resources = parent::getResources($production, $startDate, $endDate);
-
-
-
-
+            $resources = parent::getResources($production, $startDate, $endDate, true);
 
             $type = true;
 
@@ -717,7 +713,7 @@ class MaintenanceSchedualController extends SchedualController
                         $remoteResults = DB::connection($conn)
                             ->table("Schedule_Master_{$suffix}")
                             ->whereIn('SCH_ID', $allSchIds)
-                            ->where('sch_ap_sts', 1) 
+                            ->where('sch_ap_sts', 1)
                             ->get();
 
                         foreach ($remoteResults as $res) {
@@ -725,7 +721,7 @@ class MaintenanceSchedualController extends SchedualController
                             if (isset($schIdMap[$schId])) {
                                 foreach ($schIdMap[$schId] as $spId) {
                                     // Map Sch_Result_Status to yields (Pass=1, Fail=0, Skip=2)
-                                    $yield = 1; 
+                                    $yield = 1;
                                     $statusRaw = trim($res->Sch_Result_Status ?? 'Pass');
                                     if ($statusRaw == 'Fail') $yield = 0;
                                     elseif ($statusRaw == 'Skip') $yield = 2;

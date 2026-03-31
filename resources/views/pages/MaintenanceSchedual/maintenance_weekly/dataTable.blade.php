@@ -93,7 +93,7 @@
                                                 <i class="fas fa-minus-square mr-2 toggle-icon"
                                                     style="color: #003a4f;"></i>
                                                 <span class="font-weight-bold" style="font-size: 15px;">
-                                                    Công đoạn: {{ $stageName }}
+                                                    {{ $stageName }}
                                                 </span>
                                                 <span class="badge ml-2"
                                                     style="background-color: rgba(0, 58, 79, 0.1); color: #003a4f; border: 1px solid #003a4f;">{{ count($roomsInStage) }}
@@ -192,7 +192,7 @@
         z-index: 1050 !important;
         border-bottom: 2px solid #dee2e6 !important;
         color: #003a4f !important;
-        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
         position: sticky;
     }
 
@@ -201,7 +201,8 @@
     }
 
     #maintenance_weekly_table thead tr:nth-child(2) th {
-        top: 45px; /* Adjust based on the exact height of the second row */
+        top: 45px;
+        /* Adjust based on the exact height of the second row */
     }
 
     .last-child-no-border:last-child {
