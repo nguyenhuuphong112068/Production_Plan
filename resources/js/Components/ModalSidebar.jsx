@@ -398,16 +398,33 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     }));
 
   const handleSelectionChange = (e) => {
-    const currentSelection = e.value ?? [];
+    const currentSelection = e.value ?? null;
 
-    if (currentSelection.length === 0) {
-      setSelectedRows([]);
+    if (!currentSelection || currentSelection.length === 0) {
+      setSelectedRows([]); // reset nếu không có selection
       return;
     }
 
-    // Luôn chỉ lấy người dùng vừa click cuối cùng để filter (Single selection style)
+    // ✅ check stage_code = 8
     const lastSelected = currentSelection[currentSelection.length - 1];
-    setSelectedRows([{ ...lastSelected, isMulti: false }]);
+
+
+    // ✅ các trường hợp khác
+    if (percentShow !== "100%") {
+      if (currentSelection.length <= 1) {
+        setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: false })));
+        return;
+      }
+      const firstCode = currentSelection[0].intermediate_code;
+      const allSame = currentSelection.every((row) => row.intermediate_code === firstCode);
+      if (allSame) {
+        setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: true })));
+      } else {
+        setSelectedRows([{ ...lastSelected, isMulti: false }]);
+      }
+    } else {
+      setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: false })));
+    }
   };
 
   const handleChangeStage = (selected_stage) => {
