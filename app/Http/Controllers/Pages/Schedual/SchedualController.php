@@ -1130,19 +1130,23 @@ class SchedualController  extends  Controller
                         ->leftJoin('plan_master',  'sp.plan_master_id',  '=',  'plan_master.id')
                         ->leftJoin('plan_list',  'sp.plan_list_id',  '=',  'plan_list.id')
                         ->leftJoin('source_material',  'plan_master.material_source_id',  '=',  'source_material.id')
+                        
                         ->leftJoin('finished_product_category',  function  ($join)  {
                         
                                 $join->on('sp.product_caterogy_id',  '=',  'finished_product_category.id')
                                         ->where('sp.stage_code',  '<=',  7);
                 
                         })
+                        ->leftJoin('intermediate_category',  'finished_product_category.intermediate_code',  '=',  'intermediate_category.intermediate_code')
                         ->leftJoin('product_name',  function  ($join)  {
                         
-                                $join->on('finished_product_category.product_name_id',  '=',  'product_name.id')
+                                $join->on('intermediate_category.product_name_id',  '=',  'product_name.id')
                                         ->where('sp.stage_code',  '<=',  7);
                 
                         })
                         ->leftJoin('market',  'finished_product_category.market_id',  '=',  'market.id')
+                        
+                       
                         ->select(
                                 'sp.id', 
                                 'sp.code', 
@@ -1157,8 +1161,21 @@ class SchedualController  extends  Controller
                                 'sp.nextcessor_code', 
                                 'sp.immediately', 
 
+                                DB::raw("
+                                        CASE
+                                                WHEN sp.stage_code >= 8 THEN sp.title
+                                                ELSE CONCAT(
+                                                product_name.name,
+                                                '-',
+                                                COALESCE(plan_master.actual_batch, plan_master.batch)
+                                                )
+                                        END AS title,
+                                        product_name.name as name,
+                                        COALESCE(plan_master.actual_batch, plan_master.batch) as batch
+                                "), 
+
                                 'plan_master.id as plan_master_id', 
-                                'plan_master.batch', 
+                                //'plan_master.batch', 
                                 'plan_master.expected_date', 
                                 'plan_master.responsed_date', 
                                 'plan_master.is_val', 
@@ -1182,7 +1199,7 @@ class SchedualController  extends  Controller
                                 'source_material.name as source_material_name', 
                                 'finished_product_category.intermediate_code', 
                                 'finished_product_category.finished_product_code', 
-                                DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE sp.code END as name")
+                                //DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE sp.code END as name")
                         )
                         ->orderBy($order_by_column,  'asc')
                         ->get();
