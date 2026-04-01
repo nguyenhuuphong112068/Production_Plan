@@ -3126,6 +3126,7 @@ const ScheduleTest = () => {
           <Column field="end" header="Kết thúc" body={(row) => moment(row.end).format('DD/MM/YYYY HH:mm')} />
           <Column field="created_at" header="Ngày tạo" body={(row) => row.created_at ? moment(row.created_at).format('DD/MM/YYYY HH:mm') : '-'} />
           <Column field="schedualed_by" header="Người tạo" />
+          <Column field="type_of_change" header="Lý do thay đổi" />
         </DataTable>
       </OverlayPanel>
 
