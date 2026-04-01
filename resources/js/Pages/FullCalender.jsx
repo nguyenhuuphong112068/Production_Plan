@@ -60,6 +60,9 @@ const ScheduleTest = () => {
   const [quota, setQuota] = useState([]);
   const [stageMap, setStageMap] = useState({});
   const [type, setType] = useState(true);
+  const [isCleaningHidden, setIsCleaningHidden] = useState(() => {
+    return JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+  });
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
@@ -506,11 +509,10 @@ const ScheduleTest = () => {
   }, []);
 
   const toggleCleaningEvents = () => {
-    const current = JSON.parse(sessionStorage.getItem('cleaningHidden'));
-    const newHidden = !current;
+    const newHidden = !isCleaningHidden;
+    setIsCleaningHidden(newHidden);
     sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
-
-    handleViewChange(null, null);
+    // No handleViewChange call needed anymore for this toggle
   };
 
   // const toggleTheoryEvents = () => {
@@ -1054,6 +1056,10 @@ const ScheduleTest = () => {
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
 
     const event = clickInfo.event;
+
+    if (event.extendedProps.stage_code == 8) {
+      return false;
+    }
 
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey && theoryHidden != 2) {
@@ -2503,7 +2509,12 @@ const ScheduleTest = () => {
 
   return (
 
-    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2`}>
+    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2 ${isCleaningHidden ? 'hide-cleaning-events' : ''}`}>
+      <style>{`
+        .hide-cleaning-events .cleaning-event {
+          display: none !important;
+        }
+      `}</style>
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
@@ -2512,6 +2523,27 @@ const ScheduleTest = () => {
         firstDay={1}
         events={calendarEvents}
         eventResourceEditable={true}
+        eventClassNames={(arg) => {
+          const classes = [];
+          const isCleaning = arg.event.extendedProps.is_clearning;
+          const pmId = arg.event.extendedProps.plan_master_id;
+
+          // Hiding/Showing cleaning events locally
+          if (isCleaning) {
+            classes.push('cleaning-event');
+          }
+
+          // Active Plan Master IDs focusing (logic from line 2956)
+          if (activePlanMasterIds.length > 0) {
+            if (activePlanMasterIds.includes(pmId)) {
+              classes.push('fc-event-focus');
+            } else {
+              classes.push('fc-event-hidden');
+            }
+          }
+
+          return classes;
+        }}
         resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
@@ -2939,15 +2971,6 @@ const ScheduleTest = () => {
 
         }}
 
-        eventClassNames={(arg) => {
-          if (activePlanMasterIds.length === 0) return [];
-
-          const pm = arg.event.extendedProps.plan_master_id;
-          if (activePlanMasterIds.includes(pm)) {
-            return ['fc-event-focus'];
-          }
-          return ['fc-event-hidden'];
-        }}
 
 
         eventDidMount={(info) => {

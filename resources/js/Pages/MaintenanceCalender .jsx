@@ -62,6 +62,9 @@ const MaintenanceCalender = () => {
   const [stageMap, setStageMap] = useState({});
   const [maintenanceType, setMaintenanceType] = useState('HC'); // HC, TB, TI
   const [type, setType] = useState(true);
+  const [isProductionHidden, setIsProductionHidden] = useState(() => {
+    return JSON.parse(sessionStorage.getItem('productionHidden')) || false;
+  });
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
@@ -73,6 +76,7 @@ const MaintenanceCalender = () => {
   const [userID, setUserID] = useState(null);
 
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
+  const [lockedResourceCodes, setLockedResourceCodes] = useState(null);
   const stageName = {
     1: 'Cân Nguyên Liệu',
     3: 'Pha Chế',
@@ -444,11 +448,10 @@ const MaintenanceCalender = () => {
   }, []);
 
   const toggleProductionEvents = () => {
-    const current = JSON.parse(sessionStorage.getItem('productionHidden'));
-    const newHidden = !current;
+    const newHidden = !isProductionHidden;
+    setIsProductionHidden(newHidden);
     sessionStorage.setItem('productionHidden', JSON.stringify(newHidden));
-
-    handleViewChange(null, null);
+    // No handleViewChange call needed anymore for this toggle
   };
 
   const toggleTheoryEvents = () => {
@@ -526,7 +529,19 @@ const MaintenanceCalender = () => {
 
         setEvents(data.events);
         setPlan(data.plan);
-        setSelectedRows([]);
+
+        // Lưu lại bộ lọc hiện tại trước khi xóa selection ở sidebar
+        const currentValidCodes = new Set();
+        selectedRows.forEach(row => {
+          if (row.related_rooms && Array.isArray(row.related_rooms)) {
+            row.related_rooms.forEach(room => currentValidCodes.add(room.room_code));
+          }
+        });
+        if (currentValidCodes.size > 0) {
+          setLockedResourceCodes(currentValidCodes);
+        }
+
+        setSelectedRows([]); // Restore this: clear sidebar selection
 
         // Tự động cuộn đến vị trí vừa sắp lịch
         setTimeout(() => {
@@ -1387,23 +1402,34 @@ const MaintenanceCalender = () => {
 
   // Lọc Resource dựa trên danh sách thiết bị sản xuất được chọn
   const resourceFiltered = useMemo(() => {
-    // Nếu không có dòng nào được chọn, hiển thị toàn bộ resource
     const resList = Array.isArray(resources) ? resources : [];
-    if (selectedRows.length === 0) return resList;
 
-    // Lấy tập hợp tất cả các mã phòng (room_code) hợp lệ từ các thiết bị đang chọn
-    const validRoomCodes = new Set();
-    selectedRows.forEach(row => {
-      if (row.related_rooms && Array.isArray(row.related_rooms)) {
-        row.related_rooms.forEach(room => {
-          validRoomCodes.add(room.room_code);
-        });
-      }
-    });
+    // 1. Ưu tiên lọc theo dòng đang chọn ở Sidebar (đang thao tác)
+    if (selectedRows.length > 0) {
+      const validRoomCodes = new Set();
+      selectedRows.forEach(row => {
+        if (row.related_rooms && Array.isArray(row.related_rooms)) {
+          row.related_rooms.forEach(room => validRoomCodes.add(room.room_code));
+        }
+      });
+      return resList.filter(res => validRoomCodes.has(res.code));
+    }
 
-    // Chỉ giữ lại các Resource có mã phòng khớp với danh sách hợp lệ
-    return resList.filter(res => validRoomCodes.has(res.code));
-  }, [resources, selectedRows]);
+    // 2. Nếu không chọn gì, kiểm tra xem có "khóa" (locked) bộ lọc từ lần sắp lịch trước không
+    if (lockedResourceCodes) {
+      return resList.filter(res => lockedResourceCodes.has(res.code));
+    }
+
+    // 3. Cuối cùng, hiển thị toàn bộ
+    return resList;
+  }, [resources, selectedRows, lockedResourceCodes]);
+
+  // Xóa "khóa" bộ lọc khi người dùng bắt đầu chọn một công việc mới
+  useEffect(() => {
+    if (selectedRows.length > 0 && lockedResourceCodes) {
+      setLockedResourceCodes(null);
+    }
+  }, [selectedRows, lockedResourceCodes]);
 
   const calendarWidth = useMemo(() => {
     if (!showSidebar) return '100%';
@@ -1438,9 +1464,14 @@ const MaintenanceCalender = () => {
   return (
 
     <div
-      className="calendar-wrapper transition-all duration-300 float-left pt-4 pl-2 pr-2"
+      className={`calendar-wrapper transition-all duration-300 float-left pt-4 pl-2 pr-2 ${isProductionHidden ? 'hide-production-events' : ''}`}
       style={{ width: calendarWidth, overflow: 'hidden' }}
     >
+      <style>{`
+        .hide-production-events .production-event {
+          display: none !important;
+        }
+      `}</style>
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
@@ -1450,6 +1481,28 @@ const MaintenanceCalender = () => {
         events={calendarEvents}
         eventResourceEditable={true}
         resources={resourceFiltered}
+        eventClassNames={(arg) => {
+          const classes = [];
+          const stageCode = arg.event.extendedProps.stage_code;
+          const isCleaning = arg.event.extendedProps.is_clearning;
+          const pmId = arg.event.extendedProps.plan_master_id;
+
+          // Hiding/Showing production events & cleaning events
+          if (stageCode != 8 || isCleaning) {
+            classes.push('production-event');
+          }
+
+          // Active Plan Master focusing (original logic from line 1888)
+          if (activePlanMasterId) {
+            if (pmId === activePlanMasterId) {
+              classes.push('fc-event-focus');
+            } else {
+              classes.push('fc-event-hidden');
+            }
+          }
+
+          return classes;
+        }}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
         locale="vi"
@@ -1683,7 +1736,7 @@ const MaintenanceCalender = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory changeSchedualer unSelect ShowBadge',
+          left: 'customPre,myToday,customNext noteModal hiddenProduction hiddenTheory changeSchedualer unSelect ShowBadge',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -1844,19 +1897,6 @@ const MaintenanceCalender = () => {
 
         }}
 
-        //eventClassNames={(arg) => arg.event.extendedProps.isHighlighted ? ['highlight-event'] : []}
-        eventClassNames={(arg) => {
-
-          const pm = arg.event.extendedProps.plan_master_id;
-
-          if (!activePlanMasterId) return [];
-
-          if (pm === activePlanMasterId) {
-            return ['fc-event-focus'];
-          }
-
-          return ['fc-event-hidden'];
-        }}
 
 
         eventDidMount={(info) => {

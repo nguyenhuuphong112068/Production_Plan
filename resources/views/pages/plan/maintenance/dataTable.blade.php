@@ -62,7 +62,7 @@
                                 <th>Mã Thiết Bi</th>
                                 <th>Tên Thiết Bị</th>
                                 <th>Loại BT-HC</th>
-                                <th>Thực Hiện Trước Ngày</th>
+                                <th>Hạn Hiệu Chuẩn / Bảo Trì</th>
                                 <th>Phòng SX Liên Quan</th>
                                 <th>Ghi Chú</th>
                                 <th>Người Tạo/ Ngày Tạo</th>

@@ -64,7 +64,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     Parent_Equip_id: '130px',
     Eqp_name: '180px',
     PM: '100px',
-    related_rooms: '200px',
+    room_codes: '200px',
     expected_date: '120px',
     name: '130px',
     note: '200px',
@@ -74,7 +74,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     name: '100px',
     Inst_Name: '150px',
     PM: '100px',
-    related_rooms: '150px',
+    room_codes: '150px',
     expected_date: '100px',
   };
 
@@ -90,7 +90,12 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         return false;
       });
 
-      setTableData(filtered);
+      const withRoomCodes = filtered.map(item => ({
+        ...item,
+        room_codes: (item.related_rooms || []).map(r => r.room_code).join(', ')
+      }));
+
+      setTableData(withRoomCodes);
     } else {
       setTableData([]);
     }
@@ -108,7 +113,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       : (percentShow === '100%' ? window.innerWidth : window.innerWidth * 0.3);
 
     if (currentWidthPx > window.innerWidth * 0.6) { // Chế độ xem rộng
-      const order = ["stt", "id", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "related_rooms", "PM", "expected_date", "note"];
+      const order = ["stt", "id", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "room_codes", "PM", "expected_date", "note"];
       visibleCols = order.map(f => {
         const col = allColumns.find(c => c.field === f);
         if (!col) return null;
@@ -124,11 +129,11 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         };
       }).filter(Boolean);
     } else {
-      visibleCols = allColumns.filter(col => ["name", "Inst_Name", "related_rooms", "PM", "expected_date"].includes(col.field))
+      visibleCols = allColumns.filter(col => ["name", "Inst_Name", "room_codes", "PM", "expected_date"].includes(col.field))
         .map(col => {
           let header = col.header;
           if (col.field === "name") header = "Mã Thiết Bị";
-          if (col.field === "related_rooms") header = "Phòng SX";
+          if (col.field === "room_codes") header = "Phòng SX";
           if (col.field === "PM") header = "TG thực hiện";
           if (col.field === "expected_date") header = "Hạn BT";
 
@@ -223,7 +228,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     { field: "expected_date", header: "Hạn Bảo Trì", sortable: true, body: expectedDateBodyTemplate },
     { field: "Parent_Equip_id", header: "Mã Thiết Bị Lớn", sortable: true, body: naBody("Parent_Equip_id") },
     { field: "Eqp_name", header: "Tên Thiết Bị Lớn", sortable: true, body: naBody("Eqp_name") },
-    { field: "related_rooms", header: "Phòng sản xuất liên quan", sortable: true, body: relatedRoomBodyTemplate },
+    { field: "room_codes", header: "Phòng sản xuất liên quan", sortable: true, body: relatedRoomBodyTemplate },
     { field: "PM", header: "Thời gian thực hiện", sortable: true, body: naBody("PM") },
     { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") },
   ];
