@@ -89,10 +89,17 @@ class MaintenancePlanController extends Controller
                 $allQuotas = DB::table('quota_maintenance')
                         ->whereIn('inst_id', $instIds)
                         ->where('active', 1)
+                        ->get();
+
+                $quotaIds = $allQuotas->pluck('id')->toArray();
+                $quotaRooms = DB::table('quota_maintenance_rooms')
+                        ->whereIn('quota_maintenance_id', $quotaIds)
                         ->get()
-                        ->groupBy(function ($item) {
-                                return trim($item->inst_id);
-                        });
+                        ->groupBy('quota_maintenance_id');
+
+                $allQuotas = $allQuotas->groupBy(function ($item) {
+                        return trim($item->inst_id);
+                });
 
                 $invalidInsts = [];
                 foreach ($departments as $dept) {
@@ -111,7 +118,8 @@ class MaintenancePlanController extends Controller
                                                 // Kiểm tra nếu là bản ghi cho PX hiện tại hoặc bản ghi bị thiếu PX
                                                 if ($quota->deparment_code == $dept || empty($quota->deparment_code)) {
                                                         $blockingErrors = [];
-                                                        if (empty($quota->room_id)) $blockingErrors[] = "thiếu Phòng/Khu vực";
+                                                        $hasRooms = isset($quotaRooms[$quota->id]) && $quotaRooms[$quota->id]->isNotEmpty();
+                                                        if (!$hasRooms) $blockingErrors[] = "thiếu Phòng/Khu vực";
                                                         if (empty($quota->exe_time) || $quota->exe_time == '00:00') $blockingErrors[] = "thời gian thực hiện = 00:00";
 
                                                         if (!empty($blockingErrors)) {
@@ -135,6 +143,7 @@ class MaintenancePlanController extends Controller
                 // --- Kết thúc Validation ---
 
                 foreach ($departments as $dept) {
+
                         try {
                                 // Lọc schedules theo PX và connection
                                 $deptSchedules = $schedules->filter(function ($s) use ($dept) {
@@ -294,6 +303,7 @@ class MaintenancePlanController extends Controller
                         });
 
                         foreach ($groupedSchedules as $instId => $group) {
+
                                 $quota = $quotas[$instId] ?? null;
                                 if (!$quota) continue;
 
@@ -332,7 +342,7 @@ class MaintenancePlanController extends Controller
                                         'percent_parkaging' => 1,
                                         'only_parkaging' => 0,
                                         'number_parkaging' => 1,
-                                        'note' => $finalNote,
+                                        'note' => 'NA', //$finalNote,
                                         'deparment_code' => $departmentCode,
                                         'prepared_by' => $preparedBy,
                                         'created_at' => $now,
@@ -398,7 +408,8 @@ class MaintenancePlanController extends Controller
                         ->where('plan_list_id', $request->plan_list_id)
                         ->where('plan_master.active', 1)
                         ->leftJoin('quota_maintenance', 'plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
-                        ->leftJoin('room', 'quota_maintenance.room_id', '=', 'room.id')
+                        ->leftJoin('quota_maintenance_rooms', 'quota_maintenance.id', '=', 'quota_maintenance_rooms.quota_maintenance_id')
+                        ->leftJoin('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
                         ->orderBy('level', 'asc')
                         ->orderBy('code', 'asc')
                         ->orderBy('expected_date', 'asc')
@@ -481,7 +492,7 @@ class MaintenancePlanController extends Controller
                 session()->put(['title' => " $request->name - $production"]);
 
                 return view('pages.plan.maintenance.list', [
-                        'datas' => $datas,
+                        'datas' => $datas->sortBy('expected_date'),
                         'plan_list_id' => $request->plan_list_id,
                         'month' => $request->month,
                         'production' => $request->production,
@@ -491,9 +502,6 @@ class MaintenancePlanController extends Controller
 
         public function store(Request $request)
         {
-
-
-
                 $validator = Validator::make($request->all(), [
                         'devices.*.expected_date' => 'required|date',
                 ], [
@@ -712,7 +720,7 @@ class MaintenancePlanController extends Controller
                                         }
                                 }
                                 $targetPlans = $pmQuery->get();
-                                
+
                                 foreach ($targetPlans as $plan) {
                                         $changes[] = [
                                                 'id' => $plan->id, // Giả định id này sẽ được xử lý phía dưới
@@ -745,7 +753,7 @@ class MaintenancePlanController extends Controller
 
                                 $idParts = explode('-', $idRaw);
                                 $realIds = explode(',', $idParts[0]);
-                                
+
                                 // Nếu là cập nhật từ Calendar (stage_plan)
                                 if (!isset($change['is_pm']) && strpos($idRaw, 'maintenance') === false) {
                                         // Tính toán ngày nhận (tham khảo SchedualController stage 1/2)
@@ -773,12 +781,12 @@ class MaintenancePlanController extends Controller
                                         foreach ($pmIds as $pmId) {
                                                 $this->syncAndLogPlanMaster($pmId, $newStart->format('Y-m-d'), $request->reason['reason'] ?? "Cập nhật từ lịch");
                                         }
-                                } 
+                                }
                                 // Nếu là cập nhật trực tiếp plan_master (từ bảng hoặc sync)
                                 else {
                                         $expectedDate = $change['expected_date'] ?? \Carbon\Carbon::parse($change['start'] ?? now())->format('Y-m-d');
                                         $note = $change['note'] ?? ($request->note ?? "NA");
-                                        
+
                                         foreach ($realIds as $pmId) {
                                                 DB::table('plan_master')->where('id', $pmId)->update([
                                                         'expected_date' => $expectedDate,
@@ -896,6 +904,7 @@ class MaintenancePlanController extends Controller
                 $dataToInsert = [];
 
                 foreach ($plans as $plan) {
+
                         $mmyy = $plan->expected_date ? \Carbon\Carbon::parse($plan->expected_date)->format('my') : '0000';
                         $campaignCode = trim($plan->inst_id) . '_' . $mmyy;
 
@@ -930,6 +939,8 @@ class MaintenancePlanController extends Controller
                                 ];
                         }
                 }
+
+                //dd($dataToInsert, $request->plan_list_id);
 
                 DB::beginTransaction();
                 try {

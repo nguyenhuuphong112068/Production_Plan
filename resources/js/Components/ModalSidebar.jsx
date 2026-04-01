@@ -398,59 +398,16 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     }));
 
   const handleSelectionChange = (e) => {
-    const currentSelection = e.value ?? null;
+    const currentSelection = e.value ?? [];
 
-    if (!currentSelection || currentSelection.length === 0) {
-      setSelectedRows([]); // reset nếu không có selection
+    if (currentSelection.length === 0) {
+      setSelectedRows([]);
       return;
     }
 
-    // ✅ check stage_code = 8
+    // Luôn chỉ lấy người dùng vừa click cuối cùng để filter (Single selection style)
     const lastSelected = currentSelection[currentSelection.length - 1];
-
-
-    // if (lastSelected.stage_code === 8 && lastSelected.is_HVAC) {
-    //   // lấy instrument_code của row vừa chọn
-    //   const code = lastSelected.instrument_code;
-    //   // tìm tất cả row trong dataset có cùng instrument_code
-    //   const sameInstrument = waitPlan.filter(
-    //     (row) => row.instrument_code === code && row.stage_code === 8
-    //   );
-    //   // đánh dấu multi
-    //   setSelectedRows(sameInstrument.map(ev => ({ ...ev, isMulti: true, is_HVAC: true })));
-    //   return;
-    // }
-
-    // if (lastSelected.stage_code === 8 && lastSelected.is_HVAC === 0) {
-    //   // chọn theo permisson_room
-    //   const targetRoom = JSON.stringify(lastSelected.permisson_room);
-
-    //   const sameRoom = waitPlan.filter(
-    //     (row) =>
-    //       row.stage_code === 8 &&
-    //       JSON.stringify(row.permisson_room) === targetRoom
-    //   );
-
-    //   setSelectedRows(sameRoom.map(ev => ({ ...ev, isMulti: true, is_HVAC: false })));
-    //   return;
-    // }
-
-    // ✅ các trường hợp khác
-    if (percentShow !== "100%") {
-      if (currentSelection.length <= 1) {
-        setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: false })));
-        return;
-      }
-      const firstCode = currentSelection[0].intermediate_code;
-      const allSame = currentSelection.every((row) => row.intermediate_code === firstCode);
-      if (allSame) {
-        setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: true })));
-      } else {
-        setSelectedRows([{ ...lastSelected, isMulti: false }]);
-      }
-    } else {
-      setSelectedRows(currentSelection.map(ev => ({ ...ev, isMulti: false })));
-    }
+    setSelectedRows([{ ...lastSelected, isMulti: false }]);
   };
 
   const handleChangeStage = (selected_stage) => {

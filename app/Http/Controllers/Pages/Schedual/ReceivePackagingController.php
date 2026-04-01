@@ -99,11 +99,11 @@ class ReceivePackagingController extends Controller
         preg_match_all('/@.*?\[(\d+)\]/', $message, $matches);
         if (!empty($matches[1])) {
             $taggedUserIds = array_unique($matches[1]);
-            
+
             // Lấy thông tin Lô để nội dung thông báo rõ ràng hơn
             $planInfo = DB::table('plan_master')->where('id', $request->plan_master_id)->first();
             $batchStr = $planInfo ? " (Lô: $planInfo->batch)" : "";
-            
+
             \App\Http\Controllers\General\NotificationController::sendNotification(
                 session('user')['fullName'] . " đã nhắc lời bạn trong trao đổi sản xuất" . $batchStr . ": " . $message,
                 'Nhắc tên',
