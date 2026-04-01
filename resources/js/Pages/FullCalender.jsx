@@ -3117,7 +3117,6 @@ const ScheduleTest = () => {
           className="p-datatable-sm"
           emptyMessage="Không có dữ liệu lịch sử"
           stripedRows
-          paginator rows={5}
         >
           <Column header="STT" body={(rowData, options) => options.rowIndex + 1} style={{ width: '50px' }} />
           <Column field="version" header="Version" style={{ width: '80px' }} />
