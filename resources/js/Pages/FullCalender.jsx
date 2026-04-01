@@ -12,6 +12,9 @@ import { Calendar } from 'primereact/calendar';
 import { Stepper } from 'primereact/stepper';
 import { StepperPanel } from 'primereact/stepperpanel';
 import { createRoot } from 'react-dom/client';
+import { OverlayPanel } from 'primereact/overlaypanel';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
 import axios from "axios";
 import 'moment/locale/vi';
 import dayjs from 'dayjs';
@@ -55,6 +58,11 @@ const ScheduleTest = () => {
 
   const [events, setEvents] = useState([]);
   const [resources, setResources] = useState([]);
+  const [historyData, setHistoryData] = useState([]);
+  const historyOverlayRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showHistoryHover, setShowHistoryHover] = useState(false);
   const [sumBatchByStage, setSumBatchByStage] = useState([]);
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
@@ -515,6 +523,12 @@ const ScheduleTest = () => {
     // No handleViewChange call needed anymore for this toggle
   };
 
+  const toggleHistoryHover = () => {
+    const newState = !showHistoryHover;
+    setShowHistoryHover(newState);
+    sessionStorage.setItem('showHistoryHover', JSON.stringify(newState));
+  };
+
   // const toggleTheoryEvents = () => {
 
   //   const current = JSON.parse(sessionStorage.getItem('theoryHidden'));
@@ -889,6 +903,45 @@ const ScheduleTest = () => {
       }
     });
 
+  };
+
+  const handleEventMouseEnter = (info) => {
+    if (!showHistoryHover) return;
+    const eventId = info.event.id;
+    if (!eventId) return;
+
+    // Xóa timeout cũ trước khi tạo cái mới để delay 2s
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    hoverTimeoutRef.current = setTimeout(() => {
+      setLoadingHistory(true);
+      axios.post('/Schedual/audit/history', { id: eventId })
+        .then(res => {
+          setHistoryData(res.data);
+          setLoadingHistory(false);
+          if (historyOverlayRef.current) {
+            historyOverlayRef.current.show(info.jsEvent);
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching history:", err);
+          setLoadingHistory(false);
+        });
+    }, 1000); // Delay 1 giây
+  };
+
+  const handleEventMouseLeave = () => {
+    // Xóa timeout để hủy tiến trình show modal nếu user đã rời đi trước khi đủ thời gian 2s
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
+    if (historyOverlayRef.current) {
+      historyOverlayRef.current.hide();
+    }
   };
 
   ///
@@ -2564,6 +2617,8 @@ const ScheduleTest = () => {
         eventResize={authorization ? handleEventChange : false}
         eventDrop={authorization ? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange) : false}
         eventReceive={authorization ? handleEventReceive : false}
+        eventMouseEnter={(info) => handleEventMouseEnter(info)}
+        eventMouseLeave={(info) => handleEventMouseLeave(info)}
         dateClick={authorization ? handleClear : false}
         eventAllow={finisedEvent}
 
@@ -2785,7 +2840,7 @@ const ScheduleTest = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -2892,6 +2947,11 @@ const ScheduleTest = () => {
             text: '🙈',
             click: toggleCleaningEvents,
             hint: 'Ẩn/ Hiện lịch vệ sinh'
+          },
+          historyToggle: {
+            text: '📜',
+            click: toggleHistoryHover,
+            hint: 'Bật/Tắt chế độ hiển thị lịch sử thay đổi lịch khi hover chuột vào sự kiện'
           },
 
           hiddenTheory: {
@@ -3042,6 +3102,33 @@ const ScheduleTest = () => {
           setMultiStage={setMultiStage}
           excludeMaintenance={true}
         />)}
+
+      {/* Modal / Overlay hiển thị lịch sử */}
+      <OverlayPanel ref={historyOverlayRef} id="history_overlay" style={{ width: '800px' }} className="shadow-2lg border-round">
+        <h5 className="font-bold mb-3 d-flex align-items-center">
+          <i className="pi pi-history mr-2 text-primary"></i>
+          Lịch Sử Thay Đổi
+          {loadingHistory && <i className="pi pi-spin pi-spinner ml-2"></i>}
+        </h5>
+
+        <DataTable
+          value={historyData}
+          loading={loadingHistory}
+          className="p-datatable-sm"
+          emptyMessage="Không có dữ liệu lịch sử"
+          stripedRows
+          paginator rows={5}
+        >
+          <Column header="STT" body={(rowData, options) => options.rowIndex + 1} style={{ width: '50px' }} />
+          <Column field="version" header="Version" style={{ width: '80px' }} />
+          <Column field="product_name" header="Sản phẩm" />
+          <Column field="batch" header="Số lô" />
+          <Column field="start" header="Bắt đầu" body={(row) => moment(row.start).format('DD/MM/YYYY HH:mm')} />
+          <Column field="end" header="Kết thúc" body={(row) => moment(row.end).format('DD/MM/YYYY HH:mm')} />
+          <Column field="created_at" header="Ngày tạo" body={(row) => row.created_at ? moment(row.created_at).format('DD/MM/YYYY HH:mm') : '-'} />
+          <Column field="schedualed_by" header="Người tạo" />
+        </DataTable>
+      </OverlayPanel>
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
       {authorization && (
