@@ -13,15 +13,16 @@ class ShedualYieldController extends Controller
 
     public function index(Request $request)
     {
-        //dd ($request->all());
+        //dd($request->all());
+
         $startDate = $request->from_date
-            ? Carbon::parse($request->from_date)
-            : Carbon::now()->addDays(1)->startOfMonth();
+            ? Carbon::parse($request->from_date)->setTime(6, 0, 0)
+            : Carbon::now()->addDays(1)->startOfMonth()->setTime(6, 0, 0);
 
         $endDate = $request->to_date
-            ? Carbon::parse($request->to_date)
-            : Carbon::now()->endOfMonth();
-
+            ? Carbon::parse($request->to_date)->addDays(1)->setTime(6, 0, 0)
+            : Carbon::now()->endOfMonth()->addDays(1)->setTime(6, 0, 0);
+        //dd($startDate, $endDate);
         $theory  = $this->yield_theory($startDate, $endDate, 'resourceId');
         $actual = $this->yield_actual($startDate, $endDate, 'resourceId');
 
@@ -148,7 +149,7 @@ class ShedualYieldController extends Controller
 
         // --- 4️⃣ Tính tổng theo từng ngày
         $dailyTotals = collect();
-        $period = new \DatePeriod($startDate, new \DateInterval('P1D'), $endDate->copy()->addDay());
+        $period = new \DatePeriod($startDate, new \DateInterval('P1D'), $endDate);
 
         foreach ($period as $date) {
             $date = Carbon::instance($date);

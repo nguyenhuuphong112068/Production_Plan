@@ -420,7 +420,10 @@ class DailyReportController extends Controller
         // ------------------------------
         // 4️⃣ MERGE ROOMS + MERGED DATA
         // ------------------------------
-        $rooms = DB::table('room')->where('deparment_code', session('user')['production_code'])->get();
+        $rooms = DB::table('room')
+            ->where('deparment_code', session('user')['production_code'])
+            ->where('stage_code', '!=', 8) // 🔥 Loại bỏ các phòng stage 8
+            ->get();
         $yield_room = $rooms->map(function ($room) use ($merged, $group_By) {
 
             // Tìm xem phòng có dữ liệu sản lượng không
