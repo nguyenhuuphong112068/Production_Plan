@@ -181,8 +181,8 @@
 
                                 <td> {{ $data->work_hours }} </td>
                                 <td> {{ $data->cleaning_hours }} </td>
-                                <td> {{ $data->busy_hours }} </td>
-                                <td class="text-end"> {{ number_format($data->output_thery) }} </td>
+                                <td> {{ number_format($data->busy_hours) }} </td>
+                                <td class="text-end"> {{ number_format($data->yield_theory) }} </td>
                                 <td class="text-end"> {{ number_format($data->yield_actual) }} </td>
                                 <td> {{ $data->OEE }} </td>
 
@@ -203,7 +203,7 @@
                                 <td> {{ $data->TEEP }} </td>
                             </tr>
                             @php
-                                $stage_theory_total += $data->output_thery;
+                                $stage_theory_total += $data->yield_theory;
                                 $stage_actual_total += $data->yield_actual;
                             @endphp
 

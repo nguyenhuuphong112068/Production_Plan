@@ -15,8 +15,10 @@ class MonthlyReportController extends Controller
         $reportedYear  = (int) ($request->year ?? now()->year);
 
         // 1️⃣ Xác định đầu & cuối tháng
-        $startMonth = Carbon::create($reportedYear, $reportedMonth, 1)->startOfMonth();
-        $endMonth   = $startMonth->copy()->endOfMonth();
+        $startMonth = Carbon::create($reportedYear, $reportedMonth, 1)->startOfMonth()->setTime(6, 0, 0);
+        $endMonth   = $startMonth->copy()->endOfMonth()->addDays(1)->setTime(6, 0, 0);
+
+        //dd($startMonth, $endMonth);
 
         // Xác định tuần
         // 2️⃣ Lấy danh sách off days trong tháng
