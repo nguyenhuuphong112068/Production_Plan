@@ -282,15 +282,16 @@ class MonthlyReportController extends Controller
 
     public function yield_theory($startDate, $endDate)
     {
-        $startDateStr = \Carbon\Carbon::parse($startDate)->startOfDay()->format('Y-m-d H:i:s');
-        $endDateStr   = \Carbon\Carbon::parse($endDate)->endOfDay()->format('Y-m-d H:i:s');
+        // Sử dụng luôn object Carbon truyền vào để giữ nguyên mốc 06:00:00 nếu có
+        $startDateStr = $startDate instanceof \Carbon\Carbon ? $startDate->toDateTimeString() : \Carbon\Carbon::parse($startDate)->toDateTimeString();
+        $endDateStr   = $endDate instanceof \Carbon\Carbon ? $endDate->toDateTimeString() : \Carbon\Carbon::parse($endDate)->toDateTimeString();
 
         $result = DB::table("stage_plan as sp")
             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+            ->where('sp.active', 1) // 🔥 Quan trọng: Chỉ lấy những lô đang hoạt động
             ->whereNotNull('sp.start')
             ->whereNotNull('sp.resourceId')
             ->where('sp.deparment_code', session('user')['production_code'])
-            // 🔥 Lấy tất cả các giai đoạn giao thoa với khoảng thời gian báo cáo
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDateStr, $startDateStr])
             ->select(
                 "sp.resourceId",
@@ -320,14 +321,14 @@ class MonthlyReportController extends Controller
 
     public function yield_actual($startDate, $endDate)
     {
-        $startDateStr = \Carbon\Carbon::parse($startDate)->startOfDay()->format('Y-m-d H:i:s');
-        $endDateStr   = \Carbon\Carbon::parse($endDate)->endOfDay()->format('Y-m-d H:i:s');
+        $startDateStr = $startDate instanceof \Carbon\Carbon ? $startDate->toDateTimeString() : \Carbon\Carbon::parse($startDate)->toDateTimeString();
+        $endDateStr   = $endDate instanceof \Carbon\Carbon ? $endDate->toDateTimeString() : \Carbon\Carbon::parse($endDate)->toDateTimeString();
 
         $result = DB::table('stage_plan as sp')
             ->join('yields as y', 'sp.id', '=', 'y.stage_plan_id')
+            ->where('sp.active', 1) // 🔥 Chỉ lấy sản lượng của những lô đang hoạt động
             ->whereNotNull('sp.resourceId')
             ->where('sp.deparment_code', session('user')['production_code'])
-            // 🔥 chỉ lấy phần overlap của từng record yield
             ->whereRaw('(y.start < ? AND y.end > ?)', [$endDateStr, $startDateStr])
             ->select(
                 'sp.resourceId',
