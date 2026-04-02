@@ -858,7 +858,8 @@ const ScheduleTest = () => {
             start: newStart.toISOString(),
             end: newEnd.toISOString(),
             resourceId: event.getResources?.()[0]?.id ?? null,
-            title: event.title
+            title: event.title,
+            submit: event._def.extendedProps.submit
           });
         }
       });
@@ -890,7 +891,8 @@ const ScheduleTest = () => {
         start: changedEvent.start.toISOString(),
         end: changedEvent.end.toISOString(),
         resourceId: changeInfo.event.getResources?.()[0]?.id ?? null,
-        title: changedEvent.title
+        title: changedEvent.title,
+        submit: changedEvent.extendedProps.submit
         // các dữ liệu khác nếu cần
       };
 
@@ -962,70 +964,77 @@ const ScheduleTest = () => {
       return;
     }
 
-    // 🟨 Tạo datalist từ state "reasons"
-    const htmlOptions = reasons
-      .map(r => `<option value="${r}">`)
-      .join("");
+    // 🟨 Kiểm tra xem có sự kiện nào có submit = 1 không
+    const hasSubmittedEvent = pendingChanges.some(c => c.submit == 1);
+    let reasonObj = {
+      reason: "Cập nhật ngày",
+      saveReason: false
+    };
 
-    // 🟨 Swal datalist (select hoặc nhập)
-    const { value: reason } = await Swal.fire({
-      title: 'Chọn lý do thay đổi',
-      width: '800px',
-      html: `
-        <style>
-          #reasonInput {
-            width: 650px !important;   
-            max-width: 650px !important;
+    if (hasSubmittedEvent) {
+      // 🟨 Tạo datalist từ state "reasons"
+      const htmlOptions = reasons
+        .map(r => `<option value="${r}">`)
+        .join("");
+
+      // 🟨 Swal datalist (select hoặc nhập)
+      const { value: swalResult } = await Swal.fire({
+        title: 'Chọn lý do thay đổi',
+        width: '800px',
+        html: `
+          <style>
+            #reasonInput {
+              width: 650px !important;   
+              max-width: 650px !important;
+            }
+          </style>
+
+        
+            <input list="reasonList" id="reasonInput" name="reason"
+                  class="swal2-input"
+                  placeholder="Chọn hoặc nhập lý do">
+            <datalist id="reasonList">
+              ${htmlOptions}
+            </datalist>
+
+
+            <div class="cfg-row">
+                <label class="mt-2 cfg-label" for="work-sunday">Lưu Lại Lý Do:</label>
+                <label class="switch">
+                  <input id="saveReason" type="checkbox">
+                  <span class="slider round"></span>
+                  <span class="switch-labels">
+                    <span class="off">No</span>
+                    <span class="on">Yes</span>
+                  </span>
+                </label>
+            </div>
+        
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Xác nhận lưu',
+        cancelButtonText: 'Hủy',
+        preConfirm: () => {
+          const formValues = {};
+          const r = document.getElementById('reasonInput').value;
+          const s = document.getElementById('saveReason');
+          formValues.saveReason = s.checked;
+
+          if (!r || r.trim() === '') {
+            Swal.showValidationMessage('Bạn phải nhập hoặc chọn lý do!');
+            return false;
           }
-        </style>
-
-      
-          <input list="reasonList" id="reasonInput" name="reason"
-                class="swal2-input"
-                placeholder="Chọn hoặc nhập lý do">
-          <datalist id="reasonList">
-            ${htmlOptions}
-          </datalist>
-
-
-          <div class="cfg-row">
-              <label class="mt-2 cfg-label" for="work-sunday">Lưu Lại Lý Do:</label>
-              <label class="switch">
-                <input id="saveReason" type="checkbox">
-                <span class="slider round"></span>
-                <span class="switch-labels">
-                  <span class="off">No</span>
-                  <span class="on">Yes</span>
-                </span>
-              </label>
-          </div>
-      
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Xác nhận lưu',
-      cancelButtonText: 'Hủy',
-      preConfirm: () => {
-        const formValues = {};
-
-        const reason = document.getElementById('reasonInput').value;
-
-        const saveReason = document.getElementById('saveReason');
-        formValues.saveReason = saveReason.checked;
-
-
-        if (!reason || reason.trim() === '') {
-          Swal.showValidationMessage('Bạn phải nhập hoặc chọn lý do!');
-          return false;
+          formValues.reason = r;
+          return formValues;
         }
-        formValues.reason = reason;
+      });
 
-        return formValues;
-      }
-    });
+      // Nếu người dùng bấm “Hủy” thì dừng
+      if (!swalResult) return;
 
-    // Nếu người dùng bấm “Hủy” thì dừng
-    if (!reason) return;
+      reasonObj = swalResult;
+    }
 
     setSaving(true);
 
@@ -1034,7 +1043,7 @@ const ScheduleTest = () => {
     let endDate = toLocalISOString(activeEnd);
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
     axios.put('/Schedual/update', {
-      reason, // 🟢 gửi thêm lý do
+      reason: reasonObj,
       theory: theoryHidden,
       changes: pendingChanges.map(change => ({
         id: change.id,
@@ -3124,7 +3133,7 @@ const ScheduleTest = () => {
           <Column field="batch" header="Số lô" />
           <Column field="start" header="Bắt đầu" body={(row) => moment(row.start).format('DD/MM/YYYY HH:mm')} />
           <Column field="end" header="Kết thúc" body={(row) => moment(row.end).format('DD/MM/YYYY HH:mm')} />
-          <Column field="created_at" header="Ngày tạo" body={(row) => row.created_at ? moment(row.created_at).format('DD/MM/YYYY HH:mm') : '-'} />
+          <Column field="schedualed_at" header="Ngày tạo" body={(row) => row.schedualed_at ? moment(row.schedualed_at).format('DD/MM/YYYY HH:mm') : '-'} />
           <Column field="schedualed_by" header="Người tạo" />
           <Column field="type_of_change" header="Lý do thay đổi" />
         </DataTable>

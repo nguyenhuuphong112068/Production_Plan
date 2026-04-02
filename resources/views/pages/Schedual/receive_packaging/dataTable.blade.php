@@ -231,6 +231,9 @@
                                                         @else
                                                             {{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
+                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history" data-id="{{ $data->id }}" data-type="0" title="Lịch sử thay đổi">
+                                                            <i class="fas fa-history"></i>
+                                                        </button>
                                                         <br>
 
                                                     </div>
@@ -262,6 +265,9 @@
                                                         @else
                                                             {{ $data->receive_second_packaging_date ? \Carbon\Carbon::parse($data->receive_second_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
+                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history" data-id="{{ $data->id }}" data-type="1" title="Lịch sử thay đổi">
+                                                            <i class="fas fa-history"></i>
+                                                        </button>
                                                         <br>
                                                     </div>
                                                     <div class="tc-confirm-info">
@@ -334,6 +340,38 @@
     <!-- /.content -->
 </div>
 
+<!-- Modal Lịch sử -->
+<div class="modal fade" id="packagingHistoryModal" tabindex="-1" role="dialog" aria-labelledby="historyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="historyModalLabel">Lịch Sử Thay Đổi Ngày Nhận Bao Bì</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="font-size: 14px;">
+                <table class="table table-sm table-bordered table-striped" id="historyTable">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Stt</th>
+                            <th>Ngày nhận</th>
+                            <th>Version</th>
+                            <th>Người tạo</th>
+                            <th>Ngày tạo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- Dữ liệu AJAX sẽ đổ vào đây -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
@@ -368,40 +406,41 @@
             },
         });
 
-    // --- TÍCH HỢP TRIBUTE.JS CHO @MENTION ---
-    let tribute;
-    function initMentions() {
-        if (typeof Tribute === 'undefined') {
-            setTimeout(initMentions, 200);
-            return;
-        }
+        // --- TÍCH HỢP TRIBUTE.JS CHO @MENTION ---
+        let tribute;
 
-        $.get("{{ route('chat.users') }}", function(users) {
-            let mentionValues = users.map(u => ({
-                key: u.fullName,
-                value: `@${u.fullName}[${u.id}]`
-            }));
+        function initMentions() {
+            if (typeof Tribute === 'undefined') {
+                setTimeout(initMentions, 200);
+                return;
+            }
 
-            tribute = new Tribute({
-                values: mentionValues,
-                selectTemplate: function(item) {
-                    return item.original.value;
-                }
+            $.get("{{ route('chat.users') }}", function(users) {
+                let mentionValues = users.map(u => ({
+                    key: u.fullName,
+                    value: `@${u.fullName}[${u.id}]`
+                }));
+
+                tribute = new Tribute({
+                    values: mentionValues,
+                    selectTemplate: function(item) {
+                        return item.original.value;
+                    }
+                });
+
+                // Gắn vào các ô input hiện có
+                tribute.attach(document.querySelectorAll('.chat-input'));
             });
-
-            // Gắn vào các ô input hiện có
-            tribute.attach(document.querySelectorAll('.chat-input'));
-        });
-    }
-
-    initMentions();
-
-    // Re-attach khi DataTable vẽ lại
-    $('#data_table_Schedual_list').on('draw.dt', function() {
-        if (tribute) {
-            tribute.attach(document.querySelectorAll('.chat-input'));
         }
-    });
+
+        initMentions();
+
+        // Re-attach khi DataTable vẽ lại
+        $('#data_table_Schedual_list').on('draw.dt', function() {
+            if (tribute) {
+                tribute.attach(document.querySelectorAll('.chat-input'));
+            }
+        });
 
         $(document).on('focus', '.updateInput', function() {
             $(this).data('old-value', $(this).val());
@@ -605,6 +644,53 @@
             }
         });
 
+    });
+
+    $(document).on('click', '.show-packaging-history', function() {
+        let id = $(this).data('id');
+        let type = $(this).data('type');
+
+        $('#historyBody').html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>');
+        $('#packagingHistoryModal').modal('show');
+
+        $.ajax({
+            url: "{{ route('pages.Schedual.receive_packaging.getHistory') }}",
+            type: "GET",
+            data: {
+                stage_plan_id: id,
+                type_packaging: type
+            },
+            success: function(res) {
+                let html = '';
+                if (res.length > 0) {
+                    res.forEach((item, index) => {
+                        let dateText = item.receive_packaging_date ? moment(item.receive_packaging_date).format('DD/MM/YYYY') : '-';
+                        let createdAtText = item.created_at ? moment(item.created_at).format('DD/MM/YYYY HH:mm') : '-';
+                        html += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${dateText}</td>
+                                <td>${item.ver}</td>
+                                <td>${item.created_by}</td>
+                                <td>${createdAtText}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html = '<tr><td colspan="5" class="text-center">Chưa có lịch sử thay đổi</td></tr>';
+                }
+                const historyBody = document.getElementById('historyBody');
+                if (historyBody) {
+                    historyBody.innerHTML = html;
+                }
+            },
+            error: function() {
+                const historyBody = document.getElementById('historyBody');
+                if (historyBody) {
+                    historyBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Lỗi khi tải dữ liệu!</td></tr>';
+                }
+            }
+        });
     });
 </script>
 

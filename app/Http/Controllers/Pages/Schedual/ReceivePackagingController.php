@@ -125,11 +125,40 @@ class ReceivePackagingController extends Controller
 
     public function updateInput(Request $request)
     {
-        DB::table('stage_plan')
-            ->where('id', $request->stage_plan_id)
-            ->update([$request->name => $request->updateValue]);
+        $id    = $request->stage_plan_id;
+        $name  = $request->name;
+        $value = $request->updateValue;
 
-        return response()->json(['updateValue' => $request->updateValue]);
+        DB::table('stage_plan')
+            ->where('id', $id)
+            ->update([$name => $value]);
+
+        if (in_array($name, ['receive_packaging_date', 'receive_second_packaging_date'])) {
+            $type = ($name == 'receive_packaging_date') ? 0 : 1;
+            $this->syncPackagingDate($id, $value, $type);
+        }
+
+        return response()->json(['updateValue' => $value]);
+    }
+
+    protected function syncPackagingDate($stagePlanId, $date, $type)
+    {
+        $latest = DB::table('packaging_issuance_date')
+            ->where('stage_plane_id', $stagePlanId)
+            ->where('type_packaging', $type)
+            ->orderBy('ver', 'desc')
+            ->first();
+
+        if (!$latest || $latest->receive_packaging_date != $date) {
+            DB::table('packaging_issuance_date')->insert([
+                'stage_plane_id'         => $stagePlanId,
+                'type_packaging'         => $type,
+                'receive_packaging_date' => $date,
+                'ver'                    => ($latest->ver ?? 0) + 1,
+                'created_at'             => now(),
+                'created_by'             => session('user')['fullName'] ?? 'System'
+            ]);
+        }
     }
 
     public function received(Request $request)
@@ -145,5 +174,16 @@ class ReceivePackagingController extends Controller
             'confirm_by' =>  session('user')['fullName'],
             'confirm_date' => now()->format('d/m/Y'),
         ]);
+    }
+
+    public function getHistory(Request $request)
+    {
+        $history = DB::table('packaging_issuance_date')
+            ->where('stage_plane_id', $request->stage_plan_id)
+            ->where('type_packaging', $request->type_packaging)
+            ->orderBy('ver', 'desc')
+            ->get();
+
+        return response()->json($history);
     }
 }

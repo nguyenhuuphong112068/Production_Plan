@@ -19,9 +19,9 @@ class SchedualController  extends  Controller
         protected  $order_by  =  1;
         
         protected  $selectedDates  =  [];
-          //. lưu ngày nghĩ lấy từ fe
+        //. lưu ngày nghĩ lấy từ fe
         protected  $offDate  =  [];
-          // tạo các khoảng  offdate
+        // tạo các khoảng  offdate
         protected  $work_sunday  =  true;
         
         protected  $max_Step  =  3;
@@ -1851,6 +1851,7 @@ class SchedualController  extends  Controller
                                                         'receive_second_packaging_date'    =>  $receiveDate
                                                 ]);
                                         
+
                                         
                                 
                                 }
@@ -1870,6 +1871,9 @@ class SchedualController  extends  Controller
                                         $last_version  =  DB::table('stage_plan_history')
                                                 ->where('stage_plan_id',  $product['id'])
                                                 ->max('version')  ??  0;
+
+                                        $this->syncPackagingDate($product['id'],  $receiveDate, 0);
+                                        $this->syncPackagingDate($product['id'],  $receiveDate, 1);
                                         
 
                                         DB::table('stage_plan_history')->insert([
@@ -1884,9 +1888,7 @@ class SchedualController  extends  Controller
                                                 'type_of_change'  =>  $request->reason  ??  "Lập Lịch Thủ Công",
                                         ]);
 
-                                        //DB::table('Packaging_issuance_date')->insert([
-                                        //        'stage_plan_id'   =>  $product['id'],        
-                                        // ]);
+                        
                                 
                                 }
                                 
@@ -2273,8 +2275,7 @@ class SchedualController  extends  Controller
                         DB::commit();
                 
                 }  catch  (\Exception  $e)  {
-                        
-                        DB::rollBack();
+                                        DB::rollBack();
                         
                         Log::error('Lỗi cập nhật sự kiện:',  ['error'  =>  $e->getMessage()]);
                         
@@ -2302,105 +2303,77 @@ class SchedualController  extends  Controller
         
 
         public  function  update(Request  $request)
-        
         {
-                
                 $offDays  =  DB::table('off_days')
                         ->whereDate('off_date',  '>=',  now())
                         ->pluck('off_date')
                         ->toArray();
-                
 
                 $changes  =  $request->input('changes',  []);
-                
                 $this->theory  = (int)$request->theory  ??  0;
-                
+
                 try  {
-                        
+                        // Lưu lý do một lần duy nhất nếu cần
+                        if  (is_array($request->reason)  &&  ($request->reason['saveReason']  ??  false))  {
+                                DB::table('reason')->updateOrInsert(
+                                        [
+                                                'name'           =>  $request->reason['reason'], 
+                                                'deparment_code' =>  session('user')['production_code']
+                                        ], 
+                                        [
+                                                'created_by'     =>  session('user')['fullName'], 
+                                                'created_at'     =>  now(),
+                                        ]
+                                );
+                        }
+
                         foreach  ($changes  as  $change)  {
-                                
-                                // Tách id: "101,102-main" -> [0] => "101,102", [1] => "main"
                                 $idParts  =  explode('-',  $change['id']);
-                                
-                                $realId  =  $idParts[0]  ??  null;
-                                
-                                $type  =  $idParts[1]  ??  null;
-                                
+                                $realId   =  $idParts[0]  ??  null;
+                                $type     =  $idParts[1]  ??  null;
 
-                                if  (!$realId)  {
-                                        
-                                        continue;
-                                 // bỏ qua nếu id không hợp lệ
-                                }
-                                
+                                if  (!$realId)  continue;
 
-                                if  ($request->reason['saveReason'])  {
-                                        
-                                        DB::table('reason')
-                                                ->insert([
-                                                        'name'                   =>  $request->reason['reason'], 
-                                                        'deparment_code'         =>  session('user')['production_code'], 
-                                                        'created_by'             =>  session('user')['fullName'], 
-                                                        'created_at'             =>  now(),
-                                                ]);
-                                
-                                }
-                                
-
-                                // sử dụng hậu tố id để xác định loại sự kiện (chính xác hơn strpos title)
                                 if  ($type  &&  strpos($type,  'cleaning')  !==  false)  {
-                                        
                                         DB::table('stage_plan')
                                                 ->whereIn('id',  explode(',',  $realId))
                                                 ->update([
                                                         'start_clearning'  =>  $change['start'], 
                                                         'end_clearning'    =>  $change['end'], 
                                                         'resourceId'       =>  $change['resourceId'], 
-
                                                         'schedualed_by'    =>  session('user')['fullName'], 
                                                         'schedualed_at'    =>  now(),
                                                 ]);
-                                
                                 }  else  {
-                                        
-
-
                                         $receiveDate  =  Carbon::parse($change['start'])->subDay();
-                                        
-
                                         while  (in_array($receiveDate->toDateString(),  $offDays))  {
-                                                
                                                 $receiveDate->subDay();
-                                        
                                         }
-                                        
-
 
                                         $idsArray  =  explode(',',  $realId);
-                                        
-
                                         DB::table('stage_plan')
                                                 ->whereIn('id',  $idsArray)
                                                 ->update([
-                                                        'start'            =>  $change['start'], 
-                                                        'end'              =>  $change['end'], 
-                                                        'resourceId'       =>  $change['resourceId'], 
-                                                        'schedualed_by'    =>  session('user')['fullName'], 
-                                                        'schedualed_at'    =>  now(), 
-                                                        'accept_quarantine'  =>  0, 
+                                                        'start'                     =>  $change['start'], 
+                                                        'end'                       =>  $change['end'], 
+                                                        'resourceId'                =>  $change['resourceId'], 
+                                                        'schedualed_by'             =>  session('user')['fullName'], 
+                                                        'schedualed_at'             =>  now(), 
+                                                        'accept_quarantine'         =>  0, 
                                                         'receive_packaging_date'    =>  $receiveDate, 
                                                         'receive_second_packaging_date'    =>  $receiveDate
 
 
                                                 ]);
                                         
-
                                         foreach  ($idsArray  as  $sid)  {
-                                                
                                                 $update_row  =  DB::table('stage_plan')->where('id',  $sid)->first();
                                                 
 
                                                 if  ($update_row  &&  $update_row->submit  ==  1)  {
+
+                                                        $this->syncPackagingDate($sid,  $receiveDate, 0);
+                                                        $this->syncPackagingDate($sid,  $receiveDate, 1);
                                                         
                                                         DB::table('stage_plan_history')
                                                                 ->insert([
@@ -2640,10 +2613,6 @@ class SchedualController  extends  Controller
         
         {
                 
-
-                //Log::info ($request->all());
-                //dd ("sa");
-
                 $production  =  session('user')['production_code'];
                 
                 try  {
@@ -4875,13 +4844,17 @@ class SchedualController  extends  Controller
                                         'receive_packaging_date'    =>  $receiveDate, 
                                         'receive_second_packaging_date'    =>  $receiveDate
                                 ]);
-                        
+
+
 
                         $submit  =  DB::table('stage_plan')->where('id',  $stageId)->value('submit');
                         
 
                         // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
                         if  ($submit  ==  1)  {
+
+                                $this->syncPackagingDate($stageId,  $receiveDate,  0);
+                                $this->syncPackagingDate($stageId,  $receiveDate,  1);
                                 
                                 DB::table('stage_plan_history')
                                         ->insert([
@@ -9447,11 +9420,29 @@ class SchedualController  extends  Controller
         //                                 2,
         //                                 1
         //                         );
-        //                 }
         //         }
         // }
 
 
+        protected function syncPackagingDate($stagePlanId, $date, $type)
+        {
+                $latest = DB::table('packaging_issuance_date')
+                        ->where('stage_plane_id', $stagePlanId)
+                        ->where('type_packaging', $type)
+                        ->orderBy('ver', 'desc')
+                        ->first();
+
+                if (!$latest || $latest->receive_packaging_date != $date) {
+                        DB::table('packaging_issuance_date')->insert([
+                                'stage_plane_id'         => $stagePlanId,
+                                'type_packaging'         => $type,
+                                'receive_packaging_date' => $date,
+                                'ver'                    => ($latest->ver ?? 0) + 1,
+                                'created_at'             => now(),
+                                'created_by'             => session('user')['fullName'] ?? 'System'
+                        ]);
+                }
+        }
 }
 
 

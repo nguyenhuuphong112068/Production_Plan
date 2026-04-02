@@ -168,5 +168,6 @@ Route::prefix('/Schedual')
                                 Route::post('store', 'store')->name('store');
                                 Route::post('updateInput', 'updateInput')->name('updateInput');
                                 Route::post('received', 'received')->name('received');
+                                Route::get('getHistory', 'getHistory')->name('getHistory');
                         });
         });
