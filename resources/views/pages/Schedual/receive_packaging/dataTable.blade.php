@@ -222,7 +222,6 @@
                                                             {{ $confirm_receive_packaging }}>
                                                             <i class="fas fa-check"></i>
                                                         </button>
-                                                        {{-- && strtoupper($data->market_code) != 'VN' --}}
                                                         @if ($data->received == 0)
                                                             <input {{ $Change_receive_packaging_date }} type="date"
                                                                 class="updateInput" name="receive_packaging_date"
@@ -231,11 +230,9 @@
                                                         @else
                                                             {{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
-                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history" data-id="{{ $data->id }}" data-type="0" title="Lịch sử thay đổi">
+                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history mt-0" data-id="{{ $data->id }}" data-type="0" title="Lịch sử thay đổi" style="padding:2px 6px; font-size:12px;">
                                                             <i class="fas fa-history"></i>
                                                         </button>
-                                                        <br>
-
                                                     </div>
                                                     <div class="tc-confirm-info">
                                                         Người xác nhận: <span
@@ -265,10 +262,9 @@
                                                         @else
                                                             {{ $data->receive_second_packaging_date ? \Carbon\Carbon::parse($data->receive_second_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
-                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history" data-id="{{ $data->id }}" data-type="1" title="Lịch sử thay đổi">
+                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history mt-0" data-id="{{ $data->id }}" data-type="1" title="Lịch sử thay đổi" style="padding:2px 6px; font-size:12px;">
                                                             <i class="fas fa-history"></i>
                                                         </button>
-                                                        <br>
                                                     </div>
                                                     <div class="tc-confirm-info">
                                                         Người xác nhận: <span

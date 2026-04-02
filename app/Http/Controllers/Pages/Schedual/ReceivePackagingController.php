@@ -143,6 +143,12 @@ class ReceivePackagingController extends Controller
 
     protected function syncPackagingDate($stagePlanId, $date, $type)
     {
+        $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first(['received', 'received_second_packaging']);
+        if ($plan) {
+            if ($type == 0 && $plan->received == 1) return;
+            if ($type == 1 && $plan->received_second_packaging == 1) return;
+        }
+
         $latest = DB::table('packaging_issuance_date')
             ->where('stage_plane_id', $stagePlanId)
             ->where('type_packaging', $type)
