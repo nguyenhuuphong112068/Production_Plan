@@ -1847,9 +1847,9 @@ class SchedualController  extends  Controller
                                                         'schedualed'       =>  1, 
                                                         'schedualed_by'    =>  session('user')['fullName'], 
                                                         'schedualed_at'    =>  now(), 
-                                                        'receive_packaging_date'    =>  $receiveDate, 
-                                                        'receive_second_packaging_date'    =>  $receiveDate
-                                                ]);
+                                                        'receive_packaging_date'    => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
+                                                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END")
+                                        ]);
                                         
 
                                         
@@ -1872,9 +1872,8 @@ class SchedualController  extends  Controller
                                                 ->where('stage_plan_id',  $product['id'])
                                                 ->max('version')  ??  0;
 
-                                        $this->syncPackagingDate($product['id'],  $receiveDate, 0);
-                                        $this->syncPackagingDate($product['id'],  $receiveDate, 1);
-                                        
+                                        $this->syncPackagingDate($product['id'], $receiveDate, 0);
+                                        $this->syncPackagingDate($product['id'], $receiveDate, 1);
 
                                         DB::table('stage_plan_history')->insert([
                                                 'stage_plan_id'   =>  $product['id'], 
@@ -2034,6 +2033,7 @@ class SchedualController  extends  Controller
                         
                         Log::error('Lỗi cập nhật sự kiện:',  ['error'  =>  $e->getMessage()]);
                         
+                        dd ( $e->getMessage());
 
                         return  response()->json([
                                 'status'   =>  'error', 
@@ -2302,142 +2302,121 @@ class SchedualController  extends  Controller
         }
         
 
-        public  function  update(Request  $request)
+        public function update(Request $request)
         {
-                $offDays  =  DB::table('off_days')
-                        ->whereDate('off_date',  '>=',  now())
+                $offDays = DB::table('off_days')
+                        ->whereDate('off_date', '>=', now())
                         ->pluck('off_date')
                         ->toArray();
 
-                $changes  =  $request->input('changes',  []);
-                $this->theory  = (int)$request->theory  ??  0;
+                $changes = $request->input('changes', []);
+                $this->theory = (int)$request->theory ?? 0;
 
-                try  {
+                try {
                         // Lưu lý do một lần duy nhất nếu cần
-                        if  (is_array($request->reason)  &&  ($request->reason['saveReason']  ??  false))  {
+                        if (is_array($request->reason) && ($request->reason['saveReason'] ?? false)) {
                                 DB::table('reason')->updateOrInsert(
                                         [
-                                                'name'           =>  $request->reason['reason'], 
-                                                'deparment_code' =>  session('user')['production_code']
-                                        ], 
+                                                'name'           => $request->reason['reason'],
+                                                'deparment_code' => session('user')['production_code']
+                                        ],
                                         [
-                                                'created_by'     =>  session('user')['fullName'], 
-                                                'created_at'     =>  now(),
+                                                'created_by'     => session('user')['fullName'],
+                                                'created_at'     => now(),
                                         ]
                                 );
                         }
 
-                        foreach  ($changes  as  $change)  {
-                                $idParts  =  explode('-',  $change['id']);
-                                $realId   =  $idParts[0]  ??  null;
-                                $type     =  $idParts[1]  ??  null;
+                        foreach ($changes as $change) {
+                                $idParts = explode('-', $change['id']);
+                                $realId  = $idParts[0] ?? null;
+                                $type    = $idParts[1] ?? null;
 
-                                if  (!$realId)  continue;
+                                if (!$realId) continue;
 
-                                if  ($type  &&  strpos($type,  'cleaning')  !==  false)  {
+                                if ($type && strpos($type, 'cleaning') !== false) {
                                         DB::table('stage_plan')
-                                                ->whereIn('id',  explode(',',  $realId))
+                                                ->whereIn('id', explode(',', $realId))
                                                 ->update([
-                                                        'start_clearning'  =>  $change['start'], 
-                                                        'end_clearning'    =>  $change['end'], 
-                                                        'resourceId'       =>  $change['resourceId'], 
-                                                        'schedualed_by'    =>  session('user')['fullName'], 
-                                                        'schedualed_at'    =>  now(),
+                                                        'start_clearning' => $change['start'],
+                                                        'end_clearning'   => $change['end'],
+                                                        'resourceId'      => $change['resourceId'],
                                                 ]);
-                                }  else  {
-                                        $receiveDate  =  Carbon::parse($change['start'])->subDay();
-                                        while  (in_array($receiveDate->toDateString(),  $offDays))  {
+                                } else {
+                                        $receiveDate = Carbon::parse($change['start'])->subDay();
+                                        while (in_array($receiveDate->toDateString(), $offDays)) {
                                                 $receiveDate->subDay();
                                         }
 
-                                        $idsArray  =  explode(',',  $realId);
+                                        $idsArray = explode(',', $realId);
                                         DB::table('stage_plan')
-                                                ->whereIn('id',  $idsArray)
+                                                ->whereIn('id', $idsArray)
                                                 ->update([
-                                                        'start'                     =>  $change['start'], 
-                                                        'end'                       =>  $change['end'], 
-                                                        'resourceId'                =>  $change['resourceId'], 
-                                                        'schedualed_by'             =>  session('user')['fullName'], 
-                                                        'schedualed_at'             =>  now(), 
-                                                        'accept_quarantine'         =>  0, 
-                                                        'receive_packaging_date'    =>  $receiveDate, 
-                                                        'receive_second_packaging_date'    =>  $receiveDate
-
-
+                                                        'start'                     => $change['start'],
+                                                        'end'                       => $change['end'],
+                                                        'resourceId'                => $change['resourceId'],
+                                                        'schedualed_by'             => session('user')['fullName'],
+                                                        'schedualed_at'             => now(),
+                                                        'accept_quarantine'         => 0,
+                                                        // Không update ngày nhận ở đây nếu đã nhận (sẽ được xử lý trong loop bên dưới)
+                                                        'receive_packaging_date'    => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
+                                                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END")
                                                 ]);
-                                        
-                                        foreach  ($idsArray  as  $sid)  {
-                                                $update_row  =  DB::table('stage_plan')->where('id',  $sid)->first();
-                                                
 
-                                                if  ($update_row  &&  $update_row->submit  ==  1)  {
+                                        foreach ($idsArray as $sid) {
+                                                $update_row = DB::table('stage_plan')->where('id', $sid)->first();
 
-                                                        $this->syncPackagingDate($sid,  $receiveDate, 0);
-                                                        $this->syncPackagingDate($sid,  $receiveDate, 1);
-                                                        
+                                                if ($update_row && $update_row->submit == 1) {
+                                                       
+                                                        $this->syncPackagingDate($sid, $receiveDate, 0);
+                                                        $this->syncPackagingDate($sid, $receiveDate, 1);
+
                                                         DB::table('stage_plan_history')
                                                                 ->insert([
-                                                                        'stage_plan_id'  =>  $sid, 
-                                                                        'campaign_code'  =>  $update_row->campaign_code, 
-                                                                        'code'  =>  $update_row->code, 
-                                                                        'order_by'  =>  $update_row->order_by, 
-                                                                        'schedualed'  =>  $update_row->schedualed, 
-                                                                        'stage_code'  =>  $update_row->stage_code, 
-                                                                        'title'  =>  $update_row->title, 
-                                                                        'start'  =>  $update_row->start, 
-                                                                        'end'  =>  $update_row->end, 
-                                                                        'resourceId'  =>  $update_row->resourceId, 
-                                                                        'title_clearning'  =>  $update_row->title_clearning, 
-                                                                        'start_clearning'  =>  $update_row->start_clearning, 
-                                                                        'end_clearning'  =>  $update_row->end_clearning, 
-                                                                        'tank'  =>  $update_row->tank, 
-                                                                        'keep_dry'  =>  $update_row->keep_dry, 
-                                                                        'AHU_group'  =>  $update_row->AHU_group, 
-                                                                        'schedualed_by'  =>  $update_row->schedualed_by, 
-                                                                        'schedualed_at'  =>  $update_row->schedualed_at, 
-                                                                        'version'  =>   DB::table('stage_plan_history')->where('stage_plan_id',  $sid)->max('version')  +  1  ??  1, 
-                                                                        'note'  =>  $update_row->note, 
-                                                                        'deparment_code'  =>  session('user')['production_code'], 
-                                                                        'type_of_change'  =>  $request->reason['reason'], 
-                                                                        'created_date'  =>  now(), 
-                                                                        'created_by'  =>  session('user')['fullName'],
-
+                                                                        'stage_plan_id'   => $sid,
+                                                                        'campaign_code'   => $update_row->campaign_code,
+                                                                        'code'            => $update_row->code,
+                                                                        'order_by'        => $update_row->order_by,
+                                                                        'schedualed'      => $update_row->schedualed,
+                                                                        'stage_code'      => $update_row->stage_code,
+                                                                        'title'           => $update_row->title,
+                                                                        'start'           => $update_row->start,
+                                                                        'end'             => $update_row->end,
+                                                                        'resourceId'      => $update_row->resourceId,
+                                                                        'title_clearning' => $update_row->title_clearning,
+                                                                        'start_clearning' => $update_row->start_clearning,
+                                                                        'end_clearning'   => $update_row->end_clearning,
+                                                                        'tank'            => $update_row->tank,
+                                                                        'keep_dry'        => $update_row->keep_dry,
+                                                                        'AHU_group'       => $update_row->AHU_group,
+                                                                        'schedualed_by'   => $update_row->schedualed_by,
+                                                                        'schedualed_at'   => $update_row->schedualed_at,
+                                                                        'version'         => DB::table('stage_plan_history')->where('stage_plan_id', $sid)->max('version') + 1 ?? 1,
+                                                                        'note'            => $update_row->note,
+                                                                        'deparment_code'  => session('user')['production_code'],
+                                                                        'type_of_change'  => $request->reason['reason'],
+                                                                        'created_date'    => now(),
+                                                                        'created_by'      => session('user')['fullName'],
                                                                 ]);
-                                                
                                                 }
-                                        
                                         }
-                                
                                 }
-                        
                         }
-                
-                }  catch  (\Exception  $e)  {
-                        
-                        Log::error('Lỗi cập nhật sự kiện:',  ['error'  =>  $e->getMessage()]);
-                        
-                        return  response()->json(['error'  =>  'Lỗi hệ thống'],  500);
-                
+                } catch (\Exception $e) {
+                        Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
+                        return response()->json(['error' => 'Lỗi hệ thống'], 500);
                 }
-                
 
-                $production  =  session('user')['production_code'];
-                
-                $events  =  $this->getEvents($production,  $request->startDate,  $request->endDate,  true,  $this->theory);
-                
-                //$plan_waiting = $this->getPlanWaiting($production);
-                $sumBatchByStage  =  $this->yield($request->startDate,  $request->endDate,  "stage_code");
-                
-                $resources  =  $this->getResources($production,  $request->startDate,  $request->endDate);
-                
+                $production = session('user')['production_code'];
+                $events     = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+                $sumBatchByStage = $this->yield($request->startDate, $request->endDate, "stage_code");
+                $resources  = $this->getResources($production, $request->startDate, $request->endDate);
 
-                return  response()->json([
-                        'events'  =>  $events, 
-                        //'plan' => $plan_waiting,
-                        'resources'  =>  $resources, 
-                        'sumBatchByStage'  =>  $sumBatchByStage,
+                return response()->json([
+                        'events'          => $events,
+                        'resources'       => $resources,
+                        'sumBatchByStage' => $sumBatchByStage,
                 ]);
-        
         }
         
 
@@ -4841,8 +4820,8 @@ class SchedualController  extends  Controller
                                         'scheduling_direction'   =>  $direction, 
                                         'AHU_group'              =>  $AHU_group  ??  null, 
                                         'schedualed_at'          =>  now(), 
-                                        'receive_packaging_date'    =>  $receiveDate, 
-                                        'receive_second_packaging_date'    =>  $receiveDate
+                                        'receive_packaging_date'    => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
+                                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END")
                                 ]);
 
 
@@ -9426,6 +9405,12 @@ class SchedualController  extends  Controller
 
         protected function syncPackagingDate($stagePlanId, $date, $type)
         {
+                $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first(['received', 'received_second_packaging']);
+                if ($plan) {
+                        if ($type == 0 && $plan->received == 1) return;
+                        if ($type == 1 && $plan->received_second_packaging == 1) return;
+                }
+
                 $latest = DB::table('packaging_issuance_date')
                         ->where('stage_plane_id', $stagePlanId)
                         ->where('type_packaging', $type)
