@@ -1641,155 +1641,112 @@ class SchedualController  extends  Controller
                                 | lấy quota
                                 |--------------------------------------------------------------------------
                                 */
-                                if  ($index  ===  0  &&  $product['stage_code']  !==  9)  {
-                                        
+                                if ($index === 0 && $product['stage_code'] !== 9) {
+                                    if ($product['stage_code'] < 7) {
+                                        $process_code = $product['intermediate_code'] . "_NA_" . $request->room_id;
+                                    } else if ($product['stage_code'] === 7) {
+                                        $process_code = $product['intermediate_code'] . "_" . $product['finished_product_code'] . "_" . $request->room_id;
+                                    }
 
-                                        if  ($product['stage_code']  <  7)  {
-                                                
-                                                $process_code  =  $product['intermediate_code']  .  "_NA_"  .  $request->room_id;
-                                        
-                                        }  else if  ($product['stage_code']  ===  7)  {
-                                                
-                                                $process_code  =  $product['intermediate_code']  .  "_"  .  $product['finished_product_code']  .  "_"  .  $request->room_id;
-                                        
-                                        }
-                                        
+                                    $quota = DB::table('quota')
+                                        ->select(
+                                            'room_id',
+                                            'campaign_index',
+                                            DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                                            DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                                            DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                                            DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
+                                        )
+                                        ->where('process_code', 'like', $process_code . '%')
+                                        ->first();
 
-                                        $quota  =  DB::table('quota')
-                                                ->select(
-                                                        'room_id', 
-                                                        'campaign_index', 
-                                                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'), 
-                                                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'), 
-                                                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'), 
-                                                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
-                                                )
-                                                ->where('process_code',  'like',   $process_code  .  '%')
-                                                ->first();
-                                        
 
-                                        $p_time_minutes   =  $quota->p_time_minutes  ??  0;
-                                        
-                                        $m_time_minutes   =  $quota->m_time_minutes  ??  0;
-                                        
-                                        $C1_time_minutes  =  $quota->C1_time_minutes  ??  0;
-                                        
-                                        $C2_time_minutes  =  $quota->C2_time_minutes  ??  0;
-                                
-                                }  elseif  ($index  ===  0  &&  $product['stage_code']  ===  9)  {
-                                        
-                                        $p_time_minutes   =  30;
-                                        
-                                        $m_time_minutes   =  60;
-                                        
-                                        $C1_time_minutes  =  30;
-                                        
-                                        $C2_time_minutes  =  60;
-                                
+                                    $p_time_minutes = $quota->p_time_minutes ?? 0;
+                                    $m_time_minutes = $quota->m_time_minutes ?? 0;
+                                    $C1_time_minutes = $quota->C1_time_minutes ?? 0;
+                                    $C2_time_minutes = $quota->C2_time_minutes ?? 0;
+
+                                } elseif ($index === 0 && $product['stage_code'] === 9) {
+                                    $p_time_minutes = 30;
+                                    $m_time_minutes = 60;
+                                    $C1_time_minutes = 30;
+                                    $C2_time_minutes = 60;
                                 }
-                                
+
+                                // 🔥 Điều chỉnh quota cho công đoạn 7 và only_parkaging
+                                $p_time_adj = (float) $p_time_minutes;
+                                $m_time_adj = (float) $m_time_minutes;
+
+                                if ($product['stage_code'] == 7) {
+                                    $pm = DB::table('plan_master')
+                                        ->where('id', $product['plan_master_id'])
+                                        ->select('only_parkaging', 'percent_parkaging')
+                                        ->first();
+
+                                    if ($pm && $pm->only_parkaging == 1) {
+                                        $ratio = $pm->percent_parkaging / 100;
+                                        $p_time_adj *= $ratio;
+                                        $m_time_adj *= $ratio;
+                                    }
+                                }
 
                                 /*
                                 |--------------------------------------------------------------------------
                                 | tính thời gian sản xuất + vệ sinh
                                 |--------------------------------------------------------------------------
                                 */
-                                if  ($product['stage_code']  <=  2)  {
-                                        
+                                if ($product['stage_code'] <= 2) {
 
-                                        $end_man  =  $current_start->copy()->addMinutes((float)$p_time_minutes  + (float)$m_time_minutes  *  $quota->campaign_index);
-                                        
+                                    $end_man = $current_start->copy()->addMinutes($p_time_adj + $m_time_adj * $quota->campaign_index);
 
-                                        $end_clearning  =  $end_man->copy()->addMinutes((float)$C2_time_minutes);
-                                        
-                                        $clearning_type  =  "VS-II";
-                                        
-                                        $firstBatachStart  =  $current_start;
-                                
-                                }  else  {
-                                        
+                                    $end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
+                                    $clearning_type = "VS-II";
+                                    $firstBatachStart = $current_start;
 
-                                        if  ($products->count()  ===  1)  {
-                                                
-                                                $current_start  =  $this->skipOffTime($current_start,  $this->offDate,  $request->room_id);
-                                                
+                                } else {
 
-                                                //$end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
-                                                //$end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
+                                    if ($products->count() === 1) {
+                                        $current_start = $this->skipOffTime($current_start, $this->offDate, $request->room_id);
 
-                                                $end_man  =  $this->addWorkingMinutes($current_start->copy(), (float)$p_time_minutes  + (float)$m_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                
-                                                $start_clearning  =  $end_man->copy();
-                                                
-                                                $end_clearning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                
-                                                $clearning_type  =  "VS-II";
-                                                
+                                        $end_man = $this->addWorkingMinutes($current_start->copy(), $p_time_adj + $m_time_adj, $request->room_id, $this->work_sunday);
 
-                                                $start_date  =   $end_man;
-                                                
-                                                $firstBatachStart  =  $current_start;
-                                                
-                                                $lastBatachEnd  =   $end_clearning;
-                                        
-                                        }  else  {
-                                                
+                                        $start_clearning = $end_man->copy();
+                                        $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes, $request->room_id, $this->work_sunday);
+                                        $clearning_type = "VS-II";
 
-                                                if  ($index  ===  0)  {
-                                                        
+                                        $start_date = $end_man;
+                                        $firstBatachStart = $current_start;
+                                        $lastBatachEnd = $end_clearning;
 
-                                                        $end_man  =  $this->addWorkingMinutes($current_start->copy(), (float)$p_time_minutes  + (float)$m_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                        
-                                                        $start_clearning  =  $end_man->copy();
-                                                        
-                                                        $end_clearning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $C1_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                        
+                                    } else {
 
-                                                        // $end_man = $current_start->copy()->addMinutes((float)$p_time_minutes + (float)$m_time_minutes);
-                                                        //$end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
+                                        if ($index === 0) {
 
-                                                        $start_date  =   $end_man;
-                                                        
-                                                        $clearning_type  =  "VS-I";
-                                                        
-                                                        $firstBatachStart  =  $current_start;
-                                                
-                                                }  elseif  ($index  ===  $products->count()  -  1)  {
-                                                        
+                                            $end_man = $this->addWorkingMinutes($current_start->copy(), $p_time_adj + $m_time_adj, $request->room_id, $this->work_sunday);
+                                            $start_clearning = $end_man->copy();
+                                            $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
 
-                                                        $end_man  =  $this->addWorkingMinutes($current_start->copy(), (float)$m_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                        
-                                                        $start_clearning  =  $end_man->copy();
-                                                        
-                                                        $end_clearning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                        
+                                            $start_date = $end_man;
+                                            $clearning_type = "VS-I";
+                                            $firstBatachStart = $current_start;
 
+                                        } elseif ($index === $products->count() - 1) {
 
-                                                        //$end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
-                                                        //$end_clearning = $end_man->copy()->addMinutes((float)$C2_time_minutes);
+                                            $end_man = $this->addWorkingMinutes($current_start->copy(), $m_time_adj, $request->room_id, $this->work_sunday);
+                                            $start_clearning = $end_man->copy();
+                                            $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes, $request->room_id, $this->work_sunday);
+                                            $clearning_type = "VS-II";
+                                            $lastBatachEnd = $end_clearning;
 
-                                                        $clearning_type  =  "VS-II";
-                                                        
-                                                        $lastBatachEnd  =   $end_clearning;
-                                                
-                                                }  else  {
-                                                        
+                                        } else {
 
-                                                        $end_man  =  $this->addWorkingMinutes($current_start->copy(), (float)$m_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                        
-                                                        $start_clearning  =  $end_man->copy();
-                                                        
-                                                        $end_clearning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $C1_time_minutes,  $request->room_id,  $this->work_sunday);
-                                                        
+                                            $end_man = $this->addWorkingMinutes($current_start->copy(), $m_time_adj, $request->room_id, $this->work_sunday);
+                                            $start_clearning = $end_man->copy();
+                                            $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
+                                            $clearning_type = "VS-I";
 
-                                                        //$end_man = $current_start->copy()->addMinutes((float)$m_time_minutes);
-                                                        //$end_clearning = $end_man->copy()->addMinutes((float)$C1_time_minutes);
-                                                        $clearning_type  =  "VS-I";
-                                                
-                                                }
-                                        
                                         }
-                                
+                                    }
                                 }
                                 
 
@@ -4806,7 +4763,8 @@ class SchedualController  extends  Controller
                         
 
                         DB::table('stage_plan')
-                                ->where('code',  $code)
+                                ->where('id',  $stageId)
+                                //->where('code',  $code)
                                 ->update([
                                         'first_in_campaign'      =>  $first_in_campaign  ??  0, 
                                         'resourceId'             =>  $roomId, 
@@ -5331,7 +5289,7 @@ class SchedualController  extends  Controller
                                 ->where('sp.finished',  0)
                                 ->where('sp.active',  1)
                                 ->whereNull('sp.start')
-                                ->where('plan_master.only_parkaging',  0)
+                                //->where('plan_master.only_parkaging',  0)
                                 ->whereNotNull('plan_master.after_weigth_date')
                                 // ->when($stageCode == 7, function ($q) {
                                 //        $q->whereNotNull('plan_master.after_parkaging_date');
@@ -5388,7 +5346,7 @@ class SchedualController  extends  Controller
                                 ->where('sp.finished',  0)
                                 ->where('sp.active',  1)
                                 ->whereNull('sp.start')
-                                ->where('plan_master.only_parkaging',  0)
+                                //->where('plan_master.only_parkaging',  0)
                                 ->whereNotNull('plan_master.after_weigth_date')
                                 ->when($stageCode  ==  7,  function  ($q)  {
                                 
@@ -6153,59 +6111,81 @@ class SchedualController  extends  Controller
                 }
                 
                 // phòng phù hợp (quota)
-                if  (!$rooms)  return;
+                if ($rooms->isEmpty()) return;
+
+                $bestRoom = null;
+                $bestStart = null;
+
+                // tim phòng tối ưu
+                $ratio = 1;
                 
+                if ($stageCode == 7) {
+                    $pm = DB::table('plan_master')
+                        ->where('id', $task->plan_master_id)
+                        ->select('only_parkaging', 'percent_parkaging')
+                        ->first();
 
-                $bestRoom  =  null;
-                
-                $bestStart  =  null;
-                
-
-
-
-                //tim phòng tối ưu
-                foreach  ($rooms  as  $room)  {
-                        
-                        $intervalTimeMinutes  = (float) $room->p_time_minutes  + (float) $room->m_time_minutes;
-                        
-                        $C2_time_minutes  = (float) $room->C2_time_minutes;
-                        
-
-
-                        $candidateStart  =  $this->findEarliestSlot2(
-                                $room->room_id, 
-                                $earliestStart, 
-                                $intervalTimeMinutes, 
-                                $C2_time_minutes, 
-                                $task->tank, 
-                                $task->keep_dry, 
-                                "stage_plan", 
-                                2, 
-                                60
-                        );
-                        
-
-                        if  ($bestStart  ===  null  ||  $candidateStart->lt($bestStart))  {
-                                
-                                $bestRoom  =  $room->room_id;
-                                
-                                $bestStart  =  $candidateStart;
-                                
-                                $bestEnd  =  $bestStart->copy()->addMinutes($intervalTimeMinutes);
-                                
-                                $start_clearning  =   $bestEnd->copy();
-                                
-                                $end_clearning  =   $bestStart->copy()->addMinutes($intervalTimeMinutes  +   $C2_time_minutes);
-                        
-                        }
-                
+                    if ($pm && $pm->only_parkaging == 1) {
+                        $ratio = (float)($pm->percent_parkaging ?? 100) / 100;
+                    }
                 }
-                
 
-                $bestStart  =  $this->skipOffTime($bestStart,  $this->offDate,  $bestRoom);
-                
+                foreach ($rooms as $room) {
+                    $p_adj = (float) $room->p_time_minutes * $ratio;
+                    $m_adj = (float) $room->m_time_minutes * $ratio;
+                    $intervalTimeMinutes = $p_adj + $m_adj;
 
-                $bestEnd  =  $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes,  $bestRoom,  $this->work_sunday);
+                    $C2_time_minutes = (float) $room->C2_time_minutes;
+
+                    $candidateStart = $this->findEarliestSlot2(
+                        $room->room_id,
+                        $earliestStart,
+                        $intervalTimeMinutes,
+                        $C2_time_minutes,
+                        $task->tank,
+                        $task->keep_dry,
+                        "stage_plan",
+                        2,
+                        60
+                    );
+
+                    if ($bestStart === null || $candidateStart->lt($bestStart)) {
+                        $bestRoom = $room->room_id;
+                        $bestStart = $candidateStart;
+                        $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
+                        $start_clearning = $bestEnd->copy();
+                        $end_clearning = $bestStart->copy()->addMinutes($intervalTimeMinutes + $C2_time_minutes);
+                    }
+                }
+
+                if ($bestRoom === null || $bestStart === null) return;
+
+                $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom);
+
+                // Re-fetch bestRoom quota to ensure we have the correct product context
+                $bestQuota = DB::table('quota')
+                    ->where('room_id', $bestRoom)
+                    ->when($task->stage_code <= 6, function ($query) use ($task) {
+                        return $query->where('intermediate_code', $task->intermediate_code);
+                    }, function ($query) use ($task) {
+                        return $query->where('finished_product_code', $task->finished_product_code)
+                                     ->where('intermediate_code', $task->intermediate_code);
+                    })
+                    ->select(
+                        DB::raw('(TIME_TO_SEC(p_time)/60) as p_min'),
+                        DB::raw('(TIME_TO_SEC(m_time)/60) as m_min'),
+                        DB::raw('(TIME_TO_SEC(C2_time)/60) as c2_min')
+                    )
+                    ->first();
+
+                if (!$bestQuota) return;
+
+                $finalInterval = (float)($bestQuota->p_min * $ratio) + (float)($bestQuota->m_min * $ratio);
+                if ($finalInterval < 15) $finalInterval = 15;
+
+                $C2_time_minutes = (float)$bestQuota->c2_min;
+
+                $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $finalInterval, $bestRoom, $this->work_sunday);
                 
                 $start_clearning  =  $bestEnd->copy();
                 
@@ -6716,150 +6696,142 @@ class SchedualController  extends  Controller
                 
 
 
-                //tim phòng tối ưu
-                foreach  ($rooms  as  $room)  {
-                        
-
-                        $totalMunites  =  $room->p_time_minutes  +  ($campaignTasks->count()  *  $room->m_time_minutes) 
-                                +  ($campaignTasks->count()  -  1)  *  ($room->C1_time_minutes) 
-                                +  $room->C2_time_minutes;
-                        
-
-                        if  ($totalTimeCampaign  >  0  &&  $totalTimeCampaign  >  $totalMunites)  {
-                                
-                                $totalMunites  =  $totalTimeCampaign;
-                        
-                        }
-                        
-
-                        $candidateStart  =  $this->findEarliestSlot2(
-                                $room->room_id, 
-                                $earliestStart, 
-                                $totalMunites, 
-                                0, 
-                                $firstTask->tank, 
-                                $firstTask->keep_dry, 
-                                'stage_plan', 
-                                2, 
-                                60
-                        );
-                        
-                        if  ($bestStart  ===  null  ||  $candidateStart->lt($bestStart))  {
-                                
-                                $bestRoom  =  $room;
-                                
-                                $bestStart  =  $candidateStart;
-                        
-                        }
-                
+                // tim phòng tối ưu
+                $campaign_ratio = 1;
+                if ($stageCode == 7) {
+                    $cpm = DB::table('plan_master')->where('id', $firstTask->plan_master_id)->select('only_parkaging', 'percent_parkaging')->first();
+                    if ($cpm && $cpm->only_parkaging == 1) {
+                        $campaign_ratio = (float)($cpm->percent_parkaging ?? 100) / 100;
+                    }
                 }
-                
 
+                foreach ($rooms as $room) {
+                    $p_adj = (float) $room->p_time_minutes * $campaign_ratio;
+                    $m_adj = (float) $room->m_time_minutes * $campaign_ratio;
+
+                    $totalMunites = $p_adj + ($campaignTasks->count() * $m_adj)
+                        + ($campaignTasks->count() - 1) * ($room->C1_time_minutes)
+                        + $room->C2_time_minutes;
+
+                    if ($totalTimeCampaign > 0 && $totalTimeCampaign > $totalMunites) {
+                        $totalMunites = $totalTimeCampaign;
+                    }
+
+                    $candidateStart = $this->findEarliestSlot2(
+                        $room->room_id,
+                        $earliestStart,
+                        $totalMunites,
+                        0,
+                        $firstTask->tank,
+                        $firstTask->keep_dry,
+                        'stage_plan',
+                        2,
+                        60
+                    );
+
+                    if ($bestStart === null || $candidateStart->lt($bestStart)) {
+                        $bestRoom = $room;
+                        $bestStart = $candidateStart;
+                    }
+                }
+
+                if ($bestRoom === null || $bestStart === null) return;
 
                 // Lưu từng batch
-                $counter  =  1;
-                
+                $counter = 1;
+
                 // Lưu Sự Kiện
-                $firstBatachStart  =  null;
-                
-                $lastBatachEnd  =  null;
-                 // dung cho chạy công đoạn tiếp theo
-                $totalTimeCampaign  =  0;
-                 // dung cho chạy công đoạn tiếp theo
+                $firstBatachStart = null;
+                $lastBatachEnd = null;
 
-                foreach  ($campaignTasks  as  $task)  {
-                        
+                foreach ($campaignTasks as $task) {
 
-                        $pred_end  =  DB::table('stage_plan')->where('code',  $task->predecessor_code)->value('end');
-                        
+                    $pred_end = DB::table('stage_plan')->where('code', $task->predecessor_code)->value('end');
 
-                        if  (isset($pred_end)  &&  $pred_end  !=  null  &&  $pred_end  >  $bestStart)  {
-                                
-                                $bestStart  =  Carbon::parse($pred_end);
-                        
+                    if (isset($pred_end) && $pred_end != null) {
+                        $p_end = Carbon::parse($pred_end);
+                        if ($p_end->gt($bestStart)) {
+                            $bestStart = $p_end;
                         }
-                        
-                        $bestStart  =  $this->skipOffTime($bestStart,  $this->offDate,  $bestRoom->room_id);
-                        
+                    }
 
-                        if  ($counter  ==  1)  {
-                                
-                                $bestEnd  =  $this->addWorkingMinutes($bestStart->copy(), (float) $bestRoom->p_time_minutes  + (float) $bestRoom->m_time_minutes,  $bestRoom->room_id,  $this->work_sunday);
-                                
-                                $start_clearning  =  $bestEnd->copy();
-                                
+                    $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom->room_id);
 
-                                if  ($campaignTasks->count()  ==  1)  {
-                                        
-                                        $bestEndCleaning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C2_time_minutes,  $bestRoom->room_id,  $this->work_sunday);
-                                        
-                                        $clearningType  =  2;
-                                
-                                }  else  {
-                                        
-                                        $bestEndCleaning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C1_time_minutes,  $bestRoom->room_id,  $this->work_sunday);
-                                        
-                                        $clearningType  =  1;
-                                
-                                }
-                                
-
-                                $firstBatachStart  =  $bestEnd->copy();
-                                
-                                $first_in_campaign  =  1;
-                        
-                        }  elseif  ($counter  ==  $campaignTasks->count())  {
-                                
-
-                                $bestEnd  =  $this->addWorkingMinutes($bestStart->copy(), (float) $bestRoom->m_time_minutes,  $bestRoom->room_id,  $this->work_sunday);
-                                
-                                $start_clearning  =  $bestEnd->copy();
-                                
-                                $bestEndCleaning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C1_time_minutes,  $bestRoom->room_id,  $this->work_sunday);
-                                
-
-                                $clearningType  =  2;
-                                
-                                $lastBatachEnd  =  $bestEnd->copy();
-                                
-                                $first_in_campaign  =  0;
-                        
-                        }  else  {
-                                
-                                $bestEnd  =  $this->addWorkingMinutes($bestStart->copy(), (float) $bestRoom->m_time_minutes,  $bestRoom->room_id,  $this->work_sunday);
-                                
-                                $start_clearning  =  $bestEnd->copy();
-                                
-                                $bestEndCleaning  =  $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C1_time_minutes,  $bestRoom->room_id,  $this->work_sunday);
-                                
-                                $clearningType  =  1;
-                                
-                                $first_in_campaign  =  0;
-                        
+                    // Tỉ lệ theo từng batch
+                    $task_ratio = 1;
+                    if ($stageCode == 7) {
+                        $tpm = DB::table('plan_master')->where('id', $task->plan_master_id)->select('only_parkaging', 'percent_parkaging')->first();
+                        if ($tpm && $tpm->only_parkaging == 1) {
+                            $task_ratio = (float)($tpm->percent_parkaging ?? 100) / 100;
                         }
-                        
+                    }
 
-                        $this->saveSchedule(
-                                $first_in_campaign, 
-                                $task->id, 
-                                $bestRoom->room_id, 
-                                $bestStart, 
-                                $bestEnd, 
-                                $start_clearning, 
-                                $bestEndCleaning, 
-                                $clearningType, 
-                                1,
+                    $p_task_adj = (float) $bestRoom->p_time_minutes * $task_ratio;
+                    $m_task_adj = (float) $bestRoom->m_time_minutes * $task_ratio;
 
-                        );
-                        
-                        $counter++;
-                        
-                        $bestStart  =  $bestEndCleaning->copy();
-                
+                    if ($counter == 1) {
+                        $duration = $p_task_adj + $m_task_adj;
+                        if ($duration < 15) $duration = 15;
+
+                        $bestEnd = $this->addWorkingMinutes($bestStart->copy(), $duration, $bestRoom->room_id, $this->work_sunday);
+
+                        $start_clearning = $bestEnd->copy();
+
+                        if ($campaignTasks->count() == 1) {
+                            $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C2_time_minutes, $bestRoom->room_id, $this->work_sunday);
+                            $clearningType = 2;
+                            $lastBatachEnd = $bestEndCleaning->copy();
+                        } else {
+                            $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C1_time_minutes, $bestRoom->room_id, $this->work_sunday);
+                            $clearningType = 1;
+                        }
+
+                        $firstBatachStart = $bestStart->copy();
+                        $first_in_campaign = 1;
+
+                    } elseif ($counter == $campaignTasks->count()) {
+                        $duration = $m_task_adj;
+                        if ($duration < 15) $duration = 15;
+
+                        $bestEnd = $this->addWorkingMinutes($bestStart->copy(), $duration, $bestRoom->room_id, $this->work_sunday);
+                        $start_clearning = $bestEnd->copy();
+                        $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C2_time_minutes, $bestRoom->room_id, $this->work_sunday);
+
+                        $clearningType = 2;
+                        $lastBatachEnd = $bestEndCleaning->copy();
+                        $first_in_campaign = 0;
+
+                    } else {
+                        $duration = $m_task_adj;
+                        if ($duration < 15) $duration = 15;
+
+                        $bestEnd = $this->addWorkingMinutes($bestStart->copy(), $duration, $bestRoom->room_id, $this->work_sunday);
+                        $start_clearning = $bestEnd->copy();
+                        $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C1_time_minutes, $bestRoom->room_id, $this->work_sunday);
+
+                        $clearningType = 1;
+                        $first_in_campaign = 0;
+                    }
+
+                    $this->saveSchedule(
+                        $first_in_campaign,
+                        $task->id,
+                        $bestRoom->room_id,
+                        $bestStart,
+                        $bestEnd,
+                        $start_clearning,
+                        $bestEndCleaning,
+                        $clearningType,
+                        1,
+                    );
+
+                    $counter++;
+                    $bestStart = $bestEndCleaning->copy();
                 }
-                
 
-                $totalTimeCampaign  =  abs($firstBatachStart->diffInMinutes($lastBatachEnd));
+                if ($firstBatachStart && $lastBatachEnd) {
+                    $totalTimeCampaign = abs($firstBatachStart->diffInMinutes($lastBatachEnd));
+                }
                 
                 // Làm liên tục các công cộng sau
                 $nextcessor_codes  =  collect();
