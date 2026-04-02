@@ -286,6 +286,7 @@ class MonthlyReportController extends Controller
         $endDateStr   = \Carbon\Carbon::parse($endDate)->endOfDay()->format('Y-m-d H:i:s');
 
         $result = DB::table("stage_plan as sp")
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->whereNotNull('sp.start')
             ->whereNotNull('sp.resourceId')
             ->where('sp.deparment_code', session('user')['production_code'])
@@ -295,7 +296,7 @@ class MonthlyReportController extends Controller
                 "sp.resourceId",
                 DB::raw("
                     SUM(
-                        sp.yields *
+                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
                         TIME_TO_SEC(
                             TIMEDIFF(
                                 LEAST(sp.end, '$endDateStr'),
@@ -309,7 +310,7 @@ class MonthlyReportController extends Controller
             ->groupBy("sp.resourceId")
             ->get();
 
-        return collect($result)->map(function($item) {
+        return collect($result)->map(function ($item) {
             return (object)[
                 'resourceId' => $item->resourceId,
                 'total_qty'  => round($item->total_qty, 2)
@@ -346,7 +347,7 @@ class MonthlyReportController extends Controller
             ->groupBy('sp.resourceId')
             ->get();
 
-        return collect($result)->map(function($item) {
+        return collect($result)->map(function ($item) {
             return (object)[
                 'resourceId' => $item->resourceId,
                 'total_qty'  => round($item->total_qty, 2)
