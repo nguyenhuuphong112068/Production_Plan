@@ -230,7 +230,11 @@
                                                         @else
                                                             {{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
-                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history mt-0" data-id="{{ $data->id }}" data-type="0" title="Lịch sử thay đổi" style="padding:2px 6px; font-size:12px;">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-info show-packaging-history mt-0"
+                                                            data-id="{{ $data->id }}" data-type="0"
+                                                            title="Lịch sử thay đổi"
+                                                            style="padding:2px 6px; font-size:12px; margin-left: auto;">
                                                             <i class="fas fa-history"></i>
                                                         </button>
                                                     </div>
@@ -262,7 +266,11 @@
                                                         @else
                                                             {{ $data->receive_second_packaging_date ? \Carbon\Carbon::parse($data->receive_second_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
-                                                        <button type="button" class="btn btn-sm btn-outline-info show-packaging-history mt-0" data-id="{{ $data->id }}" data-type="1" title="Lịch sử thay đổi" style="padding:2px 6px; font-size:12px;">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-info show-packaging-history mt-0"
+                                                            data-id="{{ $data->id }}" data-type="1"
+                                                            title="Lịch sử thay đổi"
+                                                            style="padding:2px 6px; font-size:12px; margin-left: auto;">
                                                             <i class="fas fa-history"></i>
                                                         </button>
                                                     </div>
@@ -337,7 +345,8 @@
 </div>
 
 <!-- Modal Lịch sử -->
-<div class="modal fade" id="packagingHistoryModal" tabindex="-1" role="dialog" aria-labelledby="historyModalLabel" aria-hidden="true">
+<div class="modal fade" id="packagingHistoryModal" tabindex="-1" role="dialog" aria-labelledby="historyModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
@@ -646,7 +655,9 @@
         let id = $(this).data('id');
         let type = $(this).data('type');
 
-        $('#historyBody').html('<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>');
+        $('#historyBody').html(
+            '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>'
+            );
         $('#packagingHistoryModal').modal('show');
 
         $.ajax({
@@ -660,8 +671,10 @@
                 let html = '';
                 if (res.length > 0) {
                     res.forEach((item, index) => {
-                        let dateText = item.receive_packaging_date ? moment(item.receive_packaging_date).format('DD/MM/YYYY') : '-';
-                        let createdAtText = item.created_at ? moment(item.created_at).format('DD/MM/YYYY HH:mm') : '-';
+                        let dateText = item.receive_packaging_date ? moment(item
+                            .receive_packaging_date).format('DD/MM/YYYY') : '-';
+                        let createdAtText = item.created_at ? moment(item.created_at)
+                            .format('DD/MM/YYYY HH:mm') : '-';
                         html += `
                             <tr>
                                 <td>${index + 1}</td>
@@ -673,7 +686,8 @@
                         `;
                     });
                 } else {
-                    html = '<tr><td colspan="5" class="text-center">Chưa có lịch sử thay đổi</td></tr>';
+                    html =
+                        '<tr><td colspan="5" class="text-center">Chưa có lịch sử thay đổi</td></tr>';
                 }
                 const historyBody = document.getElementById('historyBody');
                 if (historyBody) {
@@ -683,7 +697,8 @@
             error: function() {
                 const historyBody = document.getElementById('historyBody');
                 if (historyBody) {
-                    historyBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Lỗi khi tải dữ liệu!</td></tr>';
+                    historyBody.innerHTML =
+                        '<tr><td colspan="5" class="text-center text-danger">Lỗi khi tải dữ liệu!</td></tr>';
                 }
             }
         });
