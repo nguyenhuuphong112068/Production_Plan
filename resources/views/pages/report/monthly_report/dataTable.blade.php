@@ -56,7 +56,8 @@
         <div class="card-body mt-4">
             <!-- Tiêu đề -->
             <div class ="row mx-2 mb-2">
-                <form id="filterForm" method="GET" action="{{ route('pages.report.monthly_report.index') }}" class="w-100">
+                <form id="filterForm" method="GET" action="{{ route('pages.report.monthly_report.index') }}"
+                    class="w-100">
                     @csrf
                     <div class="row w-100 align-items-center">
                         @php
@@ -141,7 +142,8 @@
                         @foreach ($datas as $data)
                             @if ($current_Stage !== null && $current_Stage != $data->stage_code)
                                 {{-- Summary row for previous stage --}}
-                                <tr class="stage-row-total" data-stage="{{ $current_Stage }}" style="background-color: #f8f9fa; font-weight: bold;">
+                                <tr class="stage-row-total" data-stage="{{ $current_Stage }}"
+                                    style="background-color: #f8f9fa; font-weight: bold;">
                                     <td colspan="6" class="text-right">Tổng
                                         {{ $stage_name[$current_Stage] ?? 'Công đoạn ' . $current_Stage }}:</td>
                                     <td class="text-end">{{ number_format($stage_theory_total) }}</td>
@@ -209,7 +211,8 @@
 
                             @if ($loop->last)
                                 {{-- Final summary row --}}
-                                <tr class="stage-row-total" data-stage="{{ $current_Stage }}" style="background-color: #f8f9fa; font-weight: bold;">
+                                <tr class="stage-row-total" data-stage="{{ $current_Stage }}"
+                                    style="background-color: #f8f9fa; font-weight: bold;">
                                     <td colspan="6" class="text-right">Tổng
                                         {{ $stage_name[$current_Stage] ?? 'Công đoạn ' . $current_Stage }}:</td>
                                     <td class="text-end">{{ number_format($stage_theory_total) }}</td>
@@ -323,7 +326,8 @@
                 $(".stage-header").each(function() {
                     var stage = $(this).data("stage");
                     var isExpanded = $(this).find(".toggle-stage").text() === "-";
-                    $(".stage-" + stage + ", .stage-row-total[data-stage='" + stage + "']").toggle(isExpanded);
+                    $(".stage-" + stage + ", .stage-row-total[data-stage='" + stage + "']").toggle(
+                        isExpanded);
                     $(this).show();
                 });
                 return;
@@ -341,7 +345,7 @@
                 var hasVisibleRows = $(".stage-" + stage + ":visible").length > 0;
                 $(this).toggle(hasVisibleRows);
                 $(".stage-row-total[data-stage='" + stage + "']").toggle(hasVisibleRows);
-                
+
                 // Nếu có kết quả tìm kiếm, tự động đổi dấu thành "-" (đang mở)
                 if (hasVisibleRows) {
                     $(this).find(".toggle-stage").text("-");

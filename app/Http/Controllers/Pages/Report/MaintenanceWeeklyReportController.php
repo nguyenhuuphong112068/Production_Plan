@@ -12,7 +12,7 @@ class MaintenanceWeeklyReportController extends Controller
     public function index(Request $request)
     {
         $production_code = session('user')['production_code'];
-        
+
         $selectedDate = $request->reportedDate;
         if ($selectedDate && str_contains($selectedDate, '-W')) {
             $parts = explode('-W', $selectedDate);
@@ -22,7 +22,7 @@ class MaintenanceWeeklyReportController extends Controller
             $startOfWeek = Carbon::parse($selectedDate)->startOfWeek(Carbon::MONDAY)->setTime(6, 0, 0);
         }
         $endOfWeek = $startOfWeek->copy()->addDays(7);
-        $selectedDate = $startOfWeek->format('o-\WW'); 
+        $selectedDate = $startOfWeek->format('o-\WW');
 
         $weekDays = [];
         for ($i = 0; $i < 7; $i++) {
@@ -35,10 +35,10 @@ class MaintenanceWeeklyReportController extends Controller
         }
 
         $datas = DB::table('room as r')
-            ->leftJoin('stage_plan as sp', function($join) use ($startOfWeek, $endOfWeek) {
+            ->leftJoin('stage_plan as sp', function ($join) use ($startOfWeek, $endOfWeek) {
                 $join->on('r.id', '=', 'sp.resourceId')
-                     ->where('sp.stage_code', '=', 8) // Maintenance
-                     ->whereBetween('sp.start', [$startOfWeek, $endOfWeek]);
+                    ->where('sp.stage_code', '=', 8) // Maintenance
+                    ->whereBetween('sp.start', [$startOfWeek, $endOfWeek]);
             })
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
             ->leftJoin('quota_maintenance as qm', 'sp.product_caterogy_id', '=', 'qm.id')
@@ -67,17 +67,17 @@ class MaintenanceWeeklyReportController extends Controller
             ->orderBy('sp.start')
             ->get();
 
-        $datas = $datas->map(function($item) {
+        $datas = $datas->map(function ($item) {
             if ($item->sp_id) {
-                $item->day_key = Carbon::parse($item->planned_start)->isBefore(Carbon::parse($item->planned_start)->setTime(6,0,0)) 
-                                ? Carbon::parse($item->planned_start)->subDay()->format('Y-m-d')
-                                : Carbon::parse($item->planned_start)->format('Y-m-d');
+                $item->day_key = Carbon::parse($item->planned_start)->isBefore(Carbon::parse($item->planned_start)->setTime(6, 0, 0))
+                    ? Carbon::parse($item->planned_start)->subDay()->format('Y-m-d')
+                    : Carbon::parse($item->planned_start)->format('Y-m-d');
             }
             return $item;
         });
 
         $groupedByRoom = $datas->groupBy('room_id');
-        
+
         $displayWeek = "Tuần từ " . $startOfWeek->format('d/m/Y') . " đến " . $startOfWeek->copy()->addDays(6)->format('d/m/Y');
         session()->put(['title' => "LỊCH BẢO TRÌ TUẦN"]);
 

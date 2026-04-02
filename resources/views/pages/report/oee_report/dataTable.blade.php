@@ -122,13 +122,13 @@
                             <tr class="data-row" data-stage="{{ $data->stage_code }}">
                                 <td>{{ $loop->iteration }}</td>
                                 <td class="searchable">{{ $data->room_code . ' - ' . $data->room_name }}
-                                    ({{ $data->main_equiment_name }})
+                                     ({{ $data->main_equiment_name }})
                                 </td>
                                 <td>{{ number_format($data->capacity) }}</td>
                                 <td>{{ number_format($data->work_hours, 2) }}</td>
                                 <td>{{ number_format($data->cleaning_hours, 2) }}</td>
                                 <td>{{ number_format($data->busy_hours, 2) }}</td>
-                                <td class="text-right">{{ number_format($data->output_theory) }}</td>
+                                <td class="text-right">{{ number_format($data->yield_theory) }}</td>
                                 <td class="text-right">{{ number_format($data->yield_actual) }}</td>
                                 <td>{{ $data->OEE }}%</td>
                                 <td>{{ (int) $data->shift }}</td>
@@ -139,7 +139,7 @@
                             </tr>
 
                             @php
-                                $stage_theory_total += $data->output_theory;
+                                $stage_theory_total += $data->yield_theory;
                                 $stage_actual_total += $data->yield_actual;
                             @endphp
 
