@@ -2032,9 +2032,7 @@ class SchedualController  extends  Controller
                         DB::rollBack();
                         
                         Log::error('Lỗi cập nhật sự kiện:',  ['error'  =>  $e->getMessage()]);
-                        
-                        dd ( $e->getMessage());
-
+                      
                         return  response()->json([
                                 'status'   =>  'error', 
                                 'message'  =>  $e->getMessage()
