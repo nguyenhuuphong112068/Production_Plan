@@ -179,6 +179,19 @@
                                             <br><b>Coating:</b>{{ number_format($sum_theory_coating, 2) }}
                                             <br><b>Capsule:</b>{{ number_format($sum_theory_capsule, 2) }}
                                         @endif
+
+                                        @php
+                                            $dayLT_events = collect($yield_theoryl_detial['yield_day'] ?? []);
+                                            $stageLT_detail = $dayLT_events
+                                                ->where('stage_code', $stage_code)
+                                                ->pluck('yield_theory_detial')
+                                                ->filter()
+                                                ->implode('<br>');
+                                        @endphp
+                                        {{-- <div
+                                            style="font-size: 11px; color: #555; font-style: italic; margin-top: 5px; font-weight: normal;">
+                                            {!! $stageLT_detail !!}
+                                        </div> --}}
                                     </td>
                                     <td class="text-center">
                                         {{ number_format($stageTT, 2) }}
@@ -258,8 +271,17 @@
 
                                         {{-- LT --}}
                                         <td class="text-center" style="background:#93f486;">
-                                            {{ number_format($qtyLT, 2) }}
-                                            {{ $stage_code == 4 ? '# ' . number_format($qtyLT_unit, 2) : '' }}
+                                            <div>{{ number_format($qtyLT, 2) }}</div>
+                                            <div>{{ $stage_code == 4 ? '# ' . number_format($qtyLT_unit, 2) : '' }}
+                                            </div>
+                                            @php
+                                                $dayLT_events = collect($yield_theoryl_detial['yield_day'] ?? []);
+                                                $itemLT_event = $dayLT_events->firstWhere('resourceId', $resourceId);
+                                            @endphp
+                                            <div
+                                                style="font-size: 11px; color: #555; font-style: italic; margin-top: 5px;">
+                                                {!! $itemLT_event['yield_theory_detial'] ?? '' !!}
+                                            </div>
                                         </td>
 
                                         {{-- TT --}}
