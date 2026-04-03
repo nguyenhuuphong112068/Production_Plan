@@ -32,6 +32,8 @@ class DailyReportController extends Controller
         //$actual = $this->yield_actual($startDate, $endDate, 'resourceId');
 
         $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
+        $yield_theoryl_detial = $this->yield_theoryl_detial($startDate, $endDate, 'resourceId');
+
 
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
 
@@ -74,6 +76,7 @@ class DailyReportController extends Controller
         return view('pages.report.daily_report.list', [
             //'actual' => $actual,
             'yield_actual_detial' => $yield_actual_detial,
+            'yield_theoryl_detial' => $yield_theoryl_detial,
             'theory' => $theory,
             'sum_by_next_room' => $sum_by_next_room,
             'reportedDate'    => $displayDate,
@@ -282,6 +285,122 @@ class DailyReportController extends Controller
         ];
     }
 
+
+    public function yield_theoryl_detial($startDate, $endDate, $group_By)
+    {
+        $startDateStr = $startDate->format('Y-m-d H:i:s');
+        $endDateStr   = $endDate->format('Y-m-d H:i:s');
+
+        /*
+        |--------------------------------------------------------------------------
+        | 1️⃣ THEORETICAL PRODUCTION (TÍNH THEO STAGE_PLAN)
+        |--------------------------------------------------------------------------
+        */
+        $production = DB::table('stage_plan as sp')
+            ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
+            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
+            ->whereNotNull('sp.start')
+            ->where('sp.active', 1)
+            ->where('sp.deparment_code', session('user')['production_code'])
+            // Hỗ trợ overlap
+            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDateStr, $startDateStr])
+            ->select(
+                "sp.$group_By",
+                "sp.stage_code",
+                DB::raw("CONCAT(sp.id, '-theory-yield') AS id"),
+                DB::raw("CONCAT(COALESCE(product_name.name, 'N/A'), ' - ', COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A')) AS title"),
+
+                // Clamp thời gian
+                DB::raw("GREATEST(sp.start, '$startDateStr') AS actual_start"),
+                DB::raw("LEAST(sp.end, '$endDateStr') AS actual_end"),
+
+                // Tính overlap ratio
+                DB::raw("
+                    ROUND(
+                        (sp.Theoretical_yields * plan_master.percent_parkaging) *
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, '$endDateStr'), GREATEST(sp.start, '$startDateStr'))) /
+                        NULLIF(TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 0)
+                    , 2) AS theory_yields
+                "),
+
+                // Tính qty unit theo ratio
+                DB::raw("
+                    ROUND(
+                        COALESCE(sp.Theoretical_yields_qty, 0) *
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, '$endDateStr'), GREATEST(sp.start, '$startDateStr'))) /
+                        NULLIF(TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 0)
+                    , 2) AS theory_qty_unit
+                "),
+
+                DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
+                DB::raw("
+                    CASE 
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%phim%' THEN 'coating'
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%nang%' THEN 'capsule'
+                        WHEN sp.stage_code = 5 THEN 'tablet'
+                        ELSE 'NA'
+                    END as table_type
+                "),
+                "sp.note"
+            )
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2️⃣ MERGE & FORMAT
+        |--------------------------------------------------------------------------
+        */
+        $theory_detail = $production->map(function ($item) use ($group_By) {
+            return (object)[
+                'resourceId'      => $item->$group_By,
+                'reported_date'   => substr($item->actual_start, 0, 10),
+                'id'              => $item->id,
+                'title'           => $item->title,
+                'start'           => $item->actual_start,
+                'end'             => $item->actual_end,
+                'yields'          => $item->theory_yields,
+                'yields_batch_qty' => $item->theory_qty_unit,
+                'unit'            => $item->unit,
+                'note'            => $item->note ?? null,
+                'table_type'      => $item->table_type ?? 'NA',
+                'stage_code'      => $item->stage_code
+            ];
+        })
+            ->sortBy('start')
+            ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3️⃣ TỔNG HỢP THEO PHÒNG (Dùng cho yield_day)
+        |--------------------------------------------------------------------------
+        */
+        $yield_day = $theory_detail
+            ->groupBy('resourceId')
+            ->map(function ($items) {
+                $first = $items->first();
+                return [
+                    'resourceId'    => $first->resourceId,
+                    'total_qty'     => round($items->sum('yields'), 2),
+                    'total_qty_unit'   => round($items->sum('yields_batch_qty'), 2),
+                    'unit'          => $first->unit,
+                    'table_type'    => $first->table_type,
+                    'stage_code'    => $first->stage_code,
+                    'yield_theory_detial' => $items->map(function ($i) {
+                        return date('H:i', strtotime($i->start)) . ' - ' . date('H:i', strtotime($i->end)) . ': ' . $i->title . ' || ' . number_format($i->yields, 2);
+                    })->implode('<br>')
+                ];
+            })
+            ->values();
+
+        return [
+            'theoryl_detail' => $theory_detail,
+            'yield_day'      => $yield_day
+        ];
+    }
+
     public function yield_theory($startDate, $endDate, $group_By)
     {
         // ------------------------------
@@ -290,6 +409,7 @@ class DailyReportController extends Controller
         $stage_plan_100 = DB::table("stage_plan as sp")
             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('product_name', 'fpc.product_name_id', '=', 'product_name.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
@@ -298,7 +418,7 @@ class DailyReportController extends Controller
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
-                DB::raw('SUM(CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) as total_qty'),
+                DB::raw('SUM(sp.Theoretical_yields * plan_master.percent_parkaging) as total_qty'),
                 DB::raw('
                     SUM(
                         CASE
@@ -320,6 +440,18 @@ class DailyReportController extends Controller
                         WHEN sp.stage_code = 5 THEN 'tablet'
                         ELSE 'NA'
                     END as table_type
+                "),
+                DB::raw("
+                    GROUP_CONCAT(
+                        CONCAT(
+                            DATE_FORMAT(sp.start, '%H:%i'), ' - ', DATE_FORMAT(sp.end, '%H:%i'), ': ',
+                            COALESCE(product_name.name, 'N/A'), ' - ', 
+                            COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A'), 
+                            ' || ', 
+                            ROUND(sp.Theoretical_yields * plan_master.percent_parkaging, 2)
+                        ) 
+                        SEPARATOR '<br>'
+                    ) as detials
                 ")
             )
             ->groupBy("sp.$group_By", "unit", "table_type")
@@ -329,6 +461,7 @@ class DailyReportController extends Controller
         $stage_plan_part = DB::table("stage_plan as sp")
             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('product_name', 'fpc.product_name_id', '=', 'product_name.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
@@ -339,7 +472,7 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 DB::raw('
                     SUM(
-                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
+                        (sp.Theoretical_yields * plan_master.percent_parkaging) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -368,6 +501,20 @@ class DailyReportController extends Controller
                         WHEN sp.stage_code = 5 THEN 'tablet'
                         ELSE 'NA'
                     END as table_type
+                "),
+                DB::raw("
+                    GROUP_CONCAT(
+                        CONCAT(
+                            DATE_FORMAT(sp.start, '%H:%i'), ' - ', DATE_FORMAT(sp.end, '%H:%i'), ': ',
+                            COALESCE(product_name.name, 'N/A'), ' - ', 
+                            COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A'), 
+                            ' || ', 
+                            ROUND((sp.Theoretical_yields * plan_master.percent_parkaging) *
+                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, \"' . $endDate . '\"), GREATEST(sp.start, \"' . $startDate . '\"))) /
+                                TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 2)
+                        ) 
+                        SEPARATOR '<br>'
+                    ) as detials
                 ")
             )
             ->groupBy("sp.$group_By", "unit", "table_type")
@@ -385,6 +532,7 @@ class DailyReportController extends Controller
                 $first = $items->first();
                 $total_qty = round($items->sum('total_qty'), 2);
                 $total_qty_unit = round($items->sum('total_qty_unit'), 2);
+                $detials = $items->pluck('detials')->filter()->implode('<br>');
 
                 // Nếu group_By là room_id hoặc resourceId → lấy thêm thông tin phòng
                 if ($group_By === 'room_id' || $group_By === 'resourceId') {
@@ -402,7 +550,8 @@ class DailyReportController extends Controller
                         'unit' => $first->unit,
                         'total_qty' => $total_qty,
                         'total_qty_unit' => $total_qty_unit,
-                        'table_type' => $first->table_type
+                        'table_type' => $first->table_type,
+                        'yield_theory_detial' => $detials
                     ];
                 }
 
@@ -412,7 +561,8 @@ class DailyReportController extends Controller
                     'unit' => $first->unit,
                     'total_qty' => $total_qty,
                     'total_qty_unit' => $total_qty_unit,
-                    'table_type' => $first->table_type
+                    'table_type' => $first->table_type,
+                    'yield_theory_detial' => $detials
                 ];
             })
             ->values();
@@ -439,7 +589,8 @@ class DailyReportController extends Controller
                 'unit'        => $found->unit ?? null,
                 'total_qty'   => $found->total_qty ?? 0,
                 'total_qty_unit' => $found->total_qty_unit ?? 0,
-                'table_type'  => $found->table_type ?? 'NA'
+                'table_type'  => $found->table_type ?? 'NA',
+                'yield_theory_detial' => $found->yield_theory_detial ?? ''
             ];
         })->sortBy('order_by')->values();
 
@@ -479,6 +630,7 @@ class DailyReportController extends Controller
             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('room as r', 'sp.resourceId', '=', 'r.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('product_name', 'fpc.product_name_id', '=', 'product_name.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->where('sp.deparment_code', session('user')['production_code'])
@@ -492,7 +644,7 @@ class DailyReportController extends Controller
                 'r.stage_code as stage_code',
                 DB::raw('
                     SUM(
-                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
+                        (sp.Theoretical_yields * plan_master.percent_parkaging) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $dayEnd . '"), GREATEST(sp.start, "' . $dayStart . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -517,6 +669,20 @@ class DailyReportController extends Controller
                         WHEN sp.stage_code = 5 THEN 'tablet'
                         ELSE 'NA'
                     END as table_type
+                "),
+                DB::raw("
+                    GROUP_CONCAT(
+                        CONCAT(
+                            DATE_FORMAT(sp.start, '%H:%i'), ' - ', DATE_FORMAT(sp.end, '%H:%i'), ': ',
+                            COALESCE(product_name.name, 'N/A'), ' - ', 
+                            COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A'), 
+                            ' || ', 
+                            ROUND((sp.Theoretical_yields * plan_master.percent_parkaging) *
+                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, \"' . $dayEnd . '\"), GREATEST(sp.start, \"' . $dayStart . '\"))) /
+                                TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 2)
+                        ) 
+                        SEPARATOR '<br>'
+                    ) as detials
                 ")
             )
             ->groupBy("sp.$group_By", "r.code", "r.name", "r.stage_code", "unit", "table_type")
@@ -532,7 +698,8 @@ class DailyReportController extends Controller
                 "date" => $dayStart->format('Y-m-d'),
                 "total_qty" => round($item->total_qty ?? 0, 2),
                 "total_qty_unit" => round($item->total_qty_unit ?? 0, 2),
-                "table_type" => $item->table_type ?? 'NA'
+                "table_type" => $item->table_type ?? 'NA',
+                'yield_theory_detial' => $item->detials ?? ''
             ]);
         }
 
@@ -541,48 +708,6 @@ class DailyReportController extends Controller
             'yield_day' => $dailyTotals,
             'yield_stage' => $yield_stage
         ];
-    }
-
-    public function detail(Request $request)
-    {
-        $reportedDate = Carbon::parse($request->reportedDate)->addDays(1)->setTime(6, 0, 0);
-        $detial = DB::table('stage_plan as t')
-            ->leftJoin('stage_plan as t2', function ($join) {
-                $join->on('t2.code', '=', 't.nextcessor_code');
-            })
-            ->leftJoin('plan_master', 't.plan_master_id', 'plan_master.id')
-            ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
-            ->leftJoin('product_name', 'fc.product_name_id', 'product_name.id')
-            ->leftJoin('quarantine_room', 't.quarantine_room_code', 'quarantine_room.code')
-            ->leftJoin('room', 't.resourceId', 'room.id')
-            ->whereNotNull('t.start')
-            ->whereNotNull('t.yields')
-            ->where('t2.resourceId', $request->room_id)
-            ->where('t2.start', '>', $reportedDate)
-            ->where('t.active', 1)
-            ->where('t.finished', 1)
-            ->select(
-                'fc.finished_product_code',
-                'fc.intermediate_code',
-                'product_name.name as product_name',
-                DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
-                //'plan_master.batch',
-                't.quarantine_room_code',
-                'quarantine_room.name',
-                't.yields',
-                't.stage_code',
-                't2.stage_code as next_stage',
-                't2.start as next_start',
-                DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as pre_room"),
-                'room.production_group as production_group',
-                'room.stage as stage',
-                'room.group_code',
-
-            )
-            ->orderBy('t.plan_master_id')
-            ->orderBy('t.stage_code')
-            ->get();
-        return response()->json($detial);
     }
 
     public function getExplainationContent(Request $request)
