@@ -286,7 +286,6 @@ class DailyReportController extends Controller
         ];
     }
 
-
     public function yield_theoryl_detial($startDate, $endDate, $group_By)
     {
         $startDateStr = $startDate->format('Y-m-d H:i:s');

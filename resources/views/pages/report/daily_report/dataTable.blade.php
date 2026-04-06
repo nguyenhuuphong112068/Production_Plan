@@ -52,8 +52,7 @@
                                 <div class="form-group d-flex align-items-center">
                                     <label for="reportedDate" class="mr-2 mb-0">Chọn Ngày:</label>
                                     <input type="date" id="reportedDate" name="reportedDate"
-                                        value="{{ $defaultFrom }}" class="form-control"
-                                        max="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" />
+                                        value="{{ $defaultFrom }}" class="form-control" />
                                 </div>
                             </div>
                         </div>

@@ -5,23 +5,15 @@
                 <div class="col-12">
                     <ul class="nav nav-tabs" id="historyTabs" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active"
-                                href="{{ route('pages.History.production.list') }}"
+                            <a class="nav-link active" href="{{ route('pages.History.production.list') }}"
                                 style="font-size: 18px; font-weight: bold;">
                                 <i class="fas fa-industry mr-2"></i>Lịch Sử Sản Xuất
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link"
-                                href="{{ route('pages.History.maintenance.list') }}"
-                                style="font-size: 18px; font-weight: bold;">
-                                <i class="fas fa-tools mr-2"></i>Lịch Sử HC-BT
                             </a>
                         </li>
                     </ul>
                 </div>
             </div>
-            <form id="filterForm" method="GET" action="{{ route('pages.History.list') }}"
+            <form id="filterForm" method="GET" action="{{ route('pages.History.production.list') }}"
                 class="d-flex flex-wrap gap-0">
                 <input type="hidden" name="main_type" value="production">
                 <div class="row w-100 align-items-center">

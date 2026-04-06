@@ -138,7 +138,7 @@ class ProductionHistoryController extends Controller
         $title = ($main_type === 'maintenance') ? 'LỊCH SỬ BẢO TRÌ - HIỆU CHUẨN' : 'LỊCH SỬ SẢN XUẤT';
         session()->put(['title' => $title]);
 
-        return view('pages.History.list', [
+        return view('pages.History.Production.list', [
             'datas' => $datas,
             'stages' => $stages,
             'stageCode' => $stageCode,
