@@ -207,7 +207,11 @@
                             <td>
                                 <div> {{ $data->prepared_by }} </div>
                                 <div>
-                                    {{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}
+                                    @if ($data->updated_at)
+                                        {{ $data->updated_at ? \Carbon\Carbon::parse($data->updated_at)->format('d/m/Y') : '' }}
+                                    @else
+                                        {{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}
+                                    @endif
                                 </div>
                             </td>
 
