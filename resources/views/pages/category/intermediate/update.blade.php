@@ -306,7 +306,7 @@
             if ($("#update_checkbox6").is(":checked")) {
 
                 // Chỉ tác động input 1-5, không đổi trạng thái checkbox
-                for (let i = 1; i <= 5; i++) {
+                for (let i = 2; i <= 5; i++) {
                     const cb = $("#update_checkbox" + i);
                     const input = cb.closest(".form-group.row").find(".step-input");
                     input.val(0).prop("readonly", true);
