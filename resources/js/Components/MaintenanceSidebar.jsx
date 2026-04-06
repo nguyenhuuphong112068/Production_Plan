@@ -16,7 +16,7 @@ import axios from "axios";
 
 const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   setPercentShow, selectedRows, setSelectedRows, resources,
-  currentPassword, userID, isMaintenance = true, maintenanceType, setMaintenanceType }) => {
+  currentPassword, userID, userGroup, userGroupName, production, userDepartment, isMaintenance = true, maintenanceType, setMaintenanceType }) => {
 
   const wrapperRef = useRef(null);
 
@@ -79,11 +79,26 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   };
 
   useEffect(() => {
-    if (waitPlan && waitPlan.length > 0) {
-      let filtered = waitPlan.filter(event => Number(event.stage_code) === 8);
+    if (Array.isArray(waitPlan) && waitPlan.length > 0) {
+      let filtered = waitPlan.filter(event => event && Number(event.stage_code) === 8);
+
+      // Role-based filtering
+      const roles = Array.isArray(userGroup) ? userGroup : (userGroup ? [userGroup] : []);
+      const isAdminOrSchedualer = roles.some(role => ['Admin', 'Schedualer'].includes(role));
+      const isLeader = roles.includes('Leader');
+
+      // PXV1: Leader chỉ thấy theo tổ của mình. 
+      // Các xưởng khác: Leader thấy toàn bộ như Admin/Schedualer
+      if (!isAdminOrSchedualer && isLeader && userGroupName && production === 'PXV1') {
+        filtered = filtered.filter(event => {
+          const rooms = event.related_rooms || [];
+          // So sánh production_group của phòng với groupName của user
+          return rooms.some(room => room && room.production_group === userGroupName);
+        });
+      }
 
       filtered = filtered.filter(event => {
-        if (!event.code) return false;
+        if (!event || !event.code) return false;
         const code = String(event.code);
         if (code.endsWith(`_${maintenanceType}`)) return true;
         if (maintenanceType === 'TB' && code.endsWith('_8')) return true;
@@ -92,14 +107,14 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
       const withRoomCodes = filtered.map(item => ({
         ...item,
-        room_codes: (item.related_rooms || []).map(r => r.room_code).join(', ')
+        room_codes: (item.related_rooms || []).map(r => r ? r.room_code : '').filter(Boolean).join(', ')
       }));
 
       setTableData(withRoomCodes);
     } else {
       setTableData([]);
     }
-  }, [waitPlan, maintenanceType]);
+  }, [waitPlan, maintenanceType, userGroup, userGroupName, production]);
 
   useEffect(() => {
     let visibleCols = [];

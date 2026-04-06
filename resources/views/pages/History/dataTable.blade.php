@@ -8,9 +8,29 @@
               
               </div> --}}
         <!-- /.card-Body -->
-        <div class="card-body mt-5">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-12">
+                    <ul class="nav nav-tabs" id="historyTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link {{ $main_type == 'production' ? 'active' : '' }}" 
+                               href="{{ route('pages.History.list', ['main_type' => 'production']) }}"
+                               style="font-size: 18px; font-weight: bold;">
+                                <i class="fas fa-industry mr-2"></i>Lịch Sử Sản Xuất
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ $main_type == 'maintenance' ? 'active' : '' }}" 
+                               href="{{ route('pages.History.list', ['main_type' => 'maintenance']) }}"
+                               style="font-size: 18px; font-weight: bold;">
+                                <i class="fas fa-tools mr-2"></i>Lịch Sử HC-BT
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <form id="filterForm" method="GET" action="{{ route('pages.History.list') }}" class="d-flex flex-wrap gap-0">
-                @csrf
+                <input type="hidden" name="main_type" value="{{ $main_type }}">
                 <div class="row w-100 align-items-center">
                     <!-- Filter From/To -->
                     <div class="col-md-6 d-flex gap-2">
@@ -31,32 +51,34 @@
                         </div>
                     </div>
 
-                    <!-- Stage Selector -->
-                    {{-- <div class="col-md-4 d-flex justify-content-center align-items-center" style="gap: 10px; height: 40px;">
-                            <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
-                            <button type="button" id="prevStage" class="btn btn-link stage-btn" style="font-size: 25px;">&laquo;</button>
-                            <span id="stageName" class="fw-bold text-center" style="font-size: 25px;">
-                                {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
-                            </span>
-                            <button type="button" id="nextStage" class="btn btn-link stage-btn" style="font-size: 25px;">&raquo;</button>
-                        </div> --}}
-
-                    <!-- Optional Right Side -->
+                    <!-- Type Selector -->
                     <div class="col-md-6 d-flex justify-content-end">
-                        <div class="form-group" style="width: 177px">
-                            <select class="form-control" name="stage_code" style="text-align-last: center;"
-                                onchange="document.getElementById('filterForm').submit();">
-                                <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
-                                <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
-                                <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
-                                <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
-                                <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
-                                <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
-                                <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
-                            </select>
-                        </div>
+                        @if($main_type == 'production')
+                            <div class="form-group d-flex align-items-center" style="width: 300px">
+                                <label class="mr-2 mb-0" style="white-space: nowrap">Công đoạn:</label>
+                                <select class="form-control" name="stage_code" style="text-align-last: center;"
+                                    onchange="document.getElementById('filterForm').submit();">
+                                    <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
+                                    <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
+                                    <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
+                                    <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
+                                    <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
+                                    <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
+                                    <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
+                                </select>
+                            </div>
+                        @else
+                            <div class="form-group d-flex align-items-center" style="width: 300px">
+                                <label class="mr-2 mb-0" style="white-space: nowrap">Loại:</label>
+                                <select class="form-control" name="maintenance_type" style="text-align-last: center;"
+                                    onchange="document.getElementById('filterForm').submit();">
+                                    <option {{ $maintenanceType == 'HC' ? 'selected' : '' }} value="HC">Hiệu Chuẩn</option>
+                                    <option {{ $maintenanceType == 'TB' ? 'selected' : '' }} value="TB">Bảo Trì</option>
+                                    <option {{ $maintenanceType == 'TI' ? 'selected' : '' }} value="TI">Tiện Ích</option>
+                                </select>
+                            </div>
+                        @endif
                     </div>
-
                 </div>
             </form>
 
@@ -64,16 +86,27 @@
                 <thead style = "position: sticky; background-color: white; z-index: 1020">
                     <tr>
                         <th>STT</th>
-                        <th>Mã Sản Phẩm</th>
-                        <th>Sản Phẩm</th>
-                        <th>Cỡ lô</th>
+                        @if($main_type == 'production')
+                            <th>Mã Sản Phẩm</th>
+                            <th>Sản Phẩm</th>
+                            <th>Cỡ lô</th>
+                        @else
+                            <th>Mã Thiết Bị</th>
+                            <th>Tên Thiết Bị</th>
+                        @endif
 
                         <th>Ngày Dự Kiến KCS</th>
-                        <th>Lô Thẩm Định</th>
+                        @if($main_type == 'production')
+                            <th>Lô Thẩm Định</th>
+                        @endif
                         <th>Phòng Sản Xuất</th>
                         <th>Thới Gian Sản Xuất</th>
                         <th>Thời Gian Vệ Sinh</th>
-                        <th>Sản Lượng TT</th>
+                        @if($main_type == 'production')
+                            <th>Sản Lượng TT</th>
+                        @else
+                            <th>Kết Quả</th>
+                        @endif
                         <th>Phòng BT</th>
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
@@ -93,22 +126,29 @@
                                     <div> {{ $data->id }} </div>
                                 @endif
                             </td>
-                            <td>
-                                <div> {{ $data->intermediate_code }} </div>
-                                <div> {{ $data->finished_product_code }} </div>
-                            </td>
-                            <td>{{ $data->name . ' - ' . $data->batch . ' - ' . $data->market }}</td>
-                            <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
+                            @if($main_type == 'production')
+                                <td>
+                                    <div> {{ $data->intermediate_code }} </div>
+                                    <div> {{ $data->finished_product_code }} </div>
+                                </td>
+                                <td>{{ $data->name . ' - ' . $data->batch . ' - ' . $data->market }}</td>
+                                <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
+                            @else
+                                <td>{{ $data->instrument_code }}</td>
+                                <td>{{ $data->name }}</td>
+                            @endif
 
 
                             <td>
                                 <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
                             </td>
-                            <td class="text-center align-middle">
-                                @if ($data->is_val)
-                                    <i class="fas fa-check-circle text-primary fs-4"></i>
-                                @endif
-                            </td>
+                            @if($main_type == 'production')
+                                <td class="text-center align-middle">
+                                    @if ($data->is_val)
+                                        <i class="fas fa-check-circle text-primary fs-4"></i>
+                                    @endif
+                                </td>
+                            @endif
                             <td> {{ $data->room_name . ' - ' . $data->room_code }} </td>
                             @if ($data->actual_start)
                                 <td> {{ \Carbon\Carbon::parse($data->actual_start)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->actual_end)->format('d/m/Y H:i') }}
@@ -121,11 +161,25 @@
                                 <td> {{ \Carbon\Carbon::parse($data->actual_start_clearning)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->actual_end_clearning)->format('d/m/Y H:i') }}
                                 </td>
                             @else
-                                <td> {{ 'Chưa Xác nhận Hoàn Thành' }} </td>
+                                <td> {{ $main_type == 'production' ? 'Chưa Xác nhận Hoàn Thành' : 'NA' }} </td>
                             @endif
 
 
-                            <td> {{ $data->sum_actual_yeild }} {{ $stageCode <= 4 ? 'Kg' : 'ĐVL' }}</td>
+                            @if($main_type == 'production')
+                                <td> {{ $data->sum_actual_yeild }} {{ $stageCode <= 4 ? 'Kg' : 'ĐVL' }}</td>
+                            @else
+                                <td>
+                                    @if($data->yields == 1)
+                                        <span class="badge badge-success">Pass</span>
+                                    @elseif($data->yields == 0)
+                                        <span class="badge badge-danger">Fail</span>
+                                    @elseif($data->yields == 2)
+                                        <span class="badge badge-warning">Skip</span>
+                                    @else
+                                        <span class="badge badge-secondary">NA</span>
+                                    @endif
+                                </td>
+                            @endif
                             <td> {{ $data->quarantine_room_code }} </td>
                             <td> {{ $data->note }} </td>
 

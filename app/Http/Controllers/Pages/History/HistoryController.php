@@ -13,10 +13,10 @@ class HistoryController extends Controller
 
         public function index(Request $request)
         {
-
                 $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
                 $toDate   = $request->to_date ?? Carbon::now()->addDays(1)->toDateString();
-                //dd ($fromDate, $toDate  );
+                $main_type = $request->main_type ?? 'production';
+                $maintenanceType = $request->maintenance_type ?? 'HC';
                 $stage_code = $request->stage_code ?? 1;
                 $production = session('user')['production_code'];
 
@@ -27,7 +27,7 @@ class HistoryController extends Controller
                         )
                         ->groupBy('stage_plan_id');
 
-                $datas = DB::table('stage_plan')
+                $query = DB::table('stage_plan')
                         ->leftJoinSub($yieldSub, 'y_sum', function ($join) {
                                 $join->on('stage_plan.id', '=', 'y_sum.stage_plan_id');
                         })
@@ -37,6 +37,7 @@ class HistoryController extends Controller
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('quota_maintenance', 'stage_plan.product_caterogy_id', '=', 'quota_maintenance.id')
                         ->select(
                                 'stage_plan.*',
                                 'room.name as room_name',
@@ -51,19 +52,64 @@ class HistoryController extends Controller
                                 'finished_product_category.unit_batch_qty',
                                 'market.name as market',
                                 'product_name.name as name',
+                                'quota_maintenance.inst_id as instrument_code',
                                 DB::raw("
-TRIM(TRAILING '.' FROM TRIM(TRAILING '0' 
-FROM FORMAT(COALESCE(y_sum.sum_actual_yeild,0), 3)
-)) as sum_actual_yeild
-")
+                                        TRIM(TRAILING '.' FROM TRIM(TRAILING '0' 
+                                        FROM FORMAT(COALESCE(y_sum.sum_actual_yeild,0), 3)
+                                        )) as sum_actual_yeild
+                                ")
                         )
                         ->where('stage_plan.deparment_code', $production)
                         ->whereBetween('stage_plan.actual_start', [$fromDate, $toDate])
                         ->whereNotNull('stage_plan.actual_start')
                         ->where('stage_plan.active', 1)
-                        ->where('stage_plan.finished', 1)
-                        ->where('stage_plan.stage_code', $stage_code)
-                        ->get();
+                        ->where('stage_plan.finished', 1);
+
+                if ($main_type === 'maintenance') {
+                        $query->where('stage_plan.stage_code', 8);
+                        if ($maintenanceType === 'TB') {
+                                $query->where(function ($q) {
+                                        $q->where('stage_plan.code', 'like', '%_TB')
+                                                ->orWhere('stage_plan.code', 'like', '%_8');
+                                });
+                        } else {
+                                $query->where('stage_plan.code', 'like', '%_' . $maintenanceType);
+                        }
+                } else {
+                        $query->where('stage_plan.stage_code', $stage_code);
+                }
+
+                $datas = $query->get();
+
+                // Fetch instrument names for stage 8
+                if ($main_type === 'maintenance') {
+                        $instIds = $datas->pluck('instrument_code')->filter()->unique()->toArray();
+                        $instruments = collect();
+
+                        if (!empty($instIds)) {
+                                $connections = ['cal1', 'cal2'];
+                                $suffixes = [1, 2, 3];
+                                foreach ($connections as $conn) {
+                                        foreach ($suffixes as $suffix) {
+                                                try {
+                                                        $result = DB::connection($conn)
+                                                                ->table("Inst_Master_{$suffix}")
+                                                                ->whereIn('Inst_id', $instIds)
+                                                                ->select('Inst_id', 'Inst_Name')
+                                                                ->get()
+                                                                ->keyBy('Inst_id');
+                                                        $instruments = $instruments->merge($result);
+                                                } catch (\Exception $e) {
+                                                }
+                                        }
+                                }
+
+                                $datas->map(function ($item) use ($instruments) {
+                                        $item->name = $instruments[$item->instrument_code]->Inst_Name ?? $item->title;
+                                        return $item;
+                                });
+                        }
+                }
 
 
 
@@ -87,13 +133,17 @@ FROM FORMAT(COALESCE(y_sum.sum_actual_yeild,0), 3)
 
 
 
-                session()->put(['title' => 'LỊCH SỬ SẢN XUẤT']);
-                return view('pages.History.list', [
+                $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
 
+                $title = ($main_type === 'maintenance') ? 'LỊCH SỬ BẢO TRÌ - HIỆU CHUẨN' : 'LỊCH SỬ SẢN XUẤT';
+                session()->put(['title' => $title]);
+
+                return view('pages.History.list', [
                         'datas' => $datas,
                         'stages' => $stages,
-                        'stageCode' => $stageCode
-
+                        'stageCode' => $stageCode,
+                        'main_type' => $main_type,
+                        'maintenanceType' => $maintenanceType
                 ]);
         }
 
