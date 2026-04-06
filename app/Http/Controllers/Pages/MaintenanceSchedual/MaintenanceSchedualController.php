@@ -92,9 +92,10 @@ class MaintenanceSchedualController extends SchedualController
 
             $authorization = session('user')['userGroup'];
             $UesrID =  session('user')['userId'];
+            $groupName =  session('user')['group_name'];
 
             return response()->json([
-                //'title' => $title,
+
                 'events' => $events,
                 'plan' => $plan_waiting ?? [],
                 'quota' => $quota ?? [],
@@ -103,15 +104,19 @@ class MaintenanceSchedualController extends SchedualController
                 'sumBatchByStage' =>  $sumBatchByStage ?? [],
                 'reason' => $reason ?? [],
                 'type' => $type,
-                'authorization' => $authorization,
-                'production' => $production,
-                'department' => $department,
-                'currentPassword' => session('user')['passWord'] ?? '',
+
                 'Lines'       => $Lines ?? [],
                 'allLines' => $allLines ?? [],
                 'off_days' => DB::table('off_days')->where('off_date', '>=', now())->get()->pluck('off_date') ?? [],
                 'bkc_code' => $bkc_code ?? [],
-                'UesrID' => $UesrID
+
+                'UesrID' => $UesrID,
+                'authorization' => $authorization,
+                'groupName' => $groupName,
+                'production' => $production,
+                'department' => $department,
+                'currentPassword' => session('user')['passWord'] ?? '',
+
             ]);
         } catch (\Throwable $e) {
             // Ghi log chi tiết lỗi
@@ -160,7 +165,7 @@ class MaintenanceSchedualController extends SchedualController
             $relatedRooms = DB::table('quota_maintenance_rooms as qmr')
                 ->join('room', 'qmr.room_id', '=', 'room.id')
                 ->whereIn('qmr.quota_maintenance_id', $quotaIds)
-                ->select('qmr.quota_maintenance_id', 'room.code as room_code', 'room.name as room_name')
+                ->select('qmr.quota_maintenance_id', 'room.code as room_code', 'room.name as room_name', 'room.production_group')
                 ->get()
                 ->groupBy('quota_maintenance_id');
         }

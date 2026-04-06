@@ -763,13 +763,28 @@
 
                 <!-- History-->
                 @if (user_has_permission(session('user')['userId'], 'layout_history', 'boolean'))
-                    <li class="nav-item">
-                        <a href="{{ route('pages.History.list') }}" class="nav-link">
+                    <li class="nav-item has-treeview {{ str_contains(url()->current(), 'History') ? 'menu-open' : '' }}">
+                        <a href="#" class="nav-link {{ str_contains(url()->current(), 'History') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-history"></i>
                             <p>
-                                Lịch Sử Sản Xuất
+                                Lịch Sử
+                                <i class="right fas fa-angle-left"></i>
                             </p>
                         </a>
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a href="{{ route('pages.History.list', ['main_type' => 'production']) }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Lịch Sử Sản Xuất</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('pages.History.list', ['main_type' => 'maintenance']) }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Lịch Sử HC - BT</p>
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 @endif
 

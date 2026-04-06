@@ -74,6 +74,10 @@ const MaintenanceCalender = () => {
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
   const [userID, setUserID] = useState(null);
+  const [userGroup, setUserGroup] = useState([]);
+  const [userGroupName, setUserGroupName] = useState(null);
+  const [production, setProduction] = useState(null);
+  const [userDepartment, setUserDepartment] = useState(null);
 
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
   const [lockedResourceCodes, setLockedResourceCodes] = useState(null);
@@ -127,6 +131,7 @@ const MaintenanceCalender = () => {
 
 
         const isAuthorized = (['Admin', 'Schedualer', 'Leader'].includes(data.authorization) && data.production == data.department) || data.department == 'BOD';
+
         setAuthorization(isAuthorized);
 
         setEvents(data.events);
@@ -149,6 +154,10 @@ const MaintenanceCalender = () => {
           setOffDays(data.off_days);
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
+          setUserGroup(data.authorization);
+          setUserGroupName(data.groupName);
+          setProduction(data.production);
+          setUserDepartment(data.department);
         }
 
 
@@ -441,6 +450,14 @@ const MaintenanceCalender = () => {
       setEvents(cleanData.events);
       setResources(cleanData.resources);
       setSumBatchByStage(cleanData.sumBatchByStage);
+      setPlan(cleanData.plan || []);
+      setUserID(cleanData.UesrID);
+      const isAuthorized = (['Admin', 'Schedualer', 'Leader'].includes(cleanData.authorization) && cleanData.production == cleanData.department) || cleanData.department == 'BOD';
+      setAuthorization(isAuthorized);
+      setUserGroup(cleanData.authorization);
+      setUserGroupName(cleanData.groupName);
+      setProduction(cleanData.production);
+      setUserDepartment(cleanData.department);
       setViewName(viewType);
     } finally {
 
@@ -1951,6 +1968,10 @@ const MaintenanceCalender = () => {
           resources={resources}
           currentPassword={currentPassword}
           userID={userID}
+          userGroup={userGroup}
+          userGroupName={userGroupName}
+          production={production}
+          userDepartment={userDepartment}
           isMaintenance={true}
           maintenanceType={maintenanceType}
           setMaintenanceType={setMaintenanceType}
