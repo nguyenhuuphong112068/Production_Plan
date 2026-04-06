@@ -236,13 +236,15 @@
                                         @php
                                             // LT
                                             $dayLT = $theory['yield_day'] ?? collect();
-                                            $qtyLT = $dayLT->where('resourceId', $resourceId)->sum('total_qty');
-                                            $qtyLT_unit = $dayLT->where('resourceId', $resourceId)->sum('total_qty_unit');
+                                            $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
+                                            $qtyLT = $itemLT['total_qty'] ?? 0;
+                                            $qtyLT_unit = $itemLT['total_qty_unit'] ?? 0;
 
                                             // TT
                                             $dayTT = $yield_actual_detial['yield_day'] ?? collect();
-                                            $qtyTT = $dayTT->where('resourceId', $resourceId)->sum('total_qty');
-                                            $qtyTT_unit = $dayTT->where('resourceId', $resourceId)->sum('total_qty_unit');
+                                            $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
+                                            $qtyTT = $itemTT['total_qty'] ?? 0;
+                                            $qtyTT_unit = $itemTT['total_qty_unit'] ?? 0;
 
                                             // %
 
@@ -274,13 +276,11 @@
                                             </div>
                                             @php
                                                 $dayLT_events = collect($yield_theoryl_detial['yield_day'] ?? []);
+                                                $itemLT_event = $dayLT_events->firstWhere('resourceId', $resourceId);
                                             @endphp
                                             <div
                                                 style="font-size: 11px; color: #555; font-style: italic; margin-top: 5px;">
-                                                @php
-                                                    $itemLT_events = $dayLT_events->where('resourceId', $resourceId);
-                                                @endphp
-                                                {!! $itemLT_events->pluck('yield_theory_detial')->filter()->implode('<br>') !!}
+                                                {!! $itemLT_event['yield_theory_detial'] ?? '' !!}
                                             </div>
                                         </td>
 
