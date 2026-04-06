@@ -102,74 +102,90 @@ class MaintenanceDailyReportController extends Controller
 
     private function autoSyncMaintenance($production)
     {
-        $connections = ['cal1', 'cal2'];
-        $suffixes = [1, 2, 3];
+        // 1. Xác định connection dựa trên phân xưởng
+        $conn = null;
+        if (in_array($production, ['PXV1', 'PXTN'])) {
+            $conn = 'cal1';
+        } elseif (in_array($production, ['PXV2', 'PXDN', 'PXVH'])) {
+            $conn = 'cal2';
+        }
 
-        // Tìm các lệnh bảo trì chưa xong
+        if (!$conn) return;
+
+        // 2. Tìm các lệnh bảo trì chưa xong và lấy thông tin loại (HC, BT, TI)
         $pendingPlans = DB::table('stage_plan as sp')
             ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            ->leftJoin('quota_maintenance as qm', 'sp.product_caterogy_id', '=', 'qm.id')
             ->where('sp.stage_code', 8)
             ->where('sp.finished', 0)
             ->where('sp.deparment_code', $production)
             ->whereNotNull('pm.batch')
-            ->select('sp.id as sp_id', 'pm.batch as sch_ids')
+            ->select('sp.id as sp_id', 'pm.batch as sch_ids', 'qm.block')
             ->get();
-
-
 
         if ($pendingPlans->isEmpty()) return;
 
-        $schIdMap = [];
+        // 3. Nhóm các SCH_ID theo loại bảng (Suffix 1, 2, 3)
+        $suffixGroups = [
+            1 => [], // HC
+            2 => [], // BT
+            3 => [], // TI
+        ];
+
+        $schIdToSpIds = [];
+
         foreach ($pendingPlans as $p) {
+            $typeCode = explode('-', $p->block ?? '')[0];
+            $suffix = match ($typeCode) {
+                'HC' => 1,
+                'BT' => 2,
+                'TI' => 3,
+                default => 1 // Mặc định là HC nếu không rõ
+            };
+
             foreach (explode(',', $p->sch_ids) as $id) {
-                $schIdMap[trim($id)][] = $p->sp_id;
+                $id = trim($id);
+                if (!$id) continue;
+                $suffixGroups[$suffix][] = $id;
+                $schIdToSpIds[$suffix][$id][] = $p->sp_id;
             }
         }
 
+        // 4. Truy vấn từng bảng remote trên connection duy nhất
+        foreach ($suffixGroups as $suffix => $allSchIds) {
+            if (empty($allSchIds)) continue;
 
+            try {
+                $remoteResults = DB::connection($conn)
+                    ->table("Schedule_Master_{$suffix}")
+                    ->whereIn('SCH_ID', array_unique($allSchIds))
+                    ->where('sch_ap_sts', 1)
+                    ->get();
 
-        $allSchIds = array_keys($schIdMap);
+                foreach ($remoteResults as $res) {
+                    $schId = (string)$res->SCH_ID;
+                    if (isset($schIdToSpIds[$suffix][$schId])) {
+                        foreach ($schIdToSpIds[$suffix][$schId] as $spId) {
+                            $yield = 1;
+                            $statusRaw = trim($res->Sch_Result_Status ?? 'Pass');
+                            if ($statusRaw == 'Fail') $yield = 0;
+                            elseif ($statusRaw == 'Skip') $yield = 2;
 
-
-        foreach ($connections as $conn) {
-            foreach ($suffixes as $suffix) {
-                try {
-                    $remoteResults = DB::connection($conn)
-                        ->table("Schedule_Master_{$suffix}")
-                        ->whereIn('SCH_ID', $allSchIds)
-                        ->where('sch_ap_sts', 1)
-                        ->get();
-
-                    foreach ($remoteResults as $res) {
-
-                        $schId = (string)$res->SCH_ID;
-
-
-
-                        if (isset($schIdMap[$schId])) {
-
-                            foreach ($schIdMap[$schId] as $spId) {
-                                $yield = 1;
-                                $statusRaw = trim($res->Sch_Result_Status ?? 'Pass');
-                                if ($statusRaw == 'Fail') $yield = 0;
-                                elseif ($statusRaw == 'Skip') $yield = 2;
-
-                                DB::table('stage_plan')->where('id', $spId)
-                                    ->where('finished', 0)
-                                    ->update([
-                                        'actual_start' => $res->Sch_caldone_to,
-                                        'actual_end'   => $res->Sch_CalDone_On,
-                                        'finished_by'  => $res->Sch_Cal_Done_by ?? null,
-                                        'finished'     => 1,
-                                        'yields'       => $yield,
-                                        'finished_date'   => now()
-                                    ]);
-                            }
-                            unset($schIdMap[$schId]);
+                            DB::table('stage_plan')->where('id', $spId)
+                                ->where('finished', 0)
+                                ->update([
+                                    'actual_start' => $res->Sch_caldone_to,
+                                    'actual_end'   => $res->Sch_CalDone_On,
+                                    'finished_by'  => $res->Sch_Cal_Done_by ?? null,
+                                    'finished'     => 1,
+                                    'yields'       => $yield,
+                                    'finished_date' => now()
+                                ]);
                         }
                     }
-                } catch (\Exception $e) {
                 }
+            } catch (\Exception $e) {
+                Log::error("Maintenance Sync Error ({$conn} - Master {$suffix}): " . $e->getMessage());
             }
         }
     }

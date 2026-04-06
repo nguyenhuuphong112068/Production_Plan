@@ -12,41 +12,34 @@ class MaintenanceHistoryController extends Controller
 {
     public function index(Request $request)
     {
+
         $fromDate = $request->from_date ?? Carbon::now()->subMonth(1)->toDateString();
         $toDate   = $request->to_date ?? Carbon::now()->addDays(1)->toDateString();
         $main_type = 'maintenance';
         $maintenanceType = $request->maintenance_type ?? 'HC';
-        $production = session('user')['production_code'];
+        $productionCode = session('user')['production_code'];
 
-        $query = DB::table('stage_plan as sp')
+        $datas = DB::table('stage_plan as sp')
             ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
-            ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            //->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id') // ✅ Re-enabled for expected_date
             ->leftJoin('quota_maintenance as qm', 'sp.product_caterogy_id', '=', 'qm.id')
             ->select(
                 'sp.*',
                 'room.name as room_name',
                 'room.code as room_code',
                 'room.stage as stage',
-                'pm.expected_date',
-                'pm.is_val',
-                'qm.inst_id as instrument_code'
             )
-            ->where('sp.deparment_code', $production)
-            ->whereBetween('sp.actual_start', [$fromDate, $toDate])
+            ->where('sp.deparment_code', $productionCode)
+            ->where('sp.actual_start', '>=', $fromDate)
+            ->where('sp.actual_start', '<=', $toDate)
+            ->where('sp.code', 'like', '%_' . $maintenanceType)
             ->where('sp.active', 1)
             ->where('sp.stage_code', 8)
-            ->where('sp.finished', 1);
+            ->where('sp.finished', 1)
+            ->orderBy('sp.actual_start', 'desc')
+            ->get();
 
-        if ($maintenanceType === 'TB') {
-            $query->where(function ($q) {
-                $q->where('sp.code', 'like', '%_TB')
-                    ->orWhere('sp.code', 'like', '%_8');
-            });
-        } else {
-            $query->where('sp.code', 'like', '%_' . $maintenanceType);
-        }
-
-        $datas = $query->get();
+        dd($datas, $maintenanceType, $productionCode, $fromDate, $toDate);
 
         // Fetch instrument names for stage 8
         $instIds = $datas->pluck('instrument_code')->filter()->unique()->toArray();
@@ -84,7 +77,7 @@ class MaintenanceHistoryController extends Controller
         $title = 'LỊCH SỬ BẢO TRÌ - HIỆU CHUẨN';
         session()->put(['title' => $title]);
 
-        return view('pages.History.list', [
+        return view('pages.History.Maintenance.list', [
             'datas' => $datas,
             'main_type' => $main_type,
             'maintenanceType' => $maintenanceType
