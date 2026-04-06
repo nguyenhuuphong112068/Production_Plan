@@ -111,16 +111,16 @@
 
                                     $stagePercent = [];
 
-                                    $dayLT = $theory['yield_day'] ?? collect();
+                                    $dayLT = collect($yield_theoryl_detial['yield_day'] ?? []);
                                     $stageLT = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
 
-                                    $dayTT = $yield_actual_detial['yield_day'];
+                                    $dayTT = collect($yield_actual_detial['yield_day'] ?? []);
                                     $stageTT = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
 
                                     if ($stageLT == 0) {
-                                        $stagePercent = 100;
+                                        $stagePercent = $stageTT > 0 ? 100 : 0;
                                     } else {
-                                        $stagePercent = $stageLT > 0 ? ($stageTT / $stageLT) * 100 : 0;
+                                        $stagePercent = ($stageTT / $stageLT) * 100;
                                     }
 
                                     if ($stage_code == 5) {
@@ -234,14 +234,14 @@
                                         </td>
 
                                         @php
-                                            // LT
-                                            $dayLT = $theory['yield_day'] ?? collect();
+                                            // LT - Sử dụng yield_theoryl_detial để lấy tổng đã sum ở controller
+                                            $dayLT = collect($yield_theoryl_detial['yield_day'] ?? []);
                                             $itemLT = $dayLT->firstWhere('resourceId', $resourceId);
                                             $qtyLT = $itemLT['total_qty'] ?? 0;
                                             $qtyLT_unit = $itemLT['total_qty_unit'] ?? 0;
 
-                                            // TT
-                                            $dayTT = $yield_actual_detial['yield_day'] ?? collect();
+                                            // TT - Sử dụng yield_actual_detial để lấy tổng đã sum ở controller
+                                            $dayTT = collect($yield_actual_detial['yield_day'] ?? []);
                                             $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
                                             $qtyTT = $itemTT['total_qty'] ?? 0;
                                             $qtyTT_unit = $itemTT['total_qty_unit'] ?? 0;

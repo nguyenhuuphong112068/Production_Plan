@@ -34,6 +34,7 @@ class DailyReportController extends Controller
         $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
         $yield_theoryl_detial = $this->yield_theoryl_detial($startDate, $endDate, 'resourceId');
 
+        //dd($yield_theoryl_detial);
 
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
 
