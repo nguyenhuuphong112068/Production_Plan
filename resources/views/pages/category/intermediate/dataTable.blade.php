@@ -193,10 +193,12 @@
                                             @if ($data->quarantine_total == 0)
                                                 {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}
                                             @endif
-                                            @if ($data->quarantine_total > 0)
-                                                {{ 'total:' . $data->quarantine_total . ' ' . $quarantine_time_unit }}
-                                            @endif
+
                                         </span>
+                                    @endif
+
+                                    @if ($data->quarantine_total > 0)
+                                        {{ 'total:' . $data->quarantine_total . ' ' . $quarantine_time_unit }}
                                     @endif
 
                                 </div>
