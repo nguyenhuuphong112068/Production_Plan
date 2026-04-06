@@ -1,7 +1,8 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
-<style> 
+<style>
     .highlight-row {
-        background-color: #fff3cd !important; /* vàng nhạt */
+        background-color: #fff3cd !important;
+        /* vàng nhạt */
     }
 </style>
 <div class="content-wrapper">
@@ -11,15 +12,31 @@
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
 
         </div>
-      
+
         <!-- /.card-Body -->
         <div class="card-body">
-            
+
             @php
-                $auth_update = user_has_permission(session('user')['userId'], 'category_intermediate_update', 'disabled');
-                $auth_deActive = user_has_permission(session('user')['userId'], 'category_intermediate_deActive', 'disabled');
-                $category_intermediate_create = user_has_permission(session('user')['userId'], 'category_intermediate_create', 'boolean');
-                $create_i_Hypothesis_category = user_has_permission(session('user')['userId'], 'create_intermediate_Hypothesis_category', 'boolean');
+                $auth_update = user_has_permission(
+                    session('user')['userId'],
+                    'category_intermediate_update',
+                    'disabled',
+                );
+                $auth_deActive = user_has_permission(
+                    session('user')['userId'],
+                    'category_intermediate_deActive',
+                    'disabled',
+                );
+                $category_intermediate_create = user_has_permission(
+                    session('user')['userId'],
+                    'category_intermediate_create',
+                    'boolean',
+                );
+                $create_i_Hypothesis_category = user_has_permission(
+                    session('user')['userId'],
+                    'create_intermediate_Hypothesis_category',
+                    'boolean',
+                );
             @endphp
 
             @if ($category_intermediate_create)
@@ -30,8 +47,8 @@
             @endif
 
             @if ($create_i_Hypothesis_category)
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_hypothesis_modal"
-                    style="width: 255px">
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal"
+                    data-target="#create_hypothesis_modal" style="width: 255px">
                     <i class="fas fa-plus"></i> Thêm Danh Mục Giả Định
                 </button>
             @endif
@@ -53,10 +70,10 @@
 
                         <th rowspan="2">Phân Xưởng</th>
                         <th rowspan="2">Người Tạo/ Ngày Tạo</th>
-                        @if (!$auth_update )
+                        @if (!$auth_update)
                             <th rowspan="2">Cập Nhật</th>
                         @endif
-                        @if ($create_i_Hypothesis_category )
+                        @if ($create_i_Hypothesis_category)
                             <th rowspan="2">Cập Nhật DMGĐ</th>
                         @endif
                         <th rowspan="2">Vô Hiệu</th>
@@ -83,9 +100,11 @@
                                 : ($quarantine_time_unit = 'giờ');
                         @endphp
 
-                        <tr class = "{{ $data->IsHypothesis? 'highlight-row':'' }}" >
-                            <td>{{ $loop->iteration }} 
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                        <tr class = "{{ $data->IsHypothesis ? 'highlight-row' : '' }}">
+                            <td>{{ $loop->iteration }}
+                                @if (session('user')['userGroup'] == 'Admin')
+                                    <div> {{ $data->id }} </div>
+                                @endif
                             </td>
                             @if ($data->active)
                                 <td class="text-success"> {{ $data->intermediate_code }}</td>
@@ -106,7 +125,7 @@
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
                                         <span>
                                             {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}
-                                            
+
                                         </span>
                                     @endif
                                 </div>
@@ -173,7 +192,8 @@
                                         <span>
                                             @if ($data->quarantine_total == 0)
                                                 {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}
-                                            @else
+                                            @endif
+                                            @if ($data->quarantine_total > 0)
                                                 {{ 'total:' . $data->quarantine_total . ' ' . $quarantine_time_unit }}
                                             @endif
                                         </span>
@@ -184,14 +204,17 @@
                             <td>{{ $data->deparment_code }}</td>
                             <td>
                                 <div> {{ $data->prepared_by }} </div>
-                                <div>{{ $data->created_at?\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</div>
+                                <div>
+                                    {{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}
+                                </div>
                             </td>
 
-                            
-                            
-                            @if (!$auth_update )
-                            <td class="text-center align-middle">
-                                    <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
+
+
+                            @if (!$auth_update)
+                                <td class="text-center align-middle">
+                                    <button type="button" class="btn btn-warning btn-edit"
+                                        data-id="{{ $data->id }}"
                                         data-intermediate_code="{{ $data->intermediate_code }}"
                                         data-product_name_id="{{ $data->product_name_id }}"
                                         data-batch_size="{{ $data->batch_size }}"
@@ -207,19 +230,16 @@
                                         data-quarantine_blending="{{ $data->quarantine_blending }}"
                                         data-quarantine_forming="{{ $data->quarantine_forming }}"
                                         data-quarantine_coating="{{ $data->quarantine_coating }}"
-                                        data-quarantine_time_unit="{{ $data->quarantine_time_unit }}" 
-                                        data-toggle="modal"
-                                        data-target="#update_modal"
-                                        {{ $auth_update }}
-                                        >
-                                        <i class="fas fa-edit"></i> 
+                                        data-quarantine_time_unit="{{ $data->quarantine_time_unit }}"
+                                        data-toggle="modal" data-target="#update_modal" {{ $auth_update }}>
+                                        <i class="fas fa-edit"></i>
                                     </button>
-                            </td>
+                                </td>
                             @endif
 
                             @if ($create_i_Hypothesis_category)
                                 <td class="text-center align-middle">
-                                     <button type="button" class="btn btn-warning btn-edit-hypothesis" 
+                                    <button type="button" class="btn btn-warning btn-edit-hypothesis"
                                         data-id="{{ $data->id }}"
                                         data-intermediate_code="{{ $data->intermediate_code }}"
                                         data-product_name_id="{{ $data->product_name_id }}"
@@ -227,19 +247,15 @@
                                         data-unit_batch_size="{{ $data->unit_batch_size }}"
                                         data-batch_qty="{{ $data->batch_qty }}"
                                         data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                        data-dosage_id="{{ $data->dosage_id }}" 
-                                        
-                                        
-                                        data-toggle="modal"
+                                        data-dosage_id="{{ $data->dosage_id }}" data-toggle="modal"
                                         data-target="#update_hypothesis_modal"
-                                       {{ $data->IsHypothesis == 0 ? $auth_update :''}}
-                                        >
-                                        <i class="fas fa-edit"></i> 
+                                        {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
+                                        <i class="fas fa-edit"></i>
                                     </button>
-                                
+
                                 </td>
                             @endif
-                            
+
 
                             <td class="text-center align-middle">
                                 <form class="form-deActive"
@@ -250,15 +266,14 @@
                                     <input type="hidden" name="IsHypothesis" value="{{ $data->IsHypothesis }}">
 
                                     @if ($data->active)
-                                        <button type="submit" class="btn btn-danger" 
+                                        <button type="submit" class="btn btn-danger"
                                             data-type="{{ $data->active }}"
                                             data-name="{{ $data->intermediate_code . ' - ' . $data->product_name }}"
-
-                                            {{ $data->IsHypothesis == 0 ? $auth_update :''}} >
+                                            {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @else
-                                        <button type="submit" class="btn btn-success" 
+                                        <button type="submit" class="btn btn-success"
                                             data-type="{{ $data->active }}"
                                             data-name="{{ $data->intermediate_code . ' - ' . $data->product_name }}"
                                             {{ $auth_deActive }}>
@@ -272,28 +287,20 @@
                             </td>
 
                             <td class="text-center align-middle">
-                                <button type="button"
-                                    class="btn btn-recipe btn-primary mt-1 "
+                                <button type="button" class="btn btn-recipe btn-primary mt-1 "
                                     data-intermediate_code="{{ $data->intermediate_code }}"
-                                    data-product_name="{{ $data->product_name}} - {{$data->batch_size}} {{$data->unit_batch_size }}"
-                                    data-id =  "{{ $data->id }}"
-                                    data-is_hypothesis="{{ $data->IsHypothesis }}"
-                                    data-toggle="modal"
-                                    data-target="#intermediateRecipeModal"
-                                    >
-                                    <i class="fas fa-list-alt"></i> 
+                                    data-product_name="{{ $data->product_name }} - {{ $data->batch_size }} {{ $data->unit_batch_size }}"
+                                    data-id =  "{{ $data->id }}" data-is_hypothesis="{{ $data->IsHypothesis }}"
+                                    data-toggle="modal" data-target="#intermediateRecipeModal">
+                                    <i class="fas fa-list-alt"></i>
                                 </button>
 
-                                 @if ($data->IsHypothesis)
-                                    <button type="button"
-                                        class="btn btn-create-bom btn-success mt-1 "
+                                @if ($data->IsHypothesis)
+                                    <button type="button" class="btn btn-create-bom btn-success mt-1 "
                                         data-id="{{ $data->id }}"
-                                        data-product_name="{{ $data->product_name}} - {{$data->batch_size}} {{$data->unit_batch_size }}"
-                                        data-id =  "{{ $data->id }}"
-                                      
-                                        data-toggle="modal"
-                                        data-target="#createBOMModal"
-                                        >
+                                        data-product_name="{{ $data->product_name }} - {{ $data->batch_size }} {{ $data->unit_batch_size }}"
+                                        data-id =  "{{ $data->id }}" data-toggle="modal"
+                                        data-target="#createBOMModal">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 @endif
@@ -331,7 +338,7 @@
 
 <script>
     $(document).ready(function() {
-        
+
         document.body.style.overflowY = "auto";
 
         $('.btn-edit').click(function() {
@@ -405,7 +412,7 @@
             modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
             modal.find('input[name="excution_time"]').val(button.data('excution-time'));
             modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
-          
+
         });
 
         $('.form-deActive').on('submit', function(e) {
@@ -484,30 +491,30 @@
             // Gán dữ liệu vào input
             modal.find('#product_caterogy_id').val(button.data('id'));
             modal.find('#recipe_i_title').val(button.data('product_name'));
-            
+
             const history_modal = modal.find('#data_table_create_recipe_body')
-            
-            
+
+
             // const create_recip_modal = $('#data_table_create_recipe_body')
             // // Xóa dữ liệu cũ
             history_modal.empty();
 
             // Gọi Ajax lấy dữ liệu history
             $.ajax({
-                    url: "{{ route('pages.category.intermediate.recipe') }}",
-                    type: 'post',
-                    data: {
-                        IsHypothesis: 1,
-                        product_caterogy_id: product_caterogy_id,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(res) {
-                        
-                        if (res.length === 0) {
-                            history_modal.append(
-                                `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
-                            );
-                        } else {
+                url: "{{ route('pages.category.intermediate.recipe') }}",
+                type: 'post',
+                data: {
+                    IsHypothesis: 1,
+                    product_caterogy_id: product_caterogy_id,
+                    _token: "{{ csrf_token() }}"
+                },
+                success: function(res) {
+
+                    if (res.length === 0) {
+                        history_modal.append(
+                            `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
+                        );
+                    } else {
 
                         res.forEach((item, index) => {
                             let code = item.MatID ?? '';
@@ -554,17 +561,17 @@
                             `);
 
                         });
-                                                
-                        }
-                    },
-                    error: function() {
-                        history_modal.append(
-                            `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-                        );
+
                     }
+                },
+                error: function() {
+                    history_modal.append(
+                        `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                    );
+                }
             });
 
-            
+
         });
 
     });
@@ -625,7 +632,5 @@
             }
         });
 
-    }); 
-
-
+    });
 </script>
