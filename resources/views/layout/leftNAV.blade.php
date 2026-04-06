@@ -773,13 +773,13 @@
                         </a>
                         <ul class="nav nav-treeview">
                             <li class="nav-item">
-                                <a href="{{ route('pages.History.list', ['main_type' => 'production']) }}" class="nav-link">
+                                <a href="{{ route('pages.History.production.list') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p>Lịch Sử Sản Xuất</p>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="{{ route('pages.History.list', ['main_type' => 'maintenance']) }}" class="nav-link">
+                                <a href="{{ route('pages.History.maintenance.list') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p>Lịch Sử HC - BT</p>
                                 </a>
