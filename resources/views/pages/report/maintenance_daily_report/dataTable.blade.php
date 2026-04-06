@@ -89,17 +89,26 @@
                                                 @endphp
                                                 <div class="mb-1" style="font-size: 16px;">
                                                     {{ $index + 1 }}.
-                                                    <span class="text-dark font-weight-bold">{{ $e->type_name }}</span> _
-                                                    @if($e->parent_eqp_id == $e->inst_id && $e->Eqp_name == $e->inst_name)
-                                                        <span class="text-primary font-weight-bold">{{ $e->inst_id }}</span> _
+                                                    <span class="text-dark font-weight-bold">{{ $e->type_name }}</span>
+                                                    _
+                                                    @if ($e->parent_eqp_id == $e->inst_id && $e->Eqp_name == $e->inst_name)
+                                                        <span
+                                                            class="text-primary font-weight-bold">{{ $e->inst_id }}</span>
+                                                        _
                                                         <span class="text-dark">{{ $e->inst_name ?? '—' }}</span> _
                                                     @else
-                                                        <span class="text-secondary">{{ $e->parent_eqp_id ?? '—' }}</span> _
+                                                        <span
+                                                            class="text-secondary">{{ $e->parent_eqp_id ?? '—' }}</span>
+                                                        _
                                                         <span class="text-muted">{{ $e->Eqp_name ?? '—' }}</span> _
-                                                        <span class="text-primary font-weight-bold">{{ $e->inst_id }}</span> _
+                                                        <span
+                                                            class="text-primary font-weight-bold">{{ $e->inst_id }}</span>
+                                                        _
                                                         <span class="text-dark">{{ $e->inst_name ?? '—' }}</span> _
                                                     @endif
-                                                    <span class="text-success font-weight-bold">{{ $start->format('H:i') }} -> {{ $end->format('H:i') }}</span>
+                                                    <span
+                                                        class="text-success font-weight-bold">{{ $start->format('H:i') }}
+                                                        -> {{ $end->format('H:i') }}</span>
                                                     = <b>{{ $hours }}h{{ $mins }}p</b>
                                                 </div>
                                             @endforeach
@@ -123,17 +132,25 @@
                                                 @endphp
                                                 <div class="mb-1 text-info" style="font-size: 16px;">
                                                     {{ $actualIndex++ }}.
-                                                    <span class="font-weight-bold text-info">{{ $e->type_name }}</span> _
-                                                    @if($e->parent_eqp_id == $e->inst_id && $e->Eqp_name == $e->inst_name)
-                                                        <span class="font-weight-bold text-primary">{{ $e->inst_id }}</span> _
+                                                    <span class="font-weight-bold text-info">{{ $e->type_name }}</span>
+                                                    _
+                                                    @if ($e->parent_eqp_id == $e->inst_id && $e->Eqp_name == $e->inst_name)
+                                                        <span
+                                                            class="font-weight-bold text-primary">{{ $e->inst_id }}</span>
+                                                        _
                                                         <span class="text-dark">{{ $e->inst_name ?? '—' }}</span> _
                                                     @else
-                                                        <span class="text-secondary">{{ $e->parent_eqp_id ?? '—' }}</span> _
+                                                        <span
+                                                            class="text-secondary">{{ $e->parent_eqp_id ?? '—' }}</span>
+                                                        _
                                                         <span class="text-muted">{{ $e->Eqp_name ?? '—' }}</span> _
-                                                        <span class="font-weight-bold text-primary">{{ $e->inst_id }}</span> _
+                                                        <span
+                                                            class="font-weight-bold text-primary">{{ $e->inst_id }}</span>
+                                                        _
                                                         <span class="text-dark">{{ $e->inst_name ?? '—' }}</span> _
                                                     @endif
-                                                    <span class="font-weight-bold">{{ $start->format('H:i') }} -> {{ $end->format('H:i') }}</span>
+                                                    <span class="font-weight-bold">{{ $start->format('H:i') }} ->
+                                                        {{ $end->format('H:i') }}</span>
                                                     = <b>{{ $hours }}h{{ $mins }}p</b>
                                                 </div>
                                             @endforeach
