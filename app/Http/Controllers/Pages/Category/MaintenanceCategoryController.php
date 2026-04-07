@@ -40,13 +40,14 @@ class MaintenanceCategoryController extends Controller
                                 $internal_block = "{$type_code}-{$block_val}";
 
                                 $result = DB::connection($conn)
-                                        ->table("Inst_Master_{$suffix} as Ins")
+                                        ->table("Schedule_Master_{$suffix} as Sch")
+                                        ->leftJoin("Inst_Master_{$suffix} as Ins", 'Sch.Inst_ID', '=', 'Ins.Inst_id')
                                         ->leftJoin("Eqp_mst_{$suffix} as Eqp", 'Eqp.Eqp_ID', '=', 'Ins.Parent_Equip_id')
                                         ->where('Ins.Inst_Status', 'Active')
                                         ->select(
-                                                'Ins.Inst_id',
+                                                'Sch.Inst_id',
+                                                'Sch.Sch_Type',
                                                 'Ins.Inst_Name',
-                                                'Ins.Inst_sch_type',
                                                 'Ins.Inst_Installed_Location',
                                                 'Ins.Inst_Type',
                                                 'Ins.Inst_Status',
@@ -57,6 +58,9 @@ class MaintenanceCategoryController extends Controller
                                                 'Eqp.Eqp_name'
                                         )
                                         ->get()
+                                        ->unique(function ($item) {
+                                                return $item->Inst_id . '_' . $item->Sch_Type;
+                                        })
                                         ->map(function ($item) use ($internal_block) {
                                                 $item->internal_block = $internal_block;
                                                 $item->block_display = explode('-', $internal_block)[1]; // B1 hoặc B2
@@ -70,19 +74,20 @@ class MaintenanceCategoryController extends Controller
                 // Lấy danh sách định mức hiện có
                 $quota_maintenance = DB::table('quota_maintenance')->get();
                 $existing_lookup = $quota_maintenance->mapWithKeys(function ($q) {
-                        return [$q->inst_id . '_' . $q->block => $q];
+                        return [$q->inst_id . '_' . $q->Inst_sch_type . '_' . $q->block => $q];
                 })->toArray();
 
                 // Kiểm tra và tạo mới hoặc cập nhật Eqp_name cho định mức
                 $new_quotas = [];
                 foreach ($instruments as $inst) {
-                        $key = $inst->Inst_id . '_' . $inst->internal_block;
+                        $key = $inst->Inst_id . '_' . ($inst->Sch_Type ?? '') . '_' . $inst->internal_block;
                         if (!isset($existing_lookup[$key])) {
                                 $new_quotas[] = [
                                         'inst_id' => $inst->Inst_id,
                                         'Eqp_name' => $inst->Eqp_name ?? '',
                                         'inst_name' => $inst->Inst_Name ?? '',
                                         'parent_eqp_id' => $inst->Parent_Equip_id ?? '',
+                                        'Inst_sch_type' => $inst->Sch_Type ?? '',
                                         'exe_time' => '00:00',
                                         'block' => $inst->internal_block,
                                         'is_HVAC' => str_starts_with($inst->internal_block, 'TI') ? 1 : 0,
@@ -139,14 +144,14 @@ class MaintenanceCategoryController extends Controller
 
                 $inst_lookup = [];
                 foreach ($instruments as $inst) {
-                        $inst_lookup[$inst->Inst_id . '_' . $inst->internal_block] = $inst;
+                        $inst_lookup[$inst->Inst_id . '_' . ($inst->Sch_Type ?? '') . '_' . $inst->internal_block] = $inst;
                 }
 
                 $quota_rooms = DB::table('quota_maintenance_rooms')->get()->groupBy('quota_maintenance_id');
 
                 $datas = collect();
                 foreach ($quota_maintenance as $quota) {
-                        $inst = $inst_lookup[$quota->inst_id . '_' . $quota->block] ?? null;
+                        $inst = $inst_lookup[$quota->inst_id . '_' . ($quota->Inst_sch_type ?? '') . '_' . $quota->block] ?? null;
                         if (!$inst && !$filter_block) {
                                 // Nếu không lọc mà không tìm thấy inst trong đợt quét này, có thể quét thêm nếu cần
                                 // Nhưng thường sẽ có vì chúng ta vừa quét ở trên
@@ -166,7 +171,7 @@ class MaintenanceCategoryController extends Controller
                                 'room_ids' => $assigned_room_ids,
                                 'exe_room_name' => implode(', ', $exe_room_names),
                                 'room_code' => $inst->Inst_Installed_Location ?? '',
-                                'sch_type' => $inst->Inst_sch_type ?? '',
+                                'sch_type' => $inst->Sch_Type ?? '',
                                 'deparment_code' => $quota->deparment_code,
                                 'quota' => $quota->exe_time,
                                 'is_HVAC' => $quota->is_HVAC,

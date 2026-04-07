@@ -1751,9 +1751,9 @@ const MaintenanceCalender = () => {
             info.el.removeEventListener("change", info.el._sheetHandler);
           }
         }}
-
+        //hiddenTheory
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenProduction hiddenTheory changeSchedualer unSelect ShowBadge',
+          left: 'customPre,myToday,customNext noteModal hiddenProduction changeSchedualer unSelect ShowBadge',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
