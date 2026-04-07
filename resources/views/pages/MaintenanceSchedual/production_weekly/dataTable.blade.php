@@ -118,8 +118,8 @@
                                                         @php $eventIdx = 1; @endphp
                                                         @foreach ($dayEvents as $e)
                                                             @php
-                                                                $start = \Carbon\Carbon::parse($e->planned_start);
-                                                                $end = \Carbon\Carbon::parse($e->planned_end);
+                                                                $start = \Carbon\Carbon::parse($e->slot_start ?? $e->planned_start);
+                                                                $end = \Carbon\Carbon::parse($e->slot_end ?? $e->planned_end);
 
                                                                 $totalMins = $start->diffInMinutes($end);
                                                                 $hours = (int) ($totalMins / 60);
@@ -172,7 +172,7 @@
         z-index: 1050 !important;
         border-bottom: 2px solid #dee2e6 !important;
         color: #003a4f !important;
-        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
         position: sticky;
     }
 
@@ -181,7 +181,8 @@
     }
 
     #production_weekly_table thead tr:nth-child(2) th {
-        top: 45px; /* Adjust based on the exact height of the first row */
+        top: 45px;
+        /* Adjust based on the exact height of the first row */
     }
 
     .last-child-no-border:last-child {

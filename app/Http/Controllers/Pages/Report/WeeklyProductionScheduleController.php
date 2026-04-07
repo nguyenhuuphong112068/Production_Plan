@@ -12,7 +12,7 @@ class WeeklyProductionScheduleController extends Controller
     public function index(Request $request)
     {
         $production_code = session('user')['production_code'];
-        
+
         // Xử lý ô chọn tuần (format: 2026-W13) hoặc ngày (format: Y-m-d)
         $selectedDate = $request->reportedDate;
         if ($selectedDate && str_contains($selectedDate, '-W')) {
@@ -23,7 +23,7 @@ class WeeklyProductionScheduleController extends Controller
             $startOfWeek = Carbon::parse($selectedDate)->startOfWeek(Carbon::MONDAY)->setTime(6, 0, 0);
         }
         $endOfWeek = $startOfWeek->copy()->addDays(7);
-        $selectedDate = $startOfWeek->format('o-\WW'); 
+        $selectedDate = $startOfWeek->format('o-\WW');
 
         // Tạo mảng 7 ngày để hiển thị header
         $weekDays = [];
@@ -38,10 +38,11 @@ class WeeklyProductionScheduleController extends Controller
 
         // Lấy dữ liệu sản xuất (stage_code != 8)
         $datas = DB::table('room as r')
-            ->leftJoin('stage_plan as sp', function($join) use ($startOfWeek, $endOfWeek) {
+            ->leftJoin('stage_plan as sp', function ($join) use ($startOfWeek, $endOfWeek) {
                 $join->on('r.id', '=', 'sp.resourceId')
-                     ->where('sp.stage_code', '!=', 8) // NOT maintenance
-                     ->whereBetween('sp.start', [$startOfWeek, $endOfWeek]);
+                    ->where('sp.stage_code', '!=', 8) // NOT maintenance
+                    ->where('sp.start', '<', $endOfWeek)
+                    ->where('sp.end', '>=', $startOfWeek);
             })
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
@@ -67,18 +68,39 @@ class WeeklyProductionScheduleController extends Controller
             ->orderBy('sp.start')
             ->get();
 
-        // Xử lý day_key ( shifts starting at 06:00 AM)
-        $datas = $datas->map(function($item) {
-            if ($item->sp_id) {
-                $item->day_key = Carbon::parse($item->planned_start)->isBefore(Carbon::parse($item->planned_start)->setTime(6,0,0)) 
-                                ? Carbon::parse($item->planned_start)->subDay()->format('Y-m-d')
-                                : Carbon::parse($item->planned_start)->format('Y-m-d');
+        $expandedDatas = collect();
+        foreach ($datas as $item) {
+            if (!$item->sp_id) {
+                $expandedDatas->push($item);
+                continue;
             }
-            return $item;
-        });
 
-        $groupedByRoom = $datas->groupBy('room_id');
-        
+            $start = Carbon::parse($item->planned_start);
+            $end = Carbon::parse($item->planned_end);
+
+            for ($i = 0; $i < 7; $i++) {
+                $dayStartBound = $startOfWeek->copy()->addDays($i);
+                $dayEndBound = $dayStartBound->copy()->addDays(1);
+
+                // Kiểm tra sự chồng lấp giữa task [start, end] và khung giờ của ngày [dayStartBound, dayEndBound]
+                if ($start->lt($dayEndBound) && $end->gt($dayStartBound)) {
+                    $newItem = clone $item;
+                    $newItem->day_key = $dayStartBound->format('Y-m-d');
+
+                    // Tính toán thời gian bắt đầu và kết thúc thực tế trong khung giờ của ngày này
+                    $slotStart = $start->gt($dayStartBound) ? $start : $dayStartBound;
+                    $slotEnd = $end->lt($dayEndBound) ? $end : $dayEndBound;
+
+                    $newItem->slot_start = $slotStart->toDateTimeString();
+                    $newItem->slot_end   = $slotEnd->toDateTimeString();
+
+                    $expandedDatas->push($newItem);
+                }
+            }
+        }
+
+        $groupedByRoom = $expandedDatas->groupBy('room_id');
+
         $displayWeek = "Tuần từ " . $startOfWeek->format('d/m/Y') . " đến " . $startOfWeek->copy()->addDays(6)->format('d/m/Y');
         session()->put(['title' => "LỊCH SẢN XUẤT TUẦN"]);
 
