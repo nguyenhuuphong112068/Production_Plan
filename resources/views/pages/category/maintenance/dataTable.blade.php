@@ -113,11 +113,7 @@
                     'category_maintenance_update',
                     'disabled',
                 );
-                $auth_deActive = user_has_permission(
-                    session('user')['userId'],
-                    'category_maintenance_deActive',
-                    'disabled',
-                );
+
             @endphp
 
             <table id="data_table_instrument" class="table table-bordered table-striped">
@@ -261,7 +257,8 @@
                     data: 'deparment_code',
                     render: function(data, type, row) {
                         var opts = getDepartmentOptions(row.block, data);
-                        return '<select class="form-control select-department" name="deparment_code" data-id="' +
+                        return '<select ' + disabledAttr +
+                            ' class="form-control select-department" name="deparment_code" data-id="' +
                             row.id + '">' + opts + '</select>';
                     }
                 },
@@ -277,7 +274,8 @@
                                 '>' + room.text + '</option>';
                         }).join('');
 
-                        return '<select class="form-control select-room" multiple="multiple" data-id="' +
+                        return '<select ' + disabledAttr +
+                            ' class="form-control select-room" multiple="multiple" data-id="' +
                             row.id + '">' + options + '</select>';
                     }
                 },
@@ -289,18 +287,7 @@
                             '') + '" data-id="' + row.id + '" ' + disabledAttr + '>';
                     }
                 },
-                // {
-                //     data: 'is_HVAC',
-                //     className: 'text-center',
-                //     render: function(data, type, row) {
-                //         var checked = (data == 1 || data == '1' || data === true) ? 'checked' :
-                //             '';
-                //         return '<div class="form-check form-switch text-center">' +
-                //             '<input class="form-check-input step-checkbox" type="checkbox" role="switch" data-id="' +
-                //             row.id + '" ' + checked + '>' +
-                //             '</div>';
-                //     }
-                // },
+
                 {
                     data: null,
                     render: function(data, type, row) {
@@ -324,7 +311,8 @@
                     orderable: false,
                     searchable: false,
                     render: function(data, type, row) {
-                        return '<button type="button" class="btn btn-danger btn-sm btn-deActive" data-id="' +
+                        return '<button ' + disabledAttr +
+                            ' type="button" class="btn btn-danger btn-sm btn-deActive" data-id="' +
                             row.id + '" data-name="' + (row.Inst_Name || '') + '">' +
                             '<i class="fas fa-trash"></i></button>';
                     }
