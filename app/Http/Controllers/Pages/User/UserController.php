@@ -16,7 +16,21 @@ class UserController extends Controller
                 $deparments = DB::table('deparments')->where('active', true)->get();
                 $roles = DB::table('roles')->get();
                
-                $datas = DB::table('user_management')->where ('isActive',1)->orderBy('created_at','desc')->get();
+                $datas = DB::table('user_management')
+                    ->where ('isActive',1)
+                    ->orderBy('created_at','desc')
+                    ->get()
+                    ->map(function($user) {
+                        // Lấy danh sách roles cho mỗi user
+                        $roles = DB::table('roles')
+                            ->join('user_role', 'roles.id', '=', 'user_role.role_id')
+                            ->where('user_id', $user->id)
+                            ->get();
+                        
+                        $user->role_ids = $roles->pluck('role_id')->toArray();
+                        $user->role_names = $roles->pluck('name')->join(', ');
+                        return $user;
+                    });
                
                 session()->put(['title'=> 'DANH SÁCH NGƯỜI DÙNG']);
            
@@ -35,7 +49,7 @@ class UserController extends Controller
                         'required','string','min:6','max:255',
                         'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/',],
                 'fullName' => 'required|string|max:255|min:5',
-                'userGroup' => 'required',
+                'userGroup' => 'required|array', // Chấp nhận mảng
                 'deparment' => 'required',
                 'mail' => 'required',
                 'groupName' => 'required',
@@ -54,7 +68,7 @@ class UserController extends Controller
                 'fullName.min' => 'Tên người dùng phải có ít nhất :min ký tự.',
                 'fullName.max' => 'Tên người dùng không vượt quá :max ký tự.',
                 
-                'userGroup.required' => 'Vui lòng chọn phân quyền',
+                'userGroup.required' => 'Vui lòng chọn ít nhất một phân quyền',
 
                 'deparment.required' => 'Vui chọn Phòng Ban',
 
@@ -69,11 +83,14 @@ class UserController extends Controller
                         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
 
+                $userGroups = $request->userGroup; // Mảng role IDs
+                $primaryRoleName = DB::table('roles')->where('id', $userGroups[0])->value('name');
+
                 $user_id = DB::table('user_management')->insertGetId([
                         'userName' => $request->userName,
                         'passWord' => Hash::make($request->passWord),
                         'fullName' => $request->fullName,
-                        'userGroup' => $request->userGroup,
+                        'userGroup' => $primaryRoleName, // Lưu role đầu tiên làm primary
                         'deparment' => $request->deparment,
                         'groupName' => $request->groupName,
                         'mail' => $request->mail,
@@ -81,57 +98,82 @@ class UserController extends Controller
                         'prepareBy' => session('user')['fullName'] ?? 'Admin',
                         'created_at' => now(),
                 ]);
-                $role_id = DB::table('roles')->where ('name', $request->userGroup)->value('id');
 
-                DB::table('user_role')->insert([
-                        'user_id' =>  $user_id,
+                $rolesToInsert = [];
+                foreach ($userGroups as $role_id) {
+                    $rolesToInsert[] = [
+                        'user_id' => $user_id,
                         'role_id' => $role_id
-                ]);
+                    ];
+                }
+                DB::table('user_role')->insert($rolesToInsert);
 
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
 
         public function update(Request $request){
                
-                $validator = Validator::make($request->all(), [
-                'fullName' => 'required|string|max:255|min:5',
-                'userGroup' => 'required',
-                'deparment' => 'required',
-                'mail' => 'required',
-                'groupName' => 'required',
+                $rules = [
+                    'fullName' => 'required|string|max:255|min:5',
+                    'userGroup' => 'required|array',
+                    'deparment' => 'required',
+                    'mail' => 'required',
+                    'groupName' => 'required',
+                ];
 
-                ], [
-                        
+                $messages = [
+                    'fullName.required' => 'Vui lòng nhập tên người dùng.',
+                    'userGroup.required' => 'Vui lòng chọn ít nhất một phân quyền',
+                    'passWord.min' => 'Mật khẩu mới phải có ít nhất 6 ký tự',
+                    'passWord.regex' => 'Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt.',
+                ];
 
-                'fullName.required' => 'Vui lòng nhập tên đăng nhập.',
-                'fullName.min' => 'Tên người dùng phải có ít nhất :min ký tự.',
-                'fullName.max' => 'Tên người dùng không vượt quá :max ký tự.',
-                
-                'userGroup.required' => 'Vui lòng chọn phân quyền',
+                // Nếu có nhập mật khẩu mới thì mới validate mật khẩu
+                if ($request->filled('passWord')) {
+                    $rules['passWord'] = [
+                        'required', 'string', 'min:6', 'max:255',
+                        'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/',
+                    ];
+                }
 
-                'deparment.required' => 'Vui chọn Phòng Ban',
-
-                'mail.required' => 'Nếu Không Có Mail Vui Lòng Nhập NA',
-
-                'groupName.required' => 'Vui lòng chọn tổ',
-
-                ]);
+                $validator = Validator::make($request->all(), $rules, $messages);
                 
                 if ($validator->fails()) {
-                        return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
+                    return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 } 
                 
-                 DB::table('user_management')->where('id', $request->id)->update([
-                        
-                        'fullName' => $request->fullName,
-                        'userGroup' => $request->userGroup,
-                        'deparment' => $request->deparment,
-                        'groupName' => $request->groupName,
-                        'mail' => $request->mail,
-                        'prepareBy' => session('user')['fullName'] ?? 'Admin',
-                        'updated_at' => now(),
-                ]);
-                return redirect()->back()->with('success', 'Đã thêm thành công!');   
+                $userGroups = $request->userGroup;
+                $primaryRoleName = DB::table('roles')->where('id', $userGroups[0])->value('name');
+
+                $updateData = [
+                    'fullName' => $request->fullName,
+                    'userGroup' => $primaryRoleName,
+                    'deparment' => $request->deparment,
+                    'groupName' => $request->groupName,
+                    'mail' => $request->mail,
+                    'prepareBy' => session('user')['fullName'] ?? 'Admin',
+                    'updated_at' => now(),
+                ];
+
+                // Chỉ cập nhật mật khẩu nếu có nhập mới
+                if ($request->filled('passWord')) {
+                    $updateData['passWord'] = Hash::make($request->passWord);
+                }
+
+                DB::table('user_management')->where('id', $request->id)->update($updateData);
+
+                // Sync roles
+                DB::table('user_role')->where('user_id', $request->id)->delete();
+                $rolesToInsert = [];
+                foreach ($userGroups as $role_id) {
+                    $rolesToInsert[] = [
+                        'user_id' => $request->id,
+                        'role_id' => $role_id
+                    ];
+                }
+                DB::table('user_role')->insert($rolesToInsert);
+
+                return redirect()->back()->with('success', 'Đã cập nhật thành công!');   
         }
 
         public function deActive(string|int $id){
