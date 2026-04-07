@@ -211,8 +211,8 @@
             autoWidth: false,
             pageLength: 25,
             lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "Tất cả"]
+                [10, 25, 50, 100, 500],
+                [10, 25, 50, 100, 500]
             ],
             language: {
                 search: "Tìm kiếm:",
