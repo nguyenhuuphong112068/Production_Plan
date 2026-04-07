@@ -171,12 +171,8 @@
         var authUpdate = '{{ $auth_update }}';
         var disabledAttr = authUpdate ? 'disabled' : '';
 
-        // Danh sách phòng cho select option
-        var roomOptions = '';
-        @foreach ($rooms as $room)
-            roomOptions +=
-                '<option value="{{ $room->id }}">{{ $room->code }} - {{ $room->name }}</option>';
-        @endforeach
+        // Danh sách phòng cho select option - Cache as array for performance
+        var roomsData = @json($rooms->map(function($r) { return ['id' => $r->id, 'text' => $r->code . ' - ' . $r->name]; }));
 
         // Danh sách phân xưởng theo Block
         var deptOptionsMap = {
@@ -269,14 +265,11 @@
                 {
                     data: 'room_ids',
                     render: function(data, type, row) {
-                        var selectedIds = data || [];
-                        var options = '';
-                        @foreach ($rooms as $room)
-                            var isSelected = selectedIds.includes({{ $room->id }}) ?
-                                'selected' : '';
-                            options += '<option value="{{ $room->id }}" ' + isSelected +
-                                '>{{ $room->code }} - {{ $room->name }}</option>';
-                        @endforeach
+                        var selectedIds = (data || []).map(id => parseInt(id));
+                        var options = roomsData.map(function(room) {
+                            var isSelected = selectedIds.indexOf(room.id) !== -1 ? 'selected' : '';
+                            return '<option value="' + room.id + '" ' + isSelected + '>' + room.text + '</option>';
+                        }).join('');
 
                         return '<select class="form-control select-room" multiple="multiple" data-id="' +
                             row.id + '">' + options + '</select>';
@@ -335,11 +328,35 @@
                 return pre + ' (Tổng: ' + total + ' thiết bị)';
             },
             drawCallback: function() {
-                $('.select-room').select2({
-                    placeholder: "-- Chọn phòng --",
-                    allowClear: true,
-                    theme: 'bootstrap4'
-                });
+                var selects = $('.select-room:not(.select2-hidden-accessible)');
+                if (selects.length === 0) return;
+
+                // Nếu số lượng ít, init luôn
+                if (selects.length <= 50) {
+                    selects.select2({
+                        placeholder: "-- Chọn phòng --",
+                        allowClear: true,
+                        theme: 'bootstrap4'
+                    });
+                } else {
+                    // Nếu quá nhiều (vd: 500 dòng), init từng đợt để tránh treo UI
+                    var index = 0;
+                    var chunkSize = 30;
+
+                    function initNextChunk() {
+                        var chunk = selects.slice(index, index + chunkSize);
+                        if (chunk.length > 0) {
+                            chunk.select2({
+                                placeholder: "-- Chọn phòng --",
+                                allowClear: true,
+                                theme: 'bootstrap4'
+                            });
+                            index += chunkSize;
+                            setTimeout(initNextChunk, 10); // Nghỉ 10ms để browser kịp vẽ
+                        }
+                    }
+                    initNextChunk();
+                }
             }
         });
 
