@@ -132,7 +132,7 @@
                         <th>Tần Suất BT-HC</th>
                         <th>Vị Trí Lắp Đặt</th>
                         <th style="width: 10%;">Phân Xưởng</th>
-                        <th style="width: 15%;">Phòng SX Liên Quan</th>
+                        <th style="width: 15%; min-width: 200px;">Phòng SX Liên Quan</th>
                         <th>Thời gian Thực Hiện</th>
                         {{-- <th>Có Thuộc Hệ Thống HVAC?</th> --}}
                         <th>Người Tạo/Ngày Tạo</th>
@@ -264,6 +264,7 @@
                 },
                 {
                     data: 'room_ids',
+                    width: '200px',
                     render: function(data, type, row) {
                         var selectedIds = (data || []).map(id => parseInt(id));
                         var options = roomsData.map(function(room) {
