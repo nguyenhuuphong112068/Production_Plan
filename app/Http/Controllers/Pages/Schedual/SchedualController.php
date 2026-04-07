@@ -56,7 +56,6 @@ class SchedualController  extends  Controller
         {
 
                 session()->put(['title'  =>  'LỊCH SẢN XUẤT']);
-
                 return  view('app');
         }
 
