@@ -172,7 +172,10 @@
         var disabledAttr = authUpdate ? 'disabled' : '';
 
         // Danh sách phòng cho select option - Cache as array for performance
-        var roomsData = @json($rooms->map(function($r) { return ['id' => $r->id, 'text' => $r->code . ' - ' . $r->name]; }));
+        var roomsData = @json(
+            $rooms->map(function ($r) {
+                return ['id' => $r->id, 'text' => $r->code . ' - ' . $r->name];
+            }));
 
         // Danh sách phân xưởng theo Block
         var deptOptionsMap = {
@@ -268,8 +271,10 @@
                     render: function(data, type, row) {
                         var selectedIds = (data || []).map(id => parseInt(id));
                         var options = roomsData.map(function(room) {
-                            var isSelected = selectedIds.indexOf(room.id) !== -1 ? 'selected' : '';
-                            return '<option value="' + room.id + '" ' + isSelected + '>' + room.text + '</option>';
+                            var isSelected = selectedIds.indexOf(room.id) !== -1 ?
+                                'selected' : '';
+                            return '<option value="' + room.id + '" ' + isSelected +
+                                '>' + room.text + '</option>';
                         }).join('');
 
                         return '<select class="form-control select-room" multiple="multiple" data-id="' +
@@ -388,7 +393,7 @@
                         },
                         success: function(res) {
                             if (res.success) {
-                                table.row(btn.closest('tr')).remove().draw();
+                                table.row(btn.closest('tr')).remove().draw(false);
                                 Swal.mixin({
                                     toast: true,
                                     position: 'top-end',
