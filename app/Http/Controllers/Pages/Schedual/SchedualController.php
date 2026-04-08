@@ -52,31 +52,49 @@ class SchedualController  extends  Controller
 
         public function Auto_updateDepartment()
         {       
-              
-                $mapping = [
-                        3 => 'PXVH',
-                        4 => 'PXDN',
-                        5 => 'PXV2'
+                $configs = [
+                        [
+                                'table' => 'Schedule_Master_2',
+                                'block' => 'BT-B2',
+                                'mapping' => [
+                                        3 => 'PXVH',
+                                        4 => 'PXDN',
+                                        5 => 'PXV2'
+                                ]
+                        ],
+                        [
+                                'table' => 'Schedule_Master_3',
+                                'block' => 'TI-B2',
+                                'mapping' => [
+                                        6 => 'PXVH',
+                                        7 => 'PXDN',
+                                        8 => 'PXV2'
+                                ]
+                        ]
                 ];
 
                 $totalUpdated = 0;
 
-                foreach ($mapping as $dbid => $deptCode) {
-                        // Lấy danh sách Inst_id từ database cal2 tương ứng với từng dbid
-                        $instIds = DB::connection('cal2')->table('Schedule_Master_2')
-                                ->where('dbid', $dbid)
-                                ->whereNotNull('Inst_id')
-                                ->pluck('Inst_id')
-                                ->toArray();
-                        
+                foreach ($configs as $config) {
+                        $tableName = $config['table'];
+                        $targetBlock = $config['block'];
+                        foreach ($config['mapping'] as $dbid => $deptCode) {
+                                // Lấy danh sách Inst_id từ database cal2 tương ứng với từng dbid
+                                $instIds = DB::connection('cal2')->table($tableName)
+                                        ->where('dbid', $dbid)
+                                        ->whereNotNull('Inst_id')
+                                        ->pluck('Inst_id')
+                                        ->toArray();
+                                
 
-                        if (!empty($instIds)) {
-                                // Cập nhật theo nhóm (chunk) để tránh lỗi giới hạn câu lệnh SQL
-                                foreach (array_chunk($instIds, 500) as $chunk) {
-                                        $totalUpdated += DB::table('quota_maintenance')
-                                                ->where('block', 'BT-B2')
-                                                ->whereIn('inst_id', $chunk)
-                                                ->update(['deparment_code' => $deptCode]);
+                                if (!empty($instIds)) {
+                                        // Cập nhật theo nhóm (chunk) để tránh lỗi giới hạn câu lệnh SQL
+                                        foreach (array_chunk($instIds, 500) as $chunk) {
+                                                $totalUpdated += DB::table('quota_maintenance')
+                                                        ->where('block', $targetBlock)
+                                                        ->whereIn('inst_id', $chunk)
+                                                        ->update(['deparment_code' => $deptCode]);
+                                        }
                                 }
                         }
                 }
