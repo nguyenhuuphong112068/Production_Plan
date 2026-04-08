@@ -46,8 +46,45 @@ class SchedualController  extends  Controller
 
         public  function  test()
         {
-                //$this->Auto_scheduler_Stage_Backward (7,0,0,Carbon::parse(now()));
+                $this->Auto_updateDepartment ();
 
+        }
+
+        public function Auto_updateDepartment()
+        {       
+              
+                $mapping = [
+                        3 => 'PXVH',
+                        4 => 'PXDN',
+                        5 => 'PXV2'
+                ];
+
+                $totalUpdated = 0;
+
+                foreach ($mapping as $dbid => $deptCode) {
+                        // Lấy danh sách Inst_id từ database cal2 tương ứng với từng dbid
+                        $instIds = DB::connection('cal2')->table('Schedule_Master_2')
+                                ->where('dbid', $dbid)
+                                ->whereNotNull('Inst_id')
+                                ->pluck('Inst_id')
+                                ->toArray();
+                        
+
+                        if (!empty($instIds)) {
+                                // Cập nhật theo nhóm (chunk) để tránh lỗi giới hạn câu lệnh SQL
+                                foreach (array_chunk($instIds, 500) as $chunk) {
+                                        $totalUpdated += DB::table('quota_maintenance')
+                                                ->where('block', 'BT-B2')
+                                                ->whereIn('inst_id', $chunk)
+                                                ->update(['deparment_code' => $deptCode]);
+                                }
+                        }
+                }
+
+                return response()->json([
+                        'success' => true,
+                        'message' => "Migrated successfully. Total updated: $totalUpdated",
+                ]);
         }
 
 

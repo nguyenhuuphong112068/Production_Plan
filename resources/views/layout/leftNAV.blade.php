@@ -763,8 +763,10 @@
 
                 <!-- History-->
                 @if (user_has_permission(session('user')['userId'], 'layout_history', 'boolean'))
-                    <li class="nav-item has-treeview {{ str_contains(url()->current(), 'History') ? 'menu-open' : '' }}">
-                        <a href="#" class="nav-link {{ str_contains(url()->current(), 'History') ? 'active' : '' }}">
+                    <li
+                        class="nav-item has-treeview {{ str_contains(url()->current(), 'History') ? 'menu-open' : '' }}">
+                        <a href="#"
+                            class="nav-link {{ str_contains(url()->current(), 'History') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-history"></i>
                             <p>
                                 Lịch Sử
@@ -836,7 +838,7 @@
 
                 @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
                     <li class="nav-item">
-                        <a href="#" class="nav-link">
+                        <a href="{{ route('pages.Schedual.test') }}" class="nav-link">
                             <i class="nav-icon fas fa-th"></i>
                             <p>
                                 Test Route

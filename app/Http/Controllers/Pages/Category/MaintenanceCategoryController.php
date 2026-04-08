@@ -242,7 +242,7 @@ class MaintenanceCategoryController extends Controller
                                 DB::table('quota_maintenance')
                                         ->where('id', $quota_id)
                                         ->update([
-                                                'room_id' => $room_ids[0],
+
                                                 'created_by' => session('user')['fullName'],
                                                 'created_time' => now(),
                                         ]);
@@ -251,7 +251,7 @@ class MaintenanceCategoryController extends Controller
                                 DB::table('quota_maintenance')
                                         ->where('id', $quota_id)
                                         ->update([
-                                                'room_id' => null,
+
                                                 'created_by' => session('user')['fullName'],
                                                 'created_time' => now(),
                                         ]);
@@ -277,6 +277,7 @@ class MaintenanceCategoryController extends Controller
 
         public function updateDepartment(Request $request)
         {
+
                 $dept_code = $request->department_code ?? $request->deparment_code;
                 DB::table('quota_maintenance')
                         ->where('id', $request->id)
@@ -284,18 +285,6 @@ class MaintenanceCategoryController extends Controller
                                 'deparment_code' => $dept_code,
                                 'created_by' => session('user')['fullName'],
                                 'created_time' => now(),
-                        ]);
-                return response()->json(['success' => true]);
-        }
-
-
-        public function Auto_updateDepartment(Request $request)
-        {
-                $dept_code = $request->department_code ?? $request->deparment_code;
-                DB::table('quota_maintenance')
-                        ->where('id', $request->id)
-                        ->update([
-                                'deparment_code' => $dept_code,
                         ]);
                 return response()->json(['success' => true]);
         }

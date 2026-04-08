@@ -93,6 +93,23 @@
         margin-top: 0 !important;
         height: 26px !important;
     }
+
+    /* Constrain Room selection column width */
+    .room-select-cell {
+        min-width: 200px !important;
+        max-width: 450px !important;
+        width: 350px !important;
+    }
+
+    .select-room-wrapper .select2-container {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .select2-selection--multiple {
+        max-height: 150px;
+        overflow-y: auto !important;
+    }
 </style>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link rel="stylesheet"
@@ -128,9 +145,9 @@
                         <th>Tần Suất BT-HC</th>
                         <th>Vị Trí Lắp Đặt</th>
                         <th style="width: 10%;">Phân Xưởng</th>
-                        <th style="width: 15%; min-width: 200px;">Phòng SX Liên Quan</th>
+                        <th class="room-select-cell">Phòng SX Liên Quan</th>
+                        <th style="display: none;">Room Search Hidden</th>
                         <th>Thời gian Thực Hiện</th>
-                        {{-- <th>Có Thuộc Hệ Thống HVAC?</th> --}}
                         <th>Người Tạo/Ngày Tạo</th>
                         <th>Vô Hiệu</th>
                     </tr>
@@ -256,27 +273,65 @@
                 {
                     data: 'deparment_code',
                     render: function(data, type, row) {
-                        var opts = getDepartmentOptions(row.block, data);
-                        return '<select ' + disabledAttr +
-                            ' class="form-control select-department" name="deparment_code" data-id="' +
-                            row.id + '">' + opts + '</select>';
+                        if (type === 'display') {
+                            var opts = getDepartmentOptions(row.block, data);
+                            return '<select ' + disabledAttr +
+                                ' class="form-control select-department" name="deparment_code" data-id="' +
+                                row.id + '">' + opts + '</select>';
+                        }
+                        return data || '';
                     }
                 },
                 {
                     data: 'room_ids',
-                    width: '200px',
+                    className: 'room-select-cell',
+                    searchable: false,
                     render: function(data, type, row) {
-                        var selectedIds = (data || []).map(id => parseInt(id));
+                        var rawIds = data;
+                        if (typeof rawIds === 'string' && rawIds.startsWith('[')) {
+                            try {
+                                rawIds = JSON.parse(rawIds);
+                            } catch (e) {
+                                rawIds = [];
+                            }
+                        }
+                        var selectedIds = (Array.isArray(rawIds) ? rawIds : (rawIds ? [rawIds] :
+                            [])).map(id => parseInt(id));
+
                         var options = roomsData.map(function(room) {
-                            var isSelected = selectedIds.indexOf(room.id) !== -1 ?
+                            var isSelected = selectedIds.indexOf(parseInt(room.id)) !==
+                                -1 ?
                                 'selected' : '';
                             return '<option value="' + room.id + '" ' + isSelected +
                                 '>' + room.text + '</option>';
                         }).join('');
 
-                        return '<select ' + disabledAttr +
+                        return '<div class="select-room-wrapper"><select ' + disabledAttr +
                             ' class="form-control select-room" multiple="multiple" data-id="' +
-                            row.id + '">' + options + '</select>';
+                            row.id + '">' + options + '</select></div>';
+                    }
+                },
+                {
+                    data: null, // Sử dụng null để không bị trùng lặp với data của cột khác
+                    visible: false,
+                    searchable: true,
+                    render: function(data, type, row) {
+                        var rawIds = row.room_ids; // Lấy room_ids từ object row
+                        if (typeof rawIds === 'string' && rawIds.startsWith('[')) {
+                            try {
+                                rawIds = JSON.parse(rawIds);
+                            } catch (e) {
+                                rawIds = [];
+                            }
+                        }
+                        var selectedIds = (Array.isArray(rawIds) ? rawIds : (rawIds ? [rawIds] :
+                            [])).map(id => parseInt(id));
+
+                        return roomsData.filter(function(room) {
+                            return selectedIds.indexOf(parseInt(room.id)) !== -1;
+                        }).map(function(room) {
+                            return room.text;
+                        }).join(' ');
                     }
                 },
 
@@ -484,10 +539,10 @@
             });
         });
 
-        // AJAX cập nhật Phòng Thực Hiện
         $(document).on('change', '.select-room', function() {
-            let id = $(this).data('id');
-            let room_ids = $(this).val(); // Đây sẽ là mảng các ID được chọn
+            let select = $(this);
+            let id = select.data('id');
+            let room_ids = select.val(); // Đây sẽ là mảng các ID được chọn
 
             $.ajax({
                 url: "{{ route('pages.category.maintenance.updateRoom') }}",
@@ -500,6 +555,12 @@
                 },
                 success: function(res) {
                     if (res.success) {
+                        // Cập nhật dữ liệu trong DataTable để search được ngay lập tức
+                        var row = table.row(select.closest('tr'));
+                        var rowData = row.data();
+                        rowData.room_ids = room_ids;
+                        row.data(rowData).invalidate().draw(false);
+
                         Swal.mixin({
                             toast: true,
                             position: 'top-end',
@@ -514,10 +575,10 @@
             });
         });
 
-        // AJAX cập nhật Phân Xưởng
         $(document).on('change', '.select-department', function() {
-            let id = $(this).data('id');
-            let department_code = $(this).val();
+            let select = $(this);
+            let id = select.data('id');
+            let department_code = select.val();
             if (!department_code) return;
 
             $.ajax({
@@ -531,6 +592,12 @@
                 },
                 success: function(res) {
                     if (res.success) {
+                        // Cập nhật dữ liệu trong DataTable để search được ngay
+                        var row = table.row(select.closest('tr'));
+                        var rowData = row.data();
+                        rowData.deparment_code = department_code;
+                        row.data(rowData).invalidate().draw(false);
+
                         Swal.mixin({
                             toast: true,
                             position: 'top-end',
