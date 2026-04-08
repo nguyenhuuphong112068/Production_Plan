@@ -320,7 +320,7 @@ class DailyReportController extends Controller
                 // Tính overlap ratio
                 DB::raw("
                     ROUND(
-                        (sp.Theoretical_yields * plan_master.percent_parkaging) *
+                        (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, '$endDateStr'), GREATEST(sp.start, '$startDateStr'))) /
                         NULLIF(TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 0)
                     , 2) AS theory_yields
@@ -418,7 +418,7 @@ class DailyReportController extends Controller
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
-                DB::raw('SUM(sp.Theoretical_yields * plan_master.percent_parkaging) as total_qty'),
+                DB::raw('SUM(sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) as total_qty'),
                 DB::raw('
                     SUM(
                         CASE
@@ -448,7 +448,7 @@ class DailyReportController extends Controller
                             COALESCE(product_name.name, 'N/A'), ' - ', 
                             COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A'), 
                             ' || ', 
-                            ROUND(sp.Theoretical_yields * plan_master.percent_parkaging, 2)
+                            ROUND(sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END), 2)
                         ) 
                         SEPARATOR '<br>'
                     ) as detials
@@ -472,7 +472,7 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 DB::raw('
                     SUM(
-                        (sp.Theoretical_yields * plan_master.percent_parkaging) *
+                        (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -509,7 +509,7 @@ class DailyReportController extends Controller
                             COALESCE(product_name.name, 'N/A'), ' - ', 
                             COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A'), 
                             ' || ', 
-                            ROUND((sp.Theoretical_yields * plan_master.percent_parkaging) *
+                            ROUND((sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                                 TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, \"' . $endDate . '\"), GREATEST(sp.start, \"' . $startDate . '\"))) /
                                 TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 2)
                         ) 
@@ -644,7 +644,7 @@ class DailyReportController extends Controller
                 'r.stage_code as stage_code',
                 DB::raw('
                     SUM(
-                        (sp.Theoretical_yields * plan_master.percent_parkaging) *
+                        (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $dayEnd . '"), GREATEST(sp.start, "' . $dayStart . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -677,7 +677,7 @@ class DailyReportController extends Controller
                             COALESCE(product_name.name, 'N/A'), ' - ', 
                             COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A'), 
                             ' || ', 
-                            ROUND((sp.Theoretical_yields * plan_master.percent_parkaging) *
+                            ROUND((sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                                 TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, \"' . $dayEnd . '\"), GREATEST(sp.start, \"' . $dayStart . '\"))) /
                                 TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 2)
                         ) 

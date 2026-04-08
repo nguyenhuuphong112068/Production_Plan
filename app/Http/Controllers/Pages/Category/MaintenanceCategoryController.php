@@ -287,4 +287,16 @@ class MaintenanceCategoryController extends Controller
                         ]);
                 return response()->json(['success' => true]);
         }
+
+
+        public function Auto_updateDepartment(Request $request)
+        {
+                $dept_code = $request->department_code ?? $request->deparment_code;
+                DB::table('quota_maintenance')
+                        ->where('id', $request->id)
+                        ->update([
+                                'deparment_code' => $dept_code,
+                        ]);
+                return response()->json(['success' => true]);
+        }
 }
