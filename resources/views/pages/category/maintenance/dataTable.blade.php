@@ -105,7 +105,7 @@
         width: 100% !important;
         max-width: 100% !important;
     }
-    
+
     .select2-selection--multiple {
         max-height: 150px;
         overflow-y: auto !important;
