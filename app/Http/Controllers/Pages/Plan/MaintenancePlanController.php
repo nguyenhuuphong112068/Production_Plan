@@ -194,7 +194,7 @@ class MaintenancePlanController extends Controller
 
                                                 ->whereBetween('Sch_DueDate', [$startDate, $endDate])
                                                 ->where('Sch_Result_Status', 'Pending')
-                                                ->select('Sch_ID', 'Inst_ID', 'Sch_DueDate', 'Sch_Remark', 'Sch_Type', DB::raw("'$conn' as connection"))
+                                                ->select('Sch_ID', 'Inst_ID', 'Sch_DueDate', 'Sch_Remark', 'Sch_Type', 'Inst_sch_type', DB::raw("'$conn' as connection"))
                                                 ->get();
                                         // ->table("Schedule_Master_3")
 
@@ -307,8 +307,11 @@ class MaintenancePlanController extends Controller
                                 $quota = $quotas[$instId] ?? null;
                                 if (!$quota) continue;
 
-                                // Lấy ngày gần nhất
-                                $minDate = $group->min('Sch_DueDate');
+                                // Lấy ngày của dòng có loại dài nhất (thường là bảo trì chính)
+                                $representativeRow = $group->sortByDesc(function ($item) {
+                                        return strlen($item->Inst_sch_type ?? $item->Sch_Type ?? '');
+                                })->first();
+                                $minDate = $representativeRow->Sch_DueDate;
                                 $schDate = \Carbon\Carbon::parse($minDate)->format('Y-m-d');
 
                                 // Kiểm tra trùng: cùng thiết bị + cùng ngày gần nhất đã tạo rồi thì bỏ qua
@@ -890,16 +893,13 @@ class MaintenancePlanController extends Controller
                         )
                         ->get();
 
-                $roomsByQuota = collect();
-                if ($type == 3) {
-                        $quotaIds = $plans->pluck('product_caterogy_id')->unique()->toArray();
-                        $roomsByQuota = DB::table('quota_maintenance_rooms')
-                                ->join('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
-                                ->whereIn('quota_maintenance_id', $quotaIds)
-                                ->select('quota_maintenance_id', 'room.code as room_code')
-                                ->get()
-                                ->groupBy('quota_maintenance_id');
-                }
+                $quotaIds = $plans->pluck('product_caterogy_id')->unique()->toArray();
+                $roomsByQuota = DB::table('quota_maintenance_rooms')
+                        ->join('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
+                        ->whereIn('quota_maintenance_id', $quotaIds)
+                        ->select('quota_maintenance_id', 'room.id as room_id', 'room.code as room_code')
+                        ->get()
+                        ->groupBy('quota_maintenance_id');
 
                 $dataToInsert = [];
 
@@ -908,8 +908,8 @@ class MaintenancePlanController extends Controller
                         $mmyy = $plan->expected_date ? \Carbon\Carbon::parse($plan->expected_date)->format('my') : '0000';
                         $campaignCode = trim($plan->inst_id) . '_' . $mmyy;
 
-                        // Nếu là Tiện ích và có phòng liên quan thì tạo n dòng
-                        if ($type == 3 && isset($roomsByQuota[$plan->product_caterogy_id])) {
+                        // Nếu có phòng liên quan thì tạo n dòng (áp dụng cho tất cả HC, TB, TI)
+                        if (isset($roomsByQuota[$plan->product_caterogy_id]) && count($roomsByQuota[$plan->product_caterogy_id]) > 0) {
                                 foreach ($roomsByQuota[$plan->product_caterogy_id] as $room) {
                                         $dataToInsert[] = [
                                                 'plan_list_id' => $plan->plan_list_id,
@@ -919,13 +919,14 @@ class MaintenancePlanController extends Controller
                                                 'campaign_code' => $campaignCode,
                                                 'order_by' =>  $plan->id,
                                                 'code' =>  $plan->id . "_" . $prefix,
+                                                'resourceId' => $room->room_id,
                                                 'required_room_code' => $room->room_code,
                                                 'deparment_code' => session('user')['production_code'],
                                                 'created_date' => now(),
                                         ];
                                 }
                         } else {
-                                // Mặc định HC, BT hoặc TI không có cấu hình phòng
+                                // Mặc định nếu không có cấu hình phòng
                                 $dataToInsert[] = [
                                         'plan_list_id' => $plan->plan_list_id,
                                         'plan_master_id' => $plan->id,

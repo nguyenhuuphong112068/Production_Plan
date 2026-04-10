@@ -500,21 +500,6 @@ const MaintenanceCalender = () => {
       return false
     }
 
-    // Phòng được chọn và định mực k giống
-    // const hasPermission = selectedRows.some(row => {
-    //   if (!row.permisson_room) return false;
-
-    //   if (Array.isArray(row.permisson_room)) {
-    //     // Nếu backend trả mảng thì check trực tiếp
-    //     return row.permisson_room.includes(resourceId);
-    //   } else if (typeof row.permisson_room === "object") {
-    //     // Nếu backend trả object {id_room: code}
-    //     return Object.keys(row.permisson_room).includes(String(resourceId));
-    //   }
-    //   return false;
-    // });
-
-
     if (start <= now) {
       Swal.fire({
         icon: "warning",
@@ -564,16 +549,25 @@ const MaintenanceCalender = () => {
         setTimeout(() => {
           const api = calendarRef.current?.getApi();
           if (api) {
-            // Cuộn ngang đến thời gian bắt đầu
-            api.scrollToTime(moment(start).format("HH:mm:ss"));
+            // Đảm bảo nhảy đến ngày tương ứng
+            api.gotoDate(start);
 
-            // Cuộn dọc đến phòng máy (Resource)
-            const resourceCell = document.querySelector(`[data-resource-id="${resourceId}"]`);
-            if (resourceCell) {
-              resourceCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Tìm và cuộn đến event vừa tạo (thường có suffix -maintenance do group)
+            // Lấy ID của một trong các row vừa chọn để tìm
+            const firstId = selectedRows[0]?.id || "";
+            const eventEl = document.querySelector(`[data-event-id*="${firstId}"]`);
+            if (eventEl) {
+              eventEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            } else {
+              // Fallback nếu k tìm thấy DOM event
+              api.scrollToTime(moment(start).format("HH:mm:ss"));
+              const resourceCell = document.querySelector(`[data-resource-id="${resourceId}"]`);
+              if (resourceCell) {
+                resourceCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
             }
           }
-        }, 300);
+        }, 500);
       })
       .catch(err => {
         const errorMsg = err.response?.data?.message || err.message || "Lỗi không xác định";
@@ -895,13 +889,23 @@ const MaintenanceCalender = () => {
           setTimeout(() => {
             const api = calendarRef.current?.getApi();
             if (api) {
-              api.scrollToTime(dayjs(firstChange.start).format("HH:mm:ss"));
-              const resourceCell = document.querySelector(`[data-resource-id="${firstChange.resourceId}"]`);
-              if (resourceCell) {
-                resourceCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              // Đảm bảo nhảy đến ngày tương ứng
+              api.gotoDate(firstChange.start);
+
+              const eventId = firstChange.id.split('-')[0]; // Lấy phần số thực tế
+              const eventEl = document.querySelector(`[data-event-id*="${eventId}"]`);
+              if (eventEl) {
+                eventEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+              } else {
+                // Fallback nếu k tìm thấy DOM
+                api.scrollToTime(dayjs(firstChange.start).format("HH:mm:ss"));
+                const resourceCell = document.querySelector(`[data-resource-id="${firstChange.resourceId}"]`);
+                if (resourceCell) {
+                  resourceCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
               }
             }
-          }, 300);
+          }, 500);
         }
 
         setPendingChanges([]);
@@ -927,6 +931,210 @@ const MaintenanceCalender = () => {
           text: 'Không thể lưu thay đổi. Vui lòng thử lại.',
         });
       });
+  };
+
+  const handleEditEventClick = (event) => {
+    if (!authorization) return;
+
+    // Nếu đã chấp nhận (Tank == 1) thì không cho sửa nhanh
+    if (event.extendedProps.tank == 1) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Không thể thay đổi',
+        text: 'Lịch đã được Chấp Nhân, Không được thay đổi. Cần Liên hệ phân xưởng để bỏ Chấp Nhân trước khi thay đổi!',
+      });
+      return;
+    }
+
+    const startStr = moment(event.start).format('YYYY-MM-DDTHH:mm');
+    const endStr = moment(event.end).format('YYYY-MM-DDTHH:mm');
+    const currentResourceId = event.getResources()[0]?.id;
+
+    Swal.fire({
+      title: 'Cập nhật Thời gian Bảo trì',
+      width: '450px',
+      html: `
+        <div style="text-align: left; padding: 10px;">
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Thời gian bắt đầu:</label>
+            <input type="datetime-local" id="swal-start" class="swal2-input" style="width: 100%; margin: 0;" value="${startStr}">
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Thời gian kết thúc:</label>
+            <input type="datetime-local" id="swal-end" class="swal2-input" style="width: 100%; margin: 0;" value="${endStr}">
+          </div>
+          
+          <div style="margin-top: 5px; color: #666; font-size: 0.9em;">
+            <strong>Ghi chú:</strong> Hệ thống sẽ tự động cập nhật tất cả các phòng liên quan của cùng kế hoạch bảo trì này.
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Lưu',
+      cancelButtonText: 'Hủy',
+      preConfirm: () => {
+        const start = document.getElementById('swal-start').value;
+        const end = document.getElementById('swal-end').value;
+
+        if (!start || !end) {
+          Swal.showValidationMessage('Vui lòng nhập đầy đủ thời gian');
+          return false;
+        }
+        return { start, end };
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const { start, end } = result.value;
+        const api = calendarRef.current?.getApi();
+        const { activeStart, activeEnd } = api.view;
+        const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+
+        Swal.fire({
+          title: 'Đang tải...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        axios.put('/MaintenanceSchedual/update', {
+          theory: theoryHidden,
+          changes: [{
+            id: event.id,
+            start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
+            end: moment(end).format('YYYY-MM-DD HH:mm:ss'),
+            resourceId: currentResourceId,
+            title: event.title,
+            C_end: false
+          }],
+          startDate: toLocalISOString(activeStart),
+          endDate: toLocalISOString(activeEnd),
+          reason: { reason: 'Cập nhật nhanh qua modal' }
+        })
+          .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = JSON.parse(data.replace(/^<!--.*?-->/, "").trim());
+            }
+            setEvents(data.events);
+            if (data.resources) setResources(data.resources);
+            setSumBatchByStage(data.sumBatchByStage);
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Thành công',
+              timer: 1000,
+              showConfirmButton: false
+            });
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              text: err.response?.data?.message || 'Không thể cập nhật lịch'
+            });
+          });
+      }
+    });
+  };
+
+  const handleConfirmFinish = () => {
+    if (selectedEvents.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Chưa chọn sự kiện',
+        text: 'Vui lòng nhấn Shift + Quét để chọn các sự kiện bảo trì cần xác nhận hoàn thành.'
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: 'Xác nhận hoàn thành?',
+      text: "Các thiết bị được chọn sẽ được cập nhật trạng thái đã xong. Bạn có chắc chắn?",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Hủy'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        axios.put('/MaintenanceSchedual/confirmFinish', {
+          ids: selectedEvents.map(e => e.id)
+        })
+          .then(res => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Thành công',
+              text: res.data.message,
+              timer: 1500,
+              showConfirmButton: false
+            });
+            handleViewChange();
+            setSelectedEvents([]);
+            // Xóa viền vàng cũ
+            document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
+              el.style.border = "none";
+            });
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              text: err.response?.data?.message || 'Không thể xác nhận hoàn thành'
+            });
+          });
+      }
+    });
+  };
+
+  const handleApproveMaintenance = () => {
+    if (selectedEvents.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Chưa chọn sự kiện',
+        text: 'Vui lòng nhấn Shift + Quét để chọn các sự kiện cần duyệt.'
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: 'Duyệt sự kiện bảo trì?',
+      text: "Các sự kiện được chọn sẽ được chuyển sang trạng thái đã duyệt (Tank = 1).",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Hủy'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        axios.put('/MaintenanceSchedual/approveMaintenance', {
+          ids: selectedEvents.map(e => e.id)
+        })
+          .then(res => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Thành công',
+              text: res.data.message,
+              timer: 1500,
+              showConfirmButton: false
+            });
+            handleViewChange();
+            setSelectedEvents([]);
+            document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
+              el.style.border = "none";
+            });
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              text: err.response?.data?.message || 'Không thể duyệt sự kiện'
+            });
+          });
+      }
+    });
   };
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
@@ -955,10 +1163,27 @@ const MaintenanceCalender = () => {
 
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
+    const event = clickInfo.event;
+
+    // Nếu đã chấp nhận (Tank == 1) thì không cho chọn/sửa
+    if (event.extendedProps.tank == 1) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Không thể thay đổi',
+        text: 'Lịch đã được Chấp Nhân, Không được thay đổi. Cần Liên hệ phân xưởng để bỏ Chấp Nhân trước khi thay đổi!',
+      });
+      return;
+    }
+
+    // Ưu tiên xử lý nút sửa nhanh
+    if (clickInfo.jsEvent && clickInfo.jsEvent.target.closest('.edit-single-event-btn')) {
+      handleEditEventClick(clickInfo.event);
+      return;
+    }
 
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
 
-    const event = clickInfo.event;
+
 
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey && theoryHidden != 2) {
@@ -997,7 +1222,6 @@ const MaintenanceCalender = () => {
 
       return;
     }
-
 
     // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
     if (clickInfo.jsEvent.altKey && theoryHidden == 2) {
@@ -1243,10 +1467,11 @@ const MaintenanceCalender = () => {
   const finisedEvent = (dropInfo, draggedEvent) => {
     const stageCode = draggedEvent._def.extendedProps.stage_code;
     const finished = draggedEvent._def.extendedProps.finished;
+    const tank = draggedEvent._def.extendedProps.tank;
 
     // Nếu là sự kiện đã tồn tại trên lịch (có stage_code)
     // Chỉ cho phép kéo thả nếu đó là công đoạn bảo trì (8)
-    if (finished == 1) {
+    if (finished == 1 || tank == 1) {
       return false;
     }
 
@@ -1340,9 +1565,12 @@ const MaintenanceCalender = () => {
       console.log(event)
     }
 
+    const isTank = props.tank == 1 && props.stage_code == 8;
+    const tankStyle = isTank ? 'border: 3px solid #ff0000; border-radius: 0px; box-shadow: 0 0 8px rgba(255,0,0,0.6);' : '';
+
     let html = `
-      <div class="relative group custom-event-content" data-event-id="${event.id}">
-        <div style="font-size:${arg.eventFontSize || 12}px;">
+      <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
+        <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
           
         ${!props.is_clearning && props.finished == 0 ? `
             <span 
@@ -1393,8 +1621,17 @@ const MaintenanceCalender = () => {
           `;
     }
 
-
-
+    if (authorization && props.finished == 0 && props.tank == 0 && props.stage_code == 8) {
+      html += `
+        <button 
+          class="edit-single-event-btn"
+          data-event-id="${event.id}"
+          title="Sửa nhanh"
+        >
+          ✏️
+        </button>
+      `;
+    }
 
     html += `</div>`;
     return { html };
@@ -1753,9 +1990,9 @@ const MaintenanceCalender = () => {
         }}
         //hiddenTheory
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenProduction changeSchedualer unSelect ShowBadge',
+          left: 'customPre,myToday,customNext noteModal hiddenProduction changeSchedualer unSelect confirmFinish Submit',
           center: 'title',
-          right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
+          right: 'approveMaintenance fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
 
         views={{
@@ -1896,11 +2133,11 @@ const MaintenanceCalender = () => {
             hint: 'Tháy đổi độ chia thời gian tại khung tuần'
           },
 
-          ShowBadge: {
-            text: '👁️',
-            click: () => setShowRenderBadge(!showRenderBadge),
-            hint: 'Xem các thông tin thêm như: lý do đổi màu lịch, mã chiến dịch'
-          },
+          // ShowBadge: {
+          //   text: '👁️',
+          //   click: () => setShowRenderBadge(!showRenderBadge),
+          //   hint: 'Xem các thông tin thêm như: lý do đổi màu lịch, mã chiến dịch'
+          // },
 
           Submit: {
             text: '📤',
@@ -1908,20 +2145,35 @@ const MaintenanceCalender = () => {
             hint: 'Submit Lịch: Sau khi hoàn thành sắp lịch để các bộ phận khác có thể thấy bấm 📤'
           },
 
+          confirmFinish: {
+            text: '✅',
+            click: handleConfirmFinish,
+            hint: 'Xác nhận hoàn thành tạm thời các lịch bảo trì được chọn. Chọn các lịch cần hoàn thành, sau đó bấm ✅'
+          },
 
-
-
+          approveMaintenance: {
+            text: '👌',
+            click: handleApproveMaintenance,
+            hint: 'Duyệt các sự kiện bảo trì được chọn (Tank = 1) (Shift + Quét)'
+          },
 
         }}
 
 
 
         eventDidMount={(info) => {
-
-          // gắn data-event-id để tìm kiếm
+          // Gắn data-event-id để tìm kiếm
           info.el.setAttribute("data-event-id", info.event.id);
           info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
           info.el.setAttribute("data-finished", info.event.extendedProps.finished);
+
+          // Xử lý nút sửa nhanh
+          const editBtn = info.el.querySelector('.edit-single-event-btn');
+          if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+              handleEditEventClick(info.event);
+            });
+          }
 
           // cho select evetn => pendingChanges
           const isPending = pendingChanges.some(e => e.id === info.event.id);
@@ -1930,16 +2182,15 @@ const MaintenanceCalender = () => {
           }
 
           info.el.addEventListener("dblclick", (e) => {
-
             e.stopPropagation();
-            if (!e.ctrlKey) return;
-            //handleEventHighlightGroup(info.event, e.ctrlKey || e.metaKey);
+            if (!e.ctrlKey) {
+              handleEditEventClick(info.event);
+              return;
+            }
             const pm = info.event.extendedProps.plan_master_id;
-
             setActivePlanMasterId(prev =>
               prev === pm ? null : pm   // dbl click lần nữa → reset
             );
-
           });
         }}
 

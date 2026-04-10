@@ -409,7 +409,7 @@
                             <a href="#" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>
-                                    Kế Hoạch Bảo Trì
+                                    Kế Hoạch HC-BT
                                     <i class="right fas fa-angle-left"></i>
                                 </p>
                             </a>
@@ -545,7 +545,7 @@
                         class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-tools"></i>
                         <p>
-                            Lịch BT-HC
+                            Lịch HC-BT
                             <i class="right fas fa-angle-left"></i>
                         </p>
                     </a>
@@ -554,7 +554,7 @@
                         <li class="nav-item">
                             <a href="/maintenance-calendar" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p> Lịch BT-HC Chart </p>
+                                <p> Lịch HC-BT Chart </p>
                             </a>
                         </li>
 
@@ -562,7 +562,7 @@
                             <a href="{{ route('pages.report.maintenance_weekly_report.index') }}"
                                 class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p> Lịch BT-HC Tuần </p>
+                                <p> Lịch HC-BT Tuần </p>
                             </a>
                         </li>
 
