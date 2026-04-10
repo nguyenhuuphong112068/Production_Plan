@@ -46,64 +46,64 @@ class SchedualController  extends  Controller
 
         public  function  test()
         {
-                $this->Auto_updateDepartment ();
+               // $this->Auto_updateDepartment ();
 
         }
 
-        public function Auto_updateDepartment()
-        {       
-                $configs = [
-                        [
-                                'table' => 'Schedule_Master_2',
-                                'block' => 'BT-B2',
-                                'mapping' => [
-                                        3 => 'PXVH',
-                                        4 => 'PXDN',
-                                        5 => 'PXV2'
-                                ]
-                        ],
-                        [
-                                'table' => 'Schedule_Master_3',
-                                'block' => 'TI-B2',
-                                'mapping' => [
-                                        6 => 'PXVH',
-                                        7 => 'PXDN',
-                                        8 => 'PXV2'
-                                ]
-                        ]
-                ];
+        // public function Auto_updateDepartment()
+        // {       
+        //         $configs = [
+        //                 [
+        //                         'table' => 'Schedule_Master_2',
+        //                         'block' => 'BT-B2',
+        //                         'mapping' => [
+        //                                 3 => 'PXVH',
+        //                                 4 => 'PXDN',
+        //                                 5 => 'PXV2'
+        //                         ]
+        //                 ],
+        //                 [
+        //                         'table' => 'Schedule_Master_3',
+        //                         'block' => 'TI-B2',
+        //                         'mapping' => [
+        //                                 6 => 'PXVH',
+        //                                 7 => 'PXDN',
+        //                                 8 => 'PXV2'
+        //                         ]
+        //                 ]
+        //         ];
 
-                $totalUpdated = 0;
+        //         $totalUpdated = 0;
 
-                foreach ($configs as $config) {
-                        $tableName = $config['table'];
-                        $targetBlock = $config['block'];
-                        foreach ($config['mapping'] as $dbid => $deptCode) {
-                                // Lấy danh sách Inst_id từ database cal2 tương ứng với từng dbid
-                                $instIds = DB::connection('cal2')->table($tableName)
-                                        ->where('dbid', $dbid)
-                                        ->whereNotNull('Inst_id')
-                                        ->pluck('Inst_id')
-                                        ->toArray();
+        //         foreach ($configs as $config) {
+        //                 $tableName = $config['table'];
+        //                 $targetBlock = $config['block'];
+        //                 foreach ($config['mapping'] as $dbid => $deptCode) {
+        //                         // Lấy danh sách Inst_id từ database cal2 tương ứng với từng dbid
+        //                         $instIds = DB::connection('cal2')->table($tableName)
+        //                                 ->where('dbid', $dbid)
+        //                                 ->whereNotNull('Inst_id')
+        //                                 ->pluck('Inst_id')
+        //                                 ->toArray();
                                 
 
-                                if (!empty($instIds)) {
-                                        // Cập nhật theo nhóm (chunk) để tránh lỗi giới hạn câu lệnh SQL
-                                        foreach (array_chunk($instIds, 500) as $chunk) {
-                                                $totalUpdated += DB::table('quota_maintenance')
-                                                        ->where('block', $targetBlock)
-                                                        ->whereIn('inst_id', $chunk)
-                                                        ->update(['deparment_code' => $deptCode]);
-                                        }
-                                }
-                        }
-                }
+        //                         if (!empty($instIds)) {
+        //                                 // Cập nhật theo nhóm (chunk) để tránh lỗi giới hạn câu lệnh SQL
+        //                                 foreach (array_chunk($instIds, 500) as $chunk) {
+        //                                         $totalUpdated += DB::table('quota_maintenance')
+        //                                                 ->where('block', $targetBlock)
+        //                                                 ->whereIn('inst_id', $chunk)
+        //                                                 ->update(['deparment_code' => $deptCode]);
+        //                                 }
+        //                         }
+        //                 }
+        //         }
 
-                return response()->json([
-                        'success' => true,
-                        'message' => "Migrated successfully. Total updated: $totalUpdated",
-                ]);
-        }
+        //         return response()->json([
+        //                 'success' => true,
+        //                 'message' => "Migrated successfully. Total updated: $totalUpdated",
+        //         ]);
+        // }
 
 
         public  function  index()
@@ -571,6 +571,32 @@ class SchedualController  extends  Controller
                                         ]);
                                 }
 
+                                // 🎯 Lịch bảo trì hoàn thành theo KH (không có actual_start)
+                                if ($plan->stage_code == 8 && $plan->finished == 1 && $plan->start && !$plan->actual_start) {
+                                        $events->push([
+                                                'plan_id'  =>  $plan->id,
+                                                'id'  =>  "{$plan->id}-main",
+                                                'title'  =>   $plan->title . " (X)",
+                                                'start'  =>   $plan->start,
+                                                'end'  =>   $plan->end,
+                                                'resourceId'  =>  $plan->resourceId,
+                                                'color'  =>  '#aed9f1',
+                                                'textColor'  =>  '#003A4F',
+                                                'plan_master_id'  =>  $plan->plan_master_id,
+                                                'stage_code'  =>  $plan->stage_code,
+                                                'is_clearning'  =>  false,
+                                                'finished'  =>  $plan->finished,
+                                                'level'  =>  $plan->level,
+                                                'process_code'  =>  $plan->process_code,
+                                                'keep_dry'  =>  $plan->keep_dry,
+                                                'tank'  =>  $plan->tank,
+                                                'storage_capacity'  =>  $storage_capacity,
+                                                'campaign_code'  =>  $plan->campaign_code,
+                                                'product_name'  =>  $plan->product_name,
+                                                'batch_name'  =>  $plan->batch_name,
+                                                'actual_batch'  =>  $plan->actual_batch
+                                        ]);
+                                }
 
                                 if ($plan->actual_start  &&  $plan->finished  ==  1) {
 

@@ -89,6 +89,8 @@ Route::prefix('/MaintenanceSchedual')
                 Route::put('update', 'update')->name('update');
                 Route::put('deActive', 'deActive')->name('deActive');
                 Route::post('syncExternal', 'syncExternal')->name('syncExternal');
+                Route::put('confirmFinish', 'confirmFinish')->name('confirmFinish');
+                Route::put('approveMaintenance', 'approveMaintenance')->name('approveMaintenance');
         });
 
 

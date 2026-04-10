@@ -237,8 +237,6 @@ class MaintenanceSchedualController extends SchedualController
 
         $type = $request->type;
         $targetRoomId = $request->room_id;
-        Log::info($request->all());
-
 
         DB::beginTransaction();
         try {
@@ -252,6 +250,8 @@ class MaintenanceSchedualController extends SchedualController
             }
 
             // 1. Kiểm tra phòng hợp lệ cho HC và BT
+            // Bỏ qua kiểm tra nghiêm ngặt nếu k cập nhật resourceId, để cho phép kéo nhiều thiết bị khác phòng cùng lúc
+            /*
             if ($type != 'TI') {
                 $quotaIds = $products->pluck('product_caterogy_id')->filter()->unique()->toArray();
 
@@ -280,6 +280,7 @@ class MaintenanceSchedualController extends SchedualController
                     }
                 }
             }
+            */
 
             if ($type == 'TI') {
                 $rooms = DB::table('room')->select('id', 'code')->get()->keyBy('code');
@@ -293,14 +294,14 @@ class MaintenanceSchedualController extends SchedualController
                         ->where('plan_master_id', $planMasterId)
                         ->get()
                         ->each(function ($sp) use ($productStart, $productEnd, $rooms, $product) {
-                            $roomId = isset($rooms[$sp->required_room_code]) ? $rooms[$sp->required_room_code]->id : null;
+                            //$roomId = isset($rooms[$sp->required_room_code]) ? $rooms[$sp->required_room_code]->id : null;
 
                             DB::table('stage_plan')
                                 ->where('id', $sp->id)
                                 ->update([
                                     'start'           => $productStart,
                                     'end'             => $productEnd,
-                                    'resourceId'      => $roomId,
+                                    //'resourceId'      => $roomId,
                                     'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                                     'schedualed_by'   => session('user')['fullName'],
                                     'schedualed_at'   => now(),
@@ -316,38 +317,46 @@ class MaintenanceSchedualController extends SchedualController
                 }
                 $overallEnd = $start->copy()->addMinutes($totalMinutes);
 
-                // 2. Cập nhật tất cả bản ghi về cùng một khung thời gian
-                foreach ($products as $product) {
+                // 2. Cập nhật tất cả bản ghi cùng plan_master_id về cùng một khung thời gian
+                $uniquePlanMasterIds = $products->pluck('plan_master_id')->unique();
+
+                foreach ($uniquePlanMasterIds as $planMasterId) {
+                    // Lấy thông tin thiết bị đại diện
+                    $product = $products->firstWhere('plan_master_id', $planMasterId);
+
                     DB::table('stage_plan')
-                        ->where('id', $product['id'])
+                        ->where('plan_master_id', $planMasterId)
                         ->update([
                             'start'           => $start,
                             'end'             => $overallEnd,
-                            'resourceId'      => $request->room_id,
+                            // 'resourceId'      => $request->room_id, // Giữ nguyên resourceId đã gán khi send
                             'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                             'schedualed_by'   => session('user')['fullName'],
                             'schedualed_at'   => now(),
                         ]);
 
-                    $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
+                    // Cập nhật history cho tất cả các task liên quan có submit = 1
+                    $relatedTasks = DB::table('stage_plan')->where('plan_master_id', $planMasterId)->get();
 
-                    if ($submit == 1) {
-                        $last_version = DB::table('stage_plan_history')
-                            ->where('stage_plan_id', $product['id'])
-                            ->max('version') ?? 0;
+                    foreach ($relatedTasks as $task) {
+                        if ($task->submit == 1) {
+                            $last_version = DB::table('stage_plan_history')
+                                ->where('stage_plan_id', $task->id)
+                                ->max('version') ?? 0;
 
-                        DB::table('stage_plan_history')->insert([
-                            'stage_plan_id'  => $product['id'],
-                            'version'        => $last_version + 1,
-                            'start'           => $start,
-                            'end'             => $overallEnd,
-                            'resourceId'     => $request->room_id,
-                            'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
-                            'schedualed_by'   => session('user')['fullName'],
-                            'schedualed_at'  => now(),
-                            'deparment_code' => session('user')['production_code'],
-                            'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
-                        ]);
+                            DB::table('stage_plan_history')->insert([
+                                'stage_plan_id'  => $task->id,
+                                'version'        => $last_version + 1,
+                                'start'           => $start,
+                                'end'             => $overallEnd,
+                                'resourceId'     => $task->resourceId, // Sử dụng resourceId hiện có của task
+                                'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
+                                'schedualed_by'   => session('user')['fullName'],
+                                'schedualed_at'  => now(),
+                                'deparment_code' => session('user')['production_code'],
+                                'type_of_change' => $request->reason ?? "Lập Lịch Thủ Công",
+                            ]);
+                        }
                     }
                 }
             }
@@ -589,44 +598,22 @@ class MaintenanceSchedualController extends SchedualController
                     $allAffectedIds = DB::table('stage_plan')->whereIn('code', $codes)->pluck('id')->toArray();
                 }
 
-                if ($stageCode <= 2 || $stageCode >= 8) {
-                    DB::table('stage_plan')
-                        ->whereIn('id', $allAffectedIds)
-                        ->where('finished', 0)
-                        ->where('stage_code', '=', $stageCode)
-                        ->update([
-                            'start'            => null,
-                            'end'              => null,
-                            'start_clearning'  => null,
-                            'end_clearning'    => null,
-                            'resourceId'       => null,
-                            'title'            => null,
-                            'title_clearning'  => null,
-                            'accept_quarantine' => 0,
-                            'schedualed'       => 0,
-                            'AHU_group' => 0,
-                            'schedualed_by'    => session('user')['fullName'],
-                            'schedualed_at'    => now(),
-                        ]);
-                } else {
-                    $plan = $sourceStagePlans->first();
-                    DB::table('stage_plan')
-                        ->where('finished', 0)
-                        ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)
-                        ->update([
-                            'start'            => null,
-                            'end'              => null,
-                            'start_clearning'  => null,
-                            'end_clearning'    => null,
-                            'resourceId'       => null,
-                            'title'            => null,
-                            'title_clearning'  => null,
-                            'accept_quarantine' => 0,
-                            'schedualed'       => 0,
-                            'schedualed_by'    => session('user')['fullName'],
-                            'schedualed_at'    => now(),
-                        ]);
-                }
+                $plan = $sourceStagePlans->first();
+                DB::table('stage_plan')
+                    ->where('finished', 0)
+                    ->where('plan_master_id', $plan->plan_master_id)->where('stage_code', '>=', $stageCode)
+                    ->update([
+                        'start'            => null,
+                        'end'              => null,
+                        'start_clearning'  => null,
+                        'end_clearning'    => null,
+                        'title'            => null,
+                        'title_clearning'  => null,
+                        'accept_quarantine' => 0,
+                        'schedualed'       => 0,
+                        'schedualed_by'    => session('user')['fullName'],
+                        'schedualed_at'    => now(),
+                    ]);
             }
         } catch (\Exception $e) {
             Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
@@ -776,5 +763,67 @@ class MaintenanceSchedualController extends SchedualController
             'message' => "Đã đồng bộ thành công {$count} lệnh bảo trì.",
             'count' => $count
         ]);
+    }
+
+    public function confirmFinish(Request $request)
+    {
+        $ids = $request->ids; // Mảng các stage_plan id được chọn
+        if (empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất một sự kiện.'], 400);
+        }
+
+        // Lấy danh sách plan_master_id của các ID này
+        $planMasterIds = DB::table('stage_plan')
+            ->whereIn('id', $ids)
+            ->pluck('plan_master_id')
+            ->unique();
+
+        DB::beginTransaction();
+        try {
+            $updatedCount = DB::table('stage_plan')
+                ->whereIn('plan_master_id', $planMasterIds)
+                ->where('stage_code', 8)
+                ->where('finished', 0)
+                ->update([
+                    'finished' => 1,
+                    'finished_date' => now(),
+                    'finished_by' => session('user')['fullName'] ?? 'System',
+                ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => "Đã xác nhận hoàn thành cho {$updatedCount} dòng công việc."]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function approveMaintenance(Request $request)
+    {
+        $ids = $request->ids; // Mảng các stage_plan id được chọn
+        if (empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất một sự kiện.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $updatedCount = DB::table('stage_plan')
+                ->whereIn('id', $ids)
+                ->where('stage_code', 8)
+                ->where('finished', 0)
+                ->where('tank', 0)
+                ->update([
+                    'tank' => 1,
+                    'quarantined_date' => now(),
+                    'quarantined_by' => session('user')['fullName'] ?? 'System',
+
+                ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => "Đã duyệt cho {$updatedCount} dòng công việc."]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

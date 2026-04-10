@@ -1112,8 +1112,109 @@ const ScheduleTest = () => {
     });
   };
 
+  const handleEditEventClick = (event) => {
+    if (!authorization) return;
+
+    const props = event.extendedProps;
+    const startStr = moment(event.start).format('YYYY-MM-DDTHH:mm');
+    const endStr = moment(event.end).format('YYYY-MM-DDTHH:mm');
+    const currentResourceId = event.getResources()[0]?.id;
+
+    Swal.fire({
+      title: 'Cập nhật Thời gian',
+      width: '450px',
+      html: `
+        <div style="text-align: left; padding: 10px;">
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Thời gian bắt đầu:</label>
+            <input type="datetime-local" id="swal-start" class="swal2-input" style="width: 100%; margin: 0;" value="${startStr}">
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Thời gian kết thúc:</label>
+            <input type="datetime-local" id="swal-end" class="swal2-input" style="width: 100%; margin: 0;" value="${endStr}">
+          </div>
+          
+          <div style="margin-top: 5px; color: #666;">
+            Phòng: <strong>${event.getResources()[0]?.title || ''}</strong>
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Lưu',
+      cancelButtonText: 'Hủy',
+      preConfirm: () => {
+        const start = document.getElementById('swal-start').value;
+        const end = document.getElementById('swal-end').value;
+
+        if (!start || !end) {
+          Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin');
+          return false;
+        }
+        return { start, end };
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const { start, end } = result.value;
+        const api = calendarRef.current?.getApi();
+        const { activeStart, activeEnd } = api.view;
+        const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+
+        Swal.fire({
+          title: 'Đang tải...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        axios.put('/Schedual/update', {
+          theory: theoryHidden,
+          changes: [{
+            id: event.id,
+            start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
+            end: moment(end).format('YYYY-MM-DD HH:mm:ss'),
+            resourceId: currentResourceId,
+            title: event.title,
+            C_end: false
+          }],
+          startDate: toLocalISOString(activeStart),
+          endDate: toLocalISOString(activeEnd),
+          reason: { reason: 'Cập nhật nhanh qua modal' }
+        })
+          .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = JSON.parse(data.replace(/^<!--.*?-->/, "").trim());
+            }
+            setEvents(data.events);
+            if (data.resources) setResources(data.resources);
+            setSumBatchByStage(data.sumBatchByStage);
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Thành công',
+              timer: 1000,
+              showConfirmButton: false
+            });
+          })
+          .catch(err => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              text: err.response?.data?.message || 'Không thể cập nhật lịch'
+            });
+          });
+      }
+    });
+  };
+
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
+    // Nếu bấm trúng nút ✏️ thì mở modal sửa nhanh và ngắt các xử lý khác (chọn event)
+    if (clickInfo.jsEvent.target.closest('.edit-single-event-btn')) {
+      handleEditEventClick(clickInfo.event);
+      return;
+    }
 
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
 
@@ -2337,9 +2438,12 @@ const ScheduleTest = () => {
       console.log(event)
     }
 
+    const isTank = props.tank == 1 && props.stage_code == 8;
+    const tankStyle = isTank ? 'border: 3px solid #ff0000; border-radius: 0px; box-shadow: 0 0 8px rgba(255,0,0,0.6);' : '';
+
     let html = `
-      <div class="relative group custom-event-content" data-event-id="${event.id}">
-        <div style="font-size:${arg.eventFontSize || 12}px;">
+      <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
+        <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
           
         ${!props.is_clearning && props.finished == 0 ? `
             <span 
@@ -2390,8 +2494,17 @@ const ScheduleTest = () => {
           `;
     }
 
-
-
+    if (authorization && props.finished == 0 && props.stage_code != 8) {
+      html += `
+        <button 
+          class="edit-single-event-btn"
+          data-event-id="${event.id}"
+          title="Sửa nhanh"
+        >
+          ✏️
+        </button>
+      `;
+    }
 
     html += `</div>`;
     return { html };
@@ -3043,6 +3156,15 @@ const ScheduleTest = () => {
 
 
         eventDidMount={(info) => {
+          // Xử lý nút sửa nhanh đơn lẻ
+          const editBtn = info.el.querySelector('.edit-single-event-btn');
+          if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+              // e.stopPropagation(); // FullCalendar's eventClick might still trigger
+              handleEditEventClick(info.event);
+            });
+          }
+
           // gắn data-event-id và data-plan_master_id để truy xuất nhanh
           info.el.setAttribute("data-event-id", info.event.id);
           info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
@@ -3056,7 +3178,10 @@ const ScheduleTest = () => {
 
           info.el.addEventListener("dblclick", (e) => {
             e.stopPropagation();
-            if (!e.ctrlKey) return;
+            if (!e.ctrlKey) {
+              handleEditEventClick(info.event);
+              return;
+            }
 
             const currentPm = info.event.extendedProps.plan_master_id;
 
