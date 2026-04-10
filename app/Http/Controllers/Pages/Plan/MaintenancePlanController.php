@@ -512,6 +512,7 @@ class MaintenancePlanController extends Controller
 
         public function store(Request $request)
         {
+
                 $validator = Validator::make($request->all(), [
                         'devices.*.expected_date' => 'required|date',
                 ], [

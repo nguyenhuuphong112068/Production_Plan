@@ -320,7 +320,7 @@ class MaintenanceSchedualController extends SchedualController
                 // Thêm logic lấy thời gian vệ sinh C2 cho trường hợp BT
                 $startClearning = null;
                 $endClearning = null;
-                if ($type == 'BT') {
+                if ($type == 'BT' || $type == 'TB') {
                     $prevProduct = DB::table('stage_plan as sp')
                         ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
                         ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
@@ -329,7 +329,10 @@ class MaintenanceSchedualController extends SchedualController
                                 ->on('sp.stage_code', '=', 'q.stage_code');
                         })
                         ->where('sp.resourceId', $targetRoomId)
-                        ->where('sp.end', '<=', $start)
+                        ->where(function ($q) use ($start) {
+                            $q->where('sp.end', '<=', $start)
+                                ->orWhere('sp.actual_end', '<=', $start);
+                        })
                         ->where('sp.stage_code', '<', 8)
                         ->orderBy('sp.end', 'desc')
                         ->select('q.C2_time')
@@ -354,9 +357,9 @@ class MaintenanceSchedualController extends SchedualController
                         ->update([
                             'start'           => $start,
                             'end'             => $overallEnd,
+                            'title_clearning' => 'VS-II',
                             'start_clearning' => $startClearning,
                             'end_clearning'   => $endClearning,
-                            // 'resourceId'      => $request->room_id, // Giữ nguyên resourceId đã gán khi send
                             'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                             'schedualed_by'   => session('user')['fullName'],
                             'schedualed_at'   => now(),
@@ -482,7 +485,10 @@ class MaintenanceSchedualController extends SchedualController
                                 ->on('sp.stage_code', '=', 'q.stage_code');
                         })
                         ->where('sp.resourceId', $change['resourceId'])
-                        ->where('sp.end', '<=', $newStart)
+                        ->where(function ($q) use ($newStart) {
+                            $q->where('sp.end', '<=', $newStart)
+                                ->orWhere('sp.actual_end', '<=', $newStart);
+                        })
                         ->where('sp.stage_code', '<', 8)
                         ->orderBy('sp.end', 'desc')
                         ->select('q.C2_time')
