@@ -236,11 +236,11 @@
                 }
             },
             columns: [{
-                    data: null,
+                    data: 'id',
                     orderable: false,
                     searchable: false,
                     render: function(data, type, row, meta) {
-                        return meta.row + 1;
+                        return '<div>' + (meta.row + 1) + '</div><small class="text-secondary">' + (data || '') + '</small>';
                     }
                 },
 

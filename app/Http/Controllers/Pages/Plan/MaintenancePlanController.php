@@ -183,24 +183,31 @@ class MaintenancePlanController extends Controller
         {
 
                 $schedules = collect();
-                $connections = ['cal1', 'cal2'];
+                $connections = ['cal1', 'cal2']; // 
                 $suffixes = $type ? [$type] : [1, 2, 3];
 
                 foreach ($connections as $conn) {
                         foreach ($suffixes as $suffix) {
                                 try {
+                                        $tableName = "Schedule_Master_{$suffix}";
                                         $result = DB::connection($conn)
-                                                ->table("Schedule_Master_{$suffix}")
-
+                                                ->table($tableName)
+                                                ->leftJoin('Inst_Master', "{$tableName}.Inst_ID", "=", "Inst_Master.Inst_id")
                                                 ->whereBetween('Sch_DueDate', [$startDate, $endDate])
                                                 ->where('Sch_Result_Status', 'Pending')
-                                                ->select('Sch_ID', 'Inst_ID', 'Sch_DueDate', 'Sch_Remark', 'Sch_Type', 'Inst_sch_type', DB::raw("'$conn' as connection"))
+                                                ->select(
+                                                        "{$tableName}.SCH_ID as Sch_ID",
+                                                        "{$tableName}.Inst_ID",
+                                                        "{$tableName}.Sch_DueDate",
+                                                        "{$tableName}.Sch_Remark",
+                                                        "{$tableName}.Sch_Type",
+                                                        'Inst_Master.Inst_sch_type',
+                                                        DB::raw("'$conn' as connection")
+                                                )
                                                 ->get();
-                                        // ->table("Schedule_Master_3")
+
 
                                         $schedules = $schedules->merge($result);
-
-                                        //dd($schedules);
                                 } catch (\Exception $e) {
                                         Log::warning("Could not fetch schedules from {$conn}.Schedule_Master_{$suffix}: " . $e->getMessage());
                                 }

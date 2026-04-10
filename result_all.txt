@@ -1,0 +1,18 @@
+Connection: cal1
+  Schedule_Master_1: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
+  Schedule_Master_2: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
+  Schedule_Master_3: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
+  Schedule_Master_4: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
+Connection: cal2
+  Schedule_Master_1: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
+  Schedule_Master_2: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
+  Schedule_Master_3: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
+  Schedule_Master_4: NO Inst_sch_type
+    Sch_ID/SCH_ID: SCH_ID
