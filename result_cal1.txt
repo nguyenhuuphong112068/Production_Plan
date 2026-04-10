@@ -1,0 +1,3 @@
+Sch_ID: Yes
+Inst_sch_type: No
+All: Inst_ID, Sch_DueDate, Sch_Type, Sch_cal_task, Sch_Result_Status, Sch_Cal_ReferanceNo, Sch_CalDone_On, Sch_Cal_Done_by, Sch_Remark, comment1, comment2, SCH_ID, Sch_caldone_to, Sch_comment, sch_ap_rem, sch_ap_by, sch_ap_on, sch_ap_sts, Next_cal_date

@@ -317,6 +317,31 @@ class MaintenanceSchedualController extends SchedualController
                 }
                 $overallEnd = $start->copy()->addMinutes($totalMinutes);
 
+                // Thêm logic lấy thời gian vệ sinh C2 cho trường hợp BT
+                $startClearning = null;
+                $endClearning = null;
+                if ($type == 'BT') {
+                    $prevProduct = DB::table('stage_plan as sp')
+                        ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                        ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                        ->join('quota as q', function ($join) {
+                            $join->on('fpc.intermediate_code', '=', 'q.intermediate_code')
+                                ->on('sp.stage_code', '=', 'q.stage_code');
+                        })
+                        ->where('sp.resourceId', $targetRoomId)
+                        ->where('sp.end', '<=', $start)
+                        ->where('sp.stage_code', '<', 8)
+                        ->orderBy('sp.end', 'desc')
+                        ->select('q.C2_time')
+                        ->first();
+
+                    if ($prevProduct && $prevProduct->C2_time) {
+                        $dur = $this->toMinutes($prevProduct->C2_time);
+                        $startClearning = $overallEnd->copy();
+                        $endClearning = $startClearning->copy()->addMinutes($dur);
+                    }
+                }
+
                 // 2. Cập nhật tất cả bản ghi cùng plan_master_id về cùng một khung thời gian
                 $uniquePlanMasterIds = $products->pluck('plan_master_id')->unique();
 
@@ -329,6 +354,8 @@ class MaintenanceSchedualController extends SchedualController
                         ->update([
                             'start'           => $start,
                             'end'             => $overallEnd,
+                            'start_clearning' => $startClearning,
+                            'end_clearning'   => $endClearning,
                             // 'resourceId'      => $request->room_id, // Giữ nguyên resourceId đã gán khi send
                             'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                             'schedualed_by'   => session('user')['fullName'],
@@ -349,6 +376,8 @@ class MaintenanceSchedualController extends SchedualController
                                 'version'        => $last_version + 1,
                                 'start'           => $start,
                                 'end'             => $overallEnd,
+                                'start_clearning' => $startClearning,
+                                'end_clearning'   => $endClearning,
                                 'resourceId'     => $task->resourceId, // Sử dụng resourceId hiện có của task
                                 'title'           => $product['Parent_Equip_id'] . ' - ' . $product['Eqp_name'] . ' - ' . $product['Inst_Name'] . ' - ' . $product['instrument_code'],
                                 'schedualed_by'   => session('user')['fullName'],
@@ -435,6 +464,37 @@ class MaintenanceSchedualController extends SchedualController
                     ->where('quota_maintenance.block', 'like', 'TI-%')
                     ->exists();
 
+                // Thêm logic cập nhật clearning cho BT
+                $startClearning = null;
+                $endClearning = null;
+                $isBT = DB::table('plan_master')
+                    ->join('quota_maintenance', 'plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
+                    ->whereIn('plan_master.id', $sourceStagePlans->pluck('plan_master_id')->unique()->toArray())
+                    ->where('quota_maintenance.block', 'like', 'BT-%')
+                    ->exists();
+
+                if ($isBT) {
+                    $prevProduct = DB::table('stage_plan as sp')
+                        ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                        ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                        ->join('quota as q', function ($join) {
+                            $join->on('fpc.intermediate_code', '=', 'q.intermediate_code')
+                                ->on('sp.stage_code', '=', 'q.stage_code');
+                        })
+                        ->where('sp.resourceId', $change['resourceId'])
+                        ->where('sp.end', '<=', $newStart)
+                        ->where('sp.stage_code', '<', 8)
+                        ->orderBy('sp.end', 'desc')
+                        ->select('q.C2_time')
+                        ->first();
+
+                    if ($prevProduct && $prevProduct->C2_time) {
+                        $dur = $this->toMinutes($prevProduct->C2_time);
+                        $startClearning = \Carbon\Carbon::parse($change['end']);
+                        $endClearning = $startClearning->copy()->addMinutes($dur);
+                    }
+                }
+
                 if ($isTI && !empty($codes)) {
                     // 1. Cập nhật các bản ghi gốc (cả thời gian và resourceId)
                     DB::table('stage_plan')
@@ -442,6 +502,8 @@ class MaintenanceSchedualController extends SchedualController
                         ->update([
                             'start'           => $change['start'],
                             'end'             => $change['end'],
+                            'start_clearning' => $startClearning,
+                            'end_clearning'   => $endClearning,
                             'resourceId'      => $change['resourceId'],
                             'receive_packaging_date' => $receiveDate,
                             'receive_second_packaging_date' => $receiveDate,
@@ -461,6 +523,8 @@ class MaintenanceSchedualController extends SchedualController
                             ->update([
                                 'start'           => $change['start'],
                                 'end'             => $change['end'],
+                                'start_clearning' => $startClearning,
+                                'end_clearning'   => $endClearning,
                                 // KHÔNG thay đổi resourceId cho các bản ghi liên đới
                                 'receive_packaging_date' => $receiveDate,
                                 'receive_second_packaging_date' => $receiveDate,
@@ -476,6 +540,8 @@ class MaintenanceSchedualController extends SchedualController
                         ->update([
                             'start'           => $change['start'],
                             'end'             => $change['end'],
+                            'start_clearning' => $startClearning,
+                            'end_clearning'   => $endClearning,
                             'resourceId'      => $change['resourceId'],
                             'receive_packaging_date' => $receiveDate,
                             'receive_second_packaging_date' => $receiveDate,
@@ -538,6 +604,8 @@ class MaintenanceSchedualController extends SchedualController
                             'version'        => $last_version + 1,
                             'start'           => $change['start'],
                             'end'             => $change['end'],
+                            'start_clearning' => $startClearning,
+                            'end_clearning'   => $endClearning,
                             'resourceId'     => $change['resourceId'],
                             'title'           => $row->title,
                             'schedualed_by'   => session('user')['fullName'],

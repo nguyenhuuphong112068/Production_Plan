@@ -1,0 +1,3 @@
+Quota ID: 173040, Dept: PXV1, Active: 1, Block: BT-B1, Rooms count: 2
+Quota ID: 175421, Dept: PXV1, Active: 1, Block: HC-B1, Rooms count: 1
+Quota ID: 179618, Dept: PXV1, Active: 1, Block: HC-B1, Rooms count: 0
