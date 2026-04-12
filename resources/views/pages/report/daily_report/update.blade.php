@@ -2,7 +2,7 @@
 <div class="modal fade " id="updateModal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
 
-        <form action="{{ route('pages.report.daily_report.update') }}" method="POST">
+        <form action="{{ route('pages.report.daily_report.update') }}" method="GET">
             @csrf
 
             <div class="modal-content">
@@ -81,4 +81,23 @@
         });
     </script>
 @endif
+
+<script>
+    $(document).ready(function() {
+        $('#updateModal form').on('submit', function(e) {
+            const start = new Date($(this).find('input[name="start"]').val());
+            const end = new Date($(this).find('input[name="end"]').val());
+
+            if (end <= start) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Cảnh báo!',
+                    text: 'Thời gian kết thúc phải lớn hơn thời gian bắt đầu!',
+                    icon: 'warning',
+                    confirmButtonText: 'Đóng'
+                });
+            }
+        });
+    });
+</script>
 

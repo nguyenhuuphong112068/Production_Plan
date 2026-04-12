@@ -3,41 +3,40 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use Illuminate\Support\Facades\Validator;
+
 class LoginController extends Controller
 {
-
-    // dd ($request->all());  
+    // dd ($request->all());
 
     public function showLogin()
     {
 
         session()->put(['title' => 'KÊ HOẠCH SẢN XUẤT']);
-        return view('login', [
 
-        ]);
+        return view('login', []);
     }
 
+    public function login(Request $request)
+    {
 
-    public function login(Request $request){
-        
-        //$hash = Hash::make("Abc@123"); //  password_hash("Abc@123", PASSWORD_DEFAULT);
-      
+        // $hash = Hash::make("Abc@123"); //  password_hash("Abc@123", PASSWORD_DEFAULT);
+
         $getUser = DB::table('user_management')->where('userName', '=', $request->username)->first();
-       
+
         if (is_null($getUser)) {
             return redirect()->route('login')->with('error', 'User Không Tồn Tại, Vui Lòng Đăng Nhập Lại!')->with('activeForm', 'login');
         }
-      
-        if (!Hash::check($request->passWord, $getUser->passWord)) {
-             
+
+        if (! Hash::check($request->passWord, $getUser->passWord)) {
+
             return redirect()->route('login')->with('error', 'PassWord Không Chính Xác, Vui Lòng Đăng Nhập Lại!')->with('activeForm', 'login');
         }
-        
+
         $production = DB::table('production')
             ->where('code', $getUser->deparment)
             ->first();
@@ -46,12 +45,10 @@ class LoginController extends Controller
             $production_code = $production->code;
             $production_name = $production->name;
         } else {
-            $production_code = "PXV1";
-            $production_name = "PX Viên 1";
+            $production_code = 'PXV1';
+            $production_name = 'PX Viên 1';
         }
 
-
-        
         $request->session()->put('user', [
             'userId' => $getUser->id,
             'userName' => $getUser->userName,
@@ -59,29 +56,36 @@ class LoginController extends Controller
             'passWord' => $request->passWord,
             'userGroup' => $getUser->userGroup,
             'department' => $getUser->deparment,
+            'group_name' => $getUser->groupName,
             'production_code' => $production_code,
             'production_name' => $production_name,
+
         ]);
 
-
-        AuditTrialController::log('Login', "NA", 0, 'NA', 'Đăng Nhập Thành Công');
+        AuditTrialController::log('Login', 'NA', 0, 'NA', 'Đăng Nhập Thành Công');
 
         return redirect()->route('pages.general.home');
     }
 
-    public function logout(Request $request){
-        AuditTrialController::log('Log Out', "NA", 0, 'NA', 'Đăng Xuất');
+    public function logout(Request $request)
+    {
+        AuditTrialController::log('Log Out', 'NA', 0, 'NA', 'Đăng Xuất');
         $request->session()->flush();
+
         return redirect()->route('login');
     }
 
-     public function changePassword(Request $request){
-        //dd ($request->all());
+    public function changePassword(Request $request)
+    {
+        // dd ($request->all());
 
         // 1️⃣ Kiểm tra dữ liệu nhập
         $validator = Validator::make($request->all(), [
             'newPassword' => [
-                'required', 'string', 'min:6', 'max:255',
+                'required',
+                'string',
+                'min:6',
+                'max:255',
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/',
             ],
             'confirmPassword' => 'required|same:newPassword',
@@ -93,26 +97,23 @@ class LoginController extends Controller
         ]);
 
         if ($validator->fails()) {
-                return redirect()->back()->withErrors($validator, 'changePasswordErrors')->with('activeForm', 'changePass');
+            return redirect()->back()->withErrors($validator, 'changePasswordErrors')->with('activeForm', 'changePass');
         }
-        
-        
 
         if ($request->oldPassword == $request->newPassword) {
-            return redirect()->route('login')->with('error', 'PassWord mới trung PassWord hiện tại!')->with('activeForm', 'changePass');;
+            return redirect()->route('login')->with('error', 'PassWord mới trung PassWord hiện tại!')->with('activeForm', 'changePass');
         }
 
         // 2️⃣ Lấy thông tin người dùng trong DB
         $getUser = DB::table('user_management')->where('userName', '=', $request->username)->first();
 
-        if (!$getUser) {
+        if (! $getUser) {
             return back()->with('error', 'User Không tồn tại');
         }
 
-        
         // 3️⃣ Xác thực mật khẩu cũ
-        if (!Hash::check($request->oldPassword, $getUser->passWord)) {
-            return back()->with('error', 'Mật khẩu hiện tại không đúng.')->with('activeForm', 'changePass');;
+        if (! Hash::check($request->oldPassword, $getUser->passWord)) {
+            return back()->with('error', 'Mật khẩu hiện tại không đúng.')->with('activeForm', 'changePass');
         }
 
         // 4️⃣ Cập nhật mật khẩu mới (hash)
@@ -122,8 +123,6 @@ class LoginController extends Controller
             ->where('id', $getUser->id)
             ->update(['passWord' => $newHash]);
 
-
-        
         $production = DB::table('production')
             ->where('code', $getUser->deparment)
             ->first();
@@ -132,10 +131,9 @@ class LoginController extends Controller
             $production_code = $production->code;
             $production_name = $production->name;
         } else {
-            $production_code = "PXV1";
-            $production_name = "PX Viên 1";
+            $production_code = 'PXV1';
+            $production_name = 'PX Viên 1';
         }
-
 
         $request->session()->put('user', [
             'userId' => $getUser->id,
@@ -149,7 +147,7 @@ class LoginController extends Controller
         ]);
 
         // 5️⃣ Ghi log và thông báo
-        AuditTrialController::log('ChangePassword', "NA", 0, 'NA', 'Đổi mật khẩu thành công');
+        AuditTrialController::log('ChangePassword', 'NA', 0, 'NA', 'Đổi mật khẩu thành công');
 
         return redirect()->route('pages.general.home');
     }

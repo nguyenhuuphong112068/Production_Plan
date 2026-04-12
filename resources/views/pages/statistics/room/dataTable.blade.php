@@ -414,7 +414,10 @@
         const theoretical_data = data.map(cycle => cycle.san_luong_ly_thuyet);
         const practical_data = data.map(cycle => cycle.san_luong_thuc_te);
 
-        const ctx = document.getElementById(`weight-chart-${stageCode}`).getContext('2d');
+        const canvasElement = document.getElementById(`weight-chart-${stageCode}`);
+        if (!canvasElement) return;
+
+        const ctx = canvasElement.getContext('2d');
 
         new Chart(ctx, {
             type: 'bar',

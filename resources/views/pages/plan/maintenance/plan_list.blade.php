@@ -1,4 +1,3 @@
-
 @extends ('layout.master')
 
 @section('topNAV')
@@ -9,10 +8,7 @@
 @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
- 
+
 @section('mainContent')
-  @include('pages.plan.maintenance.dataTable_plan_list')
-@endsection
-@section('model')
-  @include('pages.plan.maintenance.create_plan_list')
+    @include('pages.plan.maintenance.dataTable_plan_list')
 @endsection

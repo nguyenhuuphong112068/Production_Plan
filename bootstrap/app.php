@@ -12,8 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Nếu không dùng Inertia thì bỏ dòng này đi,
-        // Laravel sẽ tự load các middleware mặc định (web, api)
+        $middleware->web(append: [
+            \App\Http\Middleware\UpdateUserActivity::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

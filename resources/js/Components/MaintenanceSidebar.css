@@ -1,0 +1,140 @@
+.maintenance-sidebar-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.maintenance-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1000;
+  transition: background-color 0.2s;
+}
+
+.maintenance-resizer:hover,
+.maintenance-resizer:active {
+  background-color: #3b82f6;
+  width: 8px;
+}
+
+.maintenance-header {
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.maintenance-type-selector {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f0f7ff;
+  border-radius: 8px;
+  border: 1px solid #cce3ff;
+  margin: 0.5rem;
+}
+
+.maintenance-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #eee;
+}
+
+.maintenance-search-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.maintenance-search-wrap i {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  pointer-events: none;
+}
+
+.maintenance-search-wrap input {
+  padding-left: 2.25rem !important;
+  width: 100%;
+}
+
+.maintenance-save-btn {
+  white-space: nowrap;
+}
+
+/* Premium DataTable Styling */
+.maintenance-datatable .p-datatable-thead>tr>th {
+  background-color: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.75rem 0.5rem;
+}
+
+.maintenance-datatable .p-datatable-tbody>tr>td {
+  font-size: 0.85rem;
+  padding: 0.5rem;
+}
+
+.maintenance-datatable .p-datatable-tbody>tr:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.maintenance-badge-hc {
+  background-color: #3b82f6 !important;
+}
+
+.maintenance-badge-tb {
+  background-color: #f59e0b !important;
+}
+
+.maintenance-badge-ti {
+  background-color: #10b981 !important;
+}
+
+.room-badge {
+  background-color: #f1f3f5;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  color: #495057;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+
+/* Expected Date Highlighting */
+.expected-date.near {
+  padding: 2px 4px;
+}
+
+.expected-date.future {
+  padding: 2px 4px;
+}
+
+/* Whole Row Highlighting */
+.row-maintenance-critical {
+  background-color: #f16d6d !important;
+  /* Very light red */
+}
+
+.row-maintenance-critical:hover {
+  background-color: #fecaca !important;
+}
+
+.row-maintenance-warning {
+  background-color: #fdc678 !important;
+  /* Very light yellow */
+}
+
+.row-maintenance-warning:hover {
+  background-color: #fde68a !important;
+}

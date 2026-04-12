@@ -4,12 +4,94 @@
         overflow-y: visible !important;
     }
 
-    #data_table_yield {
-        width: 100%;
-        table-layout: auto;
+    /* Thêm wrapper để cuộn bảng */
+    .table-responsive-custom {
+        max-height: calc(100vh - 150px);
+        /* Tự động tính toán theo chiều cao màn hình trừ đi phần header */
+        overflow: auto;
+        position: relative;
     }
 
+    #data_table_yield {
+        width: max-content;
+        /* Cho phép bảng mở rộng hết mức theo nội dung */
+        min-width: 100%;
+        table-layout: auto;
+        /* Để trình duyệt tự tính độ rộng dựa trên dữ liệu */
+        border-collapse: separate;
+        border-spacing: 0;
+    }
 
+    #data_table_yield th,
+    #data_table_yield td {
+        white-space: nowrap;
+        /* Không cho xuống hàng */
+        padding: 8px 15px !important;
+        /* Thêm khoảng trống cho dữ liệu dễ nhìn */
+    }
+
+    /* Cố định hàng tiêu đề */
+    #data_table_yield thead th {
+        position: sticky;
+        top: 0;
+        /* Sticky so với container .table-responsive-custom */
+        z-index: 20;
+        background-color: #CDC717 !important;
+        color: #003A4F;
+        border: 1px solid #dee2e6;
+    }
+
+    /* Kỹ thuật cố định theo class */
+    .sticky-col-1 {
+        position: sticky !important;
+        left: 0;
+        z-index: 10;
+        width: 300px;
+        /* Tăng độ rộng để show hết tên phòng */
+        min-width: 300px;
+        background-color: white;
+        /* Màu nền cho thân bảng */
+        border-right: 2px solid #dee2e6 !important;
+    }
+
+    .sticky-col-2 {
+        position: sticky !important;
+        left: 300px;
+        /* Phải khớp với width của cột 1 */
+        z-index: 10;
+        width: 80px;
+        min-width: 80px;
+        background-color: white;
+        border-right: 2px solid #dee2e6 !important;
+    }
+
+    /* Riêng header của các cột sticky phải có màu nền của header */
+    thead th.sticky-col-1,
+    thead th.sticky-col-2 {
+        z-index: 30;
+        background-color: #CDC717 !important;
+    }
+
+    /* Hàng Công Đoạn (Tổng) */
+    tr[style*="background:#CDC717"] td.sticky-col-1,
+    tr[style*="background:#CDC717"] td.sticky-col-2 {
+        background-color: #CDC717 !important;
+    }
+
+    /* Đảm bảo hàng Lý Thuyết (Green) và Thực Tế (Blue) giữ được màu khi sticky */
+    tr td.sticky-col-1[rowspan="2"],
+    tr td.sticky-col-2[rowspan="2"] {
+        background-color: inherit;
+        /* Cho phép kế thừa màu của TR (nếu có) */
+        background-color: white;
+        /* Mặc định là trắng */
+    }
+
+    /* Đặc biệt xử lý các hàng màu của Lý Thuyết/Thực Tế */
+    tr:nth-child(even) td.sticky-col-1,
+    tr:nth-child(even) td.sticky-col-2 {
+        /* Tùy chỉnh màu chẵn lẻ nếu cần */
+    }
 </style>
 
 <div class="content-wrapper">
@@ -26,7 +108,7 @@
 
                         @php
                             $defaultFrom = \Carbon\Carbon::now()->addDays(2)->startOfMonth()->toDateString();
-                            $defaultTo   = \Carbon\Carbon::now()->endOfMonth()->toDateString();
+                            $defaultTo = \Carbon\Carbon::now()->endOfMonth()->toDateString();
                             $defaultWeek = \Carbon\Carbon::parse($defaultTo)->weekOfYear;
                             $defaultMonth = \Carbon\Carbon::parse($defaultTo)->month;
                             $defaultYear = \Carbon\Carbon::parse($defaultTo)->year;
@@ -37,7 +119,7 @@
                                 4 => 'THT',
                                 5 => 'Định Hình',
                                 6 => 'Bao Phim',
-                                7 => 'ĐGSC-ĐGTC'
+                                7 => 'ĐGSC-ĐGTC',
                             ];
                         @endphp
 
@@ -55,8 +137,12 @@
                     </div>
 
                     <div class="col-md-2">
-                        <span style="display:inline-block; width:40px; height:20px; background:#93f486; margin-right:5px;"></span> Lý Thuyết
-                        <span style="display:inline-block; width:40px; height:20px; background:#69b8f4; margin-left:15px; margin-right:5px;"></span> Thực Tế
+                        <span
+                            style="display:inline-block; width:40px; height:20px; background:#93f486; margin-right:5px;"></span>
+                        Lý Thuyết
+                        <span
+                            style="display:inline-block; width:40px; height:20px; background:#69b8f4; margin-left:15px; margin-right:5px;"></span>
+                        Thực Tế
                     </div>
 
                     <div class="col-md-6 d-flex gap-2 justify-content-end">
@@ -91,142 +177,154 @@
                 </div>
             </form>
 
-            {{-- ============================= TABLE ============================= --}}
-       
-            <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
-                <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020;">
-                    <tr style="background-color: #CDC717; color:#003A4F; font-size: 20px; font-weight: bold;">
-                        <th class="text-center" style="min-width: 200px;">Phòng SX</th>
-                        <th class="text-center">ĐV</th>
+            <div class="table-responsive-custom">
+                <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
+                    <thead>
+                        <tr style="background-color: #CDC717; color:#003A4F; font-size: 20px; font-weight: bold;">
+                            <th class="text-center sticky-col-1">Phòng SX</th>
+                            <th class="text-center sticky-col-2">ĐV</th>
 
-                        {{-- @foreach ($theory['yield_day'] as $date => $dayData)
+                            {{-- @foreach ($theory['yield_day'] as $date => $dayData)
                             <th class="text-center">{{ \Carbon\Carbon::parse($date)->format('d/m/y') }}</th>
                         @endforeach --}}
 
-                        @php
-                            $allDates = $theory['yield_day']->keys()
-                                ->merge($actual['yield_day']->keys())
-                                ->unique()
-                                ->sort();
-                        @endphp
-
-                        @foreach ($allDates as $date)
-                            <th class="text-center">{{ \Carbon\Carbon::parse($date)->format('d/m/y') }}</th>
-                        @endforeach
-
-
-                        <th class="text-center">Tổng</th>
-                        <th class="text-center">ĐV</th>
-                    </tr>
-                </thead>
-
-                <tbody style="font-size: 20px;">
-                    @foreach ($theory['yield_room'] as $index => $roomLT)
-                        @php
-                            $resourceId = $roomLT->resourceId;
-                            $unit = $roomLT->unit;
-                            $roomTT = $actual['yield_room']->firstWhere('resourceId', $resourceId);
-                        @endphp
-
-                        {{-- ------------------- LÝ THUYẾT ------------------- --}}
-                        <tr >
-                            <td class="text-center align-middle" rowspan="2">{{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
-                            <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
-
-                            @php 
-                                $sumLT = 0; 
-                                $sumLT_unit = 0;
-                            @endphp
-                            @foreach ($allDates as $date)
-                                @php
-                                    $dayLT = $theory['yield_day'][$date] ?? collect();
-                                    $item = $dayLT->firstWhere('resourceId', $resourceId);
-                                    $qty = $item['total_qty'] ?? 0;
-                                    $qty_unit = $item['total_qty_unit'] ?? 0;
-
-                                    $sumLT += $qty;
-                                    $sumLT_unit += $qty_unit;
-                                    
-                                @endphp
-                                <td class="text-end" style="background:#93f486;" >{{ number_format($qty, 2)}}   {{ $roomLT->stage_code == 4 ? " # " . number_format($qty_unit, 2) : ''}}</td>
-                            @endforeach
-                  
-                            <td class="text-end fw-bold" style="background:#93f486;">{{ number_format($sumLT, 2) }} {{ $roomLT->stage_code == 4 ? " # " .number_format($sumLT_unit, 2) :''}} </td>
-                            <td class="text-center" style="background:#93f486;">{{ $unit }}</td>
-                        </tr>
-
-                        {{-- ------------------- THỰC TẾ ------------------- --}}
-                        <tr >
-                            @php $sumTT = 0; @endphp
-                            @foreach ($allDates as $date)
-                                @php
-                                    $dayTT = $actual['yield_day'][$date] ?? collect();
-                                    $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
-                                    $qtyTT = $itemTT['total_qty'] ?? 0;
-                                    $sumTT += $qtyTT;
-                                @endphp
-                                <td class="text-end" style="color:#003A4F; background:#69b8f4;">
-                                    {{ number_format($qtyTT, 2) }}
-                                </td>
-                            @endforeach
-
-                            <td class="text-end fw-bold" style="background:#69b8f4;">{{ number_format($sumTT, 2) }}</td>
-                            <td class="text-center" style="background:#69b8f4;">{{ $unit }}</td>
-                        </tr>
-
-                        {{-- ------------- TỔNG THEO CÔNG ĐOẠN (LT + TT) --------------- --}}
-                        @php
-                            $nextItem = $theory['yield_room'][$index + 1] ?? null;
-                            $nextStage = $nextItem->stage_code ?? null;
-                        @endphp
-
-
-
-                        @if ($nextStage != $roomLT->stage_code)
                             @php
-                                $stage_code = $roomLT->stage_code;
-                                // Tính tổng LT/TT theo công đoạn
-                                $stageLT = [];
-                                $stageTT = [];
-
-                                foreach ($allDates as $date) {
-                                    $dayLT = $theory['yield_day'][$date] ?? collect();
-                                    $stageLT[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
-                                    $stageLT_unit[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty_unit');
-
-                                    $dayTT = $actual['yield_day'][$date] ?? collect();
-                                    $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
-                                   
-                                }
+                                $allDates = $theory['yield_day']
+                                    ->keys()
+                                    ->merge($actual['yield_day']->keys())
+                                    ->unique()
+                                    ->sort();
                             @endphp
 
-                            {{-- ⭐ Tổng LT --}}
-                            <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
-                                <td class="text-center align-middle" rowspan="2">{{ 'Công Đoạn ' . ($stage_name[$stage_code] ?? $stage_code) }}</td>
-                                <td class="text-center align-middle" rowspan="2">{{ $unit }}</td>
+                            @foreach ($allDates as $date)
+                                <th class="text-center">{{ \Carbon\Carbon::parse($date)->format('d/m/y') }}</th>
+                            @endforeach
 
+
+                            <th class="text-center">Tổng</th>
+                            <th class="text-center">ĐV</th>
+                        </tr>
+                    </thead>
+
+                    <tbody style="font-size: 20px;">
+                        @foreach ($theory['yield_room'] as $index => $roomLT)
+                            @php
+                                $resourceId = $roomLT->resourceId;
+                                $unit = $roomLT->unit;
+                                $roomTT = $actual['yield_room']->firstWhere('resourceId', $resourceId);
+                            @endphp
+
+                            {{-- ------------------- LÝ THUYẾT ------------------- --}}
+                            <tr>
+                                <td class="text-center align-middle sticky-col-1" rowspan="2">
+                                    {{ $roomLT->room_code . ' - ' . $roomLT->room_name }}</td>
+                                <td class="text-center align-middle sticky-col-2" rowspan="2">{{ $unit }}
+                                </td>
+
+                                @php
+                                    $sumLT = 0;
+                                    $sumLT_unit = 0;
+                                @endphp
                                 @foreach ($allDates as $date)
-                                    <td class="text-end" >{{ number_format($stageLT[$date], 2) }} {{$roomLT->stage_code == 4 ? " # " . number_format($stageLT_unit[$date], 2) : '' }} </td>
+                                    @php
+                                        $dayLT = $theory['yield_day'][$date] ?? collect();
+                                        $item = $dayLT->firstWhere('resourceId', $resourceId);
+                                        $qty = $item['total_qty'] ?? 0;
+                                        $qty_unit = $item['total_qty_unit'] ?? 0;
+
+                                        $sumLT += $qty;
+                                        $sumLT_unit += $qty_unit;
+
+                                    @endphp
+                                    <td class="text-end" style="background:#93f486;">{{ number_format($qty, 2) }}
+                                        {{ $roomLT->stage_code == 4 ? ' # ' . number_format($qty_unit, 2) : '' }}</td>
                                 @endforeach
 
-                                <td class="text-end" >{{ number_format(array_sum($stageLT), 2) }} {{$roomLT->stage_code == 4 ? " # " . number_format(array_sum($stageLT_unit), 2) : '' }} </td>
-                                <td class="text-center">{{ $unit }}</td>
+                                <td class="text-end fw-bold" style="background:#93f486;">{{ number_format($sumLT, 2) }}
+                                    {{ $roomLT->stage_code == 4 ? ' # ' . number_format($sumLT_unit, 2) : '' }} </td>
+                                <td class="text-center" style="background:#93f486;">{{ $unit }}</td>
                             </tr>
 
-                            {{-- ⭐ Tổng TT --}}
-                            <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
+                            {{-- ------------------- THỰC TẾ ------------------- --}}
+                            <tr>
+                                @php $sumTT = 0; @endphp
                                 @foreach ($allDates as $date)
-                                    <td class="text-end" >{{ number_format($stageTT[$date], 2) }}</td>
+                                    @php
+                                        $dayTT = $actual['yield_day'][$date] ?? collect();
+                                        $itemTT = $dayTT->firstWhere('resourceId', $resourceId);
+                                        $qtyTT = $itemTT['total_qty'] ?? 0;
+                                        $sumTT += $qtyTT;
+                                    @endphp
+                                    <td class="text-end" style="color:#003A4F; background:#69b8f4;">
+                                        {{ number_format($qtyTT, 2) }}
+                                    </td>
                                 @endforeach
 
-                                <td class="text-end" >{{ number_format(array_sum($stageTT), 2) }}</td>
-                                <td class="text-center">{{ $unit }}</td>
+                                <td class="text-end fw-bold" style="background:#69b8f4;">{{ number_format($sumTT, 2) }}
+                                </td>
+                                <td class="text-center" style="background:#69b8f4;">{{ $unit }}</td>
                             </tr>
-                        @endif
-                    @endforeach
-                </tbody>
-            </table>
 
+                            {{-- ------------- TỔNG THEO CÔNG ĐOẠN (LT + TT) --------------- --}}
+                            @php
+                                $nextItem = $theory['yield_room'][$index + 1] ?? null;
+                                $nextStage = $nextItem->stage_code ?? null;
+                            @endphp
+
+
+
+                            @if ($nextStage != $roomLT->stage_code)
+                                @php
+                                    $stage_code = $roomLT->stage_code;
+                                    // Tính tổng LT/TT theo công đoạn
+                                    $stageLT = [];
+                                    $stageTT = [];
+
+                                    foreach ($allDates as $date) {
+                                        $dayLT = $theory['yield_day'][$date] ?? collect();
+                                        $stageLT[$date] = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
+                                        $stageLT_unit[$date] = $dayLT
+                                            ->where('stage_code', $stage_code)
+                                            ->sum('total_qty_unit');
+
+                                        $dayTT = $actual['yield_day'][$date] ?? collect();
+                                        $stageTT[$date] = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
+                                    }
+                                @endphp
+
+                                {{-- ⭐ Tổng LT --}}
+                                <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
+                                    <td class="text-center align-middle sticky-col-1" rowspan="2">
+                                        {{ 'Công Đoạn ' . ($stage_name[$stage_code] ?? $stage_code) }}</td>
+                                    <td class="text-center align-middle sticky-col-2" rowspan="2">
+                                        {{ $unit }}</td>
+
+                                    @foreach ($allDates as $date)
+                                        <td class="text-end">{{ number_format($stageLT[$date], 2) }}
+                                            {{ $roomLT->stage_code == 4 ? ' # ' . number_format($stageLT_unit[$date], 2) : '' }}
+                                        </td>
+                                    @endforeach
+
+                                    <td class="text-end">{{ number_format(array_sum($stageLT), 2) }}
+                                        {{ $roomLT->stage_code == 4 ? ' # ' . number_format(array_sum($stageLT_unit), 2) : '' }}
+                                    </td>
+                                    <td class="text-center">{{ $unit }}</td>
+                                </tr>
+
+                                {{-- ⭐ Tổng TT --}}
+                                <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
+                                    @foreach ($allDates as $date)
+                                        <td class="text-end">{{ number_format($stageTT[$date], 2) }}</td>
+                                    @endforeach
+
+                                    <td class="text-end">{{ number_format(array_sum($stageTT), 2) }}</td>
+                                    <td class="text-center">{{ $unit }}</td>
+                                </tr>
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -515,4 +613,3 @@
         submitForm();
     });
 </script>
-

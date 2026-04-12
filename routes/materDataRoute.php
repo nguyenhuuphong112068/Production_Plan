@@ -8,6 +8,8 @@ use App\Http\Controllers\Pages\MaterData\RoomController;
 use App\Http\Controllers\Pages\MaterData\SourceMaterialController;
 use App\Http\Controllers\Pages\MaterData\SpecificationController;
 use App\Http\Controllers\Pages\MaterData\UnitController;
+use App\Http\Controllers\Pages\MaterData\OffDaysController;
+use App\Http\Controllers\Pages\MaterData\PersonnelController;
 use App\Http\Controllers\UploadDataController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
@@ -95,10 +97,21 @@ Route::prefix('/materData')
                 Route::get('','index')->name('list');
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
-               Route::post('deActive','deActive')->name('deActive');          
+                Route::post('deActive','deActive')->name('deActive');          
         });
 
-       
+        Route::prefix('/offdays')
+        ->name('offdays.')
+        ->controller(OffDaysController::class)
+        ->group(function(){
+                Route::get('','index')->name('list');
+                Route::post('store','store')->name('store');
+                Route::post('store_ajax','storeAjax')->name('store_ajax');
+                Route::post('delete_ajax','deleteAjax')->name('delete_ajax');
+                Route::post('flags/store_ajax','storeFlagAjax')->name('flags_store_ajax');
+                Route::post('flags/delete_ajax','deleteFlagAjax')->name('flags_delete_ajax');
+        });
+
 
 });
    

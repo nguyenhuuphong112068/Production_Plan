@@ -1,5 +1,5 @@
 <?php
-    // use Illuminate\Routing\Route;
+// use Illuminate\Routing\Route;
 
 use App\Http\Controllers\Pages\Plan\MaintenancePlanController;
 use App\Http\Controllers\Pages\Plan\ProductionPlanController;
@@ -9,73 +9,68 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::prefix('/plan')
-->name('pages.plan.')
-->middleware(CheckLogin::class)
-->group(function(){
+    ->name('pages.plan.')
+    ->middleware(CheckLogin::class)
+    ->group(function () {
 
-    Route::prefix('/production')
-    ->name('production.')
-    ->controller(ProductionPlanController::class)
-    ->group(function(){
-            Route::get('','index')->name('list');
-            // các hàm xử lý plan_list
-            Route::post('create_plan_list','create_plan_list')->name('create_plan_list');
+        Route::prefix('/production')
+            ->name('production.')
+            ->controller(ProductionPlanController::class)
+            ->group(function () {
+                Route::get('', 'index')->name('list');
+                // các hàm xử lý plan_list
+                Route::post('create_plan_list', 'create_plan_list')->name('create_plan_list');
 
-            // các hàm xử lý plan_master
-            Route::get('open','open')->name('open');
-            Route::get('open_stock','open_stock')->name('open_stock');
-            Route::post('open_bacth_detail','open_bacth_detail')->name('open_bacth_detail');
-            Route::post('store','store')->name('store');
-            Route::post('update', 'update')->name('update');
-            Route::post('splitting', 'splitting')->name('splitting');
-            Route::post('splittingUpdate', 'splittingUpdate')->name('splittingUpdate');
-            Route::post('deActive','deActive')->name('deActive');
-            Route::post('send','send')->name('send');
-            Route::post('history','history')->name('history');
-            Route::post('source_material','source_material')->name('source_material');
-            Route::post('store_source','store_source')->name('store_source');
+                // các hàm xử lý plan_master
+                Route::get('open', 'open')->name('open');
+                Route::get('open_stock', 'open_stock')->name('open_stock');
+                Route::post('backup_stock', 'backup_stock')->name('backup_stock');
+                Route::post('open_bacth_detail', 'open_bacth_detail')->name('open_bacth_detail');
+                Route::post('store', 'store')->name('store');
+                Route::post('update', 'update')->name('update');
+                Route::post('splitting', 'splitting')->name('splitting');
+                Route::post('splittingUpdate', 'splittingUpdate')->name('splittingUpdate');
+                Route::post('deActive', 'deActive')->name('deActive');
+                Route::post('send', 'send')->name('send');
+                Route::post('history', 'history')->name('history');
+                Route::post('source_material', 'source_material')->name('source_material');
+                Route::post('store_source', 'store_source')->name('store_source');
 
-            Route::post('updateInput','updateInput')->name('updateInput');
-            Route::post('first_batch','first_batch')->name('first_batch');
-            Route::post('get_last_id','get_last_id')->name('get_last_id');
+                Route::post('updateInput', 'updateInput')->name('updateInput');
+                Route::post('first_batch', 'first_batch')->name('first_batch');
+                Route::post('get_last_id', 'get_last_id')->name('get_last_id');
 
-            Route::get('feedback_list','feedback_list')->name('feedback_list');
-            Route::get('open_feedback','open_feedback')->name('open_feedback');
-            Route::post('accept_expected_date','accept_expected_date')->name('accept_expected_date');
-            Route::post('all_feedback','all_feedback')->name('all_feedback');
-            Route::post('order','order')->name('order');
-            Route::post('recipe_show_update','recipe_show_update')->name('recipe_show_update');
-
-
-            Route::get('update_plan_master_material','update_plan_master_material')->name('update_plan_master_material');
+                Route::get('feedback_list', 'feedback_list')->name('feedback_list');
+                Route::get('open_feedback', 'open_feedback')->name('open_feedback');
+                Route::post('accept_expected_date', 'accept_expected_date')->name('accept_expected_date');
+                Route::post('all_feedback', 'all_feedback')->name('all_feedback');
+                Route::post('order', 'order')->name('order');
+                Route::post('recipe_show_update', 'recipe_show_update')->name('recipe_show_update');
 
 
+                Route::get('update_plan_master_material', 'update_plan_master_material')->name('update_plan_master_material');
+            });
+
+
+
+
+        Route::prefix('/maintenance')
+            ->name('maintenance.')
+            ->controller(MaintenancePlanController::class)
+            ->group(function () {
+                Route::get('', 'index')->name('list');
+                // các hàm xử lý plan_list
+                Route::post('create_plan_list', 'create_plan_list')->name('create_plan_list');
+                Route::post('auto_create_plan', 'autoCreatePlan')->name('auto_create_plan');
+
+
+                // các hàm xử lý plan_master
+                Route::get('open', 'open')->name('open');
+                Route::post('store', 'store')->name('store');
+                Route::post('update', 'update')->name('update');
+                Route::post('deActive', 'deActive')->name('deActive');
+                Route::post('send', 'send')->name('send');
+                Route::post('history', 'history')->name('history');
+                Route::post('source_material', 'source_material')->name('source_material');
+            });
     });
-
-
-
-
-    Route::prefix('/maintenance')
-    ->name('maintenance.')
-    ->controller(MaintenancePlanController::class)
-    ->group(function(){
-            Route::get('','index')->name('list');
-            // các hàm xử lý plan_list
-            Route::post('create_plan_list','create_plan_list')->name('create_plan_list');
-
-
-            // các hàm xử lý plan_master
-            Route::get('open','open')->name('open');
-            Route::post('store','store')->name('store');
-            Route::post('update', 'update')->name('update');
-            Route::post('deActive','deActive')->name('deActive');
-            Route::post('send','send')->name('send');
-            Route::post('history','history')->name('history');
-            Route::post('source_material','source_material')->name('source_material');
-    
-    });
-
-});
-   
-
-?>
