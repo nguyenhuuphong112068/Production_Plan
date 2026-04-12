@@ -6,22 +6,23 @@ if (! function_exists('user_has_permission')) {
     function user_has_permission($userId, $permissionName, $typeReturn)
     {
         $result = DB::table('permissions')
-                ->join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
-                ->join('user_role', 'role_permission.role_id', '=', 'user_role.role_id')
-                ->where('user_role.user_id', $userId)
-                ->where('permissions.name', $permissionName)
-                ->exists();
+            ->join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
+            ->join('user_role', 'role_permission.role_id', '=', 'user_role.role_id')
+            ->where('user_role.user_id', $userId)
+            ->where('permissions.name', $permissionName)
+            ->exists();
+
+        //dd ($result, $userId, $permissionName);
 
         //dd ($userId);
-        if ($typeReturn == "boolean"){
+        if ($typeReturn == "boolean") {
             return $result;
-        }elseif ($typeReturn == "disabled") {
-                if ($result){
-                    return "";
-                }else{
-                    return "disabled";
-                }
+        } elseif ($typeReturn == "disabled") {
+            if ($result) {
+                return "";
+            } else {
+                return "disabled";
+            }
         }
-
     }
 }

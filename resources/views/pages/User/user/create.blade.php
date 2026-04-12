@@ -43,8 +43,15 @@
                   {{-- PW--}}
                   <div class="form-group">
                     <label for="passWord">Mật Khẩu</label>
-                    <input type="text" class="form-control" name="passWord"   
-                      value=" ***** ">
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="passWord" id="passWordCreate" 
+                               value="Abc@123">
+                        <div class="input-group-append">
+                            <span class="input-group-text toggle-password" style="cursor: pointer;" data-target="#passWordCreate">
+                                <i class="fas fa-eye"></i>
+                            </span>
+                        </div>
+                    </div>
                   </div>
                   @error('passWord','createErrors')
                       <div class="alert alert-danger">{{ $message }}</div>
@@ -64,12 +71,11 @@
 
             {{-- USER GROUP --}}
               <div class="form-group">
-                  <label for="userGroupcreate">Phân Quyền</label>
-                  <select class="form-control" name="userGroup" id="userGroupcreate">
-                      <option value="">-- Chọn phân quyền --</option>
+                  <label for="userGroupcreate">Phân Quyền (Chọn 1 hoặc nhiều)</label>
+                  <select class="form-control select2" name="userGroup[]" id="userGroupcreate" multiple="multiple" data-placeholder="Chọn phân quyền">
                       @foreach ($roles as $role)
-                          <option value="{{ $role->name }}" 
-                              {{ old('role') == $role->name ? 'selected' : '' }}>
+                          <option value="{{ $role->id }}" 
+                              {{ (is_array(old('userGroup')) && in_array($role->id, old('userGroup'))) ? 'selected' : '' }}>
                               {{ $role->name }}
                           </option>
                       @endforeach

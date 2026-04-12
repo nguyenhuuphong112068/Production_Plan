@@ -211,6 +211,21 @@
     document.addEventListener("DOMContentLoaded", function() {
         const activeForm = "{{ session('activeForm', 'login') }}";
         toggleForms(activeForm === 'changePass');
+
+        // Kiểm tra thông báo timeout từ URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('timeout')) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Thông báo',
+                text: 'Bạn Đã Không Sử Dụng Phần Mềm Hơn 15 Phút, Tính Năng Autologout Được Kích Hoạt. Vui Lòng Đăng Nhập Lại',
+                confirmButtonColor: '#003A4F',
+                confirmButtonText: 'Đồng ý'
+            }).then(() => {
+                // Xóa tham số ?timeout=true trên URL mà không load lại trang
+                window.history.replaceState({}, document.title, window.location.pathname);
+            });
+        }
     });
 </script>
 

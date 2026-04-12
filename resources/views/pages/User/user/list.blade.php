@@ -1,4 +1,3 @@
-
 @extends ('layout.master')
 
 @section('topNAV')
@@ -8,12 +7,12 @@
 @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
- 
+
 @section('mainContent')
-  @include('pages.User.user.dataTable')
+    @include('pages.User.user.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.User.user.create')
-  {{-- @include('pages.User.user.update')  --}}
+    @include('pages.User.user.create')
+    @include('pages.User.user.update')
 @endsection

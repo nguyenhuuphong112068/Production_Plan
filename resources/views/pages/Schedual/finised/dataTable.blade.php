@@ -34,13 +34,12 @@
         box-sizing: border-box;
     }
 
-  /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
+    /* Khi focus thì chỉ có viền nhẹ để người dùng biết đang nhập */
     .updateInput:focus {
         border: 1px solid #007bff;
         border-radius: 2px;
         background-color: #fff;
     }
-
 </style>
 
 <div class="content-wrapper">
@@ -53,11 +52,11 @@
         <!-- /.card-Body -->
         <div class="card-body">
 
-          
+
             <form id="filterForm" method="GET" action="{{ route('pages.Schedual.finised.index') }}"
-                    class="d-flex flex-wrap gap-2">
-                    @csrf
-                    {{-- <div class="row w-100 align-items-center">
+                class="d-flex flex-wrap gap-2">
+                @csrf
+                {{-- <div class="row w-100 align-items-center">
                         <!-- Stage Selector -->
                         <div class="col-md-4 d-flex justify-content-center align-items-center"
                             style="gap: 10px; height: 40px;">
@@ -72,20 +71,20 @@
                         </div>
                     </div> --}}
 
-                    <div class="form-group" style="width: 177px">
-                                <select class="form-control" name="stage_code" style="text-align-last: center;"
-                                    onchange="document.getElementById('filterForm').submit();">
-                                    <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
-                                    <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
-                                    <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
-                                    <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
-                                    <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
-                                    <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
-                                    <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
-                                </select>
-                    </div>
+                <div class="form-group" style="width: 177px">
+                    <select class="form-control" name="stage_code" style="text-align-last: center;"
+                        onchange="document.getElementById('filterForm').submit();">
+                        <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
+                        <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
+                        <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
+                        <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
+                        <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
+                        <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
+                        <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
+                    </select>
+                </div>
             </form>
-            
+
 
             <table id="data_table_Schedual_list" class="table table-bordered table-striped" style="font-size: 20px">
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
@@ -98,7 +97,7 @@
                         <th colspan="2">
                             Thới Gian Sản Xuất <br>
                             <span style="color: red; font-style:italic;">
-                                BĐSX: là thời gian bắt đầu sản xuất 
+                                BĐSX: là thời gian bắt đầu sản xuất
                             </span> <br>
                             <span style="color: red; font-style:italic;">
                                 BĐCM: là thời gian bắt đầu tạo ra sản lượng
@@ -107,8 +106,8 @@
                                 KT: là thời gian kết thúc 1 ca làm việc /ngày làm việc/kết lô
                             </span>
                         </th>
-                       
-                        
+
+
                         <th class = "text-center">Sản Lượng Thực Tế
                             @if ($stageCode <= 4)
                                 {{ '(Kg)' }}
@@ -117,13 +116,14 @@
                             @endif
                             <br>
                             <span style="color: red; font-style:italic;">
-                                Lưu ý: trường hợp báo sl nhiều lần thì SL sẽ được tính cho khoảng thời gian BĐCM - KT. Không cộng dồn SL khi xác nhận nhiều lần
+                                Lưu ý: trường hợp báo sl nhiều lần thì SL sẽ được tính cho khoảng thời gian BĐCM - KT.
+                                Không cộng dồn SL khi xác nhận nhiều lần
                             </span>
                         </th>
                         {{-- <th class = "text-center">Đã Xác Nhận</th> --}}
                         <th class = "text-center" style = "width: 3%">Số Thùng</th>
                         <th>Ghi Chú</th>
-                         <th style = "width: 3%">Xác Nhận Sản Xuất</th>
+                        <th style = "width: 3%">Xác Nhận Sản Xuất</th>
 
                         <th colspan="2">Thời Gian Vệ Sinh</th>
                         <th style = "width: 3%">Xác Nhận Toàn Bộ </th>
@@ -147,33 +147,38 @@
 
 
                         <tr data-id="{{ $data->id }}">
-                            <td>{{ $loop->iteration }} 
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                            <td>{{ $loop->iteration }}
+                                @if (session('user')['userGroup'] == 'Admin')
+                                    <div> {{ $data->id }} </div>
+                                @endif
                             </td>
                             <td>
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code }} </div>
                             </td>
-                            <td> 
-                                {{ $data->product_name }} {{$stageCode == 7? "- ". $data->market:'' }}
-                                <input type="hidden" name="title" value = "{{$data->product_name ."-". $data->batch}}">
+                            <td>
+                                {{ $data->product_name }} {{ $stageCode == 7 ? '- ' . $data->market : '' }}
+                                <input type="hidden" name="title"
+                                    value = "{{ $data->product_name . '-' . $data->batch }}">
 
                             </td>
 
 
                             <td>
                                 @if (!$data->actual_start && $stageCode == 1)
-                                    <input style="color: red"  type="text" class="time actual_batch" id = "actual_batch" name="actual_batch"  value = "{{ $data->batch }}">
+                                    <input style="color: red" type="text" class="time actual_batch"
+                                        id = "actual_batch" name="actual_batch" value = "{{ $data->batch }}">
                                 @else
-                                    @if ( $data->actual_batch)
+                                    @if ($data->actual_batch)
                                         <div style="color: blue" class = "text-center"> {{ $data->batch }} </div>
                                     @else
-                                        <div style="color: rgb(0, 0, 0)" class = "text-center"> {{ $data->batch }} </div>
+                                        <div style="color: rgb(0, 0, 0)" class = "text-center"> {{ $data->batch }}
+                                        </div>
                                     @endif
                                 @endif
 
                                 @if ($data->is_val)
-                                        <i class="fas fa-check-circle text-primary fs-4"></i>
+                                    <i class="fas fa-check-circle text-primary fs-4"></i>
                                 @endif
                             </td>
 
@@ -183,20 +188,20 @@
                                     <span>
                                         {{ $data->room_name . ' - ' . $data->room_code }}
                                     </span>
-                                    <input type="hidden" name="resourceId" value="{{ $data->resourceId}}">
+                                    <input type="hidden" name="resourceId" value="{{ $data->resourceId }}">
                                 @else
-                                    <select class="form-control" name="resourceId" id ="room_id" >
+                                    <select class="form-control" name="resourceId" id ="room_id">
                                         <option value="">-- Phòng Sản Xuất --</option>
-                                            @foreach ($room_stages as $room_stage)
-                                                <option value="{{ $room_stage->id}}" 
-                                                    {{ ($data->resourceId ?? null) == $room_stage->id ? 'selected' : '' }}
-                                                    >{{ $room_stage->code . ' - ' .  $room_stage->name}}</option>
-                                            @endforeach
+                                        @foreach ($room_stages as $room_stage)
+                                            <option value="{{ $room_stage->id }}"
+                                                {{ ($data->resourceId ?? null) == $room_stage->id ? 'selected' : '' }}>
+                                                {{ $room_stage->code . ' - ' . $room_stage->name }}</option>
+                                        @endforeach
                                     </select>
-                                @endif 
+                                @endif
                             </td>
 
-                        
+
                             <td>
                                 <div>BĐSX: </div>
                                 <div>BĐCM: </div>
@@ -205,28 +210,31 @@
                             {{-- {{ $semi_finished }} --}}
                             <td>
                                 @if (!empty($data->actual_start) || !empty($data->start))
-                                    <input type="datetime-local" class="time start" id = "start" name="start"    {{ $semi_finished }}
-                                        value = "{{ \Carbon\Carbon::parse($data->actual_start??$data->start)->format('Y-m-d\TH:i') }}">
+                                    <input type="datetime-local" class="time start" id = "start" name="start"
+                                        {{ $semi_finished }}
+                                        value = "{{ \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
 
-                                    <input type="datetime-local" class="time start_yield" id = "start_yield" name="start_yield" >   
+                                    <input type="datetime-local" class="time start_yield" id = "start_yield"
+                                        name="start_yield">
 
-                                    <input type="datetime-local" class="time" id = "end" name="end"  
-                                        value = "{{ \Carbon\Carbon::parse($data->actual_end??$data->end)->format('Y-m-d\TH:i') }}">
+                                    <input type="datetime-local" class="time" id = "end" name="end"
+                                        value = "{{ \Carbon\Carbon::parse($data->actual_end ?? $data->end)->format('Y-m-d\TH:i') }}">
                                 @else
-                                    <input type="datetime-local" class="time start" id = "start"  name="start"  {{ $semi_finished }}>
+                                    <input type="datetime-local" class="time start" id = "start" name="start"
+                                        {{ $semi_finished }}>
 
-                                    <input type="datetime-local" class="time start_yield" id = "start_yield"  name="start_yield" >
+                                    <input type="datetime-local" class="time start_yield" id = "start_yield"
+                                        name="start_yield">
 
                                     <input type="datetime-local" class="time" id = "end" name="end">
                                 @endif
-                                
+
                             </td>
                             <td>
 
-                                <input type="text" class="time" name="yields" 
+                                <input type="text" class="time" name="yields"
                                     data-max="{{ $data->Theoretical_yields * 1.1 }}"
-                                    
-                                    value="{{ (($data->yields ? $data->Theoretical_yields - $data->total_confirmed : $data->Theoretical_yields) < 0 ? 0: $data->Theoretical_yields - $data->total_confirmed) }}"
+                                    value="{{ ($data->yields ? $data->Theoretical_yields - $data->total_confirmed : $data->Theoretical_yields) < 0 ? 0 : $data->Theoretical_yields - $data->total_confirmed }}"
                                     oninput="
                                             this.value = this.value
                                                 .replace(',', '.')
@@ -237,13 +245,13 @@
                                             const val = parseFloat(this.value);
                                             if (!isNaN(val) && val > max) this.value = max;
                                         ">
-                                        <br>
-                                         {!! $data->confirmed !!} <br>
-                                        {{ "Tổng: " . $data->total_confirmed }}
+                                <br>
+                                {!! $data->confirmed !!} <br>
+                                {{ 'Tổng: ' . $data->total_confirmed }}
                             </td>
-                        
+
                             <td>
-                                <input type="text" class="time" name="number_of_boxes" 
+                                <input type="text" class="time" name="number_of_boxes"
                                     value="{{ $data->number_of_boxes ?? 1 }}"
                                     oninput="
                                         // Chỉ cho nhập số nguyên
@@ -258,22 +266,21 @@
                                     ">
                             </td>
 
-                            <td> 
-                                <textarea  class="updateInput text-left" name="note" > {{ $data->note }} </textarea>
+                            <td>
+                                <textarea class="updateInput text-left" name="note"> {{ $data->note }} </textarea>
                             </td>
-                        
+
 
                             <td class="text-center align-middle">
                                 {{-- @if ($semi_finished == 'disabled' || $data->actual_start_clearning)
                                     <button type="button" class="btn btn-success" disabled>
                                         ✓ Đã hoàn thành
                                     </button>  
-                                @else  {{ $finisedRow ? 'disabled' : '' }} --}} 
-                                <button type="button" class="btn btn-success btn-semi-finised position-relative" 
-                                    data-id="{{ $data->id }}"
-                                    data-toggle="modal" data-target="#finisedModal">
+                                @else  {{ $finisedRow ? 'disabled' : '' }} --}}
+                                <button type="button" class="btn btn-success btn-semi-finised position-relative"
+                                    data-id="{{ $data->id }}" data-toggle="modal" data-target="#finisedModal">
                                     <i class="fas fa-check"></i>
-                                </button>  
+                                </button>
                                 {{-- @endif --}}
                             </td>
 
@@ -283,13 +290,17 @@
                             </td>
                             <td>
                                 @if (!empty($data->actual_start_clearning) || !empty($data->start_clearning))
-                                    <input type="datetime-local" class="time" id = "start_clearning" name="start_clearning"
+                                    <input type="datetime-local" class="time" id = "start_clearning"
+                                        name="start_clearning"
                                         value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
-                                    <input type="datetime-local" class="time"  id = "end_clearning" name="end_clearning"
+                                    <input type="datetime-local" class="time" id = "end_clearning"
+                                        name="end_clearning"
                                         value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
                                 @else
-                                    <input type="datetime-local" class="time" id = "start_clearning" name="start_clearning">
-                                    <input type="datetime-local" class="time" id = "end_clearning" name="end_clearning">
+                                    <input type="datetime-local" class="time" id = "start_clearning"
+                                        name="start_clearning">
+                                    <input type="datetime-local" class="time" id = "end_clearning"
+                                        name="end_clearning">
                                 @endif
 
                             </td>
@@ -297,9 +308,10 @@
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-success btn-finised position-relative"
-                                    {{ $data->actual_start_clearning ? 'disabled' : '' }} data-id="{{ $data->id }}"
-                                    data-toggle="modal" data-target="#finisedModal">
-                                    <i class="fas fa-check"></i><i class="fas fa-check" style="margin-left:-6px;"></i>
+                                    {{ $data->actual_start_clearning ? 'disabled' : '' }}
+                                    data-id="{{ $data->id }}" data-toggle="modal" data-target="#finisedModal">
+                                    <i class="fas fa-check"></i><i class="fas fa-check"
+                                        style="margin-left:-6px;"></i>
                                 </button>
                             </td>
 
@@ -323,7 +335,7 @@
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
 
-    
+
         $('#data_table_Schedual_list').DataTable({
             paging: true,
             lengthChange: true,
@@ -349,16 +361,16 @@
 
     });
 
-    $(document).on('input change', '.start', function () {
-            $(this).closest('tr').find('.start_yield')
-                .val($(this).val());
+    $(document).on('input change', '.start', function() {
+        $(this).closest('tr').find('.start_yield')
+            .val($(this).val());
     });
 </script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Gắn sự kiện bằng delegation để không bị mất sau khi search/reload
-      
+
 
         $(document).on('click', '.btn-finised, .btn-semi-finised', function(e) {
             e.preventDefault();
@@ -370,13 +382,13 @@
             let actionType = "";
 
             if (btn.classList.contains('btn-finised')) {
-                actionType = "finised"; 
-                
+                actionType = "finised";
+
                 //const resourceInput = row.querySelector('[name="resourceId"]');
                 const resourceInput = row.querySelector('[name="resourceId"]');
                 const resourceId = resourceInput ? resourceInput.value : null;
-                
-                
+
+
                 if (!resourceId || resourceId == "") {
                     Swal.fire({
                         icon: "warning",
@@ -386,12 +398,12 @@
                     });
                     return;
                 }
-                
+
                 const startProdInput = row.querySelector('#start');
-                const endProdInput   = row.querySelector('#end');
+                const endProdInput = row.querySelector('#end');
 
                 const startCleanInput = row.querySelector('#start_clearning');
-                const endCleanInput   = row.querySelector('#end_clearning');
+                const endCleanInput = row.querySelector('#end_clearning');
 
                 if (
                     !startProdInput.value ||
@@ -410,10 +422,10 @@
                     return;
                 }
 
-                const startProd  = new Date(startProdInput.value);
-                const endProd    = new Date(endProdInput.value);
+                const startProd = new Date(startProdInput.value);
+                const endProd = new Date(endProdInput.value);
                 const startClean = new Date(startCleanInput.value);
-                const endClean   = new Date(endCleanInput.value);
+                const endClean = new Date(endCleanInput.value);
 
                 // 1️⃣ SX: start < end
                 if (startProd >= endProd) {
@@ -461,7 +473,7 @@
                 for (let input of inputs) {
                     if (input && input.value) {
                         let valTime = new Date(input.value);
-                        
+
                         if (valTime > now || input.value == "" || input.value == null) {
                             Swal.fire({
                                 icon: "warning",
@@ -477,14 +489,14 @@
 
             if (btn.classList.contains('btn-semi-finised')) {
 
-                actionType = "semi-finised";  
+                actionType = "semi-finised";
 
                 const resourceInput = row.querySelector('[name="resourceId"]');
                 const resourceId = resourceInput ? resourceInput.value : null;
-               
-                if (!resourceId || resourceId == "" ) {
+
+                if (!resourceId || resourceId == "") {
                     Swal.fire({
-                       icon: "warning",
+                        icon: "warning",
                         title: "Phòng Sản Xuất không hợp lệ",
                         text: "Chọn Phòng Sản Xuất!",
                         timer: 2000
@@ -493,7 +505,7 @@
                 }
 
                 const start = row.querySelector('#start').value;
-                const end   = row.querySelector('#end').value;
+                const end = row.querySelector('#end').value;
 
                 if (start && end && start >= end) {
                     Swal.fire({
@@ -506,9 +518,9 @@
                 }
 
                 const inputs = [start, end];
-                
+
                 for (let input of inputs) {
-                   
+
                     if (input && input.value == "") {
                         let valTime = new Date(input.value);
 
@@ -548,7 +560,6 @@
                     stage_code: stage_code
                 },
                 success: function(res) {
-                    
 
                     Swal.fire({
                         icon: 'success',
@@ -560,18 +571,29 @@
                     // Giữ nút ở trạng thái disabled sau khi hoàn thành
                     $(btn).addClass('disabled').text('✓ Đã hoàn thành');
 
+<<<<<<< HEAD
                     //$(row).find('.actual_batch').
 
+=======
+>>>>>>> be878771ea867c72e04be76623c87f33beefeb06
                     if (actionType === 'finised') {
+                        $(row).find('.btn-finised')
+                            .addClass('disabled')
+                            .text('✓ Đã hoàn thành');
+
                         $(row).find('.btn-semi-finised')
                             .addClass('disabled')
                             .text('✓ Đã hoàn thành');
-                        
+
                     }
-                    
+
+                    if (actionType === 'semi-finised') {
+                        $(row).find('.start_yield').val('');
+                    }
+
                 },
                 error: function(xhr) {
-                     btn.disabled = false;
+                    btn.disabled = false;
 
                     let message = 'Có lỗi xảy ra';
 
@@ -630,5 +652,3 @@
         });
     });
 </script> --}}
-
-

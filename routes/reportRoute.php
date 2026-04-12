@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
             Route::post('explain','explain')->name('explain');
             Route::post('getExplainationContent','getExplainationContent')->name('getExplainationContent');
             Route::post('store','store')->name('store');
-            Route::post('update','update')->name('update');
+            Route::get('update','update')->name('update');
             Route::post('deActive','deActive')->name('deActive');
         
       
@@ -40,5 +40,31 @@ use Illuminate\Support\Facades\Route;
         
     });
 
+    Route::prefix('/report/oee_report')
+        ->controller(\App\Http\Controllers\Pages\Report\OEEReportController::class)
+        ->name('pages.report.oee_report.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+    });
 
+    Route::prefix('/report/maintenance_daily_report')
+        ->controller(App\Http\Controllers\Pages\Report\MaintenanceDailyReportController::class)
+        ->name('pages.report.maintenance_daily_report.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+        });
+
+    Route::prefix('/weekly-maintenance-report')
+        ->controller(App\Http\Controllers\Pages\Report\MaintenanceWeeklyReportController::class)
+        ->name('pages.report.maintenance_weekly_report.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+        });
+
+    Route::prefix('/weekly-production-schedule')
+        ->controller(App\Http\Controllers\Pages\Report\WeeklyProductionScheduleController::class)
+        ->name('pages.report.weekly_production_schedule.')
+        ->group(function(){
+            Route::get('','index')->name('index');
+        });
 ?>

@@ -1,0 +1,17 @@
+{
+    "notifications": {
+        "id": "bigint",
+        "sender_id": "bigint",
+        "activity_type": "varchar",
+        "message": "text",
+        "url": "text",
+        "reference_id": "bigint",
+        "created_at": "timestamp"
+    },
+    "notification_recipients": {
+        "notification_id": "bigint",
+        "user_id": "bigint",
+        "is_read": "tinyint",
+        "read_at": "timestamp"
+    }
+}

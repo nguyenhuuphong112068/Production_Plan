@@ -162,9 +162,9 @@ const AssignmentCalender = () => {
 
         
       })
-      .catch(err =>
-        console.error("API error:", err)
-      );
+      .catch(err => {
+        // console.error("API error:", err)
+      });
 
   }, [loading]);
 

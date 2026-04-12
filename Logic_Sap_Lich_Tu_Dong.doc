@@ -1,0 +1,73 @@
+
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <style>
+        body { font-family: "Times New Roman", Times, serif; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #2c3e50; }
+        h2 { color: #2980b9; margin-top: 20px; }
+        h3 { color: #16a085; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: left; }
+        th { background-color: #ecf0f1; }
+        .highlight { background-color: #f1c40f; padding: 2px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>TÀI LIỆU GIẢI THÍCH LOGIC SẮP LỊCH TỰ ĐỘNG</h1>
+    <p><i>File: SchedualController.php | Chức năng: scheduleAll</i></p>
+
+    <h2>1. Tổng Quan Quy Trình</h2>
+    <p>Chức năng "Sắp lịch tự động" thực hiện việc tính toán và gán thời gian sản xuất (Start, End) cho từng công đoạn của một lô hàng, dựa trên định mức năng suất, tình trạng phòng máy và các ràng buộc thời gian chờ.</p>
+
+    <h3>Các thành phần chính:</h3>
+    <ul>
+        <li><b>Điểm bắt đầu (scheduleAll):</b> Tiếp nhận yêu cầu, cấu hình thời gian chờ (waiting time), và quyết định phương thức sắp lịch (theo line, theo lô nhạy cảm, hay chạy thuận).</li>
+        <li><b>Phân tích tài nguyên (findEarliestSlot2):</b> Thuật toán cốt lõi để tìm "khe thời gian" trống sớm nhất trong các phòng sản xuất có khả năng thực hiện.</li>
+        <li><b>Ràng buộc làm việc:</b> Hệ thống tự động bỏ qua các ngày nghỉ, lễ và tính toán theo ca làm việc (Shift 1, 2, 3) thông qua hàm <code>addWorkingMinutes</code>.</li>
+    </ul>
+
+    <h2>2. Quy Trình Sắp Lịch 5 Bước</h2>
+    <table>
+        <tr>
+            <th>Bước</th>
+            <th>Tên Bước</th>
+            <th>Mô Tả Logic</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>Khởi tạo</td>
+            <td>Lấy danh sách các lô chưa sắp lịch, xác định ngày nghỉ và các mốc thời gian người dùng nhập vào.</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>Phân loại ưu tiên</td>
+            <td>Sắp xếp Bán thành phẩm (Intermediate) trước, sau đó đến Sản phẩm nhạy cảm, cuối cùng là các mặt hàng thông thường.</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>Tìm phòng trống</td>
+            <td>Duyệt qua các phòng có trong "Định mức sản xuất" (Quota). Tính toán thời gian cần thiết (P-Time + M-Time + Clean-Time).</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>Kiểm tra xung đột</td>
+            <td>Sử dụng <code>findEarliestSlot2</code> để đảm bảo không có hai lô hàng nào trùng lịch trên cùng một phòng máy. Kiểm tra giới hạn Tank pha chế.</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>Lưu kết quả</td>
+            <td>Ghi dữ liệu xuống bảng <code>stage_plan</code> và cập nhật trạng thái hiển thị trên lịch.</td>
+        </tr>
+    </table>
+
+    <h2>3. Logic Đặc Biệt</h2>
+    <h3>Sắp lịch theo Chiến dịch (Campaign)</h3>
+    <p>Khi các lô hàng cùng loại chạy liên tiếp, hệ thống sẽ <b>giảm thiểu thời gian vệ sinh</b>. Thay vì vệ sinh tổng thể (C2) sau mỗi lô, hệ thống chỉ vệ sinh nhẹ (C1) và chỉ vệ sinh tổng thể sau khi hoàn tất lô cuối cùng của chiến dịch.</p>
+
+    <h3>Thời gian chờ (Waiting Time)</h3>
+    <p>Logic đảm bảo một công đoạn (ví dụ: THT) chỉ có thể bắt đầu sau khi công đoạn trước đó (ví dụ: PC) kết thúc cộng thêm một khoảng thời gian chờ quy định (được tính theo ngày, chuyển đổi thành phút).</p>
+
+    <p style="margin-top: 50px;">--- Hết tài liệu ---</p>
+</body>
+</html>

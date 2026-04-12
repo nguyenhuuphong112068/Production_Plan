@@ -209,49 +209,6 @@ class IntermediateCategoryController extends Controller
                 return response()->json($datas);
         }
 
-        // public function save_bom(Request $request){
-                
-        //         $items = $request->items;
-
-        //         if (empty($items)) {
-        //                 return response()->json(['success' => false, 'message' => 'No items']);
-        //         }
-
-        //         $productCategoryId = $items[0]['product_caterogy_id'];
-
-        //         // 1️⃣ Lấy danh sách code gửi lên
-        //         $requestCodes = collect($items)->pluck('code')->toArray();
-
-        //          // 2️⃣ Soft delete những code không có trong request
-        //         DB::table('bom_item')
-        //                 ->where('product_caterogy_id', $productCategoryId)
-        //                 ->whereNotIn('code', $requestCodes)
-        //                 ->update([
-        //                         'active' => 0,
-        //                         'updated_at' => now()
-        //                 ]);
-
-        //         // 3️⃣ Insert hoặc update + bật active lại
-        //         foreach ($items as $item) {
-        //                 DB::table('bom_item')->updateOrInsert(
-        //                 [
-        //                         'product_caterogy_id' => $item['product_caterogy_id'],
-        //                         'code' => $item['code'],
-        //                 ],
-        //                 [
-        //                         'name' => $item['name'],
-        //                         'qty' => $item['qty'],
-        //                         'uom' => $item['uom'],
-        //                         'mat_par_type' => $item['mat_par_type'],
-        //                         'Revno' => 0,
-        //                         'active' => 1, // đảm bảo nếu thêm lại thì active lại
-        //                         'updated_at' => now(),
-        //                         'created_by' => session('user')['fullName'],
-        //                 ]
-        //         );
-        //         }
-
-        //         return response()->json(['success' => true]);
-        // }
+      
 
 }
