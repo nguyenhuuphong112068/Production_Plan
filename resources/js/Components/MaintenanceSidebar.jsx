@@ -16,7 +16,7 @@ import axios from "axios";
 
 const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   setPercentShow, selectedRows, setSelectedRows, resources,
-  currentPassword, userID, userGroup, userGroupName, production, userDepartment, isMaintenance = true, maintenanceType, setMaintenanceType }) => {
+  currentPassword, userID, userGroup, userGroupName, production, userDepartment, isMaintenance = true, maintenanceType, setMaintenanceType, onAutoSchedule, onCancelSchedule }) => {
 
   const wrapperRef = useRef(null);
 
@@ -27,6 +27,47 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const [currentIndex, setCurrentIndex] = useState(1);
   const [tableData, setTableData] = useState([]);
   const [isResizing, setIsResizing] = useState(false);
+
+  // States cho Modal Hủy Lịch
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelDate, setCancelDate] = useState(moment().format('YYYY-MM-DD'));
+  const [cancelMode, setCancelMode] = useState('all'); // 'all' hoặc 'resource'
+  const [cancelResourceId, setCancelResourceId] = useState(null);
+  const [isCanceling, setIsCanceling] = useState(false);
+
+  const handleCancelConfirm = async () => {
+    if (cancelMode === 'resource' && !cancelResourceId) {
+      Swal.fire('Cảnh báo', 'Vui lòng chọn phòng máy cần hủy lịch.', 'warning');
+      return;
+    }
+
+    const { isConfirmed } = await Swal.fire({
+      title: 'Xác nhận xóa',
+      text: `Bạn có chắc chắn muốn xóa lịch ${maintenanceType} ${cancelMode === 'all' ? 'toàn bộ' : 'của phòng đã chọn'} từ ngày ${moment(cancelDate).format('DD/MM/YYYY')}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Quay lại'
+    });
+
+    if (isConfirmed) {
+      setIsCanceling(true);
+      onCancelSchedule({
+        startDate: cancelDate,
+        type: maintenanceType,
+        mode: cancelMode,
+        resourceId: cancelResourceId
+      })
+        .then(() => {
+          Swal.fire('Thành công', 'Đã hủy lịch sắp xếp.', 'success');
+          setShowCancelModal(false);
+        })
+        .catch(err => {
+          Swal.fire('Lỗi', err.message || 'Không thể hủy lịch.', 'error');
+        })
+        .finally(() => setIsCanceling(false));
+    }
+  };
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -360,62 +401,146 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
           }}
         />
         {/* Header Section */}
-        {/* Header Section */}
-        <div className="p-2 border-bottom bg-light">
+        <div className="sidebar-header p-2 border-bottom bg-light">
           <Row className="align-items-center g-2 m-0">
-            {/* Cột trái: Tìm kiếm */}
-            <Col md={4} className="d-flex align-items-center">
-              <div className="maintenance-search-wrap flex-grow-1 w-full m-0">
-                <i className="pi pi-search"></i>
-                <InputText
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Tìm máy, thiết bị..."
-                  className="p-inputtext-sm w-full"
-                />
-              </div>
+            {/* Phần 1: Ô tìm kiếm (25%) */}
+            <Col xs={3}>
+              <span className="p-input-icon-left w-100">
+                <i className="pi pi-search" />
+                <InputText className="p-inputtext-sm w-100 text-xs" placeholder="Tìm kiếm..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </span>
             </Col>
 
-            {/* Cột giữa: Bộ lọc loại bảo trì */}
-            <Col md={6}>
-              <div className="maintenance-type-selector shadow-sm m-0">
+            {/* Phần 2: 3 nút chọn loại lịch (50%) */}
+            <Col xs={6}>
+              <div className="maintenance-type-selector shadow-sm m-0 d-flex w-100">
                 <Button
                   label="Hiệu Chuẩn"
-                  icon="pi pi-check-circle"
                   badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_HC')).length || 0)}
                   badgeClassName="maintenance-badge-hc"
-                  className={`p-button-sm ${maintenanceType === 'HC' ? 'p-button-info' : 'p-button-outlined p-button-secondary'}`}
+                  className={`p-button-sm flex-fill ${maintenanceType === 'HC' ? 'p-button-info' : 'p-button-outlined p-button-secondary'}`}
                   onClick={() => setMaintenanceType('HC')}
-                  style={{ flex: 1 }}
+                  style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
                 />
                 <Button
                   label="Bảo Trì"
-                  icon="pi pi-cog"
                   badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && (e.code?.endsWith('_TB') || e.code?.endsWith('_8'))).length || 0)}
                   badgeClassName="maintenance-badge-tb"
-                  className={`p-button-sm ${maintenanceType === 'TB' ? 'p-button-warning' : 'p-button-outlined p-button-secondary'}`}
+                  className={`p-button-sm flex-fill ${maintenanceType === 'TB' ? 'p-button-warning' : 'p-button-outlined p-button-secondary'}`}
                   onClick={() => setMaintenanceType('TB')}
-                  style={{ flex: 1 }}
+                  style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
                 />
                 <Button
                   label="Tiện Ích"
-                  icon="pi pi-bolt"
                   badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_TI')).length || 0)}
                   badgeClassName="maintenance-badge-ti"
-                  className={`p-button-sm ${maintenanceType === 'TI' ? 'p-button-success' : 'p-button-outlined p-button-secondary'}`}
+                  className={`p-button-sm flex-fill ${maintenanceType === 'TI' ? 'p-button-success' : 'p-button-outlined p-button-secondary'}`}
                   onClick={() => setMaintenanceType('TI')}
-                  style={{ flex: 1 }}
+                  style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
                 />
               </div>
             </Col>
 
-            {/* Cột phải: Thao tác đóng/mở */}
-            <Col md={2} className="d-flex justify-content-end gap-1">
+            {/* Phần 3: 3 nút chức năng còn lại (25%) */}
+            <Col xs={3} className="d-flex justify-content-end gap-1">
+              <Button
+                label="Huỷ Lịch"
+                icon="pi pi-trash"
+                className="p-button-sm p-button-danger shadow-sm"
+                onClick={() => setShowCancelModal(true)}
+                tooltip="Xoá các lịch đã sắp"
+                style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '0.75rem' }}
+              />
+              <Button
+                label="Sắp Lịch"
+                icon="🤖"
+                className="p-button-sm p-button-success shadow-sm"
+                onClick={onAutoSchedule}
+                tooltip="Tự động sắp lịch (HC/BT/TI)"
+                style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '0.75rem' }}
+              />
               <Button icon="pi pi-arrows-h" className="p-button-rounded p-button-text p-button-secondary p-button-sm" onClick={handleToggle} />
               <Button icon="pi pi-times" className="p-button-rounded p-button-text p-button-danger p-button-sm" onClick={() => onClose(false)} />
             </Col>
           </Row>
         </div>
+
+        {/* Modal Huỷ Lịch */}
+        <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)} centered size="md">
+          <Modal.Header closeButton className="bg-danger text-white">
+            <Modal.Title>
+              <i className="pi pi-trash me-2"></i>
+              Huỷ Lịch {maintenanceType === 'HC' ? 'Hiệu Chuẩn' : maintenanceType === 'TB' ? 'Bảo Trì' : 'Tiện Ích'}
+            </Modal.Title>
+          </Modal.Header>
+
+          <Modal.Body>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">1. Ngày bắt đầu hủy</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={cancelDate}
+                  onChange={(e) => setCancelDate(e.target.value)}
+                />
+                <Form.Text className="text-muted">
+                  Hệ thống sẽ cập nhật lại các lịch từ ngày này về sau.
+                </Form.Text>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold">2. Chế độ hủy</Form.Label>
+                <div className="d-flex gap-4 ms-2">
+                  <Form.Check
+                    type="radio"
+                    label={`Hủy toàn bộ (${maintenanceType})`}
+                    name="cancelMode"
+                    id="modeAll"
+                    checked={cancelMode === 'all'}
+                    onChange={() => setCancelMode('all')}
+                  />
+                  <Form.Check
+                    type="radio"
+                    label="Hủy theo phòng chọn"
+                    name="cancelMode"
+                    id="modeResource"
+                    checked={cancelMode === 'resource'}
+                    onChange={() => setCancelMode('resource')}
+                  />
+                </div>
+              </Form.Group>
+
+              {cancelMode === 'resource' && (
+                <Form.Group className="mb-3 animate__animated animate__fadeIn">
+                  <Form.Label className="fw-bold">3. Chọn phòng máy</Form.Label>
+                  <Dropdown
+                    value={cancelResourceId}
+                    options={resources}
+                    onChange={(e) => setCancelResourceId(e.value)}
+                    optionLabel="title"
+                    optionValue="id"
+                    placeholder="Chọn phòng..."
+                    className="w-100"
+                    filter
+                    showClear
+                    appendTo="self"
+                  />
+                </Form.Group>
+              )}
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button label="Quay lại" className="p-button-text p-button-secondary" onClick={() => setShowCancelModal(false)} />
+            <Button
+              label={isCanceling ? "Đang xử lý..." : "Xác nhận hủy lịch"}
+              icon="pi pi-check"
+              className="p-button-danger"
+              disabled={isCanceling}
+              onClick={handleCancelConfirm}
+            />
+          </Modal.Footer>
+        </Modal>
+
 
         {/* Bảng dữ liệu */}
         <div className="flex-grow-1 overflow-hidden p-2">
