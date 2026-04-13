@@ -110,7 +110,7 @@ class DailyReportController extends Controller
 
             ->select(
                 "sp.$group_By",
-                "sp.stage_code",
+                DB::raw("CASE WHEN sp.stage_code = 2 THEN 1 ELSE sp.stage_code END as stage_code"),
 
                 DB::raw("CONCAT(sp.id, '-yield-', y.id) AS id"),
                 DB::raw("CONCAT(product_name.name,'-',COALESCE(plan_master.actual_batch, plan_master.batch)) AS title"),
@@ -182,7 +182,7 @@ class DailyReportController extends Controller
 
             ->select(
                 "sp.$group_By",
-                "sp.stage_code",
+                DB::raw("CASE WHEN sp.stage_code = 2 THEN 1 ELSE sp.stage_code END as stage_code"),
                 DB::raw("CONCAT(sp.id, '-clearning') AS id"),
                 DB::raw("CONCAT(sp.title_clearning, ' (', sp.title, ') ') AS title"),
                 DB::raw("GREATEST(sp.actual_start_clearning, '$startDateStr') AS actual_start"),
@@ -309,7 +309,7 @@ class DailyReportController extends Controller
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDateStr, $startDateStr])
             ->select(
                 "sp.$group_By",
-                "sp.stage_code",
+                DB::raw("CASE WHEN sp.stage_code = 2 THEN 1 ELSE sp.stage_code END as stage_code"),
                 DB::raw("CONCAT(sp.id, '-theory-yield') AS id"),
                 DB::raw("CONCAT(COALESCE(product_name.name, 'N/A'), ' - ', COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A')) AS title"),
 
@@ -542,7 +542,7 @@ class DailyReportController extends Controller
                         ->first();
 
                     return (object)[
-                        'stage_code' => $room->stage_code ?? null,
+                        'stage_code' => ($room->stage_code == 2 ? 1 : $room->stage_code),
                         'order_by' => $room->order_by ?? null,
                         $group_By => $first->$group_By,
                         'room_code' => $room->code ?? null,
@@ -584,7 +584,7 @@ class DailyReportController extends Controller
                 $group_By     => $room->id,
                 'room_code'   => $room->code,
                 'room_name'   => $room->name,
-                'stage_code'  => $room->stage_code,
+                'stage_code'  => ($room->stage_code == 2 ? 1 : $room->stage_code),
                 'order_by'    => $room->order_by,
                 'unit'        => $found->unit ?? null,
                 'total_qty'   => $found->total_qty ?? 0,
@@ -641,7 +641,7 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 'r.code as room_code',
                 'r.name as room_name',
-                'r.stage_code as stage_code',
+                DB::raw('CASE WHEN r.stage_code = 2 THEN 1 ELSE r.stage_code END as stage_code'),
                 DB::raw('
                     SUM(
                         (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
