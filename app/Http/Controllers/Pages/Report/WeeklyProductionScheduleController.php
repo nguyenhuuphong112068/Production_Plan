@@ -41,6 +41,7 @@ class WeeklyProductionScheduleController extends Controller
             ->leftJoin('stage_plan as sp', function ($join) use ($startOfWeek, $endOfWeek) {
                 $join->on('r.id', '=', 'sp.resourceId')
                     ->where('sp.stage_code', '!=', 8) // NOT maintenance
+                    ->where('sp.active', 1)
                     ->where(function ($q) use ($startOfWeek, $endOfWeek) {
                         $q->where(function ($q1) use ($startOfWeek, $endOfWeek) {
                             $q1->where('sp.start', '<', $endOfWeek)
@@ -104,7 +105,7 @@ class WeeklyProductionScheduleController extends Controller
                         $slotEnd = $end->lt($dayEndBound) ? $end : $dayEndBound;
                         $newItem->slot_start = $slotStart->toDateTimeString();
                         $newItem->slot_end   = $slotEnd->toDateTimeString();
-                        
+
                         // Giữ nguyên title hoặc product name
                         $newItem->display_title = $item->product_name ?? $item->title;
 
@@ -129,12 +130,12 @@ class WeeklyProductionScheduleController extends Controller
                         $slotEnd = $endC->lt($dayEndBound) ? $endC : $dayEndBound;
                         $newItemC->slot_start = $slotStart->toDateTimeString();
                         $newItemC->slot_end   = $slotEnd->toDateTimeString();
-                        
+
                         // Thêm prefix (VS)
                         $cleanTitle = $item->title_clearning ?: 'VS';
                         $productPart = $item->product_name ?? $item->title;
                         $newItemC->display_title = "($cleanTitle) " . $productPart;
-                        
+
                         // Đánh dấu là sự kiện vệ sinh để view có thể tô màu nếu cần (tùy chọn)
                         $newItemC->is_cleaning = true;
 
