@@ -48,6 +48,7 @@ class WeeklyProductionScheduleController extends Controller
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name as pn', 'fpc.product_name_id', '=', 'pn.id')
             ->where('r.deparment_code', $production_code)
+            ->where('r.stage_code', '!=', 8)
             ->select(
                 'r.id as room_id',
                 'r.name as room_name',
