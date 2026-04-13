@@ -103,7 +103,6 @@ class DailyReportController extends Controller
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('dosage as d', 'intermediate_category.dosage_id', '=', 'd.id')
 
-            ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
             ->where('sp.deparment_code', session('user')['production_code'])
 
             // 🔥 Yield overlap với khoảng cần tính
@@ -111,7 +110,7 @@ class DailyReportController extends Controller
 
             ->select(
                 "sp.$group_By",
-                DB::raw("CASE WHEN room.stage_code = 2 THEN 1 ELSE room.stage_code END as stage_code"),
+                "sp.stage_code",
 
                 DB::raw("CONCAT(sp.id, '-yield-', y.id) AS id"),
                 DB::raw("CONCAT(product_name.name,'-',COALESCE(plan_master.actual_batch, plan_master.batch)) AS title"),
@@ -176,7 +175,6 @@ class DailyReportController extends Controller
         |--------------------------------------------------------------------------
         */
         $cleaning = DB::table("stage_plan as sp")
-            ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
             ->whereNotNull('sp.actual_start_clearning')
             ->whereNotNull('sp.actual_end_clearning')
             ->whereRaw('(sp.actual_start_clearning < ? AND sp.actual_end_clearning > ?)', [$endDateStr, $startDateStr])
@@ -184,7 +182,7 @@ class DailyReportController extends Controller
 
             ->select(
                 "sp.$group_By",
-                DB::raw("CASE WHEN room.stage_code = 2 THEN 1 ELSE room.stage_code END as stage_code"),
+                "sp.stage_code",
                 DB::raw("CONCAT(sp.id, '-clearning') AS id"),
                 DB::raw("CONCAT(sp.title_clearning, ' (', sp.title, ') ') AS title"),
                 DB::raw("GREATEST(sp.actual_start_clearning, '$startDateStr') AS actual_start"),
@@ -216,7 +214,7 @@ class DailyReportController extends Controller
 
             ->select(
                 "rs.room_id as $group_By",
-                DB::raw("CASE WHEN room.stage_code = 2 THEN 1 ELSE room.stage_code END as stage_code"),
+                "room.stage_code",
                 DB::raw("CONCAT(rs.id, '-action') AS id"),
                 "rs.in_production as title",
                 DB::raw("GREATEST(rs.start, '$startDateStr') AS actual_start"),
@@ -304,7 +302,6 @@ class DailyReportController extends Controller
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
-            ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
             ->whereNotNull('sp.start')
             ->where('sp.active', 1)
             ->where('sp.deparment_code', session('user')['production_code'])
@@ -312,7 +309,7 @@ class DailyReportController extends Controller
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDateStr, $startDateStr])
             ->select(
                 "sp.$group_By",
-                DB::raw("CASE WHEN room.stage_code = 2 THEN 1 ELSE room.stage_code END as stage_code"),
+                "sp.stage_code",
                 DB::raw("CONCAT(sp.id, '-theory-yield') AS id"),
                 DB::raw("CONCAT(COALESCE(product_name.name, 'N/A'), ' - ', COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A')) AS title"),
 
@@ -587,7 +584,7 @@ class DailyReportController extends Controller
                 $group_By     => $room->id,
                 'room_code'   => $room->code,
                 'room_name'   => $room->name,
-                'stage_code'  => ($room->stage_code == 2) ? 1 : $room->stage_code,
+                'stage_code'  => $room->stage_code,
                 'order_by'    => $room->order_by,
                 'unit'        => $found->unit ?? null,
                 'total_qty'   => $found->total_qty ?? 0,
@@ -644,7 +641,7 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 'r.code as room_code',
                 'r.name as room_name',
-                DB::raw("CASE WHEN r.stage_code = 2 THEN 1 ELSE r.stage_code END as stage_code"),
+                'r.stage_code as stage_code',
                 DB::raw('
                     SUM(
                         (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
