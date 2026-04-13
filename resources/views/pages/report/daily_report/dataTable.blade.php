@@ -14,6 +14,7 @@
 
             $stage_name = [
                 1 => 'Cân Nguyên Liệu',
+                2 => 'Cân Nguyên Liệu',
                 3 => 'Pha Chế',
                 4 => 'Trộn Hoàn Tất',
                 5 => 'Định Hình',
@@ -23,6 +24,7 @@
 
             $group_name = [
                 1 => 'Cân Nguyên Liệu',
+                2 => 'Cân Nguyên Liệu',
                 3 => 'Pha Chế',
                 4 => 'Sủi',
                 5 => 'Định Hình',
