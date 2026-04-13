@@ -17,9 +17,9 @@ export default function NoteModal({ show, setShow }) {
     { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước" },
     { color: "#002af9ff", label: "Lịch Sản Xuất Lý Thực Tế" },
     { color: "#8195f5ff", label: "Lịch Sản Xuất Lý Thuyết" },
-    { color: "#003A4F", label: "Lịch Hiệu Chuẩn" },
-    { color: "#9a1b72ff", label: "Lịch Bảo Trì Thiết Bị" },
-    { color: "#830cbfff", label: "Lịch Bảo Trì Tiện Ích" },
+    { color: "#003A4F", label: "Lịch Bảo Trì Thiết Bị " },
+    { color: "#b06c0cff", label: "Lịch Bảo Trì Tiện Ích" },
+    { color: "#830cbfff", label: "Lịch Hiệu Chuẩn" },
 
 
   ];

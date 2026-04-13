@@ -417,3 +417,5 @@ input:checked + .slider:before {
 }
 
 
+
+.fc-event-title-container, .fc-event-title { white-space: pre-wrap !important; }

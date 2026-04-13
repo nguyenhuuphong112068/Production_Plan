@@ -580,6 +580,96 @@ const MaintenanceCalender = () => {
 
   };
 
+  const handleAutoSchedule = async () => {
+    if (!authorization) return;
+
+    const typeLabel = maintenanceType === 'HC' ? 'Hiệu Chuẩn' : maintenanceType === 'TB' ? 'Bảo Trì' : 'Tiện Ích';
+
+    const result = await Swal.fire({
+      title: `Tự Động Sắp Lịch ${typeLabel}`,
+      text: `Hệ thống sẽ tự động sắp xếp các tác vụ ${typeLabel} đang chờ dựa trên ngày tới hạn và nhóm theo phòng. Bạn có chắc chắn muốn thực hiện?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Hủy'
+    });
+
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: "Đang sắp lịch...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+      const currentView = calendarRef.current?.getApi().view.type;
+      const theoryHidden = Number(sessionStorage.getItem('theoryHidden')) || 0;
+
+      axios.post('/MaintenanceSchedual/autoSchedual', {
+        startDate: toLocalISOString(new Date()), // Bắt đầu từ thời điểm hiện tại
+        viewStart: toLocalISOString(activeStart),
+        viewEnd: toLocalISOString(activeEnd),
+        viewtype: currentView,
+        theory: theoryHidden,
+        type: maintenanceType
+      })
+        .then(res => {
+          Swal.close();
+          if (res.data.success) {
+            setEvents(res.data.events);
+            setPlan(res.data.plan);
+            Swal.fire({
+              icon: 'success',
+              title: 'Thành công',
+              text: `Đã tự động sắp xếp ${res.data.scheduled_count} tác vụ.`,
+              timer: 2000
+            });
+          } else {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Thông báo',
+              text: res.data.message
+            });
+          }
+        })
+        .catch(err => {
+          Swal.close();
+          Swal.fire({
+            icon: 'error',
+            title: 'Lỗi',
+            text: err.response?.data?.message || "Có lỗi xảy ra khi tự động sắp lịch."
+          });
+        });
+    }
+  };
+
+  const handleCancelSchedule = (params) => {
+    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    const currentView = calendarRef.current?.getApi().view.type;
+    const theoryHidden = Number(sessionStorage.getItem('theoryHidden')) || 0;
+
+    return axios.post('/MaintenanceSchedual/cancelSchedule', {
+      ...params,
+      viewStart: toLocalISOString(activeStart),
+      viewEnd: toLocalISOString(activeEnd),
+      viewtype: currentView,
+      theory: theoryHidden
+    })
+      .then(res => {
+        if (res.data.success) {
+          setEvents(res.data.events);
+          setPlan(res.data.plan);
+          return res.data;
+        }
+        throw new Error(res.data.message);
+      });
+  };
+
+
   const timeToMilliseconds = (time) => {
     const [h, m] = time.split(":").map(Number);
     return (h * 3600 + m * 60) * 1000;
@@ -2226,6 +2316,8 @@ const MaintenanceCalender = () => {
           isMaintenance={true}
           maintenanceType={maintenanceType}
           setMaintenanceType={setMaintenanceType}
+          onAutoSchedule={handleAutoSchedule}
+          onCancelSchedule={handleCancelSchedule}
         />)}
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}

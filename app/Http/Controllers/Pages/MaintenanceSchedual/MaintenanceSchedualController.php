@@ -119,19 +119,274 @@ class MaintenanceSchedualController extends SchedualController
 
             ]);
         } catch (\Throwable $e) {
-            // Ghi log chi tiết lỗi
-            Log::error('Error in view(): ' . $e->getMessage(), [
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'error' => true,
-                'message' => $e->getMessage(),
-            ], 500);
+            Log::error('Error in view(): ' . $e->getMessage());
+            return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
         }
     }
+
+    public function autoSchedual(Request $request)
+    {
+        $production = session('user')['production_code'];
+        $startDateStr = $request->startDate ?? Carbon::now()->addDay()->format('Y-m-d 07:15:00');
+        $startDate = Carbon::parse($startDateStr);
+
+        // Lấy tất cả các task bảo trì chưa sắp lịch (start IS NULL)
+        $plans = $this->getPlanWaiting($production);
+
+        $typeFilter = $request->type; // 'HC', 'TB', 'TI'
+        if ($typeFilter) {
+            $plans = $plans->filter(function ($plan) use ($typeFilter) {
+                $code = (string)($plan->code ?? '');
+                if ($typeFilter === 'HC' && str_ends_with($code, '_HC')) return true;
+                if ($typeFilter === 'TB' && (str_ends_with($code, '_TB') || str_ends_with($code, '_8'))) return true;
+                if ($typeFilter === 'TI' && str_ends_with($code, '_TI')) return true;
+                return false;
+            });
+        }
+
+        if ($plans->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Không có tác vụ nào đang chờ sắp lịch.']);
+        }
+
+        // Chuẩn bị biến theo dõi thời gian rảnh của từng phòng
+        $existingEvents = DB::table('stage_plan')
+            ->where('deparment_code', $production)
+            ->where('end', '>=', $startDate->toDateString())
+            ->where('active', 1)
+            ->whereNotNull('resourceId')
+            ->select('resourceId', 'end', 'end_clearning')
+            ->get();
+
+        $roomFreeTimes = [];
+        foreach ($existingEvents as $ev) {
+            $eTime = Carbon::parse($ev->end);
+            // Nếu có vệ sinh, phòng chỉ rảnh sau khi vệ sinh xong
+            if ($ev->end_clearning) {
+                $cTime = Carbon::parse($ev->end_clearning);
+                if ($cTime->gt($eTime)) {
+                    $eTime = $cTime;
+                }
+            }
+            
+            if (!isset($roomFreeTimes[$ev->resourceId]) || $eTime->gt($roomFreeTimes[$ev->resourceId])) {
+                $roomFreeTimes[$ev->resourceId] = $eTime;
+            }
+        }
+
+        // Nhóm theo resourceId đã được xác định trước
+        $roomGroups = [];
+        foreach ($plans as $plan) {
+            $rid = $plan->resourceId;
+            if (!$rid) continue; // Bỏ qua nếu chưa gán phòng
+
+            $roomGroups[$rid]['tasks'][] = $plan;
+            $dueDate = $plan->expected_date ? Carbon::parse($plan->expected_date) : Carbon::now()->addYears(10);
+
+            if (!isset($roomGroups[$rid]['min_due']) || $dueDate->lt($roomGroups[$rid]['min_due'])) {
+                $roomGroups[$rid]['min_due'] = $dueDate;
+            }
+        }
+
+        // Sắp xếp các nhóm phòng theo ngày tới hạn sớm nhất
+        uasort($roomGroups, function ($a, $b) {
+            return $a['min_due']->timestamp - $b['min_due']->timestamp;
+        });
+
+        $scheduledCount = 0;
+        DB::beginTransaction();
+        try {
+            foreach ($roomGroups as $roomId => $group) {
+                // Nhóm các task trong cùng 1 phòng theo Parent_Equip_id (Thiết bị lớn)
+                $parentGroups = collect($group['tasks'])->groupBy('Parent_Equip_id');
+
+                foreach ($parentGroups as $parentEquipId => $subTasks) {
+                    $currentFree = $roomFreeTimes[$roomId] ?? $startDate;
+                    
+                    // 1. Tính tổng thời gian của cả nhóm thiết bị này
+                    $totalDuration = 0;
+                    foreach ($subTasks as $task) {
+                        $totalDuration += $this->toMinutes($task->exe_time ?? '01:00');
+                    }
+
+                    // Lấy task đầu tiên làm đại diện để kiểm tra loại (TB/HC/TI) và lấy tên thiết bị lớn
+                    $firstTask = $subTasks->first();
+                    $type = strtoupper(substr($firstTask->code ?? '', -2));
+
+                    // 2. Tạo tiêu đề theo qui tắc: Mã lớn _ Tên lớn : <br/> - Mã con 1 <br/> - Mã con 2...
+                    $customTitle = ($firstTask->Parent_Equip_id ?? 'N/A') . " _ " . ($firstTask->Eqp_name ?? 'N/A') . " :";
+                    foreach ($subTasks as $st) {
+                        if ($st->instrument_code) {
+                            $customTitle .= "<br/> - " . $st->instrument_code;
+                        }
+                    }
+
+                    $taskStart = $currentFree->copy();
+                    $taskEnd = $taskStart->copy()->addMinutes($totalDuration);
+
+                    // Chỉ Bảo Trì (TB hoặc hậu tố _8) mới tính Clearning
+                    if ($type === 'TB' || str_ends_with($firstTask->code ?? '', '_8')) {
+                        $startClearning = null;
+                        $endClearning = null;
+
+                        $prevProduct = DB::table('stage_plan as sp')
+                            ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                            ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                            ->join('quota as q', function ($join) {
+                                $join->on('fpc.intermediate_code', '=', 'q.intermediate_code')
+                                    ->on('sp.stage_code', '=', 'q.stage_code');
+                            })
+                            ->where('sp.resourceId', $roomId)
+                            ->where(function ($q) use ($taskStart) {
+                                $q->where('sp.end', '<=', $taskStart)
+                                    ->orWhere('sp.actual_end', '<=', $taskStart);
+                            })
+                            ->where('sp.stage_code', '<', 8)
+                            ->orderBy('sp.end', 'desc')
+                            ->select('q.C2_time')
+                            ->first();
+
+                        if ($prevProduct && $prevProduct->C2_time) {
+                            $dur = $this->toMinutes($prevProduct->C2_time);
+                            $startClearning = $taskEnd->copy();
+                            $endClearning = $startClearning->copy()->addMinutes($dur);
+                        }
+
+                        // Cập nhật cho tất cả các plan trong nhóm này
+                        foreach ($subTasks as $plan) {
+                            DB::table('stage_plan')
+                                ->where('plan_master_id', $plan->plan_master_id)
+                                ->update([
+                                    'start' => $taskStart,
+                                    'end' => $taskEnd,
+                                    'title_clearning' => 'VS-II',
+                                    'start_clearning' => $startClearning,
+                                    'end_clearning'   => $endClearning,
+                                    'schedualed_by' => session('user')['fullName'],
+                                    'schedualed_at' => now(),
+                                    'title' => $customTitle,
+                                ]);
+                            $scheduledCount++;
+                        }
+
+                        $roomFreeTimes[$roomId] = $endClearning ?? $taskEnd;
+                    } else {
+                        // Logic cho Hiệu Chuẩn (HC) và Tiện Ích (TI) - Không có clearning
+                        foreach ($subTasks as $plan) {
+                            DB::table('stage_plan')
+                                ->where('plan_master_id', $plan->plan_master_id)
+                                ->update([
+                                    'start' => $taskStart,
+                                    'end'   => $taskEnd,
+                                    'title_clearning' => null,
+                                    'start_clearning' => null,
+                                    'end_clearning'   => null,
+                                    'title' => $customTitle,
+                                    'schedualed_by' => session('user')['fullName'],
+                                    'schedualed_at' => now(),
+                                ]);
+                            $scheduledCount++;
+                        }
+                        
+                        $roomFreeTimes[$roomId] = $taskEnd;
+                    }
+                }
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("AutoSchedule Error: " . $e->getMessage());
+            return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
+        }
+
+        // Trả về dữ liệu cập nhật giống như store()
+        $viewStart = $request->viewStart ?? $startDate->toDateString();
+        $viewEnd = $request->viewEnd ?? $startDate->copy()->addDays(7)->toDateString();
+
+        $eventsRaw = parent::getEvents($production, $viewStart, $viewEnd, true, (int)$request->theory);
+        $events = $this->groupMaintenanceEvents($eventsRaw);
+        $plan_waiting = $this->getPlanWaiting($production);
+
+        return response()->json([
+            'success' => true,
+            'scheduled_count' => $scheduledCount,
+            'events' => $events,
+            'plan' => $plan_waiting,
+        ]);
+    }
+
+    public function cancelSchedule(Request $request)
+    {
+
+
+
+        $production = session('user')['production_code'];
+        $startDate = $request->startDate;
+        $typeFilter = $request->type; // HC, TB, TI
+        $mode = $request->mode; // all, resource
+        $resourceId = $request->resourceId;
+
+        try {
+            DB::beginTransaction();
+
+            $query = DB::table('stage_plan')
+                ->where('deparment_code', $production)
+                ->where('stage_code', 8)
+                ->where('active', 1)
+                ->where('tank', 0)
+                ->where('finished', 0)
+                ->where('start', '>=', $startDate);
+
+            // Lọc theo Type (Hậu tố mã code)
+            if ($typeFilter === 'HC') {
+                $query->where('code', 'like', '%\_HC');
+            } elseif ($typeFilter === 'TB') {
+                $query->where(function ($q) {
+                    $q->where('code', 'like', '%\_TB')
+                        ->orWhere('code', 'like', '%\_8');
+                });
+            } elseif ($typeFilter === 'TI') {
+                $query->where('code', 'like', '%\_TI');
+            }
+
+            // Lọc theo mode Resource
+            if ($mode === 'resource' && $resourceId) {
+                $query->where('resourceId', $resourceId);
+            }
+
+
+            $query->update([
+                'start' => null,
+                'end' => null,
+                'title' => null,
+                'start_clearning' => null,
+                'end_clearning' => null,
+                'title_clearning' => null,
+
+            ]);
+
+            DB::commit();
+
+            // Lấy lại dữ liệu view
+            $viewStart = $request->viewStart ?? now()->startOfMonth()->toDateString();
+            $viewEnd = $request->viewEnd ?? now()->endOfMonth()->toDateString();
+
+            $eventsRaw = parent::getEvents($production, $viewStart, $viewEnd, true, (int)$request->theory);
+            $events = $this->groupMaintenanceEvents($eventsRaw);
+            $plan_waiting = $this->getPlanWaiting($production);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã hủy lịch thành công.',
+                'events' => $events,
+                'plan' => $plan_waiting,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("CancelSchedule Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
 
 
     public function getPlanWaiting($production, $order_by_type = false)
@@ -234,14 +489,15 @@ class MaintenanceSchedualController extends SchedualController
 
     public function store(Request $request)
     {
-
-        $type = $request->type;
+        $products = collect($request->products);
+        $firstProductCode = $products->first()['code'] ?? '';
+        $type = $request->type ?? strtoupper(substr($firstProductCode, -2));
         $targetRoomId = $request->room_id;
 
         DB::beginTransaction();
         try {
 
-            $products = collect($request->products)->sortBy('id')->values();
+            $products = $products->sortBy('id')->values();
 
             $start = Carbon::parse($request->start);
 
@@ -741,11 +997,17 @@ class MaintenanceSchedualController extends SchedualController
                 $first->id = implode(',', $allIds) . '-maintenance';
 
                 // Gom tiêu đề các thiết bị
-                $allTitles = $group->pluck('title')->unique()->map(function ($t) {
-                    $parts = explode(' - ', $t);
-                    return count($parts) > 1 ? end($parts) : $t;
-                })->toArray();
-                $first->title = "BT Thiết Bị: " . implode(" | ", $allTitles);
+                $uniqueTitles = $group->pluck('title')->unique();
+                if ($uniqueTitles->count() === 1 && strpos($uniqueTitles->first(), ' _ ') !== false) {
+                    // Nếu tất cả các task đã chung 1 tiêu đề gộp (từ autoSchedual), giữ nguyên nó
+                    $first->title = $uniqueTitles->first();
+                } else {
+                    $allTitles = $uniqueTitles->map(function ($t) {
+                        $parts = explode(' - ', $t);
+                        return count($parts) > 1 ? end($parts) : $t;
+                    })->toArray();
+                    $first->title = "BT Thiết Bị: " . implode(" | ", $allTitles);
+                }
             }
             return $first;
         })->values();
