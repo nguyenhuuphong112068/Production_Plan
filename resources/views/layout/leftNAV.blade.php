@@ -562,8 +562,10 @@
 
                 <!-- Droplist Phân Công -->
                 @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
-                    <li class="nav-item has-treeview {{ str_contains(url()->current(), 'assignemnt') ? 'menu-open' : '' }}">
-                        <a href="#" class="nav-link {{ str_contains(url()->current(), 'assignemnt') ? 'active' : '' }}">
+                    <li
+                        class="nav-item has-treeview {{ str_contains(url()->current(), 'assignemnt') ? 'menu-open' : '' }}">
+                        <a href="#"
+                            class="nav-link {{ str_contains(url()->current(), 'assignemnt') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-user-check"></i>
                             <p>
                                 Phân Công
@@ -586,8 +588,10 @@
                                 </a>
                             </li>
 
-                            <li class="nav-item has-treeview {{ str_contains(url()->current(), 'personnel') ? 'menu-open' : '' }}">
-                                <a href="#" class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
+                            <li
+                                class="nav-item has-treeview {{ str_contains(url()->current(), 'personnel') ? 'menu-open' : '' }}">
+                                <a href="#"
+                                    class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon text-info"></i>
                                     <p>
                                         Danh Sách Nhân Viên
@@ -595,10 +599,10 @@
                                     </p>
                                 </a>
                                 <ul class="nav nav-treeview ml-2">
-                                    @foreach(['PXV1', 'PXV2', 'PXVH', 'PXTN', 'PXDN', 'KTBT', 'QA'] as $dept)
+                                    @foreach (['PXV1', 'PXV2', 'PXVH', 'PXTN', 'PXDN', 'KTBT', 'QA'] as $dept)
                                         <li class="nav-item">
-                                            <a href="{{ route('pages.assignment.personnel.list', ['department' => $dept]) }}" 
-                                               class="nav-link {{ request()->department == $dept ? 'active' : '' }}">
+                                            <a href="{{ route('pages.assignment.personnel.list', ['department' => $dept]) }}"
+                                                class="nav-link {{ request()->department == $dept ? 'active' : '' }}">
                                                 <i class="far fa-dot-circle nav-icon"></i>
                                                 <p>{{ $dept }}</p>
                                             </a>
