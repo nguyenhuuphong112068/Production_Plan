@@ -132,7 +132,7 @@
                                                                 <div style="font-size: 13px; color: #333;">
                                                                     <b>{{ $eventIdx++ }}.</b>
                                                                     <span
-                                                                        class="text-dark">{{ $e->product_name }}</span>
+                                                                        class="{{ isset($e->is_cleaning) && $e->is_cleaning ? 'text-success' : 'text-dark' }} font-weight-bold">{{ $e->display_title }}</span>
                                                                     -
                                                                     <span
                                                                         class="text-danger font-weight-bold">{{ $batchDisplay }}</span>
