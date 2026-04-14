@@ -9,7 +9,8 @@ use App\Http\Controllers\Pages\MaterData\SourceMaterialController;
 use App\Http\Controllers\Pages\MaterData\SpecificationController;
 use App\Http\Controllers\Pages\MaterData\UnitController;
 use App\Http\Controllers\Pages\MaterData\OffDaysController;
-use App\Http\Controllers\Pages\MaterData\PersonnelController;
+use App\Http\Controllers\Pages\MaterData\StageGroupController;
+use App\Http\Controllers\Pages\MaterData\DepartmentController;
 use App\Http\Controllers\UploadDataController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
@@ -110,6 +111,25 @@ Route::prefix('/materData')
                 Route::post('delete_ajax','deleteAjax')->name('delete_ajax');
                 Route::post('flags/store_ajax','storeFlagAjax')->name('flags_store_ajax');
                 Route::post('flags/delete_ajax','deleteFlagAjax')->name('flags_delete_ajax');
+        });
+
+        Route::prefix('/stageGroup')
+        ->name('stageGroup.')
+        ->controller(StageGroupController::class)
+        ->group(function(){
+                Route::get('','index')->name('list');
+                Route::post('store','store')->name('store');
+                Route::post('update', 'update')->name('update');
+        });
+
+        Route::prefix('/department')
+        ->name('department.')
+        ->controller(DepartmentController::class)
+        ->group(function(){
+                Route::get('','index')->name('list');
+                Route::post('store','store')->name('store');
+                Route::post('update', 'update')->name('update');
+                Route::post('deActive','deActive')->name('deActive');
         });
 
 

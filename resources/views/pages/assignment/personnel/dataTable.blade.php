@@ -96,8 +96,26 @@
             modal.find('input[name="code"]').val(button.data('code'));
             modal.find('input[name="name"]').val(button.data('name'));
             modal.find('input[name="deparment_code"]').val(button.data('deparment_code'));
-            modal.find('input[name="group_name"]').val(button.data('group_name'));
-            modal.find('input[name="group_code"]').val(button.data('group_code'));
+            
+            // Set Group select and hidden fields
+            const groupCode = button.data('group_code');
+            const groupName = button.data('group_name');
+            modal.find('#update_group_select').val(groupCode);
+            modal.find('#update_group_name').val(groupName);
+            modal.find('#update_group_code').val(groupCode);
+        });
+
+        // Sync hidden fields on Group select change
+        $('#create_group_select').change(function() {
+            const selected = $(this).find('option:selected');
+            $('#create_group_name').val(selected.data('name') || '');
+            $('#create_group_code').val(selected.val() || '');
+        });
+
+        $('#update_group_select').change(function() {
+            const selected = $(this).find('option:selected');
+            $('#update_group_name').val(selected.data('name') || '');
+            $('#update_group_code').val(selected.val() || '');
         });
 
         $('#data_table_personnel').DataTable({

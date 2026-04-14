@@ -80,6 +80,10 @@ const ScheduleTest = () => {
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
   const [userID, setUserID] = useState(null);
+  const [isCascadeMode, setIsCascadeMode] = useState(() => {
+    return JSON.parse(sessionStorage.getItem('cascadeMode')) || false;
+  });
+
 
   const [activePlanMasterIds, setActivePlanMasterIds] = useState([]); // Mảng để chứa nhiều mã lọc cùng lúc
   const stageName = {
@@ -544,6 +548,12 @@ const ScheduleTest = () => {
     sessionStorage.setItem('theoryHidden', next);
 
     handleViewChange(null, null);
+  };
+
+  const toggleCascadeMode = () => {
+    const newState = !isCascadeMode;
+    setIsCascadeMode(newState);
+    sessionStorage.setItem('cascadeMode', JSON.stringify(newState));
   };
 
   /// Tô màu các event trùng khớp
@@ -1045,6 +1055,7 @@ const ScheduleTest = () => {
     axios.put('/Schedual/update', {
       reason: reasonObj,
       theory: theoryHidden,
+      cascade: isCascadeMode,
       changes: pendingChanges.map(change => ({
         id: change.id,
         start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
@@ -1169,6 +1180,7 @@ const ScheduleTest = () => {
 
         axios.put('/Schedual/update', {
           theory: theoryHidden,
+          cascade: isCascadeMode,
           changes: [{
             id: event.id,
             start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
@@ -2962,7 +2974,7 @@ const ScheduleTest = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -3066,14 +3078,19 @@ const ScheduleTest = () => {
             hint: 'Ẩn/ Hiện chú thích màu của lịch'
           },
           hiddenClearning: {
-            text: '🙈',
+            text: isCleaningHidden ? '👀' : '🙈',
             click: toggleCleaningEvents,
             hint: 'Ẩn/ Hiện lịch vệ sinh'
           },
           historyToggle: {
-            text: '📜',
+            text: showHistoryHover ? '⏳' : '📜',
             click: toggleHistoryHover,
             hint: 'Bật/Tắt chế độ hiển thị lịch sử thay đổi lịch khi hover chuột vào sự kiện'
+          },
+          cascadeToggle: {
+            text: isCascadeMode ? '⏳' : '🔀',
+            click: toggleCascadeMode,
+            hint: 'Bật/Tắt chế độ tịnh tiến tất cả các sự kiện phía sau trên cùng một Resource'
           },
 
           hiddenTheory: {
@@ -3094,9 +3111,9 @@ const ScheduleTest = () => {
           },
 
           changeSchedualer: {
-            text: '♻️',
+            text: '💾',
             click: handleSaveChanges,
-            hint: 'Lưu thay đổi lịch: sau khi thay đổi lịch bấm ♻️ hoặc Ctrl + S để lưu thay đổi'
+            hint: 'Lưu thay đổi lịch: sau khi thay đổi lịch bấm 💾 hoặc Ctrl + S để lưu thay đổi'
           },
           unSelect: {
             text: '🚫',
@@ -3121,7 +3138,7 @@ const ScheduleTest = () => {
           },
 
           ShowBadge: {
-            text: '👁️',
+            text: showRenderBadge ? '❌' : '👁️',
             click: () => setShowRenderBadge(!showRenderBadge),
             hint: 'Xem các thông tin thêm như: lý do đổi màu lịch, mã chiến dịch'
           },

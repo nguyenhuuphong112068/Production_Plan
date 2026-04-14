@@ -7,12 +7,12 @@
 @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
- 
+
 @section('mainContent')
-  @include('pages.materData.personnel.dataTable')
+    @include('pages.assignment.personnel.dataTable')
 @endsection
 
 @section('model')
-  @include('pages.materData.personnel.create')
-  @include('pages.materData.personnel.update') 
+    @include('pages.assignment.personnel.create')
+    @include('pages.assignment.personnel.update')
 @endsection
