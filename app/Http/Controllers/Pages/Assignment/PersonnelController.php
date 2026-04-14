@@ -26,7 +26,7 @@ class PersonnelController extends Controller
         $departments = DB::table('deparments')->where('active', true)->get();
         $groups = DB::table('stage_groups')->get();
 
-        return view('pages.materData.personnel.list', [
+        return view('pages.assignment.personnel.list', [
             'datas' => $datas,
             'departments' => $departments,
             'groups' => $groups,

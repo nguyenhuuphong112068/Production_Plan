@@ -24,17 +24,20 @@
                             <span class="text-danger small">{{ $errors->createErrors->first('name') }}</span>
                         @endif
                     </div>
+                    <input type="hidden" name="deparment_code" value="{{ $currentDepartment ?? '' }}">
+                    
                     <div class="form-group">
-                        <label>Mã Phòng Ban</label>
-                        <input type="text" name="deparment_code" class="form-control" value="{{ $currentDepartment ?? '' }}" placeholder="Ví dụ: QC">
-                    </div>
-                    <div class="form-group">
-                        <label>Tên Tổ</label>
-                        <input type="text" name="group_name" class="form-control" placeholder="Ví dụ: Tổ HC">
-                    </div>
-                    <div class="form-group">
-                        <label>Mã Tổ</label>
-                        <input type="text" name="group_code" class="form-control" placeholder="Ví dụ: THC">
+                        <label>Tên Tổ <span class="text-danger">*</span></label>
+                        <select id="create_group_select" class="form-control" required>
+                            <option value="">-- Chọn Tổ --</option>
+                            @foreach ($groups as $group)
+                                <option value="{{ $group->code }}" data-name="{{ $group->name }}">
+                                    {{ $group->name }} ({{ $group->code }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <input type="hidden" name="group_name" id="create_group_name">
+                        <input type="hidden" name="group_code" id="create_group_code">
                     </div>
                 </div>
                 <div class="modal-footer">

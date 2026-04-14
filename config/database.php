@@ -112,7 +112,7 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
-        #################################################################
+        // ################################################################
 
         // 'mms' => [
         //     'driver' => 'sqlsrv',
@@ -126,10 +126,8 @@ return [
         //     'prefix_indexes' => true,
         //     // 'encrypt' => 0,
         //     // 'trust_server_certificate' => true,
-           
-        
-        // ],
 
+        // ],
 
         'mms' => [
             'driver' => env('DB_MMS_DRIVER', 'sqlsrv'),
@@ -143,7 +141,7 @@ return [
             'encrypt' => env('DB_MMS_ENCRYPT', false),
             'trust_server_certificate' => env('DB_MMS_TRUST_SERVER_CERTIFICATE', true),
         ],
-        
+
         'cal1' => [
             'driver' => env('DB_CAL1_DRIVER', 'sqlsrv'),
             'host' => env('DB_CAL1_HOST'),
@@ -157,20 +155,18 @@ return [
             'trust_server_certificate' => env('DB_CAL1_TRUST_SERVER_CERTIFICATE', true),
         ],
 
-         'cal2' => [
-             'driver' => env('DB_CAL2_DRIVER', 'sqlsrv'),
-             'host' => env('DB_CAL2_HOST'),
-             'port' => env('DB_CAL2_PORT', 1433),
-             'database' => env('DB_CAL2_DATABASE'),
-             'username' => env('DB_CAL2_USERNAME'),
-             'password' => env('DB_CAL2_PASSWORD'),
-             'charset' => 'utf8',
-             'prefix' => '',
-             'encrypt' => env('DB_CAL2_ENCRYPT', false),
+        'cal2' => [
+            'driver' => env('DB_CAL2_DRIVER', 'sqlsrv'),
+            'host' => env('DB_CAL2_HOST'),
+            'port' => env('DB_CAL2_PORT', 1433),
+            'database' => env('DB_CAL2_DATABASE'),
+            'username' => env('DB_CAL2_USERNAME'),
+            'password' => env('DB_CAL2_PASSWORD'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'encrypt' => env('DB_CAL2_ENCRYPT', false),
             'trust_server_certificate' => env('DB_CAL2_TRUST_SERVER_CERTIFICATE', true),
-         ],
-
-
+        ],
 
     ],
 

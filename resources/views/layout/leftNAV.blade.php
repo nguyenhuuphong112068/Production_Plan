@@ -196,6 +196,20 @@
                             </li>
                         @endif
 
+                        <li class="nav-item">
+                            <a href="{{ route('pages.materData.stageGroup.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Tổ Quản Lý</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('pages.materData.department.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Phòng Ban</p>
+                            </a>
+                        </li>
+
 
                     </ul>
                 </li>
