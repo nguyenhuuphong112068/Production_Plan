@@ -40,7 +40,28 @@
                                     @csrf
                                     <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
                                     <input type="hidden" name="type" value="{{ request('type') }}">
-                                    @if (user_has_permission(session('user')['userId'], 'plan_maintenance_send', 'boolean'))
+                                    @php
+                                        $user = session('user');
+                                        $typeStr = request('type');
+                                        $hasSendPerm = user_has_permission(
+                                            $user['userId'],
+                                            'plan_maintenance_send',
+                                            'boolean',
+                                        );
+
+                                        $typeId = intval($typeStr);
+                                        $canSend = false;
+                                        if ($user['userGroup'] == 'Admin') {
+                                            $canSend = true;
+                                        } elseif ($hasSendPerm) {
+                                            if ($typeId == 1 && $user['department'] == 'QA') {
+                                                $canSend = true;
+                                            } elseif (($typeId == 2 || $typeId == 3) && $user['department'] == 'EN') {
+                                                $canSend = true;
+                                            }
+                                        }
+                                    @endphp
+                                    @if ($canSend && user_has_permission($user['userId'], 'plan_maintenance_send', 'boolean'))
                                         <button class="btn btn-success btn-create mb-2 " style="width: 177px;">
                                             <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
                                         </button>

@@ -63,7 +63,6 @@ class MaintenancePlanController extends Controller
         public function autoCreatePlan(Request $request)
         {
 
-
                 $startDate = $request->from_date;
                 $endDate = $request->to_date;
                 $type = $request->type;
@@ -84,6 +83,8 @@ class MaintenancePlanController extends Controller
                         return redirect()->back()->with('warning', 'Không tìm thấy lịch bảo trì nào trong khoảng thời gian này.');
                 }
 
+
+
                 // --- Bước tiền kiểm tra (Validation) Quota ---
                 $instIds = $schedules->pluck('Inst_ID')->map(fn($id) => trim($id))->unique()->toArray();
                 $type_prefix = [
@@ -92,15 +93,14 @@ class MaintenancePlanController extends Controller
                         3 => 'TI'
                 ];
 
-                $query = DB::table('quota_maintenance')
+
+
+                $allQuotas = DB::table('quota_maintenance')
                         ->whereIn('inst_id', $instIds)
-                        ->where('active', 1);
+                        ->where('active', 1)
+                        ->where('block', 'like', $type_prefix[$type] . '-%')
+                        ->get();
 
-                if ($type && isset($type_prefix[$type])) {
-                        $query->where('block', 'like', $type_prefix[$type] . '-%');
-                }
-
-                $allQuotas = $query->get();
 
                 $quotaIds = $allQuotas->pluck('id')->toArray();
                 $quotaRooms = DB::table('quota_maintenance_rooms')
@@ -908,6 +908,7 @@ class MaintenancePlanController extends Controller
                                 'plan_master.plan_list_id',
                                 'plan_master.product_caterogy_id',
                                 'plan_master.expected_date',
+                                'plan_master.deparment_code',
                                 'quota_maintenance.inst_id'
                         )
                         ->get();
@@ -940,7 +941,7 @@ class MaintenancePlanController extends Controller
                                                 'code' =>  $plan->id . "_" . $prefix,
                                                 'resourceId' => $room->room_id,
                                                 'required_room_code' => $room->room_code,
-                                                'deparment_code' => session('user')['production_code'],
+                                                'deparment_code' => $plan->deparment_code,
                                                 'created_date' => now(),
                                         ];
                                 }
@@ -954,7 +955,7 @@ class MaintenancePlanController extends Controller
                                         'campaign_code' => $campaignCode,
                                         'order_by' =>  $plan->id,
                                         'code' =>  $plan->id . "_" . $prefix,
-                                        'deparment_code' => session('user')['production_code'],
+                                        'deparment_code' => $plan->deparment_code,
                                         'created_date' => now(),
                                 ];
                         }

@@ -533,6 +533,66 @@ const ScheduleTest = () => {
     sessionStorage.setItem('showHistoryHover', JSON.stringify(newState));
   };
 
+  // Cập nhật màu nền nút historyToggle khi showHistoryHover thay đổi
+  useEffect(() => {
+    const btn = document.querySelector('.fc-historyToggle-button');
+    if (!btn) return;
+    if (showHistoryHover) {
+      btn.style.backgroundColor = '#51f50bff'; // amber/vàng khi bật
+      btn.style.borderColor = '#51f50bff';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.backgroundColor = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  }, [showHistoryHover]);
+
+  // Cập nhật màu nền nút cascadeToggle khi isCascadeMode thay đổi
+  useEffect(() => {
+    const btn = document.querySelector('.fc-cascadeToggle-button');
+    if (!btn) return;
+    if (isCascadeMode) {
+      btn.style.backgroundColor = '#51f50bff';
+      btn.style.borderColor = '#51f50bff';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.backgroundColor = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  }, [isCascadeMode]);
+
+  // Cập nhật màu nền nút hiddenClearning khi isCleaningHidden thay đổi
+  useEffect(() => {
+    const btn = document.querySelector('.fc-hiddenClearning-button');
+    if (!btn) return;
+    if (isCleaningHidden) {
+      btn.style.backgroundColor = '#51f50bff';
+      btn.style.borderColor = '#51f50bff';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.backgroundColor = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  }, [isCleaningHidden]);
+
+  // Cập nhật màu nền nút ShowBadge khi showRenderBadge thay đổi
+  useEffect(() => {
+    const btn = document.querySelector('.fc-ShowBadge-button');
+    if (!btn) return;
+    if (showRenderBadge) {
+      btn.style.backgroundColor = '#51f50bff';
+      btn.style.borderColor = '#51f50bff';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.backgroundColor = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  }, [showRenderBadge]);
+
   // const toggleTheoryEvents = () => {
 
   //   const current = JSON.parse(sessionStorage.getItem('theoryHidden'));
@@ -2329,7 +2389,7 @@ const ScheduleTest = () => {
 
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.put('/Schedual/submit')
+        axios.put('/Schedual/submit', { submit_type: 'production' })
 
           .then(res => {
             let data = res.data;

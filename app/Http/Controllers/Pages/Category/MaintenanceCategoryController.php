@@ -195,6 +195,10 @@ class MaintenanceCategoryController extends Controller
 
         public function updateTime(Request $request)
         {
+                if (!$this->checkPermission($request->id)) {
+                        return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
+                }
+
                 DB::table('quota_maintenance')
                         ->where('id', $request->id)
                         ->update([
@@ -207,6 +211,10 @@ class MaintenanceCategoryController extends Controller
 
         public function is_HVAC(Request $request)
         {
+                if (!$this->checkPermission($request->id)) {
+                        return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
+                }
+
                 DB::table('quota_maintenance')
                         ->where('id', $request->id)
                         ->update([
@@ -219,6 +227,10 @@ class MaintenanceCategoryController extends Controller
 
         public function updateRoom(Request $request)
         {
+                if (!$this->checkPermission($request->id)) {
+                        return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
+                }
+
                 $quota_id = $request->id;
                 $room_ids = $request->room_ids; // Mảng các room_id
 
@@ -267,6 +279,10 @@ class MaintenanceCategoryController extends Controller
 
         public function deActive(Request $request)
         {
+                if (!$this->checkPermission($request->id)) {
+                        return response()->json(['success' => false, 'message' => 'Bạn không có quyền vô hiệu mục này.'], 403);
+                }
+
                 DB::table('quota_maintenance')->where('id', $request->id)->update([
                         'active' => 0,
                         'created_by' => session('user')['fullName'],
@@ -277,6 +293,9 @@ class MaintenanceCategoryController extends Controller
 
         public function updateDepartment(Request $request)
         {
+                if (!$this->checkPermission($request->id)) {
+                        return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
+                }
 
                 $dept_code = $request->department_code ?? $request->deparment_code;
                 DB::table('quota_maintenance')
@@ -287,5 +306,24 @@ class MaintenanceCategoryController extends Controller
                                 'created_time' => now(),
                         ]);
                 return response()->json(['success' => true]);
+        }
+
+        private function checkPermission($id)
+        {
+                $quota = DB::table('quota_maintenance')->where('id', $id)->first();
+                if (!$quota) return false;
+
+                $user = session('user');
+                if (isset($user['department']) && $user['department'] === 'BOD') return true;
+
+                $block = $quota->block ?? '';
+                if (str_starts_with($block, 'HC-')) {
+                        return isset($user['department']) && $user['department'] === 'QA';
+                }
+                if (str_starts_with($block, 'BT-') || str_starts_with($block, 'TI-')) {
+                        return isset($user['department']) && $user['department'] === 'EN';
+                }
+
+                return false;
         }
 }

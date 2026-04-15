@@ -244,7 +244,7 @@ class SchedualController extends Controller
                 DB::raw('
                         SUM(
                                 sp.Theoretical_yields *
-                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "'.$endDate.'"), GREATEST(sp.start, "'.$startDate.'"))) /
+                                TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                                 TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                         ) as total_qty
                         '),
@@ -261,7 +261,7 @@ class SchedualController extends Controller
         $merged = $stage_plan_100->merge($stage_plan_part)
             ->groupBy(function ($item) use ($group_By) {
 
-                return $item->$group_By.'-'.$item->unit;
+                return $item->$group_By . '-' . $item->unit;
             })
             ->map(function ($items) use ($group_By) {
 
@@ -285,6 +285,8 @@ class SchedualController extends Controller
 
         $room_code = DB::table('room')->where('deparment_code', $production)->pluck('code', 'id');
 
+        $has_permission_maintenance = user_has_permission(session('user')['userId'], 'plan_maintenance_scheduler', 'boolean');
+        $has_permission_production = in_array(session('user')['userGroup'], ['Schedualer',  'Admin',  'Leader']);
         $maxFinishedStage = DB::table('stage_plan')
             ->where('finished', 1)
             ->select(
@@ -292,6 +294,7 @@ class SchedualController extends Controller
                 DB::raw('MAX(stage_code) as max_finished_stage')
             )
             ->groupBy('plan_master_id');
+
 
         // 2️⃣ Lấy danh sách stage_plan (gộp toàn bộ join)
         $event_plans = DB::table('stage_plan as sp')
@@ -311,7 +314,19 @@ class SchedualController extends Controller
             })
             ->where('sp.active', 1)
             ->whereNotNull('sp.resourceId')
-            ->when(! in_array(session('user')['userGroup'], ['Schedualer',  'Admin',  'Leader']), fn ($query) => $query->where('sp.submit', 1))
+            ->where(function ($query) use ($has_permission_production, $has_permission_maintenance) {
+                $query->where(function ($q) use ($has_permission_production) {
+                    $q->where('sp.stage_code', '!=', 8);
+                    if (!$has_permission_production) {
+                        $q->where('sp.submit', 1);
+                    }
+                })->orWhere(function ($q) use ($has_permission_maintenance) {
+                    $q->where('sp.stage_code', '=', 8);
+                    if (!$has_permission_maintenance) {
+                        $q->where('sp.submit', 1);
+                    }
+                });
+            })
             ->where('sp.deparment_code', $production)
             ->where(function ($q) {
 
@@ -475,7 +490,7 @@ class SchedualController extends Controller
                     $events->push([
                         'plan_id' => $plan->id,
                         'id' => "{$plan->id}-main",
-                        'title' => $plan->title.'-'.$plan->w2,
+                        'title' => $plan->title . '-' . $plan->w2,
                         'start' => $plan->start,
                         'end' => $plan->end,
                         'resourceId' => $plan->resourceId,
@@ -504,7 +519,7 @@ class SchedualController extends Controller
 
                 // 🎯 lịch đã hoàn thành
                 if (($clearning && $plan->start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0) ||
-                        ($clearning && $plan->actual_start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0)
+                    ($clearning && $plan->actual_start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0)
                 ) {
 
                     $events->push([
@@ -533,7 +548,7 @@ class SchedualController extends Controller
                     $events->push([
                         'plan_id' => $plan->id,
                         'id' => "{$plan->id}-main",
-                        'title' => $plan->title.' (X)',
+                        'title' => $plan->title . ' (X)',
                         'start' => $plan->start,
                         'end' => $plan->end,
                         'resourceId' => $plan->resourceId,
@@ -615,7 +630,7 @@ class SchedualController extends Controller
                             $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-main-theory",
-                                'title' => trim($plan->title.'- Lịch Lý Thuyết' ?? ''),
+                                'title' => trim($plan->title . '- Lịch Lý Thuyết' ?? ''),
                                 'start' => $plan->start,
                                 'end' => $plan->end,
                                 'resourceId' => $plan->resourceId,
@@ -643,7 +658,7 @@ class SchedualController extends Controller
                             $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-cleaning-theory",
-                                'title' => $plan->title_clearning.' - Lịch Lý Thuyết' ?? 'Vệ sinh',
+                                'title' => $plan->title_clearning . ' - Lịch Lý Thuyết' ?? 'Vệ sinh',
                                 'start' => $plan->start_clearning,
                                 'end' => $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
@@ -715,7 +730,7 @@ class SchedualController extends Controller
                             $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-main-theory",
-                                'title' => trim($plan->title.'- Lịch Lý Thuyết' ?? ''),
+                                'title' => trim($plan->title . '- Lịch Lý Thuyết' ?? ''),
                                 'start' => $plan->start,
                                 'end' => $plan->end,
                                 'resourceId' => $plan->resourceId,
@@ -743,7 +758,7 @@ class SchedualController extends Controller
                             $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-cleaning-theory",
-                                'title' => $plan->title_clearning.' - Lịch Lý Thuyết' ?? 'Vệ sinh',
+                                'title' => $plan->title_clearning . ' - Lịch Lý Thuyết' ?? 'Vệ sinh',
                                 'start' => $plan->start_clearning,
                                 'end' => $plan->end_clearning,
                                 'resourceId' => $plan->resourceId,
@@ -780,7 +795,7 @@ class SchedualController extends Controller
 
             // tiêu đề yêu cầu mới: chỉ so khớp start, resourceid và stage_code
             // vẫn giữ is_clearning và istheory để tránh gộp main và cleaning hoặc theory và actual
-            return $e->start.'_'.$e->resourceId.'_'.$e->stage_code.'_'.($e->is_clearning ? 'CL' : 'MN').'_'.($isTheory ? 'TH' : 'AC');
+            return $e->start . '_' . $e->resourceId . '_' . $e->stage_code . '_' . ($e->is_clearning ? 'CL' : 'MN') . '_' . ($isTheory ? 'TH' : 'AC');
         })->map(function ($group) {
 
             $first = (object) $group->first();
@@ -799,7 +814,7 @@ class SchedualController extends Controller
 
                 $typeSuffix = $first->is_clearning ? '-cleaning' : '-main';
 
-                $first->id = implode(',', $pureIds).$typeSuffix.$suffix;
+                $first->id = implode(',', $pureIds) . $typeSuffix . $suffix;
 
                 // Tính toán min Start và max End cho tất cả các sự kiện gộp Stage 1 & 2
                 $first->start = $group->min('start');
@@ -833,7 +848,54 @@ class SchedualController extends Controller
 
         $events = $otherStages->concat($groupedWeighing)->values();
 
-        return $events;
+        return $this->groupMaintenanceEvents($events);
+    }
+
+    protected function groupMaintenanceEvents($events)
+    {
+        if ($events instanceof \Illuminate\Support\Collection) {
+            $events = $events;
+        } else {
+            $events = collect($events);
+        }
+
+        $maintenanceEvents = $events->where('stage_code', '=', 8);
+        $productionEvents = $events->where('stage_code', '<', 8);
+
+        $groupedMaintenance = $maintenanceEvents->groupBy(function ($event) {
+            $e = (object) $event;
+            // Nhóm theo thời gian và phòng
+            return $e->start . '_' . $e->end . '_' . $e->resourceId;
+        })->map(function ($group) {
+            $first = (object) $group->first();
+            $first = clone $first;
+
+            if ($group->count() > 1) {
+                // Gom tất cả ID lại
+                $allIds = $group->pluck('plan_id')->map(function ($id) {
+                    return explode('-', $id)[0];
+                })->toArray();
+
+                $typeSuffix = ($first->is_clearning ?? false) ? '-cleaning' : '';
+                $first->id = implode(',', $allIds) . '-maintenance' . $typeSuffix;
+
+                // Gom tiêu đề
+                $uniqueTitles = $group->pluck('title')->unique();
+                if ($uniqueTitles->count() === 1 && strpos($uniqueTitles->first(), ' _ ') !== false) {
+                    $first->title = $uniqueTitles->first();
+                } else {
+                    $allTitles = $uniqueTitles->map(function ($t) {
+                        $parts = explode(' - ', $t);
+                        return count($parts) > 1 ? end($parts) : $t;
+                    })->toArray();
+                    $first->title = 'BT Thiết Bị: ' . implode(' | ', $allTitles);
+                }
+            }
+
+            return $first;
+        })->values();
+
+        return $productionEvents->concat($groupedMaintenance)->values();
     }
 
     protected function colorEvent($plan, $plans, $i, $room_code)
@@ -907,10 +969,10 @@ class SchedualController extends Controller
                     $lh = minutesToDayHoursMinutesString($limitMinutes);
 
                     $subtitle =
-                            "➡️ (KT {$this->stage_Name[$prev->stage_code]}: "
-                            .Carbon::parse($prev->end)->format('H:i d/m/y')
-                            ." || TGTB thực tế: $h"
-                            ." || TGTB cho phép: $lh";
+                        "➡️ (KT {$this->stage_Name[$prev->stage_code]}: "
+                        . Carbon::parse($prev->end)->format('H:i d/m/y')
+                        . " || TGTB thực tế: $h"
+                        . " || TGTB cho phép: $lh";
 
                     return ['#bda124ff',  $textColor,  $subtitle];
                 }
@@ -928,7 +990,7 @@ class SchedualController extends Controller
 
             $endStage7 = $Stage_plan_7 && $Stage_plan_7->end ? Carbon::parse($Stage_plan_7->end)->format('d/m/y') : 'Chưa xác định';
 
-            $subtitle = '➡️ Ngày dự kiến KCS: '.Carbon::parse($plan->expected_date)->format('d/m/y').' | Ngày KT ĐG: '.$endStage7;
+            $subtitle = '➡️ Ngày dự kiến KCS: ' . Carbon::parse($plan->expected_date)->format('d/m/y') . ' | Ngày KT ĐG: ' . $endStage7;
         }
 
         /* 7️⃣ predecessor / successor */
@@ -939,7 +1001,7 @@ class SchedualController extends Controller
             if ($pre && $plan->start < $pre->end) {
 
                 $subtitle = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
-                        .Carbon::parse($pre->end)->format('H:i d/m/y').')';
+                    . Carbon::parse($pre->end)->format('H:i d/m/y') . ')';
 
                 return ['#4CAF50',  $textColor,  $subtitle]; // '#4d4b4bff'
 
@@ -953,7 +1015,7 @@ class SchedualController extends Controller
             if ($next && $plan->end > $next->start) {
 
                 $subtitle = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
-                        .Carbon::parse($next->start)->format('H:i d/m/y').')';
+                    . Carbon::parse($next->start)->format('H:i d/m/y') . ')';
 
                 return ['#4CAF50',  $textColor,  $subtitle]; // '#4d4b4bff'
 
@@ -1007,9 +1069,9 @@ class SchedualController extends Controller
             if ($matched) {
 
                 $subtitle = "{$label}: "
-                        .$left->format('d/m/y')
-                        ." {$operator} "
-                        .$right->format('d/m/y');
+                    . $left->format('d/m/y')
+                    . " {$operator} "
+                    . $right->format('d/m/y');
 
                 return ['#920000ff',  $textColor,  $subtitle];
             }
@@ -1029,9 +1091,9 @@ class SchedualController extends Controller
             ->get()
             ->map(function ($item) {
 
-                $toSeconds = fn ($time) => (($h = (int) explode(':', $time)[0]) * 3600) + ((int) explode(':', $time)[1] * 60);
+                $toSeconds = fn($time) => (($h = (int) explode(':', $time)[0]) * 3600) + ((int) explode(':', $time)[1] * 60);
 
-                $toTime = fn ($seconds) => sprintf('%02d:%02d', floor($seconds / 3600), floor(($seconds % 3600) / 60));
+                $toTime = fn($seconds) => sprintf('%02d:%02d', floor($seconds / 3600), floor(($seconds % 3600) / 60));
 
                 $item->PM = $toTime($toSeconds($item->p_time) + $toSeconds($item->m_time));
 
@@ -1148,12 +1210,12 @@ class SchedualController extends Controller
         // Tạo map tra cứu nhanh
         $quotaByIntermediate = $quota->groupBy(function ($q) {
 
-            return $q->intermediate_code.'_'.$q->stage_code;
+            return $q->intermediate_code . '_' . $q->stage_code;
         });
 
         $quotaByFinished = $quota->groupBy(function ($q) {
 
-            return $q->intermediate_code.'_'.$q->finished_product_code.'_'.$q->stage_code;
+            return $q->intermediate_code . '_' . $q->finished_product_code . '_' . $q->stage_code;
         });
 
         // 4️⃣ Map dữ liệu permission_room (cực nhanh)
@@ -1161,12 +1223,12 @@ class SchedualController extends Controller
 
             if ($plan->stage_code <= 6) {
 
-                $key = $plan->intermediate_code.'_'.$plan->stage_code;
+                $key = $plan->intermediate_code . '_' . $plan->stage_code;
 
                 $matched = $quotaByIntermediate[$key] ?? collect();
             } elseif ($plan->stage_code == 7) {
 
-                $key = $plan->intermediate_code.'_'.$plan->finished_product_code.'_'.$plan->stage_code;
+                $key = $plan->intermediate_code . '_' . $plan->finished_product_code . '_' . $plan->stage_code;
 
                 $matched = $quotaByFinished[$key] ?? collect();
             } else {
@@ -1222,7 +1284,7 @@ class SchedualController extends Controller
             ->where('room.deparment_code', $production)
             ->when(
                 ! $hasMaintenance,
-                fn ($query) => $query->where('only_maintenance', 0)
+                fn($query) => $query->where('only_maintenance', 0)
             )
             ->orderBy('order_by', 'asc')
             ->get()
@@ -1310,7 +1372,7 @@ class SchedualController extends Controller
 
                         return [
                             'name' => $room->code,
-                            'name_code' => $room->code.' - '.$room->name,
+                            'name_code' => $room->code . ' - ' . $room->name,
                         ];
                     })->values();
                 });
@@ -1350,7 +1412,7 @@ class SchedualController extends Controller
         } catch (\Throwable  $e) {
 
             // Ghi log chi tiết lỗi
-            Log::error('Error in view(): '.$e->getMessage(), [
+            Log::error('Error in view(): ' . $e->getMessage(), [
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
                 'trace' => $e->getTraceAsString(),
@@ -1476,9 +1538,9 @@ class SchedualController extends Controller
                 */
                 if ($index === 0 && $product['stage_code'] !== 9) {
                     if ($product['stage_code'] < 7) {
-                        $process_code = $product['intermediate_code'].'_NA_'.$request->room_id;
+                        $process_code = $product['intermediate_code'] . '_NA_' . $request->room_id;
                     } elseif ($product['stage_code'] === 7) {
-                        $process_code = $product['intermediate_code'].'_'.$product['finished_product_code'].'_'.$request->room_id;
+                        $process_code = $product['intermediate_code'] . '_' . $product['finished_product_code'] . '_' . $request->room_id;
                     }
 
                     $quota = DB::table('quota')
@@ -1490,7 +1552,7 @@ class SchedualController extends Controller
                             DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
                             DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
                         )
-                        ->where('process_code', 'like', $process_code.'%')
+                        ->where('process_code', 'like', $process_code . '%')
                         ->first();
 
                     $p_time_minutes = $quota->p_time_minutes ?? 0;
@@ -1617,8 +1679,8 @@ class SchedualController extends Controller
                             'end_clearning' => $end_clearning,
                             'resourceId' => $request->room_id,
                             'title' => $product['stage_code'] === 9
-                                    ? ($product['title'].'-'.$product['batch'])
-                                    : ($product['name'].'-'.$product['batch'].'-'.$product['market']),
+                                ? ($product['title'] . '-' . $product['batch'])
+                                : ($product['name'] . '-' . $product['batch'] . '-' . $product['market']),
                             'title_clearning' => $clearning_type,
                             'schedualed' => 1,
                             'schedualed_by' => session('user')['fullName'],
@@ -1697,8 +1759,8 @@ class SchedualController extends Controller
                 $firstTask = $products->first();
 
                 $next_stage_code = isset($firstTask->nextcessor_code)
-                        ? (int) (explode('_', $firstTask->nextcessor_code)[1] ?? 0)
-                        : 0;
+                    ? (int) (explode('_', $firstTask->nextcessor_code)[1] ?? 0)
+                    : 0;
 
                 // $hasimmediately = collect($campaigntasks)->contains('immediately', 1);
 
@@ -2190,7 +2252,6 @@ class SchedualController extends Controller
                     }
                 }
             }
-
         } catch (\Exception $e) {
             Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage()]);
 
@@ -2589,7 +2650,7 @@ class SchedualController extends Controller
             $updateQuery .= "WHEN '{$code}' THEN {$orderBy} ";
         }
 
-        $updateQuery .= "END WHERE code IN ('".implode("','", $codes)."')";
+        $updateQuery .= "END WHERE code IN ('" . implode("','", $codes) . "')";
 
         DB::statement($updateQuery);
 
@@ -2629,7 +2690,7 @@ class SchedualController extends Controller
 
                     if ($firstCode === null) {
 
-                        $firstCode = '0_'.$datas[0]['code'];
+                        $firstCode = '0_' . $datas[0]['code'];
                     }
 
                     $ids = collect($datas)->pluck('id')->toArray();
@@ -2795,10 +2856,10 @@ class SchedualController extends Controller
                 // 2. xác định process_code để tra cứu quota
                 if ($plan->stage_code < 7) {
 
-                    $process_code = $plan->intermediate_code.'_NA_'.$plan->resourceId;
+                    $process_code = $plan->intermediate_code . '_NA_' . $plan->resourceId;
                 } elseif ($plan->stage_code === 7) {
 
-                    $process_code = $plan->intermediate_code.'_'.$plan->finished_product_code.'_'.$plan->resourceId;
+                    $process_code = $plan->intermediate_code . '_' . $plan->finished_product_code . '_' . $plan->resourceId;
                 } else {
 
                     // Với các stage_code >= 8 (bảo trì hoặc khác), chỉ cập nhật title
@@ -2813,7 +2874,7 @@ class SchedualController extends Controller
                         DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
                         DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
                     )
-                    ->where('process_code', 'like', $process_code.'%')
+                    ->where('process_code', 'like', $process_code . '%')
                     ->first();
 
                 if ($quota) {
@@ -3000,10 +3061,10 @@ class SchedualController extends Controller
                         //         $cvflag = 1; //explode('_', $item->code_val)[0];
                         // }
 
-                        return $item->$mode_date.'|'.$item->$product_code;
+                        return $item->$mode_date . '|' . $item->$product_code;
                         // . '|' . $cvFlag;
                     })
-                    ->filter(fn ($group) => $group->count() > 1);
+                    ->filter(fn($group) => $group->count() > 1);
 
                 if ($groups->isEmpty()) {
 
@@ -3035,13 +3096,13 @@ class SchedualController extends Controller
 
                     $countInBatch = 0;
 
-                    $campaignCode = $items[0]->predecessor_code ?? ('0_'.$items[0]->code);
+                    $campaignCode = $items[0]->predecessor_code ?? ('0_' . $items[0]->code);
 
                     foreach ($items as $item) {
 
                         if ($countInBatch >= $maxBatch) {
 
-                            $campaignCode = $item->predecessor_code ?? ('0_'.$item->code);
+                            $campaignCode = $item->predecessor_code ?? ('0_' . $item->code);
 
                             $countInBatch = 0;
                         }
@@ -3253,7 +3314,7 @@ class SchedualController extends Controller
         ];
 
         // Tìm stage group tương ứng với stage_code được gửi lên
-        $stageGroup = collect($stages)->first(fn ($group) => in_array($stageCode, $group['codes']));
+        $stageGroup = collect($stages)->first(fn($group) => in_array($stageCode, $group['codes']));
 
         if (! $stageGroup) {
 
@@ -3287,9 +3348,9 @@ class SchedualController extends Controller
             ->where('active', 1)
             ->where('deparment_code', session('user')['production_code'])
             ->whereIn('plan_master_id', $planMasters)
-            ->orderByRaw('FIELD(plan_master_id, '.implode(',', $planMasters->toArray()).')')
+            ->orderByRaw('FIELD(plan_master_id, ' . implode(',', $planMasters->toArray()) . ')')
             ->update([
-                'order_by' => DB::raw('FIELD(plan_master_id, '.implode(',', $planMasters->toArray()).')'),
+                'order_by' => DB::raw('FIELD(plan_master_id, ' . implode(',', $planMasters->toArray()) . ')'),
             ]);
 
         return response()->json([
@@ -3302,12 +3363,21 @@ class SchedualController extends Controller
     {
 
         // 1️⃣ Lấy danh sách các dòng sẽ update
+        $submitType = $request->input('submit_type', 'production'); // production, HC, BT, TI
+
         $updatedRows = DB::table('stage_plan')
             ->whereNotNull('start')
             ->where('finished', 0)
             ->where('active', 1)
             ->where('submit', 0)
             ->where('deparment_code', session('user')['production_code'])
+            ->when($submitType === 'production', function ($query) {
+                $query->where('stage_code', '!=', 8);
+            })
+            ->when(in_array($submitType, ['HC', 'BT', 'TI']), function ($query) use ($submitType) {
+                $query->where('stage_code', 8)
+                    ->where('code', 'LIKE', '%_' . $submitType);
+            })
             ->get();
 
         if ($updatedRows->isEmpty()) {
@@ -3402,7 +3472,7 @@ class SchedualController extends Controller
             $targetUrl
         );
 
-        return response()->json(['message' => 'Đã submit '.$updatedRows->count().' lịch.']);
+        return response()->json(['message' => 'Đã submit ' . $updatedRows->count() . ' lịch.']);
     }
 
     public function accpectQuarantine(Request $request)
@@ -3623,7 +3693,7 @@ class SchedualController extends Controller
             DB::table('stage_plan')
                 ->select([
                     'id as stage_plan_id',
-                    DB::raw("'".$bkcCode."' as bkc_code"),
+                    DB::raw("'" . $bkcCode . "' as bkc_code"),
                     'plan_list_id',
                     'plan_master_id',
                     'product_caterogy_id',
@@ -3760,12 +3830,12 @@ class SchedualController extends Controller
 
             // đảm bảo kiểu Carbon
             $start = $off['start']  instanceof Carbon
-                    ? $off['start']
-                    : Carbon::parse($off['start']);
+                ? $off['start']
+                : Carbon::parse($off['start']);
 
             $end = $off['end']  instanceof Carbon
-                    ? $off['end']
-                    : Carbon::parse($off['end']);
+                ? $off['end']
+                : Carbon::parse($off['end']);
 
             // nếu time nằm trong khoảng off
             if ($time->gte($start) && $time->lt($end)) {
@@ -3787,12 +3857,12 @@ class SchedualController extends Controller
 
                 // đảm bảo kiểu Carbon
                 $start = $off['start']  instanceof Carbon
-                        ? $off['start']
-                        : Carbon::parse($off['start']);
+                    ? $off['start']
+                    : Carbon::parse($off['start']);
 
                 $end = $off['end']  instanceof Carbon
-                        ? $off['end']
-                        : Carbon::parse($off['end']);
+                    ? $off['end']
+                    : Carbon::parse($off['end']);
 
                 // nếu time nằm trong khoảng off
                 if ($time->gte($start) && $time->lt($end)) {
@@ -3952,7 +4022,7 @@ class SchedualController extends Controller
 
             // 2.1 Parse + sort ngày (chỉ lấy date)
             $dates = collect($this->selectedDates)
-                ->map(fn ($d) => Carbon::parse($d)->startOfDay())
+                ->map(fn($d) => Carbon::parse($d)->startOfDay())
                 ->sort()
                 ->values();
 
@@ -4072,12 +4142,12 @@ class SchedualController extends Controller
                         }
 
                         $overlapStart = $off['start']->greaterThan($current_start)
-                                ? $off['start']
-                                : $current_start;
+                            ? $off['start']
+                            : $current_start;
 
                         $overlapEnd = $off['end']->lessThan($current_end)
-                                ? $off['end']
-                                : $current_end;
+                            ? $off['end']
+                            : $current_end;
 
                         $newOffTime += $overlapStart->diffInMinutes($overlapEnd);
                     }
@@ -4139,7 +4209,7 @@ class SchedualController extends Controller
 
             DB::table('stage_plan')
                 ->where('id', $stageId)
-                    // ->where('code',  $code)
+                // ->where('code',  $code)
                 ->update([
                     'first_in_campaign' => $first_in_campaign ?? 0,
                     'resourceId' => $roomId,
@@ -4579,7 +4649,7 @@ class SchedualController extends Controller
                 )
                 ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
-                    // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
+                // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
@@ -4587,11 +4657,11 @@ class SchedualController extends Controller
                 ->where('sp.finished', 0)
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
-                    // ->where('plan_master.only_parkaging',  0)
+                // ->where('plan_master.only_parkaging',  0)
                 ->whereNotNull('plan_master.after_weigth_date')
-                    // ->when($stageCode == 7, function ($q) {
-                    //        $q->whereNotNull('plan_master.after_parkaging_date');
-                    // })
+                // ->when($stageCode == 7, function ($q) {
+                //        $q->whereNotNull('plan_master.after_parkaging_date');
+                // })
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('prev.start', 'asc')
                 ->get();
@@ -4635,14 +4705,14 @@ class SchedualController extends Controller
                 )
                 ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
-                    // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
+                // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->where('sp.stage_code', $stageCode)
                 ->where('sp.finished', 0)
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
-                    // ->where('plan_master.only_parkaging',  0)
+                // ->where('plan_master.only_parkaging',  0)
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($stageCode == 7, function ($q) {
 
@@ -5164,7 +5234,7 @@ class SchedualController extends Controller
 
             if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
 
-                $code_val_first = $parts[0].'_1';
+                $code_val_first = $parts[0] . '_1';
 
                 $room_id_first = DB::table('stage_plan as sp')
                     ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
@@ -5620,7 +5690,7 @@ class SchedualController extends Controller
 
             if ($firstTask->code_val !== null && $firstTask->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
 
-                $code_val_first = $parts[0].'_1';
+                $code_val_first = $parts[0] . '_1';
 
                 $room_id_first = DB::table('stage_plan as sp')
                     ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
@@ -5803,8 +5873,8 @@ class SchedualController extends Controller
             $m_adj = (float) $room->m_time_minutes * $campaign_ratio;
 
             $totalMunites = $p_adj + ($campaignTasks->count() * $m_adj)
-                    + ($campaignTasks->count() - 1) * ($room->C1_time_minutes)
-                    + $room->C2_time_minutes;
+                + ($campaignTasks->count() - 1) * ($room->C1_time_minutes)
+                + $room->C2_time_minutes;
 
             if ($totalTimeCampaign > 0 && $totalTimeCampaign > $totalMunites) {
                 $totalMunites = $totalTimeCampaign;
@@ -5938,8 +6008,8 @@ class SchedualController extends Controller
         $nextTasks = collect();
 
         $next_stage_code = isset($firstTask->nextcessor_code)
-                ? (int) (explode('_', $firstTask->nextcessor_code)[1] ?? 0)
-                : 0;
+            ? (int) (explode('_', $firstTask->nextcessor_code)[1] ?? 0)
+            : 0;
 
         $hasImmediately = true;
 
@@ -5986,9 +6056,9 @@ class SchedualController extends Controller
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                 ->whereIn('sp.code', $nextcessor_codes)
-                    // ->where('sp.stage_code', $nextcessor_code)
+                // ->where('sp.stage_code', $nextcessor_code)
                 ->where('sp.active', 1)
-                    // ->whereNotNull('plan_master.after_weigth_date')
+                // ->whereNotNull('plan_master.after_weigth_date')
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('prev.start', 'asc')
                 ->get();
@@ -8392,8 +8462,8 @@ function minutesToDayHoursMinutesString(int $minutes): string
     $mins = $remain % 60;
 
     return ($days > 0 ? "{$days}d " : '')
-            .($hours > 0 ? "{$hours}h" : '')
-            ."{$mins}p";
+        . ($hours > 0 ? "{$hours}h" : '')
+        . "{$mins}p";
 }
 
 function minutesToHoursMinutes(int $minutes): array
