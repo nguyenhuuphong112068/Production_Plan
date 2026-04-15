@@ -3090,7 +3090,7 @@ const ScheduleTest = () => {
           cascadeToggle: {
             text: isCascadeMode ? '⏳' : '🔀',
             click: toggleCascadeMode,
-            hint: 'Bật/Tắt chế độ tịnh tiến tất cả các sự kiện phía sau trên cùng một Resource'
+            hint: 'Bật/Tắt chế độ tịnh tiến tất cả các sự kiện phía sau trên cùng một Phòng sản xuất'
           },
 
           hiddenTheory: {

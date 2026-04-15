@@ -86,10 +86,21 @@ class MaintenancePlanController extends Controller
 
                 // --- Bước tiền kiểm tra (Validation) Quota ---
                 $instIds = $schedules->pluck('Inst_ID')->map(fn($id) => trim($id))->unique()->toArray();
-                $allQuotas = DB::table('quota_maintenance')
+                $type_prefix = [
+                        1 => 'HC',
+                        2 => 'BT',
+                        3 => 'TI'
+                ];
+
+                $query = DB::table('quota_maintenance')
                         ->whereIn('inst_id', $instIds)
-                        ->where('active', 1)
-                        ->get();
+                        ->where('active', 1);
+
+                if ($type && isset($type_prefix[$type])) {
+                        $query->where('block', 'like', $type_prefix[$type] . '-%');
+                }
+
+                $allQuotas = $query->get();
 
                 $quotaIds = $allQuotas->pluck('id')->toArray();
                 $quotaRooms = DB::table('quota_maintenance_rooms')
