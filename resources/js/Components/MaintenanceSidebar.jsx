@@ -414,30 +414,40 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             {/* Phần 2: 3 nút chọn loại lịch (50%) */}
             <Col xs={6}>
               <div className="maintenance-type-selector shadow-sm m-0 d-flex w-100">
-                <Button
-                  label="Hiệu Chuẩn"
-                  badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_HC')).length || 0)}
-                  badgeClassName="maintenance-badge-hc"
-                  className={`p-button-sm flex-fill ${maintenanceType === 'HC' ? 'p-button-info' : 'p-button-outlined p-button-secondary'}`}
-                  onClick={() => setMaintenanceType('HC')}
-                  style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
-                />
-                <Button
-                  label="Bảo Trì"
-                  badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && (e.code?.endsWith('_TB') || e.code?.endsWith('_8'))).length || 0)}
-                  badgeClassName="maintenance-badge-tb"
-                  className={`p-button-sm flex-fill ${maintenanceType === 'TB' ? 'p-button-warning' : 'p-button-outlined p-button-secondary'}`}
-                  onClick={() => setMaintenanceType('TB')}
-                  style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
-                />
-                <Button
-                  label="Tiện Ích"
-                  badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_TI')).length || 0)}
-                  badgeClassName="maintenance-badge-ti"
-                  className={`p-button-sm flex-fill ${maintenanceType === 'TI' ? 'p-button-success' : 'p-button-outlined p-button-secondary'}`}
-                  onClick={() => setMaintenanceType('TI')}
-                  style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
-                />
+
+                {(userDepartment === 'QA' || (!userDepartment || (userDepartment !== 'EN'))) && (
+                  <Button
+                    label="Hiệu Chuẩn"
+                    badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_HC')).length || 0)}
+                    badgeClassName="maintenance-badge-hc"
+                    className={`p-button-sm flex-fill ${maintenanceType === 'HC' ? 'p-button-info' : 'p-button-outlined p-button-secondary'}`}
+                    onClick={() => setMaintenanceType('HC')}
+                    style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
+                  />
+                )}
+
+                {(userDepartment === 'EN' || (!userDepartment || (userDepartment !== 'QA'))) && (
+                  <Button
+                    label="Bảo Trì"
+                    badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && (e.code?.endsWith('_TB') || e.code?.endsWith('_8'))).length || 0)}
+                    badgeClassName="maintenance-badge-tb"
+                    className={`p-button-sm flex-fill ${maintenanceType === 'TB' ? 'p-button-warning' : 'p-button-outlined p-button-secondary'}`}
+                    onClick={() => setMaintenanceType('TB')}
+                    style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
+                  />
+                )}
+
+                {(userDepartment === 'EN' || (!userDepartment || (userDepartment !== 'QA'))) && (
+                  <Button
+                    label="Tiện Ích"
+                    badge={String(waitPlan?.filter(e => Number(e.stage_code) === 8 && e.code?.endsWith('_TI')).length || 0)}
+                    badgeClassName="maintenance-badge-ti"
+                    className={`p-button-sm flex-fill ${maintenanceType === 'TI' ? 'p-button-success' : 'p-button-outlined p-button-secondary'}`}
+                    onClick={() => setMaintenanceType('TI')}
+                    style={{ padding: '4px 2px', fontSize: '0.75rem', border: '1px solid #ced4da' }}
+                  />
+                )}
+
               </div>
             </Col>
 

@@ -181,8 +181,22 @@
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
 
-        var authUpdate = '{{ $auth_update }}';
-        var disabledAttr = authUpdate ? 'disabled' : '';
+        var globalDisabled = '{{ $auth_update }}' === 'disabled';
+        var userDept = '{{ session('user')['department'] }}';
+        var userGroup = '{{ session('user')['userGroup'] }}';
+
+        function getDisabledAttr(row) {
+            if (globalDisabled) return 'disabled';
+
+            var block = row.internal_block || '';
+            if (block.startsWith('HC-')) {
+                return (userDept === 'QA' || userGroup === 'Admin') ? '' : 'disabled';
+            }
+            if (block.startsWith('BT-') || block.startsWith('TI-')) {
+                return (userDept === 'EN' || userGroup === 'Admin') ? '' : 'disabled';
+            }
+            return '';
+        }
 
         // Danh sách phòng cho select option - Cache as array for performance
         var roomsData = @json(
@@ -240,7 +254,8 @@
                     orderable: false,
                     searchable: false,
                     render: function(data, type, row, meta) {
-                        return '<div>' + (meta.row + 1) + '</div><small class="text-secondary">' + (data || '') + '</small>';
+                        return '<div>' + (meta.row + 1) +
+                            '</div><small class="text-secondary">' + (data || '') + '</small>';
                     }
                 },
 
@@ -274,8 +289,9 @@
                     data: 'deparment_code',
                     render: function(data, type, row) {
                         if (type === 'display') {
+                            var rowDisabled = getDisabledAttr(row);
                             var opts = getDepartmentOptions(row.block, data);
-                            return '<select ' + disabledAttr +
+                            return '<select ' + rowDisabled +
                                 ' class="form-control select-department" name="deparment_code" data-id="' +
                                 row.id + '">' + opts + '</select>';
                         }
@@ -306,7 +322,8 @@
                                 '>' + room.text + '</option>';
                         }).join('');
 
-                        return '<div class="select-room-wrapper"><select ' + disabledAttr +
+                        var rowDisabled = getDisabledAttr(row);
+                        return '<div class="select-room-wrapper"><select ' + rowDisabled +
                             ' class="form-control select-room" multiple="multiple" data-id="' +
                             row.id + '">' + options + '</select></div>';
                     }
@@ -338,8 +355,9 @@
                 {
                     data: 'quota',
                     render: function(data, type, row) {
+                        var rowDisabled = getDisabledAttr(row);
                         return '<input type="text" class="time" name="quota" value="' + (data ||
-                            '') + '" data-id="' + row.id + '" ' + disabledAttr + '>';
+                            '') + '" data-id="' + row.id + '" ' + rowDisabled + '>';
                     }
                 },
 
@@ -366,7 +384,8 @@
                     orderable: false,
                     searchable: false,
                     render: function(data, type, row) {
-                        return '<button ' + disabledAttr +
+                        var rowDisabled = getDisabledAttr(row);
+                        return '<button ' + rowDisabled +
                             ' type="button" class="btn btn-danger btn-sm btn-deActive" data-id="' +
                             row.id + '" data-name="' + (row.Inst_Name || '') + '">' +
                             '<i class="fas fa-trash"></i></button>';

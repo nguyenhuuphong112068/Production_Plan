@@ -35,7 +35,6 @@ const MaintenanceCalender = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
   const [pendingChanges, setPendingChanges] = useState([]);
-  const [saving, setSaving] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [percentShow, setPercentShow] = useState("100%");
   const searchResultsRef = useRef([]);
@@ -49,8 +48,10 @@ const MaintenanceCalender = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [viewName, setViewName] = useState("resourceTimelineWeek");
   const [showRenderBadge, setShowRenderBadge] = useState(false);
-  const [workingSunday, setWorkingSunday] = useState(false);
   const [offDays, setOffDays] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const [workingSunday, setWorkingSunday] = useState(false);
   const [multiStage, setMultiStage] = useState(false);
 
   const [events, setEvents] = useState([]);
@@ -67,6 +68,7 @@ const MaintenanceCalender = () => {
   });
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
+  const [authorizationAccept, setAuthorizationAccept] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
   const [reasons, setReasons] = useState([]);
   const [bkcCode, setBkcCode] = useState([]);
@@ -81,6 +83,8 @@ const MaintenanceCalender = () => {
 
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
   const [lockedResourceCodes, setLockedResourceCodes] = useState(null);
+
+
   const stageName = {
     1: 'Cân Nguyên Liệu',
     3: 'Pha Chế',
@@ -130,9 +134,12 @@ const MaintenanceCalender = () => {
         }
 
 
-        const isAuthorized = (['Admin', 'Schedualer', 'Leader'].includes(data.authorization) && data.production == data.department) || data.department == 'BOD';
+        const isAuthorized = data.authorization // (['Admin', 'Calibration and Maintenance Scheduler', 'Calibration and Maintenance Planning Manager'].includes(data.authorization) && data.production == data.department) || data.department == 'BOD';
+
+
 
         setAuthorization(isAuthorized);
+        setAuthorizationAccept(data.authorization_accept);
 
         setEvents(data.events);
         setResources(data.resources);
@@ -142,17 +149,35 @@ const MaintenanceCalender = () => {
         setReasons(data.reason)
         setLines(data.Lines)
         setAllLines(data.allLines)
+
         sessionStorage.setItem('theoryHidden', 0);
 
 
-
-
         if (isAuthorized) {
-          setPlan(data.plan);
+          const dept = data.department;
+          const userGroups = Array.isArray(data.authorization) ? data.authorization : (data.authorization ? [data.authorization] : []);
+          const isAdmin = userGroups.some(g => ['Admin', 'Schedualer'].includes(g));
+
+          let filteredPlan = data.plan;
+          if (!isAdmin && dept === 'QA') {
+            setMaintenanceType('HC')
+            filteredPlan = (data.plan || []).filter(p => {
+              const code = String(p.code || '');
+              return code.endsWith('_HC');
+            });
+          } else if (!isAdmin && dept === 'EN') {
+            setMaintenanceType('TB')
+            filteredPlan = (data.plan || []).filter(p => {
+              const code = String(p.code || '');
+              return code.endsWith('_TB') || code.endsWith('_8') || code.endsWith('_TI');
+            });
+          }
+
+          setPlan(filteredPlan);
           setCurrentPassword(data.currentPassword ?? '')
           setQuota(data.quota);
           setOffDays(data.off_days);
-          setBkcCode(data.bkc_code);
+          //setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
           setUserGroup(data.authorization);
           setUserGroupName(data.groupName);
@@ -452,8 +477,8 @@ const MaintenanceCalender = () => {
       setSumBatchByStage(cleanData.sumBatchByStage);
       setPlan(cleanData.plan || []);
       setUserID(cleanData.UesrID);
-      const isAuthorized = (['Admin', 'Schedualer', 'Leader'].includes(cleanData.authorization) && cleanData.production == cleanData.department) || cleanData.department == 'BOD';
-      setAuthorization(isAuthorized);
+
+      setAuthorization(cleanData.authorization);
       setUserGroup(cleanData.authorization);
       setUserGroupName(cleanData.groupName);
       setProduction(cleanData.production);
@@ -742,68 +767,10 @@ const MaintenanceCalender = () => {
 
         /// kiểm tra lại định mức
         if (event) {
-
-
           const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
           const event_start = event.start.getTime()
           const newStart = new Date(event_start + offset);
-          let newEnd = null;
-
-          // Kiêm tra điều chinh đinh mức ngày chủ nhật
-          if (!workingSunday) {
-            let process_code = event._def.extendedProps.process_code + "_" + event._def.resourceIds[0]
-            let stage_code = event._def.extendedProps.stage_code
-            let is_clearning = event._def.extendedProps.is_clearning
-            let quota_event = quota.find(q =>
-              q.process_code.startsWith(process_code) &&
-              q.stage_code == stage_code
-            );
-
-            if (quota_event === undefined) {
-
-              Swal.fire({
-                icon: 'warning',
-                title: 'Thiếu Định Mức',
-                timer: 1000,
-                showConfirmButton: false,
-              });
-              info.revert();
-              return false;
-            }
-
-            let quota_event_m_time_seconds = timeToMilliseconds(quota_event.m_time)
-
-            let quota_event_p_time_seconds = 0;
-
-            if (event._def.extendedProps.first_in_campaign) {
-              quota_event_p_time_seconds = timeToMilliseconds(quota_event.p_time)
-            }
-
-
-            if (is_clearning) {
-              if (event._def.title == "VS-II") {
-                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
-              } else {
-                quota_event_m_time_seconds = timeToMilliseconds(quota_event.C1_time)
-              }
-
-            }
-            newEnd = new Date(event_start + offset + quota_event_m_time_seconds + quota_event_p_time_seconds);
-
-            let safeEnd;
-            do {
-              safeEnd = newEnd;
-              newEnd = skipOffDays(newEnd, offRanges);
-            } while (newEnd.getTime() !== safeEnd.getTime());
-
-            // if (isInSundayToMondayWindow (newEnd)){
-            //   newEnd = new Date(event_start + offset + quota_event_m_time_seconds + 86400000)
-            // }
-
-          } else {
-            newEnd = new Date(event.end.getTime() + offset);
-          }
-
+          let newEnd = new Date(event.end.getTime() + offset);
 
           event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
 
@@ -948,9 +915,14 @@ const MaintenanceCalender = () => {
     let startDate = toLocalISOString(activeStart);
     let endDate = toLocalISOString(activeEnd);
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+    const productionHidden = JSON.parse(sessionStorage.getItem('productionHidden'));
+    const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
+
     axios.put('/MaintenanceSchedual/update', {
       reason, // 🟢 gửi thêm lý do
       theory: theoryHidden,
+      production: !productionHidden,
+      clearning: !cleaningHidden,
       changes: pendingChanges.map(change => ({
         id: change.id,
         start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
@@ -1024,6 +996,7 @@ const MaintenanceCalender = () => {
   };
 
   const handleEditEventClick = (event) => {
+
     if (!authorization) return;
 
     // Nếu đã chấp nhận (Tank == 1) thì không cho sửa nhanh
@@ -1255,8 +1228,18 @@ const MaintenanceCalender = () => {
   const handleEventClick = (clickInfo) => {
     const event = clickInfo.event;
 
+    // Chặn tất cả tương tác nếu lịch đã hoàn thành
+    if (event.extendedProps.finished == 1) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Không thể thay đổi',
+        text: 'Lịch đã được Hoàn Thành, Không được thay đổi',
+      });
+      return;
+    }
+
     // Nếu đã chấp nhận (Tank == 1) thì không cho chọn/sửa
-    if (event.extendedProps.tank == 1) {
+    if (event.extendedProps.tank == 1 && !authorizationAccept) {
       Swal.fire({
         icon: 'warning',
         title: 'Không thể thay đổi',
@@ -1271,105 +1254,6 @@ const MaintenanceCalender = () => {
       return;
     }
 
-    const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
-
-
-
-    // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
-    if (clickInfo.jsEvent.altKey && theoryHidden != 2) {
-
-      if (!authorization) {
-        clickInfo.revert();
-        return false;
-      }
-
-      if (selectedEvents.length === 0) {
-        return;
-      }
-      // Lấy instance calendar
-      const calendar = clickInfo.view.calendar;
-
-      selectedEvents.forEach(sel => {
-        const mainId = sel.id;                // "28217-main"
-        const cleanId = mainId.replace("-main", "-cleaning");
-
-        const mainEvent = calendar.getEventById(mainId);
-        const cleanEvent = calendar.getEventById(cleanId);
-
-        if (!mainEvent || !cleanEvent) return;
-
-        // đặt event vệ sinh ngay sau event chính
-        const newStart = new Date(mainEvent.end);
-        const duration = cleanEvent.end - cleanEvent.start;
-        const newEnd = new Date(newStart.getTime() + duration);
-
-        cleanEvent.setStart(newStart);
-        cleanEvent.setEnd(newEnd);
-
-        // trigger pending changes
-        handleEventChange({ event: cleanEvent });
-      });
-
-      return;
-    }
-
-    // ALT + CLICK ghép sự kiện vệ sinh ngay sau sự kiện chính
-    if (clickInfo.jsEvent.altKey && theoryHidden == 2) {
-
-
-      if (userID !== 1 && userID !== 5) {
-        return;
-      }
-
-      if (event._def.ui.backgroundColor != "#002af9ff") {
-        alert('Chỉ Chọn Sự Kiện Đã Hoàn Thành')
-        return;
-      }
-
-      if (selectedEvents.length === 0) {
-        return;
-      }
-
-      // Lấy instance calendar
-      const calendar = clickInfo.view.calendar;
-
-      selectedEvents.forEach(sel => {
-
-        const mainId = sel.id;
-        const theoryId = mainId.replace("-main", "-main-theory");
-        const cleanId = mainId.replace("-main", "-cleaning");
-        const theoryCleanId = mainId.replace("-main", "-cleaning-theory");
-
-        const mainEvent = calendar.getEventById(mainId);
-        const theoryEvent = calendar.getEventById(theoryId);
-        const cleanEvent = calendar.getEventById(cleanId);
-        const theoryCleanEvent = calendar.getEventById(theoryCleanId);
-
-        if (!mainEvent || !theoryEvent || !cleanEvent || !theoryCleanEvent) return;
-
-
-        const newStart = new Date(mainEvent.start.getTime() + 15 * 60000);
-        const newEnd = new Date(mainEvent.end.getTime() + 15 * 60000);
-
-        theoryEvent.setStart(newStart);
-        theoryEvent.setEnd(newEnd);
-        handleEventChange({ event: theoryEvent });
-
-
-
-        const newClearningStart = new Date(cleanEvent.start.getTime() + 15 * 60000);
-        const newClearningEnd = new Date(cleanEvent.end.getTime() + 15 * 60000);
-
-        theoryCleanEvent.setStart(newClearningStart);
-        theoryCleanEvent.setEnd(newClearningEnd);
-
-        // trigger pending changes   
-        handleEventChange({ event: theoryCleanEvent });
-
-      });
-
-      return;
-    }
 
     /// Copy nội dung event
     if (clickInfo.jsEvent.shiftKey) {
@@ -1422,11 +1306,7 @@ const MaintenanceCalender = () => {
     }
 
     toggleEventSelect(event);
-    // if ( clickInfo.jsEvent.ctrlKey) {
-    //   setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
-    // } else {
 
-    // }
 
   };
 
@@ -1493,10 +1373,17 @@ const MaintenanceCalender = () => {
 
     }).then((result) => {
       if (result.isConfirmed) {
+        const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+        const productionHidden = JSON.parse(sessionStorage.getItem('productionHidden'));
+        const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
+
         axios.put('/MaintenanceSchedual/deActive', {
           ids: selectedEvents,
           startDate: toLocalISOString(activeStart),
-          endDate: toLocalISOString(activeEnd)
+          endDate: toLocalISOString(activeEnd),
+          theory: theoryHidden,
+          production: !productionHidden,
+          clearning: !cleaningHidden
         })
           .then((res) => {
             let data = res.data;
@@ -1593,13 +1480,15 @@ const MaintenanceCalender = () => {
 
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.put('/MaintenanceSchedual/submit')
+        axios.put('/Schedual/submit', { submit_type: maintenanceType })
 
           .then(res => {
             let data = res.data;
             if (typeof data === "string") {
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
+
+              //setEvents(data.events);
             }
 
 
@@ -1862,7 +1751,7 @@ const MaintenanceCalender = () => {
         eventDurationEditable={true}
 
 
-        eventClick={authorization ? handleEventClick : false}
+        eventClick={(authorization || authorizationAccept) ? handleEventClick : false}
         eventResize={authorization ? handleEventChange : false}
         eventDrop={authorization ? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange) : false}
         eventReceive={authorization ? handleEventReceive : false}
@@ -2078,11 +1967,11 @@ const MaintenanceCalender = () => {
             info.el.removeEventListener("change", info.el._sheetHandler);
           }
         }}
-        //hiddenTheory
+        //hiddenTheory 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenProduction changeSchedualer unSelect confirmFinish Submit',
+          left: `customPre,myToday,customNext noteModal${authorization ? ' hiddenProduction changeSchedualer unSelect confirmFinish Submit' : ''}${authorizationAccept ? ' approveMaintenance' : ''}`,
           center: 'title',
-          right: 'approveMaintenance fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
+          right: `fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter${authorization ? ' customList' : ''}` //customYear
         }}
 
         views={{
@@ -2196,14 +2085,14 @@ const MaintenanceCalender = () => {
           },
 
           changeSchedualer: {
-            text: '♻️',
+            text: '💾',
             click: handleSaveChanges,
-            hint: 'Lưu thay đổi lịch: sau khi thay đổi lịch bấm ♻️ hoặc Ctrl + S để lưu thay đổi'
+            hint: 'Lưu thay đổi lịch: sau khi thay đổi lịch bấm 💾 hoặc Ctrl + S để lưu thay đổi'
           },
           unSelect: {
-            text: '🚫',
+            text: '🗑️',
             click: handleDeleteScheduale,
-            hint: 'Xóa lịch được chọn: Chọn các lịch cần xóa, sau đó bấm 🚫'
+            hint: 'Xóa lịch được chọn: Chọn các lịch cần xóa, sau đó bấm 🗑️'
           },
 
           searchBox: {

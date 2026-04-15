@@ -13,7 +13,21 @@
                     <div class="card">
                         <!-- /.card-Body -->
                         <div class="card-body mt-5">
-                            @if (user_has_permission(session('user')['userId'], 'plan_maintenance_create_plan_list', 'boolean'))
+                            @php
+                                $user = session('user');
+                                $hasCreatePerm = user_has_permission($user['userId'], 'plan_maintenance_create_plan_list', 'boolean');
+                                $canCreate = false;
+                                if ($user['userGroup'] == 'Admin') {
+                                    $canCreate = true;
+                                } elseif ($hasCreatePerm) {
+                                    if ($planType == 1 && $user['department'] == 'QA') {
+                                        $canCreate = true;
+                                    } elseif (($planType == 2 || $planType == 3) && $user['department'] == 'EN') {
+                                        $canCreate = true;
+                                    }
+                                }
+                            @endphp
+                            @if ($canCreate)
                                 <button type="button" class="btn btn-success mb-3" style="width: 300px"
                                     data-toggle="modal" data-target="#modal_auto_create">
                                     <i class="fas fa-magic"></i> Tạo Kế Hoạch {{ $typeName }}
