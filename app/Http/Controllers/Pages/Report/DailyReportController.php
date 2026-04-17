@@ -84,6 +84,120 @@ class DailyReportController extends Controller
             'explanation' => $explanation
         ]);
     }
+    public function yield_theoryl_detial($startDate, $endDate, $group_By)
+    {
+        $startDateStr = $startDate->format('Y-m-d H:i:s');
+        $endDateStr   = $endDate->format('Y-m-d H:i:s');
+
+        /*
+        |--------------------------------------------------------------------------
+        | 1️⃣ THEORETICAL PRODUCTION (TÍNH THEO STAGE_PLAN)
+        |--------------------------------------------------------------------------
+        */
+        $production = DB::table('stage_plan as sp')
+            ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
+            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
+            ->whereNotNull('sp.start')
+            ->where('sp.active', 1)
+            ->where('sp.deparment_code', session('user')['production_code'])
+            // Hỗ trợ overlap
+            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDateStr, $startDateStr])
+            ->select(
+                "sp.$group_By",
+                DB::raw("CASE WHEN sp.stage_code = 2 THEN 1 ELSE sp.stage_code END as stage_code"),
+                DB::raw("CONCAT(sp.id, '-theory-yield') AS id"),
+                DB::raw("CONCAT(COALESCE(product_name.name, 'N/A'), ' - ', COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A')) AS title"),
+
+                // Clamp thời gian
+                DB::raw("GREATEST(sp.start, '$startDateStr') AS actual_start"),
+                DB::raw("LEAST(sp.end, '$endDateStr') AS actual_end"),
+
+                // Tính overlap ratio
+                DB::raw("
+                    ROUND(
+                        (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, '$endDateStr'), GREATEST(sp.start, '$startDateStr'))) /
+                        NULLIF(TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 0)
+                    , 2) AS theory_yields
+                "),
+
+                // Tính qty unit theo ratio
+                DB::raw("
+                    ROUND(
+                        COALESCE(sp.Theoretical_yields_qty, 0) *
+                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, '$endDateStr'), GREATEST(sp.start, '$startDateStr'))) /
+                        NULLIF(TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 0)
+                    , 2) AS theory_qty_unit
+                "),
+
+                DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
+                DB::raw("
+                    CASE 
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%phim%' THEN 'coating'
+                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%nang%' THEN 'capsule'
+                        WHEN sp.stage_code = 5 THEN 'tablet'
+                        ELSE 'NA'
+                    END as table_type
+                "),
+                "sp.note"
+            )
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2️⃣ MERGE & FORMAT
+        |--------------------------------------------------------------------------
+        */
+        $theory_detail = $production->map(function ($item) use ($group_By) {
+            return (object)[
+                'resourceId'      => $item->$group_By,
+                'reported_date'   => substr($item->actual_start, 0, 10),
+                'id'              => $item->id,
+                'title'           => $item->title,
+                'start'           => $item->actual_start,
+                'end'             => $item->actual_end,
+                'yields'          => $item->theory_yields,
+                'yields_batch_qty' => $item->theory_qty_unit,
+                'unit'            => $item->unit,
+                'note'            => $item->note ?? null,
+                'table_type'      => $item->table_type ?? 'NA',
+                'stage_code'      => $item->stage_code
+            ];
+        })
+            ->sortBy('start')
+            ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3️⃣ TỔNG HỢP THEO PHÒNG (Dùng cho yield_day)
+        |--------------------------------------------------------------------------
+        */
+        $yield_day = $theory_detail
+            ->groupBy('resourceId')
+            ->map(function ($items) {
+                $first = $items->first();
+                return [
+                    'resourceId'    => $first->resourceId,
+                    'total_qty'     => round($items->sum('yields'), 2),
+                    'total_qty_unit'   => round($items->sum('yields_batch_qty'), 2),
+                    'unit'          => $first->unit,
+                    'table_type'    => $first->table_type,
+                    'stage_code'    => $first->stage_code,
+                    'yield_theory_detial' => $items->map(function ($i) {
+                        return date('H:i', strtotime($i->start)) . ' - ' . date('H:i', strtotime($i->end)) . ': ' . $i->title . ' || ' . number_format($i->yields, 2);
+                    })->implode('<br>')
+                ];
+            })
+            ->values();
+
+        return [
+            'theoryl_detail' => $theory_detail,
+            'yield_day'      => $yield_day
+        ];
+    }
 
     public function yield_actual_detial($startDate, $endDate, $group_By)
     {
@@ -286,120 +400,7 @@ class DailyReportController extends Controller
         ];
     }
 
-    public function yield_theoryl_detial($startDate, $endDate, $group_By)
-    {
-        $startDateStr = $startDate->format('Y-m-d H:i:s');
-        $endDateStr   = $endDate->format('Y-m-d H:i:s');
 
-        /*
-        |--------------------------------------------------------------------------
-        | 1️⃣ THEORETICAL PRODUCTION (TÍNH THEO STAGE_PLAN)
-        |--------------------------------------------------------------------------
-        */
-        $production = DB::table('stage_plan as sp')
-            ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
-            ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
-            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
-            ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
-            ->whereNotNull('sp.start')
-            ->where('sp.active', 1)
-            ->where('sp.deparment_code', session('user')['production_code'])
-            // Hỗ trợ overlap
-            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDateStr, $startDateStr])
-            ->select(
-                "sp.$group_By",
-                DB::raw("CASE WHEN sp.stage_code = 2 THEN 1 ELSE sp.stage_code END as stage_code"),
-                DB::raw("CONCAT(sp.id, '-theory-yield') AS id"),
-                DB::raw("CONCAT(COALESCE(product_name.name, 'N/A'), ' - ', COALESCE(plan_master.actual_batch, plan_master.batch, 'N/A')) AS title"),
-
-                // Clamp thời gian
-                DB::raw("GREATEST(sp.start, '$startDateStr') AS actual_start"),
-                DB::raw("LEAST(sp.end, '$endDateStr') AS actual_end"),
-
-                // Tính overlap ratio
-                DB::raw("
-                    ROUND(
-                        (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, '$endDateStr'), GREATEST(sp.start, '$startDateStr'))) /
-                        NULLIF(TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 0)
-                    , 2) AS theory_yields
-                "),
-
-                // Tính qty unit theo ratio
-                DB::raw("
-                    ROUND(
-                        COALESCE(sp.Theoretical_yields_qty, 0) *
-                        TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, '$endDateStr'), GREATEST(sp.start, '$startDateStr'))) /
-                        NULLIF(TIME_TO_SEC(TIMEDIFF(sp.end, sp.start)), 0)
-                    , 2) AS theory_qty_unit
-                "),
-
-                DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
-                DB::raw("
-                    CASE 
-                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%phim%' THEN 'coating'
-                        WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%nang%' THEN 'capsule'
-                        WHEN sp.stage_code = 5 THEN 'tablet'
-                        ELSE 'NA'
-                    END as table_type
-                "),
-                "sp.note"
-            )
-            ->get();
-
-        /*
-        |--------------------------------------------------------------------------
-        | 2️⃣ MERGE & FORMAT
-        |--------------------------------------------------------------------------
-        */
-        $theory_detail = $production->map(function ($item) use ($group_By) {
-            return (object)[
-                'resourceId'      => $item->$group_By,
-                'reported_date'   => substr($item->actual_start, 0, 10),
-                'id'              => $item->id,
-                'title'           => $item->title,
-                'start'           => $item->actual_start,
-                'end'             => $item->actual_end,
-                'yields'          => $item->theory_yields,
-                'yields_batch_qty' => $item->theory_qty_unit,
-                'unit'            => $item->unit,
-                'note'            => $item->note ?? null,
-                'table_type'      => $item->table_type ?? 'NA',
-                'stage_code'      => $item->stage_code
-            ];
-        })
-            ->sortBy('start')
-            ->values();
-
-        /*
-        |--------------------------------------------------------------------------
-        | 3️⃣ TỔNG HỢP THEO PHÒNG (Dùng cho yield_day)
-        |--------------------------------------------------------------------------
-        */
-        $yield_day = $theory_detail
-            ->groupBy('resourceId')
-            ->map(function ($items) {
-                $first = $items->first();
-                return [
-                    'resourceId'    => $first->resourceId,
-                    'total_qty'     => round($items->sum('yields'), 2),
-                    'total_qty_unit'   => round($items->sum('yields_batch_qty'), 2),
-                    'unit'          => $first->unit,
-                    'table_type'    => $first->table_type,
-                    'stage_code'    => $first->stage_code,
-                    'yield_theory_detial' => $items->map(function ($i) {
-                        return date('H:i', strtotime($i->start)) . ' - ' . date('H:i', strtotime($i->end)) . ': ' . $i->title . ' || ' . number_format($i->yields, 2);
-                    })->implode('<br>')
-                ];
-            })
-            ->values();
-
-        return [
-            'theoryl_detail' => $theory_detail,
-            'yield_day'      => $yield_day
-        ];
-    }
 
     public function yield_theory($startDate, $endDate, $group_By)
     {

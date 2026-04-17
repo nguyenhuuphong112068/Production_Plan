@@ -49,6 +49,7 @@ class LoginController extends Controller
             $production_name = 'PX Viên 1';
         }
 
+
         $request->session()->put('user', [
             'userId' => $getUser->id,
             'userName' => $getUser->userName,

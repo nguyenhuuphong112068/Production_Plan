@@ -95,7 +95,7 @@
                         <th>Số lô</th>
                         <th>Phòng Sản Xuất</th>
                         <th colspan="2">
-                            Thới Gian Sản Xuất <br>
+                            Thời Gian Sản Xuất <br>
                             <span style="color: red; font-style:italic;">
                                 BĐSX: là thời gian bắt đầu sản xuất
                             </span> <br>
