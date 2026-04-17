@@ -167,7 +167,7 @@
                                         <th>Ngày Dự Kiến KCS</th>
                                         <th>Qui Cách</th>
                                         <th>Phòng Sản Xuất</th>
-                                        <th>Thới Gian Sản Xuất</th>
+                                        <th>Thời Gian Sản Xuất</th>
                                         {{-- <th>Thời Gian Vệ Sinh</th> --}}
                                         <th>Ngày Nhận Bao Bì</th>
                                         <th>Trao Đổi Thông tin</th>
@@ -657,7 +657,7 @@
 
         $('#historyBody').html(
             '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>'
-            );
+        );
         $('#packagingHistoryModal').modal('show');
 
         $.ajax({

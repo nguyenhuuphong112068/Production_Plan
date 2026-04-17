@@ -1,119 +1,135 @@
 <div class="content-wrapper">
     <!-- Main content -->
     <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-12">
-            <!-- /.card-header -->
-            <div class="card">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <!-- /.card-header -->
+                    <div class="card">
 
-              <div class="card-header mt-4">
-                {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-              </div>
-              <!-- /.card-Body -->
-              <div class="card-body">
-                
-                <form id="filterForm" method="GET" action="{{ route('pages.Schedual.list.list') }}" class="d-flex flex-wrap gap-2">
-                    @csrf
-                    <div class="row w-100 align-items-center">
-
-                        <!-- Filter From/To -->
-                        <div class="col-md-4 d-flex gap-2">
-                            @php
-                                use Carbon\Carbon;
-                                $defaultFrom = Carbon::now()->toDateString();
-                                $defaultTo   = Carbon::now() ->addMonth(2)->toDateString();
-                            @endphp
-                            <div class="form-group d-flex align-items-center">
-                                <label for="from_date" class="mr-2 mb-0">From:</label>
-                                <input type="date" id="from_date" name="from_date" value="{{ request('from_date') ?? $defaultFrom }}" class="form-control" />
-                            </div>
-                            <div class="form-group d-flex align-items-center">
-                                <label for="to_date" class="mr-2 mb-0">To:</label>
-                                <input type="date" id="to_date" name="to_date" value="{{ request('to_date') ?? $defaultTo }}" class="form-control" />
-                            </div>
+                        <div class="card-header mt-4">
+                            {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
                         </div>
+                        <!-- /.card-Body -->
+                        <div class="card-body">
 
-                        <!-- Stage Selector -->
-                        <div class="col-md-4 d-flex justify-content-center align-items-center" style="gap: 10px; height: 40px;">
-                            {{-- <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
+                            <form id="filterForm" method="GET" action="{{ route('pages.Schedual.list.list') }}"
+                                class="d-flex flex-wrap gap-2">
+                                @csrf
+                                <div class="row w-100 align-items-center">
+
+                                    <!-- Filter From/To -->
+                                    <div class="col-md-4 d-flex gap-2">
+                                        @php
+                                            use Carbon\Carbon;
+                                            $defaultFrom = Carbon::now()->toDateString();
+                                            $defaultTo = Carbon::now()->addMonth(2)->toDateString();
+                                        @endphp
+                                        <div class="form-group d-flex align-items-center">
+                                            <label for="from_date" class="mr-2 mb-0">From:</label>
+                                            <input type="date" id="from_date" name="from_date"
+                                                value="{{ request('from_date') ?? $defaultFrom }}"
+                                                class="form-control" />
+                                        </div>
+                                        <div class="form-group d-flex align-items-center">
+                                            <label for="to_date" class="mr-2 mb-0">To:</label>
+                                            <input type="date" id="to_date" name="to_date"
+                                                value="{{ request('to_date') ?? $defaultTo }}" class="form-control" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Stage Selector -->
+                                    <div class="col-md-4 d-flex justify-content-center align-items-center"
+                                        style="gap: 10px; height: 40px;">
+                                        {{-- <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
                             <button type="button" id="prevStage" class="btn btn-link stage-btn" style="font-size: 25px;">&laquo;</button>
                             <span id="stageName" class="fw-bold text-center" style="font-size: 25px;">
                                 {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
                             </span>
                             <button type="button" id="nextStage" class="btn btn-link stage-btn" style="font-size: 25px;">&raquo;</button> --}}
-                        </div>
+                                    </div>
 
-                        <!-- Optional Right Side -->
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <div class="form-group " style="width: 200px">
-                                <select class="form-control" name="stage_code" style="text-align-last: center;"
-                                    onchange="document.getElementById('filterForm').submit();">
-                                    <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
-                                    <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
-                                    <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
-                                    <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
-                                    <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
-                                    <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim</option>
-                                    <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>ĐGSC-ĐGTC</option>
-                                </select>
-                        </div>
-                        </div>
+                                    <!-- Optional Right Side -->
+                                    <div class="col-md-4 d-flex justify-content-end">
+                                        <div class="form-group " style="width: 200px">
+                                            <select class="form-control" name="stage_code"
+                                                style="text-align-last: center;"
+                                                onchange="document.getElementById('filterForm').submit();">
+                                                <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
+                                                <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác
+                                                </option>
+                                                <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
+                                                <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất
+                                                </option>
+                                                <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình
+                                                </option>
+                                                <option {{ $stageCode == 6 ? 'selected' : '' }} value=6>Bao Phim
+                                                </option>
+                                                <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>ĐGSC-ĐGTC
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
 
-                    </div>
-                </form>
+                                </div>
+                            </form>
 
 
-                
-                <table id="data_table_Schedual_list" class="table table-bordered table-striped" style="font-size: 20px">
-                  <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
-                    <tr>
-                        <th>STT</th>
-                        <th>Mã Sản Phẩm</th>
-                        <th>Sản Phẩm</th>
-                        <th>Số Lô/ TĐ</th>
-                        <th>Cỡ lô</th>
-                        <th>Ngày Dự Kiến KCS</th>
-                        <th>Phòng Sản Xuất</th>
-                        <th>Thới Gian Sản Xuất</th>
-                        <th>Thời Gian Vệ Sinh</th>
-                        <th>Ghi Chú</th>
-                        <th>Người Tạo/ Ngày Tạo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
 
-                  @foreach ($datas as $data)
-                    <tr>
-                      <td>{{ $loop->iteration}} </td>
-                      <td> 
-                          <div> {{ $data->intermediate_code}} </div>
-                          <div> {{ $data->finished_product_code}} </div>
-                      </td>
-                      <td>{{$data->product_name}}</td>
-                      <td>{{$data->batch}}  
-                          @if ($data->is_val)
-                            <i class="fas fa-check-circle text-primary fs-4"></i>
-                          @endif
-                      </td>
-                      <td>{{$data->batch_qty . " " .  $data->unit_batch_qty}}</td>
-                      <td>
-                          <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
-                      </td>
-             
-                      <td> {{ $data->room_name ." - ". $data->room_code}} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }} </td>
-                      <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i')  ." - ". \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }} </td>
+                            <table id="data_table_Schedual_list" class="table table-bordered table-striped"
+                                style="font-size: 20px">
+                                <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
+                                    <tr>
+                                        <th>STT</th>
+                                        <th>Mã Sản Phẩm</th>
+                                        <th>Sản Phẩm</th>
+                                        <th>Số Lô/ TĐ</th>
+                                        <th>Cỡ lô</th>
+                                        <th>Ngày Dự Kiến KCS</th>
+                                        <th>Phòng Sản Xuất</th>
+                                        <th>Thời Gian Sản Xuất</th>
+                                        <th>Thời Gian Vệ Sinh</th>
+                                        <th>Ghi Chú</th>
+                                        <th>Người Tạo/ Ngày Tạo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
 
-                      <td> {{ $data->note}} </td>
+                                    @foreach ($datas as $data)
+                                        <tr>
+                                            <td>{{ $loop->iteration }} </td>
+                                            <td>
+                                                <div> {{ $data->intermediate_code }} </div>
+                                                <div> {{ $data->finished_product_code }} </div>
+                                            </td>
+                                            <td>{{ $data->product_name }}</td>
+                                            <td>{{ $data->batch }}
+                                                @if ($data->is_val)
+                                                    <i class="fas fa-check-circle text-primary fs-4"></i>
+                                                @endif
+                                            </td>
+                                            <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
+                                            <td>
+                                                <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }}
+                                                </div>
+                                            </td>
 
-                      <td>
-                          <div> {{ $data->schedualed_by}} </div>
-                          <div>{{ \Carbon\Carbon::parse($data->schedualed_at)->format('d/m/Y') }} </div>
-                      </td>                     
+                                            <td> {{ $data->room_name . ' - ' . $data->room_code }} </td>
+                                            <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }}
+                                            </td>
+                                            <td> {{ \Carbon\Carbon::parse($data->start_clearning)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->end_clearning)->format('d/m/Y H:i') }}
+                                            </td>
 
-  
-                      {{-- <td class="text-center align-middle">  
+                                            <td> {{ $data->note }} </td>
+
+                                            <td>
+                                                <div> {{ $data->schedualed_by }} </div>
+                                                <div>{{ \Carbon\Carbon::parse($data->schedualed_at)->format('d/m/Y') }}
+                                                </div>
+                                            </td>
+
+
+                                            {{-- <td class="text-center align-middle">  
                         <form class="form-deActive" action="{{ route('pages.category.product.deActive', ['id' => $data->id]) }}" method="post">
                             @csrf
                             <button type="submit" class="btn btn-danger" data-name="{{ $data->name }}">
@@ -121,26 +137,26 @@
                             </button>
                         </form>
                       </td> --}}
-                 
 
-                    </tr>
-                  @endforeach
 
-                  </tbody>
-                </table>
-              </div>
-              <!-- /.card-body -->
+                                        </tr>
+                                    @endforeach
+
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- /.card-body -->
+                    </div>
+                    <!-- /.card -->
+                </div>
+                <!-- /.col -->
             </div>
-            <!-- /.card -->
-          </div>
-          <!-- /.col -->
+            <!-- /.row -->
         </div>
-        <!-- /.row -->
-      </div>
-      <!-- /.container-fluid -->
+        <!-- /.container-fluid -->
     </section>
     <!-- /.content -->
-  </div>
+</div>
 
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
@@ -151,29 +167,32 @@
 
 
 <script>
-  $(document).ready(function() {
-    document.body.style.overflowY = "auto";
-    $('#data_table_Schedual_list').DataTable({
-      paging: true,
-      lengthChange: true,
-      searching: true,
-      ordering: true,
-      info: true,
-      autoWidth: false,
-      pageLength: 10,
-      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50,100, "Tất cả"]],
-      language: {
-        search: "Tìm kiếm:",
-        lengthMenu: "Hiển thị _MENU_ dòng",
-        info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-        paginate: {
-          previous: "Trước",
-          next: "Sau"
-        }
-      },
+    $(document).ready(function() {
+        document.body.style.overflowY = "auto";
+        $('#data_table_Schedual_list').DataTable({
+            paging: true,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            pageLength: 10,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
+            language: {
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ dòng",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+                paginate: {
+                    previous: "Trước",
+                    next: "Sau"
+                }
+            },
+        });
     });
-  });
-</script> 
+</script>
 {{-- 
 <script>
     let stages = @json($stages);
@@ -209,8 +228,8 @@
     const fromInput = document.getElementById('from_date');
     const toInput = document.getElementById('to_date');
 
-   [fromInput, toInput].forEach(input => {
-        input.addEventListener('input', function () { 
+    [fromInput, toInput].forEach(input => {
+        input.addEventListener('input', function() {
             form.submit();
         });
     });
@@ -225,4 +244,3 @@
   });
 
 </script> --}}
-

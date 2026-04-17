@@ -1067,7 +1067,7 @@
             // - [x] Tinh chỉnh màu sắc chat nhẹ nhàng, dễ nhìn <!-- id: 54 -->
             // - [x] Sửa lỗi tự động cuộn khi đang xem tin nhắn cũ <!-- id: 55 -->
             // - [x] Kiểm tra và tối ưu hóa hiệu năng <!-- id: 32 -->
-            let currentUserId = {{ session('user')['userId'] }};
+            let currentUserId = {{ session('user')['userId'] ?? 'null' }};
 
 
 
@@ -1121,7 +1121,7 @@
 
             //         data.forEach(g => {
             //             // Ẩn hội thoại với AI Agent nếu không phải Admin
-            //             let userGroup = "{{ session('user')['userGroup'] }}";
+            //             let userGroup = "{{ session('user')['userGroup'] ?? '' }}";
             //             if (g.type == 0 && g.display_name === 'AI Agent Search PMS' && userGroup !==
             //                 'Admin') {
             //                 return;
@@ -1187,7 +1187,7 @@
             //             let isAI = u.id == 9999;
 
             //             // Ẩn AI Agent nếu không phải Admin
-            //             let userGroup = "{{ session('user')['userGroup'] }}";
+            //             let userGroup = "{{ session('user')['userGroup'] ?? '' }}";
             //             if (isAI && userGroup !== 'Admin') {
             //                 return;
             //             }
@@ -1373,7 +1373,7 @@
 
                 $.get(url, function(res) {
                     let container = $(`#chat-content-${groupId}`);
-                    let currentUserId = {{ session('user')['userId'] }};
+                    let currentUserId = {{ session('user')['userId'] ?? 'null' }};
                     let messages = res.messages;
                     let groupMembersReadStatus = res.group_members_read_status;
 
@@ -1423,7 +1423,7 @@
                     let messages = res.messages;
                     if (messages.length === 0) return;
 
-                    let currentUserId = {{ session('user')['userId'] }};
+                    let currentUserId = {{ session('user')['userId'] ?? 'null' }};
                     let groupMembersReadStatus = res.group_members_read_status;
 
                     let oldScrollHeight = container[0].scrollHeight;
@@ -1529,8 +1529,8 @@
                                     <i class="fas fa-reply"></i>
                                 </span>
                                 ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi, sau 30p sẽ không được thu hồi" data-msg-id="${m.id}">
-                                                    <i class="fas fa-undo"></i>
-                                                </span>` : ''}
+                                                                        <i class="fas fa-undo"></i>
+                                                                    </span>` : ''}
                             </div>
                         `;
                     }

@@ -9,5 +9,5 @@
 @endsection
 
 @section('mainContent')
-    @include('pages.assignment.maintenance.dataTable')
+    @include('pages.assignment.production.dataTable')
 @endsection

@@ -19,9 +19,9 @@ class PersonnelController extends Controller
             ->where('deparment_code', $departmentCode)
             ->orderBy('code', 'asc')
             ->get();
-            
+
         session()->put(['title' => 'NHÂN VIÊN - BỘ PHẬN: ' . $departmentCode]);
-        
+
         // 3. Lấy danh sách bộ phận và tổ để hỗ trợ nhập liệu
         $departments = DB::table('deparments')->where('active', true)->get();
         $groups = DB::table('stage_groups')->get();
@@ -66,7 +66,7 @@ class PersonnelController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'code' => 'required|unique:personnel,code,'.$request->id,
+            'code' => 'required|unique:personnel,code,' . $request->id,
             'name' => 'required',
         ], [
             'code.required' => 'Vui lòng nhập Mã nhân viên',

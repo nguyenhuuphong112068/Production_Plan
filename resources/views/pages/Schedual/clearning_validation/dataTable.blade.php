@@ -1,7 +1,6 @@
-
 <div class="content-wrapper">
 
-    <div class="card" >
+    <div class="card">
 
         <div class="card-header mt-4">
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
@@ -19,7 +18,7 @@
                         <th>Số Lô</th>
                         <th>Lô Thẩm Định</th>
                         <th>Phòng Sản Xuất</th>
-                        <th>Thới Gian Sản Xuất</th>
+                        <th>Thời Gian Sản Xuất</th>
                         <th>Thời Gian Vệ Sinh</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                     </tr>
@@ -28,14 +27,16 @@
 
                     @foreach ($datas as $data)
                         <tr>
-                            <td>{{ $loop->iteration }} 
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                            <td>{{ $loop->iteration }}
+                                @if (session('user')['userGroup'] == 'Admin')
+                                    <div> {{ $data->id }} </div>
+                                @endif
                             </td>
                             <td>
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code }} </div>
                             </td>
-                            <td>{{ $data->product_name}}</td>
+                            <td>{{ $data->product_name }}</td>
                             <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
                             <td>{{ $data->batch }} </td>
 
@@ -101,9 +102,8 @@
             },
         });
 
-        
 
-    
+
+
     });
 </script>
-

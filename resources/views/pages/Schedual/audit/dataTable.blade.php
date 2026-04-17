@@ -126,7 +126,7 @@
                         <th>Ngày Dự Kiến KCS</th>
                         <th>Lô Thẩm Định</th>
                         <th>Phòng Sản Xuất</th>
-                        <th>Thới Gian Sản Xuất</th>
+                        <th>Thời Gian Sản Xuất</th>
                         <th>Thời Gian Vệ Sinh</th>
                         <th>Lý Do Tạo Lịch</th>
                         <th>Người Tạo/ Ngày Tạo</th>
