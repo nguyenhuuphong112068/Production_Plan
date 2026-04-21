@@ -1190,12 +1190,11 @@ const ScheduleTest = () => {
     const startStr = moment(event.start).format('YYYY-MM-DDTHH:mm');
     const endStr = moment(event.end).format('YYYY-MM-DDTHH:mm');
     const currentResourceId = event.getResources()[0]?.id;
-
-    // Lấy danh sách phòng được phép dựa trên process_code và định mức (quota)
+    // Lấy danh sách phòng được phép dựa trên process_code, stage_code và định mức (quota)
     let allowedResources = [];
     if (props.process_code && quota && quota.length > 0) {
       const allowedRoomIds = quota
-        .filter(q => q.process_code.startsWith(props.process_code))
+        .filter(q => q.process_code.startsWith(props.process_code) && q.stage_code === props.stage_code)
         .map(q => q.room_id);
 
       if (allowedRoomIds.length > 0) {
