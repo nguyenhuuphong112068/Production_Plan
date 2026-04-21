@@ -140,7 +140,7 @@ const ScheduleTest = () => {
         if (data.department == 'BOD') {
           setAuthorization(true);
         }
-        //console.log (data.events)
+
         setEvents(data.events);
         setResources(data.resources);
         setType(data.type)

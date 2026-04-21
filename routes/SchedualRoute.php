@@ -56,6 +56,7 @@ Route::prefix('/Schedual')
                 Route::put('required_room', 'required_room')->name('required_room');
                 Route::put('immediately', 'immediately')->name('immediately');
                 Route::put('clearningValidation', 'clearningValidation')->name('clearningValidation');
+                Route::put('groupGranulationAndBlending', 'groupGranulationAndBlending')->name('groupGranulationAndBlending');
                 Route::put('cleaninglevelchange', 'cleaninglevelchange')->name('cleaninglevelchange');
 
                 //Route::put('updateOffdays','updateOffdays')->name('updateOffdays');

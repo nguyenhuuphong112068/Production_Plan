@@ -128,15 +128,19 @@ const MaintenanceCalender = () => {
 
         let data = res.data;
 
+        // if (typeof data === "string") {
+        //   data = data.replace(/^<!--.*?-->/, "").trim();
+        //   data = JSON.parse(data);
+        // }
+
         if (typeof data === "string") {
           data = data.replace(/^<!--.*?-->/, "").trim();
-          //data = JSON.parse(data);
+          data = JSON.parse(data); // 👈 bắt buộc nếu là string JSON
         }
 
 
-        const isAuthorized = data.authorization // (['Admin', 'Calibration and Maintenance Scheduler', 'Calibration and Maintenance Planning Manager'].includes(data.authorization) && data.production == data.department) || data.department == 'BOD';
 
-
+        const isAuthorized = data.authorization_scheduler // (['Admin', 'Calibration and Maintenance Scheduler', 'Calibration and Maintenance Planning Manager'].includes(data.authorization) && data.production == data.department) || data.department == 'BOD';
 
         setAuthorization(isAuthorized);
         setAuthorizationAccept(data.authorization_accept);
@@ -155,10 +159,11 @@ const MaintenanceCalender = () => {
 
         if (isAuthorized) {
           const dept = data.department;
-          const userGroups = Array.isArray(data.authorization) ? data.authorization : (data.authorization ? [data.authorization] : []);
-          const isAdmin = userGroups.some(g => ['Admin', 'Schedualer'].includes(g));
+          //const userGroups = Array.isArray(data.authorization) ? data.authorization : (data.authorization ? [data.authorization] : []);
+          const isAdmin = data.authorization == 'Admin'; //userGroups.some(g => ['Admin'].includes(g));
 
           let filteredPlan = data.plan;
+
           if (!isAdmin && dept === 'QA') {
             setMaintenanceType('HC')
             filteredPlan = (data.plan || []).filter(p => {
@@ -172,6 +177,8 @@ const MaintenanceCalender = () => {
               return code.endsWith('_TB') || code.endsWith('_8') || code.endsWith('_TI');
             });
           }
+
+
 
           setPlan(filteredPlan);
           setCurrentPassword(data.currentPassword ?? '')
@@ -213,7 +220,7 @@ const MaintenanceCalender = () => {
 
       })
       .catch(err => {
-        // console.error("API error:", err)
+        console.error("API ERROR:", err);
       });
 
   }, [loading]);
@@ -779,7 +786,8 @@ const MaintenanceCalender = () => {
             start: newStart.toISOString(),
             end: newEnd.toISOString(),
             resourceId: event.getResources?.()[0]?.id ?? null,
-            title: event.title
+            title: event.title,
+            submit: event._def.extendedProps.submit
           });
         }
       });
@@ -803,6 +811,7 @@ const MaintenanceCalender = () => {
   const handleEventChange = (changeInfo) => {
     const changedEvent = changeInfo.event;
     // Thêm hoặc cập nhật event vào pendingChanges
+
     setPendingChanges(prev => {
 
       const exists = prev.find(e => e.id === changedEvent.id);
@@ -811,7 +820,8 @@ const MaintenanceCalender = () => {
         start: changedEvent.start.toISOString(),
         end: changedEvent.end.toISOString(),
         resourceId: changeInfo.event.getResources?.()[0]?.id ?? null,
-        title: changedEvent.title
+        title: changedEvent.title,
+        submit: changedEvent.submit
         // các dữ liệu khác nếu cần
       };
 
@@ -832,6 +842,7 @@ const MaintenanceCalender = () => {
       info.revert();
       return false;
     }
+
 
     if (pendingChanges.length === 0) {
       Swal.fire({

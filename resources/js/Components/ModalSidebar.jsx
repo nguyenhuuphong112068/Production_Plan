@@ -1407,6 +1407,65 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   };
 
 
+  const handleGroupGranulationAndBlending = (e) => {
+    if (isSaving) return;
+    if (selectedRows.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Vui lòng chọn ít nhất một lô để thực hiện gộp.',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: 'Xác nhận gộp công đoạn?',
+      text: "Công đoạn Pha chế (3) sẽ được gộp vào Trộn hoàn tất (4). Các mắt xích liên kết sẽ được tự động cập nhật.",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Hủy'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setIsSaving(true);
+        const ids = selectedRows.map(row => row.id);
+
+        axios.put('/Schedual/groupGranulationAndBlending', {
+          ids,
+          stage_code: stageFilter
+        })
+          .then(res => {
+            let data = res.data;
+            if (typeof data === "string") {
+              data = data.replace(/^<!--.*?-->/, "").trim();
+              data = JSON.parse(data);
+            }
+            setPlan(data.plan);
+            setSelectedRows([]);
+            Swal.fire({
+              icon: 'success',
+              title: 'Gộp thành công',
+              timer: 1000,
+              showConfirmButton: false,
+            });
+          })
+          .catch(err => {
+            console.error(err);
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi khi gộp',
+              text: err.response?.data?.message || err.message,
+            });
+          })
+          .finally(() => {
+            setIsSaving(false);
+          });
+      }
+    });
+  };
+
+
   const longTextStyle = { whiteSpace: 'normal', wordBreak: 'break-word' };
 
   const allColumns = [
@@ -1460,7 +1519,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         {/* Thanh điều khiển */}
         <div className="p-4 border-b">
           <Row className="align-items-center">
-            <Col md={3} className='d-flex justify-content-start'>
+            <Col md={4} className='d-flex justify-content-start'>
 
               {percentShow === "100%" && stageFilter <= 7 ? (
                 <>
@@ -1496,8 +1555,24 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                         onClick={handleCreateAutoCampain}>
                         {isSaving === false ? <i className="fas fa-flag-checkered"></i> : <i className="fas fa-spinner fa-spin fa-lg"></i>}
                       </div>
+
+
+                      <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Gộp Pha Chế Và THT thành sự kiện sản xuất chung"
+                        onClick={handleGroupGranulationAndBlending}>
+                        {isSaving === false ? <i className="fas fa-object-group"></i> : <i className="fas fa-spinner fa-spin fa-lg"></i>}
+                      </div>
+
                     </>
                   )}
+
+
+                  {stageFilter == 4 && (
+                    <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Gộp Pha Chế Và THT thành sự kiện sản xuất chung"
+                      onClick={handleGroupGranulationAndBlending}>
+                      {isSaving === false ? <i className="fas fa-object-group"></i> : <i className="fas fa-spinner fa-spin fa-lg"></i>}
+                    </div>
+                  )}
+
 
                   <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Sắp xếp lại theo kế hoạch tháng"
                     onClick={handleSorted}>
@@ -1553,7 +1628,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
             </Col>
 
-            <Col md={6}>
+            <Col md={4}>
               <div className="p-inputgroup flex-1">
                 {isMaintenance ? (
                   <div className="maintenance-title w-full text-center p-2 rounded bg-blue-50 text-blue-800 fw-bold border border-blue-200">
@@ -1606,7 +1681,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                 )}
               </div>
             </Col>
-            <Col md={3} className='d-flex justify-content-end'>
+            <Col md={4} className='d-flex justify-content-end'>
 
               {/* <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xác Nhận Hoàn Thành Lô Sản Xuất"
                 onClick={handleFinished}>
@@ -1638,7 +1713,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         <div style={{ flex: 1, overflow: 'auto' }}>
           <DataTable
             className="p-datatable-gridlines prime-gridlines"
-            key={percentShow}
+            key={percentShow + stageFilter}
             value={tableData}
             selection={selectedRows}
             onSelectionChange={handleSelectionChange}

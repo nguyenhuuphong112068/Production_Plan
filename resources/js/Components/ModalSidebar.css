@@ -1,5 +1,3 @@
-
-
 /* .hidden-column,
 .p-datatable-thead > tr > th.hidden-column,
 .p-datatable-tbody > tr > td.hidden-column {
@@ -47,7 +45,7 @@
   border-color: #3b82f6;
 }
 
-.sort-card input:checked + span {
+.sort-card input:checked+span {
   color: #2563eb;
   font-weight: 600;
 }
@@ -72,7 +70,8 @@
 }
 
 .response-date-input {
-  width: 240px !important;   /* 👈 khóa cứng */
+  width: 240px !important;
+  /* 👈 khóa cứng */
   min-width: unset !important;
   max-width: 100% !important;
 }
@@ -115,6 +114,7 @@
 
 .stage-dropdown {
   height: 60px;
+
 }
 
 .stage-dropdown .p-dropdown-label {
