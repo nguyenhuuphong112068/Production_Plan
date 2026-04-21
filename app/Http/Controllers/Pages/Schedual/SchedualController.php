@@ -3259,6 +3259,60 @@ class SchedualController extends Controller
         ]);
     }
 
+    public function groupGranulationAndBlending(Request $request)
+    {
+        $ids = $request->ids;
+        if (empty($ids)) {
+            return response()->json(['message' => 'Vui lòng chọn ít nhất một lô sản phẩm.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($ids as $id) {
+                // Lấy thông tin công đoạn đang được chọn để gộp (3 hoặc 4)
+                $currentStage = DB::table('stage_plan')->where('id', $id)->first();
+                if (! $currentStage) {
+                    continue;
+                }
+
+                $pmId = $currentStage->plan_master_id;
+                $currentCode = $currentStage->code;
+                $preCode = $currentStage->predecessor_code;
+                $nextCode = $currentStage->nextcessor_code;
+
+                // 1. Vô hiệu hóa công đoạn hiện tại
+                DB::table('stage_plan')
+                    ->where('id', $id)
+                    ->update(['active' => 0]);
+
+                // 2. Cập nhật mắt xích phía trước trỏ thẳng tới công đoạn phía sau
+                if ($preCode) {
+                    DB::table('stage_plan')
+                        ->where('plan_master_id', $pmId)
+                        ->where('code', $preCode)
+                        ->update(['nextcessor_code' => $nextCode]);
+                }
+
+                // 3. Cập nhật mắt xích phía sau trỏ ngược lại công đoạn phía trước
+                if ($nextCode) {
+                    DB::table('stage_plan')
+                        ->where('plan_master_id', $pmId)
+                        ->where('code', $nextCode)
+                        ->update(['predecessor_code' => $preCode]);
+                }
+            }
+            DB::commit();
+        } catch (\Exception  $e) {
+            DB::rollBack();
+
+            return response()->json(['message' => 'Lỗi khi xử lý gộp công đoạn: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
+        ]);
+    }
+
     public function Sorted(Request $request)
     {
 

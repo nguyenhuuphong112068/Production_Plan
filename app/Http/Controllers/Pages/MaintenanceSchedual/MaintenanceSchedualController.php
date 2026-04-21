@@ -41,8 +41,9 @@ class MaintenanceSchedualController extends SchedualController
                 $bkc_code = DB::table('stage_plan_bkc')->where('deparment_code', session('user')['production_code'])->select('bkc_code')->distinct()->orderByDesc('bkc_code')->get();
                 $reason = DB::table('reason')->where('deparment_code', $production)->pluck('name');
                 $quota = [];
-                //parent::getQuota($production);
             }
+
+
 
             $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
 
@@ -94,6 +95,7 @@ class MaintenanceSchedualController extends SchedualController
             $authorization = session('user')['userGroup'];
             $authorization_scheduler = user_has_permission($UesrID, 'plan_maintenance_scheduler', 'boolean');
             $authorization_accept = user_has_permission($UesrID, 'plan_maintenance_accept', 'boolean');
+
 
             return response()->json([
 
@@ -218,7 +220,7 @@ class MaintenanceSchedualController extends SchedualController
                 $possibleOffDays = [];
 
                 // Tìm trong phạm vi 15 ngày hoặc cho đến ngày hạn (tùy cái nào xa hơn)
-                $searchLimit = max(15, (int)$idealStart->diffInDays($deadline) + 2);
+                $searchLimit = max(15, (int)$idealStart->diffInDays($deadline) + 7);
 
                 for ($i = 0; $i < $searchLimit; $i++) {
                     $checkDate = $idealStart->copy()->addDays($i);
@@ -819,11 +821,9 @@ class MaintenanceSchedualController extends SchedualController
                         ->select('q.C2_time')
                         ->first();
 
-                    if ($prevProduct && $prevProduct->C2_time) {
-                        $dur = $this->toMinutes($prevProduct->C2_time);
-                        $startClearning = \Carbon\Carbon::parse($change['end']);
-                        $endClearning = $startClearning->copy()->addMinutes($dur);
-                    }
+                    $dur = ($prevProduct && $prevProduct->C2_time) ? $this->toMinutes($prevProduct->C2_time) : 120;
+                    $startClearning = \Carbon\Carbon::parse($change['end']);
+                    $endClearning = $startClearning->copy()->addMinutes($dur);
                 }
 
                 if ($isTI && ! empty($codes)) {
@@ -1065,9 +1065,6 @@ class MaintenanceSchedualController extends SchedualController
     }
 
     // Thừa kế getEvents từ SchedualController vì đã có gộp bảo trì mặc định ở đó
-
-
-
 
     public function syncExternal(Request $request)
     {
