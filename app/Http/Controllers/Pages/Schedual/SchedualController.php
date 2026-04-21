@@ -2125,6 +2125,17 @@ class SchedualController extends Controller
 
                     $idsArray = explode(',', $realId);
                     $original_event = DB::table('stage_plan')->where('id', $idsArray[0])->first();
+
+                    if ($request->input('update_campaign', false) && $original_event && $original_event->campaign_code) {
+                        $campaignIds = DB::table('stage_plan')
+                            ->where('campaign_code', $original_event->campaign_code)
+                            ->where('stage_code', $original_event->stage_code)
+                            ->where('finished', 0)
+                            ->pluck('id')
+                            ->toArray();
+                        $idsArray = array_unique(array_merge($idsArray, $campaignIds));
+                    }
+
                     DB::table('stage_plan')
                         ->whereIn('id', $idsArray)
                         ->update([

@@ -1191,8 +1191,38 @@ const ScheduleTest = () => {
     const endStr = moment(event.end).format('YYYY-MM-DDTHH:mm');
     const currentResourceId = event.getResources()[0]?.id;
 
+    // Lấy danh sách phòng được phép dựa trên process_code và định mức (quota)
+    let allowedResources = [];
+    if (props.process_code && quota && quota.length > 0) {
+      const allowedRoomIds = quota
+        .filter(q => q.process_code.startsWith(props.process_code))
+        .map(q => q.room_id);
+
+      if (allowedRoomIds.length > 0) {
+        allowedResources = resources.filter(res => allowedRoomIds.includes(res.id));
+      }
+    }
+
+    // Nếu không tìm thấy theo process_code, fallback về permisson_room_filter hoặc stage_code
+    if (allowedResources.length === 0) {
+      const allowedCodes = props.permisson_room_filter
+        ? props.permisson_room_filter.split(',').map(s => s.trim())
+        : [];
+
+      allowedResources = resources.filter(res => {
+        if (allowedCodes.length > 0) {
+          return allowedCodes.includes(res.code);
+        }
+        return res.stage_code === props.stage_code;
+      });
+    }
+
+    const roomOptions = allowedResources.map(res =>
+      `<option value="${res.id}" ${res.id == currentResourceId ? 'selected' : ''}>${res.title}</option>`
+    ).join('');
+
     Swal.fire({
-      title: 'Cập nhật Thời gian',
+      title: 'Cập nhật sự kiện',
       width: '450px',
       html: `
         <div style="text-align: left; padding: 10px;">
@@ -1205,9 +1235,19 @@ const ScheduleTest = () => {
             <label style="display: block; font-weight: bold; margin-bottom: 5px;">Thời gian kết thúc:</label>
             <input type="datetime-local" id="swal-end" class="swal2-input" style="width: 100%; margin: 0;" value="${endStr}">
           </div>
-          
-          <div style="margin-top: 5px; color: #666;">
-            Phòng: <strong>${event.getResources()[0]?.title || ''}</strong>
+
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Phòng:</label>
+            <select id="swal-resource" class="swal2-select" style="width: 100%; margin: 0; display: block;">
+              ${roomOptions}
+            </select>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <label style="display: flex; align-items: center; font-weight: bold; cursor: pointer;">
+              <input type="checkbox" id="swal-update-campaign" style="margin-right: 10px; width: 18px; height: 18px;" checked>
+              Di chuyển cả chiến dịch
+            </label>
           </div>
         </div>
       `,
@@ -1218,16 +1258,18 @@ const ScheduleTest = () => {
       preConfirm: () => {
         const start = document.getElementById('swal-start').value;
         const end = document.getElementById('swal-end').value;
+        const resourceId = document.getElementById('swal-resource').value;
+        const updateCampaign = document.getElementById('swal-update-campaign').checked;
 
-        if (!start || !end) {
+        if (!start || !end || !resourceId) {
           Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin');
           return false;
         }
-        return { start, end };
+        return { start, end, resourceId, updateCampaign };
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        const { start, end } = result.value;
+        const { start, end, resourceId, updateCampaign } = result.value;
         const api = calendarRef.current?.getApi();
         const { activeStart, activeEnd } = api.view;
         const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
@@ -1241,11 +1283,12 @@ const ScheduleTest = () => {
         axios.put('/Schedual/update', {
           theory: theoryHidden,
           cascade: isCascadeMode,
+          update_campaign: updateCampaign,
           changes: [{
             id: event.id,
             start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
             end: moment(end).format('YYYY-MM-DD HH:mm:ss'),
-            resourceId: currentResourceId,
+            resourceId: resourceId,
             title: event.title,
             C_end: false
           }],
