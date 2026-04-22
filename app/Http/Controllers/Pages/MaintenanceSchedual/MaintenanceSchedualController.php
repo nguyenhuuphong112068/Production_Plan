@@ -60,6 +60,24 @@ class MaintenanceSchedualController extends SchedualController
             $sumBatchByStage = parent::yield($startDate, $endDate, 'stage_code');
 
             $resources = parent::getResources($production, $startDate, $endDate, true);
+            
+            // 🔹 Thêm Resource Virtual "Toàn phân xưởng (PX)" vào đầu danh sách
+            $pxResource = (object)[
+                'id' => 0, // Dùng ID 0 để khớp với room_id 0 (PX) đã chọn ở dataTable
+                'code' => 'PX',
+                'title' => '--- TOÀN PHÂN XƯỞNG (PX) ---',
+                'stage_name' => 'Bảo trì chung',
+                'stage_code' => 8,
+                'production_group' => '',
+                'order_by' => -1, // Cho lên đầu
+                'busy_hours' => 0,
+                'free_hours' => 0,
+                'total_hours' => 0,
+                'yield' => 0,
+                'unit' => ''
+            ];
+            
+            $resources = collect([$pxResource])->merge($resources);
 
             $type = true;
 
@@ -465,12 +483,31 @@ class MaintenanceSchedualController extends SchedualController
         $quotaIds = $plans->pluck('product_caterogy_id')->filter()->unique()->toArray();
         $relatedRooms = collect();
         if (! empty($quotaIds)) {
-            $relatedRooms = DB::table('quota_maintenance_rooms as qmr')
+            // 1. Lấy mapping room_id = 0 (PX)
+            $pxMappings = DB::table('quota_maintenance_rooms')
+                ->whereIn('quota_maintenance_id', $quotaIds)
+                ->where('room_id', 0)
+                ->get();
+
+            // 2. Lấy mapping phòng thực tế
+            $realRooms = DB::table('quota_maintenance_rooms as qmr')
                 ->join('room', 'qmr.room_id', '=', 'room.id')
                 ->whereIn('qmr.quota_maintenance_id', $quotaIds)
                 ->select('qmr.quota_maintenance_id', 'room.code as room_code', 'room.name as room_name', 'room.production_group')
-                ->get()
-                ->groupBy('quota_maintenance_id');
+                ->get();
+
+            // 3. Gộp lại
+            $allRelated = $realRooms;
+            foreach ($pxMappings as $px) {
+                $allRelated->push((object)[
+                    'quota_maintenance_id' => $px->quota_maintenance_id,
+                    'room_code' => 'PX',
+                    'room_name' => 'Toàn phân xưởng',
+                    'production_group' => ''
+                ]);
+            }
+
+            $relatedRooms = $allRelated->groupBy('quota_maintenance_id');
         }
 
         $instIds = $plans->pluck('instrument_code')->filter()->unique()->toArray();
