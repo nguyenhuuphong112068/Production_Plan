@@ -47,59 +47,6 @@ class SchedualController extends Controller
 
     }
 
-    // public function Auto_updateDepartment()
-    // {
-    //         $configs = [
-    //                 [
-    //                         'table' => 'Schedule_Master_2',
-    //                         'block' => 'BT-B2',
-    //                         'mapping' => [
-    //                                 3 => 'PXVH',
-    //                                 4 => 'PXDN',
-    //                                 5 => 'PXV2'
-    //                         ]
-    //                 ],
-    //                 [
-    //                         'table' => 'Schedule_Master_3',
-    //                         'block' => 'TI-B2',
-    //                         'mapping' => [
-    //                                 6 => 'PXVH',
-    //                                 7 => 'PXDN',
-    //                                 8 => 'PXV2'
-    //                         ]
-    //                 ]
-    //         ];
-
-    //         $totalUpdated = 0;
-
-    //         foreach ($configs as $config) {
-    //                 $tableName = $config['table'];
-    //                 $targetBlock = $config['block'];
-    //                 foreach ($config['mapping'] as $dbid => $deptCode) {
-    //                         // Lấy danh sách Inst_id từ database cal2 tương ứng với từng dbid
-    //                         $instIds = DB::connection('cal2')->table($tableName)
-    //                                 ->where('dbid', $dbid)
-    //                                 ->whereNotNull('Inst_id')
-    //                                 ->pluck('Inst_id')
-    //                                 ->toArray();
-
-    //                         if (!empty($instIds)) {
-    //                                 // Cập nhật theo nhóm (chunk) để tránh lỗi giới hạn câu lệnh SQL
-    //                                 foreach (array_chunk($instIds, 500) as $chunk) {
-    //                                         $totalUpdated += DB::table('quota_maintenance')
-    //                                                 ->where('block', $targetBlock)
-    //                                                 ->whereIn('inst_id', $chunk)
-    //                                                 ->update(['deparment_code' => $deptCode]);
-    //                                 }
-    //                         }
-    //                 }
-    //         }
-
-    //         return response()->json([
-    //                 'success' => true,
-    //                 'message' => "Migrated successfully. Total updated: $totalUpdated",
-    //         ]);
-    // }
 
     public function index()
     {
@@ -409,6 +356,7 @@ class SchedualController extends Controller
                 'sp.submit',
                 'sp.accept_quarantine',
                 'sp.campaign_code',
+                'sp.schedualed_by',
                 'quota_maintenance.Inst_sch_type',
 
                 'finished_product_category.intermediate_code',
@@ -520,6 +468,7 @@ class SchedualController extends Controller
                         'code' => $plan->code,
                         'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                         'Inst_sch_type' => $plan->Inst_sch_type,
+                        'schedualed_by' => $plan->schedualed_by,
                     ]);
                 }
 
@@ -2173,120 +2122,30 @@ class SchedualController extends Controller
                         $idsArray = array_unique(array_merge($idsArray, $campaignIds));
                     }
 
+                    $updateData = [
+                        'start' => $change['start'],
+                        'end' => $change['end'],
+                        'resourceId' => $change['resourceId'],
+                        'schedualed_by' => session('user')['fullName'],
+                        'schedualed_at' => now(),
+                        'accept_quarantine' => 0,
+                        'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
+                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
+                    ];
+
+                    // 🔹 [Audit] Đánh dấu nếu Phân xưởng (PXV) tác động vào lịch Bảo trì - Hiệu chuẩn (stage_code 8)
+                    if (strpos(session('user')['production_code'], 'PXV') === 0) {
+                        $updateData['keep_dry'] = DB::raw("CASE WHEN stage_code = 8 THEN 1 ELSE keep_dry END");
+                    }
+
                     DB::table('stage_plan')
                         ->whereIn('id', $idsArray)
-                        ->update([
-                            'start' => $change['start'],
-                            'end' => $change['end'],
-                            'resourceId' => $change['resourceId'],
-                            'schedualed_by' => session('user')['fullName'],
-                            'schedualed_at' => now(),
-                            'accept_quarantine' => 0,
-                            // Không update ngày nhận ở đây nếu đã nhận (sẽ được xử lý trong loop bên dưới)
-                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
-                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
-                        ]);
-
-                    if ($cascade && $original_event && $original_event->start) {
-                        $oldStart = Carbon::parse($original_event->start);
-                        $newStart = Carbon::parse($change['start']);
-                        $deltaStart = $newStart->timestamp - $oldStart->timestamp;
-
-                        $oldEnd = Carbon::parse($original_event->end);
-                        $newEnd = Carbon::parse($change['end']);
-                        $deltaEnd = $newEnd->timestamp - $oldEnd->timestamp;
-
-                        // Cascade based on the maximum displacement (supports move and resize-push)
-                        $deltaSeconds = max($deltaStart, $deltaEnd);
-
-                        if ($deltaSeconds != 0) {
-                            $subsequent = DB::table('stage_plan')
-                                ->where('resourceId', $original_event->resourceId)
-                                ->where('start', '>', $original_event->start)
-                                ->where('finished', 0)
-                                ->whereNotIn('id', $allManualIds)
-                                ->orderBy('start', 'asc')
-                                ->get();
-
-                            // Mốc thời gian kết thúc của sự kiện ngay trước để làm biên
-                            $current_main = DB::table('stage_plan')->where('id', $idsArray[0])->first();
-                            $lastEnd = Carbon::parse($current_main->end_clearning ?? $current_main->end);
-
-                            foreach ($subsequent as $event) {
-                                if (in_array($event->id, $alreadyCascadedIds)) {
-                                    continue;
-                                }
-                                $alreadyCascadedIds[] = $event->id;
-
-                                // 1. Dự định dịch chuyển: 
-                                // Mặc định giữ nguyên vị trí cũ (Stay put) cho tất cả các loại sự kiện (sản xuất và bảo trì).
-                                // Chỉ thực hiện di chuyển nếu xuất hiện chồng lấn (va chạm) với sự kiện đi trước.
-                                $temp_s = Carbon::parse($event->start);
-
-                                // 2. Kiểm tra chồng lấn (Push logic): Nếu mốc dự định bị sự kiện trước đè vào thì phải đẩy đi
-                                if ($temp_s->lt($lastEnd)) {
-                                    $temp_s = $lastEnd->copy();
-                                }
-
-                                // 3. Né ngày nghỉ (Smart Skip)
-                                while (in_array($temp_s->toDateString(), $offDays)) {
-                                    $temp_s->addDay()->startOfDay();
-                                }
-
-                                // 4. Tính độ dời thực tế và cập nhật
-                                $actualDelta = $temp_s->timestamp - Carbon::parse($event->start)->timestamp;
-
-                                $new_s = $temp_s;
-                                $new_e = Carbon::parse($event->end)->addSeconds($actualDelta);
-                                $new_sc = $event->start_clearning ? Carbon::parse($event->start_clearning)->addSeconds($actualDelta) : null;
-                                $new_ec = $event->end_clearning ? Carbon::parse($event->end_clearning)->addSeconds($actualDelta) : null;
-
-                                DB::table('stage_plan')->where('id', $event->id)->update([
-                                    'start' => $new_s,
-                                    'end' => $new_e,
-                                    'start_clearning' => $new_sc,
-                                    'end_clearning' => $new_ec,
-                                    'schedualed_by' => session('user')['fullName'],
-                                    'schedualed_at' => now(),
-                                ]);
-
-                                // 5. Cập nhật mốc biên cho sự kiện kế tiếp trong chuỗi cascade
-                                $lastEnd = $new_ec ?? $new_e;
-
-                                // Log history for cascaded update
-                                DB::table('stage_plan_history')->insert([
-                                    'stage_plan_id' => $event->id,
-                                    'campaign_code' => $event->campaign_code,
-                                    'code' => $event->code,
-                                    'order_by' => $event->order_by,
-                                    'schedualed' => $event->schedualed,
-                                    'stage_code' => $event->stage_code,
-                                    'title' => $event->title,
-                                    'start' => $new_s,
-                                    'end' => $new_e,
-                                    'resourceId' => $event->resourceId,
-                                    'title_clearning' => $event->title_clearning,
-                                    'start_clearning' => $new_sc,
-                                    'end_clearning' => $new_ec,
-                                    'tank' => $event->tank,
-                                    'keep_dry' => $event->keep_dry,
-                                    'AHU_group' => $event->AHU_group,
-                                    'schedualed_by' => session('user')['fullName'],
-                                    'schedualed_at' => now(),
-                                    'version' => DB::table('stage_plan_history')->where('stage_plan_id', $event->id)->max('version') + 1 ?? 1,
-                                    'note' => $event->note,
-                                    'deparment_code' => session('user')['production_code'],
-                                    'type_of_change' => ($request->reason['reason'] ?? 'Cascade update'),
-                                    'created_date' => now(),
-                                    'created_by' => session('user')['fullName'],
-                                ]);
-                            }
-                        }
-                    }
+                        ->update($updateData);
 
                     foreach ($idsArray as $sid) {
                         $update_row = DB::table('stage_plan')->where('id', $sid)->first();
 
+                        // 🔹 [PXV1 Special Logic] Cập nhật cleaning ngay sau khi event kết thúc
                         if (session('user')['production_code'] == 'PXV1' && $update_row->start_clearning && $update_row->end_clearning) {
                             $durationSeconds = Carbon::parse($update_row->start_clearning)->diffInSeconds(Carbon::parse($update_row->end_clearning));
                             $new_start_clearning = Carbon::parse($change['end']);
@@ -2296,10 +2155,17 @@ class SchedualController extends Controller
                                 'start_clearning' => $new_start_clearning,
                                 'end_clearning' => $new_end_clearning,
                             ]);
-
-                            $update_row->start_clearning = $new_start_clearning->toDateTimeString();
-                            $update_row->end_clearning = $new_end_clearning->toDateTimeString();
+                            // Refresh model for cascade boundary check
+                            $update_row = DB::table('stage_plan')->where('id', $sid)->first();
                         }
+                    }
+
+                    // 🔹 [Source of Truth: Frontend] 
+                    // Toàn bộ logic Cascade đã được tính toán ở Frontend và gửi về qua mảng 'changes'.
+                    // Loại bỏ cơ chế tự động tịnh tiến ở Backend để tránh sai lệch dữ liệu.
+
+                    foreach ($idsArray as $sid) {
+                        $update_row = DB::table('stage_plan')->where('id', $sid)->first();
 
                         if ($update_row && $update_row->submit == 1) {
 

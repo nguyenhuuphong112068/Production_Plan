@@ -1579,6 +1579,8 @@ const MaintenanceCalender = () => {
     const eventDate = dayjs(event.start).format('YYYY-MM-DD'); // Ngày thực hiện trên lịch
 
     const isTank = props.tank == 1 && props.stage_code == 8;
+    const productionChangeEvent = props.keep_dry == 1 && props.stage_code == 8;
+
     let isLate = false;
 
     if (props.stage_code == 8) {
@@ -1628,6 +1630,16 @@ const MaintenanceCalender = () => {
       <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
         <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
           
+        ${productionChangeEvent ? `
+            <div 
+              class="absolute top-[-15px] left-2 px-1 rounded shadow bg-[#fff3cd] text-[#856404] border border-[#ffeeba]"
+              style="font-size: 10px;"
+              title="Lịch bị thay đổi bởi Phân xưởng"
+            >
+              ⚠️ <b>${props.schedualed_by ?? ''}</b>
+            </div>
+          ` : ''}
+
         ${!props.is_clearning && props.finished == 0 ? `
             <span 
               style="
