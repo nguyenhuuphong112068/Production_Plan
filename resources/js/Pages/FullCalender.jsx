@@ -2848,12 +2848,13 @@ const ScheduleTest = () => {
         </div>
       `;
 
-    if (!props.is_clearning && showRenderBadge && authorization) {
+    if (!props.is_clearning && props.campaign_code) {
       html += `
                 <div 
-                  class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
-                  title="% biệt trữ"
-                ><b>${props.campaign_code ?? ''}</b></div>`;
+                  class="absolute bottom-[2px] right-[2px] px-1 rounded shadow-sm bg-white/90 text-red-600 z-[20]"
+                  style="font-size: 8px; line-height: 1;"
+                  title="Mã Chiến dịch"
+                ><b>${props.campaign_code}</b></div>`;
     }
 
 
@@ -2862,8 +2863,8 @@ const ScheduleTest = () => {
 
       html += `
               <div 
-                class="absolute top-[-20px] right-5 px-1 rounded shadow"
-                style="${style}"
+                class="absolute top-[-15px] right-2 px-0.5 rounded shadow-sm"
+                style="${style}; font-size: 10px;"
                 title="Trạng Thái SX"
               >
                 <b>${props.status ?? ''}</b>
