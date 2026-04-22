@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pages\Category;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class MaintenanceCategoryController extends Controller
@@ -199,14 +200,19 @@ class MaintenanceCategoryController extends Controller
                         return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
                 }
 
-                DB::table('quota_maintenance')
-                        ->where('id', $request->id)
-                        ->update([
-                                'exe_time' => $request->time,
-                                'created_by' => session('user')['fullName'],
-                                'created_time' => now(),
-                        ]);
-                return response()->json(['success' => true]);
+                try {
+                        DB::table('quota_maintenance')
+                                ->where('id', $request->id)
+                                ->update([
+                                        'exe_time' => $request->time,
+                                        'created_by' => session('user')['fullName'] ?? 'System',
+                                        'created_time' => now(),
+                                ]);
+                        return response()->json(['success' => true]);
+                } catch (\Exception $e) {
+                        Log::error('Update Maintenance Time Error: ' . $e->getMessage());
+                        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+                }
         }
 
         public function is_HVAC(Request $request)
@@ -232,7 +238,7 @@ class MaintenanceCategoryController extends Controller
                 }
 
                 $quota_id = $request->id;
-                $room_ids = $request->room_ids; // Mảng các room_id
+                $room_ids = $request->room_ids;
 
                 DB::beginTransaction();
                 try {
@@ -240,39 +246,39 @@ class MaintenanceCategoryController extends Controller
                         DB::table('quota_maintenance_rooms')->where('quota_maintenance_id', $quota_id)->delete();
 
                         // Thêm các liên kết mới
-                        if (!empty($room_ids) && is_array($room_ids)) {
+                        if (!empty($room_ids)) {
+                                // Đảm bảo room_ids là mảng
+                                if (!is_array($room_ids)) {
+                                        $room_ids = [$room_ids];
+                                }
+
                                 $insert_data = [];
                                 foreach ($room_ids as $room_id) {
+                                        if ($room_id === null || $room_id === "") continue;
                                         $insert_data[] = [
                                                 'quota_maintenance_id' => $quota_id,
                                                 'room_id' => $room_id,
                                         ];
                                 }
-                                DB::table('quota_maintenance_rooms')->insert($insert_data);
 
-                                // Cập nhật lại room_id đầu tiên vào bảng chính để tương thích ngược nếu cần
-                                DB::table('quota_maintenance')
-                                        ->where('id', $quota_id)
-                                        ->update([
-
-                                                'created_by' => session('user')['fullName'],
-                                                'created_time' => now(),
-                                        ]);
-                        } else {
-                                // Nếu không chọn phòng nào
-                                DB::table('quota_maintenance')
-                                        ->where('id', $quota_id)
-                                        ->update([
-
-                                                'created_by' => session('user')['fullName'],
-                                                'created_time' => now(),
-                                        ]);
+                                if (!empty($insert_data)) {
+                                        DB::table('quota_maintenance_rooms')->insert($insert_data);
+                                }
                         }
+
+                        // Cập nhật log thay đổi trong bảng chính
+                        DB::table('quota_maintenance')
+                                ->where('id', $quota_id)
+                                ->update([
+                                        'created_by' => session('user')['fullName'] ?? 'System',
+                                        'created_time' => now(),
+                                ]);
 
                         DB::commit();
                         return response()->json(['success' => true]);
                 } catch (\Exception $e) {
                         DB::rollBack();
+                        Log::error('Update Maintenance Room Error: ' . $e->getMessage());
                         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
                 }
         }
@@ -314,14 +320,21 @@ class MaintenanceCategoryController extends Controller
                 if (!$quota) return false;
 
                 $user = session('user');
-                if (isset($user['department']) && $user['department'] === 'BOD') return true;
+                if (!$user) return false;
+
+                // Admin hoặc BOD có quyền tối cao
+                $userGroup = $user['userGroup'] ?? '';
+                if ($userGroup === 'Admin') return true;
+
+                $dept = $user['department'] ?? ($user['deparment'] ?? '');
+                if ($dept === 'BOD') return true;
 
                 $block = $quota->block ?? '';
                 if (str_starts_with($block, 'HC-')) {
-                        return isset($user['department']) && $user['department'] === 'QA';
+                        return $dept === 'QA';
                 }
                 if (str_starts_with($block, 'BT-') || str_starts_with($block, 'TI-')) {
-                        return isset($user['department']) && $user['department'] === 'EN';
+                        return $dept === 'EN';
                 }
 
                 return false;

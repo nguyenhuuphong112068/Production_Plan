@@ -201,8 +201,11 @@
         // Danh sách phòng cho select option - Cache as array for performance
         var roomsData = @json(
             $rooms->map(function ($r) {
-                return ['id' => $r->id, 'text' => $r->code . ' - ' . $r->name];
+                return ['id' => (int)$r->id, 'text' => $r->code . ' - ' . $r->name, 'dept' => $r->deparment_code];
             }));
+            
+        // 🔹 Thêm tuỳ chọn Toàn Phân xưởng (PX)
+        roomsData.unshift({ id: 0, text: '--- TẤT CẢ PHÒNG TRONG PHÂN XƯỞNG (PX) ---' });
 
         // Danh sách phân xưởng theo Block
         var deptOptionsMap = {
@@ -315,11 +318,12 @@
                             [])).map(id => parseInt(id));
 
                         var options = roomsData.map(function(room) {
-                            var isSelected = selectedIds.indexOf(parseInt(room.id)) !==
-                                -1 ?
-                                'selected' : '';
-                            return '<option value="' + room.id + '" ' + isSelected +
-                                '>' + room.text + '</option>';
+                            var isSelected = selectedIds.indexOf(parseInt(room.id)) !== -1 ? 'selected' : '';
+                            
+                            // Nếu là option PX, đánh dấu đậm hơn
+                            var style = room.id === 0 ? 'font-weight: bold; color: blue;' : '';
+                            
+                            return '<option value="' + room.id + '" ' + isSelected + ' style="'+style+'">' + room.text + '</option>';
                         }).join('');
 
                         var rowDisabled = getDisabledAttr(row);
@@ -347,7 +351,7 @@
                         return roomsData.filter(function(room) {
                             return selectedIds.indexOf(parseInt(room.id)) !== -1;
                         }).map(function(room) {
-                            return room.text;
+                            return room.id === 0 ? 'PX' : room.text;
                         }).join(' ');
                     }
                 },
