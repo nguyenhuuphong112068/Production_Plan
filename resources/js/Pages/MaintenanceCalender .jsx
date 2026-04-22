@@ -504,19 +504,45 @@ const MaintenanceCalender = () => {
       if (typeof cleanData === "string") {
         cleanData = JSON.parse(cleanData.replace(/^<!--.*?-->/, "").trim());
       }
-      // 🔹 5. Cập nhật dữ liệu mới
+
+      // 🔹 5. Cập nhật dữ liệu mới (Phân quyền & Lọc thông minh)
+      const isAuthorized = cleanData.authorization_scheduler;
+      setAuthorization(isAuthorized);
+      setAuthorizationAccept(cleanData.authorization_accept);
+
       setEvents(cleanData.events);
       setResources(cleanData.resources);
       setSumBatchByStage(cleanData.sumBatchByStage);
-      setPlan(cleanData.plan || []);
-      setUserID(cleanData.UesrID);
 
-      setAuthorization(cleanData.authorization);
+      if (isAuthorized) {
+        const dept = cleanData.department;
+        const isAdmin = cleanData.authorization == 'Admin';
+        let filteredPlan = cleanData.plan;
+
+        if (!isAdmin && dept === 'QA') {
+          setMaintenanceType('HC')
+          filteredPlan = (cleanData.plan || []).filter(p => {
+            const code = String(p.code || '');
+            return code.endsWith('_HC');
+          });
+        } else if (!isAdmin && dept === 'EN') {
+          setMaintenanceType('TB')
+          filteredPlan = (cleanData.plan || []).filter(p => {
+            const code = String(p.code || '');
+            return code.endsWith('_TB') || code.endsWith('_8') || code.endsWith('_TI');
+          });
+        }
+        setPlan(filteredPlan);
+      } else {
+        setPlan(cleanData.plan || []);
+      }
+
+      setUserID(cleanData.UesrID);
       setUserGroup(cleanData.authorization);
       setUserGroupName(cleanData.groupName);
       setProduction(cleanData.production);
       setUserDepartment(cleanData.department);
-      setViewName(viewType);
+      if (viewType) setViewName(viewType);
     } finally {
 
     }
