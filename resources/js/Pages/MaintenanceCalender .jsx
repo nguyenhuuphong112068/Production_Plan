@@ -14,6 +14,7 @@ import { StepperPanel } from 'primereact/stepperpanel';
 import { createRoot } from 'react-dom/client';
 import axios from "axios";
 import 'moment/locale/vi';
+import moment from 'moment';
 import dayjs from 'dayjs';
 import Selecto from "react-selecto";
 import Swal from 'sweetalert2';
@@ -31,6 +32,7 @@ const MaintenanceCalender = () => {
 
   const calendarRef = useRef(null);
   const selectoRef = useRef(null);
+  const todayStr = dayjs().format('YYYY-MM-DD');
   moment.locale('vi');
   const [showSidebar, setShowSidebar] = useState(false);
   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
@@ -84,6 +86,9 @@ const MaintenanceCalender = () => {
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
   const [lockedResourceCodes, setLockedResourceCodes] = useState(null);
 
+  const fontSizeRootRef = useRef(null);
+  const searchRootRef = useRef(null);
+
 
   const stageName = {
     1: 'Cân Nguyên Liệu',
@@ -118,7 +123,10 @@ const MaintenanceCalender = () => {
       },
     });
 
-    const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+
+    const { activeStart, activeEnd } = api.view;
     axios.post("/MaintenanceSchedual/view", {
       startDate: toLocalISOString(activeStart),
       endDate: toLocalISOString(activeEnd),
@@ -128,10 +136,6 @@ const MaintenanceCalender = () => {
 
         let data = res.data;
 
-        // if (typeof data === "string") {
-        //   data = data.replace(/^<!--.*?-->/, "").trim();
-        //   data = JSON.parse(data);
-        // }
 
         if (typeof data === "string") {
           data = data.replace(/^<!--.*?-->/, "").trim();
@@ -231,17 +235,20 @@ const MaintenanceCalender = () => {
     const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
     if (!toolbarEl) return;
 
-    const container = document.createElement("div");
-    toolbarEl.appendChild(container);
+    if (!fontSizeRootRef.current) {
+      const container = document.createElement("div");
+      toolbarEl.appendChild(container);
+      fontSizeRootRef.current = {
+        root: ReactDOM.createRoot(container),
+        container: container,
+        parent: toolbarEl
+      };
+    }
 
-    const root = ReactDOM.createRoot(container);
-    root.render(<EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} />);
-
-    return () => {
-      root.unmount();
-      toolbarEl.removeChild(container);
-    };
-  }, [eventFontSize]); // chỉ chạy 1 lần
+    fontSizeRootRef.current.root.render(
+      <EventFontSizeInput fontSize={eventFontSize} setFontSize={setEventFontSize} />
+    );
+  }, [eventFontSize]);
 
   useHotkeys("alt+q", (e) => {
     e.preventDefault();
@@ -315,29 +322,48 @@ const MaintenanceCalender = () => {
   /// UseEffect cho render nut search
   useEffect(() => {
     // sau khi calendar render xong, inject vào toolbar
-    const calendarApi = calendarRef.current?.getApi();
-    if (!calendarApi) return;
-
     const toolbarEl = document.querySelector(".fc-searchBox-button");
+    if (!toolbarEl) return;
 
-    const container = document.createElement("div");
-    toolbarEl.appendChild(container);
+    if (!searchRootRef.current) {
+      const container = document.createElement("div");
+      toolbarEl.appendChild(container);
+      searchRootRef.current = {
+        root: ReactDOM.createRoot(container),
+        container: container,
+        parent: toolbarEl
+      };
+    }
 
-    const root = ReactDOM.createRoot(container);
-    root.render(
+    searchRootRef.current.root.render(
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <CalendarSearchBox onSearch={handleSearch} />
-
       </div>
-
     );
+  }, []);
+
+  // Cleanup React roots safely
+  useEffect(() => {
     return () => {
-      root.unmount();
-      if (toolbarEl.contains(container)) {
-        toolbarEl.removeChild(container);
+      if (fontSizeRootRef.current) {
+        const { root, container, parent } = fontSizeRootRef.current;
+        setTimeout(() => {
+          try { root.unmount(); } catch (e) { }
+        }, 0);
+        if (parent && parent.contains(container)) {
+          parent.removeChild(container);
+        }
+      }
+      if (searchRootRef.current) {
+        const { root, container, parent } = searchRootRef.current;
+        setTimeout(() => {
+          try { root.unmount(); } catch (e) { }
+        }, 0);
+        if (parent && parent.contains(container)) {
+          parent.removeChild(container);
+        }
       }
     };
-
   }, []);
 
   ///
@@ -1550,13 +1576,53 @@ const MaintenanceCalender = () => {
     const event = arg.event;
     const props = event._def.extendedProps;
     const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
-
-    if (event.title == undefined) {
-      console.log(event)
-    }
+    const eventDate = dayjs(event.start).format('YYYY-MM-DD'); // Ngày thực hiện trên lịch
 
     const isTank = props.tank == 1 && props.stage_code == 8;
-    const tankStyle = isTank ? 'border: 3px solid #ff0000; border-radius: 0px; box-shadow: 0 0 8px rgba(255,0,0,0.6);' : '';
+    let isLate = false;
+
+    if (props.stage_code == 8) {
+      // ƯU TIÊN: Bóc tách ngày tới hạn từ Title (Vì Tile chứa ngày gốc 'min_due' từ Backend)
+      let rawDueDate = null;
+      if (event.title && event.title.includes('Ngày tới hạn:')) {
+        const match = event.title.match(/Ngày tới hạn:\s*([\d\/-]+)/);
+        if (match) rawDueDate = match[1];
+      }
+
+      // Nếu title không có mới dùng đến props
+      if (!rawDueDate) rawDueDate = props.expected_date;
+
+      const cleanDueDate = rawDueDate ? String(rawDueDate).replace(/-$/, '').trim() : null;
+      const dueDate = moment(cleanDueDate, ['YYYY-MM-DD', 'DD/MM/YYYY']);
+      const planDate = moment(event.start);
+
+      if (dueDate.isValid() && planDate.isValid()) {
+        if (props.code?.includes('_HC')) {
+          if (planDate.isAfter(dueDate, 'day')) isLate = true;
+        } else {
+          // Ngưỡng gia hạn: Monthly (7 ngày), các loại khác (21 ngày)
+          const threshold = props.Inst_sch_type === "Monthly" ? 7 : 21;
+          const limitDate = dueDate.clone().add(threshold, 'days');
+
+          if (planDate.isAfter(limitDate, 'day')) isLate = true;
+        }
+      }
+    }
+
+    let tankStyle = '';
+
+    if (isTank && isLate) {
+      // Vừa xong vừa trễ: Tăng độ dày outline lên 6px để bao trùm nổi bật hơn
+      tankStyle = 'border: 3px solid #22ff00ff; outline: 6px solid #ff0000; outline-offset: 2px; box-shadow: 0 0 15px #ff0000; border-radius: 4px; z-index: 10;';
+    } else if (isTank) {
+      tankStyle = 'border: 3px solid #22ff00ff; box-shadow: 0 0 8px #22ff00ff; border-radius: 4px;';
+    } else if (isLate) {
+      // Chỉ trễ: Tăng kích thước biên lên 6px
+      tankStyle = 'border: 6px solid #ff0000ff; box-shadow: 0 0 15px #ff0000; border-radius: 4px;';
+    }
+
+
+
 
     let html = `
       <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">

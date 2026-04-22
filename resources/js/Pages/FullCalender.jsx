@@ -934,6 +934,88 @@ const ScheduleTest = () => {
         }
       });
 
+      // 🔹 Cascade Logic for Frontend (Group Move) - Smart Skip Off Days
+      if (isCascadeMode) {
+        const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
+        const selectedIds = new Set(selectedEvents.map(s => s.id));
+        const allEvents = calendarApi.getEvents();
+        
+        const resourceMinStart = {};
+        selectedEvents.forEach(sel => {
+          const event = calendarApi.getEventById(sel.id);
+          if (event) {
+            const resId = event.getResources()[0]?.id;
+            if (resId) {
+              const originalStart = new Date(event.start.getTime() - offset);
+              if (!resourceMinStart[resId] || originalStart < resourceMinStart[resId]) {
+                resourceMinStart[resId] = originalStart;
+              }
+            }
+          }
+        });
+
+        // Để kiểm tra chồng lấn chính xác, cần sort sự kiện theo thời gian
+        const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
+        
+        // Theo dõi mốc biên kết thúc của sự kiện trước đó trên từng resource
+        const resourceLastEnd = {};
+        selectedEvents.forEach(sel => {
+            const ev = calendarApi.getEventById(sel.id);
+            if (ev) {
+                const rId = ev.getResources()[0]?.id;
+                const boundary = ev.extendedProps.end_clearning ? new Date(ev.extendedProps.end_clearning) : ev.end;
+                if (!resourceLastEnd[rId] || (boundary && boundary > resourceLastEnd[rId])) {
+                    resourceLastEnd[rId] = boundary;
+                }
+            }
+        });
+
+        sortedEvents.forEach(otherEv => {
+          const resId = otherEv.getResources()[0]?.id;
+          const minS = resourceMinStart[resId];
+          if (
+            minS && 
+            !selectedIds.has(otherEv.id) && 
+            otherEv.start >= minS && 
+            !otherEv.extendedProps.finished &&
+            !batchUpdates.some(b => b.id === otherEv.id)
+          ) {
+            // 1. Dự định vị trí: Mặc định giữ nguyên vị trí cũ cho tất cả sự kiện (Push-only)
+            let ns = new Date(otherEv.start.getTime());
+
+            // 2. Ép biên (Push if collision): Nếu vị trí dự định lấn vào sự kiện trước
+            const boundary = resourceLastEnd[resId];
+            if (boundary && ns < boundary) {
+                ns = new Date(boundary.getTime());
+            }
+
+            // 3. Né ngày nghỉ
+            ns = skipOffDays(ns, offRanges);
+            
+            // 4. Tính độ dời thực tế và cập nhật
+            const actualShift = ns.getTime() - otherEv.start.getTime();
+            const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
+            
+            otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
+
+            // 5. Cập nhật biên cho sự kiện sau (bao gồm cả cleaning nếu có)
+            const newBoundary = otherEv.extendedProps.end_clearning 
+                ? new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift)
+                : ne;
+            resourceLastEnd[resId] = newBoundary;
+            
+            batchUpdates.push({
+              id: otherEv.id,
+              start: ns.toISOString(),
+              end: ne.toISOString(),
+              resourceId: resId,
+              title: otherEv.title,
+              submit: otherEv.extendedProps.submit
+            });
+          }
+        });
+      }
+
       // Cập nhật pendingChanges 1 lần
       setPendingChanges(prev => {
         const ids = new Set(batchUpdates.map(e => e.id));
@@ -952,29 +1034,81 @@ const ScheduleTest = () => {
   ///
   const handleEventChange = (changeInfo) => {
     const changedEvent = changeInfo.event;
+    const oldEvent = changeInfo.oldEvent || changedEvent;
+    
+    // Create updates array starting with the changed event
+    let updates = [{
+      id: changedEvent.id,
+      start: changedEvent.start.toISOString(),
+      end: changedEvent.end.toISOString(),
+      resourceId: changedEvent.getResources?.()[0]?.id ?? null,
+      title: changedEvent.title,
+      submit: changedEvent.extendedProps.submit
+    }];
+
+    // 🔹 Cascade Logic for single move/resize - Smart Sequential Collision Skip
+    if (isCascadeMode && changeInfo.oldEvent) {
+      const deltaStart = changedEvent.start.getTime() - oldEvent.start.getTime();
+      const deltaEnd = (changedEvent.end?.getTime() || 0) - (oldEvent.end?.getTime() || 0);
+      const shift = Math.max(deltaStart, deltaEnd);
+
+      if (shift !== 0) {
+        const resourceId = changedEvent.getResources?.()[0]?.id;
+        const originalStart = oldEvent.start;
+        const calendarApi = changedEvent.getSource().calendar;
+
+        // Xuyên suốt cho resource hiện tại
+        let lastEnd = changedEvent.extendedProps.end_clearning ? new Date(changedEvent.extendedProps.end_clearning) : changedEvent.end;
+        const sortedEvents = calendarApi.getEvents().sort((a,b) => a.start - b.start);
+
+        sortedEvents.forEach(otherEv => {
+          if (
+            otherEv.id !== changedEvent.id &&
+            otherEv.getResources?.()[0]?.id === resourceId &&
+            otherEv.start >= originalStart &&
+            !otherEv.extendedProps.finished // Only shift unfinished events
+          ) {
+            // 1. Dự định: Mặc định giữ nguyên (Push-only)
+            let ns = new Date(otherEv.start.getTime());
+
+            // 2. Đẩy nếu chồng lấn
+            if (lastEnd && ns < lastEnd) {
+                ns = new Date(lastEnd.getTime());
+            }
+
+            // 3. Né ngày nghỉ
+            ns = skipOffDays(ns, offRanges);
+
+            const actualShift = ns.getTime() - otherEv.start.getTime();
+            const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
+
+            otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
+
+            // 4. Cập nhật boundary cho sự kiện tiếp theo
+            lastEnd = otherEv.extendedProps.end_clearning 
+                ? new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift)
+                : ne;
+
+            updates.push({
+              id: otherEv.id,
+              start: ns.toISOString(),
+              end: ne.toISOString(),
+              resourceId: resourceId,
+              title: otherEv.title,
+              submit: otherEv.extendedProps.submit
+            });
+          }
+        });
+        calendarApi.render();
+      }
+    }
+
     // Thêm hoặc cập nhật event vào pendingChanges
     setPendingChanges(prev => {
-
-      const exists = prev.find(e => e.id === changedEvent.id);
-      const updated = {
-        id: changedEvent.id,
-        start: changedEvent.start.toISOString(),
-        end: changedEvent.end.toISOString(),
-        resourceId: changeInfo.event.getResources?.()[0]?.id ?? null,
-        title: changedEvent.title,
-        submit: changedEvent.extendedProps.submit
-        // các dữ liệu khác nếu cần
-      };
-
-      if (exists) {
-        // Cập nhật lại nếu đã có
-        return prev.map(e => e.id === changedEvent.id ? updated : e);
-      } else {
-        // Thêm mới
-        return [...prev, updated];
-      }
+      const ids = new Set(updates.map(u => u.id));
+      const filtered = prev.filter(e => !ids.has(e.id));
+      return [...filtered, ...updates];
     });
-
   };
 
   const handleEventMouseEnter = (info) => {
@@ -1201,6 +1335,7 @@ const ScheduleTest = () => {
         allowedResources = resources.filter(res => allowedRoomIds.includes(res.id));
       }
     }
+
 
     // Nếu không tìm thấy theo process_code, fallback về permisson_room_filter hoặc stage_code
     if (allowedResources.length === 0) {
