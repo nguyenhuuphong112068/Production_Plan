@@ -130,7 +130,6 @@ class MaintenanceSchedualController extends SchedualController
         }
     }
 
-
     public function autoSchedual(Request $request)
     {
         $production = session('user')['production_code'];
@@ -212,7 +211,7 @@ class MaintenanceSchedualController extends SchedualController
                 }
 
                 // --- LOGIC TÌM NGÀY BẮT ĐẦU TỐI ƯU ---
-                $idealStart = $group['min_due']->copy()->subDays(2)->startOfDay();
+                $idealStart = $group['min_due']->copy()->subDays(7)->startOfDay();
                 if ($idealStart->lt($startDate)) $idealStart = $startDate->copy()->startOfDay();
                 $deadline = $group['min_due'];
 
@@ -542,6 +541,10 @@ class MaintenanceSchedualController extends SchedualController
     public function store(Request $request)
     {
         $products = collect($request->products);
+
+        $minDue = $products->pluck('expected_date')->filter()->min();
+        $minDueText = $minDue ? '<br/> Ngày tới hạn: ' . Carbon::parse($minDue)->format('d/m/Y') : '';
+
         $firstProductCode = $products->first()['code'] ?? '';
         $type = $request->type ?? strtoupper(substr($firstProductCode, -2));
         $targetRoomId = $request->room_id;
@@ -602,6 +605,7 @@ class MaintenanceSchedualController extends SchedualController
                         $customTitle .= '<br/> - ' . $st['instrument_code'];
                     }
                 }
+                $customTitle .= $minDueText;
 
                 foreach ($products as $product) {
                     $planMasterId = $product['plan_master_id'];
@@ -667,6 +671,7 @@ class MaintenanceSchedualController extends SchedualController
                         $customTitle .= '<br/> - ' . $st['instrument_code'];
                     }
                 }
+                $customTitle .= $minDueText;
 
                 $uniquePlanMasterIds = $products->pluck('plan_master_id')->unique();
 
