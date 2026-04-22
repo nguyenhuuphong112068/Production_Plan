@@ -988,7 +988,7 @@ class SchedualController extends Controller
                 $subtitle = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
                     . Carbon::parse($pre->end)->format('H:i d/m/y') . ')';
 
-                return ['#4CAF50',  $textColor,  $subtitle]; // '#4d4b4bff'
+                return ['#4d4b4bff',  $textColor,  $subtitle]; // '#4d4b4bff'
 
             }
         }
@@ -1002,7 +1002,7 @@ class SchedualController extends Controller
                 $subtitle = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
                     . Carbon::parse($next->start)->format('H:i d/m/y') . ')';
 
-                return ['#4CAF50',  $textColor,  $subtitle]; // '#4d4b4bff'
+                return ['#4d4b4bff',  $textColor,  $subtitle]; // '#4d4b4bff'
 
             }
         }

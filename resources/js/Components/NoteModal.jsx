@@ -15,13 +15,16 @@ export default function NoteModal({ show, setShow }) {
     { color: "#a1a2a2ff", label: "Vệ Sinh Phòng" },
     { color: "#eb0cb3ff", label: "Sự Kiện Khác Ngoài Kế Hoạch" },
     { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước" },
-    { color: "#002af9ff", label: "Lịch Sản Xuất Lý Thực Tế" },
+    { color: "#002af9ff", label: "Lịch Sản Xuất/Bảo Trì/Hiệu Chuẩn Lý Thực Tế đã hoàn tất" },
     { color: "#8195f5ff", label: "Lịch Sản Xuất Lý Thuyết" },
     { color: "#003A4F", label: "Lịch Bảo Trì Thiết Bị " },
     { color: "#b06c0cff", label: "Lịch Bảo Trì Tiện Ích" },
     { color: "#830cbfff", label: "Lịch Hiệu Chuẩn" },
-
-
+    { color: "#aed9f1", label: "Lịch HC-BT đã xác nhận hoàn thành" },
+    { color: "transparent", label: "Viền Xanh: Lịch BT-HC đã được chấp nhận bởi phân xưởng", border: "3px solid #22ff00ff" },
+    { color: "transparent", label: "Viền Đỏ Dày: Lịch BT-HC quá hạn hoặc trễ kế hoạch", border: "6px solid #ff0000ff" },
+    { color: "transparent", label: "Viền Xanh + Outline Đỏ: Lịch BT-HC đã được chấp nhận nhưng bị trễ kế hoạch", border: "3px solid #22ff00ff", outline: "3px solid #ff0000" },
+    { color: "#fff3cd", label: "⚠️ Tên: Lịch bị Phân xưởng thay đổi", icon: "⚠️", border: "1px solid #ffeeba" },
   ];
 
   return (
@@ -48,11 +51,18 @@ export default function NoteModal({ show, setShow }) {
                         backgroundColor: item.color,
                         width: "100%",
                         height: "30px",
-                        display: "inline-block",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: item.border || "none",
+                        outline: item.outline || "none",
+                        outlineOffset: item.outline ? "2px" : "0",
                       }}
-                    ></div>
+                    >
+                      {item.icon && <span style={{ fontSize: '14px' }}>{item.icon}</span>}
+                    </div>
                   </td>
-                  <td style={{ fontSize: '18px' }}>{item.label}</td>
+                  <td style={{ fontSize: '18px', verticalAlign: 'middle' }}>{item.label}</td>
                 </tr>
               ))}
             </tbody>
