@@ -948,6 +948,14 @@ const ScheduleTest = () => {
           selectedEvents.forEach(sel => {
             const event = calendarApi.getEventById(sel.id);
             if (event) {
+              // 🔹 Cập nhật cả ExtendedProps để mốc biên tịnh tuyến (boundary) chính xác cho các lô sau
+              if (event.extendedProps.start_clearning && event.extendedProps.end_clearning) {
+                const sc = new Date(new Date(event.extendedProps.start_clearning).getTime() + offset);
+                const ec = new Date(new Date(event.extendedProps.end_clearning).getTime() + offset);
+                event.setExtendedProp('start_clearning', sc.toISOString());
+                event.setExtendedProp('end_clearning', ec.toISOString());
+              }
+
               const resId = event.getResources()[0]?.id;
               if (resId) {
                 const originalStart = new Date(event.start.getTime() - offset);
@@ -981,7 +989,15 @@ const ScheduleTest = () => {
               !otherEv.extendedProps.finished &&
               !batchUpdates.some(b => b.id === otherEv.id)
             ) {
+              // 1. Dự định vị trí: 
+              // Nếu kéo sang phải (offset > 0): Giữ nguyên vị trí cũ (Push-only)
+              // Nếu kéo sang trái (offset < 0): Tịnh tiến theo (Parallel Pull)
               let ns = new Date(otherEv.start.getTime());
+              if (offset < 0) {
+                ns = new Date(ns.getTime() + offset);
+              }
+
+              // 2. Ép biên (Collision/Sequence): Không cho phép lấn vào lô trước
               const boundary = resourceLastEnd[resId];
               if (boundary && ns < boundary) {
                 ns = new Date(boundary.getTime());
@@ -992,21 +1008,35 @@ const ScheduleTest = () => {
               const actualShift = ns.getTime() - otherEv.start.getTime();
               const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
 
-              otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
+              // 🔹 Chỉ lưu và vẽ lại nếu thực sự có thay đổi vị trí
+              if (actualShift !== 0) {
+                otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
 
-              const newBoundary = otherEv.extendedProps.end_clearning
-                ? new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift)
-                : ne;
-              resourceLastEnd[resId] = newBoundary;
+                // 🔹 Quan trọng: Cập nhật cả extendedProps để chuỗi tịnh tiến sau đó dùng mốc biên chuẩn
+                if (otherEv.extendedProps.start_clearning && otherEv.extendedProps.end_clearning) {
+                  const sc_new = new Date(new Date(otherEv.extendedProps.start_clearning).getTime() + actualShift);
+                  const ec_new = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
+                  otherEv.setExtendedProp('start_clearning', sc_new.toISOString());
+                  otherEv.setExtendedProp('end_clearning', ec_new.toISOString());
+                }
 
-              batchUpdates.push({
-                id: otherEv.id,
-                start: ns.toISOString(),
-                end: ne.toISOString(),
-                resourceId: resId,
-                title: otherEv.title,
-                submit: otherEv.extendedProps.submit
-              });
+                const newBoundary = otherEv.extendedProps.end_clearning
+                  ? new Date(otherEv.extendedProps.end_clearning)
+                  : ne;
+                resourceLastEnd[resId] = newBoundary;
+
+                batchUpdates.push({
+                  id: otherEv.id,
+                  start: ns.toISOString(),
+                  end: ne.toISOString(),
+                  resourceId: resId,
+                  title: otherEv.title,
+                  submit: otherEv.extendedProps.submit
+                });
+              } else {
+                // Nếu không đổi vị trí, vẫn cập nhật biên cho các sự kiện phía sau
+                resourceLastEnd[resId] = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
+              }
             }
           });
         }
@@ -1061,6 +1091,15 @@ const ScheduleTest = () => {
           const originalStart = oldEvent.start;
           const calendarApi = changedEvent.getSource().calendar;
 
+          // 🔹 Cập nhật Cleaning Props cho chính sự kiện vừa thay đổi (PXV1)
+          if (changedEvent.extendedProps.start_clearning && changedEvent.extendedProps.end_clearning) {
+            const sc = new Date(changedEvent.end.getTime());
+            const duration = new Date(changedEvent.extendedProps.end_clearning).getTime() - new Date(changedEvent.extendedProps.start_clearning).getTime();
+            const ec = new Date(sc.getTime() + duration);
+            changedEvent.setExtendedProp('start_clearning', sc.toISOString());
+            changedEvent.setExtendedProp('end_clearning', ec.toISOString());
+          }
+
           // Xuyên suốt cho resource hiện tại
           let lastEnd = changedEvent.extendedProps.end_clearning ? new Date(changedEvent.extendedProps.end_clearning) : changedEvent.end;
           const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
@@ -1072,8 +1111,17 @@ const ScheduleTest = () => {
               otherEv.start >= originalStart &&
               !otherEv.extendedProps.finished // Only shift unfinished events
             ) {
-              // 1. Dự định: Mặc định giữ nguyên (Push-only)
+              const deltaStart = changedEvent.start.getTime() - oldEvent.start.getTime();
+              const deltaEnd = (changedEvent.end?.getTime() || 0) - (oldEvent.end?.getTime() || 0);
+              const shift = Math.max(deltaStart, deltaEnd);
+
+              // 1. Dự định: 
+              // Nếu dịch chuyển/tăng size (shift > 0): Giữ nguyên (Push-only)
+              // Nếu dịch chuyển sang trái (shift < 0): Tịnh tiến theo (Parallel Pull)
               let ns = new Date(otherEv.start.getTime());
+              if (shift < 0) {
+                ns = new Date(ns.getTime() + shift);
+              }
 
               // 2. Đẩy nếu chồng lấn
               if (lastEnd && ns < lastEnd) {
@@ -1086,21 +1134,35 @@ const ScheduleTest = () => {
               const actualShift = ns.getTime() - otherEv.start.getTime();
               const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
 
-              otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
+              // 🔹 Chỉ xử lý và lưu nếu thực sự có thay đổi
+              if (actualShift !== 0) {
+                otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
 
-              // 4. Cập nhật boundary cho sự kiện tiếp theo
-              lastEnd = otherEv.extendedProps.end_clearning
-                ? new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift)
-                : ne;
+                // 4. Cập nhật boundary cho sự kiện tiếp theo
+                // 🔹 Cập nhật props để mốc biên chuẩn
+                if (otherEv.extendedProps.start_clearning && otherEv.extendedProps.end_clearning) {
+                  const sc_new = new Date(new Date(otherEv.extendedProps.start_clearning).getTime() + actualShift);
+                  const ec_new = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
+                  otherEv.setExtendedProp('start_clearning', sc_new.toISOString());
+                  otherEv.setExtendedProp('end_clearning', ec_new.toISOString());
+                }
 
-              updates.push({
-                id: otherEv.id,
-                start: ns.toISOString(),
-                end: ne.toISOString(),
-                resourceId: resourceId,
-                title: otherEv.title,
-                submit: otherEv.extendedProps.submit
-              });
+                lastEnd = otherEv.extendedProps.end_clearning
+                  ? new Date(otherEv.extendedProps.end_clearning)
+                  : ne;
+
+                updates.push({
+                  id: otherEv.id,
+                  start: ns.toISOString(),
+                  end: ne.toISOString(),
+                  resourceId: resourceId,
+                  title: otherEv.title,
+                  submit: otherEv.extendedProps.submit
+                });
+              } else {
+                // Nếu không đổi, vẫn cập nhật boundary cũ cho chuỗi
+                lastEnd = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
+              }
             }
           });
           calendarApi.render();
@@ -2696,50 +2758,102 @@ const ScheduleTest = () => {
     const event = arg.event;
     const props = event._def.extendedProps;
     const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
-
-    if (event.title == undefined) {
-      console.log(event)
-    }
+    const eventDate = dayjs(event.start).format('YYYY-MM-DD'); // Ngày thực hiện trên lịch
 
     const isTank = props.tank == 1 && props.stage_code == 8;
-    const tankStyle = isTank ? 'border: 3px solid #ff0000; border-radius: 0px; box-shadow: 0 0 8px rgba(255,0,0,0.6);' : '';
+    const productionChangeEvent = props.keep_dry == 1 && props.stage_code == 8;
+
+    let isLate = false;
+
+    if (props.stage_code == 8) {
+      // ƯU TIÊN: Bóc tách ngày tới hạn từ Title (Vì Tile chứa ngày gốc 'min_due' từ Backend)
+      let rawDueDate = null;
+      if (event.title && event.title.includes('Ngày tới hạn:')) {
+        const match = event.title.match(/Ngày tới hạn:\s*([\d\/-]+)/);
+        if (match) rawDueDate = match[1];
+      }
+
+      // Nếu title không có mới dùng đến props
+      if (!rawDueDate) rawDueDate = props.expected_date;
+
+      const cleanDueDate = rawDueDate ? String(rawDueDate).replace(/-$/, '').trim() : null;
+      const dueDate = moment(cleanDueDate, ['YYYY-MM-DD', 'DD/MM/YYYY']);
+      const planDate = moment(event.start);
+
+      if (dueDate.isValid() && planDate.isValid()) {
+        if (props.code?.includes('_HC')) {
+          if (planDate.isAfter(dueDate, 'day')) isLate = true;
+        } else {
+          // Ngưỡng gia hạn: Monthly (7 ngày), các loại khác (21 ngày)
+          const threshold = props.Inst_sch_type === "Monthly" ? 7 : 21;
+          const limitDate = dueDate.clone().add(threshold, 'days');
+
+          if (planDate.isAfter(limitDate, 'day')) isLate = true;
+        }
+      }
+    }
+
+    let tankStyle = '';
+
+    if (isTank && isLate) {
+      // Vừa xong vừa trễ: Tăng độ dày outline lên 6px để bao trùm nổi bật hơn
+      tankStyle = 'border: 3px solid #22ff00ff; outline: 6px solid #ff0000; outline-offset: 2px; box-shadow: 0 0 15px #ff0000; border-radius: 4px; z-index: 10;';
+    } else if (isTank) {
+      tankStyle = 'border: 3px solid #22ff00ff; box-shadow: 0 0 8px #22ff00ff; border-radius: 4px;';
+    } else if (isLate) {
+      // Chỉ trễ: Tăng kích thước biên lên 6px
+      tankStyle = 'border: 6px solid #ff0000ff; box-shadow: 0 0 15px #ff0000; border-radius: 4px;';
+    }
+
+
+
 
     let html = `
-      <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
-        <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
-          
-        ${!props.is_clearning && props.finished == 0 ? `
-            <span 
-              style="
-                position:absolute;
-                top:2px;
-                right:2px;
-                display:inline-block;
-                width:8px;
-                height:8px;
-                border-radius:50%;
-                background:${props.submit ? 'green' : 'red'};
-                z-index:10;
-              ">
-            </span>
-          ` : ''}
-
-          <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>
-          ${!isTimelineMonth ? `
-            <br/>
-            ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
+        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
+          <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
+            
+          ${productionChangeEvent ? `
+              <div 
+                class="absolute top-[-15px] left-2 px-1 rounded shadow bg-[#fff3cd] text-[#856404] border border-[#ffeeba]"
+                style="font-size: 10px;"
+                title="Lịch bị thay đổi bởi Phân xưởng"
+              >
+                ⚠️ <b>${props.schedualed_by ?? ''}</b>
+              </div>
+            ` : ''}
+  
+          ${!props.is_clearning && props.finished == 0 ? `
+              <span 
+                style="
+                  position:absolute;
+                  top:2px;
+                  right:2px;
+                  display:inline-block;
+                  width:8px;
+                  height:8px;
+                  border-radius:50%;
+                  background:${props.submit ? 'green' : 'red'};
+                  z-index:10;
+                ">
+              </span>
+            ` : ''}
+  
+            <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>
+            ${!isTimelineMonth ? `
+              <br/>
+              ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
           `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
           : ''}
-          ` : ''}
-      </div>
-    `;
+            ` : ''}
+        </div>
+      `;
 
     if (!props.is_clearning && showRenderBadge && authorization) {
       html += `
-              <div 
-                class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
-                title="% biệt trữ"
-              ><b>${props.campaign_code ?? ''}</b></div>`;
+                <div 
+                  class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
+                  title="% biệt trữ"
+                ><b>${props.campaign_code ?? ''}</b></div>`;
     }
 
 
@@ -2747,31 +2861,112 @@ const ScheduleTest = () => {
       const style = getStatusStyleString(props.status);
 
       html += `
-            <div 
-              class="absolute top-[-20px] right-5 px-1 rounded shadow"
-              style="${style}"
-              title="Trạng Thái SX"
-            >
-              <b>${props.status ?? ''}</b>
-            </div>
-          `;
+              <div 
+                class="absolute top-[-20px] right-5 px-1 rounded shadow"
+                style="${style}"
+                title="Trạng Thái SX"
+              >
+                <b>${props.status ?? ''}</b>
+              </div>
+            `;
     }
 
-    if (authorization && props.finished == 0 && props.stage_code != 8) {
+    if (authorization && props.finished == 0 && props.tank == 0 && props.stage_code == 8) {
       html += `
-        <button 
-          class="edit-single-event-btn"
-          data-event-id="${event.id}"
-          title="Sửa nhanh"
-        >
-          ✏️
-        </button>
-      `;
+          <button 
+            class="edit-single-event-btn"
+            data-event-id="${event.id}"
+            title="Sửa nhanh"
+          >
+            ✏️
+          </button>
+        `;
     }
 
     html += `</div>`;
     return { html };
   };
+
+  // const EventContent = (arg) => {
+  //   const event = arg.event;
+  //   const props = event._def.extendedProps;
+  //   const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
+
+  //   if (event.title == undefined) {
+  //     console.log(event)
+  //   }
+
+  //   const isTank = props.tank == 1 && props.stage_code == 8;
+  //   const tankStyle = isTank ? 'border: 3px solid #ff0000; border-radius: 0px; box-shadow: 0 0 8px rgba(255,0,0,0.6);' : '';
+
+  //   let html = `
+  //     <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
+  //       <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
+
+  //       ${!props.is_clearning && props.finished == 0 ? `
+  //           <span 
+  //             style="
+  //               position:absolute;
+  //               top:2px;
+  //               right:2px;
+  //               display:inline-block;
+  //               width:8px;
+  //               height:8px;
+  //               border-radius:50%;
+  //               background:${props.submit ? 'green' : 'red'};
+  //               z-index:10;
+  //             ">
+  //           </span>
+  //         ` : ''}
+
+  //         <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>
+  //         ${!isTimelineMonth ? `
+  //           <br/>
+  //           ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
+  //         `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
+  //         : ''}
+  //         ` : ''}
+  //     </div>
+  //   `;
+
+  //   if (!props.is_clearning && showRenderBadge && authorization) {
+  //     html += `
+  //             <div 
+  //               class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
+  //               title="% biệt trữ"
+  //             ><b>${props.campaign_code ?? ''}</b></div>`;
+  //   }
+
+
+  //   if (!props.is_clearning && showRenderBadge && props.status) {
+  //     const style = getStatusStyleString(props.status);
+
+  //     html += `
+  //           <div 
+  //             class="absolute top-[-20px] right-5 px-1 rounded shadow"
+  //             style="${style}"
+  //             title="Trạng Thái SX"
+  //           >
+  //             <b>${props.status ?? ''}</b>
+  //           </div>
+  //         `;
+  //   }
+
+  //   if (authorization && props.finished == 0 && props.stage_code != 8) {
+  //     html += `
+  //       <button 
+  //         class="edit-single-event-btn"
+  //         data-event-id="${event.id}"
+  //         title="Sửa nhanh"
+  //       >
+  //         ✏️
+  //       </button>
+  //     `;
+  //   }
+
+  //   html += `</div>`;
+  //   return { html };
+  // };
 
   const buildOffDayEvents = (offDays) => {
     return offDays.map(dateStr => ({
