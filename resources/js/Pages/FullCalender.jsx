@@ -2848,7 +2848,7 @@ const ScheduleTest = () => {
         </div>
       `;
 
-    if (!props.is_clearning && props.campaign_code) {
+    if (!props.is_clearning && showRenderBadge && props.campaign_code) {
       html += `
                 <div 
                   class="absolute bottom-[2px] right-[2px] px-1 rounded shadow-sm bg-white/90 text-red-600 z-[20]"
