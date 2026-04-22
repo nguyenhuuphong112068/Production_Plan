@@ -424,7 +424,8 @@ class MaintenancePlanController extends Controller
                                 'quota_maintenance.inst_id as code',
                                 'quota_maintenance.block',
                                 'room.name as room_name',
-                                'room.code as room_code'
+                                'room.code as room_code',
+                                'quota_maintenance_rooms.room_id as q_room_id'
                         )
                         ->where('plan_list_id', $request->plan_list_id)
                         ->where('plan_master.active', 1)
@@ -440,7 +441,10 @@ class MaintenancePlanController extends Controller
                                 $first = $items->first();
 
                                 $first->rooms = $items->map(function ($item) {
-                                        return $item->room_code . ' - ' . $item->room_name;
+                                        if ($item->q_room_id === 0) {
+                                                return "PX - Toàn Phân xưởng";
+                                        }
+                                        return $item->room_code ? ($item->room_code . ' - ' . $item->room_name) : null;
                                 })
                                         ->filter()
                                         ->unique()
@@ -613,14 +617,27 @@ class MaintenancePlanController extends Controller
                                 'plan_master_history.*',
                                 'quota_maintenance.inst_id as code',
                                 'quota_maintenance.block',
-                                DB::raw('CONCAT(room.code, " - ", room.name) as room')
+                                'room.name as room_name',
+                                'room.code as room_code',
+                                'quota_maintenance_rooms.room_id as q_room_id'
                         )
                         ->where('plan_master_history.plan_master_id', $request->id)
                         ->leftJoin('quota_maintenance', 'plan_master_history.product_caterogy_id', '=', 'quota_maintenance.id')
-                        ->leftJoin('room', 'quota_maintenance.room_id', '=', 'room.id')
+                        ->leftJoin('quota_maintenance_rooms', 'quota_maintenance.id', '=', 'quota_maintenance_rooms.quota_maintenance_id')
+                        ->leftJoin('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
                         ->orderBy('version', 'desc')
                         ->orderBy('expected_date', 'asc')
-                        ->get();
+                        ->get()
+                        ->groupBy('version')
+                        ->map(function ($items) {
+                                $first = $items->first();
+                                $first->room = $items->map(function ($item) {
+                                        if ($item->q_room_id === 0) return "PX - Toàn Phân xưởng";
+                                        return $item->room_code ? ($item->room_code . ' - ' . $item->room_name) : null;
+                                })->filter()->unique()->implode(', ');
+                                return $first;
+                        })
+                        ->values();
 
                 // Lấy tên thiết bị từ cal1/cal2 (6 bảng)
                 $instIds = $histories->pluck('code')->filter()->unique()->toArray();
@@ -915,9 +932,9 @@ class MaintenancePlanController extends Controller
 
                 $quotaIds = $plans->pluck('product_caterogy_id')->unique()->toArray();
                 $roomsByQuota = DB::table('quota_maintenance_rooms')
-                        ->join('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
+                        ->leftJoin('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
                         ->whereIn('quota_maintenance_id', $quotaIds)
-                        ->select('quota_maintenance_id', 'room.id as room_id', 'room.code as room_code')
+                        ->select('quota_maintenance_id', 'quota_maintenance_rooms.room_id', 'room.code as room_code')
                         ->get()
                         ->groupBy('quota_maintenance_id');
 
@@ -940,7 +957,7 @@ class MaintenancePlanController extends Controller
                                                 'order_by' =>  $plan->id,
                                                 'code' =>  $plan->id . "_" . $prefix,
                                                 'resourceId' => $room->room_id,
-                                                'required_room_code' => $room->room_code,
+                                                'required_room_code' => $room->room_id == 0 ? 'PX' : $room->room_code,
                                                 'deparment_code' => $plan->deparment_code,
                                                 'created_date' => now(),
                                         ];
