@@ -3,9 +3,14 @@
     $defaultFrom = $selectedDate ? Carbon::parse($selectedDate)->format('Y-m-d') : Carbon::now()->format('Y-m-d');
 
     // Group rooms by stage for the table display
-    $groupedByStage = $groupedByRoom->groupBy(function ($rooms) {
-        return $rooms->first()->stage ?? 'Không xác định';
-    });
+    $groupedByStage = $groupedByRoom
+        ->groupBy(function ($rooms) {
+            return $rooms->first()->stage ?? 'Không xác định';
+        })
+        ->sortBy(function ($rooms, $stage) {
+            // Lấy order_by thấp nhất trong stage để sort
+            return $rooms->first()->first()->order_by ?? 999;
+        });
 @endphp
 
 <div class="content-wrapper">
@@ -95,9 +100,9 @@
                                                 <span class="font-weight-bold" style="font-size: 15px;">
                                                     {{ $stageName }}
                                                 </span>
-                                                <span class="badge ml-2"
+                                                {{-- <span class="badge ml-2"
                                                     style="background-color: rgba(0, 58, 79, 0.1); color: #003a4f; border: 1px solid #003a4f;">{{ count($roomsInStage) }}
-                                                    Phòng</span>
+                                                    Phòng</span> --}}
                                             </div>
                                         </td>
                                     </tr>
