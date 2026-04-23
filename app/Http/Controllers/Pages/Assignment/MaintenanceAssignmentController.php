@@ -28,6 +28,17 @@ class MaintenanceAssignmentController extends Controller
             $groups[] = $g;
         }
 
+        // Thêm lại Tổ HC Thiết Bị (QA) - nếu không có trong DB
+        $hasQA = collect($groups)->contains('code', 17);
+        if (!$hasQA) {
+            $groups[] = (object)[
+                'id' => 17,
+                'code' => 17,
+                'name' => 'Tổ HC Thiết Bị (QA)',
+                'type' => 2
+            ];
+        }
+
         session()->put(['title' => 'CỔNG PHÂN CÔNG BẢO TRÌ']);
         return view('pages.assignment.maintenance.portal', compact('groups'));
     }

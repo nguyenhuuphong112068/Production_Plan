@@ -60,7 +60,7 @@ class MaintenanceSchedualController extends SchedualController
             $sumBatchByStage = parent::yield($startDate, $endDate, 'stage_code');
 
             $resources = parent::getResources($production, $startDate, $endDate, true);
-            
+
             // 🔹 Thêm Resource Virtual "Toàn phân xưởng (PX)" vào đầu danh sách
             $pxResource = (object)[
                 'id' => 0, // Dùng ID 0 để khớp với room_id 0 (PX) đã chọn ở dataTable
@@ -76,7 +76,7 @@ class MaintenanceSchedualController extends SchedualController
                 'yield' => 0,
                 'unit' => ''
             ];
-            
+
             $resources = collect([$pxResource])->merge($resources);
 
             $type = true;

@@ -2872,7 +2872,7 @@ const ScheduleTest = () => {
             `;
     }
 
-    if (authorization && props.finished == 0 && props.tank == 0 && props.stage_code == 8) {
+    if (authorization && props.finished == 0 && props.tank == 0 && props.stage_code != 8) {
       html += `
           <button 
             class="edit-single-event-btn"
