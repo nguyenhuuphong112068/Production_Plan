@@ -56,13 +56,15 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   };
 
   const columnWidths30 = {
-    name: '45%',           // Sản phẩm
-    batch: '20%',
-    is_val: '2%',          // Số lô
-    expected_date: '20%',  // Ngày DK KCS
-    market: '7%',
-    level: '8%',          // Ưu tiên
+    name: '250px',           // Sản phẩm
+    batch: '120px',
+    is_val: '100px',         // Thẩm định
+    expected_date: '150px',  // Ngày DK KCS
+    market: '100px',
+    level: '110px',          // Ưu tiên
   };
+
+
 
   useEffect(() => {
 
@@ -1789,7 +1791,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             size="medium"
             paginator paginatorPosition="bottom" rows={20} rowsPerPageOptions={[5, 10, 25, 50, 100, 500, 1000]}
             scrollable scrollHeight="calc(100vh - 200px)"
+            tableStyle={{ minWidth: percentShow === '100%' ? '160rem' : '1000px' }}
+
             columnResizeMode="expand" resizableColumns
+
             globalFilter={searchTerm}
             reorderableColumns reorderableRows onRowReorder={handleRowReorder}
             globalFilterFields={[
