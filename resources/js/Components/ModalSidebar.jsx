@@ -953,8 +953,18 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   }
 
   const naBody = (field) => (rowData) => {
-    if (field === "name" && rowData.stage_code === 9) {
-      return rowData.title ?? "NA";
+    if (field === "name") {
+      const name = rowData.stage_code === 9 ? (rowData.title ?? "NA") : (rowData.name ?? "NA");
+      return (
+        <div className="d-flex flex-column">
+          <span>{name}</span>
+          {rowData.not_schedule === 1 && (
+            <span className="badge bg-danger mt-1" style={{ fontSize: '10px', width: 'fit-content' }}>
+              Không sắp lịch tự động
+            </span>
+          )}
+        </div>
+      );
     }
 
     if (field === "expected_date") {
@@ -974,6 +984,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
     return rowData[field] ?? "NA";
   };
+
 
   const handleOpenQuota = (rowData) => {
     if (rowData.stage_code !== 9) {
@@ -1364,6 +1375,53 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     return;
   }
 
+  const handleToggleNotSchedule = (e) => {
+    if (isSaving) return;
+    if (selectedRows.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Vui lòng chọn ít nhất một lô.',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    const ids = selectedRows.map(row => row.id);
+
+    axios.put('/Schedual/toggleNotSchedule', { ids })
+      .then(res => {
+        let data = res.data;
+        if (typeof data === "string") {
+          data = data.replace(/^<!--.*?-->/, "").trim();
+          data = JSON.parse(data);
+        }
+        setPlan(data.plan);
+        const filtered = data.plan.filter(event => Number(event.stage_code) === stageFilter)
+        setTableData(filtered);
+        setSelectedRows([]);
+        Swal.fire({
+          icon: 'success',
+          title: 'Cập nhật thành công',
+          timer: 1000,
+          showConfirmButton: false,
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: err.response?.data?.message || err.message,
+        });
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
+  };
+
+
   const hasAnyRoom = (filterStr, userRoomStr) => {
     if (!filterStr || !userRoomStr) return false;
 
@@ -1584,6 +1642,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                     {isSaving === false ? "🚿" : <i className="fas fa-spinner fa-spin fa-lg"></i>}
                   </div>
 
+                  <div className="fc-event px-3 py-1 bg-orange-100 border border-orange-400 rounded text-md text-center cursor-pointer mr-3" title="Bật/Tắt Không sắp lịch tự động"
+                    onClick={handleToggleNotSchedule}>
+                    {isSaving === false ? <i className="fas fa-calendar-times"></i> : <i className="fas fa-spinner fa-spin fa-lg"></i>}
+                  </div>
+
+
                   {stageFilter > 2 && stageFilter < 8 ? (
                     <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xác định lô thẩm định vệ sinh"
                       onClick={() => handleShowLine(null, true)}>
@@ -1719,6 +1783,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             onSelectionChange={handleSelectionChange}
             selectionMode="multiple"
             dataKey="id"
+            rowClassName={(rowData) => (rowData.not_schedule === 1 ? 'not-scheduled-row' : '')}
+
+
             size="medium"
             paginator paginatorPosition="bottom" rows={20} rowsPerPageOptions={[5, 10, 25, 50, 100, 500, 1000]}
             scrollable scrollHeight="calc(100vh - 200px)"

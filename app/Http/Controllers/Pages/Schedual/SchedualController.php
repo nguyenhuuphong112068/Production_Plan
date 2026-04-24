@@ -1132,6 +1132,7 @@ class SchedualController extends Controller
                 'sp.predecessor_code',
                 'sp.nextcessor_code',
                 'sp.immediately',
+                'sp.not_schedule',
 
                 DB::raw("
                                         CASE
@@ -1847,6 +1848,25 @@ class SchedualController extends Controller
             'events' => $events,
             'plan' => $plan_waiting,
             'sumBatchByStage' => $sumBatchByStage,
+        ]);
+    }
+
+    public function toggleNotSchedule(Request $request)
+    {
+        $ids = $request->input('ids');
+
+        $planMasterIds = DB::table('stage_plan')
+            ->whereIn('id', $ids)
+            ->pluck('plan_master_id');
+
+        DB::table('stage_plan')
+            ->whereIn('plan_master_id', $planMasterIds)
+            ->update([
+                'not_schedule' => DB::raw('CASE WHEN not_schedule = 1 THEN 0 ELSE 1 END')
+            ]);
+
+        return response()->json([
+            'plan' => $this->getPlanWaiting(session('user')['production_code'])
         ]);
     }
 
@@ -4214,7 +4234,6 @@ class SchedualController extends Controller
 
             DB::table('stage_plan')
                 ->where('id', $stageId)
-                // ->where('code',  $code)
                 ->update([
                     'first_in_campaign' => $first_in_campaign ?? 0,
                     'resourceId' => $roomId,
@@ -4438,6 +4457,7 @@ class SchedualController extends Controller
             ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
+            ->where('sp.not_schedule', 0)
             ->where('sp.active', 1)
             ->whereNull('sp.start')
             ->whereNotNull('prev.start')
@@ -4539,6 +4559,7 @@ class SchedualController extends Controller
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
             ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+            ->where('sp.not_schedule', 0)
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
             ->where('sp.active', 1)
@@ -4662,11 +4683,8 @@ class SchedualController extends Controller
                 ->where('sp.finished', 0)
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
-                // ->where('plan_master.only_parkaging',  0)
+                ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
-                // ->when($stageCode == 7, function ($q) {
-                //        $q->whereNotNull('plan_master.after_parkaging_date');
-                // })
                 ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('prev.start', 'asc')
                 ->get();
@@ -4704,20 +4722,16 @@ class SchedualController extends Controller
                     'finished_product_category.intermediate_code',
                     'product_name.name',
                     'market.code as market',
-
-                    // 'intermediate_category.quarantine_total'
-
                 )
                 ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
-                // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->where('sp.stage_code', $stageCode)
                 ->where('sp.finished', 0)
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
-                // ->where('plan_master.only_parkaging',  0)
+                ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($stageCode == 7, function ($q) {
 
@@ -4764,158 +4778,7 @@ class SchedualController extends Controller
         }
     }
 
-    public function Auto_scheduler_Stage_Backward(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0, ?Carbon $start_date = null)
-    {
 
-        // $this->prev_orderby &&
-        if ($stageCode = 7) {
-
-            $tasks = DB::table('stage_plan as sp')
-                ->select(
-                    'sp.id',
-                    'sp.plan_master_id',
-                    'sp.product_caterogy_id',
-                    'sp.predecessor_code',
-                    'sp.nextcessor_code',
-                    'sp.campaign_code',
-                    'sp.code',
-                    'sp.stage_code',
-                    'sp.campaign_code',
-                    'sp.tank',
-                    'sp.keep_dry',
-                    'sp.order_by',
-                    'sp.required_room_code',
-                    'sp.immediately',
-
-                    'plan_master.batch',
-                    'plan_master.is_val',
-                    'plan_master.code_val',
-                    'plan_master.expected_date',
-                    'plan_master.batch',
-
-                    'plan_master.after_weigth_date',
-                    'plan_master.after_parkaging_date',
-                    'plan_master.allow_weight_before_date',
-
-                    'finished_product_category.product_name_id',
-                    'finished_product_category.market_id',
-                    'finished_product_category.finished_product_code',
-                    'finished_product_category.intermediate_code',
-
-                    'product_name.name',
-                    'market.code as market',
-
-                    'next.start as next_start',
-
-                )
-                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('stage_plan as next', 'next.code', '=', 'sp.nextcessor_code')
-                ->where('sp.stage_code', $stageCode)
-                ->where('sp.finished', 0)
-                ->where('sp.active', 1)
-                ->whereNull('sp.start')
-                ->whereNotNull('plan_master.after_weigth_date')
-                ->when($stageCode == 7, function ($q) {
-
-                    $q->whereNotNull('plan_master.after_parkaging_date');
-                })
-                ->where('sp.deparment_code', session('user')['production_code'])
-                ->orderBy('next.order_by_line')
-                ->get();
-        } else {
-
-            $tasks = DB::table('stage_plan as sp')
-                ->select(
-                    'sp.id',
-                    'sp.plan_master_id',
-                    'sp.product_caterogy_id',
-                    'sp.predecessor_code',
-                    'sp.nextcessor_code',
-                    'sp.campaign_code',
-                    'sp.code',
-                    'sp.stage_code',
-                    'sp.campaign_code',
-                    'sp.tank',
-                    'sp.keep_dry',
-                    'sp.order_by',
-                    'sp.required_room_code',
-                    'sp.immediately',
-
-                    'plan_master.batch',
-                    'plan_master.is_val',
-                    'plan_master.code_val',
-                    'plan_master.expected_date',
-                    'plan_master.batch',
-
-                    'plan_master.after_weigth_date',
-                    'plan_master.after_parkaging_date',
-                    'plan_master.allow_weight_before_date',
-
-                    'finished_product_category.product_name_id',
-                    'finished_product_category.market_id',
-                    'finished_product_category.finished_product_code',
-                    'finished_product_category.intermediate_code',
-                    'product_name.name',
-                    'market.code as market',
-
-                    'next.start as next_start',
-
-                )
-                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
-                ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
-                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('stage_plan as next', 'next.code', '=', 'sp.nextcessor_code')
-                ->where('sp.stage_code', $stageCode)
-                ->where('sp.finished', 0)
-                ->where('sp.active', 1)
-                ->whereNull('sp.start')
-                ->whereNotNull('plan_master.after_weigth_date')
-                ->when($stageCode == 7, function ($q) {
-
-                    $q->whereNotNull('plan_master.after_parkaging_date');
-                })
-                ->where('sp.deparment_code', session('user')['production_code'])
-                ->orderBy('next.start', 'asc')
-                ->get();
-        }
-
-        $processedCampaigns = [];
-        // campaign đã xử lý
-
-        foreach ($tasks as $task) {
-
-            if ($task->is_val === 1) {
-
-                $waite_time = $waite_time_val_batch;
-            } else {
-
-                $waite_time = $waite_time_nomal_batch;
-            }
-
-            if ($task->campaign_code === null) {
-
-                $this->sheduleNotCampaing_BW($task, $stageCode, $waite_time, $start_date, null);
-            } else {
-
-                if (in_array($task->campaign_code, $processedCampaigns)) {
-
-                    continue;
-                }
-
-                // Gom nhóm campaign
-                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->sortBy('batch', 'desc');
-
-                $this->scheduleCampaign_BW($campaignTasks, $stageCode, $waite_time, $start_date, null);
-
-                // Đánh dấu campaign đã xử lý
-                $processedCampaigns[] = $task->campaign_code;
-            }
-        }
-    }
 
     public function scheduleWeightStage(?Carbon $start_date = null)
     {
@@ -4965,6 +4828,7 @@ class SchedualController extends Controller
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
             ->leftJoin('stage_plan as next', 'next.code', '=', 'sp.nextcessor_code')
             ->where('sp.active', 1)
+            ->where('sp.not_schedule', 0)
             ->where('next.active', 1)
             ->whereIn('sp.stage_code', [1,  2])
             ->whereNull('sp.start')
@@ -5048,6 +4912,7 @@ class SchedualController extends Controller
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                 ->whereNotNull('prev.start')
+                ->where('sp.not_schedule', 0)
                 ->whereIn('sp.id', $stage_plan_ids)
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($stageCode == 7, function ($q) {
