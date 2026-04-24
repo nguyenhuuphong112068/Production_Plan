@@ -44,11 +44,13 @@ class ProductionPlanController extends Controller
 
                 $total_batch_qtys = DB::table('plan_master as pm')
                         ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                        ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
                         ->where('pm.active', 1)
                         ->where('pm.cancel', 0)
                         ->where('pm.only_parkaging', 0)
                         ->where('fpc.active', 1)
                         ->where('pm.deparment_code', $production_code)
+                        ->where('pl.type', 1)
                         ->groupBy('pm.plan_list_id')
                         ->select(
                                 'pm.plan_list_id',
@@ -67,6 +69,7 @@ class ProductionPlanController extends Controller
                 $maxStageFinished = DB::table('stage_plan')
                         ->where('finished', 1)
                         ->where('active', 1)
+                        ->where('stage_code', '!=', 8)
                         ->where('deparment_code', $production_code)
                         ->select(
                                 'plan_master_id',
@@ -76,6 +79,7 @@ class ProductionPlanController extends Controller
 
                 $maxPossibleStage = DB::table('stage_plan')
                         ->where('active', 1)
+                        ->where('stage_code', '!=', 8)
                         ->where('deparment_code', $production_code)
                         ->select(
                                 'plan_master_id',
@@ -91,6 +95,7 @@ class ProductionPlanController extends Controller
                 */
 
                 $batch_status = DB::table('plan_master as pm')
+                        ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
                                 $join->on('pm.id', '=', 'sp_max.plan_master_id');
                         })
@@ -103,6 +108,7 @@ class ProductionPlanController extends Controller
                         })
                         ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
                         ->where('pm.active', 1)
+                        ->where('pl.type', 1)
                         ->where('pm.only_parkaging', 0)
                         ->where('pm.plan_list_id', '!=', 0)
                         ->where('pm.plan_list_id', '>', 23)
@@ -279,6 +285,7 @@ class ProductionPlanController extends Controller
                                 $q->where('stage_plan.plan_list_id', $request->plan_list_id);
                         })
                         ->where('finished', 1)
+                        ->where('stage_code', '!=', 8)
                         ->select(
                                 'plan_master_id',
                                 DB::raw('MAX(stage_code) as max_stage_code')
@@ -290,6 +297,7 @@ class ProductionPlanController extends Controller
                                 $q->where('stage_plan.plan_list_id', $request->plan_list_id);
                         })
                         ->where('active', 1)
+                        ->where('stage_code', '!=', 8)
                         ->select(
                                 'plan_master_id',
                                 DB::raw('MAX(stage_code) as max_possible_stage_code')
@@ -297,6 +305,7 @@ class ProductionPlanController extends Controller
                         ->groupBy('plan_master_id');
 
                 $datas = DB::table('plan_master')
+                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
                         ->select(
                                 'plan_master.*',
                                 'finished_product_category.intermediate_code',
@@ -328,7 +337,7 @@ class ProductionPlanController extends Controller
                         ->whereIn('plan_master.plan_list_id', DB::table('plan_list')->where('deparment_code', session('user')['production_code'])->pluck('id'))
                         ->where('plan_master.plan_list_id', ">", 23)
                         ->where('plan_master.active', 1)
-
+                        ->where('pl.type', 1)
                         ->when(
                                 $request->plan_list_id < 0,
                                 function ($q) {
@@ -397,11 +406,11 @@ class ProductionPlanController extends Controller
                         ->orderBy('name', 'asc')
                         ->get();
 
-                $source_material_list = DB::table('source_material')
-                        ->select('source_material.*', 'product_name.name as product_name')
-                        ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
-                        ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
-                        ->where('source_material.active', 1)->orderBy('source_material.name', 'asc')->get();
+                $source_material_list = []; // DB::table('source_material')
+                // ->select('source_material.*', 'product_name.name as product_name')
+                // ->leftJoin('intermediate_category', 'source_material.intermediate_code', 'intermediate_category.intermediate_code')
+                // ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
+                // ->where('source_material.active', 1)->orderBy('source_material.name', 'asc')->get();
 
 
 
@@ -1114,6 +1123,7 @@ class ProductionPlanController extends Controller
 
                 // Phần 1: Các plan không chỉ đóng gói (only_parkaging = 0)
                 $plans_main = DB::table('plan_master')
+                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
                         ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
@@ -1122,6 +1132,7 @@ class ProductionPlanController extends Controller
                         ->where('plan_master.cancel', 0)
                         ->where('plan_master.only_parkaging', 0)
                         ->where('finished_product_category.IsHypothesis', 0)
+                        ->where('pl.type', 1)
                         ->select(
                                 'plan_master.id',
                                 'plan_master.plan_list_id',
@@ -1160,6 +1171,7 @@ class ProductionPlanController extends Controller
 
                 // Phần 2: Các plan chỉ đóng gói (only_parkaging = 1)
                 $plans_packaging = DB::table('plan_master')
+                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'intermediate_category.intermediate_code', '=', 'finished_product_category.intermediate_code')
                         ->where('plan_master.plan_list_id', $request->plan_list_id)
@@ -1167,6 +1179,7 @@ class ProductionPlanController extends Controller
                         ->where('plan_master.cancel', 0)
                         ->where('plan_master.only_parkaging', 1)
                         ->where('finished_product_category.IsHypothesis', 0)
+                        ->where('pl.type', 1)
                         ->select(
                                 'plan_master.id',
                                 'plan_master.plan_list_id',
@@ -1498,6 +1511,7 @@ class ProductionPlanController extends Controller
                 $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
 
                 $datas = DB::table('plan_master')
+                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
                         ->select(
                                 'plan_master.*',
                                 'finished_product_category.intermediate_code',
@@ -1524,6 +1538,7 @@ class ProductionPlanController extends Controller
                         })
                         ->where('plan_master.plan_list_id', $request->plan_list_id)
                         ->where('plan_master.active', 1)
+                        ->where('pl.type', 1)
                         //->where('only_parkaging', 0)
                         ->orderBy('expected_date', 'asc')
                         ->orderBy('level', 'asc')
@@ -1688,6 +1703,7 @@ class ProductionPlanController extends Controller
                                         DB::raw('MAX(stage_code) as max_stage_code')
                                 )
                                 ->where('finished', 1)
+                                ->where("stage_code", "!=", 8)
                                 ->when($request->plan_list_id >= 0, function ($q) use ($request) {
                                         $q->where('plan_list_id', $request->plan_list_id);
                                 })
@@ -1796,7 +1812,6 @@ class ProductionPlanController extends Controller
                                 ->groupBy('material_packaging_code', 'material_packaging_type');
 
                         $plan_master_materials = DB::table('plan_master_materials as pmm')
-
                                 ->join('plan_master as pm', 'pmm.plan_master_id', '=', 'pm.id')
                                 ->leftJoinSub($qtyTotal, 'qty_total', function ($join) {
                                         $join->on('pmm.material_packaging_code', '=', 'qty_total.material_packaging_code')
@@ -2174,6 +2189,7 @@ class ProductionPlanController extends Controller
                 $maxStageFinished = DB::table('stage_plan')
                         ->whereIn('stage_plan.plan_master_id', $request->plan_master_ids)
                         ->where('finished', 1)
+                        ->where('stage_code', "!=", 8)
                         ->select(
                                 'plan_master_id',
                                 DB::raw('MAX(stage_code) as max_stage_code')
@@ -2182,6 +2198,7 @@ class ProductionPlanController extends Controller
 
 
                 $datas = DB::table('plan_master')
+                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
                         ->select(
                                 'plan_master.*',
 
@@ -2212,6 +2229,7 @@ class ProductionPlanController extends Controller
                         )
                         ->whereIn('plan_master.id', $request->plan_master_ids)
                         ->where('plan_master.active', 1)
+                        ->where('pl.type', 1)
 
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
@@ -2257,6 +2275,7 @@ class ProductionPlanController extends Controller
                         ->groupBy('plan_master_id');
 
                 $datas = DB::table('plan_master')
+                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
                         ->select(
 
                                 "plan_master.id",
@@ -2361,6 +2380,7 @@ class ProductionPlanController extends Controller
                         })
                         ->whereIn('plan_master.plan_list_id', $plan_list_id)
                         ->where('plan_master.active', 1)
+                        ->where('pl.type', 1)
                         ->orderBy('id', 'asc')
                         ->get();
 
