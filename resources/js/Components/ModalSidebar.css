@@ -120,3 +120,16 @@
 .stage-dropdown .p-dropdown-label {
   line-height: 60px;
 }
+
+.not-scheduled-row,
+.not-scheduled-row td {
+  background-color: #fff3e0 !important;
+}
+
+.bg-orange-100 {
+  background-color: #fff3e0 !important;
+}
+
+.border-orange-400 {
+  border-color: #ffa726 !important;
+}

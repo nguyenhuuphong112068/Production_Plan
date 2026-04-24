@@ -58,6 +58,8 @@ Route::prefix('/Schedual')
                 Route::put('clearningValidation', 'clearningValidation')->name('clearningValidation');
                 Route::put('groupGranulationAndBlending', 'groupGranulationAndBlending')->name('groupGranulationAndBlending');
                 Route::put('cleaninglevelchange', 'cleaninglevelchange')->name('cleaninglevelchange');
+                Route::put('toggleNotSchedule', 'toggleNotSchedule')->name('toggleNotSchedule');
+
 
                 //Route::put('updateOffdays','updateOffdays')->name('updateOffdays');
 
