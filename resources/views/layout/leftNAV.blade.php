@@ -210,6 +210,13 @@
                             </a>
                         </li>
 
+                        <li class="nav-item">
+                            <a href="{{ route('pages.materData.blister_mold.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Khuôn Mẫu</p>
+                            </a>
+                        </li>
+
 
                     </ul>
                 </li>
@@ -321,12 +328,12 @@
                             </a>
                         </li>
 
-                        {{-- <li class="nav-item">
-                            <a href="{{ route('pages.category.product.list') }}" class="nav-link">
+                        <li class="nav-item">
+                            <a href="{{ route('pages.quota.mold.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Bảo Trì</p>
+                                <p>Khuôn Mẫu</p>
                             </a>
-                        </li> --}}
+                        </li>
 
                     </ul>
                 </li>
