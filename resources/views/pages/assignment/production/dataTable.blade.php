@@ -1,15 +1,15 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="{{ asset('assets/vendor/select2/select2.min.css') }}" rel="stylesheet" />
 
 <style>
     :root {
         --primary-gold: #007bff;
-        /* Production can use blue or gold, user said logic follow maintenance */
         --light-gold: #e7f3ff;
         --border-color: #ddd;
     }
 
     .content-wrapper {
+
         background-color: #f4f6f9;
         height: calc(100vh);
         overflow: hidden;

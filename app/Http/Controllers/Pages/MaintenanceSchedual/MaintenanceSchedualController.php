@@ -237,7 +237,7 @@ class MaintenanceSchedualController extends SchedualController
                 $possibleOffDays = [];
 
                 // Tìm trong phạm vi 15 ngày hoặc cho đến ngày hạn (tùy cái nào xa hơn)
-                $searchLimit = max(15, (int)$idealStart->diffInDays($deadline) + 7);
+                $searchLimit = max(15, (int)$idealStart->diffInDays($deadline) + 30);
 
                 for ($i = 0; $i < $searchLimit; $i++) {
                     $checkDate = $idealStart->copy()->addDays($i);

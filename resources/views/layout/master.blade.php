@@ -12,7 +12,7 @@
 
 
     @include('layout.css')
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tributejs@5.1.3/dist/tribute.css">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/tributejs/tribute.css') }}">
     <style>
         /* NOTIFICATION DRAWER CSS */
         #notification-drawer {
@@ -2065,7 +2065,7 @@
             }
         })();
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/tributejs@5.1.3/dist/tribute.min.js"></script>
+    <script src="{{ asset('assets/vendor/tributejs/tribute.min.js') }}"></script>
 </body>
 
 </html>

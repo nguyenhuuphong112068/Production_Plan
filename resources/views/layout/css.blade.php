@@ -10,7 +10,7 @@
 
       <link rel="stylesheet" href="{{asset ('dataTable/plugins/fontawesome-free/css/all.min.css')}}">
       <!-- Ionicons -->
-      <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+
       <!-- daterange picker -->
       <link rel="stylesheet" href="{{asset ('dataTable/plugins/daterangepicker/daterangepicker.css')}}">
       <!-- iCheck for checkboxes and radio inputs -->
