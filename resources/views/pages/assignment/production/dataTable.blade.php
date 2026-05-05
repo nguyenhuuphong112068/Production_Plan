@@ -102,6 +102,12 @@
         box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
     }
 
+    .btn-save-room.is-dirty {
+        background-color: #ffc107 !important;
+        border-color: #ffc107 !important;
+        color: #000 !important;
+    }
+
     .personnel-label {
         width: 22px;
         height: 22px;
@@ -489,7 +495,16 @@
                             </table>
                         </td>
                         <td class="text-center" style="vertical-align: middle !important; width: 2%;">
-                            <button class="btn btn-xs btn-primary btn-save-room shadow-sm"
+                            @php
+                                $isDirty = false;
+                                foreach ($task->assignments as $a) {
+                                    if (is_null($a->id)) {
+                                        $isDirty = true;
+                                        break;
+                                    }
+                                }
+                            @endphp
+                            <button class="btn btn-xs {{ $isDirty ? 'is-dirty' : 'btn-primary' }} btn-save-room shadow-sm"
                                 {{ !$canEdit ? 'disabled' : '' }}>
                                 <i class="fas fa-save"></i>
                             </button>
@@ -759,6 +774,23 @@
     $(document).ready(function() {
         const productionCode = "{{ $production_code }}";
 
+        function markRoomDirty(row) {
+            row.find('.btn-save-room').addClass('is-dirty').removeClass('btn-primary');
+        }
+
+        function markRoomSaved(row) {
+            row.find('.btn-save-room').removeClass('is-dirty').addClass('btn-primary');
+        }
+
+        // Theo dõi thay đổi trong các input/select/div
+        $(document).on('change input', '.room-row select, .room-row input, .room-row .job-desc', function() {
+            markRoomDirty($(this).closest('.room-row'));
+        });
+
+        $(document).on('change', '.person-select', function() {
+            markRoomDirty($(this).closest('.room-row'));
+        });
+
         function initSelect2(selector = '.person-select') {
             $(selector).select2({
                 placeholder: "-- Chọn người --",
@@ -832,13 +864,16 @@
             container.append(newPersonRow);
             updatePersonnelLabels(container);
             initSelect2(newPersonRow.find('.person-select'));
+            markRoomDirty($(this).closest('.room-row'));
         });
 
         $(document).on('click', '.btn-remove-person', function() {
             const container = $(this).closest('.personnel-container');
+            const row = $(this).closest('.room-row');
             if (container.find('.personnel-row').length > 1) {
                 $(this).closest('.personnel-row').remove();
                 updatePersonnelLabels(container);
+                markRoomDirty(row);
             }
         });
 
@@ -928,6 +963,7 @@
             container.append(newRow);
             initSelect2(newRow.find('.person-select'));
             updateTimelines();
+            markRoomDirty($(this).closest('.room-row'));
         });
 
         $(document).on('click', '.btn-remove-shift', function() {
@@ -960,14 +996,23 @@
                 });
             } else {
                 if ($(this).closest('.assignment-container').find('.assignment-item').length > 1) {
+                    const roomRow = $(this).closest('.room-row');
                     row.remove();
                     updateTimelines();
+                    markRoomDirty(roomRow);
                 }
             }
         });
 
         function saveRoom(row, silent = false) {
             return new Promise((resolve, reject) => {
+                const btn = row.find('.btn-save-room');
+                
+                // Chỉ gửi request nếu có thay đổi (nút màu vàng - is-dirty)
+                if (!btn.hasClass('is-dirty')) {
+                    return resolve(false);
+                }
+
                 const assignments = [];
                 row.find('.assignment-item').each(function() {
                     const p_list = [];
@@ -978,22 +1023,20 @@
                             notification: $(this).find('.person-notif').val()
                         });
                     });
-                    if (p_list.length > 0) {
-                        assignments.push({
-                            shift: $(this).find('.shift-select').val(),
-                            start_time: $(this).find('.start-time-input').val(),
-                            end_time: $(this).find('.end-time-input').val(),
-                            job_description: $(this).find('.job-desc').html(),
-                            personnel_list: p_list
-                        });
-                    }
+
+                    assignments.push({
+                        shift: $(this).find('.shift-select').val(),
+                        start_time: $(this).find('.start-time-input').val(),
+                        end_time: $(this).find('.end-time-input').val(),
+                        job_description: $(this).find('.job-desc').html(),
+                        personnel_list: p_list
+                    });
                 });
 
                 if (assignments.length === 0) {
                     return resolve(false); // Bỏ qua nếu không có dữ liệu nhân sự
                 }
 
-                const btn = row.find('.btn-save-room');
                 btn.prop('disabled', true);
                 $.ajax({
                     url: "{{ route('pages.assignment.production.store') }}",
@@ -1008,6 +1051,7 @@
                     },
                     success: function(res) {
                         if (!silent) Swal.fire('Thành công', res.message, 'success');
+                        markRoomSaved(row);
                         resolve(true);
                     },
                     error: function() {
@@ -1106,6 +1150,7 @@
                     $target.append($itm);
                 });
             });
+            markRoomDirty(roomRow);
         });
 
         // Chép toàn bộ Lịch Lý Thuyết
@@ -1157,6 +1202,7 @@
                     $target.append($itm);
                 });
             });
+            markRoomDirty(roomRow);
         });
 
         // Thêm công việc ngoài lịch (Thêm 1 hàng phòng mới)
@@ -1245,7 +1291,7 @@
                         </table>
                     </td>
                     <td class="text-center" style="vertical-align: middle !important; width: 2%;">
-                        <button class="btn btn-xs btn-primary btn-save-room shadow-sm">
+                        <button class="btn btn-xs btn-warning btn-save-room shadow-sm">
                             <i class="fas fa-save"></i>
                         </button>
                     </td>

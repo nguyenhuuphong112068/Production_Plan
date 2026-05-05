@@ -237,7 +237,8 @@ class ProductionAssignmentController extends Controller
             if (!empty($assignments_data)) {
                 foreach ($assignments_data as $row) {
                     $p_data = $row['personnel_list'] ?? [];
-                    if (empty($p_data)) continue;
+                    // Cho phép lưu ngay cả khi chưa chọn nhân sự
+                    // if (empty($p_data)) continue;
 
                     $startDt = $reportedDate . ' ' . $row['start_time'];
                     $endDt = $reportedDate . ' ' . $row['end_time'];
