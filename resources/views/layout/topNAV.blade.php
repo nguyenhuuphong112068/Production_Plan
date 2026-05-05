@@ -17,12 +17,14 @@
     <ul class="navbar-nav ms-auto">
         <!-- Thông báo cũ đã được chuyển sang Floating Button -->
 
-        <li class="nav-item d-flex align-items-center" style="margin-right: 20px;">
+        <li class="nav-item d-flex align-items-center" style="margin-right: 20px; position: relative;">
             <div id="notif-bell-btn"
-                style="border: 2px solid #CDC717; border-radius: 50%; width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; cursor: pointer;">
+                style="border: 2px solid #CDC717; border-radius: 50%; width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;">
                 <i class="far fa-bell" style="font-size: 18px; color: #CDC717;"></i>
                 <span class="badge badge-warning" id="notif-badge-navbar"
                     style="display:none; position: absolute; top: 0; right: 0;">0</span>
+                <span class="badge bg-danger" id="mention-badge-navbar"
+                    style="display:none; position: absolute; top: -12px; right: 40px; font-size: 11px; animation: badge-blink 1.5s infinite; white-space: nowrap; padding: 5px 10px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">@ Nhắc tên</span>
             </div>
         </li>
 

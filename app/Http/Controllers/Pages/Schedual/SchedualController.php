@@ -3386,7 +3386,7 @@ class SchedualController extends Controller
 
     public function submit(Request $request)
     {
-
+        Log::info($request->all());
         // 1️⃣ Lấy danh sách các dòng sẽ update
         $submitType = $request->input('submit_type', 'production'); // production, HC, BT, TI
 
@@ -3405,18 +3405,20 @@ class SchedualController extends Controller
             })
             ->get();
 
-        if ($updatedRows->isEmpty()) {
+        $notification = $request->input('notification');
 
-            return response()->json(['message' => 'Không có lịch mới để submit!']);
+        if ($updatedRows->isEmpty() && empty($notification)) {
+            return response()->json(['message' => 'Không có lịch mới để submit!', 'type' => 'info']);
         }
 
-        // 2️⃣ Update submit = 1
-        DB::table('stage_plan')
-            ->whereIn('id', $updatedRows->pluck('id'))
-            ->update(['submit' => 1]);
+        if (!$updatedRows->isEmpty()) {
+            // 2️⃣ Update submit = 1
+            DB::table('stage_plan')
+                ->whereIn('id', $updatedRows->pluck('id'))
+                ->update(['submit' => 1]);
 
-        // 3️⃣ Insert log cho từng dòng
-        $historyData = $updatedRows->map(function ($row) {
+            // 3️⃣ Insert log cho từng dòng
+            $historyData = $updatedRows->map(function ($row) {
 
             $maxVersion = DB::table('stage_plan_history')
                 ->where('stage_plan_id', $row->id)
@@ -3453,51 +3455,89 @@ class SchedualController extends Controller
             ];
         });
 
-        // 🔹 Chia nhỏ insert để tránh lỗi 1390
-        $historyData->chunk(500)->each(function ($chunk) {
-
-            DB::table('stage_plan_history')->insert($chunk->toArray());
-        });
+            // 🔹 Chia nhỏ insert để tránh lỗi 1390
+            $historyData->chunk(500)->each(function ($chunk) {
+                DB::table('stage_plan_history')->insert($chunk->toArray());
+            });
+        }
 
         // / Gửi thông Báo
         $senderName = session('user')['fullName'];
-
         $productionName = session('user')['production_name'];
-
         $sendDate = now()->format('d/m/Y H:i');
+        $notification = $request->input('notification');
 
-        $message = "{$senderName} đã Submit Lịch Sản Xuất ngày {$sendDate} PX {$productionName}";
+        $typeLabels = [
+            'production' => 'Lịch Sản Xuất',
+            'HC' => 'Lịch Hiệu Chuẩn',
+            'BT' => 'Lịch Bảo Trì Thiết Bị',
+            'TB' => 'Lịch Bảo Trì Thiết Bị',
+            'TI' => 'Lịch Bảo Trì Tiện Ích',
+        ];
+        $typeLabel = $typeLabels[$submitType] ?? 'Lịch Sản Xuất';
 
-        $targetUrl = route('pages.Schedual.index');
+        $message = "{$senderName} đã Submit {$typeLabel} ngày {$sendDate} PX {$productionName}";
+        if ($notification) {
+            $message .= "\nNhắc nhở: {$notification}";
+        }
+
+        $targetUrl = in_array($submitType, ['HC', 'BT', 'TB', 'TI'])
+            ? url('/maintenance-calendar')
+            : route('pages.Schedual.index');
 
         // Logic lọc người nhận: Không gửi cho 4 phân xưởng còn lại nếu người gửi thuộc 1 trong 5 phân xưởng
-        $workshops = ['PXV1',  'PXV2',  'PXDN',  'PXTN',  'PXVH'];
-
+        $workshops = ['PXV1', 'PXV2', 'PXDN', 'PXTN', 'PXVH'];
         $myWorkshop = session('user')['production_code'];
-
         $targetUserIds = 'all';
 
         if (in_array($myWorkshop, $workshops)) {
-
             $excludeWorkshops = array_diff($workshops, [$myWorkshop]);
-
             $targetUserIds = DB::table('user_management')
                 ->where('isActive', 1)
                 ->whereNotIn('deparment', $excludeWorkshops)
                 ->pluck('id')
                 ->toArray();
         }
+        // Trích xuất ID người được nhắc tên (@Tên[ID]) và thêm vào danh sách người nhận
+        $mentionedUserIds = [];
+        if ($notification) {
+            preg_match_all('/@.*?\[(\d+)\]/', $notification, $matches);
+            if (!empty($matches[1])) {
+                $mentionedUserIds = array_unique(array_map('intval', $matches[1]));
+                if ($targetUserIds !== 'all') {
+                    $targetUserIds = array_unique(array_merge($targetUserIds, $mentionedUserIds));
+                }
+            }
+        }
 
+        // Gửi thông báo chung
         \App\Http\Controllers\General\NotificationController::sendNotification(
             $message,
-            'Submit Lịch Sản Xuất',
+            "Submit {$typeLabel}",
             null,
             $targetUserIds,
             [],
             $targetUrl
         );
 
-        return response()->json(['message' => 'Đã submit ' . $updatedRows->count() . ' lịch.']);
+        // Gửi thông báo riêng cho người được nhắc tên
+        if (!empty($mentionedUserIds)) {
+            \App\Http\Controllers\General\NotificationController::sendNotification(
+                "{$senderName} đã nhắc đến bạn trong {$typeLabel} PX {$productionName}: {$notification}",
+                'Nhắc tên',
+                null,
+                $mentionedUserIds,
+                [],
+                $targetUrl
+            );
+        }
+
+        $msg = $updatedRows->isEmpty() 
+            ? 'Đã gửi thông báo nhắc nhở.' 
+            : 'Đã submit ' . $updatedRows->count() . ' lịch.';
+        $type = $updatedRows->isEmpty() ? 'info' : 'success';
+
+        return response()->json(['message' => $msg, 'type' => $type]);
     }
 
     public function accpectQuarantine(Request $request)
@@ -4777,8 +4817,6 @@ class SchedualController extends Controller
             // $this->order_by++;
         }
     }
-
-
 
     public function scheduleWeightStage(?Carbon $start_date = null)
     {

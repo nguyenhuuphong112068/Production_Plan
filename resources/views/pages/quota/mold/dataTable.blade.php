@@ -103,7 +103,7 @@
                         
                         var options = moldsData.map(function(mold) {
                             var isSelected = selectedIds.indexOf(parseInt(mold.id)) !== -1 ? 'selected' : '';
-                            return '<option value="' + mold.id + '" ' + isSelected + '>' + mold.code + ' - ' + mold.name + '</option>';
+                            return '<option value="' + mold.id + '" ' + isSelected + '>' + mold.code + '</option>';
                         }).join('');
 
                         var isDisabled = authUpdate === 'disabled' ? 'disabled' : '';

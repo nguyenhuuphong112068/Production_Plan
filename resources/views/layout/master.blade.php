@@ -103,17 +103,18 @@
         }
 
         .notif-title {
-            font-size: 14px;
+            font-size: 16px;
             margin-bottom: 5px;
+            color: #000;
         }
 
         .notif-title b {
-            color: #333;
+            color: #000;
         }
 
         .notif-message {
-            font-size: 13px;
-            color: #666;
+            font-size: 15px;
+            color: #000;
             border-left: 3px solid #ddd;
             padding-left: 10px;
             margin: 5px 0;
@@ -587,6 +588,11 @@
         }
 
 
+        @keyframes badge-blink {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
 
         @keyframes chat-blink {
             0% {
@@ -816,8 +822,7 @@
                 </button>
             </div>
             <div class="notif-tabs">
-                <div class="notif-tab active" data-tab="all">Tất cả</div>
-                <div class="notif-tab" data-tab="unread">Chưa đọc</div>
+                <div class="notif-tab active" data-tab="all" style="width: 100%; text-align: center;">Tất cả</div>
             </div>
             <div id="notification-drawer-items">
                 <!-- Items will be loaded here -->
@@ -998,11 +1003,22 @@
             function loadNotifications() {
                 $.get("{{ route('notifications.list') }}", function(data) {
                     let unreadCount = data.filter(n => n.is_read == 0).length;
+                    let unreadMentions = data.filter(n => n.is_read == 0 && n.activity_type === 'Nhắc tên');
+
                     if (unreadCount > 0) {
                         $('#notif-badge-navbar').text(unreadCount).show();
                     } else {
                         $('#notif-badge-navbar').hide();
                     }
+
+                    if (unreadMentions.length > 0) {
+                        let latestSender = unreadMentions[0].sender_name;
+                        $('#mention-badge-navbar').html(`<i class="fas fa-at"></i> ${latestSender} đã nhắc đến bạn`).show();
+                    } else {
+                        $('#mention-badge-navbar').hide();
+                    }
+
+
 
                     let html = '';
                     if (data.length === 0) {
@@ -1025,10 +1041,13 @@
                             html += `<div class="notif-date-group">${date}</div>`;
                             groups[date].forEach(n => {
                                 let isUnread = n.is_read == 0 ? 'unread' : '';
+                                let mentionBadge = n.activity_type === 'Nhắc tên' 
+                                    ? '<span class="badge bg-danger ms-2" style="animation: badge-blink 1.5s infinite;">Bạn được nhắc đến</span>' 
+                                    : '';
                                 html += `
                                     <div class="notif-item ${isUnread}" onclick="markNotificationRead(${n.id}, '${n.url}')">
                                         <div class="notif-content">
-                                            <div class="notif-title"><b>${n.sender_name}</b> đã ${n.activity_type}</div>
+                                            <div class="notif-title"><b>${n.sender_name}</b> đã ${n.activity_type} ${mentionBadge}</div>
                                             <div class="notif-message">${n.message}</div>
                                             <div class="notif-time">${moment(n.created_at).format('HH:mm DD/MM/YYYY')}</div>
                                         </div>

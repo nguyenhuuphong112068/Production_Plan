@@ -578,7 +578,7 @@
                             class="nav-link {{ str_contains(url()->current(), 'assignment') || str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-user-check"></i>
                             <p>
-                                Phân Công
+                                Lịch Công Tác
                                 <i class="right fas fa-angle-left"></i>
                             </p>
                         </a>
@@ -588,7 +588,7 @@
                                 <a href="{{ route('pages.assignment.production.index') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'assignment/production') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon"></i>
-                                    <p>Phân Công Sản Xuất</p>
+                                    <p>Sản Xuất</p>
                                 </a>
                             </li>
                             {{-- @endif
@@ -597,7 +597,7 @@
                                 <a href="{{ route('pages.assignment.maintenance.portal') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'assignment/maintenance') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon text-warning"></i>
-                                    <p>Phân Công Bảo Trì</p>
+                                    <p>Bảo trì/Hiệu Chuẩn</p>
                                 </a>
                             </li>
                             {{-- @endif --}}

@@ -92,13 +92,30 @@
         background-color: #fff;
         text-align: left;
         white-space: pre-wrap;
-        font-size: 0.9rem;
+        font-size: 1rem;
+        font-weight: bold;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .job-desc.active-target {
         border-color: #007bff;
         box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+
+    .personnel-label {
+        width: 22px;
+        height: 22px;
+        background-color: #003A4F;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        margin-right: 8px;
+        flex-shrink: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
     .btn-copy-theory:hover {
@@ -225,6 +242,10 @@
                     {{ !$canEdit ? 'disabled' : '' }}>
                     <i class="fas fa-save"></i> Lưu toàn bộ lịch
                 </button>
+                <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-toggle-theory"
+                    title="Ẩn/Hiện cột Lịch Lý Thuyết">
+                    <i class="fas fa-eye-slash"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -233,14 +254,15 @@
         <table class="table table-assignment w-100">
             <thead>
                 <tr>
-                    <th style="width: 10%">Phòng / Thiết Bị</th>
-                    <th style="width: 15%">Lịch Lý Thuyết</th>
+                    <th style="width: 7%">Phòng / Thiết Bị</th>
+                    <th style="width: 15%" class="theory-col">Lịch Lý Thuyết</th>
                     <th style="width: 8%">Ca</th>
-                    <th style="width: 32%">Nội Dung Công Việc</th>
-                    <th style="width: 15%">Người thực Hiện</th>
-                    <th style="width: 15%">Chi Tiết Công Việc</th>
+                    <th style="width: 15%">Nhân sự</th>
+                    <th style="width: 30%">Hoạt Động</th>
+                    {{-- <th style="width: 15%">Chi Tiết Công Việc</th> --}}
                     <th style="width: 3%">Hủy</th>
                     <th style="width: 2%" class="text-center">Lưu</th>
+                    <th style="width: 20%">Báo cáo hoạt động</th>
                 </tr>
             </thead>
             <tbody id="main-assignment-tbody">
@@ -256,7 +278,7 @@
                                 </button>
                             </div>
                         </td>
-                        <td class="theory-cell text-left position-relative">
+                        <td class="theory-cell text-left position-relative theory-col">
                             <div class="theory-content">{!! $task->theory_display !!}</div>
                             @if ($task->theory_display != '<span class="text-muted italic">Không có lịch</span>')
                                 <button class="btn btn-xs btn-outline-primary btn-copy-theory-all mt-2"
@@ -266,14 +288,14 @@
                                 </button>
                             @endif
                         </td>
-                        <td colspan="5" class="p-0">
+                        <td colspan="4" class="p-0">
                             <table class="assignment-inner-table">
                                 <tbody class="assignment-container">
                                     @forelse($task->assignments as $assignment)
                                         <tr class="assignment-item" data-id="{{ $assignment->id }}"
                                             data-theory-start="{{ $task->theory_start }}"
                                             data-theory-end="{{ $task->theory_end }}">
-                                            <td style="width: 13.3%">
+                                            <td style="width: 13.8%">
                                                 <div class="d-flex flex-column align-items-center">
                                                     <select class="form-control form-control-sm shift-select mb-1"
                                                         {{ !$canEdit ? 'disabled' : '' }}>
@@ -299,18 +321,14 @@
                                                         {{ !$canEdit ? 'disabled' : '' }}>
                                                 </div>
                                             </td>
-                                            <td style="width: 42.7%">
-                                                <div class="form-control form-control-sm job-desc"
-                                                    contenteditable="{{ $canEdit ? 'true' : 'false' }}"
-                                                    style="min-height: 80px; height: auto; white-space: pre-wrap;"
-                                                    placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
-                                            </td>
-                                            <td colspan="2" class="p-0" style="width: 40%">
+                                            <td class="p-0" style="width: 25.8%">
                                                 <div class="personnel-container">
                                                     @foreach ($assignment->personnel_data as $p_info)
                                                         <div
                                                             class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                            <div style="flex: 1" class="mr-1">
+                                                            <div class="personnel-label">{{ chr(65 + $loop->index) }}
+                                                            </div>
+                                                            <div style="flex: 1">
                                                                 <select
                                                                     class="form-control form-control-sm person-select"
                                                                     {{ !$canEdit ? 'disabled' : '' }}>
@@ -321,13 +339,6 @@
                                                                             {{ $p->name }}</option>
                                                                     @endforeach
                                                                 </select>
-                                                            </div>
-                                                            <div style="flex: 1">
-                                                                <input type="text"
-                                                                    class="form-control form-control-sm person-notif"
-                                                                    value="{{ $p_info->notification }}"
-                                                                    placeholder="Chi tiết..."
-                                                                    {{ !$canEdit ? 'disabled' : '' }}>
                                                             </div>
                                                             @if ($canEdit)
                                                                 <i
@@ -343,7 +354,13 @@
                                                     </div>
                                                 @endif
                                             </td>
-                                            <td style="width: 4%" class="text-center">
+                                            <td style="width: 55.2%">
+                                                <div class="form-control form-control-sm job-desc"
+                                                    contenteditable="{{ $canEdit ? 'true' : 'false' }}"
+                                                    style="min-height: 80px; height: auto; white-space: pre-wrap;"
+                                                    placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
+                                            </td>
+                                            <td style="width: 5.2%" class="text-center">
                                                 @if ($canEdit)
                                                     <i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
                                                 @else
@@ -354,7 +371,7 @@
                                     @empty
                                         <tr class="assignment-item" data-theory-start="{{ $task->theory_start }}"
                                             data-theory-end="{{ $task->theory_end }}">
-                                            <td style="width: 10.7%">
+                                            <td style="width: 14.3%">
                                                 <div class="d-flex flex-column align-items-center">
                                                     <select class="form-control form-control-sm shift-select mb-1"
                                                         {{ !$canEdit ? 'disabled' : '' }}>
@@ -378,17 +395,12 @@
                                                         {{ !$canEdit ? 'disabled' : '' }}>
                                                 </div>
                                             </td>
-                                            <td style="width: 42.7%">
-                                                <div class="form-control form-control-sm job-desc"
-                                                    contenteditable="{{ $canEdit ? 'true' : 'false' }}"
-                                                    style="min-height: 80px; height: auto; white-space: pre-wrap;"
-                                                    placeholder="Nội dung..."></div>
-                                            </td>
-                                            <td colspan="2" class="p-0" style="width: 40%">
+                                            <td class="p-0" style="width: 26.8%">
                                                 <div class="personnel-container">
                                                     <div
                                                         class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                        <div style="flex: 1" class="mr-1">
+                                                        <div class="personnel-label">A</div>
+                                                        <div style="flex: 1">
                                                             <select class="form-control form-control-sm person-select"
                                                                 {{ !$canEdit ? 'disabled' : '' }}>
                                                                 <option value="">-- Chọn người --</option>
@@ -397,12 +409,6 @@
                                                                         {{ $p->name }}</option>
                                                                 @endforeach
                                                             </select>
-                                                        </div>
-                                                        <div style="flex: 1">
-                                                            <input type="text"
-                                                                class="form-control form-control-sm person-notif"
-                                                                placeholder="Chi tiết..."
-                                                                {{ !$canEdit ? 'disabled' : '' }}>
                                                         </div>
                                                         @if ($canEdit)
                                                             <i
@@ -417,7 +423,13 @@
                                                     </div>
                                                 @endif
                                             </td>
-                                            <td style="width: 4%" class="text-center">
+                                            <td style="width: 53.6%">
+                                                <div class="form-control form-control-sm job-desc"
+                                                    contenteditable="{{ $canEdit ? 'true' : 'false' }}"
+                                                    style="min-height: 80px; height: auto; white-space: pre-wrap;"
+                                                    placeholder="Nội dung..."></div>
+                                            </td>
+                                            <td style="width: 5.3%" class="text-center">
                                                 @if ($canEdit)
                                                     <i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
                                                 @else
@@ -481,6 +493,35 @@
                                 {{ !$canEdit ? 'disabled' : '' }}>
                                 <i class="fas fa-save"></i>
                             </button>
+                        </td>
+                        <td class="text-left"
+                            style="background:#d7eaff; font-size:11px; width: 20%; vertical-align: top !important;">
+                            @if ($task->actual_details->count())
+                                @php $idx = 1; @endphp
+                                @foreach ($task->actual_details as $d)
+                                    @php
+                                        $start = \Carbon\Carbon::parse($d->start);
+                                        $end = \Carbon\Carbon::parse($d->end);
+                                        if ($end->lessThan($start)) {
+                                            $end->addDay();
+                                        }
+                                        $minutes = $start->diffInMinutes($end);
+                                        $hours = intdiv($minutes, 60);
+                                        $mins = $minutes % 60;
+                                    @endphp
+                                    <div class="mb-1" style="border-bottom: 1px dashed #ccc; padding-bottom: 2px;">
+                                        {{ $idx++ }}. {{ $d->title ?? 'VS' }}
+                                        ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} =
+                                        <b>{{ $hours }}h{{ $mins }}p</b>)
+                                        @if ($d->yields)
+                                            <span class="text-primary" style="font-weight: 600"> - SL:
+                                                {{ number_format($d->yields, 2) }} {{ $d->unit }}</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
@@ -761,25 +802,35 @@
             updateTimelines();
         });
 
+        function updatePersonnelLabels(container) {
+            container.find('.personnel-row').each(function(index) {
+                let label = String.fromCharCode(65 + index);
+                let labelDiv = $(this).find('.personnel-label');
+                if (labelDiv.length === 0) {
+                    $(this).prepend(`<div class="personnel-label">${label}</div>`);
+                } else {
+                    labelDiv.text(label);
+                }
+            });
+        }
+
         $(document).on('click', '.btn-add-person', function() {
             const container = $(this).closest('td').find('.personnel-container');
             const personnel_options =
                 `@foreach ($personnel as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach`;
             const newPersonRow = $(`
                 <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                    <div style="flex: 1" class="mr-1">
-                        <select class="form-control form-control-sm person-select">
-                            <option value="">-- Chọn người --</option>
-                            ${personnel_options}
-                        </select>
-                    </div>
+                    <div class="personnel-label"></div>
                     <div style="flex: 1">
-                        <input type="text" class="form-control form-control-sm person-notif" placeholder="Chi tiết...">
+                        <select class="form-control form-control-sm person-select">
+                            <option value="">-- Chọn người --</option>${personnel_options}
+                        </select>
                     </div>
                     <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                 </div>
             `);
             container.append(newPersonRow);
+            updatePersonnelLabels(container);
             initSelect2(newPersonRow.find('.person-select'));
         });
 
@@ -787,6 +838,7 @@
             const container = $(this).closest('.personnel-container');
             if (container.find('.personnel-row').length > 1) {
                 $(this).closest('.personnel-row').remove();
+                updatePersonnelLabels(container);
             }
         });
 
@@ -840,7 +892,7 @@
 
             const newRow = $(`
                 <tr class="assignment-item">
-                    <td style="width: 13.3%">
+                    <td style="width: 14.3%">
                         <div class="d-flex flex-column align-items-center">
                             <select class="form-control form-control-sm shift-select mb-1">
                                 <option value="1" ${nextShift === '1' ? 'selected' : ''}>1</option>
@@ -853,24 +905,24 @@
                             <input type="time" class="form-control form-control-sm end-time-input" value="${endTime}">
                         </div>
                     </td>
-                    <td style="width: 42.7%">
-                        <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
-                    </td>
-                    <td colspan="2" class="p-0" style="width: 40%">
+                    <td style="width: 26.8%" class="p-0">
                         <div class="personnel-container">
                             <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                <div style="flex: 1" class="mr-1">
+                                <div class="personnel-label">A</div>
+                                <div style="flex: 1">
                                     <select class="form-control form-control-sm person-select">
                                         <option value="">-- Chọn người --</option>${personnel_options}
                                     </select>
                                 </div>
-                                <div style="flex: 1"><input type="text" class="form-control form-control-sm person-notif" placeholder="Chi tiết..."></div>
                                 <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                             </div>
                         </div>
                         <div class="text-left p-1" style="border-top: 1px dashed #eee"><a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a></div>
                     </td>
-                    <td style="width: 4%" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
+                    <td style="width: 53.6%">
+                        <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
+                    </td>
+                    <td style="width: 5.3%" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
                 </tr>
             `);
             container.append(newRow);
@@ -1127,15 +1179,15 @@
                             </button>
                         </div>
                     </td>
-                    <td class="theory-cell text-left">
+                    <td class="theory-cell text-left theory-col">
                         <div class="theory-content"><span class="text-danger font-weight-bold">NA</span></div>
                         <button class="btn-copy-theory" title="Chép sang nội dung"> >> </button>
                     </td>
-                    <td colspan="5" class="p-0">
+                    <td colspan="4" class="p-0">
                         <table class="assignment-inner-table">
                             <tbody class="assignment-container">
                                 <tr class="assignment-item" data-theory-start="07:15" data-theory-end="16:00">
-                                    <td style="width: 13.3%">
+                                    <td style="width: 14.3%">
                                         <div class="d-flex flex-column align-items-center">
                                             <select class="form-control form-control-sm shift-select mb-1">
                                                 <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>HC</option><option value="5">Khác</option>
@@ -1144,26 +1196,26 @@
                                             <input type="time" class="form-control form-control-sm end-time-input" value="16:00">
                                         </div>
                                     </td>
-                                    <td style="width: 42.7%">
-                                        <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
-                                    </td>
-                                    <td colspan="2" class="p-0" style="width: 40%">
+                                    <td style="width: 26.8%" class="p-0">
                                         <div class="personnel-container">
                                             <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                <div style="flex: 1" class="mr-1">
-                                                    <select class="form-control form-control-sm person-select">
-                                                        <option value="">-- Chọn người --</option>${personnel_options}
-                                                    </select>
-                                                </div>
-                                                <div style="flex: 1"><input type="text" class="form-control form-control-sm person-notif" placeholder="Chi tiết..."></div>
-                                                <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                            <div class="personnel-label">A</div>
+                                            <div style="flex: 1">
+                                                <select class="form-control form-control-sm person-select">
+                                                    <option value="">-- Chọn người --</option>${personnel_options}
+                                                </select>
+                                            </div>
+                                            <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                             </div>
                                         </div>
                                         <div class="text-left p-1" style="border-top: 1px dashed #eee">
                                             <a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a>
                                         </div>
                                     </td>
-                                    <td style="width: 4%" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
+                                    <td style="width: 53.6%">
+                                        <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
+                                    </td>
+                                    <td style="width: 5.3%" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
                                 </tr>
                             </tbody>
                                 <tfoot class="timeline-tfoot">
@@ -1197,6 +1249,9 @@
                             <i class="fas fa-save"></i>
                         </button>
                     </td>
+                    <td class="text-left" style="background:#d7eaff; font-size:11px; width: 20%; vertical-align: top !important;">
+                        <span class="text-muted">—</span>
+                    </td>
                 </tr>
             `);
             $('#main-assignment-tbody').append(newRoomRow);
@@ -1215,5 +1270,16 @@
 
         // Gọi update thanh thời gian ngay lúc load trang
         updateTimelines();
+
+        // Ẩn/Hiện Lịch Lý Thuyết
+        $(document).on('click', '#btn-toggle-theory', function() {
+            $('.theory-col').toggle();
+            const isVisible = $('.theory-col').is(':visible');
+            if (isVisible) {
+                $(this).find('i').removeClass('fa-eye').addClass('fa-eye-slash');
+            } else {
+                $(this).find('i').removeClass('fa-eye-slash').addClass('fa-eye');
+            }
+        });
     });
 </script>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Http\Controllers\Pages\Report\DailyReportController;
 
 class ProductionAssignmentController extends Controller
 {
@@ -14,7 +15,7 @@ class ProductionAssignmentController extends Controller
         $production_code = session('user')['production_code'];
         $user_group_name = session('user')['group_name'];
         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
-        
+
         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
         $endDate = $startDate->copy()->addDays(1);
 
@@ -34,10 +35,10 @@ class ProductionAssignmentController extends Controller
 
         // Tìm xem group_name của user có khớp với tổ nào trong bộ phận này không
         if ($user_group_name) {
-            $matchedGroup = $groups->first(function($g) use ($user_group_name) {
+            $matchedGroup = $groups->first(function ($g) use ($user_group_name) {
                 return trim($g->production_group) == trim($user_group_name);
             });
-            
+
             if ($matchedGroup) {
                 $active_group_code = $matchedGroup->group_code;
                 $isLocked = true;
@@ -48,7 +49,7 @@ class ProductionAssignmentController extends Controller
         $roomQuery = DB::table('room')
             ->where('deparment_code', $production_code)
             ->where('stage_code', '!=', 8);
-        
+
         if ($active_group_code) {
             $roomQuery->where('group_code', $active_group_code);
         }
@@ -85,10 +86,16 @@ class ProductionAssignmentController extends Controller
             ->get()
             ->groupBy('room_id');
 
-        // 6. Tổ chức lại dữ liệu theo từng phòng
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate) {
+        // 6. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
+        $dailyReportController = app(DailyReportController::class);
+        $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId');
+        $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
+
+        // 7. Tổ chức lại dữ liệu theo từng phòng
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails, $reportedDate) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
+            $actuals = $actualDetails->get($room->id) ?? collect();
 
             // Tạo chuỗi hiển thị lịch lý thuyết (Theory Display)
             $theoryDisplay = '';
@@ -116,6 +123,61 @@ class ProductionAssignmentController extends Controller
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
 
+            // Tự động tạo gợi ý nếu chưa có phân công
+            if ($assignments->isEmpty() && $plans->isNotEmpty()) {
+                $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+                
+                // Khởi tạo các nhóm công việc theo ca (1, 2, 3)
+                $shiftItems = ['1' => [], '2' => [], '3' => []];
+
+                foreach ($plans as $p) {
+                    $pStart = Carbon::parse($p->start);
+                    $pEnd = Carbon::parse($p->end);
+
+                    // Ca 1: 06:00 - 14:00
+                    $s1S = $dayStart->copy();
+                    $s1E = $dayStart->copy()->addHours(8);
+                    if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = "{$p->product_name} - {$p->batch}";
+
+                    // Ca 2: 14:00 - 22:00
+                    $s2S = $s1E->copy();
+                    $s2E = $s2S->copy()->addHours(8);
+                    if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = "{$p->product_name} - {$p->batch}";
+
+                    // Ca 3: 22:00 - 06:00 (sáng mai)
+                    $s3S = $s2E->copy();
+                    $s3E = $s3S->copy()->addHours(8);
+                    if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = "{$p->product_name} - {$p->batch}";
+                }
+
+                foreach ($shiftItems as $code => $items) {
+                    if (empty($items)) continue;
+
+                    $unique_items = array_values(array_unique($items));
+                    $jobDescription = "";
+                    foreach($unique_items as $idx => $item) {
+                        $jobDescription .= ($idx + 1) . ". " . $item . "\n";
+                    }
+
+                    // Cố định thời gian ca
+                    $sTime = $dayStart->copy()->addHours(($code - 1) * 8);
+                    $eTime = $sTime->copy()->addHours(8);
+
+                    $assignments->push((object)[
+                        'id' => null,
+                        'Sheet' => $code,
+                        'start' => $sTime->toDateTimeString(),
+                        'end' => $eTime->toDateTimeString(),
+                        'Job_description' => trim($jobDescription),
+                        'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null]]),
+                        'start_time_display' => $sTime->format('H:i'),
+                        'end_time_display' => $eTime->format('H:i')
+                    ]);
+                }
+                // Sắp xếp lại theo thời gian
+                $assignments = $assignments->sortBy('start');
+            }
+
             return (object)[
                 'sp_id' => $spIdString, // Dùng để lưu vết các stage_plan liên quan
                 'room_id' => $room->id,
@@ -123,6 +185,7 @@ class ProductionAssignmentController extends Controller
                 'room_name' => $room->name,
                 'theory_display' => $theoryDisplay,
                 'assignments' => $assignments,
+                'actual_details' => $actuals,
                 'theory_start' => '07:15', // Giá trị mặc định khi thêm ca mới
                 'theory_end' => '16:00',
             ];
@@ -132,9 +195,7 @@ class ProductionAssignmentController extends Controller
             ->where('deparment_code', $production_code)
             ->where('active', 1);
 
-        if ($user_group_name) {
-            $personnelQuery->where('group_name', $user_group_name);
-        }
+
 
         $personnel = $personnelQuery->orderBy('name')->get();
 
@@ -255,7 +316,7 @@ class ProductionAssignmentController extends Controller
         $roomQuery = DB::table('room')
             ->where('deparment_code', $production_code)
             ->where('stage_code', '!=', 8);
-        
+
         if ($group_code) {
             $roomQuery->where('group_code', $group_code);
         }
@@ -292,10 +353,16 @@ class ProductionAssignmentController extends Controller
             ->get()
             ->groupBy('room_id');
 
-        // 5. Tổ chức lại dữ liệu
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments) {
+        // 5. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
+        $dailyReportController = app(DailyReportController::class);
+        $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId');
+        $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
+
+        // 6. Tổ chức lại dữ liệu
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
+            $actuals = $actualDetails->get($room->id) ?? collect();
 
             $theoryDisplay = '';
             foreach ($plans as $index => $p) {
@@ -318,7 +385,8 @@ class ProductionAssignmentController extends Controller
                 'room_code' => $room->code,
                 'room_name' => $room->name,
                 'theory_display' => $theoryDisplay,
-                'assignments' => $assignments
+                'assignments' => $assignments,
+                'actual_details' => $actuals
             ];
         });
 

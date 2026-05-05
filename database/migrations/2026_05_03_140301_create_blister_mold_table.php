@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('blister_mold', function (Blueprint $table) {
             $table->id();
             $table->string('code', 15)->unique();
-            $table->string('name', 255);
             $table->boolean('active')->default(true);
             $table->string('created_by', 255)->nullable();
             $table->timestamps();

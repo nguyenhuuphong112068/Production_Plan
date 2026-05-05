@@ -85,6 +85,19 @@ const MaintenanceCalender = () => {
 
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
   const [lockedResourceCodes, setLockedResourceCodes] = useState(null);
+  const [mentionUsers, setMentionUsers] = useState([]);
+
+  useEffect(() => {
+    axios.get('/chat/users')
+      .then(res => {
+        const users = res.data.map(u => ({
+          key: u.fullName,
+          value: `@${u.fullName}[${u.id}]`
+        }));
+        setMentionUsers(users);
+      })
+      .catch(err => console.error("Fetch mention users error:", err));
+  }, []);
 
   const fontSizeRootRef = useRef(null);
   const searchRootRef = useRef(null);
@@ -1225,8 +1238,8 @@ const MaintenanceCalender = () => {
     }
 
     Swal.fire({
-      title: 'Duyệt sự kiện bảo trì?',
-      text: "Các sự kiện được chọn sẽ được chuyển sang trạng thái đã duyệt (Tank = 1).",
+      title: 'Chấp Nhận sự kiện bảo trì?',
+      text: "Các sự kiện được chọn sẽ được chuyển sang trạng thái đã Chấp Nhận).",
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
@@ -1249,7 +1262,15 @@ const MaintenanceCalender = () => {
             handleViewChange();
             setSelectedEvents([]);
             document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
-              el.style.border = "none";
+              const id = el.getAttribute("data-event-id");
+              if (selectedEvents.some(se => se.id === id)) {
+                el.style.border = "3px solid #22ff00ff";
+                el.style.boxShadow = "0 0 8px #22ff00ff";
+                el.style.borderRadius = "4px";
+              } else {
+                el.style.border = "none";
+                el.style.boxShadow = "none";
+              }
             });
           })
           .catch(err => {
@@ -1372,7 +1393,6 @@ const MaintenanceCalender = () => {
 
 
   };
-
 
   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
   const handleClear = () => {
@@ -1528,40 +1548,57 @@ const MaintenanceCalender = () => {
   }
 
   const handleSubmit = (e) => {
-
     if (!authorization) return;
-
     e.stopPropagation();
+
     Swal.fire({
       title: 'Bạn muốn submit toàn bộ lịch đã sắp?',
+      html: `
+        <div style="text-align: left;">
+          <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nhắc nhở (Sử dụng @ để nhắc tên người chấp nhận lịch của Phân Xưởng):</label>
+          <textarea id="swal-notification-input" class="swal2-textarea" placeholder="Nhập nội dung thông báo..." style="width: 100%; height: 100px; margin: 10px 0;"></textarea>
+        </div>
+      `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Submit',
       cancelButtonText: 'Hủy',
       confirmButtonColor: 'rgba(5, 107, 9, 1)',
       cancelButtonColor: '#3085d6',
-
+      didOpen: () => {
+        if (typeof Tribute !== 'undefined' && mentionUsers.length > 0) {
+          const tribute = new Tribute({
+            values: mentionUsers,
+            selectTemplate: function (item) {
+              return item.original.value;
+            }
+          });
+          tribute.attach(document.getElementById('swal-notification-input'));
+        }
+      },
+      preConfirm: () => {
+        return document.getElementById('swal-notification-input').value;
+      }
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.put('/Schedual/submit', { submit_type: maintenanceType })
-
+        const notification = result.value;
+        axios.put('/Schedual/submit', {
+          submit_type: maintenanceType,
+          notification: notification
+        })
           .then(res => {
             let data = res.data;
             if (typeof data === "string") {
               data = data.replace(/^<!--.*?-->/, "").trim();
               data = JSON.parse(data);
-
-              //setEvents(data.events);
             }
 
-
             Swal.fire({
-              icon: 'success',
+              icon: data.type || 'success',
               title: data.message,
               timer: 1500,
               showConfirmButton: false,
             });
-
           })
           .catch(err => {
             Swal.fire({
@@ -1572,7 +1609,6 @@ const MaintenanceCalender = () => {
             });
             console.error("Finished error:", err.response?.data || err.message);
           });
-
       }
     })
   }
@@ -2084,7 +2120,7 @@ const MaintenanceCalender = () => {
         }}
         //hiddenTheory 
         headerToolbar={{
-          left: `customPre,myToday,customNext noteModal${authorization ? ' hiddenProduction changeSchedualer unSelect confirmFinish Submit' : ''}${authorizationAccept ? ' approveMaintenance' : ''}`,
+          left: `customPre,myToday,customNext noteModal hiddenProduction${authorization ? ' changeSchedualer unSelect confirmFinish Submit' : ''}${authorizationAccept ? ' approveMaintenance' : ''}`,
           center: 'title',
           right: `fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter${authorization ? ' customList' : ''}` //customYear
         }}
@@ -2259,7 +2295,12 @@ const MaintenanceCalender = () => {
           // Gắn data-event-id để tìm kiếm
           info.el.setAttribute("data-event-id", info.event.id);
           info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
-          info.el.setAttribute("data-finished", info.event.extendedProps.finished);
+          info.el.setAttribute("data-finished", info.event.extendedProps.finished);          // Hiển thị viền tankStyle cho lịch đã được Chấp nhận (Tank == 1)
+          if (info.event.extendedProps.tank == 1) {
+            info.el.style.border = '3px solid #22ff00ff';
+            info.el.style.boxShadow = '0 0 8px #22ff00ff';
+            info.el.style.borderRadius = '4px';
+          }
 
           // Xử lý nút sửa nhanh
           const editBtn = info.el.querySelector('.edit-single-event-btn');

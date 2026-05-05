@@ -102,6 +102,11 @@
             border-bottom: none !important;
         }
 
+        .job-desc {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
         .personnel-list {
             margin: 0;
             padding-left: 15px;
@@ -151,6 +156,22 @@
             opacity: 0.8;
             border-radius: 3px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .personnel-label {
+            width: 18px;
+            height: 18px;
+            background-color: #003A4F;
+            color: white;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            margin-right: 5px;
+            flex-shrink: 0;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -227,6 +248,7 @@
                     <th style="width: 35%">Nội Dung Phân Công</th>
                     <th style="width: 15%">Người thực Hiện</th>
                     <th style="width: 15%">Ghi chú / Lưu ý</th>
+                    <th style="width: 15%">Báo cáo hoạt động</th>
                 </tr>
             </thead>
             <tbody>
@@ -286,9 +308,9 @@
                                                                         ->where('id', $pData->personnel_id)
                                                                         ->first()->name ?? 'N/A';
                                                             @endphp
-                                                            <div class="mb-1">
-                                                                <i class="fas fa-user-circle text-info"></i>
-                                                                {{ $personName }}
+                                                            <div class="mb-1 d-flex align-items-center">
+                                                                <span class="personnel-label">{{ chr(65 + $loop->index) }}</span>
+                                                                <span>{{ $personName }}</span>
                                                             </div>
                                                         @endforeach
                                                     @else
@@ -350,6 +372,32 @@
                                         </tr>
                                     </tfoot>
                                 </table>
+                            @endif
+                        </td>
+                        <td class="text-left" style="background:#d7eaff; font-size:12px; padding: 10px !important;">
+                            @if (count($task->actual_details ?? []) > 0)
+                                @php $idx = 1; @endphp
+                                @foreach ($task->actual_details as $d)
+                                    @php
+                                        $start = \Carbon\Carbon::parse($d->start);
+                                        $end = \Carbon\Carbon::parse($d->end);
+                                        if ($end->lessThan($start)) {
+                                            $end->addDay();
+                                        }
+                                        $minutes = $start->diffInMinutes($end);
+                                        $hours = intdiv($minutes, 60);
+                                        $mins = $minutes % 60;
+                                    @endphp
+                                    <div class="mb-2" style="border-bottom: 1px dashed #aaa; padding-bottom: 5px;">
+                                        <span class="font-weight-bold">{{ $idx++ }}. {{ $d->title ?? 'VS' }}</span><br>
+                                        <small class="text-dark">({{ $start->format('H:i') }} - {{ $end->format('H:i') }} = <b>{{ $hours }}h{{ $mins }}p</b>)</small>
+                                        @if ($d->yields)
+                                            <br><span class="text-primary" style="font-weight: 600; font-size: 11px;">Sản Lượng: {{ number_format($d->yields, 2) }} {{ $d->unit }}</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            @else
+                                <span class="text-muted">—</span>
                             @endif
                         </td>
                     </tr>

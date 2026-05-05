@@ -18,13 +18,6 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="form-group">
-                        <label for="update_name">Tên Khuôn Mẫu <span class="text-danger">*</span></label>
-                        <input type="text" name="name" id="update_name" class="form-control @error('name', 'updateErrors') is-invalid @enderror" required maxlength="255">
-                        @error('name', 'updateErrors')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>

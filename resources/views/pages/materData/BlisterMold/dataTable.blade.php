@@ -14,7 +14,6 @@
                     <tr>
                         <th>STT</th>
                         <th>Mã Khuôn Mẫu</th>
-                        <th>Tên Khuôn Mẫu</th>
                         <th>Trạng Thái</th>
                         <th>Người Tạo</th>
                         <th>Ngày Tạo</th>
@@ -25,8 +24,7 @@
                     @foreach ($datas as $data)
                         <tr>
                             <td>{{ $loop->iteration }} </td>
-                            <td>{{ $data->code }}</td>
-                            <td>{{ $data->name }}</td>
+                             <td>{{ $data->code }}</td>
                             <td class="text-center">
                                 @if($data->active)
                                     <span class="badge badge-success">Hoạt động</span>
@@ -39,8 +37,7 @@
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-warning btn-edit mb-1" 
                                     data-id="{{ $data->id }}" 
-                                    data-code="{{ $data->code }}" 
-                                    data-name="{{ $data->name }}"
+                                     data-code="{{ $data->code }}"
                                     data-toggle="modal" 
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
@@ -51,8 +48,7 @@
                                     <input type="hidden" name="id" value="{{ $data->id }}">
                                     <input type="hidden" name="active" value="{{ $data->active }}">
                                     <button type="submit" class="btn btn-{{ $data->active ? 'danger' : 'success' }} btn-deactive-confirm" 
-                                        data-name="{{ $data->name }}" 
-                                        data-active="{{ $data->active }}">
+                                         data-code="{{ $data->code }}">
                                         <i class="fas fa-{{ $data->active ? 'lock' : 'unlock' }}"></i>
                                     </button>
                                 </form>
@@ -91,19 +87,18 @@
 
             modal.find('#update_id').val(button.data('id'));
             modal.find('#update_code').val(button.data('code'));
-            modal.find('#update_name').val(button.data('name'));
         });
 
         $('.form-deActive').on('submit', function(e) {
             e.preventDefault();
             const form = this;
-            const name = $(form).find('button').data('name');
+            const code = $(form).find('button').data('code');
             const active = $(form).find('button').data('active');
             const actionText = active ? 'vô hiệu hóa' : 'kích hoạt';
 
             Swal.fire({
                 title: `Xác nhận ${actionText}?`,
-                text: `Bạn có chắc chắn muốn ${actionText} khuôn mẫu: ${name}?`,
+                text: `Bạn có chắc chắn muốn ${actionText} khuôn mẫu: ${code}?`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
