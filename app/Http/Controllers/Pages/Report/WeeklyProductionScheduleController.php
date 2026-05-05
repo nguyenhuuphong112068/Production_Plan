@@ -42,6 +42,7 @@ class WeeklyProductionScheduleController extends Controller
                 $join->on('r.id', '=', 'sp.resourceId')
                     ->where('sp.stage_code', '!=', 8) // NOT maintenance
                     ->where('sp.active', 1)
+                    ->where('sp.submit', 1)
                     ->where(function ($q) use ($startOfWeek, $endOfWeek) {
                         $q->where(function ($q1) use ($startOfWeek, $endOfWeek) {
                             $q1->where('sp.start', '<', $endOfWeek)

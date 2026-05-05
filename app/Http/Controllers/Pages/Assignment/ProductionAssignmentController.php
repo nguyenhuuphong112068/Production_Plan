@@ -87,15 +87,15 @@ class ProductionAssignmentController extends Controller
             ->groupBy('room_id');
 
         // 6. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
-        $dailyReportController = app(DailyReportController::class);
-        $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId');
-        $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
+        //$dailyReportController = app(DailyReportController::class);
+        // $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId');
+        // $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
 
         // 7. Tổ chức lại dữ liệu theo từng phòng
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails, $reportedDate) {
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
-            $actuals = $actualDetails->get($room->id) ?? collect();
+            //$actuals = $actualDetails->get($room->id) ?? collect();
 
             // Tạo chuỗi hiển thị lịch lý thuyết (Theory Display)
             $theoryDisplay = '';
@@ -185,7 +185,7 @@ class ProductionAssignmentController extends Controller
                 'room_name' => $room->name,
                 'theory_display' => $theoryDisplay,
                 'assignments' => $assignments,
-                'actual_details' => $actuals,
+                //'actual_details' => $actuals,
                 'theory_start' => '07:15', // Giá trị mặc định khi thêm ca mới
                 'theory_end' => '16:00',
             ];
