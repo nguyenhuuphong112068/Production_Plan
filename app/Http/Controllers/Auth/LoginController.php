@@ -60,12 +60,100 @@ class LoginController extends Controller
             'group_name' => $getUser->groupName,
             'production_code' => $production_code,
             'production_name' => $production_name,
-
         ]);
+
+        // Tự động đồng bộ nhân sự khi đăng nhập
+        $this->syncEmployees($production_code);
 
         AuditTrialController::log('Login', 'NA', 0, 'NA', 'Đăng Nhập Thành Công');
 
         return redirect()->route('pages.general.home');
+    }
+
+    private function syncEmployees($departmentCode)
+    {
+
+        $depMapping = [
+            'EN' => 3,
+            'PXTN' => 6,
+            'PXV1' => 15,
+            'PXVH' => 30,
+            'PXDN' => 34,
+            'PXV2' => 31
+        ];
+
+
+
+        $depId = $depMapping[$departmentCode] ?? null;
+        if (!$depId) return;
+
+        $month = now()->month;
+        $year = now()->year;
+        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
+        //dd($url);
+        try {
+            $ctx = stream_context_create(['http' => ['timeout' => 5]]); // Timeout 5s
+            $data = @file_get_contents($url, false, $ctx);
+            if (!$data) return;
+
+            $employees = json_decode($data);
+            if (empty($employees) || !is_array($employees)) return;
+
+            foreach ($employees as $emp) {
+                if (empty($emp->employeeId)) continue;
+
+                DB::transaction(function () use ($emp, $departmentCode) {
+                    // 1. Đảm bảo nhân sự tồn tại trong bảng employees
+                    $employee = DB::table('employees')->where('code', $emp->employeeId)->first();
+                    $employeeId = null;
+
+                    if (!$employee) {
+                        $employeeId = DB::table('employees')->insertGetId([
+                            'code' => $emp->employeeId,
+                            'name' => $emp->employeeName ?? 'N/A',
+                            'active' => 1,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    } else {
+                        $employeeId = $employee->id;
+                        // Cập nhật lại tên nếu có thay đổi từ hệ thống gốc
+                        DB::table('employees')->where('id', $employeeId)->update([
+                            'name' => $emp->employeeName ?? $employee->name,
+                            'active' => 1, // Đảm bảo nhân sự được kích hoạt lại nếu có lịch trực
+                            'updated_at' => now()
+                        ]);
+                    }
+
+                    // 2. Đồng bộ vào bảng phân vùng sản xuất (employee_productions)
+                    $prodAssignment = DB::table('employee_productions')
+                        ->where('employees_id', $employeeId)
+                        ->where('production_code', $departmentCode)
+                        ->first();
+
+                    if (!$prodAssignment) {
+                        DB::table('employee_productions')->insert([
+                            'employees_id' => $employeeId,
+                            'production_code' => $departmentCode,
+                            'is_main' => 1,
+                            'active' => 1,
+                            'created_by' => 'System Sync',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    } else if ($prodAssignment->active == 0) {
+                        DB::table('employee_productions')
+                            ->where('id', $prodAssignment->id)
+                            ->update([
+                                'active' => 1,
+                                'updated_at' => now()
+                            ]);
+                    }
+                });
+            }
+        } catch (\Exception $e) {
+            // Log lỗi nếu cần, nhưng không làm gián đoạn quá trình đăng nhập
+        }
     }
 
     public function logout(Request $request)

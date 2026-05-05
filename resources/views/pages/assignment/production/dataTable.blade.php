@@ -290,6 +290,60 @@
     .plan-item:hover .btn-copy-plan {
         display: block !important;
     }
+
+    .draggable-person {
+        cursor: grab;
+        user-select: none;
+    }
+
+    .draggable-person:active {
+        cursor: grabbing;
+    }
+
+    .personnel-container.drag-over {
+        background-color: #e7f3ff !important;
+        border: 2px dashed #007bff !important;
+        min-height: 40px;
+    }
+
+    /* Styles for assigned personnel in sidebar */
+    .draggable-person.person-assigned {
+        opacity: 0.6;
+    }
+
+    .draggable-person.person-assigned::after {
+        content: '\f00c';
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        float: right;
+        color: #28a745;
+        margin-left: 5px;
+    }
+
+    .person-assigned-c1 {
+        background-color: rgba(40, 167, 69, 0.15) !important;
+        border-left: 4px solid #28a745 !important;
+    }
+
+    .person-assigned-c2 {
+        background-color: rgba(0, 123, 255, 0.15) !important;
+        border-left: 4px solid #007bff !important;
+    }
+
+    .person-assigned-c3 {
+        background-color: rgba(220, 53, 69, 0.15) !important;
+        border-left: 4px solid #dc3545 !important;
+    }
+
+    .person-assigned-hc {
+        background-color: rgba(255, 193, 7, 0.15) !important;
+        border-left: 4px solid #ffc107 !important;
+    }
+
+    .person-assigned-khác {
+        background-color: rgba(108, 117, 125, 0.15) !important;
+        border-left: 4px solid #6c757d !important;
+    }
 </style>
 @php
     $production_code = session('user')['production_code'];
@@ -433,6 +487,7 @@
                                                                         @endforeach
                                                                     </select>
                                                                 </div>
+
                                                                 @if ($canEdit)
                                                                     <i
                                                                         class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
@@ -587,7 +642,7 @@
                                     </tfoot>
                                 </table>
                             </td>
-                             <td class="text-center" style="vertical-align: middle !important; width: 60px;">
+                            <td class="text-center" style="vertical-align: middle !important; width: 60px;">
                                 @php
                                     $isDirty = false;
                                     foreach ($task->assignments as $a) {
@@ -615,6 +670,16 @@
                 <h6 class="mb-0 font-weight-bold text-primary"><i class="fas fa-users mr-2"></i>Tình Hình Nhân Sự</h6>
                 <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i
                         class="fas fa-times"></i></button>
+            </div>
+            <div class="p-2 border-bottom bg-white">
+                <div class="input-group input-group-sm shadow-sm">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text bg-white border-right-0"><i
+                                class="fas fa-search text-muted"></i></span>
+                    </div>
+                    <input type="text" class="form-control border-left-0" id="sidebar-personnel-search"
+                        placeholder="Tìm tên hoặc mã NV...">
+                </div>
             </div>
             <div class="sidebar-body p-0 overflow-auto" id="sidebar-data-container" style="flex: 1">
                 <div class="text-center py-5">
@@ -649,10 +714,77 @@
     </div>
 </div>
 
+<!-- Modal Xem Bậc Kỹ Năng -->
+<div class="modal fade" id="modalSkillView" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-graduation-cap mr-2"></i>Bậc Kỹ Năng Nhân Sự
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-3 bg-light border-bottom d-flex align-items-center">
+                    <div class="avatar-circle mr-3 bg-info text-white d-flex align-items-center justify-content-center"
+                        style="width: 45px; height: 45px; border-radius: 50%; font-size: 1.2rem; font-weight: bold;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 font-weight-bold text-dark" id="skill-modal-name">Họ và Tên</h6>
+                        <small class="text-muted" id="skill-modal-code">Mã NV: 00000</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light small font-weight-bold">
+                            <tr>
+                                <th class="border-top-0">Phòng Sản Xuất</th>
+                                <th class="border-top-0 text-center" style="width: 100px;">Bậc</th>
+                            </tr>
+                        </thead>
+                        <tbody id="skill-modal-body">
+                            <!-- Data injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
 <script>
+    const employeeCodeToId = {
+        @foreach ($personnel as $p)
+            "{{ $p->code }}": "{{ $p->id }}",
+        @endforeach
+    };
+
+    const personnelInfo = {
+        @foreach ($personnel as $p)
+            "{{ $p->id }}": {
+                name: "{{ $p->name }}",
+                code: "{{ $p->code }}"
+            },
+        @endforeach
+    };
+
+    const roomNames = {
+        @foreach ($rooms as $r)
+            "{{ $r->id }}": "{{ $r->name }}",
+        @endforeach
+    };
+
+    const personnelSkills = {
+        @foreach ($skills as $pid => $s)
+            "{{ $pid }}": "{{ $s->allowed_rooms_with_levels }}",
+        @endforeach
+    };
+
     function timeToOffset(timeStr) {
         if (!timeStr) return null;
         const parts = timeStr.split(':');
@@ -938,6 +1070,8 @@
             updateTimelines();
         });
 
+        let isProgrammaticChange = false;
+
         function updatePersonnelLabels(container) {
             container.find('.personnel-row').each(function(index) {
                 let label = String.fromCharCode(65 + index);
@@ -950,16 +1084,42 @@
             });
         }
 
-        $(document).on('click', '.btn-add-person', function() {
-            const container = $(this).closest('td').find('.personnel-container');
-            const personnel_options =
+        function addPersonRow(container, personId = null) {
+            // Kiểm tra xem personId đã tồn tại trong container chưa
+            if (personId) {
+                let exists = false;
+                container.find('.person-select').each(function() {
+                    if ($(this).val() == personId) {
+                        exists = true;
+                        return false;
+                    }
+                });
+                if (exists) return null;
+
+                // Tìm dòng đầu tiên chưa chọn người để điền vào (Vị trí A, B, ...)
+                let emptySelect = null;
+                container.find('.person-select').each(function() {
+                    if (!$(this).val()) {
+                        emptySelect = $(this);
+                        return false;
+                    }
+                });
+
+                if (emptySelect) {
+                    emptySelect.val(personId).trigger('change');
+                    return emptySelect.closest('.personnel-row');
+                }
+            }
+
+            let globalPersonnelOptions =
                 `@foreach ($personnel as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach`;
+
             const newPersonRow = $(`
                 <div class="personnel-row d-flex align-items-center p-1 border-bottom">
                     <div class="personnel-label"></div>
                     <div style="flex: 1">
                         <select class="form-control form-control-sm person-select">
-                            <option value="">-- Chọn người --</option>${personnel_options}
+                            <option value="">-- Chọn người --</option>${globalPersonnelOptions}
                         </select>
                     </div>
                     <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
@@ -968,7 +1128,188 @@
             container.append(newPersonRow);
             updatePersonnelLabels(container);
             initSelect2(newPersonRow.find('.person-select'));
+
+            if (personId) {
+                newPersonRow.find('.person-select').val(personId).trigger('change');
+            }
+
+            return newPersonRow;
+        }
+
+        // Drag & Drop Handlers
+        $(document).on('dragstart', '.draggable-person', function(e) {
+            const $this = $(this);
+            if ($this.hasClass('person-on-leave')) {
+                e.preventDefault();
+                return;
+            }
+            const personData = {
+                code: $this.data('code'),
+                name: $this.data('name'),
+                shiftKey: $this.data('shift-key')
+            };
+            e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(personData));
+            e.originalEvent.dataTransfer.effectAllowed = 'copy';
+        });
+
+        $(document).on('dragover', '.personnel-container', function(e) {
+            e.preventDefault();
+            e.originalEvent.dataTransfer.dropEffect = 'copy';
+            $(this).addClass('drag-over');
+        });
+
+        $(document).on('dragleave', '.personnel-container', function(e) {
+            $(this).removeClass('drag-over');
+        });
+
+        function getOfficialShift(personCode) {
+            if (!currentSidebarData || !currentSidebarDay) return null;
+            const person = currentSidebarData.find(p => (p.employeeId || p.code) == personCode);
+            if (!person) return null;
+            const dayKey = 'day' + currentSidebarDay;
+            return (person.days && person.days[dayKey]) ? person.days[dayKey].toUpperCase() : 'HC';
+        }
+
+        function checkShiftMismatch(personId, targetShiftCode, callback) {
+            // Tìm code từ id
+            let personCode = null;
+            for (let code in employeeCodeToId) {
+                if (employeeCodeToId[code] == personId) {
+                    personCode = code;
+                    break;
+                }
+            }
+            if (!personCode) {
+                callback(true);
+                return;
+            }
+
+            const officialShift = getOfficialShift(personCode);
+            // Chuẩn hóa targetShiftCode (1, 2, 3, 4 -> C1, C2, C3, HC)
+            const shiftMapping = {
+                '1': 'C1',
+                '2': 'C2',
+                '3': 'C3',
+                '4': 'HC'
+            };
+            const normalizedTarget = shiftMapping[targetShiftCode] || 'KHÁC';
+
+            if (officialShift && officialShift !== normalizedTarget) {
+                Swal.fire({
+                    title: 'Cảnh báo lệch ca',
+                    text: `Nhân viên này có lịch trực chính thức là ${officialShift}, nhưng bạn đang sắp vào ${normalizedTarget}. Bạn có muốn tiếp tục?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Đồng ý',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        callback(true);
+                    } else {
+                        callback(false);
+                    }
+                });
+            } else {
+                callback(true);
+            }
+        }
+
+        function checkRoomAuthorization(personId, roomId, callback) {
+            if (!roomId) {
+                callback(true);
+                return;
+            }
+
+            const skillData = personnelSkills[personId];
+            if (!skillData) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Không được phép',
+                    text: 'Nhân sự này chưa được định mức (phân quyền) làm việc tại bất kỳ phòng nào.'
+                });
+                callback(false);
+                return;
+            }
+
+            const pairs = skillData.split(',');
+            const allowedRoomIds = pairs.map(p => p.split(':')[0]);
+
+            if (!allowedRoomIds.includes(roomId.toString())) {
+                const roomName = roomNames[roomId] || 'phòng này';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Không được phép',
+                    text: `Nhân sự này chưa được phép để làm việc tại: ${roomName}.`
+                });
+                callback(false);
+            } else {
+                callback(true);
+            }
+        }
+
+        $(document).on('drop', '.personnel-container', function(e) {
+            e.preventDefault();
+            $(this).removeClass('drag-over');
+
+            const dataStr = e.originalEvent.dataTransfer.getData('text/plain');
+            if (!dataStr) return;
+
+            try {
+                const person = JSON.parse(dataStr);
+                if (person.shiftKey === 'P') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Không thể sắp lịch',
+                        text: `Nhân sự ${person.name} đang nghỉ phép (P), không thể sắp vào ca sản xuất.`
+                    });
+                    return;
+                }
+
+                const personId = employeeCodeToId[person.code];
+                if (personId) {
+                    const $container = $(this);
+                    const $roomRow = $container.closest('.room-row');
+                    const roomId = $roomRow.attr('data-room-id');
+                    const targetShiftCode = $container.closest('.assignment-item').find('.shift-select')
+                        .val();
+
+                    // 1. Kiểm tra định mức phòng (Authorization)
+                    checkRoomAuthorization(personId, roomId, function(isAuthorized) {
+                        if (!isAuthorized) return;
+
+                        // 2. Kiểm tra lệch ca (Shift Mismatch)
+                        checkShiftMismatch(personId, targetShiftCode, function(canProceed) {
+                            if (canProceed) {
+                                isProgrammaticChange = true;
+                                const newRow = addPersonRow($container, personId);
+                                isProgrammaticChange = false;
+
+                                if (newRow) {
+                                    markRoomDirty($container.closest('.room-row'));
+                                    updateSidebarHighlights();
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Thông báo',
+                        text: `Không tìm thấy nhân sự có mã ${person.code} trong hệ thống.`
+                    });
+                }
+            } catch (err) {
+                console.error("Drop error:", err);
+            }
+        });
+
+        $(document).on('click', '.btn-add-person', function() {
+            const container = $(this).closest('td').find('.personnel-container');
+            addPersonRow(container);
             markRoomDirty($(this).closest('.room-row'));
+            updateSidebarHighlights();
         });
 
         $(document).on('click', '.btn-remove-person', function() {
@@ -978,8 +1319,117 @@
                 $(this).closest('.personnel-row').remove();
                 updatePersonnelLabels(container);
                 markRoomDirty(row);
+                updateSidebarHighlights();
             }
         });
+
+        $(document).on('change', '.person-select', function() {
+            const $select = $(this);
+            const personId = $select.val();
+
+            if (isProgrammaticChange) {
+                updateSidebarHighlights();
+                return;
+            }
+
+            if (personId) {
+                const $roomRow = $select.closest('.room-row');
+                const roomId = $roomRow.attr('data-room-id');
+                const targetShiftCode = $select.closest('.assignment-item').find('.shift-select').val();
+
+                // 1. Kiểm tra định mức phòng
+                checkRoomAuthorization(personId, roomId, function(isAuthorized) {
+                    if (!isAuthorized) {
+                        isProgrammaticChange = true;
+                        $select.val(null).trigger('change');
+                        isProgrammaticChange = false;
+                        return;
+                    }
+
+                    // 2. Kiểm tra lệch ca
+                    checkShiftMismatch(personId, targetShiftCode, function(canProceed) {
+                        if (!canProceed) {
+                            isProgrammaticChange = true;
+                            $select.val(null).trigger('change');
+                            isProgrammaticChange = false;
+                        }
+                        updateSidebarHighlights();
+                    });
+                });
+            } else {
+                updateSidebarHighlights();
+            }
+        });
+
+        $(document).on('click', '.btn-view-skills', function() {
+            let personId = $(this).attr('data-id');
+            if (!personId) {
+                // Try to get from sidebar if clicked there
+                const $parent = $(this).closest('.draggable-person');
+                if ($parent.length) {
+                    const code = $parent.data('code');
+                    personId = employeeCodeToId[code];
+                }
+            }
+
+            if (!personId) return;
+
+            const info = personnelInfo[personId];
+            const skillData = personnelSkills[personId];
+
+            $('#skill-modal-name').text(info.name);
+            $('#skill-modal-code').text('Mã NV: ' + info.code);
+
+            let html = '';
+            if (skillData) {
+                const pairs = skillData.split(',');
+                pairs.forEach(pair => {
+                    const [roomId, level] = pair.split(':');
+                    const rName = roomNames[roomId] || 'Phòng không xác định';
+                    const lvlClass = 'lvl-' + level;
+
+                    html += `
+                        <tr>
+                            <td class="align-middle">${rName}</td>
+                            <td class="text-center align-middle">
+                                <span class="badge ${lvlClass}" style="width: 40px; padding: 5px 0;">${level}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                html =
+                    '<tr><td colspan="2" class="text-center py-4 text-muted">Chưa cập nhật bậc kỹ năng.</td></tr>';
+            }
+
+            $('#skill-modal-body').html(html);
+            $('#modalSkillView').modal('show');
+        });
+
+        function updateSidebarHighlights() {
+            const assignedIds = new Set();
+            $('.person-select').each(function() {
+                const val = $(this).val();
+                if (val) assignedIds.add(val.toString());
+            });
+
+            $('.draggable-person').each(function() {
+                const code = $(this).data('code');
+                const id = employeeCodeToId[code];
+                const $item = $(this);
+                const shiftKey = $item.data('shift-key') ? $item.data('shift-key').toLowerCase() : '';
+
+                if (id && assignedIds.has(id.toString())) {
+                    $item.addClass('person-assigned');
+                    $item.addClass('person-assigned-' + shiftKey);
+                } else {
+                    $item.removeClass('person-assigned');
+                    $item.removeClass(
+                        'person-assigned-c1 person-assigned-c2 person-assigned-c3 person-assigned-hc person-assigned-khác'
+                        );
+                }
+            });
+        }
 
         $(document).on('click', '.btn-add-shift', function() {
             const container = $(this).closest('tr').find('.assignment-container');
@@ -1340,22 +1790,22 @@
                                     <td style="width: 100px">
                                         <div class="d-flex flex-column align-items-center">
                                             <select class="form-control form-control-sm shift-select mb-1">
-                                                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>HC</option><option value="5">Khác</option>
-                                            </select>
-                                            <input type="time" class="form-control form-control-sm start-time-input mb-1" value="07:15">
-                                            <input type="time" class="form-control form-control-sm end-time-input" value="16:00">
-                                        </div>
-                                    </td>
-                                    <td style="width: 250px" class="p-0">
+                                                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>HC</option><option value="5">Kh                                    <td style="width: 250px" class="p-0">
                                         <div class="personnel-container">
                                             <div class="personnel-row d-flex align-items-center p-1 border-bottom">
                                             <div class="personnel-label">A</div>
                                             <div style="flex: 1">
                                                 <select class="form-control form-control-sm person-select">
-                                                    <option value="">-- Chọn người --</option>${personnel_options}
+                                                    <option value="">-- Chọn người --</option>${globalPersonnelOptions}
                                                 </select>
                                             </div>
                                             <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                            </div>
+                                        </div>
+                                        <div class="text-left p-1" style="border-top: 1px dashed #eee">
+                                            <a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a>
+                                        </div>
+                                    </td>i>
                                             </div>
                                         </div>
                                         <div class="text-left p-1" style="border-top: 1px dashed #eee">
@@ -1448,6 +1898,14 @@
             }
         }
 
+        let currentSidebarData = [];
+        let currentSidebarDay = null;
+
+        $('#sidebar-personnel-search').on('input', function() {
+            const query = $(this).val();
+            renderSidebarData(currentSidebarData, currentSidebarDay, query);
+        });
+
         $toggleBtn.on('click', toggleSidebar);
         $closeBtn.on('click', toggleSidebar);
 
@@ -1481,7 +1939,10 @@
                 },
                 success: function(res) {
                     isSidebarLoaded = true;
+                    currentSidebarData = res;
+                    currentSidebarDay = day;
                     renderSidebarData(res, day);
+                    updateSidebarHighlights();
                 },
                 error: function() {
                     $container.html(
@@ -1491,11 +1952,15 @@
             });
         }
 
-        function renderSidebarData(data, currentDay) {
+        const allowedPersonnelCodes = {!! json_encode($allowedPersonnelCodes ?? []) !!};
+
+        function renderSidebarData(data, currentDay, query = '') {
             if (!data || data.length === 0) {
                 $container.html('<div class="p-3 text-center text-muted">Không có dữ liệu lịch trực.</div>');
                 return;
             }
+
+            const searchStr = query.toLowerCase().trim();
 
             // Nhóm nhân sự theo ca của ngày hiện tại
             const shifts = {
@@ -1512,9 +1977,25 @@
                 let shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
                     .toUpperCase() : 'HC';
 
+                const personName = person.employeeName || person.name || '';
+                const personCode = person.employeeId || person.code || '';
+
+                // Lọc theo tìm kiếm
+                if (searchStr && !personName.toLowerCase().includes(searchStr) && !personCode
+                    .toLowerCase().includes(searchStr)) {
+                    return;
+                }
+
+                // Lọc theo Tổ đang chọn (nếu có)
+                if (allowedPersonnelCodes.length > 0) {
+                    if (!allowedPersonnelCodes.includes(personCode.toString())) {
+                        return;
+                    }
+                }
+
                 const personInfo = {
-                    name: person.employeeName || person.name,
-                    code: person.employeeId || person.code
+                    name: personName,
+                    code: personCode
                 };
 
                 if (shifts.hasOwnProperty(shiftCode)) {
@@ -1523,6 +2004,14 @@
                     shifts['Khác'].push(personInfo);
                 }
             });
+
+            // Kiểm tra xem có dữ liệu sau khi lọc không
+            const hasVisibleData = Object.values(shifts).some(arr => arr.length > 0);
+            if (!hasVisibleData && searchStr) {
+                $container.html(
+                '<div class="p-3 text-center text-muted">Không tìm thấy nhân sự phù hợp.</div>');
+                return;
+            }
 
             let html = '<div class="list-group list-group-flush">';
 
@@ -1544,11 +2033,20 @@
                             ${shiftLabels[key]} (${shifts[key].length})
                         </div>
                     `;
+                    const isLeave = key === 'P';
                     shifts[key].forEach(p => {
                         html += `
-                            <div class="list-group-item py-1 pl-5 small">
-                                <span class="text-dark">${p.name}</span>
-                                <span class="text-muted float-right">${p.code}</span>
+                            <div class="list-group-item py-1 pl-5 small draggable-person ${isLeave ? 'person-on-leave text-muted' : ''}" 
+                                 draggable="${isLeave ? 'false' : 'true'}" 
+                                 data-code="${p.code}" 
+                                 data-name="${p.name}"
+                                 data-shift-key="${key}"
+                                 ${isLeave ? 'style="cursor: not-allowed; background-color: #f8f9fa;"' : ''}>
+                                <span class="${isLeave ? 'text-decoration-line-through' : 'text-dark'}">${p.name}</span>
+                                <span class="text-muted float-right">
+                                    ${p.code}
+                                    <i class="fas fa-eye text-info btn-view-skills ml-1 cursor-pointer" title="Xem bậc kỹ năng"></i>
+                                </span>
                             </div>
                         `;
                     });

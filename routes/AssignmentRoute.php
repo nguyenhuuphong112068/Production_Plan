@@ -43,5 +43,7 @@ Route::prefix('/assignemnt/personnel')
         Route::get('sync/{department?}', 'sync')->name('sync');
         Route::post('store', 'store')->name('store');
         Route::post('update', 'update')->name('update');
+        Route::post('update-permissions', 'updatePermissions')->name('updatePermissions');
+        Route::post('update-productions', 'updateProductions')->name('updateProductions');
         Route::get('deActive/{id}', 'deActive')->name('deActive');
     });

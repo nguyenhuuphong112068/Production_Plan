@@ -335,6 +335,15 @@
                             </a>
                         </li>
 
+                        @if (user_has_permission(session('user')['userId'], 'personnel_assignment', 'boolean'))
+                            <li class="nav-item">
+                                <a href="{{ route('pages.assignment.personnel.list') }}"
+                                    class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-info"></i>
+                                    <p>Danh Sách Nhân Viên</p>
+                                </a>
+                            </li>
+                        @endif
                     </ul>
                 </li>
 
@@ -600,32 +609,6 @@
                                     <p>Bảo trì/Hiệu Chuẩn</p>
                                 </a>
                             </li>
-                            {{-- @endif --}}
-
-                            @if (user_has_permission(session('user')['userId'], 'personnel_assignment', 'boolean'))
-                                <li
-                                    class="nav-item has-treeview {{ str_contains(url()->current(), 'personnel') ? 'menu-open' : '' }}">
-                                    <a href="#"
-                                        class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
-                                        <i class="far fa-circle nav-icon text-info"></i>
-                                        <p>
-                                            Danh Sách Nhân Viên
-                                            <i class="right fas fa-angle-left"></i>
-                                        </p>
-                                    </a>
-                                    <ul class="nav nav-treeview ml-2">
-                                        @foreach (['PXV1', 'PXV2', 'PXVH', 'PXTN', 'PXDN', 'EN', 'QA'] as $dept)
-                                            <li class="nav-item">
-                                                <a href="{{ route('pages.assignment.personnel.list', ['department' => $dept]) }}"
-                                                    class="nav-link {{ request()->department == $dept ? 'active' : '' }}">
-                                                    <i class="far fa-dot-circle nav-icon"></i>
-                                                    <p>{{ $dept }}</p>
-                                                </a>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </li>
-                            @endif
                         </ul>
                     </li>
                 @endif

@@ -191,11 +191,33 @@ class ProductionAssignmentController extends Controller
             ];
         });
 
-        $personnelQuery = DB::table('employees')
-            ->where('deparment_code', $production_code)
-            ->where('active', 1);
+        $personnelQuery = DB::table('employees as e')
+            ->join('employee_productions as ep', 'e.id', '=', 'ep.employees_id')
+            ->where('ep.production_code', $production_code)
+            ->where('ep.active', 1)
+            ->where('e.active', 1);
 
-        $personnel = $personnelQuery->orderBy('name')->get();
+        if ($active_group_code && $active_group_code != 'HC') {
+            $personnelQuery->whereExists(function ($query) use ($active_group_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_groups as eg')
+                    ->join('stage_groups as sg', 'eg.group_id', '=', 'sg.id')
+                    ->whereColumn('eg.employees_id', 'e.id')
+                    ->where('sg.code', $active_group_code)
+                    ->where('eg.active', 1);
+            });
+        }
+
+        $personnel = $personnelQuery->select('e.*')
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level)) FROM employee_rooms WHERE employees_id = e.id AND active = 1) as allowed_rooms_with_levels"))
+            ->orderBy('e.name')
+            ->get();
+        
+        // Tạo mapping skills từ danh sách personnel đã lấy
+        $skills = $personnel->keyBy('id');
+
+        // Tạo danh sách ID nhân sự được phép để lọc sidebar ở client
+        $allowedPersonnelCodes = $personnel->pluck('code')->toArray();
 
         session()->put(['title' => 'LỊCH CÔNG TÁC SẢN XUẤT']);
 
@@ -206,6 +228,8 @@ class ProductionAssignmentController extends Controller
             'groups' => $groups,
             'isLocked' => $isLocked,
             'personnel' => $personnel,
+            'skills' => $skills, // Truyền dữ liệu bậc kỹ năng
+            'allowedPersonnelCodes' => $allowedPersonnelCodes,
             'rooms' => $rooms
         ]);
     }
@@ -214,9 +238,9 @@ class ProductionAssignmentController extends Controller
     {
         $month = $request->month;
         $year = $request->year;
-        $department = $request->department;
+        $departmentId = $request->department;
 
-        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$department}";
+        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$departmentId}";
 
         try {
             $data = file_get_contents($url);

@@ -13,6 +13,4 @@
 @endsection
 
 @section('model')
-    @include('pages.assignment.personnel.create')
-    @include('pages.assignment.personnel.update')
 @endsection
