@@ -15,7 +15,7 @@ class PersonnelController extends Controller
         $departmentCode = $department ?? session('user')['department'];
 
         // 2. Truy vấn danh sách nhân viên theo bộ phận
-        $datas = DB::table('personnel')
+        $datas = DB::table('employees')
             ->where('deparment_code', $departmentCode)
             ->orderBy('code', 'asc')
             ->get();
@@ -34,10 +34,66 @@ class PersonnelController extends Controller
         ]);
     }
 
+    public function sync(Request $request)
+    {
+        $departmentCode = $request->department ?? session('user')['production_code'];
+        
+        // Mapping department codes to IDs for the external API
+        $depMapping = [
+            'PXV1' => 15,
+            'PXV2' => 31,
+            'PXVH' => 30,
+            'PXDN' => 30,
+            'EN' => 3,
+            'PXN' => 6,
+            'PXTN' => 6
+        ];
+        
+        $depId = $depMapping[$departmentCode] ?? null;
+        if (!$depId) {
+             return redirect()->back()->with('error', "Bộ phận {$departmentCode} không hỗ trợ đồng bộ tự động.");
+        }
+
+        $month = now()->month;
+        $year = now()->year;
+        
+        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
+        
+        try {
+            $data = file_get_contents($url);
+            $employees = json_decode($data);
+            
+            if (empty($employees)) {
+                 return redirect()->back()->with('info', 'Không tìm thấy dữ liệu nhân sự trên hệ thống nguồn.');
+            }
+
+            $count = 0;
+            foreach ($employees as $emp) {
+                // Kiểm tra theo mã nhân viên
+                $exists = DB::table('employees')->where('code', $emp->employeeId)->exists();
+                if (!$exists) {
+                    DB::table('employees')->insert([
+                        'code' => $emp->employeeId,
+                        'name' => $emp->employeeName,
+                        'deparment_code' => $departmentCode,
+                        'active' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    $count++;
+                }
+            }
+            
+            return redirect()->back()->with('success', "Đã đồng bộ thành công {$count} nhân sự mới.");
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Lỗi đồng bộ: ' . $e->getMessage());
+        }
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'code' => 'required|unique:personnel,code',
+            'code' => 'required|unique:employees,code',
             'name' => 'required',
         ], [
             'code.required' => 'Vui lòng nhập Mã nhân viên',
@@ -49,12 +105,13 @@ class PersonnelController extends Controller
             return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
         }
 
-        DB::table('personnel')->insert([
+        DB::table('employees')->insert([
             'code' => $request->code,
             'name' => $request->name,
             'deparment_code' => $request->deparment_code,
             'group_name' => $request->group_name,
             'group_code' => $request->group_code,
+            'level' => $request->level,
             'active' => true,
             'created_at' => now(),
             'updated_at' => now(),
@@ -66,7 +123,7 @@ class PersonnelController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'code' => 'required|unique:personnel,code,' . $request->id,
+            'code' => 'required|unique:employees,code,' . $request->id,
             'name' => 'required',
         ], [
             'code.required' => 'Vui lòng nhập Mã nhân viên',
@@ -78,12 +135,13 @@ class PersonnelController extends Controller
             return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
         }
 
-        DB::table('personnel')->where('id', $request->id)->update([
+        DB::table('employees')->where('id', $request->id)->update([
             'code' => $request->code,
             'name' => $request->name,
             'deparment_code' => $request->deparment_code,
             'group_name' => $request->group_name,
             'group_code' => $request->group_code,
+            'level' => $request->level,
             'updated_at' => now(),
         ]);
 
@@ -92,8 +150,8 @@ class PersonnelController extends Controller
 
     public function deActive(string|int $id)
     {
-        $current = DB::table('personnel')->where('id', $id)->first();
-        DB::table('personnel')->where('id', $id)->update([
+        $current = DB::table('employees')->where('id', $id)->first();
+        DB::table('employees')->where('id', $id)->update([
             'active' => !$current->active,
             'updated_at' => now(),
         ]);

@@ -133,7 +133,7 @@ class MaintenanceAssignmentController extends Controller
             }
             $theoryDisplay .= "<div class='mt-1 text-primary'><i>($timeDisplay)</i></div>";
 
-            $assignmentQuery = DB::table('assignments')
+            $assignments = DB::table('assignments')
                 ->where('stage_plan_id', $spIdString)
                 ->where('deparment_code', 'MMS')
                 ->where('active', 1)
@@ -141,13 +141,13 @@ class MaintenanceAssignmentController extends Controller
 
             if ($group_code) {
                 if ($group_code == 12 || $group_code == 13) {
-                    $assignmentQuery->whereIn('stage_groups_code', [12, 13]);
+                    $assignments->whereIn('stage_groups_code', [12, 13]);
                 } else {
-                    $assignmentQuery->where('stage_groups_code', $group_code);
+                    $assignments->where('stage_groups_code', $group_code);
                 }
             }
 
-            $assignments = $assignmentQuery->get();
+            $assignments = $assignments->get();
 
             foreach ($assignments as $a) {
                 $a->personnel_data      = DB::table('assignment_personnel')
@@ -214,7 +214,7 @@ class MaintenanceAssignmentController extends Controller
             ]);
         }
 
-        $personnel = DB::table('personnel')->where('active', 1)->orderBy('name')->get();
+        $personnel = DB::table('employees')->where('active', 1)->orderBy('name')->get();
         $rooms     = DB::table('room')->orderBy('code')->get();
         session()->put(['title' => 'PHÂN CÔNG CÔNG VIỆC']);
         return view('pages.assignment.maintenance.index', [
@@ -223,7 +223,7 @@ class MaintenanceAssignmentController extends Controller
             'personnel'    => $personnel,
             'rooms'        => $rooms,
             'stage_groups' => $stage_groups,
-            'group_code'   => $group_code,  // giá trị đang chọn (là stage_groups.code)
+            'group_code'   => $group_code,
         ]);
     }
 
@@ -238,7 +238,6 @@ class MaintenanceAssignmentController extends Controller
         try {
             DB::beginTransaction();
 
-            // Xóa mềm dữ liệu cũ của CHÍNH nhóm ID này, CHÍNH phòng này, và CHÍNH tổ này
             $deleteQuery = DB::table('assignments')
                 ->where('stage_plan_id', $spIdString)
                 ->where('room_id', $room_id)
@@ -258,7 +257,6 @@ class MaintenanceAssignmentController extends Controller
                     $p_data = $row['personnel_list'] ?? [];
                     if (empty($p_data)) continue;
 
-                    // Xử lý thời gian
                     $startDt = $reportedDate . ' ' . $row['start_time'];
                     $endDt = $reportedDate . ' ' . $row['end_time'];
                     if ($row['end_time'] < $row['start_time']) {
@@ -280,7 +278,6 @@ class MaintenanceAssignmentController extends Controller
                         'active'            => 1
                     ]);
 
-                    // Lọc để đảm bảo không chèn trùng personnel_id cho cùng một assignment
                     $unique_p_data = collect($p_data)->unique('personnel_id');
 
                     foreach ($unique_p_data as $p) {
@@ -314,16 +311,15 @@ class MaintenanceAssignmentController extends Controller
             return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
         }
     }
+
     public function publicView(Request $request)
     {
-        // For public view, allow filtering by production_code, default to PXV1
         $production_code = $request->production_code ?? 'PXV1';
         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
 
         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
         $endDate = $startDate->copy()->addDays(1);
 
-        // 1. Lấy danh sách các công việc bảo trì lý thuyết
         $rawTasks = DB::table('stage_plan as sp')
             ->join('room as r', 'sp.resourceId', '=', 'r.id')
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
@@ -349,7 +345,6 @@ class MaintenanceAssignmentController extends Controller
             ->orderBy('r.name')
             ->get();
 
-        // 2. Gộp các task và lấy phân công kèm danh sách nhân viên
         $tasks = collect($rawTasks)->groupBy(function ($item) {
             return $item->start . '_' . $item->room_id;
         })->map(function ($group) {
@@ -357,7 +352,6 @@ class MaintenanceAssignmentController extends Controller
             $allSpIds = $group->pluck('sp_id')->sort()->toArray();
             $spIdString = implode(',', $allSpIds);
 
-            // ... (giữ nguyên logic tính toán thời gian và theoryDisplay)
             $minStart = $group->min('start');
             $maxEnd = $group->max('end');
             $timeDisplay = Carbon::parse($minStart)->format('H:i') . ' - ' . Carbon::parse($maxEnd)->format('H:i');
@@ -401,7 +395,6 @@ class MaintenanceAssignmentController extends Controller
             ];
         })->values();
 
-        // 2b. Lấy thêm các công việc "Ngoài lịch" (stage_plan_id is NULL/Empty)
         $extraAssignments = DB::table('assignments as ma')
             ->leftJoin('room', 'ma.room_id', '=', 'room.id')
             ->where('ma.deparment_code', 'MMS')
@@ -425,7 +418,7 @@ class MaintenanceAssignmentController extends Controller
             }
 
             $tasks->push((object)[
-                'sp_id' => '', // Đánh dấu là ngoài lịch
+                'sp_id' => '',
                 'room_id' => $roomId,
                 'room_code' => $first->room_code,
                 'room_name' => $first->room_name,
@@ -436,7 +429,7 @@ class MaintenanceAssignmentController extends Controller
             ]);
         }
 
-        $personnel = DB::table('personnel')->where('active', 1)->orderBy('name')->get();
+        $personnel = DB::table('employees')->where('active', 1)->orderBy('name')->get();
 
         return view('pages.assignment.maintenance.publicView', [
             'tasks' => $tasks,

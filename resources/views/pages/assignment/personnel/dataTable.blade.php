@@ -11,6 +11,10 @@
                 style="width: 155px">
                 <i class="fas fa-plus"></i> Thêm nhân sự
             </button>
+            <button class="btn btn-info btn-sync mb-2" onclick="location.href='{{ route('pages.assignment.personnel.sync', ['department' => $currentDepartment]) }}'"
+                style="width: 155px">
+                <i class="fas fa-sync"></i> Đồng bộ NV
+            </button>
             {{-- @endif --}}
 
             <table id="data_table_personnel" class="table table-bordered table-striped">
@@ -19,6 +23,7 @@
                         <th>STT</th>
                         <th>Mã NV</th>
                         <th>Tên Nhân Viên</th>
+                        <th>Cấp</th>
                         <th>Phòng Ban</th>
                         <th>Tổ</th>
                         <th>Trạng Thái</th>
@@ -31,29 +36,28 @@
                             <td>{{ $loop->iteration }} </td>
                             <td>{{ $data->code }}</td>
                             <td>{{ $data->name }}</td>
+                            <td class="text-center">{{ $data->level ?? '-' }}</td>
                             <td>{{ $data->deparment_code }}</td>
                             <td>{{ $data->group_name }} ({{ $data->group_code }})</td>
                             <td class="text-center">
-                                @if($data->active)
+                                @if ($data->active)
                                     <span class="badge badge-success">Đang làm việc</span>
                                 @else
                                     <span class="badge badge-danger">Nghỉ việc</span>
                                 @endif
                             </td>
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit" 
-                                    data-id="{{ $data->id }}" 
-                                    data-code="{{ $data->code }}"
-                                    data-name="{{ $data->name }}"
+                                <button type="button" class="btn btn-warning btn-edit btn-sm" data-id="{{ $data->id }}"
+                                    data-code="{{ $data->code }}" data-name="{{ $data->name }}"
+                                    data-level="{{ $data->level }}"
                                     data-deparment_code="{{ $data->deparment_code }}"
-                                    data-group_name="{{ $data->group_name }}"
-                                    data-group_code="{{ $data->group_code }}"
+                                    data-group_name="{{ $data->group_name }}" data-group_code="{{ $data->group_code }}"
                                     data-toggle="modal" data-target="#update_modal">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <a href="{{ route('pages.assignment.personnel.deActive', $data->id) }}" 
-                                   class="btn btn-{{ $data->active ? 'danger' : 'success' }} btn-sm" 
-                                   title="{{ $data->active ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
+                                <a href="{{ route('pages.assignment.personnel.deActive', $data->id) }}"
+                                    class="btn btn-{{ $data->active ? 'danger' : 'success' }} btn-sm"
+                                    title="{{ $data->active ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
                                     <i class="fas fa-{{ $data->active ? 'user-slash' : 'user-check' }}"></i>
                                 </a>
                             </td>
@@ -85,6 +89,16 @@
     </script>
 @endif
 
+@if (session('error'))
+    <script>
+        Swal.fire({
+            title: 'Lỗi!',
+            text: '{{ session('error') }}',
+            icon: 'error'
+        });
+    </script>
+@endif
+
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
@@ -95,8 +109,9 @@
             modal.find('input[name="id"]').val(button.data('id'));
             modal.find('input[name="code"]').val(button.data('code'));
             modal.find('input[name="name"]').val(button.data('name'));
+            modal.find('input[name="level"]').val(button.data('level'));
             modal.find('input[name="deparment_code"]').val(button.data('deparment_code'));
-            
+
             // Set Group select and hidden fields
             const groupCode = button.data('group_code');
             const groupName = button.data('group_name');
@@ -126,7 +141,10 @@
             info: true,
             autoWidth: false,
             pageLength: 25,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",

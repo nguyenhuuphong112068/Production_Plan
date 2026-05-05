@@ -24,6 +24,87 @@
         background: #fff;
     }
 
+    /* Sidebar Styles */
+    .main-content-layout {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .personnel-sidebar {
+        width: 350px;
+        background: #fff;
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s ease;
+        z-index: 100;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .personnel-sidebar.collapsed {
+        width: 0;
+        margin-right: -350px;
+        opacity: 0;
+    }
+
+    .sidebar-toggle-btn {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 101;
+        background: #003A4F;
+        color: white;
+        border: none;
+        padding: 15px 5px;
+        border-radius: 8px 0 0 8px;
+        cursor: pointer;
+        transition: right 0.3s ease;
+    }
+
+    .sidebar-toggle-btn:hover {
+        background: #005a7a;
+    }
+
+    .sidebar-toggle-btn.active {
+        right: 350px;
+    }
+
+    .shift-badge {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        font-size: 0.8rem;
+    }
+
+    .shift-c1 {
+        background-color: #28a745;
+    }
+
+    .shift-c2 {
+        background-color: #007bff;
+    }
+
+    .shift-c3 {
+        background-color: #dc3545;
+    }
+
+    .shift-hc {
+        background-color: #ffc107;
+        color: black;
+    }
+
+    .shift-p {
+        background-color: #6c757d;
+    }
+
     .table-assignment {
         border-collapse: separate;
         border-spacing: 0;
@@ -256,92 +337,171 @@
         </div>
     </div>
 
-    <div class="table-container">
-        <table class="table table-assignment w-100">
-            <thead>
-                <tr>
-                    <th style="width: 7%">Phòng / Thiết Bị</th>
-                    <th style="width: 15%" class="theory-col">Lịch Lý Thuyết</th>
-                    <th style="width: 8%">Ca</th>
-                    <th style="width: 15%">Nhân sự</th>
-                    <th style="width: 30%">Hoạt Động</th>
-                    {{-- <th style="width: 15%">Chi Tiết Công Việc</th> --}}
-                    <th style="width: 3%">Hủy</th>
-                    <th style="width: 2%" class="text-center">Lưu</th>
-                    <th style="width: 20%">Báo cáo hoạt động</th>
-                </tr>
-            </thead>
-            <tbody id="main-assignment-tbody">
-                @foreach ($tasks as $task)
-                    <tr class="room-row" data-sp-id="{{ $task->sp_id }}" data-room-id="{{ $task->room_id }}">
-                        <td class="room-name-cell">
-                            <div><b>{{ $task->room_code }}</b></div>
-                            <div>{{ $task->room_name }}</div>
-                            <div class="mt-2 text-center">
-                                <button class="btn btn-outline-success btn-circle btn-add-shift"
-                                    title="Thêm ca làm việc" {{ !$canEdit ? 'disabled' : '' }}>
-                                    <i class="fas fa-plus"></i> Thêm Ca
-                                </button>
-                            </div>
-                        </td>
-                        <td class="theory-cell text-left position-relative theory-col">
-                            <div class="theory-content">{!! $task->theory_display !!}</div>
-                            @if ($task->theory_display != '<span class="text-muted italic">Không có lịch</span>')
-                                <button class="btn btn-xs btn-outline-primary btn-copy-theory-all mt-2"
-                                    title="Chép toàn bộ" style="font-size: 10px; padding: 2px 6px;"
-                                    {{ !$canEdit ? 'disabled' : '' }}>
-                                    >>>
-                                </button>
-                            @endif
-                        </td>
-                        <td colspan="4" class="p-0">
-                            <table class="assignment-inner-table">
-                                <tbody class="assignment-container">
-                                    @forelse($task->assignments as $assignment)
-                                        <tr class="assignment-item" data-id="{{ $assignment->id }}"
-                                            data-theory-start="{{ $task->theory_start }}"
-                                            data-theory-end="{{ $task->theory_end }}">
-                                            <td style="width: 13.8%">
-                                                <div class="d-flex flex-column align-items-center">
-                                                    <select class="form-control form-control-sm shift-select mb-1"
-                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                        <option value="1"
-                                                            {{ $assignment->Sheet == 1 ? 'selected' : '' }}>1</option>
-                                                        <option value="2"
-                                                            {{ $assignment->Sheet == 2 ? 'selected' : '' }}>2</option>
-                                                        <option value="3"
-                                                            {{ $assignment->Sheet == 3 ? 'selected' : '' }}>3</option>
-                                                        <option value="4"
-                                                            {{ $assignment->Sheet == 4 ? 'selected' : '' }}>HC</option>
-                                                        <option value="5"
-                                                            {{ $assignment->Sheet == 5 ? 'selected' : '' }}>Khác
-                                                        </option>
-                                                    </select>
-                                                    <input type="time"
-                                                        class="form-control form-control-sm start-time-input mb-1"
-                                                        value="{{ $assignment->start_time_display }}"
-                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                    <input type="time"
-                                                        class="form-control form-control-sm end-time-input"
-                                                        value="{{ $assignment->end_time_display }}"
-                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                </div>
-                                            </td>
-                                            <td class="p-0" style="width: 25.8%">
-                                                <div class="personnel-container">
-                                                    @foreach ($assignment->personnel_data as $p_info)
+    <div class="main-content-layout">
+        <div class="table-container">
+            <table class="table table-assignment w-100">
+                <thead>
+                    <tr>
+                        <th style="width: 7%">Phòng / Thiết Bị</th>
+                        <th style="width: 15%" class="theory-col">Lịch Lý Thuyết</th>
+                        <th style="width: 8%">Ca</th>
+                        <th style="width: 15%">Nhân sự</th>
+                        <th style="width: 30%">Hoạt Động</th>
+                        {{-- <th style="width: 15%">Chi Tiết Công Việc</th> --}}
+                        <th style="width: 3%">Hủy</th>
+                        <th style="width: 2%" class="text-center">Lưu</th>
+                        <th style="width: 20%">Báo cáo hoạt động</th>
+                    </tr>
+                </thead>
+                <tbody id="main-assignment-tbody">
+                    @foreach ($tasks as $task)
+                        <tr class="room-row" data-sp-id="{{ $task->sp_id }}" data-room-id="{{ $task->room_id }}">
+                            <td class="room-name-cell">
+                                <div><b>{{ $task->room_code }}</b></div>
+                                <div>{{ $task->room_name }}</div>
+                                <div class="mt-2 text-center">
+                                    <button class="btn btn-outline-success btn-circle btn-add-shift"
+                                        title="Thêm ca làm việc" {{ !$canEdit ? 'disabled' : '' }}>
+                                        <i class="fas fa-plus"></i> Thêm Ca
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="theory-cell text-left position-relative theory-col">
+                                <div class="theory-content">{!! $task->theory_display !!}</div>
+                                @if ($task->theory_display != '<span class="text-muted italic">Không có lịch</span>')
+                                    <button class="btn btn-xs btn-outline-primary btn-copy-theory-all mt-2"
+                                        title="Chép toàn bộ" style="font-size: 10px; padding: 2px 6px;"
+                                        {{ !$canEdit ? 'disabled' : '' }}>
+                                        >>>
+                                    </button>
+                                @endif
+                            </td>
+                            <td colspan="4" class="p-0">
+                                <table class="assignment-inner-table">
+                                    <tbody class="assignment-container">
+                                        @forelse($task->assignments as $assignment)
+                                            <tr class="assignment-item" data-id="{{ $assignment->id }}"
+                                                data-theory-start="{{ $task->theory_start }}"
+                                                data-theory-end="{{ $task->theory_end }}">
+                                                <td style="width: 13.8%">
+                                                    <div class="d-flex flex-column align-items-center">
+                                                        <select class="form-control form-control-sm shift-select mb-1"
+                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                            <option value="1"
+                                                                {{ $assignment->Sheet == 1 ? 'selected' : '' }}>1
+                                                            </option>
+                                                            <option value="2"
+                                                                {{ $assignment->Sheet == 2 ? 'selected' : '' }}>2
+                                                            </option>
+                                                            <option value="3"
+                                                                {{ $assignment->Sheet == 3 ? 'selected' : '' }}>3
+                                                            </option>
+                                                            <option value="4"
+                                                                {{ $assignment->Sheet == 4 ? 'selected' : '' }}>HC
+                                                            </option>
+                                                            <option value="5"
+                                                                {{ $assignment->Sheet == 5 ? 'selected' : '' }}>Khác
+                                                            </option>
+                                                        </select>
+                                                        <input type="time"
+                                                            class="form-control form-control-sm start-time-input mb-1"
+                                                            value="{{ $assignment->start_time_display }}"
+                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                        <input type="time"
+                                                            class="form-control form-control-sm end-time-input"
+                                                            value="{{ $assignment->end_time_display }}"
+                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                    </div>
+                                                </td>
+                                                <td class="p-0" style="width: 25.8%">
+                                                    <div class="personnel-container">
+                                                        @foreach ($assignment->personnel_data as $p_info)
+                                                            <div
+                                                                class="personnel-row d-flex align-items-center p-1 border-bottom">
+                                                                <div class="personnel-label">
+                                                                    {{ chr(65 + $loop->index) }}
+                                                                </div>
+                                                                <div style="flex: 1">
+                                                                    <select
+                                                                        class="form-control form-control-sm person-select"
+                                                                        {{ !$canEdit ? 'disabled' : '' }}>
+                                                                        <option value="">-- Chọn người --</option>
+                                                                        @foreach ($personnel as $p)
+                                                                            <option value="{{ $p->id }}"
+                                                                                {{ $p->id == $p_info->personnel_id ? 'selected' : '' }}>
+                                                                                {{ $p->name }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                </div>
+                                                                @if ($canEdit)
+                                                                    <i
+                                                                        class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                    @if ($canEdit)
+                                                        <div class="text-left p-1" style="border-top: 1px dashed #eee">
+                                                            <a href="javascript:void(0)" class="btn-add-person"><i
+                                                                    class="fas fa-plus-square"></i></a>
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                                <td style="width: 55.2%">
+                                                    <div class="form-control form-control-sm job-desc"
+                                                        contenteditable="{{ $canEdit ? 'true' : 'false' }}"
+                                                        style="min-height: 80px; height: auto; white-space: pre-wrap;"
+                                                        placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
+                                                </td>
+                                                <td style="width: 5.2%" class="text-center">
+                                                    @if ($canEdit)
+                                                        <i
+                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
+                                                    @else
+                                                        <i class="fas fa-lock text-muted"
+                                                            title="Không thể chỉnh sửa"></i>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr class="assignment-item" data-theory-start="{{ $task->theory_start }}"
+                                                data-theory-end="{{ $task->theory_end }}">
+                                                <td style="width: 14.3%">
+                                                    <div class="d-flex flex-column align-items-center">
+                                                        <select class="form-control form-control-sm shift-select mb-1"
+                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                            <option value="1"
+                                                                {{ $production_code == 'PXV1' ? 'selected' : '' }}>1
+                                                            </option>
+                                                            <option value="2">2</option>
+                                                            <option value="3">3</option>
+                                                            <option value="4"
+                                                                {{ $production_code == 'PXV1' ? '' : 'selected' }}>HC
+                                                            </option>
+                                                            <option value="5">Khác</option>
+                                                        </select>
+                                                        <input type="time"
+                                                            class="form-control form-control-sm start-time-input mb-1"
+                                                            value="{{ $production_code == 'PXV1' ? '06:00' : '07:15' }}"
+                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                        <input type="time"
+                                                            class="form-control form-control-sm end-time-input"
+                                                            value="{{ $production_code == 'PXV1' ? '14:00' : '16:00' }}"
+                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                    </div>
+                                                </td>
+                                                <td class="p-0" style="width: 26.8%">
+                                                    <div class="personnel-container">
                                                         <div
                                                             class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                            <div class="personnel-label">{{ chr(65 + $loop->index) }}
-                                                            </div>
+                                                            <div class="personnel-label">A</div>
                                                             <div style="flex: 1">
                                                                 <select
                                                                     class="form-control form-control-sm person-select"
                                                                     {{ !$canEdit ? 'disabled' : '' }}>
                                                                     <option value="">-- Chọn người --</option>
                                                                     @foreach ($personnel as $p)
-                                                                        <option value="{{ $p->id }}"
-                                                                            {{ $p->id == $p_info->personnel_id ? 'selected' : '' }}>
+                                                                        <option value="{{ $p->id }}">
                                                                             {{ $p->name }}</option>
                                                                     @endforeach
                                                                 </select>
@@ -351,197 +511,171 @@
                                                                     class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                                             @endif
                                                         </div>
-                                                    @endforeach
-                                                </div>
-                                                @if ($canEdit)
-                                                    <div class="text-left p-1" style="border-top: 1px dashed #eee">
-                                                        <a href="javascript:void(0)" class="btn-add-person"><i
-                                                                class="fas fa-plus-square"></i></a>
                                                     </div>
-                                                @endif
-                                            </td>
-                                            <td style="width: 55.2%">
-                                                <div class="form-control form-control-sm job-desc"
-                                                    contenteditable="{{ $canEdit ? 'true' : 'false' }}"
-                                                    style="min-height: 80px; height: auto; white-space: pre-wrap;"
-                                                    placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
-                                            </td>
-                                            <td style="width: 5.2%" class="text-center">
-                                                @if ($canEdit)
-                                                    <i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
-                                                @else
-                                                    <i class="fas fa-lock text-muted" title="Không thể chỉnh sửa"></i>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr class="assignment-item" data-theory-start="{{ $task->theory_start }}"
-                                            data-theory-end="{{ $task->theory_end }}">
-                                            <td style="width: 14.3%">
-                                                <div class="d-flex flex-column align-items-center">
-                                                    <select class="form-control form-control-sm shift-select mb-1"
-                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                        <option value="1"
-                                                            {{ $production_code == 'PXV1' ? 'selected' : '' }}>1
-                                                        </option>
-                                                        <option value="2">2</option>
-                                                        <option value="3">3</option>
-                                                        <option value="4"
-                                                            {{ $production_code == 'PXV1' ? '' : 'selected' }}>HC
-                                                        </option>
-                                                        <option value="5">Khác</option>
-                                                    </select>
-                                                    <input type="time"
-                                                        class="form-control form-control-sm start-time-input mb-1"
-                                                        value="{{ $production_code == 'PXV1' ? '06:00' : '07:15' }}"
-                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                    <input type="time"
-                                                        class="form-control form-control-sm end-time-input"
-                                                        value="{{ $production_code == 'PXV1' ? '14:00' : '16:00' }}"
-                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                </div>
-                                            </td>
-                                            <td class="p-0" style="width: 26.8%">
-                                                <div class="personnel-container">
-                                                    <div
-                                                        class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                        <div class="personnel-label">A</div>
-                                                        <div style="flex: 1">
-                                                            <select class="form-control form-control-sm person-select"
-                                                                {{ !$canEdit ? 'disabled' : '' }}>
-                                                                <option value="">-- Chọn người --</option>
-                                                                @foreach ($personnel as $p)
-                                                                    <option value="{{ $p->id }}">
-                                                                        {{ $p->name }}</option>
-                                                                @endforeach
-                                                            </select>
+                                                    @if ($canEdit)
+                                                        <div class="text-left p-1"
+                                                            style="border-top: 1px dashed #eee">
+                                                            <a href="javascript:void(0)" class="btn-add-person"><i
+                                                                    class="fas fa-plus-square"></i></a>
                                                         </div>
-                                                        @if ($canEdit)
-                                                            <i
-                                                                class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
-                                                        @endif
+                                                    @endif
+                                                </td>
+                                                <td style="width: 53.6%">
+                                                    <div class="form-control form-control-sm job-desc"
+                                                        contenteditable="{{ $canEdit ? 'true' : 'false' }}"
+                                                        style="min-height: 80px; height: auto; white-space: pre-wrap;"
+                                                        placeholder="Nội dung..."></div>
+                                                </td>
+                                                <td style="width: 5.3%" class="text-center">
+                                                    @if ($canEdit)
+                                                        <i
+                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
+                                                    @else
+                                                        <i class="fas fa-lock text-muted"
+                                                            title="Không thể chỉnh sửa"></i>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                    <tfoot class="timeline-tfoot">
+                                        <tr>
+                                            <td colspan="4" class="pt-2 pb-2 px-1 border-top-0">
+                                                <div class="timeline-container position-relative"
+                                                    style="height: 6px; background: #e9ecef; border-radius: 3px; width: 100%; margin-top: 25px; margin-bottom: 5px;">
+                                                    <div
+                                                        style="position: absolute; left: 0%; top: -6px; width:1px; height:18px; border-left:1px solid #aaa;">
+                                                    </div>
+                                                    <div
+                                                        style="position: absolute; left: 0%; top: -18px; font-size: 10px; color:#000; font-weight: 600; transform:translateX(-50%);">
+                                                        06h</div>
+
+                                                    <div
+                                                        style="position: absolute; left: 25%; top: -4px; width:1px; height:14px; border-left:1px dashed #ccc;">
+                                                    </div>
+                                                    <div
+                                                        style="position: absolute; left: 25%; top: -16px; font-size: 9px; color:#000; transform:translateX(-50%);">
+                                                        12h</div>
+
+                                                    <div
+                                                        style="position: absolute; left: 50%; top: -4px; width:1px; height:14px; border-left:1px dashed #ccc;">
+                                                    </div>
+                                                    <div
+                                                        style="position: absolute; left: 50%; top: -16px; font-size: 9px; color:#000; transform:translateX(-50%);">
+                                                        18h</div>
+
+                                                    <div
+                                                        style="position: absolute; left: 75%; top: -4px; width:1px; height:14px; border-left:1px dashed #ccc;">
+                                                    </div>
+                                                    <div
+                                                        style="position: absolute; left: 75%; top: -16px; font-size: 9px; color:#000; transform:translateX(-50%);">
+                                                        00h</div>
+
+                                                    <div
+                                                        style="position: absolute; left: 100%; top: -6px; width:1px; height:18px; border-left:1px solid #aaa;">
+                                                    </div>
+                                                    <div
+                                                        style="position: absolute; left: 100%; top: -18px; font-size: 10px; color:#000; font-weight: 600; transform:translateX(-50%);">
+                                                        06h</div>
+
+                                                    <div class="timeline-bg"
+                                                        style="position: absolute; top:0; left:0; width: 100%; height: 100%; overflow: hidden; border-radius: 3px;">
                                                     </div>
                                                 </div>
-                                                @if ($canEdit)
-                                                    <div class="text-left p-1" style="border-top: 1px dashed #eee">
-                                                        <a href="javascript:void(0)" class="btn-add-person"><i
-                                                                class="fas fa-plus-square"></i></a>
-                                                    </div>
-                                                @endif
-                                            </td>
-                                            <td style="width: 53.6%">
-                                                <div class="form-control form-control-sm job-desc"
-                                                    contenteditable="{{ $canEdit ? 'true' : 'false' }}"
-                                                    style="min-height: 80px; height: auto; white-space: pre-wrap;"
-                                                    placeholder="Nội dung..."></div>
-                                            </td>
-                                            <td style="width: 5.3%" class="text-center">
-                                                @if ($canEdit)
-                                                    <i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
-                                                @else
-                                                    <i class="fas fa-lock text-muted" title="Không thể chỉnh sửa"></i>
-                                                @endif
                                             </td>
                                         </tr>
-                                    @endforelse
-                                </tbody>
-                                <tfoot class="timeline-tfoot">
-                                    <tr>
-                                        <td colspan="4" class="pt-2 pb-2 px-1 border-top-0">
-                                            <div class="timeline-container position-relative"
-                                                style="height: 6px; background: #e9ecef; border-radius: 3px; width: 100%; margin-top: 25px; margin-bottom: 5px;">
-                                                <div
-                                                    style="position: absolute; left: 0%; top: -6px; width:1px; height:18px; border-left:1px solid #aaa;">
-                                                </div>
-                                                <div
-                                                    style="position: absolute; left: 0%; top: -18px; font-size: 10px; color:#000; font-weight: 600; transform:translateX(-50%);">
-                                                    06h</div>
-
-                                                <div
-                                                    style="position: absolute; left: 25%; top: -4px; width:1px; height:14px; border-left:1px dashed #ccc;">
-                                                </div>
-                                                <div
-                                                    style="position: absolute; left: 25%; top: -16px; font-size: 9px; color:#000; transform:translateX(-50%);">
-                                                    12h</div>
-
-                                                <div
-                                                    style="position: absolute; left: 50%; top: -4px; width:1px; height:14px; border-left:1px dashed #ccc;">
-                                                </div>
-                                                <div
-                                                    style="position: absolute; left: 50%; top: -16px; font-size: 9px; color:#000; transform:translateX(-50%);">
-                                                    18h</div>
-
-                                                <div
-                                                    style="position: absolute; left: 75%; top: -4px; width:1px; height:14px; border-left:1px dashed #ccc;">
-                                                </div>
-                                                <div
-                                                    style="position: absolute; left: 75%; top: -16px; font-size: 9px; color:#000; transform:translateX(-50%);">
-                                                    00h</div>
-
-                                                <div
-                                                    style="position: absolute; left: 100%; top: -6px; width:1px; height:18px; border-left:1px solid #aaa;">
-                                                </div>
-                                                <div
-                                                    style="position: absolute; left: 100%; top: -18px; font-size: 10px; color:#000; font-weight: 600; transform:translateX(-50%);">
-                                                    06h</div>
-
-                                                <div class="timeline-bg"
-                                                    style="position: absolute; top:0; left:0; width: 100%; height: 100%; overflow: hidden; border-radius: 3px;">
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </td>
-                        <td class="text-center" style="vertical-align: middle !important; width: 2%;">
-                            @php
-                                $isDirty = false;
-                                foreach ($task->assignments as $a) {
-                                    if (is_null($a->id)) {
-                                        $isDirty = true;
-                                        break;
-                                    }
-                                }
-                            @endphp
-                            <button class="btn btn-xs {{ $isDirty ? 'is-dirty' : 'btn-primary' }} btn-save-room shadow-sm"
-                                {{ !$canEdit ? 'disabled' : '' }}>
-                                <i class="fas fa-save"></i>
-                            </button>
-                        </td>
-                        <td class="text-left"
-                            style="background:#d7eaff; font-size:11px; width: 20%; vertical-align: top !important;">
-                            @if ($task->actual_details->count())
-                                @php $idx = 1; @endphp
-                                @foreach ($task->actual_details as $d)
-                                    @php
-                                        $start = \Carbon\Carbon::parse($d->start);
-                                        $end = \Carbon\Carbon::parse($d->end);
-                                        if ($end->lessThan($start)) {
-                                            $end->addDay();
+                                    </tfoot>
+                                </table>
+                            </td>
+                            <td class="text-center" style="vertical-align: middle !important; width: 2%;">
+                                @php
+                                    $isDirty = false;
+                                    foreach ($task->assignments as $a) {
+                                        if (is_null($a->id)) {
+                                            $isDirty = true;
+                                            break;
                                         }
-                                        $minutes = $start->diffInMinutes($end);
-                                        $hours = intdiv($minutes, 60);
-                                        $mins = $minutes % 60;
-                                    @endphp
-                                    <div class="mb-1" style="border-bottom: 1px dashed #ccc; padding-bottom: 2px;">
-                                        {{ $idx++ }}. {{ $d->title ?? 'VS' }}
-                                        ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} =
-                                        <b>{{ $hours }}h{{ $mins }}p</b>)
-                                        @if ($d->yields)
-                                            <span class="text-primary" style="font-weight: 600"> - SL:
-                                                {{ number_format($d->yields, 2) }} {{ $d->unit }}</span>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            @else
-                                <span class="text-muted">—</span>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+                                    }
+                                @endphp
+                                <button
+                                    class="btn btn-xs {{ $isDirty ? 'is-dirty' : 'btn-primary' }} btn-save-room shadow-sm"
+                                    {{ !$canEdit ? 'disabled' : '' }}>
+                                    <i class="fas fa-save"></i>
+                                </button>
+                            </td>
+                            <td class="text-left"
+                                style="background:#d7eaff; font-size:11px; width: 20%; vertical-align: top !important;">
+                                @if ($task->actual_details->count())
+                                    @php $idx = 1; @endphp
+                                    @foreach ($task->actual_details as $d)
+                                        @php
+                                            $start = \Carbon\Carbon::parse($d->start);
+                                            $end = \Carbon\Carbon::parse($d->end);
+                                            if ($end->lessThan($start)) {
+                                                $end->addDay();
+                                            }
+                                            $minutes = $start->diffInMinutes($end);
+                                            $hours = intdiv($minutes, 60);
+                                            $mins = $minutes % 60;
+                                        @endphp
+                                        <div class="mb-1"
+                                            style="border-bottom: 1px dashed #ccc; padding-bottom: 2px;">
+                                            {{ $idx++ }}. {{ $d->title ?? 'VS' }}
+                                            ({{ $start->format('H:i') }} - {{ $end->format('H:i') }} =
+                                            <b>{{ $hours }}h{{ $mins }}p</b>)
+                                            @if ($d->yields)
+                                                <span class="text-primary" style="font-weight: 600"> - SL:
+                                                    {{ number_format($d->yields, 2) }} {{ $d->unit }}</span>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Sidebar Nhân Sự -->
+        <div class="personnel-sidebar collapsed" id="personnel-sidebar">
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light shadow-sm">
+                <h6 class="mb-0 font-weight-bold text-primary"><i class="fas fa-users mr-2"></i>Tình Hình Nhân Sự</h6>
+                <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="sidebar-body p-0 overflow-auto" id="sidebar-data-container" style="flex: 1">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="mt-2 text-muted">Đang tải dữ liệu...</div>
+                </div>
+            </div>
+            <div class="p-2 border-top bg-light">
+                <div class="d-flex justify-content-around font-weight-bold small">
+                    <div class="text-center">
+                        <div class="shift-badge shift-c1 mx-auto mb-1">C1</div>Ca 1
+                    </div>
+                    <div class="text-center">
+                        <div class="shift-badge shift-c2 mx-auto mb-1">C2</div>Ca 2
+                    </div>
+                    <div class="text-center">
+                        <div class="shift-badge shift-c3 mx-auto mb-1">C3</div>Ca 3
+                    </div>
+                    <div class="text-center">
+                        <div class="shift-badge shift-hc mx-auto mb-1">HC</div>HC
+                    </div>
+                    <div class="text-center">
+                        <div class="shift-badge shift-p mx-auto mb-1">P</div>Phép
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="sidebar-toggle-btn" id="toggle-sidebar-btn" title="Xem lịch trực nhân sự">
+            <i class="fas fa-chevron-left"></i>
+        </button>
     </div>
 </div>
 
@@ -1007,7 +1141,7 @@
         function saveRoom(row, silent = false) {
             return new Promise((resolve, reject) => {
                 const btn = row.find('.btn-save-room');
-                
+
                 // Chỉ gửi request nếu có thay đổi (nút màu vàng - is-dirty)
                 if (!btn.hasClass('is-dirty')) {
                     return resolve(false);
@@ -1327,5 +1461,135 @@
                 $(this).find('i').removeClass('fa-eye-slash').addClass('fa-eye');
             }
         });
+        // --- Xử lý Sidebar Nhân Sự ---
+        const $sidebar = $('#personnel-sidebar');
+        const $toggleBtn = $('#toggle-sidebar-btn');
+        const $closeBtn = $('#close-sidebar-btn');
+        const $container = $('#sidebar-data-container');
+
+        let isSidebarLoaded = false;
+
+        function toggleSidebar() {
+            $sidebar.toggleClass('collapsed');
+            $toggleBtn.toggleClass('active');
+            const icon = $toggleBtn.find('i');
+            if ($sidebar.hasClass('collapsed')) {
+                icon.removeClass('fa-chevron-right').addClass('fa-chevron-left');
+            } else {
+                icon.removeClass('fa-chevron-left').addClass('fa-chevron-right');
+                if (!isSidebarLoaded) fetchPersonnelShifts();
+            }
+        }
+
+        $toggleBtn.on('click', toggleSidebar);
+        $closeBtn.on('click', toggleSidebar);
+
+        function fetchPersonnelShifts() {
+            const dateStr = '{{ $reportedDate }}';
+            const date = new Date(dateStr);
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            const day = date.getDate();
+            const depMapping = {
+                'PXV1': 15,
+                'PXV2': 31,
+                'PXVH': 30,
+                'PXDN': 30,
+                'EN': 3,
+                'PXTN': 6
+            };
+            const department = depMapping[productionCode] || 15;
+
+            $container.html(
+                '<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Đang tải dữ liệu...</div></div>'
+                );
+
+            $.ajax({
+                url: `{{ route('pages.assignment.production.shifts') }}`,
+                method: 'GET',
+                data: {
+                    month,
+                    year,
+                    department
+                },
+                success: function(res) {
+                    isSidebarLoaded = true;
+                    renderSidebarData(res, day);
+                },
+                error: function() {
+                    $container.html(
+                        '<div class="alert alert-danger m-3">Không thể tải dữ liệu từ máy chủ API.</div>'
+                        );
+                }
+            });
+        }
+
+        function renderSidebarData(data, currentDay) {
+            if (!data || data.length === 0) {
+                $container.html('<div class="p-3 text-center text-muted">Không có dữ liệu lịch trực.</div>');
+                return;
+            }
+
+            // Nhóm nhân sự theo ca của ngày hiện tại
+            const shifts = {
+                'C1': [],
+                'C2': [],
+                'C3': [],
+                'HC': [],
+                'P': [],
+                'Khác': []
+            };
+
+            data.forEach(person => {
+                const dayKey = 'day' + currentDay;
+                let shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
+                .toUpperCase() : 'HC';
+
+                const personInfo = {
+                    name: person.employeeName || person.name,
+                    code: person.employeeId || person.code
+                };
+
+                if (shifts.hasOwnProperty(shiftCode)) {
+                    shifts[shiftCode].push(personInfo);
+                } else if (shiftCode) {
+                    shifts['Khác'].push(personInfo);
+                }
+            });
+
+            let html = '<div class="list-group list-group-flush">';
+
+            const shiftLabels = {
+                'C1': 'Ca 1',
+                'C2': 'Ca 2',
+                'C3': 'Ca 3',
+                'HC': 'Hành chính',
+                'P': 'Nghỉ phép',
+                'Khác': 'Khác'
+            };
+
+            Object.keys(shifts).forEach(key => {
+                if (shifts[key].length > 0) {
+                    const bgClass = 'shift-' + key.toLowerCase();
+                    html += `
+                        <div class="list-group-item bg-light py-2 font-weight-bold d-flex align-items-center">
+                            <div class="shift-badge ${bgClass} mr-2" style="width:25px; height:25px; font-size:0.7rem">${key}</div>
+                            ${shiftLabels[key]} (${shifts[key].length})
+                        </div>
+                    `;
+                    shifts[key].forEach(p => {
+                        html += `
+                            <div class="list-group-item py-1 pl-5 small">
+                                <span class="text-dark">${p.name}</span>
+                                <span class="text-muted float-right">${p.code}</span>
+                            </div>
+                        `;
+                    });
+                }
+            });
+
+            html += '</div>';
+            $container.html(html);
+        }
     });
 </script>

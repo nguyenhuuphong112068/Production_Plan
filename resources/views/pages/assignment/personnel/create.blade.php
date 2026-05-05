@@ -24,6 +24,10 @@
                             <span class="text-danger small">{{ $errors->createErrors->first('name') }}</span>
                         @endif
                     </div>
+                    <div class="form-group">
+                        <label>Cấp (Level)</label>
+                        <input type="number" name="level" class="form-control" placeholder="Ví dụ: 1">
+                    </div>
                     <input type="hidden" name="deparment_code" value="{{ $currentDepartment ?? '' }}">
                     
                     <div class="form-group">

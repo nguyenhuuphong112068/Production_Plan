@@ -18,6 +18,7 @@ Route::prefix('/assignemnt/production')
     ->group(function () {
         Route::get('', 'index')->name('index');
         Route::post('store', 'store')->name('store');
+        Route::get('shifts', 'getPersonnelShifts')->name('shifts');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
     });
 
@@ -39,6 +40,7 @@ Route::prefix('/assignemnt/personnel')
     ->middleware(CheckLogin::class)
     ->group(function () {
         Route::get('/{department?}', 'index')->name('list');
+        Route::get('sync/{department?}', 'sync')->name('sync');
         Route::post('store', 'store')->name('store');
         Route::post('update', 'update')->name('update');
         Route::get('deActive/{id}', 'deActive')->name('deActive');

@@ -126,7 +126,7 @@ class ProductionAssignmentController extends Controller
             // Tự động tạo gợi ý nếu chưa có phân công
             if ($assignments->isEmpty() && $plans->isNotEmpty()) {
                 $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
-                
+
                 // Khởi tạo các nhóm công việc theo ca (1, 2, 3)
                 $shiftItems = ['1' => [], '2' => [], '3' => []];
 
@@ -155,7 +155,7 @@ class ProductionAssignmentController extends Controller
 
                     $unique_items = array_values(array_unique($items));
                     $jobDescription = "";
-                    foreach($unique_items as $idx => $item) {
+                    foreach ($unique_items as $idx => $item) {
                         $jobDescription .= ($idx + 1) . ". " . $item . "\n";
                     }
 
@@ -191,15 +191,13 @@ class ProductionAssignmentController extends Controller
             ];
         });
 
-        $personnelQuery = DB::table('personnel')
+        $personnelQuery = DB::table('employees')
             ->where('deparment_code', $production_code)
             ->where('active', 1);
 
-
-
         $personnel = $personnelQuery->orderBy('name')->get();
 
-        session()->put(['title' => 'PHÂN CÔNG SẢN XUẤT']);
+        session()->put(['title' => 'LỊCH CÔNG TÁC SẢN XUẤT']);
 
         return view('pages.assignment.production.index', [
             'tasks' => $tasks,
@@ -210,6 +208,22 @@ class ProductionAssignmentController extends Controller
             'personnel' => $personnel,
             'rooms' => $rooms
         ]);
+    }
+
+    public function getPersonnelShifts(Request $request)
+    {
+        $month = $request->month;
+        $year = $request->year;
+        $department = $request->department;
+
+        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$department}";
+
+        try {
+            $data = file_get_contents($url);
+            return response($data)->header('Content-Type', 'application/json');
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function store(Request $request)
@@ -391,7 +405,7 @@ class ProductionAssignmentController extends Controller
             ];
         });
 
-        $personnel = DB::table('personnel')->where('active', 1)->get();
+        $personnel = DB::table('employees')->where('active', 1)->get();
 
         return view('pages.assignment.production.publicView', [
             'tasks' => $tasks,

@@ -25,6 +25,10 @@
                             <span class="text-danger small">{{ $errors->updateErrors->first('name') }}</span>
                         @endif
                     </div>
+                    <div class="form-group">
+                        <label>Cấp (Level)</label>
+                        <input type="number" name="level" class="form-control">
+                    </div>
                     <input type="hidden" name="deparment_code">
                     
                     <div class="form-group">

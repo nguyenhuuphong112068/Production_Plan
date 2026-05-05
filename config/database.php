@@ -168,6 +168,20 @@ return [
             'trust_server_certificate' => env('DB_CAL2_TRUST_SERVER_CERTIFICATE', true),
         ],
 
+
+        // 'training' => [
+        //     'driver' => env('DB_TRAINING_DRIVER', 'sqlsrv'),
+        //     'host' => env('DB_TRAINING_HOST'),
+        //     'port' => env('DB_TRAINING_PORT', 1433),
+        //     'database' => env('DB_TRAINING_DATABASE'),
+        //     'username' => env('DB_TRAINING_USERNAME'),
+        //     'password' => env('DB_TRAINING_PASSWORD'),
+        //     'charset' => 'utf8',
+        //     'prefix' => '',
+        //     'encrypt' => env('DB_TRAINING_ENCRYPT', false),
+        //     'trust_server_certificate' => env('DB_TRAINING_TRUST_SERVER_CERTIFICATE', true),
+        // ],
+
     ],
 
     /*
@@ -203,7 +217,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_database_'),
+            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_') . '_database_'),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 
