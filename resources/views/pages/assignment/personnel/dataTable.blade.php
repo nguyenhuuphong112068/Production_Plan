@@ -178,15 +178,20 @@
                             <div class="col-md-6 border-right">
                                 <h6 class="font-weight-bold text-secondary mb-3">Tình Hình Phân Công Nhân Sự</h6>
                                 <div class="row text-center mb-4">
-                                    <div class="col-6">
+                                    <div class="col-4">
                                         <h3 class="text-primary font-weight-bold mb-0" id="dash-total-emp">{{ count($datas) }}</h3>
                                         <span class="small font-weight-bold text-muted">Tổng Nhân Sự</span>
                                     </div>
-                                    <div class="col-6">
-                                        <h3 class="text-success font-weight-bold mb-0" id="dash-active-groups-count">0</h3>
-                                        <span class="small font-weight-bold text-muted">Tổ Đang Hoạt Động</span>
+                                    <div class="col-4">
+                                        <h3 class="text-success font-weight-bold mb-0" id="dash-active-emp-count">0</h3>
+                                        <span class="small font-weight-bold text-muted">Đã Phân Công</span>
+                                    </div>
+                                    <div class="col-4">
+                                        <h3 class="text-info font-weight-bold mb-0" id="dash-active-groups-count">0</h3>
+                                        <span class="small font-weight-bold text-muted">Tổ Hoạt Động</span>
                                     </div>
                                 </div>
+
                                 <h6 class="font-weight-bold text-secondary mb-2 small">Phân bổ nhân sự:</h6>
                                 <ul class="nav nav-tabs mb-2" id="dash-stats-tab" role="tablist">
                                     <li class="nav-item">
@@ -195,7 +200,11 @@
                                     <li class="nav-item">
                                         <a class="nav-link small py-1" id="dash-room-tab" data-toggle="tab" href="#dash-room-content" role="tab">Theo Phòng</a>
                                     </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link small py-1" id="dash-summary-tab" data-toggle="tab" href="#dash-summary-content" role="tab">Tổng Hợp Chi Tiết</a>
+                                    </li>
                                 </ul>
+
                                 
                                 <div class="tab-content" id="dash-stats-tabContent">
                                     <div class="tab-pane fade show active" id="dash-group-content" role="tabpanel">
@@ -208,71 +217,148 @@
                                             <!-- Room stats render here -->
                                         </div>
                                     </div>
+                                    <div class="tab-pane fade" id="dash-summary-content" role="tabpanel">
+                                        <div id="dash-summary-table-container" style="max-height: 250px; overflow-y: auto; padding-top: 5px;">
+                                            <table class="table table-sm table-bordered mb-0" style="font-size: 0.8rem;">
+                                                <thead class="bg-light">
+                                                    <tr>
+                                                        <th>Nhóm/Tổ</th>
+                                                        <th class="text-center">Active</th>
+                                                        <th class="text-center">Inactive</th>
+                                                        <th class="text-center">Tổng</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="dash-summary-tbody">
+                                                    <!-- Table rows render here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
+
                             </div>
                             <!-- API Data Column -->
                             <div class="col-md-6">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
                                     <h6 class="font-weight-bold text-secondary mb-0">Tình Hình Đi Ca</h6>
-                                    <div class="d-flex align-items-center">
-                                        <input type="date" id="dash-shift-date-input"
-                                            class="form-control form-control-sm mr-2" style="width: 140px;"
-                                            value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}">
-                                        <button class="btn btn-sm btn-outline-secondary" id="btn-refresh-shifts"
+                                    <span id="shift-range-title" class="small text-muted font-weight-bold"></span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="d-flex align-items-center flex-wrap">
+                                        <select id="dash-shift-range-select" class="form-control form-control-sm mr-2 mb-2" style="width: 80px;">
+                                            <option value="day">Ngày</option>
+                                            <option value="week">Tuần</option>
+                                            <option value="month">Tháng</option>
+                                        </select>
+                                        
+                                        <!-- Inputs for Week/Month -->
+                                        <div id="input-group-day" class="shift-input-group mr-2 mb-2">
+                                            <input type="date" id="dash-shift-date-input"
+                                                class="form-control form-control-sm" style="width: 140px;"
+                                                value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}">
+                                        </div>
+                                        <div id="input-group-week" class="shift-input-group mr-2 mb-2" style="display: none;">
+                                            <div class="input-group input-group-sm" style="width: 160px;">
+                                                <input type="number" id="dash-shift-week-input" class="form-control" placeholder="Tuần" min="1" max="53" value="{{ \Carbon\Carbon::now()->weekOfYear }}">
+                                                <div class="input-group-append"><span class="input-group-text">/</span></div>
+                                                <input type="number" id="dash-shift-week-year" class="form-control" placeholder="Năm" value="{{ \Carbon\Carbon::now()->year }}">
+                                            </div>
+                                        </div>
+                                        <div id="input-group-month" class="shift-input-group mr-2 mb-2" style="display: none;">
+                                            <div class="input-group input-group-sm" style="width: 160px;">
+                                                <select id="dash-shift-month-input" class="form-control">
+                                                    @for($i=1; $i<=12; $i++)
+                                                        <option value="{{ $i }}" {{ \Carbon\Carbon::now()->month == $i ? 'selected' : '' }}>Tháng {{ $i }}</option>
+                                                    @endfor
+                                                </select>
+                                                <input type="number" id="dash-shift-month-year" class="form-control" placeholder="Năm" value="{{ \Carbon\Carbon::now()->year }}">
+                                            </div>
+                                        </div>
+
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" id="btn-refresh-shifts"
                                             title="Tải lại dữ liệu">
                                             <i class="fas fa-sync-alt"></i>
                                         </button>
                                     </div>
                                 </div>
-                                <div id="shift-data-container" class="h-100 d-flex flex-column justify-content-center">
-                                    <div class="text-center py-4 text-muted" id="shift-loading">
+
+                                <div id="shift-data-container" class="d-flex flex-column">
+                                    <div class="text-center py-2 text-muted" id="shift-loading">
+
                                         <div class="spinner-border spinner-border-sm text-info mb-2" role="status">
                                         </div>
-                                        <br><span class="small font-weight-bold">Đang kết nối server nội bộ lấy dữ liệu
-                                            ca...</span>
+                                        <br><span class="small font-weight-bold">Đang kết nối server nội bộ lấy dữ liệu ca...</span>
                                     </div>
                                     <div id="shift-content" style="display: none;">
-                                        <div class="row text-center mb-4">
-                                            <div class="col-4">
-                                                <div class="p-3 bg-light rounded shadow-sm border border-success">
-                                                    <h3 class="text-success font-weight-bold mb-0" id="dash-shift-hc">0
-                                                    </h3>
-                                                    <span class="small font-weight-bold text-muted">Hành Chính</span>
+                                        <!-- Card View (for Day) -->
+                                        <div id="shift-card-view">
+                                            <div class="row text-center mb-2">
+                                                <div class="col-4">
+                                                    <div class="p-2 bg-light rounded shadow-sm border border-success">
+                                                        <h4 class="text-success font-weight-bold mb-0" id="dash-shift-hc">0</h4>
+                                                        <span class="small font-weight-bold text-muted">HC</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="p-2 bg-light rounded shadow-sm border border-warning">
+                                                        <h4 class="text-warning font-weight-bold mb-0" id="dash-shift-c1">0</h4>
+                                                        <span class="small font-weight-bold text-muted">Ca 1</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="p-2 bg-light rounded shadow-sm border border-primary">
+                                                        <h4 class="text-primary font-weight-bold mb-0" id="dash-shift-c2">0</h4>
+                                                        <span class="small font-weight-bold text-muted">Ca 2</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-4">
-                                                <div class="p-3 bg-light rounded shadow-sm border border-warning">
-                                                    <h3 class="text-warning font-weight-bold mb-0" id="dash-shift-c1">
-                                                        0</h3>
-                                                    <span class="small font-weight-bold text-muted">Ca 1</span>
+                                            <div class="row text-center">
+                                                <div class="col-4">
+                                                    <div class="p-2 bg-light rounded shadow-sm border border-secondary">
+                                                        <h4 class="text-secondary font-weight-bold mb-0" id="dash-shift-c3">0</h4>
+                                                        <span class="small font-weight-bold text-muted">Ca 3</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="p-3 bg-light rounded shadow-sm border border-primary">
-                                                    <h3 class="text-primary font-weight-bold mb-0" id="dash-shift-c2">
-                                                        0</h3>
-                                                    <span class="small font-weight-bold text-muted">Ca 2</span>
+                                                <div class="col-4">
+                                                    <div class="p-2 bg-light rounded shadow-sm border border-info">
+                                                        <h4 class="text-info font-weight-bold mb-0" id="dash-shift-c4">0</h4>
+                                                        <span class="small font-weight-bold text-muted">Ca 4</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="p-2 bg-light rounded shadow-sm border border-danger">
+                                                        <h4 class="text-danger font-weight-bold mb-0" id="dash-shift-p">0</h4>
+                                                        <span class="small font-weight-bold text-muted">Nghỉ</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="row text-center justify-content-center">
-                                            <div class="col-4">
-                                                <div class="p-3 bg-light rounded shadow-sm border border-secondary">
-                                                    <h3 class="text-secondary font-weight-bold mb-0"
-                                                        id="dash-shift-c3">0</h3>
-                                                    <span class="small font-weight-bold text-muted">Ca 3</span>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="p-3 bg-light rounded shadow-sm border border-danger">
-                                                    <h3 class="text-danger font-weight-bold mb-0" id="dash-shift-p">0
-                                                    </h3>
-                                                    <span class="small font-weight-bold text-muted">Nghỉ Phép</span>
-                                                </div>
+
+                                        <!-- Table View (for Week/Month) -->
+                                        <div id="shift-table-view" style="display: none;" class="mt-2">
+                                            <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                                                <table class="table table-sm table-bordered table-striped text-center mb-0" style="font-size: 0.7rem;">
+                                                    <thead class="bg-light sticky-top">
+                                                        <tr id="shift-table-head">
+                                                            <th style="width: 80px;">Ngày</th>
+                                                            <th>HC</th>
+                                                            <th>C1</th>
+                                                            <th>C2</th>
+                                                            <th>C3</th>
+                                                            <th>C4</th>
+                                                            <th>P</th>
+
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="shift-table-body">
+                                                        <!-- Data rows here -->
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>
@@ -949,39 +1035,41 @@
             let activeEmps = 0;
             let activeGroupsSet = new Set();
             
-            let groupStats = {
-                'Quản lý': 0,
-                'Văn Thư': 0,
-                'Chưa phân công': 0
-            };
+            let groupStats = {}; // { groupName: { active: 0, total: 0 } }
+            let dutyStats = { 'Quản lý': 0, 'Văn Thư': 0 };
             let roomStats = {};
+            let unassignedCount = 0;
 
             $(allRows).each(function() {
                 let duty = $(this).find('.select-duty').val();
-                let $activeGroups = $(this).find('.btn-toggle-group.active');
+                let $badges = $(this).find('.btn-toggle-group');
                 let $activeRooms = $(this).find('.room-assignment-row[data-active="1"] .room-id-select');
                 
-                let isAssigned = false;
+                let isAssignedAnyActive = false;
+                let hasAnyGroup = $badges.length > 0;
                 
                 if (duty === 'Quản lý') {
-                    groupStats['Quản lý']++;
-                    isAssigned = true;
+                    dutyStats['Quản lý']++;
+                    isAssignedAnyActive = true;
                 } else if (duty === 'Văn Thư') {
-                    groupStats['Văn Thư']++;
-                    isAssigned = true;
-                } else {
-                    if ($activeGroups.length > 0) {
-                        isAssigned = true;
-                        $activeGroups.each(function() {
-                            let groupName = $(this).text().trim();
-                            if (!groupStats[groupName]) groupStats[groupName] = 0;
-                            groupStats[groupName]++;
-                            activeGroupsSet.add(groupName);
-                        });
-                    }
+                    dutyStats['Văn Thư']++;
+                    isAssignedAnyActive = true;
                 }
 
-                if (isAssigned) {
+                $badges.each(function() {
+                    let groupName = $(this).text().trim();
+                    let isActive = $(this).hasClass('active');
+                    
+                    if (!groupStats[groupName]) groupStats[groupName] = { active: 0, total: 0 };
+                    groupStats[groupName].total++;
+                    if (isActive) {
+                        groupStats[groupName].active++;
+                        isAssignedAnyActive = true;
+                        activeGroupsSet.add(groupName);
+                    }
+                });
+
+                if (isAssignedAnyActive) {
                     activeEmps++;
                     $activeRooms.each(function() {
                         let roomText = $(this).find('option:selected').text();
@@ -993,51 +1081,108 @@
                         }
                     });
                 } else {
-                    groupStats['Chưa phân công']++;
+                    unassignedCount++;
                 }
             });
 
+
             $('#dash-total-emp').text(totalCount);
+            $('#dash-active-emp-count').text(activeEmps);
             $('#dash-active-groups-count').text(activeGroupsSet.size);
+
 
             let gContainer = $('#dash-group-bars-container');
             gContainer.empty();
             let gKeys = Object.keys(groupStats);
-            gKeys.sort(function(a, b) {
-                if (a === 'Quản lý') return -1;
-                if (b === 'Quản lý') return 1;
-                if (a === 'Văn Thư') return -1;
-                if (b === 'Văn Thư') return 1;
-                if (a === 'Chưa phân công') return 1;
-                if (b === 'Chưa phân công') return -1;
-                return a.localeCompare(b);
+            gKeys.sort((a, b) => groupStats[b].active - groupStats[a].active);
+
+            // Add Duties first
+            ['Quản lý', 'Văn Thư'].forEach(duty => {
+                let count = dutyStats[duty];
+                if (count > 0) {
+                    let percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+                    let colorClass = duty === 'Quản lý' ? 'bg-primary' : 'bg-warning';
+                    gContainer.append(`
+                        <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
+                            <span>${duty}</span>
+                            <span>${count} (${percentage}%)</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${colorClass}" style="width: ${percentage}%"></div>
+                        </div>
+                    `);
+                }
             });
 
             gKeys.forEach(function(key) {
-                let count = groupStats[key];
-                if (count === 0 && key !== 'Quản lý' && key !== 'Văn Thư' && key !== 'Chưa phân công') return;
-                
-                let percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
-                let colorClass = 'bg-info';
-                let textClass = '';
-                
-                if (key === 'Quản lý') colorClass = 'bg-primary';
-                else if (key === 'Văn Thư') colorClass = 'bg-warning';
-                else if (key === 'Chưa phân công') {
-                    colorClass = 'bg-danger';
-                    textClass = 'text-danger';
-                } else colorClass = 'bg-success';
+                let stats = groupStats[key];
+                let percentage = totalCount > 0 ? Math.round((stats.active / totalCount) * 100) : 0;
                 
                 gContainer.append(`
                     <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
-                        <span class="${textClass}">${key}</span>
-                        <span class="${textClass}">${count} (${percentage}%)</span>
+                        <span>${key}</span>
+                        <span><span class="text-success">${stats.active}</span> <span class="text-muted small">/ ${stats.total}</span></span>
+                        <span class="text-muted small">(${percentage}%)</span>
                     </div>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar ${colorClass}" style="width: ${percentage}%"></div>
+                    <div class="progress" style="height: 6px; background-color: #e9ecef;">
+                        <div class="progress-bar bg-success" style="width: ${percentage}%"></div>
                     </div>
                 `);
             });
+
+            if (unassignedCount > 0) {
+                let percentage = totalCount > 0 ? Math.round((unassignedCount / totalCount) * 100) : 0;
+                gContainer.append(`
+                    <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
+                        <span class="text-danger">Chưa phân công (Active)</span>
+                        <span class="text-danger">${unassignedCount} (${percentage}%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-danger" style="width: ${percentage}%"></div>
+                    </div>
+                `);
+            }
+
+            let sBody = $('#dash-summary-tbody');
+            sBody.empty();
+            
+            // Add Duties to summary
+            ['Quản lý', 'Văn Thư'].forEach(duty => {
+                let count = dutyStats[duty];
+                if (count > 0) {
+                    sBody.append(`
+                        <tr>
+                            <td>${duty}</td>
+                            <td class="text-center text-success font-weight-bold">${count}</td>
+                            <td class="text-center text-muted">0</td>
+                            <td class="text-center font-weight-bold">${count}</td>
+                        </tr>
+                    `);
+                }
+            });
+
+            gKeys.forEach(function(key) {
+                let stats = groupStats[key];
+                sBody.append(`
+                    <tr>
+                        <td>${key}</td>
+                        <td class="text-center text-success font-weight-bold">${stats.active}</td>
+                        <td class="text-center text-secondary">${stats.total - stats.active}</td>
+                        <td class="text-center font-weight-bold">${stats.total}</td>
+                    </tr>
+                `);
+            });
+
+            if (unassignedCount > 0) {
+                sBody.append(`
+                    <tr class="table-danger">
+                        <td>Chưa phân công (Active)</td>
+                        <td class="text-center text-danger font-weight-bold">${unassignedCount}</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center font-weight-bold">${unassignedCount}</td>
+                    </tr>
+                `);
+            }
 
             let rContainer = $('#dash-room-bars-container');
             rContainer.empty();
@@ -1066,15 +1211,28 @@
         function fetchShiftData() {
             $('#shift-loading').show();
             $('#shift-content').hide();
-            const selectedDateStr = $('#dash-shift-date-input').val();
-            if (!selectedDateStr) {
-                $('#shift-loading').html('<span class="text-danger small font-weight-bold">Vui lòng chọn ngày.</span>');
-                return;
+            
+            const range = $('#dash-shift-range-select').val();
+            let currentYear, currentMonth;
+            
+            if (range === 'day') {
+                const dateStr = $('#dash-shift-date-input').val();
+                if (!dateStr) return;
+                const d = new Date(dateStr);
+                currentYear = d.getFullYear();
+                currentMonth = d.getMonth() + 1;
+            } else if (range === 'week') {
+                currentYear = $('#dash-shift-week-year').val();
+                const weekNum = $('#dash-shift-week-input').val();
+                const firstDayOfYear = new Date(currentYear, 0, 1);
+                const days = (weekNum - 1) * 7;
+                const weekDate = new Date(firstDayOfYear.setDate(firstDayOfYear.getDate() + days));
+                currentMonth = weekDate.getMonth() + 1;
+            } else {
+                currentYear = $('#dash-shift-month-year').val();
+                currentMonth = $('#dash-shift-month-input').val();
             }
-            const parts = selectedDateStr.split('-');
-            const currentYear = parseInt(parts[0], 10);
-            const currentMonth = parseInt(parts[1], 10);
-            const currentDay = parseInt(parts[2], 10);
+            
             const url = `/assignemnt/production/shifts?month=${currentMonth}&year=${currentYear}&department=${apiDepId}`;
 
             $.ajax({
@@ -1083,32 +1241,100 @@
                 success: function(data) {
                     $('#shift-loading').hide();
                     $('#shift-content').show();
-                    let hc = 0, c1 = 0, c2 = 0, c3 = 0, p = 0;
-                    const targetDayStr = 'day' + currentDay;
+                    
+                    let daysToSum = [];
+                    let labels = {}; // { dayKey: label }
+
+                    if (range === 'day') {
+                        const day = new Date($('#dash-shift-date-input').val()).getDate();
+                        daysToSum.push('day' + day);
+                        $('#shift-range-title').text('Tình trạng ca ngày ' + day);
+                    } else if (range === 'week') {
+                        const weekNum = $('#dash-shift-week-input').val();
+                        const firstDayOfYear = new Date(currentYear, 0, 1);
+                        const days = (weekNum - 1) * 7;
+                        let monday = new Date(firstDayOfYear.setDate(firstDayOfYear.getDate() + days));
+                        const dayOfWeek = monday.getDay();
+                        const diff = monday.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                        monday = new Date(monday.setDate(diff));
+
+                        for (let i = 0; i < 7; i++) {
+                            let d = new Date(monday);
+                            d.setDate(monday.getDate() + i);
+                            if (d.getMonth() + 1 == currentMonth) {
+                                let dk = 'day' + d.getDate();
+                                daysToSum.push(dk);
+                                labels[dk] = d.getDate() + '/' + (d.getMonth() + 1);
+                            }
+                        }
+                        $('#shift-range-title').text('Chi tiết ca Tuần ' + weekNum + ' (' + currentYear + ')');
+                    } else if (range === 'month') {
+                        const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+                        for (let i = 1; i <= lastDay; i++) {
+                            let dk = 'day' + i;
+                            daysToSum.push(dk);
+                            labels[dk] = i + '/' + currentMonth;
+                        }
+                        $('#shift-range-title').text('Chi tiết ca Tháng ' + currentMonth + '/' + currentYear);
+                    }
+
+                    let dailyStats = {}; // { dayKey: { hc, c1, c2, c3, c4, p } }
+                    daysToSum.forEach(dk => { dailyStats[dk] = { hc:0, c1:0, c2:0, c3:0, c4:0, p:0 }; });
+
 
                     if (Array.isArray(data)) {
                         data.forEach(function(emp) {
-                            if (emp.days && emp.days[targetDayStr]) {
-                                let shift = emp.days[targetDayStr];
-                                if (shift === 'HC') hc++;
-                                else if (shift === 'C1') c1++;
-                                else if (shift === 'C2') c2++;
-                                else if (shift === 'C3') c3++;
-                                else if (shift === 'P') p++;
+                            if (emp.days) {
+                                daysToSum.forEach(dayKey => {
+                                    let shift = emp.days[dayKey] || 'HC';
+                                    if (shift === 'HC') dailyStats[dayKey].hc++;
+                                    else if (shift === 'C1') dailyStats[dayKey].c1++;
+                                    else if (shift === 'C2') dailyStats[dayKey].c2++;
+                                    else if (shift === 'C3') dailyStats[dayKey].c3++;
+                                    else if (shift === 'C4') dailyStats[dayKey].c4++;
+                                    else if (shift === 'P') dailyStats[dayKey].p++;
+
+                                });
+
                             }
                         });
                     }
-                    $('#dash-shift-hc').text(hc);
-                    $('#dash-shift-c1').text(c1);
-                    $('#dash-shift-c2').text(c2);
-                    $('#dash-shift-c3').text(c3);
-                    $('#dash-shift-p').text(p);
+
+                    if (range === 'day') {
+                        const dStats = dailyStats[daysToSum[0]] || {hc:0, c1:0, c2:0, c3:0, c4:0, p:0};
+                        $('#dash-shift-hc').text(dStats.hc);
+                        $('#dash-shift-c1').text(dStats.c1);
+                        $('#dash-shift-c2').text(dStats.c2);
+                        $('#dash-shift-c3').text(dStats.c3);
+                        $('#dash-shift-c4').text(dStats.c4);
+                        $('#dash-shift-p').text(dStats.p);
+
+                    } else {
+                        const tbody = $('#shift-table-body');
+                        tbody.empty();
+                        daysToSum.forEach(dk => {
+                            const s = dailyStats[dk];
+                            tbody.append(`
+                                <tr>
+                                    <td class="font-weight-bold">${labels[dk]}</td>
+                                    <td class="text-success">${s.hc || '-'}</td>
+                                    <td class="text-warning">${s.c1 || '-'}</td>
+                                    <td class="text-primary">${s.c2 || '-'}</td>
+                                    <td class="text-secondary">${s.c3 || '-'}</td>
+                                    <td class="text-info">${s.c4 || '-'}</td>
+                                    <td class="text-danger">${s.p || '-'}</td>
+
+                                </tr>
+                            `);
+                        });
+                    }
                 },
                 error: function() {
                     $('#shift-loading').html('<span class="text-danger small font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Lỗi kết nối máy chủ.</span>');
                 }
             });
         }
+
 
         $('#btn-toggle-dashboard').click(function(e) {
             e.preventDefault();
@@ -1126,8 +1352,28 @@
             }
         });
 
+        // Range Selection UI Handling
+        $('#dash-shift-range-select').change(function() {
+            const range = $(this).val();
+            $('.shift-input-group').hide();
+            $('#input-group-' + range).show();
+            
+            if (range === 'day') {
+                $('#shift-card-view').show();
+                $('#shift-table-view').hide();
+            } else {
+                $('#shift-card-view').hide();
+                $('#shift-table-view').show();
+            }
+            fetchShiftData();
+        });
+
         $('#btn-refresh-shifts').click(function(e) { e.preventDefault(); fetchShiftData(); });
-        $('#dash-shift-date-input').change(function() { fetchShiftData(); });
+        $('#dash-shift-date-input, #dash-shift-week-input, #dash-shift-week-year, #dash-shift-month-input, #dash-shift-month-year').on('change input', function() { 
+            fetchShiftData(); 
+        });
+
+
 
         $(document).on('change', '.select-duty', function() {
             if ($('#personnel-dashboard').is(':visible')) renderLocalDashboard();

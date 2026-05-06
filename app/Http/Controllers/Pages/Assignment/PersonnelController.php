@@ -452,10 +452,76 @@ class PersonnelController extends Controller
             }
 
             DB::commit();
+            
+            // Recalculate counts for the relevant department
+            $this->recalculateRoomCounts($request->department ?? session('user')['department'] ?? session('user')['production_code']);
+
             return response()->json(['success' => true, 'message' => 'Cập nhật thành công!']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Recalculates and persists personnel counts to Room and Assignments tables.
+     */
+    private function recalculateRoomCounts($departmentCode)
+    {
+        if (!$departmentCode) return;
+
+        try {
+            // 1. Update Room table counts by level
+            $roomStats = DB::table('employee_assignments')
+                ->where('production_code', $departmentCode)
+                ->where('active', 1)
+                ->where('room_id', '>', 0)
+                ->select('room_id', 'level', DB::raw('count(*) as count'))
+                ->groupBy('room_id', 'level')
+                ->get();
+
+            // Reset all counts for this department first
+            DB::table('room')->where('deparment_code', $departmentCode)->update([
+                'number_of_employes_on_sheet1' => 0,
+                'number_of_employes_on_sheet2' => 0,
+                'number_of_employes_on_sheet3' => 0,
+                'number_of_employes_on_sheet4' => 0,
+                'number_of_employes_on_sheet_regular' => 0,
+            ]);
+
+            foreach ($roomStats as $stat) {
+                $column = match ((int)$stat->level) {
+                    1 => 'number_of_employes_on_sheet1',
+                    2 => 'number_of_employes_on_sheet2',
+                    3 => 'number_of_employes_on_sheet3',
+                    4 => 'number_of_employes_on_sheet4',
+                    default => 'number_of_employes_on_sheet_regular',
+                };
+
+                DB::table('room')->where('id', $stat->room_id)->update([
+                    $column => $stat->count
+                ]);
+            }
+
+            // 2. Update Assignments table for today
+            $today = now()->format('Y-m-d');
+            $assignmentStats = DB::table('employee_assignments')
+                ->where('production_code', $departmentCode)
+                ->where('active', 1)
+                ->where('room_id', '>', 0)
+                ->select('room_id', DB::raw('count(*) as count'))
+                ->groupBy('room_id')
+                ->get();
+
+            foreach ($assignmentStats as $stat) {
+                DB::table('assignments')
+                    ->where('room_id', $stat->room_id)
+                    ->whereDate('start', $today)
+                    ->update(['number_of_employes' => $stat->count]);
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error recalculating room counts: " . $e->getMessage());
         }
     }
 
@@ -534,12 +600,17 @@ class PersonnelController extends Controller
             }
 
             DB::commit();
+
+            // Recalculate counts
+            $this->recalculateRoomCounts(session('user')['department'] ?? session('user')['production_code']);
+
             return response()->json(['success' => true, 'message' => 'Cập nhật phân xưởng công tác thành công!']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
     public function updateDuty(Request $request)
     {
         $employeeId = $request->employee_id;
