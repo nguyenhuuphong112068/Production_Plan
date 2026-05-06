@@ -18,19 +18,23 @@ class PersonnelController extends Controller
 
         // 2. Truy vấn danh sách nhân viên theo bộ phận (kèm nhóm và phòng cho phép)
         $query = DB::table('employees as e')
-            ->join('employee_productions as ep', 'e.id', '=', 'ep.employees_id')
+            ->whereExists(function ($q) use ($departmentCode) {
+                $q->select(DB::raw(1))
+                    ->from('employee_assignments as ea')
+                    ->whereColumn('ea.employees_id', 'e.id')
+                    ->where('ea.production_code', $departmentCode)
+                    ->where('ea.active', 1);
+            })
             ->select('e.*')
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(eg.group_id, ':', eg.active, ':', COALESCE(u.name, eg.created_by), ':', DATE_FORMAT(eg.created_at, '%d/%m/%y')) SEPARATOR '|') FROM employee_groups eg LEFT JOIN employees u ON eg.created_by = u.code WHERE eg.employees_id = e.id) as allowed_groups"))
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(er.room_id, ':', er.level, ':', er.active, ':', COALESCE(u.name, er.created_by), ':', DATE_FORMAT(er.created_at, '%d/%m/%y')) SEPARATOR '|') FROM employee_rooms er LEFT JOIN employees u ON er.created_by = u.code WHERE er.employees_id = e.id) as allowed_rooms_with_levels"))
-            ->addSelect(DB::raw("(SELECT production_code FROM employee_productions WHERE employees_id = e.id AND is_main = 1 LIMIT 1) as main_production"))
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(ep2.production_code, ':', ep2.active, ':', COALESCE(u.name, ep2.created_by), ':', DATE_FORMAT(ep2.created_at, '%d/%m/%y')) SEPARATOR '|') FROM employee_productions ep2 LEFT JOIN employees u ON ep2.created_by = u.code WHERE ep2.employees_id = e.id AND ep2.is_main = 0) as temp_productions"))
-            ->where('ep.production_code', $departmentCode)
-            ->where('ep.active', 1);
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(eg.group_id, ':', eg.active, ':', COALESCE(u.name, eg.created_by), ':', DATE_FORMAT(eg.created_at, '%d/%m/%y')) SEPARATOR '|') FROM (SELECT group_id, employees_id, MAX(active) as active, MAX(created_by) as created_by, MAX(created_at) as created_at FROM employee_assignments WHERE group_id > 0 GROUP BY group_id, employees_id) eg LEFT JOIN employees u ON eg.created_by = u.code WHERE eg.employees_id = e.id) as allowed_groups"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(er.room_id, ':', er.level, ':', er.active, ':', COALESCE(u.name, er.created_by), ':', DATE_FORMAT(er.created_at, '%d/%m/%y')) ORDER BY er.group_id, er.room_id SEPARATOR '|') FROM employee_assignments er LEFT JOIN employees u ON er.created_by = u.code WHERE er.employees_id = e.id AND er.room_id > 0) as allowed_rooms_with_levels"))
+            ->addSelect(DB::raw("(SELECT production_code FROM employee_assignments WHERE employees_id = e.id AND is_main = 1 LIMIT 1) as main_production"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(ep2.production_code, ':', ep2.active, ':', COALESCE(u.name, ep2.created_by), ':', DATE_FORMAT(ep2.created_at, '%d/%m/%y')) SEPARATOR '|') FROM (SELECT production_code, employees_id, MAX(active) as active, MAX(created_by) as created_by, MAX(created_at) as created_at, MAX(is_main) as is_main FROM employee_assignments WHERE production_code != '' GROUP BY production_code, employees_id) ep2 LEFT JOIN employees u ON ep2.created_by = u.code WHERE ep2.employees_id = e.id AND ep2.is_main = 0) as temp_productions"));
 
         if ($filterGroupId) {
             $query->whereExists(function ($q) use ($filterGroupId) {
                 $q->select(DB::raw(1))
-                    ->from('employee_groups')
+                    ->from('employee_assignments')
                     ->whereColumn('employees_id', 'e.id')
                     ->where('group_id', $filterGroupId);
             });
@@ -39,7 +43,7 @@ class PersonnelController extends Controller
         if ($filterRoomId) {
             $query->whereExists(function ($q) use ($filterRoomId) {
                 $q->select(DB::raw(1))
-                    ->from('employee_rooms')
+                    ->from('employee_assignments')
                     ->whereColumn('employees_id', 'e.id')
                     ->where('room_id', $filterRoomId);
             });
@@ -144,12 +148,12 @@ class PersonnelController extends Controller
 
                 // 2. Cập nhật phân xưởng trực thuộc (is_main = 1)
                 // Theo quy tắc: Xóa cái cũ và gán cái mới từ API
-                DB::table('employee_productions')
+                DB::table('employee_assignments')
                     ->where('employees_id', $employeeId)
                     ->where('is_main', 1)
                     ->delete();
 
-                DB::table('employee_productions')->insert([
+                DB::table('employee_assignments')->insert([
                     'employees_id' => $employeeId,
                     'production_code' => $departmentCode,
                     'is_main' => 1,
@@ -240,8 +244,32 @@ class PersonnelController extends Controller
             DB::beginTransaction();
 
             if ($type == 'group') {
-                // Đánh dấu tất cả là inactive trước
-                DB::table('employee_groups')->where('employees_id', $employeeId)->update(['active' => 0]);
+                // Đảm bảo phải có ít nhất 1 tổ active được gửi lên
+                $hasActiveGroup = false;
+                foreach ($ids as $item) {
+                    if (empty($item)) continue;
+                    $parts = explode(':', $item);
+                    if (($parts[1] ?? 1) == 1) {
+                        $hasActiveGroup = true;
+                        break;
+                    }
+                }
+
+                if (!$hasActiveGroup) {
+                    return response()->json(['success' => false, 'message' => 'Một nhân viên luôn luôn phải có ít nhất 1 tổ hoạt động.'], 400);
+                }
+
+                // Đánh dấu tất cả là inactive trước (Đảm bảo chỉ có 1 tổ active)
+                DB::table('employee_assignments')
+                    ->where('employees_id', $employeeId)
+                    ->whereNotNull('group_id')
+                    ->update(['active' => 0]);
+
+                // Khi Tổ bị deactive (hoặc thay đổi), các phòng liên quan cũng phải bị deactive
+                DB::table('employee_assignments')
+                    ->where('employees_id', $employeeId)
+                    ->whereNotNull('room_id')
+                    ->update(['active' => 0]);
 
                 foreach ($ids as $item) {
                     if (empty($item)) continue;
@@ -250,33 +278,102 @@ class PersonnelController extends Controller
                     $id = $parts[0];
                     $active = $parts[1] ?? 1;
 
-                    // Cập nhật hoặc thêm mới với trạng thái active tương ứng
-                    $exists = DB::table('employee_groups')
-                        ->where('employees_id', $employeeId)
-                        ->where('group_id', $id)
-                        ->exists();
+                    // Lấy mã phân xưởng liên quan đến tổ này
+                    $groupCode = DB::table('stage_groups')->where('id', $id)->value('code');
+                    $productionCode = DB::table('room')->where('group_code', $groupCode)->value('deparment_code') ?? '';
 
-                    if ($exists) {
-                        DB::table('employee_groups')
+                    // Kiểm tra xem phân xưởng này có phải là Phân xưởng chính của nhân viên không
+                    $isMain = DB::table('employee_assignments')
+                        ->where('employees_id', $employeeId)
+                        ->where('production_code', $productionCode)
+                        ->where('is_main', 1)
+                        ->where('group_id', 0)
+                        ->where('room_id', 0)
+                        ->exists() ? 1 : 0;
+
+                    // Nếu kích hoạt tổ này, xóa bản ghi "Phân xưởng trống" (group_id=0) nếu có
+                    if ($active == 1) {
+                        DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('production_code', $productionCode)
+                            ->where('group_id', 0)
+                            ->delete();
+                    }
+
+                    // Nếu bật tổ này, cũng tự động kích hoạt lại tất cả các phòng thuộc tổ này (để tránh bị deactive toàn bộ khi chuyển tổ)
+                    if ($active == 1) {
+                        DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
                             ->where('group_id', $id)
+                            ->where('room_id', '>', 0)
+                            ->update(['active' => 1, 'updated_at' => now()]);
+                    }
+
+                    // Nếu tắt tổ này, cũng tắt tất cả các phòng thuộc tổ này
+                    if ($active == 0) {
+                        DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('group_id', $id)
+                            ->where('room_id', '>', 0)
+                            ->update(['active' => 0, 'updated_at' => now()]);
+                    }
+
+                    $exists = DB::table('employee_assignments')
+                        ->where('employees_id', $employeeId)
+                        ->where('production_code', $productionCode)
+                        ->where('group_id', $id)
+                        ->where('room_id', 0)
+                        ->exists();
+
+                    // Nếu đã có bản ghi Phòng trong tổ này, không cần bản ghi Tổ trống (room_id=0)
+                    $hasRooms = DB::table('employee_assignments')
+                        ->where('employees_id', $employeeId)
+                        ->where('group_id', $id)
+                        ->where('room_id', '>', 0)
+                        ->exists();
+
+                    if ($hasRooms && $active == 1) {
+                         // Xóa bản ghi Tổ trống nếu nó tồn tại
+                         DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('group_id', $id)
+                            ->where('room_id', 0)
+                            ->delete();
+                         continue;
+                    }
+
+                    if ($exists) {
+                        DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('production_code', $productionCode)
+                            ->where('group_id', $id)
+                            ->where('room_id', 0)
                             ->update([
+                                'is_main' => $isMain,
                                 'active' => $active,
-                                'created_by' => $userName
+                                'created_by' => $userName,
+                                'updated_at' => now()
                             ]);
                     } else {
-                        DB::table('employee_groups')->insert([
+                        DB::table('employee_assignments')->insert([
                             'employees_id' => $employeeId,
+                            'production_code' => $productionCode,
+                            'is_main' => $isMain,
                             'group_id' => $id,
+                            'room_id' => 0,
                             'active' => $active,
                             'created_by' => $userName,
-                            'created_at' => now()
+                            'created_at' => now(),
+                            'updated_at' => now()
                         ]);
                     }
                 }
             } else {
                 // Đánh dấu tất cả room là inactive trước
-                DB::table('employee_rooms')->where('employees_id', $employeeId)->update(['active' => 0]);
+                DB::table('employee_assignments')
+                    ->where('employees_id', $employeeId)
+                    ->where('room_id', '>', 0)
+                    ->update(['active' => 0]);
 
                 foreach ($ids as $item) {
                     if (empty($item)) continue;
@@ -285,28 +382,70 @@ class PersonnelController extends Controller
                     $level = $parts[1] ?? 1;
                     $active = $parts[2] ?? 1;
 
-                    $exists = DB::table('employee_rooms')
+                    // Lấy thông tin PX và Tổ từ bảng room
+                    $room = DB::table('room')->where('id', $roomId)->first();
+                    $productionCode = $room->deparment_code ?? '';
+                    $groupCode = $room->group_code ?? '';
+                    $groupId = DB::table('stage_groups')->where('code', $groupCode)->value('id') ?? 0;
+
+                    // Nếu gán phòng, tự động xóa các bản ghi cấp cha "trống" (Placeholder)
+                    if ($active == 1) {
+                        // Xóa Tổ trống
+                        DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('group_id', $groupId)
+                            ->where('room_id', 0)
+                            ->delete();
+                        
+                        // Xóa Phân xưởng trống
+                        DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('production_code', $productionCode)
+                            ->where('group_id', 0)
+                            ->delete();
+                    }
+
+                    // Kiểm tra xem phân xưởng này có phải là Phân xưởng chính của nhân viên không
+                    $isMain = DB::table('employee_assignments')
                         ->where('employees_id', $employeeId)
+                        ->where('production_code', $productionCode)
+                        ->where('is_main', 1)
+                        ->where('group_id', 0)
+                        ->where('room_id', 0)
+                        ->exists() ? 1 : 0;
+
+                    $exists = DB::table('employee_assignments')
+                        ->where('employees_id', $employeeId)
+                        ->where('production_code', $productionCode)
+                        ->where('group_id', $groupId)
                         ->where('room_id', $roomId)
                         ->exists();
 
                     if ($exists) {
-                        DB::table('employee_rooms')
+                        DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
+                            ->where('production_code', $productionCode)
+                            ->where('group_id', $groupId)
                             ->where('room_id', $roomId)
                             ->update([
+                                'is_main' => $isMain,
                                 'level' => $level,
                                 'active' => $active,
-                                'created_by' => $userName
+                                'created_by' => $userName,
+                                'updated_at' => now()
                             ]);
                     } else {
-                        DB::table('employee_rooms')->insert([
+                        DB::table('employee_assignments')->insert([
                             'employees_id' => $employeeId,
+                            'production_code' => $productionCode,
+                            'is_main' => $isMain,
+                            'group_id' => $groupId,
                             'room_id' => $roomId,
                             'level' => $level,
                             'active' => $active,
                             'created_by' => $userName,
-                            'created_at' => now()
+                            'created_at' => now(),
+                            'updated_at' => now()
                         ]);
                     }
                 }
@@ -329,54 +468,91 @@ class PersonnelController extends Controller
         try {
             DB::beginTransaction();
 
-            // Lấy mã phân xưởng trực thuộc để không xóa nhầm
-            $mainProduction = DB::table('employee_productions')
+            // 1. Đánh dấu tất cả các phân xưởng (cả trực thuộc và tạm thời) là inactive
+            DB::table('employee_assignments')
                 ->where('employees_id', $employeeId)
-                ->where('is_main', 1)
-                ->first();
-
-            // Đánh dấu tất cả các phân xưởng công tác tạm thời là inactive trước
-            DB::table('employee_productions')
-                ->where('employees_id', $employeeId)
-                ->where('is_main', 0)
+                ->whereNotNull('production_code')
                 ->update(['active' => 0]);
 
-            // Cập nhật hoặc thêm mới các phân xưởng công tác tạm thời
-            foreach ($productions as $code) {
-                if (empty($code)) continue;
-                if ($mainProduction && $code == $mainProduction->production_code) continue;
-
-                $exists = DB::table('employee_productions')
+            // 2. Nếu có phân xưởng tạm thời được chọn, kích hoạt phân xưởng đầu tiên trong danh sách (đảm bảo chỉ có 1)
+            if (!empty($productions)) {
+                $code = $productions[0];
+                
+                // Nếu đã có bất kỳ Tổ hoặc Phòng nào thuộc PX này, ta không cần bản ghi PX trống (group_id=0)
+                $hasChildren = DB::table('employee_assignments')
                     ->where('employees_id', $employeeId)
                     ->where('production_code', $code)
+                    ->where('group_id', '>', 0)
                     ->exists();
 
-                if ($exists) {
-                    DB::table('employee_productions')
+                if ($hasChildren) {
+                    // Đảm bảo các con đều active (tùy nghiệp vụ, ở đây ta chỉ xóa bản ghi 0)
+                    DB::table('employee_assignments')
                         ->where('employees_id', $employeeId)
                         ->where('production_code', $code)
-                        ->update([
+                        ->where('group_id', 0)
+                        ->delete();
+                } else {
+                    $exists = DB::table('employee_assignments')
+                        ->where('employees_id', $employeeId)
+                        ->where('production_code', $code)
+                        ->where('group_id', 0)
+                        ->where('room_id', 0)
+                        ->exists();
+
+                    if ($exists) {
+                        DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('production_code', $code)
+                            ->where('group_id', 0)
+                            ->where('room_id', 0)
+                            ->update([
+                                'active' => 1,
+                                'created_by' => $userName,
+                                'updated_at' => now()
+                            ]);
+                    } else {
+                        DB::table('employee_assignments')->insert([
+                            'employees_id' => $employeeId,
+                            'production_code' => $code,
+                            'is_main' => 0,
+                            'group_id' => 0,
+                            'room_id' => 0,
                             'active' => 1,
                             'created_by' => $userName,
+                            'created_at' => now(),
                             'updated_at' => now()
                         ]);
-                } else {
-                    DB::table('employee_productions')->insert([
-                        'employees_id' => $employeeId,
-                        'production_code' => $code,
-                        'is_main' => 0,
-                        'active' => 1,
-                        'created_by' => $userName,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
+                    }
                 }
+            } else {
+                // 3. Nếu không có phân xưởng tạm thời nào được chọn, tự động kích hoạt lại phân xưởng trực thuộc
+                DB::table('employee_assignments')
+                    ->where('employees_id', $employeeId)
+                    ->where('is_main', 1)
+                    ->update(['active' => 1, 'updated_at' => now()]);
             }
 
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Cập nhật phân xưởng công tác thành công!']);
         } catch (\Exception $e) {
             DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    public function updateDuty(Request $request)
+    {
+        $employeeId = $request->employee_id;
+        $duty = $request->duty;
+
+        try {
+            DB::table('employees')->where('id', $employeeId)->update([
+                'duty' => $duty,
+                'updated_at' => now()
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Cập nhật chức vụ thành công!']);
+        } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

@@ -30,7 +30,9 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - Thanh bên "Tình hình nhân sự" tự động lọc chỉ hiển thị nhân viên thuộc Tổ đang hoạt động.
     - Việc chọn phòng trong giao diện Quản lý nhân sự bị giới hạn trong các phòng do Tổ đó quản lý.
 - **Quy trình làm việc tinh gọn:**
-    - Nút "Thêm phòng" tự động gợi ý phòng đầu tiên còn trống (chưa được chọn).
+    - Nút "Tự động phân công": Thực hiện thuật toán chia bài thông minh dựa trên kỹ năng.
+    - Nút "Xem báo cáo": Mở dashboard quét tình hình nhân sự thời gian thực (nhu cầu vs thực tế).
+    - Nút "Thêm phòng": Tự động gợi ý phòng đầu tiên còn trống (chưa được chọn).
     - Các phân công phòng mới mặc định ở Bậc 4 (tay nghề cao nhất).
     - Gỡ bỏ các nút dư thừa ("Đồng bộ", "Cập nhật") để thay bằng cơ chế lưu tự động qua AJAX (`triggerRoomUpdate`).
 
@@ -69,10 +71,37 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 - **Endpoint:** `http://s-webdev:5070/api/shifts/by-department`
 - **Mục đích:** Đồng bộ lịch trực (shifts) của nhân sự từ hệ thống quản lý nhân sự tập trung.
 - **Bảng ánh xạ mã Bộ phận (Department Mapping):**
-    - `EN` (Kỹ thuật): **3**
-    - `PXTN` (Phân xưởng Thực nghiệm): **6**
+    - `EN` (Kỹ Thuật): **3**
+    - `PXTN` (Phân xưởng Thuốc Nước): **6**
     - `PXV1` (Phân xưởng Viên 1): **15**
-    - `PXVH` (Phân xưởng Viên H): **29**
-    - `PXDN` (Phân xưởng Đa năng): **30**
+    - `PXVH` (Phân xưởng Viên H): **30**
+    - `PXDN` (Phân xưởng Dùng Ngoài): **34**
     - `PXV2` (Phân xưởng Viên 2): **31**
     - *Ghi chú:* Các mã ID này được sử dụng làm tham số `department` trong URL API để lấy đúng dữ liệu ca trực của từng đơn vị.
+
+### 7. Tự động Phân công Nhân sự (Auto Assign)
+- **Chỉ định theo ca:** Nhân sự được tự động lấy từ danh sách lịch trực (sidebar) và gom vào các nhóm (pool) tương ứng với từng ca làm việc (C1, C2, HC...). Những nhân sự đang nghỉ phép (P) sẽ bị loại bỏ.
+- **Tuân thủ Số lượng & Quyền hạn:**
+    - Thuật toán đọc số lượng "Nhân sự cần thiết" của mỗi phòng để xác định số lượng người cần thiết phải xếp.
+    - Hệ thống kiểm tra nghiêm ngặt bảng định mức tay nghề: Nếu nhân sự không có quyền làm việc tại phòng đó (`level` chưa được cấp) sẽ tự động bị loại khỏi danh sách cân nhắc cho phòng đó.
+- **Ưu tiên Tay nghề & Chia đều (Round-Robin):**
+    - **Ưu tiên:** Người có bậc kỹ năng (`level`) cao nhất đối với một phòng sẽ được ưu tiên chọn trước cho phòng đó.
+    - **Công bằng:** Thuật toán áp dụng cơ chế chia bài (Round-robin), rải nhân sự lần lượt từng người một cho tất cả các phòng có nhu cầu trong ca. Sau khi mỗi phòng đã có 1 người, thuật toán mới quay lại xếp người thứ 2... Điều này ngăn chặn tình trạng một phòng giành hết nhân sự trong khi phòng khác trống rỗng.
+- **Tối ưu Hiệu suất (Chống treo):** Tích hợp chốt chặn an toàn giúp hệ thống lập tức thoát khỏi vòng lặp tính toán nếu không còn nhân sự phù hợp (bậc tay nghề chưa đạt), đảm bảo tốc độ phản hồi tức thì ngay trên Client-side.
+    - **Tự động báo cáo:** Sau khi chạy xong, hệ thống tự động bật Dashboard tổng kết kết quả.
+
+### 8. Dashboard Báo cáo & Giám sát (Reporting)
+- **Truy cập:** Thông qua nút "Xem báo cáo" hoặc tự động hiện ra sau khi chạy "Tự động phân công".
+- **Cơ chế Quét thời gian thực:** Mỗi khi mở báo cáo, hệ thống quét toàn bộ UI để đọc lại: Số lượng yêu cầu, số người đã được chọn vào ô, và số người còn dư trong ca trực.
+- **Các chỉ số Dashboard:**
+    - **Thống kê tổng:** Tổng yêu cầu, Đã đáp ứng, Còn thiếu, Tỷ lệ đáp ứng (%).
+    - **Chi tiết theo ca:** Bảng so sánh Yêu cầu vs Thực tế và số lượng **Nhân sự rảnh rỗi** (chưa được phân vào bất kỳ phòng nào).
+    - **Danh sách thiếu hụt:** Liệt kê đích danh các phòng và ca đang bị thiếu người để quản lý can thiệp thủ công.
+
+### 9. Ràng buộc Nhân sự Đơn nhất (Personnel Constraints)
+- **Nguyên tắc:** Một nhân sự tại một thời điểm chỉ có thể hoạt động tại duy nhất 01 Phân xưởng và 01 Tổ.
+- **Phân xưởng (Workshops):**
+    - Hệ thống áp dụng cơ chế loại trừ (Mutually Exclusive). Kích hoạt 01 PX tạm thời sẽ tự động vô hiệu hóa PX trực thuộc và các PX tạm thời khác.
+    - Khi vô hiệu hóa PX tạm thời đang hoạt động, hệ thống tự động kích hoạt lại PX trực thuộc làm mặc định.
+- **Tổ (Groups):** Kích hoạt 01 Tổ mới sẽ tự động vô hiệu hóa các Tổ khác mà nhân viên đang tham gia.
+- **Lợi ích:** Đảm bảo dữ liệu nhân sự luôn duy nhất, không bị đếm trùng khi điều phối nguồn lực liên phân xưởng hoặc liên tổ.

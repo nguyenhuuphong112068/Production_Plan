@@ -163,12 +163,20 @@ class ProductionAssignmentController extends Controller
                     $sTime = $dayStart->copy()->addHours(($code - 1) * 8);
                     $eTime = $sTime->copy()->addHours(8);
 
+                    $shiftCode = $code;
+                    $roomCol = 'number_of_employes_on_sheet' . $shiftCode;
+                    if ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular'; // Sheet 4 mapped to regular
+                    if ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4'; // Sheet 6 mapped to 4
+
+                    $suggestedCount = $room->$roomCol ?? 0;
+
                     $assignments->push((object)[
                         'id' => null,
                         'Sheet' => $code,
                         'start' => $sTime->toDateTimeString(),
                         'end' => $eTime->toDateTimeString(),
                         'Job_description' => trim($jobDescription),
+                        'number_of_employes' => $suggestedCount,
                         'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null]]),
                         'start_time_display' => $sTime->format('H:i'),
                         'end_time_display' => $eTime->format('H:i')
@@ -185,31 +193,35 @@ class ProductionAssignmentController extends Controller
                 'room_name' => $room->name,
                 'theory_display' => $theoryDisplay,
                 'assignments' => $assignments,
-                //'actual_details' => $actuals,
+                'number_of_employes_on_sheet1' => $room->number_of_employes_on_sheet1,
+                'number_of_employes_on_sheet2' => $room->number_of_employes_on_sheet2,
+                'number_of_employes_on_sheet3' => $room->number_of_employes_on_sheet3,
+                'number_of_employes_on_sheet4' => $room->number_of_employes_on_sheet4,
+                'number_of_employes_on_sheet_regular' => $room->number_of_employes_on_sheet_regular,
                 'theory_start' => '07:15', // Giá trị mặc định khi thêm ca mới
                 'theory_end' => '16:00',
             ];
         });
 
         $personnelQuery = DB::table('employees as e')
-            ->join('employee_productions as ep', 'e.id', '=', 'ep.employees_id')
-            ->where('ep.production_code', $production_code)
-            ->where('ep.active', 1)
+            ->join('employee_assignments as ea', 'e.id', '=', 'ea.employees_id')
+            ->where('ea.production_code', $production_code)
+            ->where('ea.active', 1)
             ->where('e.active', 1);
 
         if ($active_group_code && $active_group_code != 'HC') {
             $personnelQuery->whereExists(function ($query) use ($active_group_code) {
                 $query->select(DB::raw(1))
-                    ->from('employee_groups as eg')
-                    ->join('stage_groups as sg', 'eg.group_id', '=', 'sg.id')
-                    ->whereColumn('eg.employees_id', 'e.id')
+                    ->from('employee_assignments as ea2')
+                    ->join('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
+                    ->whereColumn('ea2.employees_id', 'e.id')
                     ->where('sg.code', $active_group_code)
-                    ->where('eg.active', 1);
+                    ->where('ea2.active', 1);
             });
         }
 
         $personnel = $personnelQuery->select('e.*')
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level)) FROM employee_rooms WHERE employees_id = e.id AND active = 1) as allowed_rooms_with_levels"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level)) FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL) as allowed_rooms_with_levels"))
             ->orderBy('e.name')
             ->get();
         
@@ -293,11 +305,27 @@ class ProductionAssignmentController extends Controller
                         'start' => $startDt,
                         'end' => $endDt,
                         'Job_description' => $row['job_description'] ?? null,
+                        'number_of_employes' => $row['number_of_employes'] ?? 0,
                         'assigned_by' => session('user')['userName'] ?? 'System',
                         'created_at' => now(),
                         'updated_at' => now(),
                         'active' => 1
                     ]);
+
+                    // Cập nhật lại định mức ở bảng room tương ứng với ca
+                    $shiftCode = $row['shift'];
+                    $roomCol = null;
+                    if ($shiftCode == '1') $roomCol = 'number_of_employes_on_sheet1';
+                    elseif ($shiftCode == '2') $roomCol = 'number_of_employes_on_sheet2';
+                    elseif ($shiftCode == '3') $roomCol = 'number_of_employes_on_sheet3';
+                    elseif ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4';
+                    elseif ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular';
+
+                    if ($roomCol && isset($row['number_of_employes'])) {
+                        DB::table('room')->where('id', $room_id)->update([
+                            $roomCol => $row['number_of_employes']
+                        ]);
+                    }
 
                     $unique_p_data = collect($p_data)->unique('personnel_id');
                     foreach ($unique_p_data as $p) {

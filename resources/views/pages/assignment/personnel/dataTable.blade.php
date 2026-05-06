@@ -83,10 +83,12 @@
         padding-bottom: 5px;
         border-bottom: 1.5px solid #ced4da;
     }
+
     .room-assignment-row.inactive {
         background-color: #f8f9fa;
         opacity: 0.6;
     }
+
     .room-assignment-row.inactive select {
         background-color: #e9ecef;
         pointer-events: none;
@@ -101,16 +103,19 @@
         padding: 5px 10px;
         font-size: 0.85rem;
     }
+
     .badge-toggle:hover {
         transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
+
     .badge-toggle.inactive {
         background-color: #fff !important;
         border: 1.5px dashed #dee2e6 !important;
         color: #6c757d !important;
         opacity: 0.7;
     }
+
     .badge-toggle.active {
         border: 1.5px solid transparent;
     }
@@ -122,9 +127,11 @@
         padding-bottom: 4px;
         border-bottom: 1px solid #f0f0f0;
     }
+
     .assignment-item:last-child {
         border-bottom: none;
     }
+
     .assignment-meta {
         font-size: 0.75rem;
         color: #999;
@@ -139,6 +146,139 @@
             <h3 class="card-title">Danh sách nhân sự</h3>
         </div>
         <div class="card-body">
+            <!-- Dashboard Section -->
+            @php
+                $depMapping = [
+                    'PXV1' => 15,
+                    'PXV2' => 31,
+                    'PXVH' => 30,
+                    'PXDN' => 30,
+                    'EN' => 3,
+                    'PXN' => 6,
+                    'PXTN' => 6,
+                ];
+                $apiDepId = $depMapping[$currentDepartment] ?? 15;
+            @endphp
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <h5 class="font-weight-bold text-primary mb-0"><i class="fas fa-users"></i> Quản Lý Phân Công</h5>
+                <button id="btn-toggle-dashboard" class="btn btn-sm btn-outline-info shadow-sm">
+                    <i class="fas fa-chart-pie"></i> <span id="text-toggle-dashboard">Hiển thị Dashboard</span>
+                </button>
+            </div>
+
+            <div id="personnel-dashboard" class="mb-4" style="display: none;">
+                <div class="card shadow-sm border-info" style="border-top: 3px solid #17a2b8;">
+                    <div class="card-header bg-light py-2">
+                        <h6 class="mb-0 font-weight-bold text-info"><i class="fas fa-chart-line"></i> Báo Cáo Phân Tích
+                            ({{ $currentDepartment }})</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Local Data Column -->
+                            <div class="col-md-6 border-right">
+                                <h6 class="font-weight-bold text-secondary mb-3">Tình Hình Phân Công Nhân Sự</h6>
+                                <div class="row text-center mb-4">
+                                    <div class="col-6">
+                                        <h3 class="text-primary font-weight-bold mb-0" id="dash-total-emp">{{ count($datas) }}</h3>
+                                        <span class="small font-weight-bold text-muted">Tổng Nhân Sự</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <h3 class="text-success font-weight-bold mb-0" id="dash-active-groups-count">0</h3>
+                                        <span class="small font-weight-bold text-muted">Tổ Đang Hoạt Động</span>
+                                    </div>
+                                </div>
+                                <h6 class="font-weight-bold text-secondary mb-2 small">Phân bổ nhân sự:</h6>
+                                <ul class="nav nav-tabs mb-2" id="dash-stats-tab" role="tablist">
+                                    <li class="nav-item">
+                                        <a class="nav-link active small py-1" id="dash-group-tab" data-toggle="tab" href="#dash-group-content" role="tab">Theo Tổ/Vị Trí</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link small py-1" id="dash-room-tab" data-toggle="tab" href="#dash-room-content" role="tab">Theo Phòng</a>
+                                    </li>
+                                </ul>
+                                
+                                <div class="tab-content" id="dash-stats-tabContent">
+                                    <div class="tab-pane fade show active" id="dash-group-content" role="tabpanel">
+                                        <div id="dash-group-bars-container" style="max-height: 250px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
+                                            <!-- Group stats render here -->
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="dash-room-content" role="tabpanel">
+                                        <div id="dash-room-bars-container" style="max-height: 250px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
+                                            <!-- Room stats render here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- API Data Column -->
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="font-weight-bold text-secondary mb-0">Tình Hình Đi Ca</h6>
+                                    <div class="d-flex align-items-center">
+                                        <input type="date" id="dash-shift-date-input"
+                                            class="form-control form-control-sm mr-2" style="width: 140px;"
+                                            value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}">
+                                        <button class="btn btn-sm btn-outline-secondary" id="btn-refresh-shifts"
+                                            title="Tải lại dữ liệu">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="shift-data-container" class="h-100 d-flex flex-column justify-content-center">
+                                    <div class="text-center py-4 text-muted" id="shift-loading">
+                                        <div class="spinner-border spinner-border-sm text-info mb-2" role="status">
+                                        </div>
+                                        <br><span class="small font-weight-bold">Đang kết nối server nội bộ lấy dữ liệu
+                                            ca...</span>
+                                    </div>
+                                    <div id="shift-content" style="display: none;">
+                                        <div class="row text-center mb-4">
+                                            <div class="col-4">
+                                                <div class="p-3 bg-light rounded shadow-sm border border-success">
+                                                    <h3 class="text-success font-weight-bold mb-0" id="dash-shift-hc">0
+                                                    </h3>
+                                                    <span class="small font-weight-bold text-muted">Hành Chính</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="p-3 bg-light rounded shadow-sm border border-warning">
+                                                    <h3 class="text-warning font-weight-bold mb-0" id="dash-shift-c1">
+                                                        0</h3>
+                                                    <span class="small font-weight-bold text-muted">Ca 1</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="p-3 bg-light rounded shadow-sm border border-primary">
+                                                    <h3 class="text-primary font-weight-bold mb-0" id="dash-shift-c2">
+                                                        0</h3>
+                                                    <span class="small font-weight-bold text-muted">Ca 2</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row text-center justify-content-center">
+                                            <div class="col-4">
+                                                <div class="p-3 bg-light rounded shadow-sm border border-secondary">
+                                                    <h3 class="text-secondary font-weight-bold mb-0"
+                                                        id="dash-shift-c3">0</h3>
+                                                    <span class="small font-weight-bold text-muted">Ca 3</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="p-3 bg-light rounded shadow-sm border border-danger">
+                                                    <h3 class="text-danger font-weight-bold mb-0" id="dash-shift-p">0
+                                                    </h3>
+                                                    <span class="small font-weight-bold text-muted">Nghỉ Phép</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Filter Section -->
             <div class="filter-section">
                 <form action="{{ url()->current() }}" method="GET" id="filter-form">
@@ -160,7 +300,8 @@
                                 onchange="this.form.submit()">
                                 <option value="">-- Tất cả các Phòng --</option>
                                 @foreach ($rooms as $r)
-                                    <option value="{{ $r->id }}" {{ $filterRoomId == $r->id ? 'selected' : '' }}>
+                                    <option value="{{ $r->id }}"
+                                        {{ $filterRoomId == $r->id ? 'selected' : '' }}>
                                         {{ $r->code }} - {{ $r->name }} - {{ $r->main_equiment_name }}
                                     </option>
                                 @endforeach
@@ -181,6 +322,7 @@
                         <th style="width: 40px;">STT</th>
                         <th style="width: 80px;">Mã NV</th>
                         <th style="width: 150px;">Tên Nhân Viên</th>
+                        <th style="width: 120px;">Công Việc</th>
                         <th style="width: 100px;">Phân Xưởng Trực Thuộc</th>
                         <th style="width: 150px;">Phân Xưởng Công Tác Tạm Thời</th>
                         <th style="width: 180px;">Tổ Được Phép Công Tác</th>
@@ -191,43 +333,63 @@
                 <tbody>
                     @foreach ($datas as $data)
                         <tr>
-                            <td>{{ $loop->iteration }} </td>
+                            <td>{{ $loop->iteration }} <br>
+                                @if (session('user')['userGroup'] == 'Admin')
+                                    {{ $data->id }}
+                                @endif
+                            </td>
                             <td>{{ $data->code }}</td>
                             <td>{{ $data->name }}</td>
+                            <td>
+                                <select class="form-control form-control-sm select-duty"
+                                    data-employee-id="{{ $data->id }}">
+                                    <option value="">-- Chọn --</option>
+                                    <option value="Quản lý" {{ $data->duty == 'Quản lý' ? 'selected' : '' }}>Quản lý
+                                    </option>
+                                    <option value="Vận Hành" {{ $data->duty == 'Vận Hành' ? 'selected' : '' }}>Vận
+                                        Hành
+                                    </option>
+                                    <option value="Văn Thư" {{ $data->duty == 'Văn Thư' ? 'selected' : '' }}>Văn Thư
+                                    </option>
+                                </select>
+                            </td>
                             <td class="text-center">
                                 <span class="badge badge-info shadow-sm">{{ $data->main_production }}</span>
                             </td>
                             <td>
                                 <div class="temp-productions-list" data-employee-id="{{ $data->id }}">
                                     @php
-                                        $tempProds = $data->temp_productions ? explode('|', $data->temp_productions) : [];
+                                        $tempProds = $data->temp_productions
+                                            ? explode('|', $data->temp_productions)
+                                            : [];
                                         $tempMap = [];
-                                        foreach($tempProds as $tp) {
+                                        foreach ($tempProds as $tp) {
                                             $parts = explode(':', $tp);
-                                            if(count($parts) >= 2) {
+                                            if (count($parts) >= 2) {
                                                 $tempMap[$parts[0]] = [
                                                     'active' => $parts[1],
                                                     'user' => $parts[2] ?? 'N/A',
-                                                    'date' => $parts[3] ?? ''
+                                                    'date' => $parts[3] ?? '',
                                                 ];
                                             }
                                         }
                                         $allProds = ['PXV1', 'PXV2', 'PXVH', 'PXTN', 'PXDN'];
                                     @endphp
                                     @foreach ($allProds as $prod)
-                                        @if($prod != $data->main_production)
-                                            @php 
+                                        @if ($prod != $data->main_production)
+                                            @php
                                                 $info = $tempMap[$prod] ?? null;
                                                 $isActive = $info && $info['active'] == 1;
                                             @endphp
                                             <div class="assignment-item">
-                                                <span class="badge badge-toggle {{ $isActive ? 'badge-info active' : 'inactive' }} btn-toggle-prod"
-                                                      data-prod="{{ $prod }}"
-                                                      data-active="{{ $isActive ? 1 : 0 }}"
-                                                      title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
+                                                <span
+                                                    class="badge badge-toggle {{ $isActive ? 'badge-info active' : 'inactive' }} btn-toggle-prod"
+                                                    data-prod="{{ $prod }}"
+                                                    data-active="{{ $isActive ? 1 : 0 }}"
+                                                    title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
                                                     {{ $prod }}
                                                 </span>
-                                                @if($info)
+                                                @if ($info)
                                                     <span class="assignment-meta">
                                                         <i class="fas fa-user-edit"></i> {{ $info['user'] }} <br>
                                                         <i class="fas fa-calendar-check"></i> {{ $info['date'] }}
@@ -242,22 +404,25 @@
                                 <div class="groups-list-container" data-employee-id="{{ $data->id }}">
                                     <div class="groups-badges mb-2">
                                         @php
-                                            $groupPermissions = $data->allowed_groups ? explode('|', $data->allowed_groups) : [];
+                                            $groupPermissions = $data->allowed_groups
+                                                ? explode('|', $data->allowed_groups)
+                                                : [];
                                         @endphp
-                                        @foreach($groupPermissions as $gp)
-                                            @php 
+                                        @foreach ($groupPermissions as $gp)
+                                            @php
                                                 $parts = explode(':', $gp);
                                                 $gId = $parts[0];
                                                 $isActive = ($parts[1] ?? 1) == 1;
                                                 $gUser = $parts[2] ?? 'N/A';
                                                 $gDate = $parts[3] ?? '';
-                                                $groupName = $groups->where('id', $gId)->first()->name ?? "N/A";
+                                                $groupName = $groups->where('id', $gId)->first()->name ?? 'N/A';
                                             @endphp
                                             <div class="assignment-item">
-                                                <span class="badge badge-toggle {{ $isActive ? 'badge-primary active' : 'inactive' }} btn-toggle-group"
-                                                      data-group-id="{{ $gId }}"
-                                                      data-active="{{ $isActive ? 1 : 0 }}"
-                                                      title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
+                                                <span
+                                                    class="badge badge-toggle {{ $isActive ? 'badge-primary active' : 'inactive' }} btn-toggle-group"
+                                                    data-group-id="{{ $gId }}"
+                                                    data-active="{{ $isActive ? 1 : 0 }}"
+                                                    title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
                                                     {{ $groupName }}
                                                 </span>
                                                 <span class="assignment-meta">
@@ -267,16 +432,20 @@
                                             </div>
                                         @endforeach
                                     </div>
-                                    <select class="form-control form-control-sm select-add-group" style="width: 100%;">
+                                    <select class="form-control form-control-sm select-add-group"
+                                        style="width: 100%;">
                                         <option value="">+ Thêm Tổ...</option>
                                         @foreach ($groups as $g)
-                                            @php 
+                                            @php
                                                 $isAlreadyInList = false;
-                                                foreach($groupPermissions as $gp) {
-                                                    if(explode(':', $gp)[0] == $g->id) { $isAlreadyInList = true; break; }
+                                                foreach ($groupPermissions as $gp) {
+                                                    if (explode(':', $gp)[0] == $g->id) {
+                                                        $isAlreadyInList = true;
+                                                        break;
+                                                    }
                                                 }
                                             @endphp
-                                            @if(!$isAlreadyInList)
+                                            @if (!$isAlreadyInList)
                                                 <option value="{{ $g->id }}">{{ $g->name }}</option>
                                             @endif
                                         @endforeach
@@ -287,7 +456,9 @@
                                 <div class="room-assignments-container" data-employee-id="{{ $data->id }}">
                                     <div class="room-list">
                                         @php
-                                            $groupPermissions = $data->allowed_groups ? explode('|', $data->allowed_groups) : [];
+                                            $groupPermissions = $data->allowed_groups
+                                                ? explode('|', $data->allowed_groups)
+                                                : [];
                                             $assignments = $data->allowed_rooms_with_levels
                                                 ? explode('|', $data->allowed_rooms_with_levels)
                                                 : [];
@@ -304,9 +475,8 @@
                                                 $selectedGroupIds = [];
                                                 foreach ($groupPermissions as $gp) {
                                                     $gParts = explode(':', $gp);
-                                                    if (($gParts[1] ?? 1) == 1) {
-                                                        $selectedGroupIds[] = $gParts[0];
-                                                    }
+                                                    // Luôn lấy ID tổ để hiển thị phòng, kể cả khi tổ bị deactive
+                                                    $selectedGroupIds[] = $gParts[0];
                                                 }
 
                                                 $selectedGroupCodes = $groups
@@ -314,8 +484,17 @@
                                                     ->pluck('code')
                                                     ->toArray();
                                             @endphp
+                                            @php
+                                                $rObj = $rooms->firstWhere('id', $rId);
+                                                $rGrpId = 0;
+                                                if ($rObj) {
+                                                    $rGrpCode = $rObj->group_code;
+                                                    $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
+                                                }
+                                            @endphp
                                             <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
-                                                data-active="{{ $rActive }}">
+                                                data-active="{{ $rActive }}"
+                                                data-group-id="{{ $rGrpId }}">
                                                 <select class="form-control form-control-sm room-id-select mr-1"
                                                     style="width: 350px;">
                                                     <option value="">-- Phòng --</option>
@@ -344,7 +523,8 @@
                                                     $hYear = $workHours[$data->id][$rId]['year'] ?? 0;
                                                     $hTotal = $workHours[$data->id][$rId]['total'] ?? 0;
                                                 @endphp
-                                                <span class="work-hours-badge" title="Thời gian đã làm việc tại phòng này">
+                                                <span class="work-hours-badge"
+                                                    title="Thời gian đã làm việc tại phòng này">
                                                     <span class="yearly" title="Năm hiện tại"><i
                                                             class="fas fa-calendar-alt"></i>{{ $hYear }}h</span>
                                                     |
@@ -400,31 +580,13 @@
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ asset('assets/vendor/select2/select2.min.js') }}"></script>
 
-@if (session('success'))
-    <script>
-        Swal.fire({
-            title: 'Thành công!',
-            text: '{{ session('success') }}',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: false
-        });
-    </script>
-@endif
-
-@if (session('error'))
-    <script>
-        Swal.fire({
-            title: 'Lỗi!',
-            text: '{{ session('error') }}',
-            icon: 'error'
-        });
-    </script>
-@endif
 
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
+
+        const groupsData = @json($groups);
+        const roomsData = @json($rooms);
 
         function initPermissionsSelect2() {
             $('.select2-filter').select2({
@@ -446,7 +608,6 @@
             const groupId = $select.val();
             if (!groupId) return;
 
-            // Collect all current groups including the new one
             const groupData = [];
             $select.closest('.groups-list-container').find('.btn-toggle-group').each(function() {
                 groupData.push($(this).data('group-id') + ':' + $(this).data('active'));
@@ -454,8 +615,6 @@
             groupData.push(groupId + ':1');
 
             updatePermissionAjax(employeeId, 'group', groupData);
-            
-            // Reload page to reflect changes (or we could append badge manually)
             location.reload();
         });
 
@@ -463,80 +622,137 @@
         $(document).on('click', '.btn-toggle-prod', function() {
             const $badge = $(this);
             const employeeId = $badge.closest('.temp-productions-list').data('employee-id');
-            
-            // Collect all prod statuses
-            const prodData = [];
+            const isActivating = !($badge.data('active') == 1);
+
+            const finalProds = [];
             $badge.closest('.temp-productions-list').find('.btn-toggle-prod').each(function() {
-                let active = $(this).data('active');
-                if (this === $badge[0]) active = (active == 1 ? 0 : 1);
-                if (active == 1 || $(this).hasClass('active') || this === $badge[0]) {
-                    // Only send those that are in DB (active or inactive)
-                    // If it was never active, we might not need to send it, 
-                    // but for Prods we have a fixed list.
-                    prodData.push($(this).data('prod') + (active == 1 ? '' : ':inactive'));
+                if ($(this).is($badge)) {
+                    finalProds.push($badge.data('prod') + ':' + (isActivating ? 1 : 0));
+                } else {
+                    finalProds.push($(this).data('prod') + ':' + $(this).data('active'));
                 }
             });
 
-            // Need to update the AJAX handler or payload for updateProductions
-            // Let's refine the payload for productions
-            const finalProds = [];
-            $badge.closest('.temp-productions-list').find('.btn-toggle-prod').each(function() {
-                let active = $(this).data('active');
-                if (this === $badge[0]) active = (active == 1 ? 0 : 1);
-                if (active == 1) finalProds.push($(this).data('prod'));
-            });
+            updatePermissionAjax(employeeId, 'prod', finalProds);
+            $badge.data('active', isActivating ? 1 : 0);
+            if (isActivating) {
+                $badge.addClass('badge-primary active').removeClass('inactive');
+            } else {
+                $badge.removeClass('badge-primary active').addClass('inactive');
+            }
+        });
 
-            // Actually, the current updateProductions logic deletes/updates based on the list.
-            // If I want to support "inactive" in DB for prods, I need to send the full list with status.
-            // But let's stay consistent with the "ids" pattern.
-            
+        // Toggle Organizational Group Badge
+        $(document).on('click', '.btn-toggle-group', function() {
+            const $badge = $(this);
+            const employeeId = $badge.closest('.groups-list-container').data('employee-id');
+            const isActivating = !($badge.data('active') == 1);
+
+            const $container = $badge.closest('.groups-list-container');
+            const $tr = $badge.closest('tr');
+
+            if (isActivating) {
+                $container.find('.btn-toggle-group').each(function() {
+                    if ($(this).is($badge)) return;
+                    $(this).data('active', 0).removeClass('badge-primary active').addClass('inactive');
+                    $(this).attr('title', 'Nhấn để kích hoạt');
+                    const otherGroupId = $(this).data('group-id');
+                    $tr.find('.room-assignment-row[data-group-id="' + otherGroupId + '"]').each(function() {
+                        const $row = $(this);
+                        $row.attr('data-active', 0).addClass('inactive');
+                        const $btn = $row.find('.btn-toggle-room-active');
+                        $btn.removeClass('btn-danger').addClass('btn-success').attr('title', 'Kích hoạt');
+                        $btn.find('i').removeClass('fas fa-times').addClass('fas fa-undo');
+                    });
+                });
+                $badge.data('active', 1).addClass('badge-primary active').removeClass('inactive');
+                $badge.attr('title', 'Nhấn để vô hiệu hóa');
+                const currentGroupId = $badge.data('group-id');
+                $tr.find('.room-assignment-row[data-group-id="' + currentGroupId + '"]').each(function() {
+                    const $row = $(this);
+                    $row.attr('data-active', 1).removeClass('inactive');
+                    const $btn = $row.find('.btn-toggle-room-active');
+                    $btn.addClass('btn-danger').removeClass('btn-success').attr('title', 'Vô hiệu hóa');
+                    $btn.find('i').addClass('fas fa-times').removeClass('fas fa-undo');
+                });
+            } else {
+                const activeCount = $container.find('.btn-toggle-group.active').length;
+                if (activeCount <= 1) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Thao tác bị chặn',
+                        text: 'Một nhân viên luôn luôn phải có ít nhất 1 tổ hoạt động.'
+                    });
+                    return;
+                }
+                $badge.data('active', 0).removeClass('badge-primary active').addClass('inactive');
+                $badge.attr('title', 'Nhấn để kích hoạt');
+                const groupId = $badge.data('group-id');
+                $tr.find('.room-assignment-row[data-group-id="' + groupId + '"]').each(function() {
+                    const $row = $(this);
+                    $row.attr('data-active', 0).addClass('inactive');
+                    const $btn = $row.find('.btn-toggle-room-active');
+                    $btn.removeClass('btn-danger').addClass('btn-success').attr('title', 'Kích hoạt');
+                    $btn.find('i').removeClass('fas fa-times').addClass('fas fa-undo');
+                });
+            }
+
+            const groupData = [];
+            $container.find('.btn-toggle-group').each(function() {
+                groupData.push($(this).data('group-id') + ':' + $(this).data('active'));
+            });
+            updatePermissionAjax(employeeId, 'group', groupData);
+        });
+
+        // Handle Duty Change
+        $(document).on('change', '.select-duty', function() {
+            const $select = $(this);
+            const employeeId = $select.data('employee-id');
+            const duty = $select.val();
+
             $.ajax({
-                url: "{{ route('pages.assignment.personnel.updateProductions') }}",
+                url: "{{ route('pages.assignment.personnel.updateDuty') }}",
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',
                     employee_id: employeeId,
-                    productions: finalProds // The controller currently sets active=0 for those NOT in this list
+                    duty: duty
                 },
                 success: function(res) {
                     if (res.success) {
-                        $badge.data('active', $badge.data('active') == 1 ? 0 : 1);
-                        $badge.toggleClass('badge-info active').toggleClass('inactive');
-                        Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 }).fire({ icon: 'success', title: res.message });
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).fire({
+                            icon: 'success',
+                            title: res.message
+                        });
+                    } else {
+                        Swal.fire('Lỗi', res.message, 'error');
                     }
+                },
+                error: function() {
+                    Swal.fire('Lỗi server', 'Không thể cập nhật chức vụ', 'error');
                 }
             });
-        });
-
-        // Toggle Group Badge
-        $(document).on('click', '.btn-toggle-group', function() {
-            const $badge = $(this);
-            const employeeId = $badge.closest('.groups-list-container').data('employee-id');
-            
-            const groupData = [];
-            $badge.closest('.groups-list-container').find('.btn-toggle-group').each(function() {
-                let active = $(this).data('active');
-                if (this === $badge[0]) active = (active == 1 ? 0 : 1);
-                groupData.push($(this).data('group-id') + ':' + active);
-            });
-
-            updatePermissionAjax(employeeId, 'group', groupData);
-            
-            $badge.data('active', $badge.data('active') == 1 ? 0 : 1);
-            $badge.toggleClass('badge-primary active').toggleClass('inactive');
         });
 
         // Handle Room Assignment Actions
         $(document).on('click', '.btn-add-room-row', function() {
             const $tr = $(this).closest('tr');
             const $list = $tr.find('.room-list');
-            const selectedGroupIds = $tr.find('.select-groups').val() || [];
+            const selectedGroupIds = [];
+            $tr.find('.btn-toggle-group.active').each(function() {
+                selectedGroupIds.push($(this).data('group-id').toString());
+            });
 
             if (selectedGroupIds.length === 0) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Chú ý',
-                    text: 'Vui lòng chọn ít nhất một Tổ ở cột "Tổ Cho Phép" trước khi thêm phòng.',
+                    text: 'Vui lòng chọn ít nhất một Tổ ở cột "Tổ Được Phép Công Tác" trước khi thêm phòng.',
                     timer: 3000
                 });
                 return;
@@ -547,20 +763,15 @@
                 .map(g => g.code);
 
             const filteredRooms = roomsData.filter(r => selectedCodes.includes(r.group_code));
-
-            // Find rooms already selected in this row
             const alreadySelectedIds = [];
             $tr.find('.room-id-select').each(function() {
                 const val = $(this).val();
                 if (val) alreadySelectedIds.push(val.toString());
             });
 
-            // Find first available room not yet selected
-            const availableRoom = filteredRooms.find(r => !alreadySelectedIds.includes(r.id
-                .toString()));
+            const availableRoom = filteredRooms.find(r => !alreadySelectedIds.includes(r.id.toString()));
 
-            if (!availableRoom && filteredRooms.length > 0 && alreadySelectedIds.length >= filteredRooms
-                .length) {
+            if (!availableRoom && filteredRooms.length > 0 && alreadySelectedIds.length >= filteredRooms.length) {
                 Swal.fire({
                     icon: 'info',
                     title: 'Thông báo',
@@ -570,16 +781,15 @@
                 return;
             }
 
-            let roomOptions = '<option value="">-- Phòng --</option>';
+            let roomOptions = '<option value="">-- Chọn phòng --</option>';
             filteredRooms.forEach(r => {
-                const isSelected = availableRoom && r.id === availableRoom.id;
-                roomOptions +=
-                    `<option value="${r.id}" ${isSelected ? 'selected' : ''}>${r.code} - ${r.name} - ${r.main_equiment_name}</option>`;
+                const isSelected = alreadySelectedIds.includes(r.id.toString()) ? 'disabled' : '';
+                roomOptions += `<option value="${r.id}" ${isSelected}>${r.code} - ${r.name} - ${r.main_equiment_name}</option>`;
             });
 
             const newRow = `
-                <div class="room-assignment-row d-flex align-items-center mb-1" data-active="1">
-                    <select class="form-control form-control-sm room-id-select mr-1" style="width: 350px;">
+                <div class="room-assignment-row d-flex align-items-center mb-1" data-active="1" data-group-id="${availableRoom ? availableRoom.group_id : ''}">
+                    <select class="form-control form-control-sm room-id-select mr-1">
                         ${roomOptions}
                     </select>
                     <select class="form-control form-control-sm room-level-select mr-1 lvl-4" style="width: 70px;">
@@ -588,27 +798,35 @@
                         <option value="3">3</option>
                         <option value="4" selected>4</option>
                     </select>
-                    <button class="btn btn-sm btn-danger btn-toggle-room-active ml-1" title="Vô hiệu hóa">
+                    <button class="btn btn-danger btn-xs btn-toggle-room-active mr-1" title="Vô hiệu hóa">
                         <i class="fas fa-times"></i>
+                    </button>
+                    <button class="btn btn-warning btn-xs btn-remove-room-row" title="Xóa phòng">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             `;
             $list.append(newRow);
-
-            // Trigger update if we auto-selected a room
             if (availableRoom) {
+                const $newSelect = $list.find('.room-id-select').last();
+                $newSelect.val(availableRoom.id);
                 triggerRoomUpdate($tr.find('.room-assignments-container'));
             }
+        });
+
+        $(document).on('click', '.btn-remove-room-row', function() {
+            const $container = $(this).closest('.room-assignments-container');
+            $(this).closest('.room-assignment-row').remove();
+            triggerRoomUpdate($container);
         });
 
         $(document).on('click', '.btn-toggle-room-active', function() {
             const $btn = $(this);
             const $row = $btn.closest('.room-assignment-row');
             const $container = $btn.closest('.room-assignments-container');
-            
             const currentActive = $row.attr('data-active') == '1' ? 1 : 0;
             const newActive = currentActive === 1 ? 0 : 1;
-            
+
             $row.attr('data-active', newActive);
             if (newActive === 0) {
                 $row.addClass('inactive');
@@ -619,7 +837,6 @@
                 $btn.removeClass('btn-success').addClass('btn-danger').attr('title', 'Vô hiệu hóa');
                 $btn.find('i').removeClass('fas fa-undo').addClass('fas fa-times');
             }
-            
             triggerRoomUpdate($container);
         });
 
@@ -667,9 +884,8 @@
                     text: 'Mỗi phòng chỉ được phép gán một lần cho một nhân sự. Vui lòng kiểm tra lại.',
                     timer: 3000
                 });
-                return; // BLOCK SAVING
+                return;
             }
-
             updatePermissionAjax(employeeId, 'room', idsWithLevels);
         }
 
@@ -694,25 +910,10 @@
                             icon: 'success',
                             title: res.message
                         });
-                    } else {
-                        Swal.fire('Lỗi', res.message, 'error');
                     }
-                },
-                error: function(xhr) {
-                    Swal.fire('Lỗi server', 'Không thể cập nhật phân quyền', 'error');
                 }
             });
         }
-
-        $('.btn-edit').click(function() {
-            const button = $(this);
-            const modal = $('#update_modal');
-
-            modal.find('input[name="id"]').val(button.data('id'));
-            modal.find('input[name="code"]').val(button.data('code'));
-            modal.find('input[name="name"]').val(button.data('name'));
-            modal.find('input[name="deparment_code"]').val(button.data('deparment_code'));
-        });
 
         $('#data_table_personnel').DataTable({
             paging: true,
@@ -722,22 +923,218 @@
             info: true,
             autoWidth: false,
             pageLength: 25,
-            lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "Tất cả"]
-            ],
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",
                 info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-                paginate: {
-                    previous: "Trước",
-                    next: "Sau"
-                }
+                paginate: { previous: "Trước", next: "Sau" }
             },
             drawCallback: function() {
                 initPermissionsSelect2();
+                if (typeof renderLocalDashboard === 'function' && $('#personnel-dashboard').is(':visible')) {
+                    renderLocalDashboard();
+                }
             }
         });
+
+        // Dashboard Logic
+        const apiDepId = {{ $apiDepId ?? 15 }};
+
+        function renderLocalDashboard() {
+            var table = $('#data_table_personnel').DataTable();
+            var allRows = table.rows().nodes();
+            
+            let totalCount = allRows.length;
+            let activeEmps = 0;
+            let activeGroupsSet = new Set();
+            
+            let groupStats = {
+                'Quản lý': 0,
+                'Văn Thư': 0,
+                'Chưa phân công': 0
+            };
+            let roomStats = {};
+
+            $(allRows).each(function() {
+                let duty = $(this).find('.select-duty').val();
+                let $activeGroups = $(this).find('.btn-toggle-group.active');
+                let $activeRooms = $(this).find('.room-assignment-row[data-active="1"] .room-id-select');
+                
+                let isAssigned = false;
+                
+                if (duty === 'Quản lý') {
+                    groupStats['Quản lý']++;
+                    isAssigned = true;
+                } else if (duty === 'Văn Thư') {
+                    groupStats['Văn Thư']++;
+                    isAssigned = true;
+                } else {
+                    if ($activeGroups.length > 0) {
+                        isAssigned = true;
+                        $activeGroups.each(function() {
+                            let groupName = $(this).text().trim();
+                            if (!groupStats[groupName]) groupStats[groupName] = 0;
+                            groupStats[groupName]++;
+                            activeGroupsSet.add(groupName);
+                        });
+                    }
+                }
+
+                if (isAssigned) {
+                    activeEmps++;
+                    $activeRooms.each(function() {
+                        let roomText = $(this).find('option:selected').text();
+                        if (roomText && $(this).val()) {
+                            let parts = roomText.split('-');
+                            let cleanName = parts.length > 1 ? parts[0].trim() + ' - ' + parts[1].trim() : roomText.trim();
+                            if (!roomStats[cleanName]) roomStats[cleanName] = 0;
+                            roomStats[cleanName]++;
+                        }
+                    });
+                } else {
+                    groupStats['Chưa phân công']++;
+                }
+            });
+
+            $('#dash-total-emp').text(totalCount);
+            $('#dash-active-groups-count').text(activeGroupsSet.size);
+
+            let gContainer = $('#dash-group-bars-container');
+            gContainer.empty();
+            let gKeys = Object.keys(groupStats);
+            gKeys.sort(function(a, b) {
+                if (a === 'Quản lý') return -1;
+                if (b === 'Quản lý') return 1;
+                if (a === 'Văn Thư') return -1;
+                if (b === 'Văn Thư') return 1;
+                if (a === 'Chưa phân công') return 1;
+                if (b === 'Chưa phân công') return -1;
+                return a.localeCompare(b);
+            });
+
+            gKeys.forEach(function(key) {
+                let count = groupStats[key];
+                if (count === 0 && key !== 'Quản lý' && key !== 'Văn Thư' && key !== 'Chưa phân công') return;
+                
+                let percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+                let colorClass = 'bg-info';
+                let textClass = '';
+                
+                if (key === 'Quản lý') colorClass = 'bg-primary';
+                else if (key === 'Văn Thư') colorClass = 'bg-warning';
+                else if (key === 'Chưa phân công') {
+                    colorClass = 'bg-danger';
+                    textClass = 'text-danger';
+                } else colorClass = 'bg-success';
+                
+                gContainer.append(`
+                    <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
+                        <span class="${textClass}">${key}</span>
+                        <span class="${textClass}">${count} (${percentage}%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar ${colorClass}" style="width: ${percentage}%"></div>
+                    </div>
+                `);
+            });
+
+            let rContainer = $('#dash-room-bars-container');
+            rContainer.empty();
+            let rKeys = Object.keys(roomStats);
+            rKeys.sort((a,b) => roomStats[b] - roomStats[a]);
+            
+            if (rKeys.length === 0) {
+                rContainer.append('<div class="text-center text-muted small mt-3">Chưa có dữ liệu phòng</div>');
+            } else {
+                rKeys.forEach(function(key) {
+                    let count = roomStats[key];
+                    let percentage = activeEmps > 0 ? Math.round((count / activeEmps) * 100) : 0;
+                    rContainer.append(`
+                        <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
+                            <span class="text-secondary text-truncate" style="max-width: 80%;" title="${key}">${key}</span>
+                            <span class="text-secondary">${count}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-info" style="width: ${percentage}%"></div>
+                        </div>
+                    `);
+                });
+            }
+        }
+
+        function fetchShiftData() {
+            $('#shift-loading').show();
+            $('#shift-content').hide();
+            const selectedDateStr = $('#dash-shift-date-input').val();
+            if (!selectedDateStr) {
+                $('#shift-loading').html('<span class="text-danger small font-weight-bold">Vui lòng chọn ngày.</span>');
+                return;
+            }
+            const parts = selectedDateStr.split('-');
+            const currentYear = parseInt(parts[0], 10);
+            const currentMonth = parseInt(parts[1], 10);
+            const currentDay = parseInt(parts[2], 10);
+            const url = `/assignemnt/production/shifts?month=${currentMonth}&year=${currentYear}&department=${apiDepId}`;
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(data) {
+                    $('#shift-loading').hide();
+                    $('#shift-content').show();
+                    let hc = 0, c1 = 0, c2 = 0, c3 = 0, p = 0;
+                    const targetDayStr = 'day' + currentDay;
+
+                    if (Array.isArray(data)) {
+                        data.forEach(function(emp) {
+                            if (emp.days && emp.days[targetDayStr]) {
+                                let shift = emp.days[targetDayStr];
+                                if (shift === 'HC') hc++;
+                                else if (shift === 'C1') c1++;
+                                else if (shift === 'C2') c2++;
+                                else if (shift === 'C3') c3++;
+                                else if (shift === 'P') p++;
+                            }
+                        });
+                    }
+                    $('#dash-shift-hc').text(hc);
+                    $('#dash-shift-c1').text(c1);
+                    $('#dash-shift-c2').text(c2);
+                    $('#dash-shift-c3').text(c3);
+                    $('#dash-shift-p').text(p);
+                },
+                error: function() {
+                    $('#shift-loading').html('<span class="text-danger small font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Lỗi kết nối máy chủ.</span>');
+                }
+            });
+        }
+
+        $('#btn-toggle-dashboard').click(function(e) {
+            e.preventDefault();
+            const dash = $('#personnel-dashboard');
+            if (dash.is(':visible')) {
+                dash.slideUp();
+                $('#text-toggle-dashboard').text('Hiển thị Dashboard');
+                $(this).removeClass('btn-info').addClass('btn-outline-info');
+            } else {
+                dash.slideDown();
+                $('#text-toggle-dashboard').text('Ẩn Dashboard');
+                $(this).removeClass('btn-outline-info').addClass('btn-info');
+                renderLocalDashboard();
+                fetchShiftData();
+            }
+        });
+
+        $('#btn-refresh-shifts').click(function(e) { e.preventDefault(); fetchShiftData(); });
+        $('#dash-shift-date-input').change(function() { fetchShiftData(); });
+
+        $(document).on('change', '.select-duty', function() {
+            if ($('#personnel-dashboard').is(':visible')) renderLocalDashboard();
+        });
+        $(document).on('click', '.btn-toggle-group', function() {
+            if ($('#personnel-dashboard').is(':visible')) setTimeout(renderLocalDashboard, 100);
+        });
+
     });
 </script>

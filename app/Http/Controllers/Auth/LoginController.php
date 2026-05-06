@@ -125,24 +125,27 @@ class LoginController extends Controller
                         ]);
                     }
 
-                    // 2. Đồng bộ vào bảng phân vùng sản xuất (employee_productions)
-                    $prodAssignment = DB::table('employee_productions')
+                    // 2. Đồng bộ vào bảng phân vùng sản xuất (employee_assignments)
+                    $prodAssignment = DB::table('employee_assignments')
                         ->where('employees_id', $employeeId)
                         ->where('production_code', $departmentCode)
+                        ->where('is_main', 1)
                         ->first();
 
                     if (!$prodAssignment) {
-                        DB::table('employee_productions')->insert([
+                        DB::table('employee_assignments')->insert([
                             'employees_id' => $employeeId,
                             'production_code' => $departmentCode,
                             'is_main' => 1,
+                            'group_id' => 0,
+                            'room_id' => 0,
                             'active' => 1,
                             'created_by' => 'System Sync',
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
                     } else if ($prodAssignment->active == 0) {
-                        DB::table('employee_productions')
+                        DB::table('employee_assignments')
                             ->where('id', $prodAssignment->id)
                             ->update([
                                 'active' => 1,
