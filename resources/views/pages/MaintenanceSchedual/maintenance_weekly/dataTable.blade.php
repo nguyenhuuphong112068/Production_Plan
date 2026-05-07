@@ -8,9 +8,14 @@
             return $rooms->first()->stage ?? 'Không xác định';
         })
         ->sortBy(function ($rooms, $stage) {
+            // Đưa "Bảo Trì - Hiệu Chuẩn" xuống cuối
+            if ($stage === 'Bảo Trì - Hiệu Chuẩn') {
+                return 1000;
+            }
             // Lấy order_by thấp nhất trong stage để sort
             return $rooms->first()->first()->order_by ?? 999;
         });
+
 @endphp
 
 <div class="content-wrapper">
@@ -47,7 +52,7 @@
                 </div>
                 <div class="col-md-3 text-right">
                     <button class="btn btn-primary" onclick="window.print()">
-                        <i class="fas fa-print"></i> In Báo Cáo
+                        <i class="fas fa-print"></i> In Lịch
                     </button>
                 </div>
             </div>
@@ -88,6 +93,9 @@
                                     $stageCount = 0;
                                 @endphp
                                 @forelse($groupedByStage as $stageName => $roomsInStage)
+                                    {{-- @php
+                                        dd($groupedByStage, $stageName, $roomsInStage);
+                                    @endphp --}}
                                     @php $stageId = 'stage_' . (++$stageCount); @endphp
                                     <!-- Stage Header Row -->
                                     <tr class="stage-header"
@@ -163,20 +171,10 @@
                                                                 </div>
                                                                 <div style="font-size: 12px; color: #333;">
                                                                     <b>{{ $eventIdx++ }}.</b>
-                                                                    @if ($e->parent_eqp_id == $e->inst_id && $e->Eqp_name == $e->inst_name)
-                                                                        <span>{{ $e->inst_name ?? '—' }}</span>
-                                                                    @else
-                                                                        <span
-                                                                            class="text-dark">{{ $e->inst_id . '-' . $e->inst_name ?? '—' }}</span>
-                                                                        <span
-                                                                            class="text-dark small">({{ $e->Eqp_name ?? '—' }})</span>
-                                                                        @if (session('user')['userGroup'] == 'Admin')
-                                                                            {{-- @php
-                                                                                dd($events);
-                                                                            @endphp --}}
-
-                                                                            {{ $e->sp_id }}
-                                                                        @endif
+                                                                    <span class="text-dark"><b>{{ $e->inst_id ?? '—' }}</b> - {{ $e->inst_name ?? '—' }}</span>
+                                                                    @if ($e->parent_eqp_id != $e->inst_id || $e->Eqp_name != $e->inst_name)
+                                                                        <br>
+                                                                        <span class="text-muted small" style="margin-left: 20px;">({{ $e->Eqp_name ?? '—' }})</span>
                                                                     @endif
                                                                 </div>
                                                                 <div class="text-success font-weight-bold mt-1"

@@ -41,12 +41,12 @@ class MaintenanceWeeklyReportController extends Controller
             ->whereBetween('sp.start', [$startOfWeek, $endOfWeek])
             ->where(function ($q) use ($production_code) {
                 $q->where('sp.deparment_code', $production_code)
-                  ->orWhereExists(function ($query) use ($production_code) {
-                      $query->select(DB::raw(1))
+                    ->orWhereExists(function ($query) use ($production_code) {
+                        $query->select(DB::raw(1))
                             ->from('room')
                             ->whereColumn('room.id', 'sp.resourceId')
                             ->where('room.deparment_code', $production_code);
-                  });
+                    });
             })
             ->select(
                 'sp.resourceId as room_id',

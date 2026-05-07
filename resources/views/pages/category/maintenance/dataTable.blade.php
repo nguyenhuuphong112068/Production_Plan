@@ -225,6 +225,22 @@
             return options;
         }
 
+        // Hàm tạo options cho Phòng dựa trên Phân xưởng
+        function generateRoomOptions(dept, selectedIds) {
+            if (!dept) return ''; // Nếu chưa chọn PX, không trả về option nào
+            
+            // Lọc các phòng thuộc PX được chọn (hoặc option "Tất cả phòng" id=0)
+            var filteredRooms = roomsData.filter(function(room) {
+                return room.id === 0 || room.dept === dept;
+            });
+
+            return filteredRooms.map(function(room) {
+                var isSelected = (selectedIds && selectedIds.indexOf(parseInt(room.id)) !== -1) ? 'selected' : '';
+                var style = room.id === 0 ? 'font-weight: bold; color: blue;' : '';
+                return '<option value="' + room.id + '" ' + isSelected + ' style="'+style+'">' + room.text + '</option>';
+            }).join('');
+        }
+
         // Dữ liệu JSON từ server
         var tableData = @json($datas);
 
@@ -316,14 +332,7 @@
                         var selectedIds = (Array.isArray(rawIds) ? rawIds : (rawIds ? [rawIds] :
                             [])).map(id => parseInt(id));
 
-                        var options = roomsData.map(function(room) {
-                            var isSelected = selectedIds.indexOf(parseInt(room.id)) !== -1 ? 'selected' : '';
-                            
-                            // Nếu là option PX, đánh dấu đậm hơn
-                            var style = room.id === 0 ? 'font-weight: bold; color: blue;' : '';
-                            
-                            return '<option value="' + room.id + '" ' + isSelected + ' style="'+style+'">' + room.text + '</option>';
-                        }).join('');
+                        var options = generateRoomOptions(row.deparment_code, selectedIds);
 
                         var rowDisabled = getDisabledAttr(row);
                         return '<div class="select-room-wrapper"><select ' + rowDisabled +
@@ -601,6 +610,18 @@
             let select = $(this);
             let id = select.data('id');
             let department_code = select.val();
+            
+            // Tìm ô chọn phòng tương ứng trong cùng một dòng
+            let row = select.closest('tr');
+            let roomSelect = row.find('.select-room');
+
+            // Cập nhật lại options cho phòng dựa trên PX mới (selectedIds = [] vì PX đổi thì phòng cũ ko còn giá trị)
+            let newOptions = generateRoomOptions(department_code, []);
+            roomSelect.html(newOptions);
+            
+            // Xoá trắng giá trị đã chọn cũ và trigger change để lưu vào DB (thông qua ajax .select-room)
+            roomSelect.val([]).trigger('change');
+            
             if (!department_code) return;
 
             $.ajax({
@@ -615,10 +636,11 @@
                 success: function(res) {
                     if (res.success) {
                         // Cập nhật dữ liệu trong DataTable để search được ngay
-                        var row = table.row(select.closest('tr'));
-                        var rowData = row.data();
+                        var dtRow = table.row(row);
+                        var rowData = dtRow.data();
                         rowData.deparment_code = department_code;
-                        row.data(rowData).invalidate().draw(false);
+                        rowData.room_ids = []; // Reset room_ids trong data object luôn
+                        dtRow.data(rowData).invalidate().draw(false);
 
                         Swal.mixin({
                             toast: true,

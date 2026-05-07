@@ -20,9 +20,13 @@ $employeeIds = [
 // Room IDs matching the criteria: group_code = 3 and stage_code <= 7
 $roomIds = DB::table('room')->where('group_code', 3)->where('stage_code', '<=', 7)->pluck('id')->toArray();
 
+// Map codes to actual IDs
+
+$employeeMapping = DB::table('employees')->whereIn('code', $employeeIds)->pluck('id', 'code')->toArray();
 
 $inserts = [];
-foreach ($employeeIds as $empId) {
+foreach ($employeeMapping as $code => $empId) {
+
     foreach ($roomIds as $roomId) {
         $exists = DB::table('employee_assignments')
             ->where('employees_id', $empId)
