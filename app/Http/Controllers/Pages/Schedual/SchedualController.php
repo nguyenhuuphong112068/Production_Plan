@@ -674,7 +674,6 @@ class SchedualController extends Controller
                             'actual_batch' => $plan->actual_batch,
                             'code' => $plan->code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                            'Inst_sch_type' => $plan->Inst_sch_type,
                         ]);
 
                         // event lich vs thực tế
@@ -700,7 +699,6 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                                'Inst_sch_type' => $plan->Inst_sch_type,
                             ]);
                         }
 
@@ -730,7 +728,6 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                                'Inst_sch_type' => $plan->Inst_sch_type,
                             ]);
                         }
 
@@ -757,7 +754,6 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                                'Inst_sch_type' => $plan->Inst_sch_type,
                             ]);
                         }
                     }
