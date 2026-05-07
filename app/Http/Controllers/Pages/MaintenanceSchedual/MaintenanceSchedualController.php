@@ -1242,37 +1242,65 @@ class MaintenanceSchedualController extends SchedualController
 
         DB::beginTransaction();
         try {
-            // Lấy các dòng được chọn
-            $rows = DB::table('stage_plan')
+            // 1) Lấy các dòng được chọn trực tiếp từ client
+            $selectedRows = DB::table('stage_plan')
                 ->whereIn('id', $ids)
                 ->where('stage_code', 8)
                 ->where('finished', 0)
                 ->get();
 
-            $toApprove = $rows->where('tank', 0)->pluck('id')->toArray();
-            $toUnapprove = $rows->where('tank', 1)->pluck('id')->toArray();
+            if ($selectedRows->isEmpty()) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy sự kiện hợp lệ để xử lý.'], 404);
+            }
+
+            // 2) Xác định các nhóm (start, end, resourceId) cần Duyệt và Hủy duyệt
+            $groupsToApprove = $selectedRows->where('tank', 0)->map(function($r) {
+                return ['start' => $r->start, 'end' => $r->end, 'resourceId' => $r->resourceId];
+            })->unique(fn($g) => $g['start'].$g['end'].$g['resourceId']);
+
+            $groupsToUnapprove = $selectedRows->where('tank', 1)->map(function($r) {
+                return ['start' => $r->start, 'end' => $r->end, 'resourceId' => $r->resourceId];
+            })->unique(fn($g) => $g['start'].$g['end'].$g['resourceId']);
 
             $approvedCount = 0;
             $unapprovedCount = 0;
 
-            if (!empty($toApprove)) {
-                $approvedCount = DB::table('stage_plan')
-                    ->whereIn('id', $toApprove)
-                    ->update([
-                        'tank' => 1,
-                        'quarantined_date' => now(),
-                        'quarantined_by' => session('user')['fullName'] ?? 'System',
-                    ]);
+            // 3) Thực hiện cập nhật theo nhóm cho Duyệt (tank: 0 -> 1)
+            if ($groupsToApprove->isNotEmpty()) {
+                $queryApprove = DB::table('stage_plan')->where('stage_code', 8)->where('finished', 0);
+                $queryApprove->where(function($q) use ($groupsToApprove) {
+                    foreach ($groupsToApprove as $g) {
+                        $q->orWhere(function($sub) use ($g) {
+                            $sub->where('start', $g['start'])
+                                ->where('end', $g['end'])
+                                ->where('resourceId', $g['resourceId']);
+                        });
+                    }
+                });
+                $approvedCount = $queryApprove->update([
+                    'tank' => 1,
+                    'quarantined_date' => now(),
+                    'quarantined_by' => session('user')['fullName'] ?? 'System',
+                ]);
             }
 
-            if (!empty($toUnapprove)) {
-                $unapprovedCount = DB::table('stage_plan')
-                    ->whereIn('id', $toUnapprove)
-                    ->update([
-                        'tank' => 0,
-                        'quarantined_date' => null,
-                        'quarantined_by' => null,
-                    ]);
+            // 4) Thực hiện cập nhật theo nhóm cho Hủy duyệt (tank: 1 -> 0)
+            if ($groupsToUnapprove->isNotEmpty()) {
+                $queryUnapprove = DB::table('stage_plan')->where('stage_code', 8)->where('finished', 0);
+                $queryUnapprove->where(function($q) use ($groupsToUnapprove) {
+                    foreach ($groupsToUnapprove as $g) {
+                        $q->orWhere(function($sub) use ($g) {
+                            $sub->where('start', $g['start'])
+                                ->where('end', $g['end'])
+                                ->where('resourceId', $g['resourceId']);
+                        });
+                    }
+                });
+                $unapprovedCount = $queryUnapprove->update([
+                    'tank' => 0,
+                    'quarantined_date' => null,
+                    'quarantined_by' => null,
+                ]);
             }
 
             DB::commit();

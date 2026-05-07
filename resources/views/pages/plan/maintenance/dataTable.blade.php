@@ -85,7 +85,6 @@
                                 <th>Loại BT-HC</th>
                                 <th>Hạn Hiệu Chuẩn / Bảo Trì</th>
                                 <th>Phòng SX Liên Quan</th>
-                                <th>Ghi Chú</th>
                                 <th>Người Tạo/ Ngày Tạo</th>
 
                                 <th style="width:1%">Bỏ Qua</th>
@@ -116,15 +115,19 @@
                                     @endif
 
                                     <td>{{ $data->name }}</td>
-                                    <td>{{ $data->sch_type ?? '' }}</td>
+                                    <td>
+                                        @if (!empty($data->sch_type))
+                                            @foreach (explode(',', $data->sch_type) as $type)
+                                                <div style="white-space: nowrap;">{{ trim($type) }}</div>
+                                            @endforeach
+                                        @endif
+                                    </td>
 
                                     <td>
                                         <div> {{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
                                     </td>
 
                                     <td> {{ $data->rooms }} </td>
-
-                                    <td> {{ $data->note }} </td>
 
                                     <td>
                                         <div> {{ $data->prepared_by }} </div>

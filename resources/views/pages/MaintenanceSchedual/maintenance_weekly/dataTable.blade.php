@@ -155,7 +155,10 @@
                                                                             ? 'badge-info'
                                                                             : 'badge-secondary');
 
-                                                                if ($e->finished == 1) {
+                                                                // Ưu tiên đổi màu xanh lá khi tank == 1
+                                                                if (isset($e->tank) && $e->tank == 1) {
+                                                                    $typeClass = 'badge-success';
+                                                                } elseif ($e->finished == 1) {
                                                                     $typeClass = 'badge-primary';
                                                                 }
                                                             @endphp
@@ -171,10 +174,13 @@
                                                                 </div>
                                                                 <div style="font-size: 12px; color: #333;">
                                                                     <b>{{ $eventIdx++ }}.</b>
-                                                                    <span class="text-dark"><b>{{ $e->inst_id ?? '—' }}</b> - {{ $e->inst_name ?? '—' }}</span>
+                                                                    <span
+                                                                        class="text-dark"><b>{{ $e->inst_id ?? '—' }}</b>
+                                                                        - {{ $e->inst_name ?? '—' }}</span>
                                                                     @if ($e->parent_eqp_id != $e->inst_id || $e->Eqp_name != $e->inst_name)
                                                                         <br>
-                                                                        <span class="text-muted small" style="margin-left: 20px;">({{ $e->Eqp_name ?? '—' }})</span>
+                                                                        <span class="text-muted small"
+                                                                            style="margin-left: 20px;">({{ $e->Eqp_name ?? '—' }})</span>
                                                                     @endif
                                                                 </div>
                                                                 <div class="text-success font-weight-bold mt-1"

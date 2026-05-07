@@ -39,26 +39,26 @@ class MaintenancePlanController extends Controller
                 ]);
         }
 
-        public function create_plan_list(Request $request)
-        {
+        // public function create_plan_list(Request $request)
+        // {
 
-                $startDate = $request->from_date ?? date('Y-m-01');
-                $endDate = $request->to_date ?? date('Y-m-t');
-                $type = $request->type;
-                $departmentCode = session('user')['production_code'];
+        //         $startDate = $request->from_date ?? date('Y-m-01');
+        //         $endDate = $request->to_date ?? date('Y-m-t');
+        //         $type = $request->type;
+        //         $departmentCode = session('user')['production_code'];
 
-                try {
-                        $result = $this->generateMaintenancePlan($startDate, $endDate, $departmentCode, $type);
-                        if ($result['success']) {
-                                return redirect()->back()->with('success', $result['message']);
-                        } else {
-                                $typeMsg = $result['total_devices'] === 0 ? 'warning' : 'error';
-                                return redirect()->back()->with($typeMsg, $result['message']);
-                        }
-                } catch (\Exception $e) {
-                        return redirect()->back()->with('error', 'Lỗi: ' . $e->getMessage());
-                }
-        }
+        //         try {
+        //                 $result = $this->generateMaintenancePlan($startDate, $endDate, $departmentCode, $type);
+        //                 if ($result['success']) {
+        //                         return redirect()->back()->with('success', $result['message']);
+        //                 } else {
+        //                         $typeMsg = $result['total_devices'] === 0 ? 'warning' : 'error';
+        //                         return redirect()->back()->with($typeMsg, $result['message']);
+        //                 }
+        //         } catch (\Exception $e) {
+        //                 return redirect()->back()->with('error', 'Lỗi: ' . $e->getMessage());
+        //         }
+        // }
 
         public function autoCreatePlan(Request $request)
         {
@@ -320,17 +320,29 @@ class MaintenancePlanController extends Controller
                                 return trim($item->Inst_ID);
                         });
 
+                        $priorityMap = [
+                                'Yearly' => 100,
+                                'Half Yearly' => 80,
+                                'Quaterly' => 60,
+                                'Monthly' => 40,
+                                'Weekly' => 20,
+                                'Daily' => 10
+                        ];
+
                         foreach ($groupedSchedules as $instId => $group) {
 
                                 $quota = $quotas[$instId] ?? null;
                                 if (!$quota) continue;
 
-                                // Lấy ngày của dòng có loại dài nhất (thường là bảo trì chính)
-                                $representativeRow = $group->sortByDesc(function ($item) {
-                                        return strlen($item->Inst_sch_type ?? $item->Sch_Type ?? '');
+                                // Lấy ngày của dòng có loại bảo trì quan trọng nhất (Năm > Quý > Tháng...)
+                                $representativeRow = $group->sortByDesc(function ($item) use ($priorityMap) {
+                                        $type = $item->Inst_sch_type ?? $item->Sch_Type ?? '';
+                                        return $priorityMap[$type] ?? 0;
                                 })->first();
+
                                 $minDate = $representativeRow->Sch_DueDate;
                                 $schDate = \Carbon\Carbon::parse($minDate)->format('Y-m-d');
+                                $mainType = $representativeRow->Sch_Type ?? 'NA';
 
                                 // Kiểm tra trùng: cùng thiết bị + cùng ngày gần nhất đã tạo rồi thì bỏ qua
                                 $key = $quota->id . '_' . $schDate;
@@ -357,13 +369,14 @@ class MaintenancePlanController extends Controller
                                         'product_caterogy_id' => $quota->id,
                                         'plan_list_id' => $planListId,
                                         'batch' => !empty($allSchIds) ? $allSchIds : 'NA',
+                                        'actual_batch' => $mainType,
                                         'expected_date' => $minDate,
                                         'level' => 1,
                                         'is_val' => 0,
                                         'percent_parkaging' => 1,
                                         'only_parkaging' => 0,
                                         'number_parkaging' => 1,
-                                        'note' => 'NA', //$finalNote,
+                                        'note' => $finalNote,
                                         'deparment_code' => $departmentCode,
                                         'prepared_by' => $preparedBy,
                                         'created_at' => $now,
@@ -515,7 +528,6 @@ class MaintenancePlanController extends Controller
                 $production  =  DB::table('plan_list')->where('id', $request->plan_list_id)->value('deparment_code');
 
                 session()->put(['title' => " $request->name - $production"]);
-
                 return view('pages.plan.maintenance.list', [
                         'datas' => $datas->sortBy('expected_date'),
                         'plan_list_id' => $request->plan_list_id,

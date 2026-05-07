@@ -55,7 +55,7 @@ use Illuminate\Support\Facades\Route;
         });
 
     Route::prefix('/weekly-maintenance-report')
-        ->controller(App\Http\Controllers\Pages\Report\MaintenanceWeeklyReportController::class)
+        ->controller(App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceWeeklyReportController::class)
         ->name('pages.report.maintenance_weekly_report.')
         ->group(function(){
             Route::get('','index')->name('index');

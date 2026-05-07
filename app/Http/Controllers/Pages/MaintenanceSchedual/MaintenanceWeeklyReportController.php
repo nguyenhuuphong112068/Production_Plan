@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Pages\Report;
+namespace App\Http\Controllers\Pages\MaintenanceSchedual;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -12,6 +12,7 @@ class MaintenanceWeeklyReportController extends Controller
 
     public function index(Request $request)
     {
+
         $production_code = session('user')['production_code'];
 
         $selectedDate = $request->reportedDate;
@@ -55,6 +56,7 @@ class MaintenanceWeeklyReportController extends Controller
                 'sp.start as planned_start',
                 'sp.end as planned_end',
                 'sp.finished',
+                'sp.tank',
                 'qm.inst_id',
                 'qm.inst_name',
                 'qm.Eqp_name',
