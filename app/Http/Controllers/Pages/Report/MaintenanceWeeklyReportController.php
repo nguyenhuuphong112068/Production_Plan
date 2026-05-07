@@ -9,6 +9,7 @@ use Carbon\Carbon;
 
 class MaintenanceWeeklyReportController extends Controller
 {
+
     public function index(Request $request)
     {
         $production_code = session('user')['production_code'];
