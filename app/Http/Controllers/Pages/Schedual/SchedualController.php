@@ -357,7 +357,7 @@ class SchedualController extends Controller
                 'sp.accept_quarantine',
                 'sp.campaign_code',
                 'sp.schedualed_by',
-                'quota_maintenance.Inst_sch_type',
+                //'quota_maintenance.Inst_sch_type',
 
                 'finished_product_category.intermediate_code',
                 'plan_master.expected_date',
@@ -467,7 +467,7 @@ class SchedualController extends Controller
                         'actual_batch' => $plan->actual_batch,
                         'code' => $plan->code,
                         'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                        'Inst_sch_type' => $plan->Inst_sch_type,
+                        //'Inst_sch_type' => $plan->Inst_sch_type,
                         'schedualed_by' => $plan->schedualed_by,
                     ]);
                 }
@@ -525,7 +525,7 @@ class SchedualController extends Controller
                         'product_name' => $plan->product_name,
                         'batch_name' => $plan->batch_name,
                         'actual_batch' => $plan->actual_batch,
-                        'Inst_sch_type' => $plan->Inst_sch_type,
+                        //'Inst_sch_type' => $plan->Inst_sch_type,
                         'code' => $plan->code,
                         'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                     ]);
@@ -560,7 +560,7 @@ class SchedualController extends Controller
                             'actual_batch' => $plan->actual_batch,
                             'code' => $plan->code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                            'Inst_sch_type' => $plan->Inst_sch_type,
+                            //'Inst_sch_type' => $plan->Inst_sch_type,
 
                         ]);
 
@@ -587,7 +587,7 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                                'Inst_sch_type' => $plan->Inst_sch_type,
+                                //'Inst_sch_type' => $plan->Inst_sch_type,
                             ]);
                         }
                     } elseif ($theory == 1) {
@@ -3420,40 +3420,40 @@ class SchedualController extends Controller
             // 3️⃣ Insert log cho từng dòng
             $historyData = $updatedRows->map(function ($row) {
 
-            $maxVersion = DB::table('stage_plan_history')
-                ->where('stage_plan_id', $row->id)
-                ->max('version') ?? 0;
+                $maxVersion = DB::table('stage_plan_history')
+                    ->where('stage_plan_id', $row->id)
+                    ->max('version') ?? 0;
 
-            return [
-                'stage_plan_id' => $row->id,
-                'plan_list_id' => $row->plan_list_id,
-                'plan_master_id' => $row->plan_master_id,
-                'product_caterogy_id' => $row->product_caterogy_id,
-                'campaign_code' => $row->campaign_code,
-                'code' => $row->code,
-                'order_by' => $row->order_by,
-                'schedualed' => $row->schedualed,
-                'stage_code' => $row->stage_code,
-                'title' => $row->title,
-                'start' => $row->start,
-                'end' => $row->end,
-                'resourceId' => $row->resourceId,
-                'title_clearning' => $row->title_clearning,
-                'start_clearning' => $row->start_clearning,
-                'end_clearning' => $row->end_clearning,
-                'tank' => $row->tank,
-                'keep_dry' => $row->keep_dry,
-                'AHU_group' => $row->AHU_group,
-                'schedualed_by' => $row->schedualed_by,
-                'schedualed_at' => $row->schedualed_at,
-                'version' => $maxVersion + 1,
-                'note' => $row->note,
-                'deparment_code' => session('user')['production_code'],
-                'type_of_change' => 'Tạo Mới Lịch',
-                'created_date' => now(),
-                'created_by' => session('user')['fullName'],
-            ];
-        });
+                return [
+                    'stage_plan_id' => $row->id,
+                    'plan_list_id' => $row->plan_list_id,
+                    'plan_master_id' => $row->plan_master_id,
+                    'product_caterogy_id' => $row->product_caterogy_id,
+                    'campaign_code' => $row->campaign_code,
+                    'code' => $row->code,
+                    'order_by' => $row->order_by,
+                    'schedualed' => $row->schedualed,
+                    'stage_code' => $row->stage_code,
+                    'title' => $row->title,
+                    'start' => $row->start,
+                    'end' => $row->end,
+                    'resourceId' => $row->resourceId,
+                    'title_clearning' => $row->title_clearning,
+                    'start_clearning' => $row->start_clearning,
+                    'end_clearning' => $row->end_clearning,
+                    'tank' => $row->tank,
+                    'keep_dry' => $row->keep_dry,
+                    'AHU_group' => $row->AHU_group,
+                    'schedualed_by' => $row->schedualed_by,
+                    'schedualed_at' => $row->schedualed_at,
+                    'version' => $maxVersion + 1,
+                    'note' => $row->note,
+                    'deparment_code' => session('user')['production_code'],
+                    'type_of_change' => 'Tạo Mới Lịch',
+                    'created_date' => now(),
+                    'created_by' => session('user')['fullName'],
+                ];
+            });
 
             // 🔹 Chia nhỏ insert để tránh lỗi 1390
             $historyData->chunk(500)->each(function ($chunk) {
@@ -3532,8 +3532,8 @@ class SchedualController extends Controller
             );
         }
 
-        $msg = $updatedRows->isEmpty() 
-            ? 'Đã gửi thông báo nhắc nhở.' 
+        $msg = $updatedRows->isEmpty()
+            ? 'Đã gửi thông báo nhắc nhở.'
             : 'Đã submit ' . $updatedRows->count() . ' lịch.';
         $type = $updatedRows->isEmpty() ? 'info' : 'success';
 

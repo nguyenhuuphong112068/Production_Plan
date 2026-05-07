@@ -1263,10 +1263,19 @@ const MaintenanceCalender = () => {
             setSelectedEvents([]);
             document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
               const id = el.getAttribute("data-event-id");
-              if (selectedEvents.some(se => se.id === id)) {
-                el.style.border = "3px solid #22ff00ff";
-                el.style.boxShadow = "0 0 8px #22ff00ff";
-                el.style.borderRadius = "4px";
+              const targetEvent = selectedEvents.find(se => String(se.id) === String(id));
+
+              if (targetEvent) {
+                // Chỉ hiện viền xanh nếu sự kiện ĐANG là chưa duyệt (sắp được duyệt lên 1)
+                if (targetEvent.tank == 0) {
+                  el.style.border = "3px solid #22ff00ff";
+                  el.style.boxShadow = "0 0 8px #22ff00ff";
+                  el.style.borderRadius = "4px";
+                } else {
+                  // Nếu là hủy duyệt (từ 1 về 0), xóa viền ngay
+                  el.style.border = "none";
+                  el.style.boxShadow = "none";
+                }
               } else {
                 el.style.border = "none";
                 el.style.boxShadow = "none";
@@ -1665,7 +1674,7 @@ const MaintenanceCalender = () => {
           if (planDate.isAfter(dueDate, 'day')) isLate = true;
         } else {
           // Ngưỡng gia hạn: Monthly (7 ngày), các loại khác (21 ngày)
-          const threshold = props.Inst_sch_type === "Monthly" ? 7 : 21;
+          const threshold = props.actual_batch === "Monthly" ? 7 : 21;
           const limitDate = dueDate.clone().add(threshold, 'days');
 
           if (planDate.isAfter(limitDate, 'day')) isLate = true;
