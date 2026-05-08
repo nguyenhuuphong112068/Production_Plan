@@ -1496,9 +1496,9 @@ const ScheduleTest = () => {
         startInput.addEventListener('input', () => {
           if (startInput.value && (mTime > 0 || pTime > 0)) {
             const newStart = moment(startInput.value);
-            // Nếu là đầu chiến dịch (first_in_campaign == 1), cộng cả p_time và m_time
+            // Nếu là đầu chiến dịch (first_in_campaign == 1) hoặc vệ sinh VS-II, cộng cả p_time và m_time
             // Ngược lại chỉ cộng m_time
-            const duration = (props.first_in_campaign == 1) ? (mTime + pTime) : mTime;
+            const duration = (props.first_in_campaign == 1 || props.title_clearning == "VS-II") ? (mTime + pTime) : mTime;
 
             const newEnd = newStart.clone().add(duration, 'hours');
             endInput.value = newEnd.format('YYYY-MM-DDTHH:mm');
