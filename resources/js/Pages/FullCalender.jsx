@@ -787,6 +787,12 @@ const ScheduleTest = () => {
   };
 
   const timeToMilliseconds = (time) => {
+    if (typeof time === 'number') {
+      return time * 3600 * 1000;
+    }
+    if (typeof time !== 'string' || !time.includes(':')) {
+      return 0;
+    }
     const [h, m] = time.split(":").map(Number);
     return (h * 3600 + m * 60) * 1000;
   };
@@ -878,11 +884,12 @@ const ScheduleTest = () => {
 
             // Kiêm tra điều chinh đinh mức ngày chủ nhật
             if (!workingSunday) {
-              let process_code = event._def.extendedProps.process_code + "_" + event._def.resourceIds[0]
+              const baseProcessCode = event._def.extendedProps.process_code.split('_').slice(0, 2).join('_');
+              let lookupCode = baseProcessCode + "_" + event._def.resourceIds[0]
               let stage_code = event._def.extendedProps.stage_code
               let is_clearning = event._def.extendedProps.is_clearning
               let quota_event = quota.find(q =>
-                q.process_code.startsWith(process_code) &&
+                q.process_code === lookupCode &&
                 q.stage_code == stage_code
               );
 
@@ -1061,12 +1068,19 @@ const ScheduleTest = () => {
     const changedEvent = changeInfo.event;
     const oldEvent = changeInfo.oldEvent || changedEvent;
 
+    // Cập nhật process_code nếu resourceId thay đổi
+    const newResourceId = changedEvent.getResources?.()[0]?.id ?? null;
+    if (newResourceId && changedEvent.extendedProps.process_code) {
+      const baseProcessCode = changedEvent.extendedProps.process_code.split('_').slice(0, 2).join('_');
+      changedEvent.setExtendedProp('process_code', baseProcessCode + "_" + newResourceId);
+    }
+
     // Create updates array starting with the changed event
     let updates = [{
       id: changedEvent.id,
       start: changedEvent.start.toISOString(),
       end: changedEvent.end.toISOString(),
-      resourceId: changedEvent.getResources?.()[0]?.id ?? null,
+      resourceId: newResourceId,
       title: changedEvent.title,
       submit: changedEvent.extendedProps.submit
     }];
@@ -1437,8 +1451,6 @@ const ScheduleTest = () => {
       ? quota.find(q => q.process_code == baseProcessCode + "_" + currentResourceId)
       : null;
 
-
-    console.log(props)
     const m_time = currentQuota ? currentQuota.m_time : 0;
     const p_time = currentQuota ? currentQuota.p_time : 0;
 

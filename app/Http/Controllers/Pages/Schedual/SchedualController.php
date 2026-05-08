@@ -1085,6 +1085,8 @@ class SchedualController extends Controller
             // Convert to decimal hours for frontend
             $item->p_time = round($toSeconds($item->p_time) / 3600, 2);
             $item->m_time = round($toSeconds($item->m_time) / 3600, 2);
+            $item->C1_time = round($toSeconds($item->C1_time) / 3600, 2);
+            $item->C2_time = round($toSeconds($item->C2_time) / 3600, 2);
 
             $item->PM = $toTime(($item->p_time + $item->m_time) * 3600);
 
