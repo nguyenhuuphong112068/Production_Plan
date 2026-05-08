@@ -1064,6 +1064,93 @@ const ScheduleTest = () => {
   };
 
   ///
+  const runCascadeLogic = (changedEvent, oldEvent) => {
+    const deltaStart = changedEvent.start.getTime() - oldEvent.start.getTime();
+    const deltaEnd = (changedEvent.end?.getTime() || 0) - (oldEvent.end?.getTime() || 0);
+    const shift = Math.max(deltaStart, deltaEnd);
+
+    let updates = [];
+
+    if (shift !== 0) {
+      const resourceId = changedEvent.getResources?.()[0]?.id;
+      const originalStart = oldEvent.start;
+      const calendarApi = calendarRef.current?.getApi();
+
+      // 🔹 Cập nhật Cleaning Props cho chính sự kiện vừa thay đổi (PXV1)
+      if (changedEvent.extendedProps.start_clearning && changedEvent.extendedProps.end_clearning) {
+        const sc = new Date(changedEvent.end.getTime());
+        const duration = new Date(changedEvent.extendedProps.end_clearning).getTime() - new Date(changedEvent.extendedProps.start_clearning).getTime();
+        const ec = new Date(sc.getTime() + duration);
+        changedEvent.setExtendedProp('start_clearning', sc.toISOString());
+        changedEvent.setExtendedProp('end_clearning', ec.toISOString());
+      }
+
+      // Xuyên suốt cho resource hiện tại
+      let lastEnd = changedEvent.extendedProps.end_clearning ? new Date(changedEvent.extendedProps.end_clearning) : changedEvent.end;
+      const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
+
+      sortedEvents.forEach(otherEv => {
+        if (
+          otherEv.id !== changedEvent.id &&
+          otherEv.getResources?.()[0]?.id === resourceId &&
+          otherEv.start >= originalStart &&
+          !otherEv.extendedProps.finished // Only shift unfinished events
+        ) {
+          // 1. Dự định: 
+          // Nếu dịch chuyển/tăng size (shift > 0): Giữ nguyên (Push-only)
+          // Nếu dịch chuyển sang trái (shift < 0): Tịnh tiến theo (Parallel Pull)
+          let ns = new Date(otherEv.start.getTime());
+          if (shift < 0) {
+            ns = new Date(ns.getTime() + shift);
+          }
+
+          // 2. Đẩy nếu chồng lấn
+          if (lastEnd && ns < lastEnd) {
+            ns = new Date(lastEnd.getTime());
+          }
+
+          // 3. Né ngày nghỉ
+          ns = skipOffDays(ns, offRanges);
+
+          const actualShift = ns.getTime() - otherEv.start.getTime();
+          const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
+
+          // 🔹 Chỉ xử lý và lưu nếu thực sự có thay đổi
+          if (actualShift !== 0) {
+            otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
+
+            // 4. Cập nhật boundary cho sự kiện tiếp theo
+            // 🔹 Cập nhật props để mốc biên chuẩn
+            if (otherEv.extendedProps.start_clearning && otherEv.extendedProps.end_clearning) {
+              const sc_new = new Date(new Date(otherEv.extendedProps.start_clearning).getTime() + actualShift);
+              const ec_new = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
+              otherEv.setExtendedProp('start_clearning', sc_new.toISOString());
+              otherEv.setExtendedProp('end_clearning', ec_new.toISOString());
+            }
+
+            lastEnd = otherEv.extendedProps.end_clearning
+              ? new Date(otherEv.extendedProps.end_clearning)
+              : ne;
+
+            updates.push({
+              id: otherEv.id,
+              start: ns.toISOString(),
+              end: ne.toISOString(),
+              resourceId: resourceId,
+              title: otherEv.title,
+              submit: otherEv.extendedProps.submit
+            });
+          } else {
+            // Nếu không đổi, vẫn cập nhật boundary cũ cho chuỗi
+            lastEnd = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
+          }
+        }
+      });
+      calendarApi.render();
+    }
+    return updates;
+  };
+
   const handleEventChange = (changeInfo) => {
     const changedEvent = changeInfo.event;
     const oldEvent = changeInfo.oldEvent || changedEvent;
@@ -1096,91 +1183,8 @@ const ScheduleTest = () => {
       });
 
       setTimeout(() => {
-        const deltaStart = changedEvent.start.getTime() - oldEvent.start.getTime();
-        const deltaEnd = (changedEvent.end?.getTime() || 0) - (oldEvent.end?.getTime() || 0);
-        const shift = Math.max(deltaStart, deltaEnd);
-
-        if (shift !== 0) {
-          const resourceId = changedEvent.getResources?.()[0]?.id;
-          const originalStart = oldEvent.start;
-          const calendarApi = changedEvent.getSource().calendar;
-
-          // 🔹 Cập nhật Cleaning Props cho chính sự kiện vừa thay đổi (PXV1)
-          if (changedEvent.extendedProps.start_clearning && changedEvent.extendedProps.end_clearning) {
-            const sc = new Date(changedEvent.end.getTime());
-            const duration = new Date(changedEvent.extendedProps.end_clearning).getTime() - new Date(changedEvent.extendedProps.start_clearning).getTime();
-            const ec = new Date(sc.getTime() + duration);
-            changedEvent.setExtendedProp('start_clearning', sc.toISOString());
-            changedEvent.setExtendedProp('end_clearning', ec.toISOString());
-          }
-
-          // Xuyên suốt cho resource hiện tại
-          let lastEnd = changedEvent.extendedProps.end_clearning ? new Date(changedEvent.extendedProps.end_clearning) : changedEvent.end;
-          const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
-
-          sortedEvents.forEach(otherEv => {
-            if (
-              otherEv.id !== changedEvent.id &&
-              otherEv.getResources?.()[0]?.id === resourceId &&
-              otherEv.start >= originalStart &&
-              !otherEv.extendedProps.finished // Only shift unfinished events
-            ) {
-              const deltaStart = changedEvent.start.getTime() - oldEvent.start.getTime();
-              const deltaEnd = (changedEvent.end?.getTime() || 0) - (oldEvent.end?.getTime() || 0);
-              const shift = Math.max(deltaStart, deltaEnd);
-
-              // 1. Dự định: 
-              // Nếu dịch chuyển/tăng size (shift > 0): Giữ nguyên (Push-only)
-              // Nếu dịch chuyển sang trái (shift < 0): Tịnh tiến theo (Parallel Pull)
-              let ns = new Date(otherEv.start.getTime());
-              if (shift < 0) {
-                ns = new Date(ns.getTime() + shift);
-              }
-
-              // 2. Đẩy nếu chồng lấn
-              if (lastEnd && ns < lastEnd) {
-                ns = new Date(lastEnd.getTime());
-              }
-
-              // 3. Né ngày nghỉ
-              ns = skipOffDays(ns, offRanges);
-
-              const actualShift = ns.getTime() - otherEv.start.getTime();
-              const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
-
-              // 🔹 Chỉ xử lý và lưu nếu thực sự có thay đổi
-              if (actualShift !== 0) {
-                otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
-
-                // 4. Cập nhật boundary cho sự kiện tiếp theo
-                // 🔹 Cập nhật props để mốc biên chuẩn
-                if (otherEv.extendedProps.start_clearning && otherEv.extendedProps.end_clearning) {
-                  const sc_new = new Date(new Date(otherEv.extendedProps.start_clearning).getTime() + actualShift);
-                  const ec_new = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
-                  otherEv.setExtendedProp('start_clearning', sc_new.toISOString());
-                  otherEv.setExtendedProp('end_clearning', ec_new.toISOString());
-                }
-
-                lastEnd = otherEv.extendedProps.end_clearning
-                  ? new Date(otherEv.extendedProps.end_clearning)
-                  : ne;
-
-                updates.push({
-                  id: otherEv.id,
-                  start: ns.toISOString(),
-                  end: ne.toISOString(),
-                  resourceId: resourceId,
-                  title: otherEv.title,
-                  submit: otherEv.extendedProps.submit
-                });
-              } else {
-                // Nếu không đổi, vẫn cập nhật boundary cũ cho chuỗi
-                lastEnd = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
-              }
-            }
-          });
-          calendarApi.render();
-        }
+        const cascadeUpdates = runCascadeLogic(changedEvent, oldEvent);
+        updates = [...updates, ...cascadeUpdates];
 
         // Thêm hoặc cập nhật event vào pendingChanges
         setPendingChanges(prev => {
@@ -1533,8 +1537,45 @@ const ScheduleTest = () => {
       if (result.isConfirmed) {
         const { start, end, resourceId, updateCampaign } = result.value;
         const api = calendarRef.current?.getApi();
+        const eventToUpdate = api.getEventById(event.id);
         const { activeStart, activeEnd } = api.view;
         const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+
+        let changes = [{
+          id: event.id,
+          start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
+          end: moment(end).format('YYYY-MM-DD HH:mm:ss'),
+          resourceId: resourceId,
+          title: event.title,
+          C_end: false
+        }];
+
+        if (isCascadeMode && eventToUpdate) {
+          const oldEvent = {
+            start: new Date(eventToUpdate.start),
+            end: new Date(eventToUpdate.end)
+          };
+
+          // Cập nhật dates cho event object để runCascadeLogic hoạt động
+          eventToUpdate.setDates(start, end, { maintainDuration: false });
+          // Cập nhật resource nếu thay đổi
+          if (eventToUpdate.getResources()[0]?.id !== resourceId) {
+            // Lưu ý: FullCalendar không có setResource trực tiếp dễ dàng như setDates
+            // Nhưng trong logic cascade, chúng ta chỉ quan tâm đến cùng resource.
+          }
+
+          const cascadeUpdates = runCascadeLogic(eventToUpdate, oldEvent);
+          
+          // Format lại cascadeUpdates cho API
+          const formattedCascade = cascadeUpdates.map(u => ({
+            ...u,
+            start: moment(u.start).format('YYYY-MM-DD HH:mm:ss'),
+            end: moment(u.end).format('YYYY-MM-DD HH:mm:ss'),
+            C_end: false
+          }));
+
+          changes = [...changes, ...formattedCascade];
+        }
 
         Swal.fire({
           title: 'Đang tải...',
@@ -1546,14 +1587,7 @@ const ScheduleTest = () => {
           theory: theoryHidden,
           cascade: isCascadeMode,
           update_campaign: updateCampaign,
-          changes: [{
-            id: event.id,
-            start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
-            end: moment(end).format('YYYY-MM-DD HH:mm:ss'),
-            resourceId: resourceId,
-            title: event.title,
-            C_end: false
-          }],
+          changes: changes,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
           reason: { reason: 'Cập nhật nhanh qua modal' }
