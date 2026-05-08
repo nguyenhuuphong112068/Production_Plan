@@ -380,9 +380,9 @@ class SchedualController extends Controller
 
                 DB::raw("CASE
                                         WHEN sp.stage_code = 7 THEN 
-                                        CONCAT(finished_product_category.intermediate_code, '_', finished_product_category.finished_product_code)
+                                        CONCAT(finished_product_category.intermediate_code, '_', finished_product_category.finished_product_code, '_', sp.resourceId)
                                         ELSE 
-                                        CONCAT(finished_product_category.intermediate_code, '_NA')
+                                        CONCAT(finished_product_category.intermediate_code, '_NA_', sp.resourceId)
                                 END as process_code
                                 "),
 
@@ -1069,17 +1069,20 @@ class SchedualController extends Controller
             ->leftJoin('room', 'quota.room_id', '=', 'room.id')
             ->where('quota.active', 1)
             ->where('quota.deparment_code', $production)
-            ->get()
-            ->map(function ($item) {
+            ->get();
 
-                $toSeconds = fn($time) => (($h = (int) explode(':', $time)[0]) * 3600) + ((int) explode(':', $time)[1] * 60);
+        $result = $result->map(function ($item) {
+            $toSeconds = fn($time) => (($h = (int) explode(':', $time)[0]) * 3600) + ((int) explode(':', $time)[1] * 60);
+            $toTime = fn($seconds) => sprintf('%02d:%02d', floor($seconds / 3600), floor(($seconds % 3600) / 60));
 
-                $toTime = fn($seconds) => sprintf('%02d:%02d', floor($seconds / 3600), floor(($seconds % 3600) / 60));
+            // Convert to decimal hours for frontend
+            $item->p_time = round($toSeconds($item->p_time) / 3600, 2);
+            $item->m_time = round($toSeconds($item->m_time) / 3600, 2);
 
-                $item->PM = $toTime($toSeconds($item->p_time) + $toSeconds($item->m_time));
+            $item->PM = $toTime(($item->p_time + $item->m_time) * 3600);
 
-                return $item;
-            });
+            return $item;
+        });
 
         return $result;
     }

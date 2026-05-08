@@ -1403,8 +1403,9 @@ const ScheduleTest = () => {
     // Lấy danh sách phòng được phép dựa trên process_code, stage_code và định mức (quota)
     let allowedResources = [];
     if (props.process_code && quota && quota.length > 0) {
+      const baseProcessCode = props.process_code.split('_').slice(0, 2).join('_');
       const allowedRoomIds = quota
-        .filter(q => q.process_code.startsWith(props.process_code) && q.stage_code === props.stage_code)
+        .filter(q => q.process_code.startsWith(baseProcessCode + "_") && q.stage_code === props.stage_code)
         .map(q => q.room_id);
 
       if (allowedRoomIds.length > 0) {
@@ -1431,11 +1432,32 @@ const ScheduleTest = () => {
       `<option value="${res.id}" ${res.id == currentResourceId ? 'selected' : ''}>${res.title}</option>`
     ).join('');
 
+    const baseProcessCode = props.process_code.split('_').slice(0, 2).join('_');
+    const currentQuota = (quota && props.process_code)
+      ? quota.find(q => q.process_code == baseProcessCode + "_" + currentResourceId)
+      : null;
+
+
+    console.log(props)
+    const m_time = currentQuota ? currentQuota.m_time : 0;
+    const p_time = currentQuota ? currentQuota.p_time : 0;
+
     Swal.fire({
       title: 'Cập nhật sự kiện',
-      width: '450px',
+      width: '500px',
       html: `
         <div style="text-align: left; padding: 10px;">
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div style="flex: 1;">
+              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Định mức chuẩn bị (h):</label>
+              <input type="number" id="swal-p-time" class="swal2-input" style="width: 100%; margin: 0; background: #f8f9fa;" value="${p_time}" readonly>
+            </div>
+            <div style="flex: 1;">
+              <label style="display: block; font-weight: bold; margin-bottom: 5px;">Định mức SX (h):</label>
+              <input type="number" id="swal-m-time" class="swal2-input" style="width: 100%; margin: 0; background: #f8f9fa;" value="${m_time}" readonly>
+            </div>
+          </div>
+
           <div style="margin-bottom: 15px;">
             <label style="display: block; font-weight: bold; margin-bottom: 5px;">Thời gian bắt đầu:</label>
             <input type="datetime-local" id="swal-start" class="swal2-input" style="width: 100%; margin: 0;" value="${startStr}">
@@ -1465,6 +1487,24 @@ const ScheduleTest = () => {
       showCancelButton: true,
       confirmButtonText: 'Lưu',
       cancelButtonText: 'Hủy',
+      didOpen: () => {
+        const startInput = document.getElementById('swal-start');
+        const endInput = document.getElementById('swal-end');
+        const mTime = parseFloat(document.getElementById('swal-m-time').value) || 0;
+        const pTime = parseFloat(document.getElementById('swal-p-time').value) || 0;
+
+        startInput.addEventListener('input', () => {
+          if (startInput.value && (mTime > 0 || pTime > 0)) {
+            const newStart = moment(startInput.value);
+            // Nếu là đầu chiến dịch (first_in_campaign == 1), cộng cả p_time và m_time
+            // Ngược lại chỉ cộng m_time
+            const duration = (props.first_in_campaign == 1) ? (mTime + pTime) : mTime;
+
+            const newEnd = newStart.clone().add(duration, 'hours');
+            endInput.value = newEnd.format('YYYY-MM-DDTHH:mm');
+          }
+        });
+      },
       preConfirm: () => {
         const start = document.getElementById('swal-start').value;
         const end = document.getElementById('swal-end').value;
