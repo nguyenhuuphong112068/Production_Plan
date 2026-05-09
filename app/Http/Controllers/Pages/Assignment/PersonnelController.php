@@ -611,20 +611,4 @@ class PersonnelController extends Controller
         }
     }
 
-    public function updateDuty(Request $request)
-    {
-        $employeeId = $request->employee_id;
-        $duty = $request->duty;
-
-        try {
-            DB::table('employees')->where('id', $employeeId)->update([
-                'duty' => $duty,
-                'updated_at' => now()
-            ]);
-
-            return response()->json(['success' => true, 'message' => 'Cập nhật chức vụ thành công!']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
 }

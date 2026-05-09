@@ -408,7 +408,7 @@
                         <th style="width: 40px;">STT</th>
                         <th style="width: 80px;">Mã NV</th>
                         <th style="width: 150px;">Tên Nhân Viên</th>
-                        <th style="width: 120px;">Công Việc</th>
+
                         <th style="width: 100px;">Phân Xưởng Trực Thuộc</th>
                         <th style="width: 150px;">Phân Xưởng Công Tác Tạm Thời</th>
                         <th style="width: 180px;">Tổ Được Phép Công Tác</th>
@@ -426,19 +426,7 @@
                             </td>
                             <td>{{ $data->code }}</td>
                             <td>{{ $data->name }}</td>
-                            <td>
-                                <select class="form-control form-control-sm select-duty"
-                                    data-employee-id="{{ $data->id }}">
-                                    <option value="">-- Chọn --</option>
-                                    <option value="Quản lý" {{ $data->duty == 'Quản lý' ? 'selected' : '' }}>Quản lý
-                                    </option>
-                                    <option value="Vận Hành" {{ $data->duty == 'Vận Hành' ? 'selected' : '' }}>Vận
-                                        Hành
-                                    </option>
-                                    <option value="Văn Thư" {{ $data->duty == 'Văn Thư' ? 'selected' : '' }}>Văn Thư
-                                    </option>
-                                </select>
-                            </td>
+
                             <td class="text-center">
                                 <span class="badge badge-info shadow-sm">{{ $data->main_production }}</span>
                             </td>
@@ -790,40 +778,7 @@
             updatePermissionAjax(employeeId, 'group', groupData);
         });
 
-        // Handle Duty Change
-        $(document).on('change', '.select-duty', function() {
-            const $select = $(this);
-            const employeeId = $select.data('employee-id');
-            const duty = $select.val();
 
-            $.ajax({
-                url: "{{ route('pages.assignment.personnel.updateDuty') }}",
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    employee_id: employeeId,
-                    duty: duty
-                },
-                success: function(res) {
-                    if (res.success) {
-                        Swal.mixin({
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 2000
-                        }).fire({
-                            icon: 'success',
-                            title: res.message
-                        });
-                    } else {
-                        Swal.fire('Lỗi', res.message, 'error');
-                    }
-                },
-                error: function() {
-                    Swal.fire('Lỗi server', 'Không thể cập nhật chức vụ', 'error');
-                }
-            });
-        });
 
         // Handle Room Assignment Actions
         $(document).on('click', '.btn-add-room-row', function() {
@@ -1036,25 +991,19 @@
             let activeGroupsSet = new Set();
             
             let groupStats = {}; // { groupName: { active: 0, total: 0 } }
-            let dutyStats = { 'Quản lý': 0, 'Văn Thư': 0 };
+            let dutyStats = {};
             let roomStats = {};
             let unassignedCount = 0;
 
             $(allRows).each(function() {
-                let duty = $(this).find('.select-duty').val();
+
                 let $badges = $(this).find('.btn-toggle-group');
                 let $activeRooms = $(this).find('.room-assignment-row[data-active="1"] .room-id-select');
                 
                 let isAssignedAnyActive = false;
                 let hasAnyGroup = $badges.length > 0;
                 
-                if (duty === 'Quản lý') {
-                    dutyStats['Quản lý']++;
-                    isAssignedAnyActive = true;
-                } else if (duty === 'Văn Thư') {
-                    dutyStats['Văn Thư']++;
-                    isAssignedAnyActive = true;
-                }
+
 
                 $badges.each(function() {
                     let groupName = $(this).text().trim();
@@ -1096,23 +1045,7 @@
             let gKeys = Object.keys(groupStats);
             gKeys.sort((a, b) => groupStats[b].active - groupStats[a].active);
 
-            // Add Duties first
-            ['Quản lý', 'Văn Thư'].forEach(duty => {
-                let count = dutyStats[duty];
-                if (count > 0) {
-                    let percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
-                    let colorClass = duty === 'Quản lý' ? 'bg-primary' : 'bg-warning';
-                    gContainer.append(`
-                        <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
-                            <span>${duty}</span>
-                            <span>${count} (${percentage}%)</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar ${colorClass}" style="width: ${percentage}%"></div>
-                        </div>
-                    `);
-                }
-            });
+
 
             gKeys.forEach(function(key) {
                 let stats = groupStats[key];
@@ -1146,20 +1079,7 @@
             let sBody = $('#dash-summary-tbody');
             sBody.empty();
             
-            // Add Duties to summary
-            ['Quản lý', 'Văn Thư'].forEach(duty => {
-                let count = dutyStats[duty];
-                if (count > 0) {
-                    sBody.append(`
-                        <tr>
-                            <td>${duty}</td>
-                            <td class="text-center text-success font-weight-bold">${count}</td>
-                            <td class="text-center text-muted">0</td>
-                            <td class="text-center font-weight-bold">${count}</td>
-                        </tr>
-                    `);
-                }
-            });
+
 
             gKeys.forEach(function(key) {
                 let stats = groupStats[key];
@@ -1375,9 +1295,7 @@
 
 
 
-        $(document).on('change', '.select-duty', function() {
-            if ($('#personnel-dashboard').is(':visible')) renderLocalDashboard();
-        });
+
         $(document).on('click', '.btn-toggle-group', function() {
             if ($('#personnel-dashboard').is(':visible')) setTimeout(renderLocalDashboard, 100);
         });

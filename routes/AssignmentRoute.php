@@ -45,6 +45,6 @@ Route::prefix('/assignemnt/personnel')
         Route::post('update', 'update')->name('update');
         Route::post('update-permissions', 'updatePermissions')->name('updatePermissions');
         Route::post('update-productions', 'updateProductions')->name('updateProductions');
-        Route::post('update-duty', 'updateDuty')->name('updateDuty');
+
         Route::get('deActive/{id}', 'deActive')->name('deActive');
     });

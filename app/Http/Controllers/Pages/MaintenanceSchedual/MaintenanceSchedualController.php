@@ -924,47 +924,47 @@ class MaintenanceSchedualController extends SchedualController
                 }
 
                 // ĐỒNG BỘ NGƯỢC: Cập nhật expected_date trong plan_master
-                $newDate = $newStart->format('Y-m-d');
-                $planMasterIds = DB::table('stage_plan')
-                    ->whereIn('id', $allAffectedIds)
-                    ->whereNotNull('plan_master_id')
-                    ->pluck('plan_master_id')
-                    ->unique()
-                    ->toArray();
+                //$newDate = $newStart->format('Y-m-d');
+                // $planMasterIds = DB::table('stage_plan')
+                //     ->whereIn('id', $allAffectedIds)
+                //     ->whereNotNull('plan_master_id')
+                //     ->pluck('plan_master_id')
+                //     ->unique()
+                //     ->toArray();
 
-                if (! empty($planMasterIds)) {
-                    DB::table('plan_master')->whereIn('id', $planMasterIds)->update([
-                        'expected_date' => $newDate,
-                        'updated_at' => now(),
-                    ]);
+                // if (! empty($planMasterIds)) {
+                //     DB::table('plan_master')->whereIn('id', $planMasterIds)->update([
+                //         'expected_date' => $newDate,
+                //         'updated_at' => now(),
+                //     ]);
 
-                    // Ghi lịch sử cho plan_master
-                    foreach ($planMasterIds as $pmId) {
-                        if (! $pmId) {
-                            continue;
-                        }
-                        $pm = DB::table('plan_master')->where('id', $pmId)->first();
+                //     // Ghi lịch sử cho plan_master
+                //     foreach ($planMasterIds as $pmId) {
+                //         if (! $pmId) {
+                //             continue;
+                //         }
+                //         $pm = DB::table('plan_master')->where('id', $pmId)->first();
 
-                        if ($pm) {
-                            $lastVersion = DB::table('plan_master_history')->where('plan_master_id', $pmId)->max('version') ?? 0;
+                //         if ($pm) {
+                //             $lastVersion = DB::table('plan_master_history')->where('plan_master_id', $pmId)->max('version') ?? 0;
 
-                            DB::table('plan_master_history')->insert([
-                                'plan_master_id' => $pmId,
-                                'plan_list_id' => $pm->plan_list_id,
-                                'product_caterogy_id' => $pm->product_caterogy_id,
-                                'version' => $lastVersion + 1,
-                                'batch' => $pm->batch,
-                                'expected_date' => $newDate,
-                                'note' => $pm->note,
-                                'reason' => $request->reason['reason'] ?? 'Cập nhật từ lịch bảo trì',
-                                'deparment_code' => session('user')['production_code'],
-                                'prepared_by' => session('user')['fullName'],
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]);
-                        }
-                    }
-                }
+                //             DB::table('plan_master_history')->insert([
+                //                 'plan_master_id' => $pmId,
+                //                 'plan_list_id' => $pm->plan_list_id,
+                //                 'product_caterogy_id' => $pm->product_caterogy_id,
+                //                 'version' => $lastVersion + 1,
+                //                 'batch' => $pm->batch,
+                //                 'expected_date' => $newDate,
+                //                 'note' => $pm->note,
+                //                 'reason' => $request->reason['reason'] ?? 'Cập nhật từ lịch bảo trì',
+                //                 'deparment_code' => session('user')['production_code'],
+                //                 'prepared_by' => session('user')['fullName'],
+                //                 'created_at' => now(),
+                //                 'updated_at' => now(),
+                //             ]);
+                //         }
+                //     }
+                // }
 
                 // Ghi lịch sử cho từng thiết bị nếu đã submit (stage_plan_history)
                 foreach ($allAffectedIds as $id) {
@@ -1254,13 +1254,13 @@ class MaintenanceSchedualController extends SchedualController
             }
 
             // 2) Xác định các nhóm (start, end, resourceId) cần Duyệt và Hủy duyệt
-            $groupsToApprove = $selectedRows->where('tank', 0)->map(function($r) {
+            $groupsToApprove = $selectedRows->where('tank', 0)->map(function ($r) {
                 return ['start' => $r->start, 'end' => $r->end, 'resourceId' => $r->resourceId];
-            })->unique(fn($g) => $g['start'].$g['end'].$g['resourceId']);
+            })->unique(fn($g) => $g['start'] . $g['end'] . $g['resourceId']);
 
-            $groupsToUnapprove = $selectedRows->where('tank', 1)->map(function($r) {
+            $groupsToUnapprove = $selectedRows->where('tank', 1)->map(function ($r) {
                 return ['start' => $r->start, 'end' => $r->end, 'resourceId' => $r->resourceId];
-            })->unique(fn($g) => $g['start'].$g['end'].$g['resourceId']);
+            })->unique(fn($g) => $g['start'] . $g['end'] . $g['resourceId']);
 
             $approvedCount = 0;
             $unapprovedCount = 0;
@@ -1268,9 +1268,9 @@ class MaintenanceSchedualController extends SchedualController
             // 3) Thực hiện cập nhật theo nhóm cho Duyệt (tank: 0 -> 1)
             if ($groupsToApprove->isNotEmpty()) {
                 $queryApprove = DB::table('stage_plan')->where('stage_code', 8)->where('finished', 0);
-                $queryApprove->where(function($q) use ($groupsToApprove) {
+                $queryApprove->where(function ($q) use ($groupsToApprove) {
                     foreach ($groupsToApprove as $g) {
-                        $q->orWhere(function($sub) use ($g) {
+                        $q->orWhere(function ($sub) use ($g) {
                             $sub->where('start', $g['start'])
                                 ->where('end', $g['end'])
                                 ->where('resourceId', $g['resourceId']);
@@ -1287,9 +1287,9 @@ class MaintenanceSchedualController extends SchedualController
             // 4) Thực hiện cập nhật theo nhóm cho Hủy duyệt (tank: 1 -> 0)
             if ($groupsToUnapprove->isNotEmpty()) {
                 $queryUnapprove = DB::table('stage_plan')->where('stage_code', 8)->where('finished', 0);
-                $queryUnapprove->where(function($q) use ($groupsToUnapprove) {
+                $queryUnapprove->where(function ($q) use ($groupsToUnapprove) {
                     foreach ($groupsToUnapprove as $g) {
-                        $q->orWhere(function($sub) use ($g) {
+                        $q->orWhere(function ($sub) use ($g) {
                             $sub->where('start', $g['start'])
                                 ->where('end', $g['end'])
                                 ->where('resourceId', $g['resourceId']);
