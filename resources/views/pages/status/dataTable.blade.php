@@ -19,11 +19,9 @@
             <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
 
                 @if (user_has_permission(session('user')['userId'], 'create_general_notification', 'boolean'))
-                <button class="btn btn-success btn-sm d-flex align-items-center justify-content-center"
-                    style="width: 35px; height: 35px; padding: 0; font-weight: bold;"
-                    data-toggle="modal"
-                    data-target="#notification_Modal"
-                    >+</button>
+                    <button class="btn btn-success btn-sm d-flex align-items-center justify-content-center"
+                        style="width: 35px; height: 35px; padding: 0; font-weight: bold;" data-toggle="modal"
+                        data-target="#notification_Modal">+</button>
                 @endif
 
                 <div class="animate-scroll text-xl text-red" style="overflow: hidden;">
@@ -39,69 +37,103 @@
             <div class="col-12">
                 <div class="card">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; width: 100%; min-width: 1200px;">
-                        <thead style=" color:#003A4F; font-size: clamp(18px, 2.5vw, 30px); padding: 2px 0;">
-                            <tr>
-                                <th style="width: 15%">Phòng SX</th>
-                                <th style="width: 25%">Lịch SX</th>
-                                <th style="width: 5%">TG</th>
-                                <th style="width: 25%">Đang SX</th>
-                                <th style="width: 5%">TG</th>
-                                <th style="width: 25%" class="text-center">Thông Báo</th>
-                            </tr>
-                        </thead>
-                        <tbody class="font-bold"
-                            style=" color:#003A4F; font-size: clamp(14px, 1.5vw, 24px);  padding: 5px; font-weight: bold">
-                            @php $current_stage = 0; @endphp
-                            @foreach ($datas as $data)
-                                @if ($data->stage_code != $current_stage)
-                                    <tr class="text-center"
-                                        style="background-color: #CDC717; color:#003A4F; font-size: clamp(16px, 2vw, 24px); padding: 0px; font-weight: bold">
-                                        <td colspan="6">{{ $stage[$data->stage] }}</td>
-                                    </tr>
-                                @endif
-                                @php
-                                    $current_stage = $data->stage_code;
-                                     switch ($data->status) {
-                                        case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
-                                        case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
-                                        case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
-                                        case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                                        case 4: $color = "#FF0000"; break;
-                                        }
-                                @endphp
+                        <table class="table table-bordered table-striped"
+                            style="border: 3px solid #003A4F; width: 100%; min-width: 1200px;">
+                            <thead style=" color:#003A4F; font-size: 12.5px; padding: 2px 0;">
                                 <tr>
-                                    <td style="background-color: {{ $color }};">
-                                        <button class="btn btn-success btn-sm btn-plus" 
-                                                  style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                                  data-room_name ="{{ $data->room_name }}"
-                                                  data-room_id ="{{ $data->room_id }}"
-                                                  data-in_production = "{{ $data->title}}"
-                                                  data-toggle="modal"
-                                                  data-target="#Modal" 
-                                        >+</button>
-                                        
-                                        <div>
-                                            {{ $data->room_name }}
-                                        </div>
-                                        {{-- <div>
+                                    <th style="width: 15%">Phòng SX</th>
+                                    <th style="width: 25%">Lịch SX</th>
+                                    <th style="width: 5%">TG</th>
+                                    <th style="width: 25%">Đang SX</th>
+                                    <th style="width: 5%">TG</th>
+                                    <th style="width: 25%" class="text-center">Thông Báo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="font-bold"
+                                style=" color:#003A4F; font-size: 12.5px;  padding: 5px; font-weight: bold">
+                                @php $current_stage = 0; @endphp
+                                @foreach ($datas as $data)
+                                    @if ($data->stage_code != $current_stage)
+                                        <tr class="text-center"
+                                            style="background-color: #CDC717; color:#003A4F; font-size: 12.5px; padding: 0px; font-weight: bold">
+                                            <td colspan="6">{{ $stage[$data->stage] }}</td>
+                                        </tr>
+                                    @endif
+                                    @php
+                                        $current_stage = $data->stage_code;
+                                        switch ($data->status) {
+                                            case 0:
+                                                $color = '#ffffff';
+                                                break; // xám - chưa sản xuất
+                                            case 1:
+                                                $color = '#46f905ff';
+                                                break; // xanh dương - chuẩn bị
+                                            case 2:
+                                                $color = '#a1a2a2ff';
+                                                break; // xanh lá - đang sản xuất
+                                            case 3:
+                                                $color = '#f99e02ff';
+                                                break; // đỏ - lỗi/dừng
+                                            case 4:
+                                                $color = '#FF0000';
+                                                break;
+                                        }
+                                    @endphp
+                                    <tr>
+                                        <td style="background-color: {{ $color }};">
+                                            <button class="btn btn-success btn-sm btn-plus"
+                                                style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                data-room_name ="{{ $data->room_name }}"
+                                                data-room_id ="{{ $data->room_id }}"
+                                                data-in_production = "{{ $data->title }}" data-toggle="modal"
+                                                data-target="#Modal">+</button>
+
+                                            <div>
+                                                {{ $data->room_name }}
+                                            </div>
+                                            {{-- <div>
                                             {{ $data->sheet }}
                                         </div> --}}
-                                    </td>
+                                        </td>
 
-                                    {{-- sp theo lịch 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                            {{ $data->title }}
-                                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                            {{ $data->title_clearning }}
-                                        @else
-                                            <div>KSX</div>
-                                        @endif
-                                    </td>
+                                        {{-- sp theo lịch 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                                            @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                                                {{ $data->title }}
+                                            @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                                {{ $data->title_clearning }}
+                                            @else
+                                                <div>KSX</div>
+                                            @endif
+                                        </td>
 
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        <div class="scroll-text-wrapper">
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            <div class="scroll-text-wrapper">
+                                                @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                                                    <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}
+                                                    </div>
+                                                @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                                    <div>
+                                                        {{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>
+                                                        {{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
+                                                    </div>
+                                                @else
+                                                    <div>-</div>
+                                                @endif
+                                            </div>
+                                        </td>
+
+
+                                        {{-- sp đang sx 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                                            {{ $data->in_production }}
+                                        </td>
+
+                                        <td style="max-width: 250px; overflow: hidden;">
                                             @if ($data->start && $data->end && $now->between($data->start, $data->end))
                                                 <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
                                                 <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
@@ -115,42 +147,21 @@
                                             @else
                                                 <div>-</div>
                                             @endif
-                                        </div>
-                                    </td>
+                                        </td>
 
 
-                                    {{-- sp đang sx 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        {{ $data->in_production }}
-                                    </td>
-
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                            <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
-                                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                            <div>{{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
+                                        {{-- thông báo 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            <div class="scroll-text-wrapper">
+                                                <div class="scroll-text note">
+                                                    {{ $data->notification }}
+                                                </div>
                                             </div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
-                                            </div>
-                                        @else
-                                            <div>-</div>
-                                        @endif
-                                    </td>
-
-
-                                    {{-- thông báo 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        <div class="scroll-text-wrapper">
-                                            <div class="scroll-text note">
-                                                {{ $data->notification }}
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -166,128 +177,148 @@
             <div class="col-xl-6 col-12 custom-col">
                 <div class="card">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; min-width: 800px;">
-                        <thead style=" color:#003A4F; font-size: clamp(18px, 2.5vw, 30px); padding: 2px 0;">
-                            <tr>
-                               <th style="width: 15%">Phòng Sản xuất</th>
-                                <th style="width: 25%">Lịch Sản Xuất</th>
-                                <th style="width: 5%">T.Gian LT</th>
-                                <th style="width: 25%">Đang Sản Xuất</th>
-                                <th style="width: 5%">T.Gian TT</th>
-                                <th style="width: 25%" class="text-center">Thông Báo</th>
-                            </tr>
-                        </thead>
-                        <tbody class="font-bold"
-                            style=" color:#003A4F; font-size: clamp(14px, 1.5vw, 24px);  padding: 5px; font-weight: bold">
-                            @php $current_stage = null; @endphp
-                            @foreach ($leftData as $data)
-                                @if ($data->production_group != $current_stage)
-                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: clamp(16px, 2vw, 24px); padding: 0px; font-weight: bold">
-                                    <td colspan="6">{{$data->production_group }}</td>
-                                    </tr>
-                                @endif
-
-                                @php
-                               
-                                    $current_stage = $data->production_group;
-                                     switch ($data->status) {
-                                        case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
-                                        case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
-                                        case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
-                                        case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                                        case 4: $color = "#FF0000"; break;
-                                        }
-                                    $color = (
-                                                !empty($data->start_realtime) &&
-                                                !empty($data->end_realtime) &&
-                                                $now->between($data->start_realtime, $data->end_realtime)
-                                            ) ? $color : "#ffffff";
-                                @endphp
+                        <table class="table table-bordered table-striped"
+                            style="border: 3px solid #003A4F; min-width: 800px;">
+                            <thead style=" color:#003A4F; font-size: 12.5px; padding: 2px 0;">
                                 <tr>
-                                    <td style="background-color: {{ $color }};">
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                          <button class="btn btn-success btn-sm btn-plus" 
-                                                  style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                                  data-room_name ="{{ $data->room_name }}"
-                                                  data-room_id ="{{ $data->room_id }}"
-                                                  data-in_production = "{{ $data->title}}"
-                                                  data-start = "{{ $data->start}}"
-                                                  data-end = "{{ $data->end}}"
-                                                  data-stage_code = "{{ $data->stage_code}}"
-                                         
-                                                  
-                                                  data-toggle="modal"
-                                                  data-target="#Modal"
-                                                  
-                                                  >+</button>
-                                          <span>{{ $data->room_name }}</span>
-                                        </div>
-                                        {{-- <div>
+                                    <th style="width: 15%">Phòng Sản xuất</th>
+                                    <th style="width: 25%">Lịch Sản Xuất</th>
+                                    <th style="width: 5%">T.Gian LT</th>
+                                    <th style="width: 25%">Đang Sản Xuất</th>
+                                    <th style="width: 5%">T.Gian TT</th>
+                                    <th style="width: 25%" class="text-center">Thông Báo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="font-bold"
+                                style=" color:#003A4F; font-size: 12.5px;  padding: 5px; font-weight: bold">
+                                @php $current_stage = null; @endphp
+                                @foreach ($leftData as $data)
+                                    @if ($data->production_group != $current_stage)
+                                        <tr class="text-center"
+                                            style="background-color: #CDC717; color:#003A4F; font-size: 12.5px; padding: 0px; font-weight: bold">
+                                            <td colspan="6">{{ $data->production_group }}</td>
+                                        </tr>
+                                    @endif
+
+                                    @php
+
+                                        $current_stage = $data->production_group;
+                                        switch ($data->status) {
+                                            case 0:
+                                                $color = '#ffffff';
+                                                break; // xám - chưa sản xuất
+                                            case 1:
+                                                $color = '#46f905ff';
+                                                break; // xanh dương - chuẩn bị
+                                            case 2:
+                                                $color = '#a1a2a2ff';
+                                                break; // xanh lá - đang sản xuất
+                                            case 3:
+                                                $color = '#f99e02ff';
+                                                break; // đỏ - lỗi/dừng
+                                            case 4:
+                                                $color = '#FF0000';
+                                                break;
+                                        }
+                                        $color =
+                                            !empty($data->start_realtime) &&
+                                            !empty($data->end_realtime) &&
+                                            $now->between($data->start_realtime, $data->end_realtime)
+                                                ? $color
+                                                : '#ffffff';
+                                    @endphp
+                                    <tr>
+                                        <td style="background-color: {{ $color }};">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <button class="btn btn-success btn-sm btn-plus"
+                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                    data-room_name ="{{ $data->room_name }}"
+                                                    data-room_id ="{{ $data->room_id }}"
+                                                    data-in_production = "{{ $data->title }}"
+                                                    data-start = "{{ $data->start }}"
+                                                    data-end = "{{ $data->end }}"
+                                                    data-stage_code = "{{ $data->stage_code }}" data-toggle="modal"
+                                                    data-target="#Modal">+</button>
+                                                <span>{{ $data->room_name }}</span>
+                                            </div>
+                                            {{-- <div>
                                             {{ $data->sheet }}
                                         </div> --}}
-                                    </td>
+                                        </td>
 
-                                    {{-- sp theo lịch 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                            {{ $data->title }}
-                                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                            {{ $data->title_clearning }}
-                                        @else
-                                            <div>KSX</div>
-                                        @endif
-                                    </td>
-
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        <div class="scroll-text-wrapper">
+                                        {{-- sp theo lịch 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
                                             @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                                <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                                                <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                                                {{ $data->title }}
                                             @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                                {{ $data->title_clearning }}
+                                            @else
+                                                <div>KSX</div>
+                                            @endif
+                                        </td>
+
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            <div class="scroll-text-wrapper">
+                                                @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                                                    <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}
+                                                    </div>
+                                                @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                                    <div>
+                                                        {{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>
+                                                        {{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
+                                                    </div>
+                                                @else
+                                                    <div>-</div>
+                                                @endif
+                                            </div>
+                                        </td>
+
+
+                                        {{-- sp đang sx 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                                            @if (
+                                                ($data->start_realtime ?? null) &&
+                                                    ($data->end_realtime ?? null) &&
+                                                    $now->between($data->start_realtime, $data->end_realtime))
+                                                {{ $data->in_production }}
+                                            @else
+                                                <div>KSX</div>
+                                            @endif
+                                        </td>
+
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            @if (
+                                                ($data->start_realtime ?? null) &&
+                                                    ($data->end_realtime ?? null) &&
+                                                    $now->between($data->start_realtime, $data->end_realtime))
                                                 <div>
-                                                    {{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
+                                                    {{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}
                                                 </div>
                                                 <div>
-                                                    {{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
+                                                    {{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}
                                                 </div>
                                             @else
                                                 <div>-</div>
                                             @endif
-                                        </div>
-                                    </td>
+                                        </td>
 
 
-                                    {{-- sp đang sx 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">  
-                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null)  && $now->between($data->start_realtime, $data->end_realtime))
-                                            {{ $data->in_production}}
-                                        @else
-                                            <div>KSX</div>
-                                        @endif
-                                    </td>
-
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null) && $now->between($data->start_realtime, $data->end_realtime))
-                                            <div>{{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}</div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}</div>
-                                        @else
-                                            <div>-</div>
-                                        @endif
-                                    </td>
-
-
-                                    {{-- thông báo 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        <div class="scroll-text-wrapper">
-                                            <div class="scroll-text note">
-                                                {{ $data->notification }}
+                                        {{-- thông báo 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            <div class="scroll-text-wrapper">
+                                                <div class="scroll-text note">
+                                                    {{ $data->notification }}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -296,131 +327,153 @@
             <div class="col-xl-6 col-12 custom-col">
                 <div class="card">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; width: 100%; min-width: 800px;">
-                        <thead style=" color:#003A4F; font-size: clamp(18px, 2.5vw, 30px); padding: 2px 0;">
-                            <tr>
-                               <th style="width: 15%">Phòng Sản xuất</th>
-                                <th style="width: 25%">Lịch Sản Xuất</th>
-                                <th style="width: 5%">T.Gian LT</th>
-                                <th style="width: 25%">Đang Sản Xuất</th>
-                                <th style="width: 5%">T.Gian TT</th>
-                                <th style="width: 25%" class="text-center">Thông Báo</th>
-                            </tr>
-                        </thead>
-                        <tbody class="font-bold"
-                            style=" color:#003A4F; font-size: clamp(14px, 1.5vw, 24px);  padding: 5px; font-weight: bold">
-                            @php $current_stage = null; @endphp
-                            @foreach ($rightData as $data)
-                                @if ($data->production_group != $current_stage)
-                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: clamp(16px, 2vw, 24px); padding: 0px; font-weight: bold">
-                                    <td colspan="6">{{$data->production_group }}</td>
-                                    </tr>
-                                @endif
+                        <table class="table table-bordered table-striped"
+                            style="border: 3px solid #003A4F; width: 100%; min-width: 800px;">
+                            <thead style=" color:#003A4F; font-size: 12.5px; padding: 2px 0;">
+                                <tr>
+                                    <th style="width: 15%">Phòng Sản xuất</th>
+                                    <th style="width: 25%">Lịch Sản Xuất</th>
+                                    <th style="width: 5%">T.Gian LT</th>
+                                    <th style="width: 25%">Đang Sản Xuất</th>
+                                    <th style="width: 5%">T.Gian TT</th>
+                                    <th style="width: 25%" class="text-center">Thông Báo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="font-bold"
+                                style=" color:#003A4F; font-size: 12.5px;  padding: 5px; font-weight: bold">
+                                @php $current_stage = null; @endphp
+                                @foreach ($rightData as $data)
+                                    @if ($data->production_group != $current_stage)
+                                        <tr class="text-center"
+                                            style="background-color: #CDC717; color:#003A4F; font-size: 12.5px; padding: 0px; font-weight: bold">
+                                            <td colspan="6">{{ $data->production_group }}</td>
+                                        </tr>
+                                    @endif
 
-                                @php
-                                    $current_stage = $data->production_group;
-                                     switch ($data->status) {
-                                        case 0: $color = "#ffffff"; break; // xám - chưa sản xuất
-                                        case 1: $color = "#46f905ff"; break; // xanh dương - chuẩn bị
-                                        case 2: $color = "#a1a2a2ff"; break; // xanh lá - đang sản xuất
-                                        case 3: $color = "#f99e02ff"; break; // đỏ - lỗi/dừng
-                                        case 4: $color = "#FF0000"; break;
+                                    @php
+                                        $current_stage = $data->production_group;
+                                        switch ($data->status) {
+                                            case 0:
+                                                $color = '#ffffff';
+                                                break; // xám - chưa sản xuất
+                                            case 1:
+                                                $color = '#46f905ff';
+                                                break; // xanh dương - chuẩn bị
+                                            case 2:
+                                                $color = '#a1a2a2ff';
+                                                break; // xanh lá - đang sản xuất
+                                            case 3:
+                                                $color = '#f99e02ff';
+                                                break; // đỏ - lỗi/dừng
+                                            case 4:
+                                                $color = '#FF0000';
+                                                break;
                                         }
 
-                                    $color = (
-                                                !empty($data->start_realtime) &&
-                                                !empty($data->end_realtime) &&
-                                                $now->between($data->start_realtime, $data->end_realtime)
-                                            ) ? $color: "#ffffff";
-                                @endphp
-                                <tr>
-                                    <td style="background-color: {{ $color }};">
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                          <button class="btn btn-success btn-sm btn-plus" 
-                                                  style="width: 20px; height: 20px; padding: 0; line-height: 0;"
-                                                  data-room_name ="{{ $data->room_name }}"
-                                                  data-room_id ="{{ $data->room_id }}"
-                                                  data-in_production = "{{ $data->title}}"
-                                                  data-start = "{{ $data->start}}"
-                                                  data-end = "{{ $data->end}}"
-                                                  data-toggle="modal"
-                                                  data-target="#Modal"
-                                                  
-                                                  >+</button>
-                                          <span>{{ $data->room_name }}</span>
-                                        </div>
-                                        {{-- <div>
+                                        $color =
+                                            !empty($data->start_realtime) &&
+                                            !empty($data->end_realtime) &&
+                                            $now->between($data->start_realtime, $data->end_realtime)
+                                                ? $color
+                                                : '#ffffff';
+                                    @endphp
+                                    <tr>
+                                        <td style="background-color: {{ $color }};">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <button class="btn btn-success btn-sm btn-plus"
+                                                    style="width: 20px; height: 20px; padding: 0; line-height: 0;"
+                                                    data-room_name ="{{ $data->room_name }}"
+                                                    data-room_id ="{{ $data->room_id }}"
+                                                    data-in_production = "{{ $data->title }}"
+                                                    data-start = "{{ $data->start }}"
+                                                    data-end = "{{ $data->end }}" data-toggle="modal"
+                                                    data-target="#Modal">+</button>
+                                                <span>{{ $data->room_name }}</span>
+                                            </div>
+                                            {{-- <div>
                                             {{ $data->sheet }}
                                         </div> --}}
-                                    </td>
+                                        </td>
 
-                                    {{-- sp theo lịch 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                            {{ $data->title }}
-                                        @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
-                                            {{ $data->title_clearning }}
-                                        @else
-                                            <div>KSX</div>
-                                        @endif
-                                    </td>
-
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        <div class="scroll-text-wrapper">
+                                        {{-- sp theo lịch 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
                                             @if ($data->start && $data->end && $now->between($data->start, $data->end))
-                                                <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}</div>
-                                                <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}</div>
+                                                {{ $data->title }}
                                             @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                                {{ $data->title_clearning }}
+                                            @else
+                                                <div>KSX</div>
+                                            @endif
+                                        </td>
+
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            <div class="scroll-text-wrapper">
+                                                @if ($data->start && $data->end && $now->between($data->start, $data->end))
+                                                    <div>{{ \Carbon\Carbon::parse($data->start)->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>{{ \Carbon\Carbon::parse($data->end)->format('H:i d/m') }}
+                                                    </div>
+                                                @elseif ($data->start_clearning && $data->end_clearning && $now->between($data->start_clearning, $data->end_clearning))
+                                                    <div>
+                                                        {{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>
+                                                        {{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
+                                                    </div>
+                                                @else
+                                                    <div>-</div>
+                                                @endif
+                                            </div>
+                                        </td>
+
+
+                                        {{-- sp đang sx 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
+                                            @if (
+                                                ($data->start_realtime ?? null) &&
+                                                    ($data->end_realtime ?? null) &&
+                                                    $now->between($data->start_realtime, $data->end_realtime))
+                                                {{ $data->in_production }}
+                                            @else
+                                                <div>-</div>
+                                            @endif
+                                        </td>
+
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            @if (
+                                                ($data->start_realtime ?? null) &&
+                                                    ($data->end_realtime ?? null) &&
+                                                    $now->between($data->start_realtime, $data->end_realtime))
                                                 <div>
-                                                    {{ \Carbon\Carbon::parse($data->start_clearning)->format('H:i d/m') }}
+                                                    {{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}
                                                 </div>
                                                 <div>
-                                                    {{ \Carbon\Carbon::parse($data->end_clearning)->format('H:i d/m') }}
+                                                    {{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}
                                                 </div>
                                             @else
                                                 <div>-</div>
                                             @endif
-                                        </div>
-                                    </td>
+                                        </td>
 
 
-                                    {{-- sp đang sx 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;" class ="multi-line">
-                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null)  && $now->between($data->start_realtime, $data->end_realtime))
-                                            {{ $data->in_production}}
-                                        @else
-                                            <div>-</div>
-                                        @endif
-                                    </td>
-
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        @if (($data->start_realtime ?? null) && ($data->end_realtime ?? null) && $now->between($data->start_realtime, $data->end_realtime))
-                                            <div>{{ \Carbon\Carbon::parse($data->start_realtime)->format('H:i d/m') }}</div>
-                                            <div>{{ \Carbon\Carbon::parse($data->end_realtime)->format('H:i d/m') }}</div>
-                                        @else
-                                            <div>-</div>
-                                        @endif
-                                    </td>
-
-
-                                    {{-- thông báo 1 --}}
-                                    <td style="max-width: 250px; overflow: hidden;">
-                                        <div class="scroll-text-wrapper">
-                                            <div class="scroll-text note">
-                                                {{ $data->notification }}
+                                        {{-- thông báo 1 --}}
+                                        <td style="max-width: 250px; overflow: hidden;">
+                                            <div class="scroll-text-wrapper">
+                                                <div class="scroll-text note">
+                                                    {{ $data->notification }}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         @endif
     </div>
-    
+
 </div>
 
 <!-- ====== SCRIPT ====== -->
@@ -449,7 +502,7 @@
             if (rowCount > 0) {
                 let rowHeight = Math.floor(totalHeight / rowCount);
                 // Đảm bảo chiều cao không quá nhỏ để không che mất chữ khi zoom
-                const minHeight = 45; 
+                const minHeight = 45;
                 if (rowHeight / tem < minHeight) {
                     rowHeight = minHeight * tem;
                 }
@@ -497,8 +550,8 @@
 
 
         $('.btn-plus').click(function() {
-            const button  = $(this);
-            const modal   = $('#Modal');
+            const button = $(this);
+            const modal = $('#Modal');
             const room_id = button.data('room_id');
 
             // Clear datalist cũ
@@ -513,7 +566,7 @@
             // Thêm option động lọc theo room_id
             planWaitings.forEach(plan => {
                 if (plan.resourceId == room_id) {
-                    
+
                     $('#in_production_list').append(
                         `<option 
                             value="${plan.name}_${plan.batch}" 
@@ -610,27 +663,29 @@
     }
 
     .table th {
-          padding: 10px 8px !important;
-          line-height: 1.1;
-          font-size: clamp(16px, 2vw, 30px) !important;
-      }
+        padding: 10px 8px !important;
+        line-height: 1.1;
+        font-size: 12.5px !important;
+    }
 
     .table tbody td {
-          font-size: clamp(14px, 1.5vw, 24px) !important;
+        font-size: 12.5px !important;
     }
 
     .table td {
-          overflow: hidden;
-          text-overflow: clip;      /* hoặc bỏ luôn dòng này */
-          word-break: break-word;   /* Ngắt từ khi quá dài */
-          line-height: 1.2;
-          vertical-align: middle;
+        overflow: hidden;
+        text-overflow: clip;
+        /* hoặc bỏ luôn dòng này */
+        word-break: break-word;
+        /* Ngắt từ khi quá dài */
+        line-height: 1.2;
+        vertical-align: middle;
     }
 
     .multi-line {
-          white-space: normal;
-          word-break: break-word;
-          overflow-wrap: anywhere;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
 
     /* Force 1 column layout when zooming in or on smaller screens to ensure all 6 columns show */
@@ -645,5 +700,4 @@
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
     }
-
 </style>

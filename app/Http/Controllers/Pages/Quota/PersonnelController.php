@@ -87,9 +87,11 @@ class PersonnelController extends Controller
             8 => "ĐGTC",
             9 => "VSCN + Kho BTP"
         ])->map(function ($name, $id) {
-            return (object) ['id' => $id, 'name' => $name];
+            return (object) ['id' => $id, 'code' => $id, 'name' => $name];
         })->values();
         $rooms = DB::table('room')->where('deparment_code', $departmentCode)->get();
+
+
 
         return view('pages.quota.personnel.list', [
             'datas' => $datas,
