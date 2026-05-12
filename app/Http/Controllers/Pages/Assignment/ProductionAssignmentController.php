@@ -20,14 +20,32 @@ class ProductionAssignmentController extends Controller
         $endDate = $startDate->copy()->addDays(1);
 
         // 1. Lấy danh sách các tổ có trong bộ phận
-        $groups = DB::table('room')
-            ->where('deparment_code', $production_code)
-            ->where('stage_code', '!=', 8)
-            ->whereNotNull('group_code')
-            ->select('group_code', 'production_group')
-            ->distinct()
-            ->orderBy('group_code')
-            ->get();
+        // $groups = DB::table('room')
+        //     ->where('deparment_code', $production_code)
+        //     ->where('stage_code', '!=', 8)
+        //     ->whereNotNull('group_code')
+        //     ->select('group_code', 'production_group')
+        //     ->distinct()
+        //     ->orderBy('group_code')
+        //     ->get();
+
+        // dd($groups);
+
+
+        $groups = collect([
+            1 => "Trung Tâm Cân",
+            3 => "Pha Chế",
+            4 => "Văn Phòng",
+            5 => "Định Hình",
+            6 => "Bao Phim",
+            7 => "ĐGSC",
+            8 => "ĐGTC",
+            9 => "VSCN + Kho BTP"
+        ])->map(function ($name, $id) {
+            return (object) ['group_code' => $id, 'production_group' => $name];
+        })->values();
+
+
 
         // 2. Logic khóa tổ theo tên (group_name):
         $isLocked = false;
@@ -51,19 +69,29 @@ class ProductionAssignmentController extends Controller
             ->where('stage_code', '!=', 8);
 
         if ($active_group_code) {
-            $roomQuery->where('group_code', $active_group_code);
+            if ($active_group_code == 7 || $active_group_code == 8) {
+                $roomQuery->whereIn('group_code', [7, 8]);
+            } else {
+                $roomQuery->where('group_code', $active_group_code);
+            }
         }
 
         $rooms = $roomQuery->orderBy('group_code')->orderBy('order_by')->get();
 
         // 4. Lấy dữ liệu công việc lý thuyết trong ngày
-        $stagePlans = DB::table('stage_plan as sp')
+        $stagePlanQuery = DB::table('stage_plan as sp')
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
-            ->where('sp.deparment_code', $production_code)
-            ->where('sp.stage_code', '!=', 8)
-            ->where('sp.active', 1)
+            ->where('sp.deparment_code', $production_code);
+
+        if ($active_group_code == 8) {
+            $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
+        } else {
+            $stagePlanQuery->where('sp.stage_code', '!=', 8);
+        }
+
+        $stagePlans = $stagePlanQuery->where('sp.active', 1)
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate])
             ->select(
                 'sp.id',
@@ -79,12 +107,20 @@ class ProductionAssignmentController extends Controller
             ->groupBy('room_id');
 
         // 5. Lấy dữ liệu đã phân công (Assignments)
-        $allAssignments = DB::table('assignments as a')
+        $assignmentQuery = DB::table('assignments as a')
             ->where('a.deparment_code', $production_code)
             ->whereDate('a.start', $reportedDate)
-            ->where('a.active', 1)
-            ->get()
-            ->groupBy('room_id');
+            ->where('a.active', 1);
+
+        if ($active_group_code) {
+            if ($active_group_code == 7 || $active_group_code == 8) {
+                $assignmentQuery->whereIn('a.stage_groups_code', [7, 8]);
+            } else {
+                $assignmentQuery->where('a.stage_groups_code', $active_group_code);
+            }
+        }
+
+        $allAssignments = $assignmentQuery->get()->groupBy('room_id');
 
         // 6. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
         //$dailyReportController = app(DailyReportController::class);
@@ -92,7 +128,7 @@ class ProductionAssignmentController extends Controller
         // $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
 
         // 7. Tổ chức lại dữ liệu theo từng phòng
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate) {
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate, $active_group_code) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
             //$actuals = $actualDetails->get($room->id) ?? collect();
@@ -114,8 +150,9 @@ class ProductionAssignmentController extends Controller
                 $spIdString = implode(',', $spIds);
             }
 
-            // Lấy thông tin nhân viên cho mỗi assignment
             foreach ($assignments as $a) {
+                $a->is_foreign = ($active_group_code && $a->stage_groups_code != $active_group_code);
+                $a->is_scheduled = !empty($a->stage_plan_id);
                 $a->personnel_data = DB::table('assignment_personnel')
                     ->where('assignment_id', $a->id)
                     ->select('personnel_id', 'notification')->get();
@@ -179,7 +216,9 @@ class ProductionAssignmentController extends Controller
                         'number_of_employes' => $suggestedCount,
                         'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null]]),
                         'start_time_display' => $sTime->format('H:i'),
-                        'end_time_display' => $eTime->format('H:i')
+                        'end_time_display' => $eTime->format('H:i'),
+                        'is_foreign' => false,
+                        'is_scheduled' => true
                     ]);
                 }
                 // Sắp xếp lại theo thời gian
@@ -213,9 +252,12 @@ class ProductionAssignmentController extends Controller
             $personnelQuery->whereExists(function ($query) use ($active_group_code) {
                 $query->select(DB::raw(1))
                     ->from('employee_assignments as ea2')
-                    ->join('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
+                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
                     ->whereColumn('ea2.employees_id', 'e.id')
-                    ->where('sg.code', $active_group_code)
+                    ->where(function($q) use ($active_group_code) {
+                        $q->where('sg.code', $active_group_code)
+                          ->orWhere('ea2.group_id', $active_group_code);
+                    })
                     ->where('ea2.active', 1);
             });
         }
@@ -224,7 +266,7 @@ class ProductionAssignmentController extends Controller
             ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level)) FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL) as allowed_rooms_with_levels"))
             ->orderBy('e.name')
             ->get();
-        
+
         // Tạo mapping skills từ danh sách personnel đã lấy
         $skills = $personnel->keyBy('id');
 

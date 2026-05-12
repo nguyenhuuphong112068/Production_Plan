@@ -882,9 +882,6 @@
                     <button class="btn btn-danger btn-xs btn-toggle-room-active mr-1" title="Vô hiệu hóa">
                         <i class="fas fa-times"></i>
                     </button>
-                    <button class="btn btn-warning btn-xs btn-remove-room-row" title="Xóa phòng">
-                        <i class="fas fa-trash"></i>
-                    </button>
                 </div>
             `;
             $list.append(newRow);

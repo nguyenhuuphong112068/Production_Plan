@@ -348,6 +348,10 @@
         background-color: rgba(108, 117, 125, 0.15) !important;
         border-left: 4px solid #6c757d !important;
     }
+
+    .theory-col {
+        display: none;
+    }
 </style>
 @php
     $production_code = session('user')['production_code'];
@@ -370,7 +374,6 @@
                         <option value="{{ $g->group_code }}" {{ $group_code == $g->group_code ? 'selected' : '' }}>
                             {{ $g->production_group }}</option>
                     @endforeach
-                    <option value="HC" {{ $group_code == 'HC' ? 'selected' : '' }}>Tổ HC Thiết Bị (QA)</option>
                 </select>
 
                 <span class="mr-2 font-weight-bold">Chọn Ngày:</span>
@@ -397,7 +400,7 @@
                 </button>
                 <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-toggle-theory"
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
-                    <i class="fas fa-eye-slash"></i>
+                    <i class="fas fa-eye"></i>
                 </button>
             </div>
         </div>
@@ -451,7 +454,7 @@
                                 <table class="assignment-inner-table">
                                     <tbody class="assignment-container">
                                         @forelse($task->assignments as $assignment)
-                                            <tr class="assignment-item" data-id="{{ $assignment->id }}"
+                                            <tr class="assignment-item {{ ($assignment->is_foreign ?? false) ? 'foreign-assignment' : '' }}" data-id="{{ $assignment->id }}"
                                                 data-theory-start="{{ $task->theory_start }}"
                                                 data-theory-end="{{ $task->theory_end }}">
                                                 <td style="width: 100px">
@@ -480,16 +483,21 @@
                                                         <input type="time"
                                                             class="form-control form-control-sm start-time-input mb-1"
                                                             value="{{ $assignment->start_time_display }}"
-                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                            {{ (!$canEdit || ($assignment->is_foreign ?? false)) ? 'disabled' : '' }}>
                                                         <input type="time"
                                                             class="form-control form-control-sm end-time-input mb-1"
                                                             value="{{ $assignment->end_time_display }}"
-                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                            {{ (!$canEdit || ($assignment->is_foreign ?? false)) ? 'disabled' : '' }}>
                                                         <div class="input-group input-group-sm">
                                                             <div class="input-group-prepend">
-                                                                <span class="input-group-text"><i class="fas fa-users"></i></span>
+                                                                <span class="input-group-text"><i
+                                                                        class="fas fa-users"></i></span>
                                                             </div>
-                                                            <input type="number" class="form-control person-count-input" value="{{ $assignment->number_of_employes ?? 0 }}" min="0" title="Số lượng nhân sự cần" {{ !$canEdit ? 'disabled' : '' }}>
+                                                            <input type="number"
+                                                                class="form-control person-count-input"
+                                                                value="{{ $assignment->number_of_employes ?? 0 }}"
+                                                                min="0" title="Số lượng nhân sự cần"
+                                                                {{ (!$canEdit || ($assignment->is_foreign ?? false)) ? 'disabled' : '' }}>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -504,8 +512,9 @@
                                                                 <div style="flex: 1">
                                                                     <select
                                                                         class="form-control form-control-sm person-select"
-                                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                                        <option value="">-- Chọn người --</option>
+                                                                        {{ (!$canEdit || ($assignment->is_foreign ?? false)) ? 'disabled' : '' }}>
+                                                                        <option value="">-- Chọn người --
+                                                                        </option>
                                                                         @foreach ($personnel as $p)
                                                                             <option value="{{ $p->id }}"
                                                                                 {{ $p->id == $p_info->personnel_id ? 'selected' : '' }}>
@@ -514,7 +523,7 @@
                                                                     </select>
                                                                 </div>
 
-                                                                @if ($canEdit)
+                                                                @if ($canEdit && !($assignment->is_foreign ?? false))
                                                                     <i
                                                                         class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                                                 @endif
@@ -522,15 +531,25 @@
                                                         @endforeach
                                                     </div>
                                                     @if ($canEdit)
-                                                        <div class="text-left p-1" style="border-top: 1px dashed #eee">
+                                                        <div class="text-left p-1"
+                                                            style="border-top: 1px dashed #eee">
                                                             <a href="javascript:void(0)" class="btn-add-person"><i
                                                                     class="fas fa-plus-square"></i></a>
                                                         </div>
                                                     @endif
                                                 </td>
                                                 <td style="width: 600px">
+                                                    @if($assignment->is_foreign ?? false)
+                                                        <div class="badge badge-info mb-1">Lịch của {{ $assignment->stage_groups_code == 7 ? 'ĐGSC' : 'ĐGTC' }}</div>
+                                                    @endif
+                                                    @php
+                                                        $isJobEditable = ($canEdit && !($assignment->is_foreign ?? false));
+                                                        if ($group_code == 8 && ($assignment->is_scheduled ?? false)) {
+                                                            $isJobEditable = false;
+                                                        }
+                                                    @endphp
                                                     <div class="form-control form-control-sm job-desc"
-                                                        contenteditable="{{ $canEdit ? 'true' : 'false' }}"
+                                                        contenteditable="{{ $isJobEditable ? 'true' : 'false' }}"
                                                         style="min-height: 80px; height: auto; white-space: pre-wrap;"
                                                         placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
                                                 </td>
@@ -572,9 +591,13 @@
                                                             {{ !$canEdit ? 'disabled' : '' }}>
                                                         <div class="input-group input-group-sm">
                                                             <div class="input-group-prepend">
-                                                                <span class="input-group-text"><i class="fas fa-users"></i></span>
+                                                                <span class="input-group-text"><i
+                                                                        class="fas fa-users"></i></span>
                                                             </div>
-                                                            <input type="number" class="form-control person-count-input" value="0" min="0" title="Số lượng nhân sự cần" {{ !$canEdit ? 'disabled' : '' }}>
+                                                            <input type="number"
+                                                                class="form-control person-count-input" value="0"
+                                                                min="0" title="Số lượng nhân sự cần"
+                                                                {{ !$canEdit ? 'disabled' : '' }}>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -721,7 +744,8 @@
                 </div>
             </div>
             <div class="p-2 border-top bg-light">
-                <div class="d-flex justify-content-around font-weight-bold small text-center" style="font-size: 0.75rem;">
+                <div class="d-flex justify-content-around font-weight-bold small text-center"
+                    style="font-size: 0.75rem;">
                     <div>
                         <div class="shift-badge shift-c1 mx-auto mb-1">C1</div>
                         <div>Ca 1</div>
@@ -1473,7 +1497,7 @@
                     $item.removeClass('person-assigned');
                     $item.removeClass(
                         'person-assigned-c1 person-assigned-c2 person-assigned-c3 person-assigned-hc person-assigned-khác'
-                        );
+                    );
                 }
             });
         }
@@ -1569,7 +1593,7 @@
                 </tr>
             `);
             container.append(newRow);
-            
+
             // Tự động điền số lượng nhân sự định mức
             newRow.find('.shift-select').trigger('change');
 
@@ -1588,7 +1612,7 @@
             else if (shift === '3') count = roomRow.data('n3') || 0;
             else if (shift === '6') count = roomRow.data('n4') || 0;
             else if (shift === '4') count = roomRow.data('nr') || 0;
-            
+
             $(this).closest('.assignment-item').find('.person-count-input').val(count);
         });
 
@@ -1640,7 +1664,7 @@
                 }
 
                 const assignments = [];
-                row.find('.assignment-item').each(function() {
+                row.find('.assignment-item:not(.foreign-assignment)').each(function() {
                     const p_list = [];
                     $(this).find('.personnel-row').each(function() {
                         const pid = $(this).find('.person-select').val();
@@ -1655,7 +1679,8 @@
                         start_time: $(this).find('.start-time-input').val(),
                         end_time: $(this).find('.end-time-input').val(),
                         job_description: $(this).find('.job-desc').html(),
-                        number_of_employes: $(this).find('.person-count-input').val() || 0,
+                        number_of_employes: $(this).find('.person-count-input').val() ||
+                            0,
                         personnel_list: p_list
                     });
                 });
@@ -1982,22 +2007,29 @@
 
                 // 1. Phân loại nhân sự theo ca
                 const pools = {
-                    'C1': [], 'C2': [], 'C3': [], 'C4': [], 'HC': [], 'Khác': []
+                    'C1': [],
+                    'C2': [],
+                    'C3': [],
+                    'C4': [],
+                    'HC': [],
+                    'Khác': []
                 };
-                
+
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
-                    const shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey].toUpperCase() : 'HC';
+                    const shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
+                        .toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
-                    
+
                     if (!personId) return;
-                    if (allowedPersonnelCodes.length > 0 && !allowedPersonnelCodes.includes(personCode.toString())) return;
+                    if (allowedPersonnelCodes.length > 0 && !allowedPersonnelCodes.includes(
+                            personCode.toString())) return;
                     if (shiftCode === 'P') return; // Nghỉ phép
-                    
+
                     let targetShift = shiftCode;
                     if (!pools[targetShift]) targetShift = 'Khác';
-                    
+
                     pools[targetShift].push(personId);
                 });
 
@@ -2005,11 +2037,12 @@
                 const tasks = [];
                 $('.room-row').each(function() {
                     const $roomRow = $(this);
-                    const roomId = $roomRow.attr('data-room-id'); 
+                    const roomId = $roomRow.attr('data-room-id');
                     if (!roomId) return;
-                    
-                    const roomNameText = $roomRow.find('.room-name-cell b').text() + ' - ' + $roomRow.find('.room-name-cell div').eq(1).text();
-                    
+
+                    const roomNameText = $roomRow.find('.room-name-cell b').text() + ' - ' +
+                        $roomRow.find('.room-name-cell div').eq(1).text();
+
                     $roomRow.find('.assignment-item').each(function() {
                         const $item = $(this);
                         const shiftVal = $item.find('.shift-select').val();
@@ -2019,8 +2052,9 @@
                         else if (shiftVal === '3') shiftKey = 'C3';
                         else if (shiftVal === '6') shiftKey = 'C4';
                         else if (shiftVal === '4') shiftKey = 'HC';
-                        
-                        const requiredCount = parseInt($item.find('.person-count-input').val()) || 0;
+
+                        const requiredCount = parseInt($item.find('.person-count-input')
+                            .val()) || 0;
                         if (requiredCount > 0) {
                             tasks.push({
                                 roomId: roomId.toString(),
@@ -2039,27 +2073,27 @@
                 shiftKeys.forEach(shiftKey => {
                     const shiftTasks = tasks.filter(t => t.shiftKey === shiftKey);
                     if (shiftTasks.length === 0) return;
-                    
+
                     const pool = [...pools[shiftKey]];
-                    
+
                     let hasMoreNeeds = true;
                     while (hasMoreNeeds && pool.length > 0) {
                         hasMoreNeeds = false;
                         let progressMadeInThisRound = false;
-                        
+
                         for (const task of shiftTasks) {
                             if (task.assigned.length < task.required) {
                                 hasMoreNeeds = true;
-                                
+
                                 let bestPersonId = null;
                                 let bestLevel = -1;
                                 let bestIndex = -1;
-                                
+
                                 for (let i = 0; i < pool.length; i++) {
                                     const pid = pool[i];
                                     const skillsStr = personnelSkills[pid] || '';
                                     let level = 0;
-                                    
+
                                     if (skillsStr) {
                                         const pairs = skillsStr.split('|');
                                         for (const pair of pairs) {
@@ -2070,14 +2104,14 @@
                                             }
                                         }
                                     }
-                                    
+
                                     if (level > 0 && level > bestLevel) {
                                         bestLevel = level;
                                         bestPersonId = pid;
                                         bestIndex = i;
                                     }
                                 }
-                                
+
                                 if (bestPersonId) {
                                     task.assigned.push(bestPersonId);
                                     pool.splice(bestIndex, 1);
@@ -2085,7 +2119,7 @@
                                 }
                             }
                         }
-                        
+
                         // Nếu đi qua tất cả các task mà không tìm được ai phù hợp thì thoát (chống vòng lặp vô hạn)
                         if (!progressMadeInThisRound) {
                             break;
@@ -2098,10 +2132,10 @@
                 tasks.forEach(task => {
                     const $item = task.$item;
                     const $container = $item.find('.personnel-container');
-                    
+
                     // Clear current 
                     $container.empty();
-                    
+
                     if (task.assigned.length === 0) {
                         addPersonRow($container);
                     } else {
@@ -2112,7 +2146,7 @@
                     markRoomDirty($item.closest('.room-row'));
                 });
                 isProgrammaticChange = false;
-                
+
                 updateSidebarHighlights();
 
                 // 5. Hiển thị báo cáo
@@ -2132,13 +2166,24 @@
                 const month = date.getMonth() + 1;
                 const year = date.getFullYear();
                 const day = date.getDate();
-                const depMapping = { 'PXV1': 15, 'PXV2': 31, 'PXVH': 30, 'PXDN': 30, 'EN': 3, 'PXTN': 6 };
+                const depMapping = {
+                    'PXV1': 15,
+                    'PXV2': 31,
+                    'PXVH': 30,
+                    'PXDN': 30,
+                    'EN': 3,
+                    'PXTN': 6
+                };
                 const department = depMapping['{{ $production_code }}'] || 15;
-                
+
                 $.ajax({
                     url: `{{ route('pages.assignment.production.shifts') }}`,
                     method: 'GET',
-                    data: { month, year, department },
+                    data: {
+                        month,
+                        year,
+                        department
+                    },
                     success: function(res) {
                         isSidebarLoaded = true;
                         currentSidebarData = res;
@@ -2154,20 +2199,33 @@
         async function showAssignmentReport() {
             try {
                 if (!isSidebarLoaded) {
-                    Swal.fire({ title: 'Đang tải dữ liệu...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    Swal.fire({
+                        title: 'Đang tải dữ liệu...',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
                     await fetchPersonnelShiftsPromise();
                     Swal.close();
                 }
 
-                const totalPools = { 'C1': [], 'C2': [], 'C3': [], 'C4': [], 'HC': [], 'Khác': [] };
+                const totalPools = {
+                    'C1': [],
+                    'C2': [],
+                    'C3': [],
+                    'C4': [],
+                    'HC': [],
+                    'Khác': []
+                };
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
-                    const shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey].toUpperCase() : 'HC';
+                    const shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
+                        .toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
                     if (!personId || shiftCode === 'P') return;
-                    if (allowedPersonnelCodes.length > 0 && !allowedPersonnelCodes.includes(personCode.toString())) return;
-                    
+                    if (allowedPersonnelCodes.length > 0 && !allowedPersonnelCodes.includes(
+                            personCode.toString())) return;
+
                     let targetShift = shiftCode;
                     if (!totalPools[targetShift]) targetShift = 'Khác';
                     totalPools[targetShift].push(personId);
@@ -2175,14 +2233,40 @@
 
                 let totalReq = 0;
                 let totalAssigned = 0;
-                const shiftStats = { 'C1': {req:0, assig:0}, 'C2': {req:0, assig:0}, 'C3': {req:0, assig:0}, 'C4': {req:0, assig:0}, 'HC': {req:0, assig:0}, 'Khác': {req:0, assig:0} };
+                const shiftStats = {
+                    'C1': {
+                        req: 0,
+                        assig: 0
+                    },
+                    'C2': {
+                        req: 0,
+                        assig: 0
+                    },
+                    'C3': {
+                        req: 0,
+                        assig: 0
+                    },
+                    'C4': {
+                        req: 0,
+                        assig: 0
+                    },
+                    'HC': {
+                        req: 0,
+                        assig: 0
+                    },
+                    'Khác': {
+                        req: 0,
+                        assig: 0
+                    }
+                };
                 const missingDetails = [];
                 const assignedPersonnelIds = new Set();
 
                 $('.room-row').each(function() {
                     const $roomRow = $(this);
-                    const roomNameText = $roomRow.find('.room-name-cell b').text() + ' - ' + $roomRow.find('.room-name-cell div').eq(1).text();
-                    
+                    const roomNameText = $roomRow.find('.room-name-cell b').text() + ' - ' +
+                        $roomRow.find('.room-name-cell div').eq(1).text();
+
                     $roomRow.find('.assignment-item').each(function() {
                         const $item = $(this);
                         const shiftVal = $item.find('.shift-select').val();
@@ -2211,14 +2295,19 @@
                         }
 
                         if (assigCount < req) {
-                            missingDetails.push({ roomName: roomNameText, shiftKey: shiftKey, missing: req - assigCount });
+                            missingDetails.push({
+                                roomName: roomNameText,
+                                shiftKey: shiftKey,
+                                missing: req - assigCount
+                            });
                         }
                     });
                 });
 
                 const shiftKeys = Object.keys(totalPools);
                 shiftKeys.forEach(k => {
-                    const leftoverCount = totalPools[k].filter(pid => !assignedPersonnelIds.has(pid)).length;
+                    const leftoverCount = totalPools[k].filter(pid => !assignedPersonnelIds.has(
+                        pid)).length;
                     shiftStats[k].poolSize = leftoverCount;
                 });
 
@@ -2288,21 +2377,30 @@
                     <ul class="text-danger small pl-3" style="max-height: 150px; overflow-y: auto;">
                     `;
                     missingDetails.forEach(m => {
-                        htmlReport += `<li><b>${m.roomName}</b> (Ca ${m.shiftKey}): Thiếu ${m.missing} người</li>`;
+                        htmlReport +=
+                            `<li><b>${m.roomName}</b> (Ca ${m.shiftKey}): Thiếu ${m.missing} người</li>`;
                     });
                     htmlReport += `</ul>
                     <div class="alert alert-warning p-2 small mt-2">
                         <i class="fas fa-info-circle"></i> Nguyên nhân có thể do hết nhân sự trong ca, hoặc nhân sự rảnh rỗi chưa có định mức kỹ năng (level) tại phòng này.
                     </div>`;
                 } else if (totalReq > 0) {
-                    htmlReport += `<div class="alert alert-success p-2 small mt-3"><i class="fas fa-check-circle"></i> Tuyệt vời! Tất cả các phòng đã được xếp đủ số lượng yêu cầu.</div>`;
+                    htmlReport +=
+                        `<div class="alert alert-success p-2 small mt-3"><i class="fas fa-check-circle"></i> Tuyệt vời! Tất cả các phòng đã được xếp đủ số lượng yêu cầu.</div>`;
                 } else {
-                    htmlReport += `<div class="alert alert-secondary p-2 small mt-3"><i class="fas fa-info-circle"></i> Chưa có yêu cầu nhân sự nào được cấu hình cho các phòng (Vui lòng điền "Số lượng" > 0).</div>`;
+                    htmlReport +=
+                        `<div class="alert alert-secondary p-2 small mt-3"><i class="fas fa-info-circle"></i> Chưa có yêu cầu nhân sự nào được cấu hình cho các phòng (Vui lòng điền "Số lượng" > 0).</div>`;
                 }
 
                 htmlReport += `</div>`;
 
-                Swal.fire({ title: 'Báo cáo Tình hình Phân công', html: htmlReport, width: '800px', icon: 'info', confirmButtonText: 'Đóng' });
+                Swal.fire({
+                    title: 'Báo cáo Tình hình Phân công',
+                    html: htmlReport,
+                    width: '800px',
+                    icon: 'info',
+                    confirmButtonText: 'Đóng'
+                });
             } catch (err) {
                 console.error(err);
                 Swal.fire('Lỗi', 'Không thể tạo báo cáo', 'error');
@@ -2389,6 +2487,7 @@
         }
 
         const allowedPersonnelCodes = {!! json_encode($allowedPersonnelCodes ?? []) !!};
+        const isGroupFiltered = {!! isset($group_code) && $group_code != '' && $group_code != 'HC' ? 'true' : 'false' !!};
 
         function renderSidebarData(data, currentDay, query = '') {
             if (!data || data.length === 0) {
@@ -2424,7 +2523,7 @@
                 }
 
                 // Lọc theo Tổ đang chọn (nếu có)
-                if (allowedPersonnelCodes.length > 0) {
+                if (isGroupFiltered) {
                     if (!allowedPersonnelCodes.includes(personCode.toString())) {
                         return;
                     }
@@ -2446,7 +2545,7 @@
             const hasVisibleData = Object.values(shifts).some(arr => arr.length > 0);
             if (!hasVisibleData && searchStr) {
                 $container.html(
-                '<div class="p-3 text-center text-muted">Không tìm thấy nhân sự phù hợp.</div>');
+                    '<div class="p-3 text-center text-muted">Không tìm thấy nhân sự phù hợp.</div>');
                 return;
             }
 
