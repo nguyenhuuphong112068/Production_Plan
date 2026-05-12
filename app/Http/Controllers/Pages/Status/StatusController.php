@@ -50,16 +50,19 @@ class StatusController extends Controller
 
 
 
-                $datas = DB::table('room')
-                        ->leftJoin('stage_plan', function ($join) use ($now) {
-                                $join->on('room.id', '=', 'stage_plan.resourceId')
-                                        ->where('stage_plan.active', 1)
-                                        ->where('stage_plan.finished', 0)
-                                        ->where(function ($q) use ($now) {
-                                                $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
-                                                        ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
-                                        });
+                $activePlanSub = DB::table('stage_plan')
+                        ->where('active', 1)
+                        ->where('finished', 0)
+                        ->where(function ($q) use ($now) {
+                                $q->whereRaw('? BETWEEN start AND end', [$now])
+                                        ->orWhereRaw('? BETWEEN start_clearning AND end_clearning', [$now]);
                         })
+                        ->select('resourceId', DB::raw('MAX(id) as max_id'))
+                        ->groupBy('resourceId');
+
+                $datas = DB::table('room')
+                        ->leftJoinSub($activePlanSub, 'aps', 'room.id', '=', 'aps.resourceId')
+                        ->leftJoin('stage_plan', 'aps.max_id', '=', 'stage_plan.id')
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status')
@@ -161,16 +164,19 @@ class StatusController extends Controller
                         ->where('durability', '>=', now())
                         ->orderBy('id', 'desc')->first();
 
-                $datas = DB::table('room')
-                        ->leftJoin('stage_plan', function ($join) use ($now) {
-                                $join->on('room.id', '=', 'stage_plan.resourceId')
-                                        ->where('stage_plan.active', true)
-                                        ->where('stage_plan.finished', false)
-                                        ->where(function ($q) use ($now) {
-                                                $q->whereRaw('? BETWEEN stage_plan.start AND stage_plan.end', [$now])
-                                                        ->orWhereRaw('? BETWEEN stage_plan.start_clearning AND stage_plan.end_clearning', [$now]);
-                                        });
+                $activePlanSub = DB::table('stage_plan')
+                        ->where('active', 1)
+                        ->where('finished', 0)
+                        ->where(function ($q) use ($now) {
+                                $q->whereRaw('? BETWEEN start AND end', [$now])
+                                        ->orWhereRaw('? BETWEEN start_clearning AND end_clearning', [$now]);
                         })
+                        ->select('resourceId', DB::raw('MAX(id) as max_id'))
+                        ->groupBy('resourceId');
+
+                $datas = DB::table('room')
+                        ->leftJoinSub($activePlanSub, 'aps', 'room.id', '=', 'aps.resourceId')
+                        ->leftJoin('stage_plan', 'aps.max_id', '=', 'stage_plan.id')
                         ->leftJoin('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
                         ->leftJoinSub(
                                 DB::table('room_status')
