@@ -74,6 +74,8 @@ class StatusController extends Controller
                         )
                         ->leftJoin('room_status as rs', 'ls.max_id', '=', 'rs.id')
                         ->where('room.deparment_code', $production)
+                        ->where('room.stage_code', '!=', 8)
+                        ->where('stage_plan.stage_code', '!=', 8)
                         ->select(
                                 'room.stage_code',
                                 'room.stage',
@@ -184,6 +186,8 @@ class StatusController extends Controller
                         )
                         ->leftJoin('room_status as rs', 'ls.max_id', '=', 'rs.id')
                         ->where('room.deparment_code', $production)
+                        ->where('room.stage_code', '!=', 8)
+                        ->where('stage_plan.stage_code', '!=', 8)
                         ->select(
                                 'room.stage_code',
                                 'room.stage',

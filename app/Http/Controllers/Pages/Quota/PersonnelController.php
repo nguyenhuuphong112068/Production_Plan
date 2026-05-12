@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Pages\Assignment;
+namespace App\Http\Controllers\Pages\Quota;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -77,10 +77,21 @@ class PersonnelController extends Controller
 
         // 3. Lấy danh sách bộ phận, tổ và phòng để hỗ trợ nhập liệu
         $departments = DB::table('deparments')->where('active', true)->get();
-        $groups = DB::table('stage_groups')->get();
+        $groups = collect([
+            1 => "Trung Tâm Cân",
+            3 => "Pha Chế",
+            4 => "Văn Phòng",
+            5 => "Định Hình",
+            6 => "Bao Phim",
+            7 => "ĐGSC",
+            8 => "ĐGTC",
+            9 => "VSCN + Kho BTP"
+        ])->map(function ($name, $id) {
+            return (object) ['id' => $id, 'name' => $name];
+        })->values();
         $rooms = DB::table('room')->where('deparment_code', $departmentCode)->get();
 
-        return view('pages.assignment.personnel.list', [
+        return view('pages.quota.personnel.list', [
             'datas' => $datas,
             'departments' => $departments,
             'groups' => $groups,
@@ -333,13 +344,13 @@ class PersonnelController extends Controller
                         ->exists();
 
                     if ($hasRooms && $active == 1) {
-                         // Xóa bản ghi Tổ trống nếu nó tồn tại
-                         DB::table('employee_assignments')
+                        // Xóa bản ghi Tổ trống nếu nó tồn tại
+                        DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
                             ->where('group_id', $id)
                             ->where('room_id', 0)
                             ->delete();
-                         continue;
+                        continue;
                     }
 
                     if ($exists) {
@@ -396,7 +407,7 @@ class PersonnelController extends Controller
                             ->where('group_id', $groupId)
                             ->where('room_id', 0)
                             ->delete();
-                        
+
                         // Xóa Phân xưởng trống
                         DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
@@ -452,7 +463,7 @@ class PersonnelController extends Controller
             }
 
             DB::commit();
-            
+
             // Recalculate counts for the relevant department
             $this->recalculateRoomCounts($request->department ?? session('user')['department'] ?? session('user')['production_code']);
 
@@ -519,7 +530,6 @@ class PersonnelController extends Controller
                     ->whereDate('start', $today)
                     ->update(['number_of_employes' => $stat->count]);
             }
-
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Error recalculating room counts: " . $e->getMessage());
         }
@@ -543,7 +553,7 @@ class PersonnelController extends Controller
             // 2. Nếu có phân xưởng tạm thời được chọn, kích hoạt phân xưởng đầu tiên trong danh sách (đảm bảo chỉ có 1)
             if (!empty($productions)) {
                 $code = $productions[0];
-                
+
                 // Nếu đã có bất kỳ Tổ hoặc Phòng nào thuộc PX này, ta không cần bản ghi PX trống (group_id=0)
                 $hasChildren = DB::table('employee_assignments')
                     ->where('employees_id', $employeeId)
@@ -610,5 +620,4 @@ class PersonnelController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
 }

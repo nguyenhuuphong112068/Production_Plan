@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Pages\Assignment\MaintenanceAssignmentController;
 use App\Http\Controllers\Pages\Assignment\ProductionAssignmentController;
-use App\Http\Controllers\Pages\Assignment\PersonnelController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
 
@@ -32,19 +31,4 @@ Route::prefix('/assignemnt/maintenance')
         // Route cho các tác vụ khác nếu cần
         Route::post('store', 'store')->name('store');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
-    });
-
-Route::prefix('/assignemnt/personnel')
-    ->controller(PersonnelController::class)
-    ->name('pages.assignment.personnel.')
-    ->middleware(CheckLogin::class)
-    ->group(function () {
-        Route::get('/{department?}', 'index')->name('list');
-        Route::get('sync/{department?}', 'sync')->name('sync');
-        Route::post('store', 'store')->name('store');
-        Route::post('update', 'update')->name('update');
-        Route::post('update-permissions', 'updatePermissions')->name('updatePermissions');
-        Route::post('update-productions', 'updateProductions')->name('updateProductions');
-
-        Route::get('deActive/{id}', 'deActive')->name('deActive');
     });

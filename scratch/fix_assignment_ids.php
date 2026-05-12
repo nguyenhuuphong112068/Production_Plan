@@ -3,7 +3,7 @@ ob_start();
 
 
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Pages\Assignment\PersonnelController;
+use App\Http\Controllers\Pages\Quota\PersonnelController;
 
 // 1. Delete the incorrect records
 $deleted = DB::table('employee_assignments')

@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Pages\Assignment\PersonnelController;
+use App\Http\Controllers\Pages\Quota\PersonnelController;
 
 // Employee IDs from the user's image
 $employeeIds = [

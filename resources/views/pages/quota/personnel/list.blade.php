@@ -9,7 +9,7 @@
 @endsection
 
 @section('mainContent')
-    @include('pages.assignment.personnel.dataTable')
+    @include('pages.quota.personnel.dataTable')
 @endsection
 
 @section('model')

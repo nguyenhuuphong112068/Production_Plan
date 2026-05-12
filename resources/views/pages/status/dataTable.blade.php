@@ -36,10 +36,11 @@
     <div class="row mt-1">
         @php $now = now();@endphp
         @if (count($datas) < 25)
-            <div class="col-md-12">
+            <div class="col-12">
                 <div class="card">
-                    <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-                        <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; width: 100%; min-width: 1200px;">
+                        <thead style=" color:#003A4F; font-size: clamp(18px, 2.5vw, 30px); padding: 2px 0;">
                             <tr>
                                 <th style="width: 15%">Phòng SX</th>
                                 <th style="width: 25%">Lịch SX</th>
@@ -50,12 +51,12 @@
                             </tr>
                         </thead>
                         <tbody class="font-bold"
-                            style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
+                            style=" color:#003A4F; font-size: clamp(14px, 1.5vw, 24px);  padding: 5px; font-weight: bold">
                             @php $current_stage = 0; @endphp
                             @foreach ($datas as $data)
                                 @if ($data->stage_code != $current_stage)
                                     <tr class="text-center"
-                                        style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                                        style="background-color: #CDC717; color:#003A4F; font-size: clamp(16px, 2vw, 24px); padding: 0px; font-weight: bold">
                                         <td colspan="6">{{ $stage[$data->stage] }}</td>
                                     </tr>
                                 @endif
@@ -150,6 +151,7 @@
                             @endforeach
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         @else
@@ -161,10 +163,11 @@
                 $rightData = $datas->slice($half);
             @endphp
             {{-- BẢNG TRÁI --}}
-            <div class="col-md-6">
+            <div class="col-xl-6 col-12 custom-col">
                 <div class="card">
-                    <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-                        <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; min-width: 800px;">
+                        <thead style=" color:#003A4F; font-size: clamp(18px, 2.5vw, 30px); padding: 2px 0;">
                             <tr>
                                <th style="width: 15%">Phòng Sản xuất</th>
                                 <th style="width: 25%">Lịch Sản Xuất</th>
@@ -175,11 +178,11 @@
                             </tr>
                         </thead>
                         <tbody class="font-bold"
-                            style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
+                            style=" color:#003A4F; font-size: clamp(14px, 1.5vw, 24px);  padding: 5px; font-weight: bold">
                             @php $current_stage = null; @endphp
                             @foreach ($leftData as $data)
                                 @if ($data->production_group != $current_stage)
-                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: clamp(16px, 2vw, 24px); padding: 0px; font-weight: bold">
                                     <td colspan="6">{{$data->production_group }}</td>
                                     </tr>
                                 @endif
@@ -285,14 +288,16 @@
                             @endforeach
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 
             {{-- BẢNG PHẢI --}}
-            <div class="col-md-6">
+            <div class="col-xl-6 col-12 custom-col">
                 <div class="card">
-                    <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-                        <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; width: 100%; min-width: 800px;">
+                        <thead style=" color:#003A4F; font-size: clamp(18px, 2.5vw, 30px); padding: 2px 0;">
                             <tr>
                                <th style="width: 15%">Phòng Sản xuất</th>
                                 <th style="width: 25%">Lịch Sản Xuất</th>
@@ -303,11 +308,11 @@
                             </tr>
                         </thead>
                         <tbody class="font-bold"
-                            style=" color:#003A4F; font-size: 24px;  padding: 5px; font-weight: bold">
+                            style=" color:#003A4F; font-size: clamp(14px, 1.5vw, 24px);  padding: 5px; font-weight: bold">
                             @php $current_stage = null; @endphp
                             @foreach ($rightData as $data)
                                 @if ($data->production_group != $current_stage)
-                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: 24px; padding: 0px; font-weight: bold">
+                                    <tr class="text-center" style="background-color: #CDC717; color:#003A4F; font-size: clamp(16px, 2vw, 24px); padding: 0px; font-weight: bold">
                                     <td colspan="6">{{$data->production_group }}</td>
                                     </tr>
                                 @endif
@@ -409,7 +414,8 @@
                                 </tr>
                             @endforeach
                         </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </div>
         @endif
@@ -441,9 +447,15 @@
             }
 
             if (rowCount > 0) {
-                const rowHeight = Math.floor(totalHeight / rowCount);
+                let rowHeight = Math.floor(totalHeight / rowCount);
+                // Đảm bảo chiều cao không quá nhỏ để không che mất chữ khi zoom
+                const minHeight = 45; 
+                if (rowHeight / tem < minHeight) {
+                    rowHeight = minHeight * tem;
+                }
+
                 allRows.forEach(row => {
-                    row.style.height = `${rowHeight/tem}px`;
+                    row.style.height = `${rowHeight / tem}px`;
                 });
 
                 max_charater_unnote = 27;
@@ -600,7 +612,12 @@
     .table th {
           padding: 10px 8px !important;
           line-height: 1.1;
+          font-size: clamp(16px, 2vw, 30px) !important;
       }
+
+    .table tbody td {
+          font-size: clamp(14px, 1.5vw, 24px) !important;
+    }
 
     .table td {
           overflow: hidden;
@@ -614,6 +631,19 @@
           white-space: normal;
           word-break: break-word;
           overflow-wrap: anywhere;
+    }
+
+    /* Force 1 column layout when zooming in or on smaller screens to ensure all 6 columns show */
+    @media (max-width: 1600px) {
+        .custom-col {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+    }
+
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
 </style>

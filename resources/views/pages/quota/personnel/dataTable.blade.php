@@ -179,7 +179,8 @@
                                 <h6 class="font-weight-bold text-secondary mb-3">Tình Hình Phân Công Nhân Sự</h6>
                                 <div class="row text-center mb-4">
                                     <div class="col-4">
-                                        <h3 class="text-primary font-weight-bold mb-0" id="dash-total-emp">{{ count($datas) }}</h3>
+                                        <h3 class="text-primary font-weight-bold mb-0" id="dash-total-emp">
+                                            {{ count($datas) }}</h3>
                                         <span class="small font-weight-bold text-muted">Tổng Nhân Sự</span>
                                     </div>
                                     <div class="col-4">
@@ -195,31 +196,38 @@
                                 <h6 class="font-weight-bold text-secondary mb-2 small">Phân bổ nhân sự:</h6>
                                 <ul class="nav nav-tabs mb-2" id="dash-stats-tab" role="tablist">
                                     <li class="nav-item">
-                                        <a class="nav-link active small py-1" id="dash-group-tab" data-toggle="tab" href="#dash-group-content" role="tab">Theo Tổ/Vị Trí</a>
+                                        <a class="nav-link active small py-1" id="dash-group-tab" data-toggle="tab"
+                                            href="#dash-group-content" role="tab">Theo Tổ/Vị Trí</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link small py-1" id="dash-room-tab" data-toggle="tab" href="#dash-room-content" role="tab">Theo Phòng</a>
+                                        <a class="nav-link small py-1" id="dash-room-tab" data-toggle="tab"
+                                            href="#dash-room-content" role="tab">Theo Phòng</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link small py-1" id="dash-summary-tab" data-toggle="tab" href="#dash-summary-content" role="tab">Tổng Hợp Chi Tiết</a>
+                                        <a class="nav-link small py-1" id="dash-summary-tab" data-toggle="tab"
+                                            href="#dash-summary-content" role="tab">Tổng Hợp Chi Tiết</a>
                                     </li>
                                 </ul>
 
-                                
+
                                 <div class="tab-content" id="dash-stats-tabContent">
                                     <div class="tab-pane fade show active" id="dash-group-content" role="tabpanel">
-                                        <div id="dash-group-bars-container" style="max-height: 250px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
+                                        <div id="dash-group-bars-container"
+                                            style="max-height: 250px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
                                             <!-- Group stats render here -->
                                         </div>
                                     </div>
                                     <div class="tab-pane fade" id="dash-room-content" role="tabpanel">
-                                        <div id="dash-room-bars-container" style="max-height: 250px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
+                                        <div id="dash-room-bars-container"
+                                            style="max-height: 250px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
                                             <!-- Room stats render here -->
                                         </div>
                                     </div>
                                     <div class="tab-pane fade" id="dash-summary-content" role="tabpanel">
-                                        <div id="dash-summary-table-container" style="max-height: 250px; overflow-y: auto; padding-top: 5px;">
-                                            <table class="table table-sm table-bordered mb-0" style="font-size: 0.8rem;">
+                                        <div id="dash-summary-table-container"
+                                            style="max-height: 250px; overflow-y: auto; padding-top: 5px;">
+                                            <table class="table table-sm table-bordered mb-0"
+                                                style="font-size: 0.8rem;">
                                                 <thead class="bg-light">
                                                     <tr>
                                                         <th>Nhóm/Tổ</th>
@@ -245,33 +253,43 @@
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <div class="d-flex align-items-center flex-wrap">
-                                        <select id="dash-shift-range-select" class="form-control form-control-sm mr-2 mb-2" style="width: 80px;">
+                                        <select id="dash-shift-range-select"
+                                            class="form-control form-control-sm mr-2 mb-2" style="width: 80px;">
                                             <option value="day">Ngày</option>
                                             <option value="week">Tuần</option>
                                             <option value="month">Tháng</option>
                                         </select>
-                                        
+
                                         <!-- Inputs for Week/Month -->
                                         <div id="input-group-day" class="shift-input-group mr-2 mb-2">
                                             <input type="date" id="dash-shift-date-input"
                                                 class="form-control form-control-sm" style="width: 140px;"
                                                 value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}">
                                         </div>
-                                        <div id="input-group-week" class="shift-input-group mr-2 mb-2" style="display: none;">
+                                        <div id="input-group-week" class="shift-input-group mr-2 mb-2"
+                                            style="display: none;">
                                             <div class="input-group input-group-sm" style="width: 160px;">
-                                                <input type="number" id="dash-shift-week-input" class="form-control" placeholder="Tuần" min="1" max="53" value="{{ \Carbon\Carbon::now()->weekOfYear }}">
-                                                <div class="input-group-append"><span class="input-group-text">/</span></div>
-                                                <input type="number" id="dash-shift-week-year" class="form-control" placeholder="Năm" value="{{ \Carbon\Carbon::now()->year }}">
+                                                <input type="number" id="dash-shift-week-input" class="form-control"
+                                                    placeholder="Tuần" min="1" max="53"
+                                                    value="{{ \Carbon\Carbon::now()->weekOfYear }}">
+                                                <div class="input-group-append"><span
+                                                        class="input-group-text">/</span></div>
+                                                <input type="number" id="dash-shift-week-year" class="form-control"
+                                                    placeholder="Năm" value="{{ \Carbon\Carbon::now()->year }}">
                                             </div>
                                         </div>
-                                        <div id="input-group-month" class="shift-input-group mr-2 mb-2" style="display: none;">
+                                        <div id="input-group-month" class="shift-input-group mr-2 mb-2"
+                                            style="display: none;">
                                             <div class="input-group input-group-sm" style="width: 160px;">
                                                 <select id="dash-shift-month-input" class="form-control">
-                                                    @for($i=1; $i<=12; $i++)
-                                                        <option value="{{ $i }}" {{ \Carbon\Carbon::now()->month == $i ? 'selected' : '' }}>Tháng {{ $i }}</option>
+                                                    @for ($i = 1; $i <= 12; $i++)
+                                                        <option value="{{ $i }}"
+                                                            {{ \Carbon\Carbon::now()->month == $i ? 'selected' : '' }}>
+                                                            Tháng {{ $i }}</option>
                                                     @endfor
                                                 </select>
-                                                <input type="number" id="dash-shift-month-year" class="form-control" placeholder="Năm" value="{{ \Carbon\Carbon::now()->year }}">
+                                                <input type="number" id="dash-shift-month-year" class="form-control"
+                                                    placeholder="Năm" value="{{ \Carbon\Carbon::now()->year }}">
                                             </div>
                                         </div>
 
@@ -287,7 +305,8 @@
 
                                         <div class="spinner-border spinner-border-sm text-info mb-2" role="status">
                                         </div>
-                                        <br><span class="small font-weight-bold">Đang kết nối server nội bộ lấy dữ liệu ca...</span>
+                                        <br><span class="small font-weight-bold">Đang kết nối server nội bộ lấy dữ liệu
+                                            ca...</span>
                                     </div>
                                     <div id="shift-content" style="display: none;">
                                         <!-- Card View (for Day) -->
@@ -295,39 +314,46 @@
                                             <div class="row text-center mb-2">
                                                 <div class="col-4">
                                                     <div class="p-2 bg-light rounded shadow-sm border border-success">
-                                                        <h4 class="text-success font-weight-bold mb-0" id="dash-shift-hc">0</h4>
+                                                        <h4 class="text-success font-weight-bold mb-0"
+                                                            id="dash-shift-hc">0</h4>
                                                         <span class="small font-weight-bold text-muted">HC</span>
                                                     </div>
                                                 </div>
                                                 <div class="col-4">
                                                     <div class="p-2 bg-light rounded shadow-sm border border-warning">
-                                                        <h4 class="text-warning font-weight-bold mb-0" id="dash-shift-c1">0</h4>
+                                                        <h4 class="text-warning font-weight-bold mb-0"
+                                                            id="dash-shift-c1">0</h4>
                                                         <span class="small font-weight-bold text-muted">Ca 1</span>
                                                     </div>
                                                 </div>
                                                 <div class="col-4">
                                                     <div class="p-2 bg-light rounded shadow-sm border border-primary">
-                                                        <h4 class="text-primary font-weight-bold mb-0" id="dash-shift-c2">0</h4>
+                                                        <h4 class="text-primary font-weight-bold mb-0"
+                                                            id="dash-shift-c2">0</h4>
                                                         <span class="small font-weight-bold text-muted">Ca 2</span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="row text-center">
                                                 <div class="col-4">
-                                                    <div class="p-2 bg-light rounded shadow-sm border border-secondary">
-                                                        <h4 class="text-secondary font-weight-bold mb-0" id="dash-shift-c3">0</h4>
+                                                    <div
+                                                        class="p-2 bg-light rounded shadow-sm border border-secondary">
+                                                        <h4 class="text-secondary font-weight-bold mb-0"
+                                                            id="dash-shift-c3">0</h4>
                                                         <span class="small font-weight-bold text-muted">Ca 3</span>
                                                     </div>
                                                 </div>
                                                 <div class="col-4">
                                                     <div class="p-2 bg-light rounded shadow-sm border border-info">
-                                                        <h4 class="text-info font-weight-bold mb-0" id="dash-shift-c4">0</h4>
+                                                        <h4 class="text-info font-weight-bold mb-0"
+                                                            id="dash-shift-c4">0</h4>
                                                         <span class="small font-weight-bold text-muted">Ca 4</span>
                                                     </div>
                                                 </div>
                                                 <div class="col-4">
                                                     <div class="p-2 bg-light rounded shadow-sm border border-danger">
-                                                        <h4 class="text-danger font-weight-bold mb-0" id="dash-shift-p">0</h4>
+                                                        <h4 class="text-danger font-weight-bold mb-0"
+                                                            id="dash-shift-p">0</h4>
                                                         <span class="small font-weight-bold text-muted">Nghỉ</span>
                                                     </div>
                                                 </div>
@@ -336,8 +362,11 @@
 
                                         <!-- Table View (for Week/Month) -->
                                         <div id="shift-table-view" style="display: none;" class="mt-2">
-                                            <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
-                                                <table class="table table-sm table-bordered table-striped text-center mb-0" style="font-size: 0.7rem;">
+                                            <div class="table-responsive"
+                                                style="max-height: 280px; overflow-y: auto;">
+                                                <table
+                                                    class="table table-sm table-bordered table-striped text-center mb-0"
+                                                    style="font-size: 0.7rem;">
                                                     <thead class="bg-light sticky-top">
                                                         <tr id="shift-table-head">
                                                             <th style="width: 80px;">Ngày</th>
@@ -630,7 +659,7 @@
                                     <span class="badge badge-danger mb-1">Nghỉ việc</span>
                                 @endif
                                 <br>
-                                <a href="{{ route('pages.assignment.personnel.deActive', $data->id) }}"
+                                <a href="{{ route('pages.quota.personnel.deActive', $data->id) }}"
                                     class="btn btn-{{ $data->active ? 'danger' : 'success' }} btn-sm"
                                     title="{{ $data->active ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
                                     <i class="fas fa-{{ $data->active ? 'user-slash' : 'user-check' }}"></i>
@@ -728,27 +757,33 @@
             if (isActivating) {
                 $container.find('.btn-toggle-group').each(function() {
                     if ($(this).is($badge)) return;
-                    $(this).data('active', 0).removeClass('badge-primary active').addClass('inactive');
+                    $(this).data('active', 0).removeClass('badge-primary active').addClass(
+                        'inactive');
                     $(this).attr('title', 'Nhấn để kích hoạt');
                     const otherGroupId = $(this).data('group-id');
-                    $tr.find('.room-assignment-row[data-group-id="' + otherGroupId + '"]').each(function() {
-                        const $row = $(this);
-                        $row.attr('data-active', 0).addClass('inactive');
-                        const $btn = $row.find('.btn-toggle-room-active');
-                        $btn.removeClass('btn-danger').addClass('btn-success').attr('title', 'Kích hoạt');
-                        $btn.find('i').removeClass('fas fa-times').addClass('fas fa-undo');
-                    });
+                    $tr.find('.room-assignment-row[data-group-id="' + otherGroupId + '"]').each(
+                        function() {
+                            const $row = $(this);
+                            $row.attr('data-active', 0).addClass('inactive');
+                            const $btn = $row.find('.btn-toggle-room-active');
+                            $btn.removeClass('btn-danger').addClass('btn-success').attr(
+                                'title', 'Kích hoạt');
+                            $btn.find('i').removeClass('fas fa-times').addClass(
+                                'fas fa-undo');
+                        });
                 });
                 $badge.data('active', 1).addClass('badge-primary active').removeClass('inactive');
                 $badge.attr('title', 'Nhấn để vô hiệu hóa');
                 const currentGroupId = $badge.data('group-id');
-                $tr.find('.room-assignment-row[data-group-id="' + currentGroupId + '"]').each(function() {
-                    const $row = $(this);
-                    $row.attr('data-active', 1).removeClass('inactive');
-                    const $btn = $row.find('.btn-toggle-room-active');
-                    $btn.addClass('btn-danger').removeClass('btn-success').attr('title', 'Vô hiệu hóa');
-                    $btn.find('i').addClass('fas fa-times').removeClass('fas fa-undo');
-                });
+                $tr.find('.room-assignment-row[data-group-id="' + currentGroupId + '"]').each(
+                    function() {
+                        const $row = $(this);
+                        $row.attr('data-active', 1).removeClass('inactive');
+                        const $btn = $row.find('.btn-toggle-room-active');
+                        $btn.addClass('btn-danger').removeClass('btn-success').attr('title',
+                            'Vô hiệu hóa');
+                        $btn.find('i').addClass('fas fa-times').removeClass('fas fa-undo');
+                    });
             } else {
                 const activeCount = $container.find('.btn-toggle-group.active').length;
                 if (activeCount <= 1) {
@@ -766,7 +801,8 @@
                     const $row = $(this);
                     $row.attr('data-active', 0).addClass('inactive');
                     const $btn = $row.find('.btn-toggle-room-active');
-                    $btn.removeClass('btn-danger').addClass('btn-success').attr('title', 'Kích hoạt');
+                    $btn.removeClass('btn-danger').addClass('btn-success').attr('title',
+                        'Kích hoạt');
                     $btn.find('i').removeClass('fas fa-times').addClass('fas fa-undo');
                 });
             }
@@ -810,9 +846,11 @@
                 if (val) alreadySelectedIds.push(val.toString());
             });
 
-            const availableRoom = filteredRooms.find(r => !alreadySelectedIds.includes(r.id.toString()));
+            const availableRoom = filteredRooms.find(r => !alreadySelectedIds.includes(r.id
+                .toString()));
 
-            if (!availableRoom && filteredRooms.length > 0 && alreadySelectedIds.length >= filteredRooms.length) {
+            if (!availableRoom && filteredRooms.length > 0 && alreadySelectedIds.length >= filteredRooms
+                .length) {
                 Swal.fire({
                     icon: 'info',
                     title: 'Thông báo',
@@ -824,8 +862,10 @@
 
             let roomOptions = '<option value="">-- Chọn phòng --</option>';
             filteredRooms.forEach(r => {
-                const isSelected = alreadySelectedIds.includes(r.id.toString()) ? 'disabled' : '';
-                roomOptions += `<option value="${r.id}" ${isSelected}>${r.code} - ${r.name} - ${r.main_equiment_name}</option>`;
+                const isSelected = alreadySelectedIds.includes(r.id.toString()) ? 'disabled' :
+                    '';
+                roomOptions +=
+                    `<option value="${r.id}" ${isSelected}>${r.code} - ${r.name} - ${r.main_equiment_name}</option>`;
             });
 
             const newRow = `
@@ -932,7 +972,7 @@
 
         function updatePermissionAjax(employeeId, type, ids) {
             $.ajax({
-                url: "{{ route('pages.assignment.personnel.updatePermissions') }}",
+                url: "{{ route('pages.quota.personnel.updatePermissions') }}",
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',
@@ -964,16 +1004,23 @@
             info: true,
             autoWidth: false,
             pageLength: 25,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",
                 info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-                paginate: { previous: "Trước", next: "Sau" }
+                paginate: {
+                    previous: "Trước",
+                    next: "Sau"
+                }
             },
             drawCallback: function() {
                 initPermissionsSelect2();
-                if (typeof renderLocalDashboard === 'function' && $('#personnel-dashboard').is(':visible')) {
+                if (typeof renderLocalDashboard === 'function' && $('#personnel-dashboard').is(
+                        ':visible')) {
                     renderLocalDashboard();
                 }
             }
@@ -985,11 +1032,11 @@
         function renderLocalDashboard() {
             var table = $('#data_table_personnel').DataTable();
             var allRows = table.rows().nodes();
-            
+
             let totalCount = allRows.length;
             let activeEmps = 0;
             let activeGroupsSet = new Set();
-            
+
             let groupStats = {}; // { groupName: { active: 0, total: 0 } }
             let dutyStats = {};
             let roomStats = {};
@@ -998,18 +1045,22 @@
             $(allRows).each(function() {
 
                 let $badges = $(this).find('.btn-toggle-group');
-                let $activeRooms = $(this).find('.room-assignment-row[data-active="1"] .room-id-select');
-                
+                let $activeRooms = $(this).find(
+                    '.room-assignment-row[data-active="1"] .room-id-select');
+
                 let isAssignedAnyActive = false;
                 let hasAnyGroup = $badges.length > 0;
-                
+
 
 
                 $badges.each(function() {
                     let groupName = $(this).text().trim();
                     let isActive = $(this).hasClass('active');
-                    
-                    if (!groupStats[groupName]) groupStats[groupName] = { active: 0, total: 0 };
+
+                    if (!groupStats[groupName]) groupStats[groupName] = {
+                        active: 0,
+                        total: 0
+                    };
                     groupStats[groupName].total++;
                     if (isActive) {
                         groupStats[groupName].active++;
@@ -1024,7 +1075,8 @@
                         let roomText = $(this).find('option:selected').text();
                         if (roomText && $(this).val()) {
                             let parts = roomText.split('-');
-                            let cleanName = parts.length > 1 ? parts[0].trim() + ' - ' + parts[1].trim() : roomText.trim();
+                            let cleanName = parts.length > 1 ? parts[0].trim() + ' - ' + parts[
+                                1].trim() : roomText.trim();
                             if (!roomStats[cleanName]) roomStats[cleanName] = 0;
                             roomStats[cleanName]++;
                         }
@@ -1050,7 +1102,7 @@
             gKeys.forEach(function(key) {
                 let stats = groupStats[key];
                 let percentage = totalCount > 0 ? Math.round((stats.active / totalCount) * 100) : 0;
-                
+
                 gContainer.append(`
                     <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
                         <span>${key}</span>
@@ -1078,7 +1130,7 @@
 
             let sBody = $('#dash-summary-tbody');
             sBody.empty();
-            
+
 
 
             gKeys.forEach(function(key) {
@@ -1107,8 +1159,8 @@
             let rContainer = $('#dash-room-bars-container');
             rContainer.empty();
             let rKeys = Object.keys(roomStats);
-            rKeys.sort((a,b) => roomStats[b] - roomStats[a]);
-            
+            rKeys.sort((a, b) => roomStats[b] - roomStats[a]);
+
             if (rKeys.length === 0) {
                 rContainer.append('<div class="text-center text-muted small mt-3">Chưa có dữ liệu phòng</div>');
             } else {
@@ -1131,10 +1183,10 @@
         function fetchShiftData() {
             $('#shift-loading').show();
             $('#shift-content').hide();
-            
+
             const range = $('#dash-shift-range-select').val();
             let currentYear, currentMonth;
-            
+
             if (range === 'day') {
                 const dateStr = $('#dash-shift-date-input').val();
                 if (!dateStr) return;
@@ -1152,8 +1204,9 @@
                 currentYear = $('#dash-shift-month-year').val();
                 currentMonth = $('#dash-shift-month-input').val();
             }
-            
-            const url = `/assignemnt/production/shifts?month=${currentMonth}&year=${currentYear}&department=${apiDepId}`;
+
+            const url =
+                `/assignemnt/production/shifts?month=${currentMonth}&year=${currentYear}&department=${apiDepId}`;
 
             $.ajax({
                 url: url,
@@ -1161,7 +1214,7 @@
                 success: function(data) {
                     $('#shift-loading').hide();
                     $('#shift-content').show();
-                    
+
                     let daysToSum = [];
                     let labels = {}; // { dayKey: label }
 
@@ -1173,7 +1226,8 @@
                         const weekNum = $('#dash-shift-week-input').val();
                         const firstDayOfYear = new Date(currentYear, 0, 1);
                         const days = (weekNum - 1) * 7;
-                        let monday = new Date(firstDayOfYear.setDate(firstDayOfYear.getDate() + days));
+                        let monday = new Date(firstDayOfYear.setDate(firstDayOfYear.getDate() +
+                            days));
                         const dayOfWeek = monday.getDay();
                         const diff = monday.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
                         monday = new Date(monday.setDate(diff));
@@ -1187,7 +1241,8 @@
                                 labels[dk] = d.getDate() + '/' + (d.getMonth() + 1);
                             }
                         }
-                        $('#shift-range-title').text('Chi tiết ca Tuần ' + weekNum + ' (' + currentYear + ')');
+                        $('#shift-range-title').text('Chi tiết ca Tuần ' + weekNum + ' (' +
+                            currentYear + ')');
                     } else if (range === 'month') {
                         const lastDay = new Date(currentYear, currentMonth, 0).getDate();
                         for (let i = 1; i <= lastDay; i++) {
@@ -1195,11 +1250,21 @@
                             daysToSum.push(dk);
                             labels[dk] = i + '/' + currentMonth;
                         }
-                        $('#shift-range-title').text('Chi tiết ca Tháng ' + currentMonth + '/' + currentYear);
+                        $('#shift-range-title').text('Chi tiết ca Tháng ' + currentMonth + '/' +
+                            currentYear);
                     }
 
                     let dailyStats = {}; // { dayKey: { hc, c1, c2, c3, c4, p } }
-                    daysToSum.forEach(dk => { dailyStats[dk] = { hc:0, c1:0, c2:0, c3:0, c4:0, p:0 }; });
+                    daysToSum.forEach(dk => {
+                        dailyStats[dk] = {
+                            hc: 0,
+                            c1: 0,
+                            c2: 0,
+                            c3: 0,
+                            c4: 0,
+                            p: 0
+                        };
+                    });
 
 
                     if (Array.isArray(data)) {
@@ -1208,10 +1273,14 @@
                                 daysToSum.forEach(dayKey => {
                                     let shift = emp.days[dayKey] || 'HC';
                                     if (shift === 'HC') dailyStats[dayKey].hc++;
-                                    else if (shift === 'C1') dailyStats[dayKey].c1++;
-                                    else if (shift === 'C2') dailyStats[dayKey].c2++;
-                                    else if (shift === 'C3') dailyStats[dayKey].c3++;
-                                    else if (shift === 'C4') dailyStats[dayKey].c4++;
+                                    else if (shift === 'C1') dailyStats[dayKey]
+                                        .c1++;
+                                    else if (shift === 'C2') dailyStats[dayKey]
+                                        .c2++;
+                                    else if (shift === 'C3') dailyStats[dayKey]
+                                        .c3++;
+                                    else if (shift === 'C4') dailyStats[dayKey]
+                                        .c4++;
                                     else if (shift === 'P') dailyStats[dayKey].p++;
 
                                 });
@@ -1221,7 +1290,14 @@
                     }
 
                     if (range === 'day') {
-                        const dStats = dailyStats[daysToSum[0]] || {hc:0, c1:0, c2:0, c3:0, c4:0, p:0};
+                        const dStats = dailyStats[daysToSum[0]] || {
+                            hc: 0,
+                            c1: 0,
+                            c2: 0,
+                            c3: 0,
+                            c4: 0,
+                            p: 0
+                        };
                         $('#dash-shift-hc').text(dStats.hc);
                         $('#dash-shift-c1').text(dStats.c1);
                         $('#dash-shift-c2').text(dStats.c2);
@@ -1250,7 +1326,9 @@
                     }
                 },
                 error: function() {
-                    $('#shift-loading').html('<span class="text-danger small font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Lỗi kết nối máy chủ.</span>');
+                    $('#shift-loading').html(
+                        '<span class="text-danger small font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Lỗi kết nối máy chủ.</span>'
+                    );
                 }
             });
         }
@@ -1277,7 +1355,7 @@
             const range = $(this).val();
             $('.shift-input-group').hide();
             $('#input-group-' + range).show();
-            
+
             if (range === 'day') {
                 $('#shift-card-view').show();
                 $('#shift-table-view').hide();
@@ -1288,10 +1366,14 @@
             fetchShiftData();
         });
 
-        $('#btn-refresh-shifts').click(function(e) { e.preventDefault(); fetchShiftData(); });
-        $('#dash-shift-date-input, #dash-shift-week-input, #dash-shift-week-year, #dash-shift-month-input, #dash-shift-month-year').on('change input', function() { 
-            fetchShiftData(); 
+        $('#btn-refresh-shifts').click(function(e) {
+            e.preventDefault();
+            fetchShiftData();
         });
+        $('#dash-shift-date-input, #dash-shift-week-input, #dash-shift-week-year, #dash-shift-month-input, #dash-shift-month-year')
+            .on('change input', function() {
+                fetchShiftData();
+            });
 
 
 
