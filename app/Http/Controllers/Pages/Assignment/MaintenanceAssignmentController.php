@@ -271,7 +271,7 @@ class MaintenanceAssignmentController extends Controller
                         'Sheet'             => $row['shift'],
                         'start'             => $startDt,
                         'end'               => $endDt,
-                        'Job_description'   => $row['job_description'] ?? null,
+                        'Job_description'   => isset($row['job_description']) ? trim($row['job_description']) : null,
                         'assigned_by'       => session('user')['userName'] ?? 'System',
                         'created_at'        => now(),
                         'updated_at'        => now(),

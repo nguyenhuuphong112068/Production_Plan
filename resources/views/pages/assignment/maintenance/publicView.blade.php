@@ -97,6 +97,7 @@
             border-bottom: 1px solid var(--border-color) !important;
             padding: 10px !important;
             vertical-align: top !important;
+            text-align: left !important;
         }
 
         .assignment-inner-table tr:last-child td {
@@ -107,6 +108,13 @@
             margin: 0;
             padding-left: 15px;
             font-size: 14px;
+        }
+
+        .job-desc {
+            font-size: 1rem;
+            font-weight: bold;
+            text-align: left;
+            padding: 0 10px;
         }
     </style>
 </head>
@@ -193,10 +201,7 @@
                                                 </td>
 
                                                 <!-- Nội Dung Công Việc -->
-                                                <td>
-                                                    <div class="job-desc" style="white-space: pre-wrap;">
-                                                        {!! $a->Job_description ?: '<span class="text-muted">Không có thông tin</span>' !!}</div>
-                                                </td>
+                                                <td><div class="job-desc">{!! $a->Job_description ?: '<span class="text-muted">Không có thông tin</span>' !!}</div></td>
 
                                                 <!-- Người thực hiện -->
                                                 <td>

@@ -84,10 +84,11 @@ class DailyReportController extends Controller
             'explanation' => $explanation
         ]);
     }
-    public function yield_theoryl_detial($startDate, $endDate, $group_By)
+    public function yield_theoryl_detial($startDate, $endDate, $group_By, $production_code = null)
     {
         $startDateStr = $startDate->format('Y-m-d H:i:s');
         $endDateStr   = $endDate->format('Y-m-d H:i:s');
+        $production_code = $production_code ?? session('user')['production_code'] ?? 'PXV1';
 
         /*
         |--------------------------------------------------------------------------
@@ -102,7 +103,7 @@ class DailyReportController extends Controller
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
             ->where('sp.active', 1)
-            ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.deparment_code', $production_code)
             // Hỗ trợ overlap
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDateStr, $startDateStr])
             ->select(
@@ -199,10 +200,11 @@ class DailyReportController extends Controller
         ];
     }
 
-    public function yield_actual_detial($startDate, $endDate, $group_By)
+    public function yield_actual_detial($startDate, $endDate, $group_By, $production_code = null)
     {
         $startDateStr = $startDate->format('Y-m-d H:i:s');
         $endDateStr   = $endDate->format('Y-m-d H:i:s');
+        $production_code = $production_code ?? session('user')['production_code'] ?? 'PXV1';
 
         /*
         |--------------------------------------------------------------------------
@@ -217,7 +219,7 @@ class DailyReportController extends Controller
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('dosage as d', 'intermediate_category.dosage_id', '=', 'd.id')
 
-            ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.deparment_code', $production_code)
 
             // 🔥 Yield overlap với khoảng cần tính
             ->whereRaw('(y.start < ? AND y.end > ?)', [$endDateStr, $startDateStr])
@@ -292,7 +294,7 @@ class DailyReportController extends Controller
             ->whereNotNull('sp.actual_start_clearning')
             ->whereNotNull('sp.actual_end_clearning')
             ->whereRaw('(sp.actual_start_clearning < ? AND sp.actual_end_clearning > ?)', [$endDateStr, $startDateStr])
-            ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.deparment_code', $production_code)
 
             ->select(
                 "sp.$group_By",
@@ -322,7 +324,7 @@ class DailyReportController extends Controller
             ->whereNotNull('rs.end')
             ->where('rs.is_daily_report', 1)
             ->where('rs.active', 1)
-            ->where('rs.deparment_code', session('user')['production_code'])
+            ->where('rs.deparment_code', $production_code)
 
             ->whereRaw('(rs.start < ? AND rs.end > ?)', [$endDateStr, $startDateStr])
 

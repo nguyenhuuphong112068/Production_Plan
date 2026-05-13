@@ -39,26 +39,6 @@ class MaintenancePlanController extends Controller
                 ]);
         }
 
-        // public function create_plan_list(Request $request)
-        // {
-
-        //         $startDate = $request->from_date ?? date('Y-m-01');
-        //         $endDate = $request->to_date ?? date('Y-m-t');
-        //         $type = $request->type;
-        //         $departmentCode = session('user')['production_code'];
-
-        //         try {
-        //                 $result = $this->generateMaintenancePlan($startDate, $endDate, $departmentCode, $type);
-        //                 if ($result['success']) {
-        //                         return redirect()->back()->with('success', $result['message']);
-        //                 } else {
-        //                         $typeMsg = $result['total_devices'] === 0 ? 'warning' : 'error';
-        //                         return redirect()->back()->with($typeMsg, $result['message']);
-        //                 }
-        //         } catch (\Exception $e) {
-        //                 return redirect()->back()->with('error', 'Lỗi: ' . $e->getMessage());
-        //         }
-        // }
 
         public function autoCreatePlan(Request $request)
         {

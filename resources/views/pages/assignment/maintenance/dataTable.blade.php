@@ -237,8 +237,8 @@
         color: #6c757d;
     }
 
-    .item-locked input, 
-    .item-locked select, 
+    .item-locked input,
+    .item-locked select,
     .item-locked .job-desc {
         background-color: #e9ecef !important;
         cursor: not-allowed;
@@ -280,15 +280,15 @@
         $canAccessGroup = true;
     } elseif (str_contains($userGroup, 'Calibration and Maintenance Planning Manager')) {
         if ($department === 'QA') {
-            $canAccessGroup = ($group_code == 17); // Chỉ được HC Thiết Bị
+            $canAccessGroup = $group_code == 17; // Chỉ được HC Thiết Bị
         } elseif ($department === 'EN') {
-            $canAccessGroup = ($group_code != 17); // Được 4 nhóm trừ HC Thiết Bị
+            $canAccessGroup = $group_code != 17; // Được 4 nhóm trừ HC Thiết Bị
         }
     } elseif (str_contains($userGroup, 'Calibration and Maintenance Scheduler')) {
         // So sánh tên tổ (loại bỏ chữ "Tổ " để khớp với GroupName)
         $cleanCurrentName = trim(str_replace('Tổ ', '', $currentGroupName));
         $cleanUserGroupName = trim(str_replace('Tổ ', '', $userGroupNameSession));
-        $canAccessGroup = ($cleanCurrentName === $cleanUserGroupName);
+        $canAccessGroup = $cleanCurrentName === $cleanUserGroupName;
     }
 
     $hasEditPermission = $hasBasePermission && $canAccessGroup;
@@ -311,8 +311,9 @@
                     class="form-control form-control-sm shadow-sm" style="border: 2px solid var(--primary-gold)"
                     onchange="this.form.submit()">
             </form>
-            <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task" {{ !$canEditReport ? 'disabled' : '' }}>
-                <i class="fas fa-plus"></i> Thêm công việc ngoài lịch
+            <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task"
+                {{ !$canEditReport ? 'disabled' : '' }}>
+                <i class="fas fa-plus"></i> Thêm công tác khác
             </button>
         </div>
     </div>
@@ -368,12 +369,14 @@
                                         @php
                                             $itemLocked = $isPastDate || !$hasEditPermission;
                                         @endphp
-                                        <tr class="assignment-item {{ $itemLocked ? 'item-locked' : '' }}" data-id="{{ $assignment->id }}"
+                                        <tr class="assignment-item {{ $itemLocked ? 'item-locked' : '' }}"
+                                            data-id="{{ $assignment->id }}"
                                             data-theory-start="{{ $task->theory_start }}"
                                             data-theory-end="{{ $task->theory_end }}">
                                             <td style="width: 10.7%">
                                                 <div class="d-flex flex-column align-items-center">
-                                                    <select class="form-control form-control-sm shift-select mb-1" {{ $itemLocked ? 'disabled' : '' }}>
+                                                    <select class="form-control form-control-sm shift-select mb-1"
+                                                        {{ $itemLocked ? 'disabled' : '' }}>
                                                         <option value="1"
                                                             {{ $assignment->Sheet == 1 ? 'selected' : '' }}>1</option>
                                                         <option value="2"
@@ -388,10 +391,12 @@
                                                     </select>
                                                     <input type="time"
                                                         class="form-control form-control-sm start-time-input mb-1"
-                                                        value="{{ $assignment->start_time_display }}" {{ $itemLocked ? 'disabled' : '' }}>
+                                                        value="{{ $assignment->start_time_display }}"
+                                                        {{ $itemLocked ? 'disabled' : '' }}>
                                                     <input type="time"
                                                         class="form-control form-control-sm end-time-input"
-                                                        value="{{ $assignment->end_time_display }}" {{ $itemLocked ? 'disabled' : '' }}>
+                                                        value="{{ $assignment->end_time_display }}"
+                                                        {{ $itemLocked ? 'disabled' : '' }}>
                                                 </div>
                                             </td>
                                             <td style="width: 45.3%">
@@ -407,7 +412,8 @@
                                                             class="personnel-row d-flex align-items-center p-1 border-bottom">
                                                             <div style="flex: 1" class="mr-1">
                                                                 <select
-                                                                    class="form-control form-control-sm person-select" {{ $itemLocked ? 'disabled' : '' }}>
+                                                                    class="form-control form-control-sm person-select"
+                                                                    {{ $itemLocked ? 'disabled' : '' }}>
                                                                     <option value="">-- Chọn người --</option>
                                                                     @foreach ($personnel as $p)
                                                                         <option value="{{ $p->id }}"
@@ -420,16 +426,17 @@
                                                                 <input type="text"
                                                                     class="form-control form-control-sm person-notif"
                                                                     value="{{ $p_info->notification }}"
-                                                                    placeholder="Chi tiết..." {{ $itemLocked ? 'disabled' : '' }}>
+                                                                    placeholder="Chi tiết..."
+                                                                    {{ $itemLocked ? 'disabled' : '' }}>
                                                             </div>
-                                                            @if(!$itemLocked)
+                                                            @if (!$itemLocked)
                                                                 <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"
                                                                     title="Xóa người này"></i>
                                                             @endif
                                                         </div>
                                                     @endforeach
                                                 </div>
-                                                @if(!$itemLocked)
+                                                @if (!$itemLocked)
                                                     <div class="text-left p-1" style="border-top: 1px dashed #eee">
                                                         <a href="javascript:void(0)" class="btn-add-person"
                                                             title="Thêm người thực hiện">
@@ -439,18 +446,20 @@
                                                 @endif
                                             </td>
                                             <td style="width: 4%" class="text-center">
-                                                @if(!$itemLocked)
+                                                @if (!$itemLocked)
                                                     <i class="fas fa-times-circle btn-remove-shift cursor-pointer"
                                                         title="Xóa ca này"></i>
                                                 @endif
                                             </td>
                                         </tr>
                                     @empty
-                                        <tr class="assignment-item {{ !$canEditReport ? 'item-locked' : '' }}" data-theory-start="{{ $task->theory_start }}"
+                                        <tr class="assignment-item {{ !$canEditReport ? 'item-locked' : '' }}"
+                                            data-theory-start="{{ $task->theory_start }}"
                                             data-theory-end="{{ $task->theory_end }}">
                                             <td style="width: 10.7%">
                                                 <div class="d-flex flex-column align-items-center">
-                                                    <select class="form-control form-control-sm shift-select mb-1" {{ !$canEditReport ? 'disabled' : '' }}>
+                                                    <select class="form-control form-control-sm shift-select mb-1"
+                                                        {{ !$canEditReport ? 'disabled' : '' }}>
                                                         <option value="1">1</option>
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
@@ -459,10 +468,12 @@
                                                     </select>
                                                     <input type="time"
                                                         class="form-control form-control-sm start-time-input mb-1"
-                                                        value="{{ $task->theory_start }}" {{ !$canEditReport ? 'disabled' : '' }}>
+                                                        value="{{ $task->theory_start }}"
+                                                        {{ !$canEditReport ? 'disabled' : '' }}>
                                                     <input type="time"
                                                         class="form-control form-control-sm end-time-input"
-                                                        value="{{ $task->theory_end }}" {{ !$canEditReport ? 'disabled' : '' }}>
+                                                        value="{{ $task->theory_end }}"
+                                                        {{ !$canEditReport ? 'disabled' : '' }}>
                                                 </div>
                                             </td>
                                             <td style="width: 45.3%">
@@ -476,7 +487,8 @@
                                                     <div
                                                         class="personnel-row d-flex align-items-center p-1 border-bottom">
                                                         <div style="flex: 1" class="mr-1">
-                                                            <select class="form-control form-control-sm person-select" {{ !$canEditReport ? 'disabled' : '' }}>
+                                                            <select class="form-control form-control-sm person-select"
+                                                                {{ !$canEditReport ? 'disabled' : '' }}>
                                                                 <option value="">-- Chọn người --</option>
                                                                 @foreach ($personnel as $p)
                                                                     <option value="{{ $p->id }}">
@@ -487,15 +499,16 @@
                                                         <div style="flex: 1">
                                                             <input type="text"
                                                                 class="form-control form-control-sm person-notif"
-                                                                placeholder="Chi tiết..." {{ !$canEditReport ? 'disabled' : '' }}>
+                                                                placeholder="Chi tiết..."
+                                                                {{ !$canEditReport ? 'disabled' : '' }}>
                                                         </div>
-                                                        @if($canEditReport)
+                                                        @if ($canEditReport)
                                                             <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"
                                                                 title="Xóa người này"></i>
                                                         @endif
                                                     </div>
                                                 </div>
-                                                @if($canEditReport)
+                                                @if ($canEditReport)
                                                     <div class="text-left p-1" style="border-top: 1px dashed #eee">
                                                         <a href="javascript:void(0)" class="btn-add-person"
                                                             title="Thêm người thực hiện">
@@ -505,7 +518,7 @@
                                                 @endif
                                             </td>
                                             <td style="width: 4%" class="text-center">
-                                                @if($canEditReport)
+                                                @if ($canEditReport)
                                                     <i class="fas fa-times-circle btn-remove-shift cursor-pointer"
                                                         title="Xóa ca này"></i>
                                                 @endif
@@ -563,7 +576,8 @@
                             </table>
                         </td>
                         <td class="text-center" style="vertical-align: middle !important; width: 2%;">
-                            <button class="btn btn-xs btn-primary btn-save-room shadow-sm" {{ !$canEditReport ? 'disabled' : '' }}>
+                            <button class="btn btn-xs btn-primary btn-save-room shadow-sm"
+                                {{ !$canEditReport ? 'disabled' : '' }}>
                                 <i class="fas fa-save"></i>
                             </button>
                         </td>
@@ -733,7 +747,7 @@
 
                         // Cập nhật input
                         let endOffset = ((startLeft + newWidth) / 100) *
-                        25.0; // Adjust for some wrap logic or just keep 24
+                            25.0; // Adjust for some wrap logic or just keep 24
                         let endOffsetFinal = ((startLeft + newWidth) / 100) * 24.0;
                         currentTargetRow.find('.end-time-input').val(offsetToTime(
                             endOffsetFinal));
@@ -934,9 +948,29 @@
                     }
                 });
             } else {
+                const roomRow = $(this).closest('.room-row');
+                const roomId = roomRow.data('room-id');
+                const isCustomTask = !roomId || roomId === '';
+
                 if (container.find('.assignment-item').length > 1) {
                     row.remove();
                     updateTimelines();
+                } else if (isCustomTask) {
+                    Swal.fire({
+                        title: 'Hủy công tác này?',
+                        text: "Toàn bộ thông tin dòng này sẽ bị xóa!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Đồng ý hủy',
+                        cancelButtonText: 'Quay lại'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            roomRow.fadeOut(300, function() {
+                                $(this).remove();
+                                updateTimelines();
+                            });
+                        }
+                    });
                 } else {
                     row.find('select').val('');
                     row.find('textarea, input').val('');
@@ -953,6 +987,7 @@
             const groupCode = row.data('group-code') || '';
 
             const assignments = [];
+            let validationError = null;
             row.find('.assignment-item').each(function() {
                 const personnel_list = [];
                 $(this).find('.personnel-row').each(function() {
@@ -965,19 +1000,34 @@
                     }
                 });
 
-                if (personnel_list.length > 0) {
-                    assignments.push({
-                        shift: $(this).find('.shift-select').val(),
-                        start_time: $(this).find('.start-time-input').val(),
-                        end_time: $(this).find('.end-time-input').val(),
-                        job_description: $(this).find('.job-desc').html(),
-                        personnel_list: personnel_list
-                    });
+                const jobDesc = $(this).find('.job-desc').html().trim();
+                const shiftName = $(this).find('.shift-select option:selected').text();
+
+                if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
+                    validationError = `Ca ${shiftName}: Vui lòng nhập nội dung công việc.`;
+                    return false;
                 }
+                if (personnel_list.length === 0) {
+                    validationError = `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`;
+                    return false;
+                }
+
+                assignments.push({
+                    shift: $(this).find('.shift-select').val(),
+                    start_time: $(this).find('.start-time-input').val(),
+                    end_time: $(this).find('.end-time-input').val(),
+                    job_description: jobDesc,
+                    personnel_list: personnel_list
+                });
             });
 
+            if (validationError) {
+                Swal.fire('Thiếu thông tin', validationError, 'warning');
+                return;
+            }
+
             if (assignments.length === 0) {
-                Swal.fire('Chú ý', 'Vui lòng chọn ít nhất một nhân sự để lưu', 'warning');
+                Swal.fire('Chú ý', 'Vui lòng thêm ít nhất một ca làm việc để lưu', 'warning');
                 return;
             }
 
@@ -1160,8 +1210,25 @@
             `);
 
             $('#main-assignment-tbody').append(newRoomRow);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Đã thêm hàng mới',
+                text: 'Vui lòng chọn thiết bị và nhập nội dung công việc.',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+
             initSelect2(newRoomRow.find('.person-select'));
             updateTimelines();
+
+            // Tự động cuộn xuống dưới cùng
+            const container = $('.table-container');
+            container.animate({
+                scrollTop: container[0].scrollHeight
+            }, 500);
 
             // Auto resize textareas (If any left, but we use div now)
             newRoomRow.find('textarea').each(function() {

@@ -96,6 +96,7 @@
             border-bottom: 1px solid var(--border-color) !important;
             padding: 10px !important;
             vertical-align: top !important;
+            text-align: left !important;
         }
 
         .assignment-inner-table tr:last-child td {
@@ -103,8 +104,18 @@
         }
 
         .job-desc {
+            min-height: 50px;
+            padding: 10px;
+            text-align: left !important;
+            white-space: pre-wrap;
             font-size: 1rem;
             font-weight: bold;
+            display: block;
+            width: 100%;
+        }
+
+        .job-desc * {
+            text-align: left !important;
         }
 
         .personnel-list {
@@ -172,6 +183,12 @@
             margin-right: 5px;
             flex-shrink: 0;
             vertical-align: middle;
+        }
+
+        .off-stream-row,
+        .off-stream-row .room-name-cell,
+        .off-stream-row .assignment-inner-table td {
+            background-color: #fff0f0 !important;
         }
     </style>
 </head>
@@ -243,33 +260,26 @@
             <thead>
                 <tr>
                     <th style="width: 10%">Phòng / Thiết Bị</th>
-                    <th style="width: 15%">Lịch Lý Thuyết</th>
-                    <th style="width: 10%">Ca / Thời Gian</th>
-                    <th style="width: 35%">Nội Dung Phân Công</th>
+                    <th style="width: 15%">Ca / Thời Gian</th>
+                    <th style="width: 45%">Nội Dung Phân Công</th>
                     <th style="width: 15%">Người thực Hiện</th>
                     <th style="width: 15%">Ghi chú / Lưu ý</th>
-                    <th style="width: 15%">Báo cáo hoạt động</th>
                 </tr>
             </thead>
             <tbody>
                 @if (count($tasks) === 0)
                     <tr>
-                        <td colspan="6" class="text-center font-weight-bold text-muted p-4">
+                        <td colspan="5" class="text-center font-weight-bold text-muted p-4">
                             Không có lịch phân công nào.
                         </td>
                     </tr>
                 @endif
                 @foreach ($tasks as $task)
-                    <tr>
+                    <tr class="{{ $task->assignments->first()->off_stream ?? 0 ? 'off-stream-row' : '' }}">
                         <!-- Phòng / Khu vực -->
                         <td class="room-name-cell">
                             <div class="d-block">{{ $task->room_code }}</div>
                             <div class="text-muted">{{ $task->room_name }}</div>
-                        </td>
-
-                        <!-- Lịch lý thuyết -->
-                        <td class="theory-cell">
-                            {!! $task->theory_display !!}
                         </td>
 
                         <td colspan="4" class="p-0">
@@ -278,10 +288,10 @@
                             @else
                                 <table class="table assignment-inner-table">
                                     <colgroup>
-                                        <col style="width: 13.3%"> <!-- Tương ứng 10% của bảng cha -->
-                                        <col style="width: 46.7%"> <!-- Tương ứng 35% của bảng cha -->
-                                        <col style="width: 20%"> <!-- Tương ứng 15% của bảng cha -->
-                                        <col style="width: 20%"> <!-- Tương ứng 15% của bảng cha -->
+                                        <col style="width: 16.7%"> {{-- Ca/Thời gian (15%) --}}
+                                        <col style="width: 50.0%"> {{-- Nội dung (45%) --}}
+                                        <col style="width: 16.7%"> {{-- Người thực hiện (15%) --}}
+                                        <col style="width: 16.6%"> {{-- Ghi chú (15%) --}}
                                     </colgroup>
                                     <tbody>
                                         @foreach ($task->assignments as $a)
@@ -293,10 +303,7 @@
                                                         {{ $a->end_time_display }}</small>
                                                 </td>
 
-                                                <td>
-                                                    <div class="job-desc" style="white-space: pre-wrap;">
-                                                        {!! trim($a->Job_description) !!}</div>
-                                                </td>
+                                                <td><div class="job-desc">{!! trim($a->Job_description) !!}</div></td>
 
                                                 <!-- Người thực hiện -->
                                                 <td>
@@ -309,7 +316,8 @@
                                                                         ->first()->name ?? 'N/A';
                                                             @endphp
                                                             <div class="mb-1 d-flex align-items-center">
-                                                                <span class="personnel-label">{{ chr(65 + $loop->index) }}</span>
+                                                                <span
+                                                                    class="personnel-label">{{ chr(65 + $loop->index) }}</span>
                                                                 <span>{{ $personName }}</span>
                                                             </div>
                                                         @endforeach
@@ -389,10 +397,15 @@
                                         $mins = $minutes % 60;
                                     @endphp
                                     <div class="mb-2" style="border-bottom: 1px dashed #aaa; padding-bottom: 5px;">
-                                        <span class="font-weight-bold">{{ $idx++ }}. {{ $d->title ?? 'VS' }}</span><br>
-                                        <small class="text-dark">({{ $start->format('H:i') }} - {{ $end->format('H:i') }} = <b>{{ $hours }}h{{ $mins }}p</b>)</small>
+                                        <span class="font-weight-bold">{{ $idx++ }}.
+                                            {{ $d->title ?? 'VS' }}</span><br>
+                                        <small class="text-dark">({{ $start->format('H:i') }} -
+                                            {{ $end->format('H:i') }} =
+                                            <b>{{ $hours }}h{{ $mins }}p</b>)</small>
                                         @if ($d->yields)
-                                            <br><span class="text-primary" style="font-weight: 600; font-size: 11px;">Sản Lượng: {{ number_format($d->yields, 2) }} {{ $d->unit }}</span>
+                                            <br><span class="text-primary"
+                                                style="font-weight: 600; font-size: 11px;">Sản Lượng:
+                                                {{ number_format($d->yields, 2) }} {{ $d->unit }}</span>
                                         @endif
                                     </div>
                                 @endforeach

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\Pages\Report\DailyReportController;
+use Illuminate\Support\Facades\Log;
 
 class ProductionAssignmentController extends Controller
 {
@@ -131,7 +132,6 @@ class ProductionAssignmentController extends Controller
         $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate, $active_group_code) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
-            //$actuals = $actualDetails->get($room->id) ?? collect();
 
             // Tạo chuỗi hiển thị lịch lý thuyết (Theory Display)
             $theoryDisplay = '';
@@ -163,25 +163,17 @@ class ProductionAssignmentController extends Controller
             // Tự động tạo gợi ý nếu chưa có phân công
             if ($assignments->isEmpty() && $plans->isNotEmpty()) {
                 $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
-
-                // Khởi tạo các nhóm công việc theo ca (1, 2, 3)
                 $shiftItems = ['1' => [], '2' => [], '3' => []];
 
                 foreach ($plans as $p) {
                     $pStart = Carbon::parse($p->start);
                     $pEnd = Carbon::parse($p->end);
-
-                    // Ca 1: 06:00 - 14:00
                     $s1S = $dayStart->copy();
                     $s1E = $dayStart->copy()->addHours(8);
                     if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = "{$p->product_name} - {$p->batch}";
-
-                    // Ca 2: 14:00 - 22:00
                     $s2S = $s1E->copy();
                     $s2E = $s2S->copy()->addHours(8);
                     if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = "{$p->product_name} - {$p->batch}";
-
-                    // Ca 3: 22:00 - 06:00 (sáng mai)
                     $s3S = $s2E->copy();
                     $s3E = $s3S->copy()->addHours(8);
                     if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = "{$p->product_name} - {$p->batch}";
@@ -189,22 +181,17 @@ class ProductionAssignmentController extends Controller
 
                 foreach ($shiftItems as $code => $items) {
                     if (empty($items)) continue;
-
                     $unique_items = array_values(array_unique($items));
                     $jobDescription = "";
                     foreach ($unique_items as $idx => $item) {
                         $jobDescription .= ($idx + 1) . ". " . $item . "\n";
                     }
-
-                    // Cố định thời gian ca
                     $sTime = $dayStart->copy()->addHours(($code - 1) * 8);
                     $eTime = $sTime->copy()->addHours(8);
-
                     $shiftCode = $code;
                     $roomCol = 'number_of_employes_on_sheet' . $shiftCode;
-                    if ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular'; // Sheet 4 mapped to regular
-                    if ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4'; // Sheet 6 mapped to 4
-
+                    if ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular';
+                    if ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4';
                     $suggestedCount = $room->$roomCol ?? 0;
 
                     $assignments->push((object)[
@@ -221,13 +208,13 @@ class ProductionAssignmentController extends Controller
                         'is_scheduled' => true
                     ]);
                 }
-                // Sắp xếp lại theo thời gian
                 $assignments = $assignments->sortBy('start');
             }
 
             return (object)[
-                'sp_id' => $spIdString, // Dùng để lưu vết các stage_plan liên quan
+                'sp_id' => $spIdString,
                 'room_id' => $room->id,
+                'group_code' => $room->group_code,
                 'room_code' => $room->code,
                 'room_name' => $room->name,
                 'theory_display' => $theoryDisplay,
@@ -237,16 +224,55 @@ class ProductionAssignmentController extends Controller
                 'number_of_employes_on_sheet3' => $room->number_of_employes_on_sheet3,
                 'number_of_employes_on_sheet4' => $room->number_of_employes_on_sheet4,
                 'number_of_employes_on_sheet_regular' => $room->number_of_employes_on_sheet_regular,
-                'theory_start' => '07:15', // Giá trị mặc định khi thêm ca mới
+                'theory_start' => '07:15',
                 'theory_end' => '16:00',
             ];
         });
 
+        // 7.5 Thêm các công việc ngoài lịch không có phòng
+        $noRoomAssignments = $allAssignments->get("") ?? collect();
+        if ($noRoomAssignments->isNotEmpty()) {
+            // Nhóm theo sp_id (EXT_...) để gộp các ca của cùng 1 công việc tùy chỉnh
+            $noRoomGroups = $noRoomAssignments->groupBy('stage_plan_id');
+            foreach ($noRoomGroups as $spId => $groupAssignments) {
+                foreach ($groupAssignments as $a) {
+                    $a->is_foreign = ($active_group_code && $a->stage_groups_code != $active_group_code);
+                    $a->is_scheduled = !empty($a->stage_plan_id);
+                    $a->personnel_data = DB::table('assignment_personnel')
+                        ->where('assignment_id', $a->id)
+                        ->select('personnel_id', 'notification')->get();
+                    $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+                    $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
+                }
+
+                $tasks->push((object)[
+                    'sp_id' => $spId,
+                    'room_id' => null,
+                    'group_code' => $active_group_code,
+                    'room_code' => 'NA',
+                    'room_name' => 'Công tác khác',
+                    'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',
+                    'assignments' => $groupAssignments->sortBy('start'),
+                    'number_of_employes_on_sheet1' => 0,
+                    'number_of_employes_on_sheet2' => 0,
+                    'number_of_employes_on_sheet3' => 0,
+                    'number_of_employes_on_sheet4' => 0,
+                    'number_of_employes_on_sheet_regular' => 0,
+                    'theory_start' => '07:15',
+                    'theory_end' => '16:00',
+                ]);
+            }
+        }
+
         $personnelQuery = DB::table('employees as e')
-            ->join('employee_assignments as ea', 'e.id', '=', 'ea.employees_id')
-            ->where('ea.production_code', $production_code)
-            ->where('ea.active', 1)
-            ->where('e.active', 1);
+            ->where('e.active', 1)
+            ->whereExists(function ($query) use ($production_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea')
+                    ->whereColumn('ea.employees_id', 'e.id')
+                    ->where('ea.production_code', $production_code)
+                    ->where('ea.active', 1);
+            });
 
         if ($active_group_code && $active_group_code != 'HC') {
             $personnelQuery->whereExists(function ($query) use ($active_group_code) {
@@ -254,16 +280,16 @@ class ProductionAssignmentController extends Controller
                     ->from('employee_assignments as ea2')
                     ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
                     ->whereColumn('ea2.employees_id', 'e.id')
-                    ->where(function($q) use ($active_group_code) {
+                    ->where(function ($q) use ($active_group_code) {
                         $q->where('sg.code', $active_group_code)
-                          ->orWhere('ea2.group_id', $active_group_code);
+                            ->orWhere('ea2.group_id', $active_group_code);
                     })
                     ->where('ea2.active', 1);
             });
         }
 
         $personnel = $personnelQuery->select('e.*')
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level)) FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL) as allowed_rooms_with_levels"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL) as allowed_rooms_with_levels"))
             ->orderBy('e.name')
             ->get();
 
@@ -298,42 +324,107 @@ class ProductionAssignmentController extends Controller
 
         try {
             $data = file_get_contents($url);
-            return response($data)->header('Content-Type', 'application/json');
+            $personnelData = json_decode($data, true);
+
+            // Lấy thông tin hasAssignment từ bảng employees local
+            $localEmployees = DB::table('employees')->select('code', 'hasAssignment')->get()->keyBy('code');
+
+            foreach ($personnelData as &$person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
+                if ($code && isset($localEmployees[$code])) {
+                    $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
+                } else {
+                    $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
+                }
+            }
+
+            return response()->json($personnelData);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
+    public function updateHasAssignment(Request $request)
+    {
+        try {
+            $code = $request->code;
+            $hasAssignment = $request->hasAssignment ? 1 : 0;
+
+            DB::table('employees')
+                ->where('code', $code)
+                ->update(['hasAssignment' => $hasAssignment, 'updated_at' => now()]);
+
+            return response()->json(['success' => true, 'message' => 'Đã cập nhật trạng thái']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+        }
+    }
+
     public function store(Request $request)
     {
+        //Log::info($request->all());
         $spIdString = $request->sp_id;
         $room_id = $request->room_id;
+        if ($room_id === "") $room_id = null;
         $reportedDate = $request->reportedDate;
-        $stage_groups_code = $request->stage_groups_code ?? null;
+        $stage_groups_code = $request->stage_groups_code;
+        if (empty($stage_groups_code)) $stage_groups_code = null;
+
         $assignments_data = $request->assignments ?? [];
-        $production_code = session('user')['production_code'];
+        $production_code = $request->production_code ?? session('user')['production_code'] ?? 'PXV1';
+
+        if (!$room_id && !($spIdString && str_starts_with($spIdString, 'EXT_'))) {
+            return response()->json(['success' => false, 'message' => 'Thiếu ID phòng']);
+        }
 
         try {
             DB::beginTransaction();
 
+            // 1. Xóa (đánh dấu active=0) các phân công cũ
             $deleteQuery = DB::table('assignments')
-                ->where('room_id', $room_id)
                 ->where('deparment_code', $production_code)
                 ->whereDate('start', $reportedDate)
                 ->where('active', 1);
+
+            if ($spIdString && str_starts_with($spIdString, 'EXT_')) {
+                // Đối với công việc ngoài lịch có ID định danh riêng
+                $deleteQuery->where('stage_plan_id', $spIdString);
+            } else {
+                // Đối với công việc theo phòng (có hoặc không có sp_id)
+                if ($room_id) {
+                    $deleteQuery->where('room_id', $room_id);
+                    if ($spIdString) {
+                        $deleteQuery->where('stage_plan_id', $spIdString);
+                    } else {
+                        $deleteQuery->whereNull('stage_plan_id');
+                    }
+                } else {
+                    // Trường hợp không có cả room_id và sp_id (không nên xảy ra với EXT_ logic mới)
+                    // nhưng nếu có thì xóa theo các tiêu chí khác để tránh xóa nhầm
+                    return response()->json(['success' => false, 'message' => 'Không thể định danh công việc để lưu']);
+                }
+            }
+
+            // Nếu có lọc theo tổ, chỉ xóa phân công của tổ đó
             if ($stage_groups_code) {
                 $deleteQuery->where('stage_groups_code', $stage_groups_code);
             }
+
             $deleteQuery->update(['active' => 0, 'updated_at' => now()]);
 
+            // 2. Thêm mới các phân công
             if (!empty($assignments_data)) {
                 foreach ($assignments_data as $row) {
                     $p_data = $row['personnel_list'] ?? [];
-                    // Cho phép lưu ngay cả khi chưa chọn nhân sự
-                    // if (empty($p_data)) continue;
+
+                    if (empty($row['start_time']) || empty($row['end_time'])) {
+                        continue; // Bỏ qua nếu thiếu thời gian
+                    }
 
                     $startDt = $reportedDate . ' ' . $row['start_time'];
                     $endDt = $reportedDate . ' ' . $row['end_time'];
+
+                    // Xử lý ca đêm (kết thúc vào ngày hôm sau)
                     if ($row['end_time'] < $row['start_time']) {
                         $endDt = Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
                     }
@@ -346,8 +437,9 @@ class ProductionAssignmentController extends Controller
                         'Sheet' => $row['shift'],
                         'start' => $startDt,
                         'end' => $endDt,
-                        'Job_description' => $row['job_description'] ?? null,
+                        'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
                         'number_of_employes' => $row['number_of_employes'] ?? 0,
+                        'off_stream' => $row['off_stream'] ?? 0,
                         'assigned_by' => session('user')['userName'] ?? 'System',
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -369,6 +461,7 @@ class ProductionAssignmentController extends Controller
                         ]);
                     }
 
+                    // Lưu danh sách nhân sự
                     $unique_p_data = collect($p_data)->unique('personnel_id');
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
@@ -385,7 +478,15 @@ class ProductionAssignmentController extends Controller
             return response()->json(['success' => true, 'message' => 'Đã lưu phân công']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi lưu dữ liệu: ' . $e->getMessage(),
+                'debug' => [
+                    'room_id' => $room_id,
+                    'production_code' => $production_code,
+                    'line' => $e->getLine()
+                ]
+            ], 500);
         }
     }
 
@@ -464,7 +565,7 @@ class ProductionAssignmentController extends Controller
 
         // 5. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
         $dailyReportController = app(DailyReportController::class);
-        $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId');
+        $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId', $production_code);
         $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
 
         // 6. Tổ chức lại dữ liệu
@@ -498,6 +599,30 @@ class ProductionAssignmentController extends Controller
                 'actual_details' => $actuals
             ];
         });
+
+        // 6.5 Thêm các công việc ngoài lịch không có phòng
+        $noRoomAssignments = $allAssignments->get("") ?? collect();
+        if ($noRoomAssignments->isNotEmpty()) {
+            $noRoomGroups = $noRoomAssignments->groupBy('stage_plan_id');
+            foreach ($noRoomGroups as $spId => $groupAssignments) {
+                foreach ($groupAssignments as $a) {
+                    $a->personnel_data = DB::table('assignment_personnel')
+                        ->where('assignment_id', $a->id)
+                        ->select('personnel_id', 'notification')->get();
+                    $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+                    $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
+                }
+
+                $tasks->push((object)[
+                    'room_id' => null,
+                    'room_code' => 'NA',
+                    'room_name' => 'Công tác khác',
+                    'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',
+                    'assignments' => $groupAssignments->sortBy('start'),
+                    'actual_details' => collect()
+                ]);
+            }
+        }
 
         $personnel = DB::table('employees')->where('active', 1)->get();
 

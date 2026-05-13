@@ -18,6 +18,7 @@ Route::prefix('/assignemnt/production')
         Route::get('', 'index')->name('index');
         Route::post('store', 'store')->name('store');
         Route::get('shifts', 'getPersonnelShifts')->name('shifts');
+        Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
     });
 

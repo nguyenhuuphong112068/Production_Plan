@@ -814,8 +814,6 @@
             updatePermissionAjax(employeeId, 'group', groupData);
         });
 
-
-
         // Handle Room Assignment Actions
         $(document).on('click', '.btn-add-room-row', function() {
             const $tr = $(this).closest('tr');
@@ -988,6 +986,10 @@
                             icon: 'success',
                             title: res.message
                         });
+                        // Reload sau khi cập nhật để đồng bộ dữ liệu dashboard và tránh lỗi ẩn dòng
+                        setTimeout(() => {
+                            location.reload();
+                        }, 500);
                     }
                 }
             });
