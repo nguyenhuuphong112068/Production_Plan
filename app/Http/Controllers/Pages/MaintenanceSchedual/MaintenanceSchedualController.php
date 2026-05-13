@@ -1225,7 +1225,14 @@ class MaintenanceSchedualController extends SchedualController
 
             DB::commit();
 
-            return response()->json(['success' => true, 'message' => "Đã xác nhận hoàn thành cho {$updatedCount} dòng công việc."]);
+            $production = session('user')['production_code'];
+            $plan_waiting = $this->getPlanWaiting($production);
+
+            return response()->json([
+                'success' => true, 
+                'message' => "Đã xác nhận hoàn thành cho {$updatedCount} dòng công việc.",
+                'plan' => $plan_waiting
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
 

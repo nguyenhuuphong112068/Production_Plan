@@ -551,7 +551,7 @@
                                                                         class="form-control form-control-sm person-notif ml-1"
                                                                         style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                                                         value="{{ $p_info->notification ?? '' }}"
-                                                                        placeholder="Lưu ý..."
+                                                                        placeholder="Lưu ý (nếu có)..."
                                                                         {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                                 </div>
 
@@ -2522,9 +2522,11 @@
                     shiftStats[k].poolSize = leftoverCount;
                 });
 
-                const totalUnassigned = Object.values(shiftStats).reduce((sum, s) => sum + (s.poolSize || 0), 0);
+                const totalUnassigned = Object.values(shiftStats).reduce((sum, s) => sum + (s.poolSize ||
+                    0), 0);
 
-                const totalStaff = currentSidebarData.filter(p => employeeCodeToId[p.employeeId || p.code]).length;
+                const totalStaff = currentSidebarData.filter(p => employeeCodeToId[p.employeeId || p.code])
+                    .length;
 
                 let htmlReport = `
                 <div class="container-fluid text-left">
@@ -2831,15 +2833,19 @@
                     success: function(res) {
                         if (res.success) {
                             // Cập nhật lại data trong currentSidebarData để đồng bộ
-                            const pIndex = currentSidebarData.findIndex(p => (p.employeeId || p
+                            const pIndex = currentSidebarData.findIndex(p => (p
+                                .employeeId || p
                                 .code) == code);
                             if (pIndex !== -1) {
-                                currentSidebarData[pIndex].hasAssignment = isChecked ? 1 : 0;
+                                currentSidebarData[pIndex].hasAssignment = isChecked ? 1 :
+                                0;
                             }
                             // Thêm hiệu ứng gạch ngang hoặc mờ nếu cần
-                            $(`.draggable-person[data-code="${code}"]`).find('span.text-dark')
+                            $(`.draggable-person[data-code="${code}"]`).find(
+                                    'span.text-dark')
                                 .toggleClass('text-muted', !isChecked);
-                            $(`.draggable-person[data-code="${code}"]`).attr('data-has-assign',
+                            $(`.draggable-person[data-code="${code}"]`).attr(
+                                'data-has-assign',
                                 isChecked ? 1 : 0);
                         } else {
                             Swal.fire('Lỗi', res.message, 'error');

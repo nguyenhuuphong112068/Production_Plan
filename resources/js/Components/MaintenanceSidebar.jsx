@@ -34,6 +34,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const [cancelMode, setCancelMode] = useState('all'); // 'all' hoặc 'resource'
   const [cancelResourceId, setCancelResourceId] = useState(null);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleCancelConfirm = async () => {
     if (cancelMode === 'resource' && !cancelResourceId) {
@@ -67,6 +68,49 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         })
         .finally(() => setIsCanceling(false));
     }
+  };
+
+  const handleFinished = () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    if (selectedRows.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Không có dòng được chọn',
+        timer: 1000,
+        showConfirmButton: false,
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    const ids = selectedRows.map(row => row.id);
+
+    axios.put('/MaintenanceSchedual/confirmFinish', { ids: ids })
+      .then(res => {
+        if (res.data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Hoàn Thành',
+            text: res.data.message,
+            timer: 1500,
+            showConfirmButton: false,
+          });
+
+          if (res.data.plan) {
+            setPlan(res.data.plan);
+          }
+          setSelectedRows([]);
+        } else {
+          Swal.fire('Lỗi', res.data.message, 'error');
+        }
+      })
+      .catch(err => {
+        Swal.fire('Lỗi', err.response?.data?.message || err.message, 'error');
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
   };
 
   useEffect(() => {
@@ -469,6 +513,17 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                 tooltip="Tự động sắp lịch (HC/BT/TI)"
                 style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '0.75rem' }}
               />
+              {(Array.isArray(userGroup) ? userGroup.includes('Admin') : userGroup === 'Admin') && (
+                <Button
+                  label="Xong"
+                  icon={isSaving ? "pi pi-spin pi-spinner" : "pi pi-check"}
+                  className="p-button-sm p-button-success shadow-sm"
+                  onClick={handleFinished}
+                  tooltip="Xác nhận hoàn thành các mục đã chọn"
+                  disabled={isSaving}
+                  style={{ whiteSpace: 'nowrap', padding: '4px 8px', fontSize: '0.75rem' }}
+                />
+              )}
               <Button icon="pi pi-arrows-h" className="p-button-rounded p-button-text p-button-secondary p-button-sm" onClick={handleToggle} />
               <Button icon="pi pi-times" className="p-button-rounded p-button-text p-button-danger p-button-sm" onClick={() => onClose(false)} />
             </Col>
