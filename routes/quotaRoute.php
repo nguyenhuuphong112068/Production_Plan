@@ -15,6 +15,7 @@ Route::prefix('/quota')
             ->controller(PersonnelController::class)
             ->name('personnel.')
             ->group(function () {
+                Route::get('portal', 'portal')->name('portal');
                 Route::get('/{department?}', 'index')->name('list');
                 Route::get('sync/{department?}', 'sync')->name('sync');
                 Route::post('store', 'store')->name('store');

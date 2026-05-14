@@ -9,10 +9,28 @@ use Illuminate\Support\Facades\Validator;
 
 class PersonnelController extends Controller
 {
+    public function portal()
+    {
+        $departments = [
+            ['code' => 'PXV1', 'name' => 'Phân Xưởng Viên 1', 'icon' => 'fas fa-tablets'],
+            ['code' => 'PXV2', 'name' => 'Phân Xưởng Viên 2', 'icon' => 'fas fa-capsules'],
+            ['code' => 'PXVH', 'name' => 'Phân Xưởng Hormone', 'icon' => 'fas fa-microscope'],
+            ['code' => 'PXTN', 'name' => 'Phân Xưởng Thuốc Nước', 'icon' => 'fas fa-tint'],
+            ['code' => 'PXDN', 'name' => 'Phân Xưởng Dùng Ngoài', 'icon' => 'fas fa-flask'],
+            ['code' => 'EN', 'name' => 'Kỹ Thuật Bảo Trì (EN)', 'icon' => 'fas fa-wrench'],
+            ['code' => 'QA', 'name' => 'Đảm Bảo Chất Lượng (QA)', 'icon' => 'fas fa-clipboard-check'],
+        ];
+
+        session()->put(['title' => 'QUẢN LÝ NHÂN SỰ']);
+
+        return view('pages.quota.personnel.portal', compact('departments'));
+    }
+
     public function index(Request $request, $department = null)
     {
         // 1. Lấy mã bộ phận: Ưu tiên URL -> Session
         $departmentCode = $department ?? session('user')['department'];
+
         $filterGroupId = $request->group_id;
         $filterRoomId = $request->room_id;
 
@@ -75,27 +93,35 @@ class PersonnelController extends Controller
 
         session()->put(['title' => 'NHÂN VIÊN - BỘ PHẬN: ' . $departmentCode]);
 
-        // 3. Lấy danh sách bộ phận, tổ và phòng để hỗ trợ nhập liệu
-        $departments = DB::table('deparments')->where('active', true)->get();
-        $groups = collect([
-            1 => "Trung Tâm Cân",
-            3 => "Pha Chế",
-            4 => "Văn Phòng",
-            5 => "Định Hình",
-            6 => "Bao Phim",
-            7 => "ĐGSC",
-            8 => "ĐGTC",
-            9 => "VSCN + Kho BTP"
-        ])->map(function ($name, $id) {
-            return (object) ['id' => $id, 'code' => $id, 'name' => $name];
-        })->values();
+        $isENorQA = in_array($departmentCode, ['EN', 'QA']);
+
+        if ($isENorQA) {
+            $groups = DB::table('stage_groups')
+                ->where('type', 2)
+                ->select('id', 'name')
+                ->get();
+        } else {
+            $groups = collect([
+                1 => "Trung Tâm Cân",
+                3 => "Pha Chế",
+                4 => "Văn Phòng",
+                5 => "Định Hình",
+                6 => "Bao Phim",
+                7 => "ĐGSC",
+                8 => "ĐGTC",
+                9 => "VSCN + Kho BTP"
+            ])->map(function ($name, $id) {
+                return (object) ['id' => $id, 'code' => $id, 'name' => $name];
+            })->values();
+        }
+
         $rooms = DB::table('room')->where('deparment_code', $departmentCode)->get();
 
+        $viewName = $isENorQA ? 'pages.quota.personnel.en_qa_list' : 'pages.quota.personnel.list';
 
-
-        return view('pages.quota.personnel.list', [
+        return view($viewName, [
             'datas' => $datas,
-            'departments' => $departments,
+            'departments' => session('user')['department'],
             'groups' => $groups,
             'rooms' => $rooms,
             'currentDepartment' => $departmentCode,

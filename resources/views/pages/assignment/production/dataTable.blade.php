@@ -2838,7 +2838,7 @@
                                 .code) == code);
                             if (pIndex !== -1) {
                                 currentSidebarData[pIndex].hasAssignment = isChecked ? 1 :
-                                0;
+                                    0;
                             }
                             // Thêm hiệu ứng gạch ngang hoặc mờ nếu cần
                             $(`.draggable-person[data-code="${code}"]`).find(

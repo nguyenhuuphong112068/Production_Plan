@@ -79,7 +79,7 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - `PXV2` (Phân xưởng Viên 2): **31**
     - *Ghi chú:* Các mã ID này được sử dụng làm tham số `department` trong URL API để lấy đúng dữ liệu ca trực của từng đơn vị.
 
-### 7. Tự động Phân công Nhân sự (Auto Assign)
+### 7.1 Tự động Phân công Nhân sự Sản Xuất (Auto Assign)
 - **Chỉ định theo ca:** Nhân sự được tự động lấy từ danh sách lịch trực (sidebar) và gom vào các nhóm (pool) tương ứng với từng ca làm việc (C1, C2, HC...). Những nhân sự đang nghỉ phép (P) sẽ bị loại bỏ.
 - **Tuân thủ Số lượng & Quyền hạn:**
     - Thuật toán đọc số lượng "Nhân sự cần thiết" của mỗi phòng để xác định số lượng người cần thiết phải xếp.
@@ -88,6 +88,16 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - **Ưu tiên:** Người có bậc kỹ năng (`level`) cao nhất đối với một phòng sẽ được ưu tiên chọn trước cho phòng đó.
     - **Công bằng:** Thuật toán áp dụng cơ chế chia bài (Round-robin), rải nhân sự lần lượt từng người một cho tất cả các phòng có nhu cầu trong ca. Sau khi mỗi phòng đã có 1 người, thuật toán mới quay lại xếp người thứ 2... Điều này ngăn chặn tình trạng một phòng giành hết nhân sự trong khi phòng khác trống rỗng.
 - **Tối ưu Hiệu suất (Chống treo):** Tích hợp chốt chặn an toàn giúp hệ thống lập tức thoát khỏi vòng lặp tính toán nếu không còn nhân sự phù hợp (bậc tay nghề chưa đạt), đảm bảo tốc độ phản hồi tức thì ngay trên Client-side.
+    - **Tự động báo cáo:** Sau khi chạy xong, hệ thống tự động bật Dashboard tổng kết kết quả.
+
+
+### 7.2 Tự động Phân công Nhân sự BT-HC (Auto Assign)
+- **Chỉ định theo ca:** Nhân sự được tự động lấy từ danh sách lịch trực (sidebar) và gom vào các nhóm (pool) tương ứng với các khoảng thời gian làm việc của công việc và thời gian của ca làm việc. Những nhân sự đang nghỉ phép (P) sẽ bị loại bỏ.
+- **Tuân thủ Số lượng & Quyền hạn:**
+    - Thuật toán đọc số lượng "Nhân sự cần thiết" của mỗi phòng để xác định số lượng người cần thiết phải xếp.
+    - Không cần kiểm tra định mức tay nghề và phòng sản xuất liên quan, chỉ cần đảm bảo số lượng và không có người nghỉ phép.
+    - **Công bằng:** Thuật toán áp dụng cơ chế chia bài (Round-robin), rải nhân sự lần lượt từng người một cho tất cả các phòng có nhu cầu trong ca. Sau khi mỗi phòng đã có 1 người, thuật toán mới quay lại xếp người thứ 2... Điều này ngăn chặn tình trạng một phòng giành hết nhân sự trong khi phòng khác trống rỗng.
+
     - **Tự động báo cáo:** Sau khi chạy xong, hệ thống tự động bật Dashboard tổng kết kết quả.
 
 ### 8. Dashboard Báo cáo & Giám sát (Reporting)
@@ -105,3 +115,19 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - Khi vô hiệu hóa PX tạm thời đang hoạt động, hệ thống tự động kích hoạt lại PX trực thuộc làm mặc định.
 - **Tổ (Groups):** Kích hoạt 01 Tổ mới sẽ tự động vô hiệu hóa các Tổ khác mà nhân viên đang tham gia.
 - **Lợi ích:** Đảm bảo dữ liệu nhân sự luôn duy nhất, không bị đếm trùng khi điều phối nguồn lực liên phân xưởng hoặc liên tổ.
+
+### 10. Quy tắc Tải Lịch Lý Thuyết BT-HC (Theoretical Schedule Rules)
+Hệ thống tải lịch lý thuyết (`stage_plan`) dựa trên mã Tổ (`group_code`), Mã công đoạn (`stage_plan.code`) và Bộ phận của phòng (`room.deparment_code`):
+
+| STT | Tổ (Group Name) | Group Code | Mã Công Việc (Rule) | Bộ phận (Zone) |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Tổ Bảo Trì 1 | 11 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXV1`, `PXTN` |
+| 2 | Tổ Điện Lạnh B1 | 12 | `code` like `%TI%` | `PXV1`, `PXTN` |
+| 3 | Tổ Điện Lạnh - Nước tinh khiết B2 | 14 | `code` like `%TI%` | `PXV2`, `PXDN`, `PXVH` |
+| 4 | Tổ Bảo Trì (PXV2-PXDN) | 15 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXV2`, `PXDN` |
+| 5 | Tổ Bảo Trì (PXVH) | 16 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXVH` |
+| 6 | Tổ Hiệu chuẩn QA | 18 | `code` like `%HC%` | Tất cả |
+
+*Ghi chú:* 
+- Đối với Tổ 14, quy tắc áp dụng tương tự Tổ 12/13 nhưng phạm vi mở rộng sang PXV2, PXDN, PXVH.
+- Đối với Tổ 18 (Hiệu chuẩn), chỉ quan tâm mã công việc có chứa `HC`.

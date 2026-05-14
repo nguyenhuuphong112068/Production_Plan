@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phân Công Công Việc Hàng Ngày - {{ $production_code }}</title>
+    <title>Phân Công Công Việc Hàng Ngày</title>
     <!-- Google Fonts -->
     <link href="{{ asset('assets/vendor/google-fonts/poppins.css') }}" rel="stylesheet">
     <!-- FontAwesome -->
@@ -115,6 +115,7 @@
             font-weight: bold;
             text-align: left;
             padding: 0 10px;
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -125,13 +126,13 @@
         <h3><i class="fas fa-calendar-alt"></i> Phân Công Bảo Trì - Hàng Ngày</h3>
         <div>
             <form action="{{ route('pages.assignment.public') }}" method="GET" class="form-inline">
-                <span class="mr-2 font-weight-bold mx-2" style="color: #003A4F;">Vùng:</span>
-                <select name="production_code" class="form-control form-control-sm mr-3" onchange="this.form.submit()">
-                    <option value="PXV1" {{ $production_code == 'PXV1' ? 'selected' : '' }}>PXV1</option>
-                    <option value="PXV2" {{ $production_code == 'PXV2' ? 'selected' : '' }}>PXV2</option>
-                    <option value="PXVH" {{ $production_code == 'PXVH' ? 'selected' : '' }}>PXVH</option>
-                    <option value="PXTN" {{ $production_code == 'PXTN' ? 'selected' : '' }}>PXTN</option>
-                    <option value="PXDN" {{ $production_code == 'PXDN' ? 'selected' : '' }}>PXDN</option>
+                <span class="mr-2 font-weight-bold mx-2" style="color: #003A4F;">Tổ:</span>
+                <select name="group_code" class="form-control form-control-sm mr-3" onchange="this.form.submit()">
+                    @foreach ($stage_groups as $g)
+                        <option value="{{ $g->code }}" {{ $group_code == $g->code ? 'selected' : '' }}>
+                            {{ $g->name }}
+                        </option>
+                    @endforeach
                 </select>
 
                 <span class="mr-2 font-weight-bold" style="color: #003A4F;">Chọn Ngày:</span>
@@ -150,10 +151,9 @@
         <table class="table table-assignment w-100">
             <thead>
                 <tr>
-                    <th style="width: 15%">Lịch Lý Thuyết</th>
-                    <th style="width: 10%">Phòng / Thiết Bị</th>
-                    <th style="width: 10%">Ca / Thời Gian</th>
-                    <th style="width: 35%">Nội Dung Công Việc</th>
+                    <th style="width: 15%">Phòng / Thiết Bị</th>
+                    <th style="width: 15%">Ca / Thời Gian</th>
+                    <th style="width: 40%">Nội Dung Công Việc</th>
                     <th style="width: 15%">Người thực Hiện</th>
                     <th style="width: 15%">Chi Tiết & Lưu Ý</th>
                 </tr>
@@ -161,20 +161,17 @@
             <tbody>
                 @if (count($tasks) === 0)
                     <tr>
-                        <td colspan="6" class="text-center font-weight-bold text-muted p-4">
+                        <td colspan="5" class="text-center font-weight-bold text-muted p-4">
                             Không có nhiệm vụ bảo trì nào trong ngày này.
                         </td>
                     </tr>
                 @endif
                 @foreach ($tasks as $task)
                     <tr>
-                        <!-- Lịch lý thuyết -->
-                        <td class="theory-cell">
-                            {!! $task->theory_display !!}
-                        </td>
-
                         <!-- Phòng / Khu vực -->
                         <td class="room-name-cell">
+                            <span class="d-block font-weight-bold"
+                                style="color: #003A4F;">{{ $task->workshop_code }}</span>
                             <span class="d-block">{{ $task->room_name }}</span>
                             <small class="text-muted">{{ $task->room_code }}</small>
                         </td>
@@ -185,10 +182,10 @@
                             @else
                                 <table class="table assignment-inner-table">
                                     <colgroup>
-                                        <col style="width: 13.3%"> <!-- Tương ứng 10% của bảng cha -->
-                                        <col style="width: 46.7%"> <!-- Tương ứng 35% của bảng cha -->
-                                        <col style="width: 20%"> <!-- Tương ứng 15% của bảng cha -->
-                                        <col style="width: 20%"> <!-- Tương ứng 15% của bảng cha -->
+                                        <col style="width: 17.6%"> <!-- Tương ứng 15% của bảng cha (15/85) -->
+                                        <col style="width: 47.1%"> <!-- Tương ứng 40% của bảng cha (40/85) -->
+                                        <col style="width: 17.6%"> <!-- Tương ứng 15% của bảng cha (15/85) -->
+                                        <col style="width: 17.6%"> <!-- Tương ứng 15% của bảng cha (15/85) -->
                                     </colgroup>
                                     <tbody>
                                         @foreach ($task->assignments->sortBy('start') as $a)
@@ -201,7 +198,9 @@
                                                 </td>
 
                                                 <!-- Nội Dung Công Việc -->
-                                                <td><div class="job-desc">{!! $a->Job_description ?: '<span class="text-muted">Không có thông tin</span>' !!}</div></td>
+                                                <td>
+                                                    <div class="job-desc">{!! $a->Job_description ?: '<span class="text-muted">Không có thông tin</span>' !!}</div>
+                                                </td>
 
                                                 <!-- Người thực hiện -->
                                                 <td>

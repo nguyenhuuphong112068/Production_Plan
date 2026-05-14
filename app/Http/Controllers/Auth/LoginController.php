@@ -63,7 +63,7 @@ class LoginController extends Controller
         ]);
 
         // Tự động đồng bộ nhân sự khi đăng nhập
-        $this->syncEmployees($production_code);
+        $this->syncEmployees($getUser->deparment);
 
         AuditTrialController::log('Login', 'NA', 0, 'NA', 'Đăng Nhập Thành Công');
 
@@ -94,16 +94,55 @@ class LoginController extends Controller
         try {
             $ctx = stream_context_create(['http' => ['timeout' => 5]]); // Timeout 5s
             $data = @file_get_contents($url, false, $ctx);
+
             if (!$data) return;
 
-            $employees = json_decode($data);
-            if (empty($employees) || !is_array($employees)) return;
+            $employeesFromApi = json_decode($data);
+            if (empty($employeesFromApi) || !is_array($employeesFromApi)) return;
 
-            foreach ($employees as $emp) {
-                if (empty($emp->employeeId)) continue;
+            $apiEmployeeCodes = array_map(function ($emp) {
+                return $emp->employeeId;
+            }, $employeesFromApi);
 
-                DB::transaction(function () use ($emp, $departmentCode) {
-                    // 1. Đảm bảo nhân sự tồn tại trong bảng employees
+            DB::transaction(function () use ($employeesFromApi, $apiEmployeeCodes, $departmentCode) {
+                // 1. Vô hiệu hóa các phân công (assignments) không còn trong API cho bộ phận này
+                // Bỏ qua bộ phận QA vì có một số nhân sự được quản lý thủ công (không có trong API)
+                if ($departmentCode !== 'QA') {
+                    $activeAssignments = DB::table('employee_assignments as ea')
+                        ->join('employees as e', 'ea.employees_id', '=', 'e.id')
+                        ->where('ea.production_code', $departmentCode)
+                        ->where('ea.active', 1)
+                        ->select('ea.id', 'e.id as employee_id', 'e.code')
+                        ->get();
+
+                    foreach ($activeAssignments as $assignment) {
+                        if (!in_array($assignment->code, $apiEmployeeCodes)) {
+                            // Vô hiệu hóa assignment
+                            DB::table('employee_assignments')
+                                ->where('id', $assignment->id)
+                                ->update(['active' => 0, 'updated_at' => now()]);
+
+                            // Sau khi vô hiệu hóa assignment này, kiểm tra xem nhân viên còn assignment active nào khác không
+                            $otherActiveAssignmentsCount = DB::table('employee_assignments')
+                                ->where('employees_id', $assignment->employee_id)
+                                ->where('active', 1)
+                                ->count();
+
+                            // Nếu không còn assignment nào active, vô hiệu hóa luôn nhân viên (soft delete)
+                            if ($otherActiveAssignmentsCount == 0) {
+                                DB::table('employees')
+                                    ->where('id', $assignment->employee_id)
+                                    ->update(['active' => 0, 'updated_at' => now()]);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Cập nhật hoặc thêm mới nhân sự từ API
+                foreach ($employeesFromApi as $emp) {
+                    if (empty($emp->employeeId)) continue;
+
+                    // Đảm bảo nhân sự tồn tại trong bảng employees
                     $employee = DB::table('employees')->where('code', $emp->employeeId)->first();
                     $employeeId = null;
 
@@ -117,22 +156,22 @@ class LoginController extends Controller
                         ]);
                     } else {
                         $employeeId = $employee->id;
-                        // Cập nhật lại tên nếu có thay đổi từ hệ thống gốc
+                        // Cập nhật lại tên và đảm bảo active = 1
                         DB::table('employees')->where('id', $employeeId)->update([
                             'name' => $emp->employeeName ?? $employee->name,
-                            'active' => 1, // Đảm bảo nhân sự được kích hoạt lại nếu có lịch trực
+                            'active' => 1,
                             'updated_at' => now()
                         ]);
                     }
 
-                    // 2. Đồng bộ vào bảng phân vùng sản xuất (employee_assignments)
-                    $prodAssignment = DB::table('employee_assignments')
+                    // Đồng bộ vào bảng phân vùng sản xuất (employee_assignments)
+                    $hasAssignment = DB::table('employee_assignments')
                         ->where('employees_id', $employeeId)
                         ->where('production_code', $departmentCode)
-                        ->where('is_main', 1)
-                        ->first();
+                        ->exists();
 
-                    if (!$prodAssignment) {
+                    if (!$hasAssignment) {
+                        // Nếu chưa từng có phân công tại bộ phận này, tạo mới bản ghi chính (is_main = 1)
                         DB::table('employee_assignments')->insert([
                             'employees_id' => $employeeId,
                             'production_code' => $departmentCode,
@@ -144,16 +183,20 @@ class LoginController extends Controller
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
-                    } else if ($prodAssignment->active == 0) {
+                    } else {
+                        // Nếu đã từng có dữ liệu tại đây (có thể là nhiều dòng bao gồm cả phân tổ/phòng), 
+                        // thực hiện kích hoạt lại TẤT CẢ các dòng liên quan để khôi phục trạng thái cũ
                         DB::table('employee_assignments')
-                            ->where('id', $prodAssignment->id)
+                            ->where('employees_id', $employeeId)
+                            ->where('production_code', $departmentCode)
+                            ->where('active', 0)
                             ->update([
                                 'active' => 1,
                                 'updated_at' => now()
                             ]);
                     }
-                });
-            }
+                }
+            });
         } catch (\Exception $e) {
             // Log lỗi nếu cần, nhưng không làm gián đoạn quá trình đăng nhập
         }

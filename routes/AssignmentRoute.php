@@ -30,6 +30,8 @@ Route::prefix('/assignemnt/maintenance')
         Route::get('/portal', 'portal')->name('portal');
         Route::get('', 'index')->name('index');
         // Route cho các tác vụ khác nếu cần
+        Route::get('shifts', 'getPersonnelShifts')->name('shifts');
+        Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
         Route::post('store', 'store')->name('store');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
     });

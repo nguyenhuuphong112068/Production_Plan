@@ -158,9 +158,17 @@
                     'PXTN' => 6,
                 ];
                 $apiDepId = $depMapping[$currentDepartment] ?? 15;
+
+                // Phân quyền: chi có người phòng đó mới có thể điều chỉnh nhân sự của bộ phận mình. Ngoài ra admin toàn quyền.
+                $user = session('user');
+                $isAdmin = ($user['userGroup'] ?? '') == 'Admin';
+                $isOwnDepartment = ($user['production_code'] ?? '') == ($user['department'] ?? '');
+                $canEdit = $isAdmin || $isOwnDepartment;
+                $disabled = $canEdit ? '' : 'disabled';
+                $pointerNone = $canEdit ? '' : 'pointer-events: none; opacity: 0.7;';
             @endphp
             <div class="mb-3 d-flex justify-content-between align-items-center">
-                <h5 class="font-weight-bold text-primary mb-0"><i class="fas fa-users"></i> Quản Lý Phân Công</h5>
+                <h5 class="font-weight-bold text-primary mb-0"><i class="fas fa-users"></i> Quản Lý Nhân Sự</h5>
                 <button id="btn-toggle-dashboard" class="btn btn-sm btn-outline-info shadow-sm">
                     <i class="fas fa-chart-pie"></i> <span id="text-toggle-dashboard">Hiển thị Dashboard</span>
                 </button>
@@ -439,10 +447,9 @@
                         <th style="width: 150px;">Tên Nhân Viên</th>
 
                         <th style="width: 100px;">Phân Xưởng Trực Thuộc</th>
-                        <th style="width: 150px;">Phân Xưởng Công Tác Tạm Thời</th>
+
                         <th style="width: 180px;">Tổ Được Phép Công Tác</th>
                         <th style="width: 500px;">Phòng Được Phép Công Tác</th>
-                        <th style="width: 150px;">Trạng Thái Nhân Sự</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -459,50 +466,7 @@
                             <td class="text-center">
                                 <span class="badge badge-info shadow-sm">{{ $data->main_production }}</span>
                             </td>
-                            <td>
-                                <div class="temp-productions-list" data-employee-id="{{ $data->id }}">
-                                    @php
-                                        $tempProds = $data->temp_productions
-                                            ? explode('|', $data->temp_productions)
-                                            : [];
-                                        $tempMap = [];
-                                        foreach ($tempProds as $tp) {
-                                            $parts = explode(':', $tp);
-                                            if (count($parts) >= 2) {
-                                                $tempMap[$parts[0]] = [
-                                                    'active' => $parts[1],
-                                                    'user' => $parts[2] ?? 'N/A',
-                                                    'date' => $parts[3] ?? '',
-                                                ];
-                                            }
-                                        }
-                                        $allProds = ['PXV1', 'PXV2', 'PXVH', 'PXTN', 'PXDN'];
-                                    @endphp
-                                    @foreach ($allProds as $prod)
-                                        @if ($prod != $data->main_production)
-                                            @php
-                                                $info = $tempMap[$prod] ?? null;
-                                                $isActive = $info && $info['active'] == 1;
-                                            @endphp
-                                            <div class="assignment-item">
-                                                <span
-                                                    class="badge badge-toggle {{ $isActive ? 'badge-info active' : 'inactive' }} btn-toggle-prod"
-                                                    data-prod="{{ $prod }}"
-                                                    data-active="{{ $isActive ? 1 : 0 }}"
-                                                    title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
-                                                    {{ $prod }}
-                                                </span>
-                                                @if ($info)
-                                                    <span class="assignment-meta">
-                                                        <i class="fas fa-user-edit"></i> {{ $info['user'] }} <br>
-                                                        <i class="fas fa-calendar-check"></i> {{ $info['date'] }}
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        @endif
-                                    @endforeach
-                                </div>
-                            </td>
+
                             <td>
                                 <div class="groups-list-container" data-employee-id="{{ $data->id }}">
                                     <div class="groups-badges mb-2">
@@ -525,6 +489,7 @@
                                                     class="badge badge-toggle {{ $isActive ? 'badge-primary active' : 'inactive' }} btn-toggle-group"
                                                     data-group-id="{{ $gId }}"
                                                     data-active="{{ $isActive ? 1 : 0 }}"
+                                                    style="{{ $pointerNone }}"
                                                     title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
                                                     {{ $groupName }}
                                                 </span>
@@ -535,8 +500,8 @@
                                             </div>
                                         @endforeach
                                     </div>
-                                    <select class="form-control form-control-sm select-add-group"
-                                        style="width: 100%;">
+                                    <select class="form-control form-control-sm select-add-group" style="width: 100%;"
+                                        {{ $disabled }}>
                                         <option value="">+ Thêm Tổ...</option>
                                         @foreach ($groups as $g)
                                             @php
@@ -599,7 +564,7 @@
                                                 data-active="{{ $rActive }}"
                                                 data-group-id="{{ $rGrpId }}">
                                                 <select class="form-control form-control-sm room-id-select mr-1"
-                                                    style="width: 350px;">
+                                                    style="width: 350px;" {{ $disabled }}>
                                                     <option value="">-- Phòng --</option>
                                                     @foreach ($rooms->whereIn('group_code', $selectedGroupCodes) as $r)
                                                         <option value="{{ $r->id }}"
@@ -611,7 +576,7 @@
                                                 </select>
                                                 <select
                                                     class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
-                                                    style="width: 70px;">
+                                                    style="width: 70px;" {{ $disabled }}>
                                                     <option value="1" {{ $rLvl == 1 ? 'selected' : '' }}>1
                                                     </option>
                                                     <option value="2" {{ $rLvl == 2 ? 'selected' : '' }}>2
@@ -642,29 +607,16 @@
 
                                                 <button
                                                     class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
+                                                    {{ $disabled }}
                                                     title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
                                                     <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
                                                 </button>
                                             </div>
                                         @endforeach
                                     </div>
-                                    <button class="btn btn-sm btn-outline-primary btn-add-room-row mt-1"><i
-                                            class="fas fa-plus"></i> Thêm phòng</button>
+                                    <button class="btn btn-sm btn-outline-primary btn-add-room-row mt-1"
+                                        {{ $disabled }}><i class="fas fa-plus"></i> Thêm phòng</button>
                                 </div>
-                            </td>
-                            <td class="text-center align-middle">
-                                @if ($data->active)
-                                    <span class="badge badge-success mb-1">Đang làm việc</span>
-                                @else
-                                    <span class="badge badge-danger mb-1">Nghỉ việc</span>
-                                @endif
-                                <br>
-                                <a href="{{ route('pages.quota.personnel.deActive', $data->id) }}"
-                                    class="btn btn-{{ $data->active ? 'danger' : 'success' }} btn-sm"
-                                    title="{{ $data->active ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
-                                    <i class="fas fa-{{ $data->active ? 'user-slash' : 'user-check' }}"></i>
-                                    {{ $data->active ? 'Vô hiệu hóa' : 'Kích hoạt' }}
-                                </a>
                             </td>
                         </tr>
                     @endforeach
@@ -687,6 +639,7 @@
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
+        const canEdit = {{ $canEdit ? 'true' : 'false' }};
 
         const groupsData = @json($groups);
         const roomsData = @json($rooms);
@@ -706,6 +659,7 @@
 
         // Handle Quick Add Group
         $(document).on('change', '.select-add-group', function() {
+            if (!canEdit) return;
             const $select = $(this);
             const employeeId = $select.closest('.groups-list-container').data('employee-id');
             const groupId = $select.val();
@@ -721,32 +675,11 @@
             location.reload();
         });
 
-        // Toggle Production Badge
-        $(document).on('click', '.btn-toggle-prod', function() {
-            const $badge = $(this);
-            const employeeId = $badge.closest('.temp-productions-list').data('employee-id');
-            const isActivating = !($badge.data('active') == 1);
 
-            const finalProds = [];
-            $badge.closest('.temp-productions-list').find('.btn-toggle-prod').each(function() {
-                if ($(this).is($badge)) {
-                    finalProds.push($badge.data('prod') + ':' + (isActivating ? 1 : 0));
-                } else {
-                    finalProds.push($(this).data('prod') + ':' + $(this).data('active'));
-                }
-            });
-
-            updatePermissionAjax(employeeId, 'prod', finalProds);
-            $badge.data('active', isActivating ? 1 : 0);
-            if (isActivating) {
-                $badge.addClass('badge-primary active').removeClass('inactive');
-            } else {
-                $badge.removeClass('badge-primary active').addClass('inactive');
-            }
-        });
 
         // Toggle Organizational Group Badge
         $(document).on('click', '.btn-toggle-group', function() {
+            if (!canEdit) return;
             const $badge = $(this);
             const employeeId = $badge.closest('.groups-list-container').data('employee-id');
             const isActivating = !($badge.data('active') == 1);
@@ -816,6 +749,7 @@
 
         // Handle Room Assignment Actions
         $(document).on('click', '.btn-add-room-row', function() {
+            if (!canEdit) return;
             const $tr = $(this).closest('tr');
             const $list = $tr.find('.room-list');
             const selectedGroupIds = [];
@@ -891,12 +825,14 @@
         });
 
         $(document).on('click', '.btn-remove-room-row', function() {
+            if (!canEdit) return;
             const $container = $(this).closest('.room-assignments-container');
             $(this).closest('.room-assignment-row').remove();
             triggerRoomUpdate($container);
         });
 
         $(document).on('click', '.btn-toggle-room-active', function() {
+            if (!canEdit) return;
             const $btn = $(this);
             const $row = $btn.closest('.room-assignment-row');
             const $container = $btn.closest('.room-assignments-container');
@@ -917,6 +853,7 @@
         });
 
         $(document).on('change', '.room-id-select, .room-level-select', function() {
+            if (!canEdit) return;
             const $select = $(this);
             if ($select.hasClass('room-level-select')) {
                 updateLevelStyle($select);

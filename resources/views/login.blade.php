@@ -71,9 +71,6 @@
 </head>
 
 <body>
-
-
-
     <div class="container d-flex flex-column justify-content-center align-items-center vh-100">
         <div class="mt-5 login-card p-4 shadow rounded" style="width: 100%; max-width: 400px; max-height: 800px;">
             <div class="overlay">
@@ -158,20 +155,34 @@
 
             </div>
         </div>
-        
+
         <!-- Menu truy cập nhanh bên dưới form -->
         <div class="d-flex justify-content-center mt-3" style="gap: 20px; z-index: 1000;">
-            <a href="/status" class="btn shadow d-flex flex-column align-items-center justify-content-center" style="width: 100px; height: 90px; border-radius: 12px; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px); border: 2px solid #003A4F; transition: 0.3s; color: #003A4F;" onmouseover="this.style.backgroundColor='#003A4F'; this.style.color='white'; this.style.transform='translateY(-5px)';" onmouseout="this.style.backgroundColor='rgba(255,255,255,0.9)'; this.style.color='#003A4F'; this.style.transform='translateY(0)';">
+            <a href="/status" class="btn shadow d-flex flex-column align-items-center justify-content-center"
+                style="width: 100px; height: 90px; border-radius: 12px; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px); border: 2px solid #003A4F; transition: 0.3s; color: #003A4F;"
+                onmouseover="this.style.backgroundColor='#003A4F'; this.style.color='white'; this.style.transform='translateY(-5px)';"
+                onmouseout="this.style.backgroundColor='rgba(255,255,255,0.9)'; this.style.color='#003A4F'; this.style.transform='translateY(0)';">
                 <i class="bi bi-activity mb-1" style="font-size: 2.2rem; line-height: 1;"></i>
-                <span style="font-size: 0.75rem; font-weight: bold; text-align: center; line-height: 1.15;">Trạng Thái<br>Thời Gian Thực</span>
+                <span style="font-size: 0.75rem; font-weight: bold; text-align: center; line-height: 1.15;">Trạng
+                    Thái<br>Thời Gian Thực</span>
             </a>
-            <a href="{{ route('pages.assignment.production.public') }}" class="btn shadow d-flex flex-column align-items-center justify-content-center" style="width: 100px; height: 90px; border-radius: 12px; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px); border: 2px solid #003A4F; transition: 0.3s; color: #003A4F;" onmouseover="this.style.backgroundColor='#003A4F'; this.style.color='white'; this.style.transform='translateY(-5px)';" onmouseout="this.style.backgroundColor='rgba(255,255,255,0.9)'; this.style.color='#003A4F'; this.style.transform='translateY(0)';">
+            <a href="{{ route('pages.assignment.production.public') }}"
+                class="btn shadow d-flex flex-column align-items-center justify-content-center"
+                style="width: 100px; height: 90px; border-radius: 12px; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px); border: 2px solid #003A4F; transition: 0.3s; color: #003A4F;"
+                onmouseover="this.style.backgroundColor='#003A4F'; this.style.color='white'; this.style.transform='translateY(-5px)';"
+                onmouseout="this.style.backgroundColor='rgba(255,255,255,0.9)'; this.style.color='#003A4F'; this.style.transform='translateY(0)';">
                 <i class="bi bi-calendar4-week mb-1" style="font-size: 2.2rem; line-height: 1;"></i>
-                <span style="font-size: 0.75rem; font-weight: bold; text-align: center; line-height: 1.15;">Phân Công<br>Sản Xuất</span>
+                <span style="font-size: 0.75rem; font-weight: bold; text-align: center; line-height: 1.15;">Phân
+                    Công<br>Sản Xuất</span>
             </a>
-            <a href="{{ route('pages.assignment.public') }}" class="btn shadow d-flex flex-column align-items-center justify-content-center" style="width: 100px; height: 90px; border-radius: 12px; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px); border: 2px solid #003A4F; transition: 0.3s; color: #003A4F;" onmouseover="this.style.backgroundColor='#c5c500'; this.style.color='#003A4F'; this.style.transform='translateY(-5px)';" onmouseout="this.style.backgroundColor='rgba(255,255,255,0.9)'; this.style.color='#003A4F'; this.style.transform='translateY(0)';">
+            <a href="{{ route('pages.assignment.public') }}"
+                class="btn shadow d-flex flex-column align-items-center justify-content-center"
+                style="width: 100px; height: 90px; border-radius: 12px; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px); border: 2px solid #003A4F; transition: 0.3s; color: #003A4F;"
+                onmouseover="this.style.backgroundColor='#c5c500'; this.style.color='#003A4F'; this.style.transform='translateY(-5px)';"
+                onmouseout="this.style.backgroundColor='rgba(255,255,255,0.9)'; this.style.color='#003A4F'; this.style.transform='translateY(0)';">
                 <i class="bi bi-tools mb-1" style="font-size: 2.2rem; line-height: 1;"></i>
-                <span style="font-size: 0.75rem; font-weight: bold; text-align: center; line-height: 1.15;">Phân Công<br>Bảo Trì</span>
+                <span style="font-size: 0.75rem; font-weight: bold; text-align: center; line-height: 1.15;">Phân
+                    Công<br>Bảo Trì</span>
             </a>
         </div>
     </div>

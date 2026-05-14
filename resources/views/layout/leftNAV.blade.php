@@ -337,7 +337,7 @@
 
                         @if (user_has_permission(session('user')['userId'], 'personnel_assignment', 'boolean'))
                             <li class="nav-item">
-                                <a href="{{ route('pages.quota.personnel.list') }}"
+                                <a href="{{ route('pages.quota.personnel.portal') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon text-info"></i>
                                     <p>Danh Sách Nhân Viên</p>
@@ -582,9 +582,9 @@
                 <!-- Droplist Phân Công -->
                 @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
                     <li
-                        class="nav-item has-treeview {{ str_contains(url()->current(), 'assignment') || str_contains(url()->current(), 'personnel') ? 'menu-open' : '' }}">
+                        class="nav-item has-treeview {{ str_contains(url()->current(), 'assignment') ? 'menu-open' : '' }}">
                         <a href="#"
-                            class="nav-link {{ str_contains(url()->current(), 'assignment') || str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
+                            class="nav-link {{ str_contains(url()->current(), 'assignment') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-user-check"></i>
                             <p>
                                 Lịch Công Tác
