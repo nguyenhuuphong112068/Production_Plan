@@ -393,7 +393,7 @@
     }
 
     $hasEditPermission = $hasBasePermission && $canAccessGroup;
-    $canEdit = $hasEditPermission && !$isPastDate;
+    $canEdit = $hasEditPermission && !$isPastDate && (request()->group_code !== 'EN_ALL');
 @endphp
 
 <div class="content-wrapper">
@@ -413,22 +413,24 @@
                     onchange="this.form.submit()">
             </form>
             <div class="d-flex align-items-center">
-                <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task"
-                    {{ !$canEdit ? 'disabled' : '' }}>
-                    <i class="fas fa-plus"></i> Thêm Công Tác Khác
-                </button>
-                <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
-                    {{ !$canEdit ? 'disabled' : '' }} title="Sắp xếp tự động nhân sự cho các phòng">
-                    <i class="fas fa-robot"></i> Tự động phân công
-                </button>
+                @if ($canEdit)
+                    <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task">
+                        <i class="fas fa-plus"></i> Thêm Công Tác Khác
+                    </button>
+                    <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
+                        title="Sắp xếp tự động nhân sự cho các phòng">
+                        <i class="fas fa-robot"></i> Tự động phân công
+                    </button>
+                @endif
                 <button class="btn btn-sm btn-secondary shadow-sm ml-2" id="btn-view-report"
                     title="Xem báo cáo tình hình nhân sự hiện tại">
                     <i class="fas fa-chart-bar"></i> Xem báo cáo
                 </button>
-                <button class="btn btn-sm btn-primary shadow-sm ml-2" id="btn-save-all"
-                    {{ !$canEdit ? 'disabled' : '' }}>
-                    <i class="fas fa-save"></i> Lưu toàn bộ lịch
-                </button>
+                @if ($canEdit)
+                    <button class="btn btn-sm btn-primary shadow-sm ml-2" id="btn-save-all">
+                        <i class="fas fa-save"></i> Lưu toàn bộ lịch
+                    </button>
+                @endif
                 <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-toggle-theory"
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
                     <i class="fas fa-eye"></i>
@@ -455,7 +457,7 @@
                 </thead>
                 <tbody id="main-assignment-tbody">
                     @foreach ($tasks as $task)
-                        <tr class="room-row {{ $task->assignments->first()->off_stream ?? 0 ? 'off-stream-row' : '' }}"
+                        <tr class="room-row {{ $task->assignments->first()?->off_stream ?? 0 ? 'off-stream-row' : '' }}"
                             data-sp-id="{{ $task->sp_id ?: (count($task->assignments) > 0 ? 'EXT_EXISTING_' . $task->assignments[0]->id : '') }}"
                             data-room-id="{{ $task->room_id }}" data-group-code="{{ $task->group_code }}"
                             data-n1="{{ $task->number_of_employes_on_sheet1 }}"
@@ -465,17 +467,19 @@
                             data-nr="{{ $task->number_of_employes_on_sheet_regular }}">
                             <td class="room-name-cell">
                                 @if (str_starts_with($task->sp_id, 'EXT_'))
-                                    <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác khác</div>
-                                    <select class="form-control form-control-sm room-select-custom mb-2">
+                                    <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác
+                                        khác</div>
+                                    <select class="form-control form-control-sm room-select-custom mb-2"
+                                        {{ !$canEdit ? 'disabled' : '' }}>
                                         <option value="">-- Chọn phòng --</option>
                                         @foreach ($rooms as $r)
-                                            <option value="{{ $r->id }}" {{ $task->room_id == $r->id ? 'selected' : '' }}>
+                                            <option value="{{ $r->id }}"
+                                                {{ $task->room_id == $r->id ? 'selected' : '' }}>
                                                 {{ $r->code }} - {{ $r->name }}
                                             </option>
                                         @endforeach
                                     </select>
                                 @else
-                                    <div class="text-primary font-weight-bold" style="font-size: 11px;">{{ $task->workshop_code }}</div>
                                     <div><b>{{ $task->room_code }}</b></div>
                                     <div>{{ $task->room_name }}</div>
                                 @endif
@@ -495,7 +499,8 @@
                                     <div class="custom-control custom-checkbox mt-2 text-center">
                                         <input type="checkbox" class="custom-control-input off-stream-check"
                                             id="{{ $uniqueOsId }}"
-                                            {{ $task->assignments->first()->off_stream ?? 0 ? 'checked' : '' }}>
+                                            {{ $task->assignments->first()?->off_stream ?? 0 ? 'checked' : '' }}
+                                            {{ !$canEdit ? 'disabled' : '' }}>
                                         <label class="custom-control-label" for="{{ $uniqueOsId }}"
                                             style="font-size: 11px; cursor: pointer;">Off-stream</label>
                                     </div>
@@ -681,7 +686,8 @@
                                                             <div class="personnel-label">A</div>
                                                             <div style="flex: 1" class="d-flex align-items-center">
                                                                 <select
-                                                                    class="form-control form-control-sm person-select" style="width: 60%"
+                                                                    class="form-control form-control-sm person-select"
+                                                                    style="width: 60%"
                                                                     {{ !$canEdit ? 'disabled' : '' }}>
                                                                     <option value="">-- Chọn người --</option>
                                                                     @foreach ($personnel as $p)
@@ -1676,7 +1682,7 @@
             if (count === undefined || count === '') {
                 count = 1;
             }
-            
+
             $(this).closest('.assignment-item').find('.person-count-input').val(count);
         });
 
@@ -2840,7 +2846,7 @@
                                 .code) == code);
                             if (pIndex !== -1) {
                                 currentSidebarData[pIndex].hasAssignment = isChecked ? 1 :
-                                0;
+                                    0;
                             }
                             // Thêm hiệu ứng gạch ngang hoặc mờ nếu cần
                             $(`.draggable-person[data-code="${code}"]`).find(

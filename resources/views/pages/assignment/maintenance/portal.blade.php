@@ -115,7 +115,10 @@
                             $icon = 'fas fa-tools';
                             $desc = 'Quản lý lịch bảo trì thiết bị';
 
-                            if (str_contains($g->name, 'Điện Lạnh') && str_contains($g->name, 'Nước Tinh Khiết')) {
+                            if ($g->code === 'EN_ALL') {
+                                $icon = 'fas fa-shield-alt';
+                                $desc = 'Xem tổng quát tất cả tổ bảo trì';
+                            } elseif (str_contains($g->name, 'Điện Lạnh') && str_contains($g->name, 'Nước Tinh Khiết')) {
                                 $icon = 'fas fa-faucet';
                                 $desc = 'Hệ thống điện lạnh & nước tinh khiết';
                             } elseif (str_contains($g->name, 'Điện Lạnh')) {

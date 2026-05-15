@@ -120,14 +120,16 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 Hệ thống tải lịch lý thuyết (`stage_plan`) dựa trên mã Tổ (`group_code`), Mã công đoạn (`stage_plan.code`) và Bộ phận của phòng (`room.deparment_code`):
 
 | STT | Tổ (Group Name) | Group Code | Mã Công Việc (Rule) | Bộ phận (Zone) |
-| :--- | :--- | :--- | :--- | :--- |
-| 1 | Tổ Bảo Trì 1 | 11 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXV1`, `PXTN` |
-| 2 | Tổ Điện Lạnh B1 | 12 | `code` like `%TI%` | `PXV1`, `PXTN` |
-| 3 | Tổ Điện Lạnh - Nước tinh khiết B2 | 14 | `code` like `%TI%` | `PXV2`, `PXDN`, `PXVH` |
-| 4 | Tổ Bảo Trì (PXV2-PXDN) | 15 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXV2`, `PXDN` |
-| 5 | Tổ Bảo Trì (PXVH) | 16 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXVH` |
-| 6 | Tổ Hiệu chuẩn QA | 18 | `code` like `%HC%` | Tất cả |
+| 1 | Kỹ Thuật Bảo Trì | 11 + 12 + 14 + 15 + 16 | `code` like `%TB%`, `%BT%`, `%\_8` , `%TI%` | `PXV1`, `PXTN`, `PXV2`, `PXDN` , `PXVH` |
+| 2 | Tổ Bảo Trì 1 | 11 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXV1`, `PXTN` |
+| 3 | Tổ Điện Lạnh - Nước tinh khiết B1 | 12 | `code` like `%TI%` | `PXV1`, `PXTN` |
+| 4 | Tổ Điện Lạnh - Nước tinh khiết B2 | 14 | `code` like `%TI%` | `PXV2`, `PXDN` , `PXVH` |
+| 5 | Tổ Bảo Trì (PXV2-PXDN) | 15 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXV2`, `PXDN` |
+| 6 | Tổ Bảo Trì (PXVH) | 16 | `code` like `%TB%`, `%BT%`, `%\_8` | `PXVH` |
+
+| 7 | Tổ Hiệu chuẩn QA | 20 | `code` like `%HC%` | Tất cả |
 
 *Ghi chú:* 
 - Đối với Tổ 14, quy tắc áp dụng tương tự Tổ 12/13 nhưng phạm vi mở rộng sang PXV2, PXDN, PXVH.
 - Đối với Tổ 18 (Hiệu chuẩn), chỉ quan tâm mã công việc có chứa `HC`.
+- Đối với Kỹ Thuật Bảo Trì, các nút thêm/edit/lưu sẽ disabled (read only) vì đây là trang chỉ xem. Chỉ lọc và hiển thị các lịch phân công đã được lưu có phân công nhân sự.

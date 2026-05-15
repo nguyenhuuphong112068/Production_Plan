@@ -14,15 +14,16 @@ class MaintenanceAssignmentController extends Controller
     {
         $rawGroups = DB::table('stage_groups')->where('type', 2)->orderBy('id')->get();
         $groups = [];
-        $mergedGroup = null;
+        // Thêm thẻ "Kỹ thuật bảo trì" (Tất cả EN) lên đầu
+        $groups[] = (object)[
+            'code' => 'EN_ALL',
+            'name' => 'Kỹ thuật bảo trì',
+            'type' => 2
+        ];
 
         foreach ($rawGroups as $g) {
-            if ($g->code == 12 || $g->code == 13) {
-                if (!$mergedGroup) {
-                    $mergedGroup = $g;
-                    $mergedGroup->name = "Tổ Điện Lạnh - Nước Tình Khiết (B1)";
-                    $groups[] = $mergedGroup;
-                }
+            // Loại bỏ thẻ nhóm Tiện ích (13) theo yêu cầu, giữ lại 12 và 14
+            if ($g->code == 13) {
                 continue;
             }
             $groups[] = $g;
@@ -38,13 +39,22 @@ class MaintenanceAssignmentController extends Controller
         $production_code = session('user')['production_code'];
         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
         $group_code   = $request->group_code ?? null;
-        $dept_code    = ($group_code == 18) ? 'QA' : 'EN';
+        $dept_code    = ($group_code == 20) ? 'QA' : 'EN';
+        $canEdit      = ($group_code !== 'EN_ALL');
 
         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
         $endDate   = $startDate->copy()->addDays(1);
 
         // 0. Lấy danh sách tổ bảo trì (type = 2)
-        $stage_groups = DB::table('stage_groups')->where('type', 2)->orderBy('id')->get();
+        $rawGroups = DB::table('stage_groups')->where('type', 2)->orderBy('id')->get();
+        $stage_groups = [];
+        $stage_groups[] = (object)['code' => 'EN_ALL', 'name' => 'Kỹ thuật bảo trì'];
+        foreach ($rawGroups as $g) {
+            if ($g->code == 13) continue;
+            $stage_groups[] = $g;
+        }
+
+        $currentGroup = collect($stage_groups)->where('code', $group_code)->first();
 
         // 1. Lấy danh sách các công việc bảo trì
         $rawTasksQuery = DB::table('stage_plan as sp')
@@ -55,7 +65,7 @@ class MaintenanceAssignmentController extends Controller
             ->where('sp.active', 1)
             ->whereBetween('sp.start', [$startDate, $endDate]);
 
-        if ($group_code) {
+        if ($group_code && $group_code !== 'EN_ALL') {
             $rawTasksQuery->where(function ($q) use ($group_code) {
                 switch ($group_code) {
                     case 11: // Tổ Bảo Trì 1
@@ -64,8 +74,10 @@ class MaintenanceAssignmentController extends Controller
                         })->whereIn('r.deparment_code', ['PXV1', 'PXTN']);
                         break;
                     case 12: // Tổ Điện Lạnh B1
-                    case 13: // Tổ HT Nước Tinh Khiết (B1)
                         $q->where('sp.code', 'like', '%TI%')->whereIn('r.deparment_code', ['PXV1', 'PXTN']);
+                        break;
+                    case 14: // Tổ Điện Lạnh - Nước Tinh Khiết (B2)
+                        $q->where('sp.code', 'like', '%TI%')->whereIn('r.deparment_code', ['PXV2', 'PXDN', 'PXVH']);
                         break;
                     case 15: // Tổ Bảo Trì (PXV2-PXDN)
                         $q->where(function ($sub) {
@@ -77,15 +89,13 @@ class MaintenanceAssignmentController extends Controller
                             $sub->where('sp.code', 'like', '%TB%')->orWhere('sp.code', 'like', '%BT%')->orWhere('sp.code', 'like', '%\_8');
                         })->where('r.deparment_code', 'PXVH');
                         break;
-                    case 14: // Tổ Điện Lạnh - Nước Tinh Khiết (B2)
-                        $q->where('sp.code', 'like', '%TI%')->whereIn('r.deparment_code', ['PXV2', 'PXDN', 'PXVH']);
-                        break;
-                    case 17: // Tổ HC Thiết Bị (QA)
-                    case 18: // Tổ Hiệu chuẩn (QA) - Thêm mới
-                        $q->where('sp.code', 'like', '%HC%')->whereIn('r.deparment_code', ['PXV1', 'PXV2', 'PXDN', 'PXVH', 'PXTN']);
+                    case 20: // Tổ Hiệu chuẩn QA
+                        $q->where('sp.code', 'like', '%HC%');
                         break;
                 }
             });
+        } elseif ($group_code === 'EN_ALL') {
+            $rawTasksQuery->where('r.deparment_code', '!=', 'QA');
         } else if ($production_code) {
             $rawTasksQuery->where('r.deparment_code', $production_code);
         }
@@ -117,7 +127,7 @@ class MaintenanceAssignmentController extends Controller
         // 2. Gộp các task và lấy phân công kèm danh sách nhân viên
         $tasks = collect($rawTasks)->groupBy(function ($item) {
             return $item->start . '_' . $item->room_id;
-        })->map(function ($group) use ($group_code, $dept_code) {
+        })->map(function ($group) use ($group_code, $dept_code, $canEdit) {
             $first      = $group->first();
             $allSpIds   = $group->pluck('sp_id')->sort()->toArray();
             $spIdString = implode(',', $allSpIds);
@@ -138,7 +148,8 @@ class MaintenanceAssignmentController extends Controller
                 $contentStr = "[{$typeLabel}] {$item->Eqp_name} ({$item->inst_name})" . ($item->inst_id ? " - Mã: {$item->inst_id}" : "");
                 $timeDisp = Carbon::parse($item->start)->format('H:i') . '-' . Carbon::parse($item->end)->format('H:i');
 
-                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item->start}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$contentStr} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
+                $copyBtn = $canEdit ? "<button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button>" : "";
+                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item->start}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$contentStr} <span class='time-text'>| ({$timeDisp})</span></b></div>{$copyBtn}</div>";
             }
 
             $assignments = DB::table('assignments')
@@ -147,7 +158,7 @@ class MaintenanceAssignmentController extends Controller
                 ->where('active', 1)
                 ->orderBy('Sheet');
 
-            if ($group_code) {
+            if ($group_code && $group_code !== 'EN_ALL') {
                 if ($group_code == 12 || $group_code == 13) {
                     $assignments->whereIn('stage_groups_code', [12, 13]);
                 } else {
@@ -165,8 +176,16 @@ class MaintenanceAssignmentController extends Controller
                 $a->end_time_display    = $a->end   ? Carbon::parse($a->end)->format('H:i')   : null;
             }
 
-            // Tự động tạo gợi ý nếu chưa có phân công
-            if ($assignments->isEmpty() && $group->isNotEmpty()) {
+            // Đối với Kỹ Thuật Bảo Trì (EN_ALL), chỉ lọc và hiển thị các lịch đã có nhân sự
+            if ($group_code === 'EN_ALL') {
+                $assignments = $assignments->filter(function($a) {
+                    return count($a->personnel_data) > 0;
+                });
+                if ($assignments->isEmpty()) return null;
+            }
+
+            // Tự động tạo gợi ý nếu chưa có phân công (Không áp dụng cho EN_ALL)
+            if ($group_code !== 'EN_ALL' && $assignments->isEmpty() && $group->isNotEmpty()) {
                 $jobDescription = "";
                 foreach ($group as $index => $item) {
                     $stt = $index + 1;
@@ -225,7 +244,7 @@ class MaintenanceAssignmentController extends Controller
                 'theory_start'   => Carbon::parse($minStart)->format('H:i'),
                 'theory_end'     => Carbon::parse($maxEnd)->format('H:i'),
             ];
-        })->values();
+        })->filter()->values();
 
         // 2b. Lấy thêm các công việc "Ngoài lịch" (stage_plan_id is NULL/Empty)
         $extraQuery = DB::table('assignments as ma')
@@ -238,9 +257,9 @@ class MaintenanceAssignmentController extends Controller
             })
             ->whereDate('ma.start', $reportedDate)
             ->where('ma.active', 1)
-            ->select('ma.*', 'room.name as room_name', 'room.code as room_code', 'room.deparment_code as workshop_code');
+            ->select('ma.*', 'room.name as room_name', 'room.code as room_code', 'room.deparment_code as workshop_code', 'room.group_code as group_code');
 
-        if ($group_code) {
+        if ($group_code && $group_code !== 'EN_ALL') {
             $extraQuery->where(function ($q) use ($group_code) {
                 if ($group_code == 12 || $group_code == 13) {
                     $q->whereIn('ma.stage_groups_code', [12, 13]);
@@ -248,6 +267,8 @@ class MaintenanceAssignmentController extends Controller
                     $q->where('ma.stage_groups_code', $group_code);
                 }
             });
+        } elseif ($group_code === 'EN_ALL') {
+             // EN_ALL đã có dept_code = EN, không cần filter thêm group_code
         }
 
         // Group by stage_plan_id (EXT_...) if it exists, otherwise by room_id
@@ -255,7 +276,7 @@ class MaintenanceAssignmentController extends Controller
             return $item->stage_plan_id ?: ('ROOM_' . $item->room_id);
         });
 
-        foreach ($extraAssignments as $groupKey => $group) {
+        $mappedExtra = $extraAssignments->map(function ($group, $groupKey) use ($group_code) {
             $first = $group->first();
             foreach ($group as $a) {
                 $a->personnel_data     = DB::table('assignment_personnel')
@@ -265,13 +286,21 @@ class MaintenanceAssignmentController extends Controller
                 $a->end_time_display   = $a->end   ? Carbon::parse($a->end)->format('H:i')   : null;
             }
 
-            $tasks->push((object)[
-                'sp_id'          => $first->stage_plan_id ?? '',
+            // Đối với Kỹ Thuật Bảo Trì (EN_ALL), chỉ lọc và hiển thị các lịch đã có nhân sự
+            if ($group_code === 'EN_ALL') {
+                $group = $group->filter(function($a) {
+                    return count($a->personnel_data) > 0;
+                });
+                if ($group->isEmpty()) return null;
+            }
+
+            return (object)[
+                'sp_id'          => str_starts_with($groupKey, 'ROOM_') ? 'EXT_' . $groupKey : $groupKey,
                 'room_id'        => $first->room_id,
                 'room_code'      => $first->room_code,
                 'room_name'      => $first->room_name,
                 'workshop_code'  => $first->workshop_code,
-                'group_code'     => $first->group_code, // Sử dụng group_code của phòng
+                'group_code'     => $first->group_code,
                 'number_of_employes_on_sheet1' => $first->number_of_employes_on_sheet1 ?? 1,
                 'number_of_employes_on_sheet2' => $first->number_of_employes_on_sheet2 ?? 1,
                 'number_of_employes_on_sheet3' => $first->number_of_employes_on_sheet3 ?? 1,
@@ -281,8 +310,10 @@ class MaintenanceAssignmentController extends Controller
                 'assignments'    => $group,
                 'theory_start'   => '07:15',
                 'theory_end'     => '16:00',
-            ]);
-        }
+            ];
+        })->filter()->values();
+
+        $tasks = $tasks->concat($mappedExtra);
 
         $personnelQuery = DB::table('employees as e')
             ->where('e.active', 1);
@@ -294,7 +325,9 @@ class MaintenanceAssignmentController extends Controller
                     ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
                     ->whereColumn('ea2.employees_id', 'e.id')
                     ->where(function ($q) use ($group_code) {
-                        if ($group_code == 18) {
+                        if ($group_code === 'EN_ALL') {
+                            $q->where('ea2.production_code', 'EN');
+                        } elseif ($group_code == 20) {
                             $q->where('ea2.production_code', 'QA');
                         } else {
                             $q->where('sg.code', $group_code)
@@ -316,6 +349,7 @@ class MaintenanceAssignmentController extends Controller
 
         $rooms     = DB::table('room')->orderBy('code')->get();
         session()->put(['title' => 'PHÂN CÔNG CÔNG VIỆC']);
+
         return view('pages.assignment.maintenance.index', [
             'tasks'        => $tasks,
             'reportedDate' => $reportedDate,
@@ -326,6 +360,8 @@ class MaintenanceAssignmentController extends Controller
             'personnelInfo' => $personnelInfo,
             'personnelSkills' => $personnelSkills,
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
+            'canEdit'      => $canEdit,
+            'currentGroup' => $currentGroup,
         ]);
     }
 
@@ -385,7 +421,7 @@ class MaintenanceAssignmentController extends Controller
 
         // Ưu tiên dùng group_code truyền từ view để đảm bảo lưu đúng tổ đang làm việc
         $final_group_code  = $group_code ?: $stage_groups_code;
-        $dept_code         = ($final_group_code == 18) ? 'QA' : 'EN';
+        $dept_code         = ($final_group_code == 20) ? 'QA' : 'EN';
         $assignments_data  = $request->assignments ?? [];
 
         try {
@@ -467,10 +503,18 @@ class MaintenanceAssignmentController extends Controller
 
     public function publicView(Request $request)
     {
-        $group_code   = $request->group_code ?? 11; // Mặc định Tổ Bảo Trì (B1)
+        $group_code   = $request->group_code ?? 'EN_ALL'; // Mặc định Kỹ thuật bảo trì (Tất cả EN)
         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
-        $stage_groups = DB::table('stage_groups')->where('type', 2)->orderBy('id')->get();
-        $dept_code    = ($group_code == 18) ? 'QA' : 'EN';
+
+        $rawGroups = DB::table('stage_groups')->where('type', 2)->orderBy('id')->get();
+        $stage_groups = [];
+        $stage_groups[] = (object)['code' => 'EN_ALL', 'name' => 'Kỹ thuật bảo trì'];
+        foreach ($rawGroups as $g) {
+            if ($g->code == 13) continue;
+            $stage_groups[] = $g;
+        }
+
+        $dept_code    = ($group_code == 20) ? 'QA' : 'EN';
 
         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
         $endDate = $startDate->copy()->addDays(1);
@@ -483,7 +527,7 @@ class MaintenanceAssignmentController extends Controller
             ->where('sp.active', 1)
             ->whereBetween('sp.start', [$startDate, $endDate]);
 
-        if ($group_code) {
+        if ($group_code && $group_code !== 'EN_ALL') {
             $rawTasksQuery->where(function ($q) use ($group_code) {
                 switch ($group_code) {
                     case 11: // Tổ Bảo Trì 1
@@ -492,8 +536,10 @@ class MaintenanceAssignmentController extends Controller
                         })->whereIn('r.deparment_code', ['PXV1', 'PXTN']);
                         break;
                     case 12: // Tổ Điện Lạnh B1
-                    case 13: // Tổ HT Nước Tinh Khiết (B1)
                         $q->where('sp.code', 'like', '%TI%')->whereIn('r.deparment_code', ['PXV1', 'PXTN']);
+                        break;
+                    case 14: // Tổ Điện Lạnh - Nước tinh khiết B2
+                        $q->where('sp.code', 'like', '%TI%')->whereIn('r.deparment_code', ['PXV2', 'PXDN', 'PXVH']);
                         break;
                     case 15: // Tổ Bảo Trì (PXV2-PXDN)
                         $q->where(function ($sub) {
@@ -505,14 +551,16 @@ class MaintenanceAssignmentController extends Controller
                             $sub->where('sp.code', 'like', '%TB%')->orWhere('sp.code', 'like', '%BT%')->orWhere('sp.code', 'like', '%\_8');
                         })->where('r.deparment_code', 'PXVH');
                         break;
-                    case 14: // Tổ Điện Lạnh - Nước tinh khiết B2
-                        $q->where('sp.code', 'like', '%TI%')->whereIn('r.deparment_code', ['PXV2', 'PXDN', 'PXVH']);
-                        break;
-                    case 18: // Tổ Hiệu chuẩn QA
+                    case 20: // Tổ Hiệu chuẩn QA
                         $q->where('sp.code', 'like', '%HC%');
                         break;
                 }
             });
+        }
+
+        // Nếu là EN_ALL, lọc theo deparment_code của assignments
+        if ($group_code === 'EN_ALL') {
+            $rawTasksQuery->where('r.deparment_code', '!=', 'QA');
         }
 
         $rawTasks = $rawTasksQuery->select(
@@ -557,7 +605,8 @@ class MaintenanceAssignmentController extends Controller
                 $contentStr = "[{$typeLabel}] {$item->Eqp_name} ({$item->inst_name})" . ($item->inst_id ? " - Mã: {$item->inst_id}" : "");
                 $timeDisp = Carbon::parse($item->start)->format('H:i') . '-' . Carbon::parse($item->end)->format('H:i');
 
-                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item->start}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$contentStr} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
+                $copyBtn = ($group_code !== 'EN_ALL') ? "<button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button>" : "";
+                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item->start}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$contentStr} <span class='time-text'>| ({$timeDisp})</span></b></div>{$copyBtn}</div>";
             }
 
             $assignments = DB::table('assignments')
@@ -566,7 +615,7 @@ class MaintenanceAssignmentController extends Controller
                 ->where('active', 1)
                 ->orderBy('Sheet');
 
-            if ($group_code) {
+            if ($group_code && $group_code !== 'EN_ALL') {
                 if ($group_code == 12 || $group_code == 13) {
                     $assignments->whereIn('stage_groups_code', [0, 12, 13]);
                 } else {
@@ -608,10 +657,9 @@ class MaintenanceAssignmentController extends Controller
             ];
         })->filter()->values();
 
-        $extraAssignments = DB::table('assignments as ma')
+        $extraAssignmentsQuery = DB::table('assignments as ma')
             ->leftJoin('room', 'ma.room_id', '=', 'room.id')
             ->where('ma.deparment_code', $dept_code)
-            ->whereIn('ma.stage_groups_code', [0, $group_code])
             ->where(function ($q) {
                 $q->whereNull('ma.stage_plan_id')
                     ->orWhere('ma.stage_plan_id', '')
@@ -619,8 +667,13 @@ class MaintenanceAssignmentController extends Controller
             })
             ->whereDate('ma.start', $reportedDate)
             ->where('ma.active', 1)
-            ->select('ma.*', 'room.name as room_name', 'room.code as room_code', 'room.deparment_code as workshop_code', 'room.group_code as group_code')
-            ->get()
+            ->select('ma.*', 'room.name as room_name', 'room.code as room_code', 'room.deparment_code as workshop_code', 'room.group_code as group_code');
+
+        if ($group_code !== 'EN_ALL') {
+            $extraAssignmentsQuery->whereIn('ma.stage_groups_code', [0, $group_code]);
+        }
+
+        $extraAssignments = $extraAssignmentsQuery->get()
             ->groupBy(function ($item) {
                 return $item->stage_plan_id ?: ('ROOM_' . $item->room_id);
             });
