@@ -967,6 +967,7 @@ class SchedualController extends Controller
                         . " || TGTB cho phép: $lh)";
 
                     $color_event = '#bda124ff';
+                    $textColor = '#ffffff';
                     $violation_colors[] = '#bda124ff';
                 }
             }
@@ -980,6 +981,7 @@ class SchedualController extends Controller
         if ($overExpected && $plan->stage_code <= 7) {
 
             $color_event = '#e54a4aff';
+            $textColor = '#ffffff';
             $violation_colors[] = '#e54a4aff';
 
             $endStage7 = $Stage_plan_7 && $Stage_plan_7->end ? Carbon::parse($Stage_plan_7->end)->format('d/m/y') : 'Chưa xác định';
@@ -998,6 +1000,7 @@ class SchedualController extends Controller
                     . Carbon::parse($pre->end)->format('H:i d/m/y') . ')';
 
                 $color_event = '#4d4b4bff'; // '#4d4b4bff'
+                $textColor = '#ffffff';
                 $violation_colors[] = '#4d4b4bff';
 
             }
@@ -1013,6 +1016,7 @@ class SchedualController extends Controller
                     . Carbon::parse($next->start)->format('H:i d/m/y') . ')';
 
                 $color_event = '#4d4b4bff'; // '#4d4b4bff'
+                $textColor = '#ffffff';
                 $violation_colors[] = '#4d4b4bff';
 
             }
@@ -1068,6 +1072,7 @@ class SchedualController extends Controller
                     . $right->format('d/m/y');
 
                 $color_event = '#920000ff';
+                $textColor = '#ffffff';
                 $violation_colors[] = '#920000ff';
             }
         }
