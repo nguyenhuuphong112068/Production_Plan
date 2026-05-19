@@ -12,7 +12,9 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="code">Mã Khuôn Mẫu <span class="text-danger">*</span></label>
-                        <input type="text" name="code" class="form-control @error('code', 'createErrors') is-invalid @enderror" value="{{ old('code') }}" required maxlength="15">
+                        <input type="text" name="code"
+                            class="form-control @error('code', 'createErrors') is-invalid @enderror"
+                            value="{{ old('code') }}" required maxlength="50">
                         @error('code', 'createErrors')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -27,7 +29,7 @@
     </div>
 </div>
 
-@if($errors->createErrors->any())
+@if ($errors->createErrors->any())
     <script>
         $(document).ready(function() {
             $('#createModal').modal('show');
