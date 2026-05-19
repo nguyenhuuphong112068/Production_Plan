@@ -16,7 +16,7 @@ class LoginController extends Controller
     public function showLogin()
     {
 
-        session()->put(['title' => 'KÊ HOẠCH SẢN XUẤT']);
+        //session()->put(['title' => 'KÊ HOẠCH SẢN XUẤT']);
 
         return view('login', []);
     }
@@ -75,6 +75,7 @@ class LoginController extends Controller
 
         $depMapping = [
             'EN' => 3,
+            'QA' => 9,
             'PXTN' => 6,
             'PXV1' => 15,
             'PXVH' => 30,

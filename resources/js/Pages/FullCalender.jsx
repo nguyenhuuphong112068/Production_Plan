@@ -1565,7 +1565,7 @@ const ScheduleTest = () => {
           }
 
           const cascadeUpdates = runCascadeLogic(eventToUpdate, oldEvent);
-          
+
           // Format lại cascadeUpdates cho API
           const formattedCascade = cascadeUpdates.map(u => ({
             ...u,
@@ -2891,12 +2891,19 @@ const ScheduleTest = () => {
       tankStyle = 'border: 6px solid #ff0000ff; box-shadow: 0 0 15px #ff0000; border-radius: 4px;';
     }
 
-
-
+    let violationBars = '';
+    if (props.violation_colors && props.violation_colors.length > 0) {
+      violationBars = `
+        <div style="position: absolute; top: 0; bottom: 0; right: 0; display: flex; flex-direction: row; opacity: 1; z-index: 1; overflow: hidden; border-top-right-radius: 3px; border-bottom-right-radius: 3px; box-shadow: -2px 0 5px rgba(0,0,0,0.5);">
+          ${props.violation_colors.map(c => `<div style="width: 4px; background-color: ${c}; height: 100%;"></div>`).join('')}
+        </div>
+      `;
+    }
 
     let html = `
-        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
-          <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
+        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'};">
+          ${violationBars}
+          <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2;">
             
           ${productionChangeEvent ? `
               <div 

@@ -432,8 +432,9 @@ class SchedualController extends Controller
                 $plan = $plans[$i];
 
                 $subtitle = null;
+                $violation_colors = [];
 
-                [$color_event,  $textColor,  $subtitle] = $this->colorEvent($plan, $plans, $i, $room_code);
+                [$color_event,  $textColor,  $subtitle, $violation_colors] = $this->colorEvent($plan, $plans, $i, $room_code);
 
                 // 🎯 lịch chưa hoàn thành
                 if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
@@ -459,6 +460,7 @@ class SchedualController extends Controller
                         'submit' => $plan->submit,
                         'storage_capacity' => $storage_capacity,
                         'subtitle' => $subtitle,
+                        'violation_colors' => $violation_colors,
                         'campaign_code' => $plan->campaign_code,
                         'status' => $plan->status,
                         'first_in_campaign' => $plan->first_in_campaign,
@@ -889,7 +891,8 @@ class SchedualController extends Controller
     protected function colorEvent($plan, $plans, $i, $room_code)
     {
 
-        $subtitle = '';
+        $subtitles = [];
+        $violation_colors = [];
 
         $textColor = '#fefefee2';
 
@@ -899,7 +902,7 @@ class SchedualController extends Controller
         /* 1️⃣ finished */
         if ($plan->finished == 1) {
 
-            return ['#002af9ff',  $textColor,  $subtitle];
+            return ['#002af9ff',  $textColor,  '', []];
         }
 
         /* 2️⃣ màu mặc định theo stage */
@@ -935,7 +938,9 @@ class SchedualController extends Controller
         /* 4️⃣ clearning */
         if ($plan->clearning_validation == 1) {
 
-            return ['#e4e405e2',  '#fb0101e2',  $subtitle];
+            $color_event = '#e4e405e2';
+            $textColor = '#fb0101e2';
+            $violation_colors[] = '#e4e405e2';
         }
 
         /* 5️⃣ biệt trữ */
@@ -956,13 +961,13 @@ class SchedualController extends Controller
 
                     $lh = minutesToDayHoursMinutesString($limitMinutes);
 
-                    $subtitle =
-                        "➡️ (KT {$this->stage_Name[$prev->stage_code]}: "
+                    $subtitles[] = "➡️ (KT {$this->stage_Name[$prev->stage_code]}: "
                         . Carbon::parse($prev->end)->format('H:i d/m/y')
                         . " || TGTB thực tế: $h"
-                        . " || TGTB cho phép: $lh";
+                        . " || TGTB cho phép: $lh)";
 
-                    return ['#bda124ff',  $textColor,  $subtitle];
+                    $color_event = '#bda124ff';
+                    $violation_colors[] = '#bda124ff';
                 }
             }
         }
@@ -975,10 +980,11 @@ class SchedualController extends Controller
         if ($overExpected && $plan->stage_code <= 7) {
 
             $color_event = '#e54a4aff';
+            $violation_colors[] = '#e54a4aff';
 
             $endStage7 = $Stage_plan_7 && $Stage_plan_7->end ? Carbon::parse($Stage_plan_7->end)->format('d/m/y') : 'Chưa xác định';
 
-            $subtitle = '➡️ Ngày dự kiến KCS: ' . Carbon::parse($plan->expected_date)->format('d/m/y') . ' | Ngày KT ĐG: ' . $endStage7;
+            $subtitles[] = '➡️ Ngày dự kiến KCS: ' . Carbon::parse($plan->expected_date)->format('d/m/y') . ' | Ngày KT ĐG: ' . $endStage7;
         }
 
         /* 7️⃣ predecessor / successor */
@@ -988,10 +994,11 @@ class SchedualController extends Controller
 
             if ($pre && $plan->start < $pre->end) {
 
-                $subtitle = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
+                $subtitles[] = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
                     . Carbon::parse($pre->end)->format('H:i d/m/y') . ')';
 
-                return ['#4d4b4bff',  $textColor,  $subtitle]; // '#4d4b4bff'
+                $color_event = '#4d4b4bff'; // '#4d4b4bff'
+                $violation_colors[] = '#4d4b4bff';
 
             }
         }
@@ -1002,15 +1009,14 @@ class SchedualController extends Controller
 
             if ($next && $plan->end > $next->start) {
 
-                $subtitle = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
+                $subtitles[] = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
                     . Carbon::parse($next->start)->format('H:i d/m/y') . ')';
 
-                return ['#4d4b4bff',  $textColor,  $subtitle]; // '#4d4b4bff'
+                $color_event = '#4d4b4bff'; // '#4d4b4bff'
+                $violation_colors[] = '#4d4b4bff';
 
             }
         }
-
-        /* 8️⃣ NGUYÊN LIỆU / BAO BÌ */
         $criticalChecks = [
             [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
             [1,  3,  'allow_weight_before_date',  '➡️ Ngày được phép cân',  '>'],
@@ -1056,16 +1062,25 @@ class SchedualController extends Controller
 
             if ($matched) {
 
-                $subtitle = "{$label}: "
+                $subtitles[] = "{$label}: "
                     . $left->format('d/m/y')
                     . " {$operator} "
                     . $right->format('d/m/y');
 
-                return ['#920000ff',  $textColor,  $subtitle];
+                $color_event = '#920000ff';
+                $violation_colors[] = '#920000ff';
             }
         }
 
-        return [$color_event,  $textColor,  $subtitle];
+        $violation_colors = array_unique($violation_colors);
+
+        $filtered_violation_colors = array_filter($violation_colors, function($color) use ($color_event) {
+            return $color !== $color_event;
+        });
+
+        $finalSubtitle = implode("\n", $subtitles);
+
+        return [$color_event,  $textColor,  $finalSubtitle, array_values($filtered_violation_colors)];
     }
 
     // hàm lấy quota
@@ -2140,20 +2155,7 @@ class SchedualController extends Controller
                     $idsArray = explode(',', $realId);
                     $original_event = DB::table('stage_plan')->where('id', $idsArray[0])->first();
 
-                    if ($request->input('update_campaign', false) && $original_event && $original_event->campaign_code) {
-                        $campaignIds = DB::table('stage_plan')
-                            ->where('campaign_code', $original_event->campaign_code)
-                            ->where('stage_code', $original_event->stage_code)
-                            ->where('finished', 0)
-                            ->pluck('id')
-                            ->toArray();
-                        $idsArray = array_unique(array_merge($idsArray, $campaignIds));
-                    }
-
                     $updateData = [
-                        'start' => $change['start'],
-                        'end' => $change['end'],
-                        'resourceId' => $change['resourceId'],
                         'schedualed_by' => session('user')['fullName'],
                         'schedualed_at' => now(),
                         'accept_quarantine' => 0,
@@ -2166,25 +2168,62 @@ class SchedualController extends Controller
                         $updateData['keep_dry'] = DB::raw("CASE WHEN stage_code = 8 THEN 1 ELSE keep_dry END");
                     }
 
-                    DB::table('stage_plan')
-                        ->whereIn('id', $idsArray)
-                        ->update($updateData);
+                    if ($request->input('update_campaign', false) && $original_event && $original_event->campaign_code) {
+                        $campaignEvents = DB::table('stage_plan')
+                            ->where('campaign_code', $original_event->campaign_code)
+                            ->where('stage_code', $original_event->stage_code)
+                            ->where('finished', 0)
+                            ->orderBy('start')
+                            ->get();
 
-                    foreach ($idsArray as $sid) {
-                        $update_row = DB::table('stage_plan')->where('id', $sid)->first();
+                        $currentStart = Carbon::parse($change['start']);
+                        $idsArray = []; // Cập nhật danh sách ID để ghi log history ở phía dưới
 
-                        // 🔹 [PXV1 Special Logic] Cập nhật cleaning ngay sau khi event kết thúc
-                        if (session('user')['production_code'] == 'PXV1' && $update_row->start_clearning && $update_row->end_clearning) {
-                            $durationSeconds = Carbon::parse($update_row->start_clearning)->diffInSeconds(Carbon::parse($update_row->end_clearning));
-                            $new_start_clearning = Carbon::parse($change['end']);
-                            $new_end_clearning = $new_start_clearning->copy()->addSeconds($durationSeconds);
+                        foreach ($campaignEvents as $ev) {
+                            $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
+                            $newStart = $currentStart->copy();
+                            $newEnd = $newStart->copy()->addSeconds($duration);
+                            
+                            $evUpdateData = $updateData;
+                            $evUpdateData['start'] = $newStart;
+                            $evUpdateData['end'] = $newEnd;
+                            $evUpdateData['resourceId'] = $change['resourceId'];
+                            
+                            if ($ev->start_clearning && $ev->end_clearning) {
+                                $cleanDuration = Carbon::parse($ev->start_clearning)->diffInSeconds(Carbon::parse($ev->end_clearning));
+                                $evUpdateData['start_clearning'] = $newEnd;
+                                $evUpdateData['end_clearning'] = $newEnd->copy()->addSeconds($cleanDuration);
+                                $currentStart = $evUpdateData['end_clearning']->copy();
+                            } else {
+                                $currentStart = $newEnd->copy();
+                            }
+                            
+                            DB::table('stage_plan')->where('id', $ev->id)->update($evUpdateData);
+                            $idsArray[] = $ev->id;
+                        }
+                    } else {
+                        $updateData['start'] = $change['start'];
+                        $updateData['end'] = $change['end'];
+                        $updateData['resourceId'] = $change['resourceId'];
 
-                            DB::table('stage_plan')->where('id', $sid)->update([
-                                'start_clearning' => $new_start_clearning,
-                                'end_clearning' => $new_end_clearning,
-                            ]);
-                            // Refresh model for cascade boundary check
+                        DB::table('stage_plan')
+                            ->whereIn('id', $idsArray)
+                            ->update($updateData);
+
+                        foreach ($idsArray as $sid) {
                             $update_row = DB::table('stage_plan')->where('id', $sid)->first();
+
+                            // 🔹 [PXV1 Special Logic] Cập nhật cleaning ngay sau khi event kết thúc
+                            if (session('user')['production_code'] == 'PXV1' && $update_row->start_clearning && $update_row->end_clearning) {
+                                $durationSeconds = Carbon::parse($update_row->start_clearning)->diffInSeconds(Carbon::parse($update_row->end_clearning));
+                                $new_start_clearning = Carbon::parse($change['end']);
+                                $new_end_clearning = $new_start_clearning->copy()->addSeconds($durationSeconds);
+
+                                DB::table('stage_plan')->where('id', $sid)->update([
+                                    'start_clearning' => $new_start_clearning,
+                                    'end_clearning' => $new_end_clearning,
+                                ]);
+                            }
                         }
                     }
 
