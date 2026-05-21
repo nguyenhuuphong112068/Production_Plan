@@ -2391,7 +2391,8 @@
                     '13': 3,
                     '14': 3,
                     '16': 3,
-                    '18': 18
+                    '18': 18,
+                    '20': 9
                 };
                 const department = depMapping['{{ $group_code }}'] || 3;
 
@@ -2680,7 +2681,8 @@
                 '13': 3,
                 '14': 3,
                 '16': 3,
-                '18': 18
+                '18': 18,
+                '20': 9
             };
             const department = depMapping[groupCode] || 3;
 

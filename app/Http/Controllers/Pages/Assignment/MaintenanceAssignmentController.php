@@ -178,7 +178,7 @@ class MaintenanceAssignmentController extends Controller
 
             // Đối với Kỹ Thuật Bảo Trì (EN_ALL), chỉ lọc và hiển thị các lịch đã có nhân sự
             if ($group_code === 'EN_ALL') {
-                $assignments = $assignments->filter(function($a) {
+                $assignments = $assignments->filter(function ($a) {
                     return count($a->personnel_data) > 0;
                 });
                 if ($assignments->isEmpty()) return null;
@@ -268,7 +268,7 @@ class MaintenanceAssignmentController extends Controller
                 }
             });
         } elseif ($group_code === 'EN_ALL') {
-             // EN_ALL đã có dept_code = EN, không cần filter thêm group_code
+            // EN_ALL đã có dept_code = EN, không cần filter thêm group_code
         }
 
         // Group by stage_plan_id (EXT_...) if it exists, otherwise by room_id
@@ -288,7 +288,7 @@ class MaintenanceAssignmentController extends Controller
 
             // Đối với Kỹ Thuật Bảo Trì (EN_ALL), chỉ lọc và hiển thị các lịch đã có nhân sự
             if ($group_code === 'EN_ALL') {
-                $group = $group->filter(function($a) {
+                $group = $group->filter(function ($a) {
                     return count($a->personnel_data) > 0;
                 });
                 if ($group->isEmpty()) return null;

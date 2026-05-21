@@ -194,28 +194,38 @@ class ProductionQuotaController extends Controller
                         'intermediate_code' => 'required|string',
                         'room_id'   => 'required|array',
                         'room_id.*' => 'integer|exists:room,id',
-                        'p_time' => 'required|string',
-                        'm_time' => 'required|string',
-                        'C1_time' => 'required|string',
-                        'C2_time' =>  'required|string',
+                        'p_time' => ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
+                        'm_time' => ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
+                        'C1_time' => ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
+                        'C2_time' =>  ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
                         'maxofbatch_campaign' => 'required',
                 ], [
-
                         'intermediate_code.required' => 'Vui lòng chọn sản phẩm.',
                         'room_id.required' => 'Vui lòng chọn phòng sản xuất',
                         'p_time.required' => 'Vui lòng nhập thời gian chuẩn bị',
+                        'p_time.regex' => 'Thời gian chuẩn bị phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
                         'm_time.required' => 'Vui lòng nhập thời gian sản xuất',
-                        'C1_time.required' => 'Vui lòng nhập thời gian vệ sinh câp I',
-                        'C2_time.required' => 'Vui lòng nhập thời gian vệ sinh câp II',
+                        'm_time.regex' => 'Thời gian sản xuất phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
+                        'C1_time.required' => 'Vui lòng nhập thời gian vệ sinh cấp I',
+                        'C1_time.regex' => 'Thời gian vệ sinh cấp I phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
+                        'C2_time.required' => 'Vui lòng nhập thời gian vệ sinh cấp II',
+                        'C2_time.regex' => 'Thời gian vệ sinh cấp II phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
                         'maxofbatch_campaign.required' => 'Vui lòng nhập số lô tối đa',
-
                 ]);
 
+                if ($validator->fails()) {
+                        if ($request->expectsJson() || $request->ajax()) {
+                                $errorBag = $request->stage_code <= 6 ? 'create_inter_Errors' : 'create_finished_Errors';
+                                return response()->json([
+                                        'errors' => [
+                                                $errorBag => $validator->errors()
+                                        ]
+                                ], 422);
+                        }
 
-                if ($validator->fails() && $request->stage_code <= 6) {
-                        return redirect()->back()->withErrors($validator, 'create_inter_Errors')->withInput();
-                }
-                if ($validator->fails() && $request->stage_code > 6) {
+                        if ($request->stage_code <= 6) {
+                                return redirect()->back()->withErrors($validator, 'create_inter_Errors')->withInput();
+                        }
                         return redirect()->back()->withErrors($validator, 'create_finished_Errors')->withInput();
                 }
 
@@ -269,23 +279,31 @@ class ProductionQuotaController extends Controller
         {
                 //dd ($request->all());
                 $validator = Validator::make($request->all(), [
-
-                        'p_time' => 'required|string',
-                        'm_time' => 'required|string',
-                        'C1_time' => 'required|string',
-                        'C2_time' =>  'required|string',
+                        'p_time' => ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
+                        'm_time' => ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
+                        'C1_time' => ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
+                        'C2_time' =>  ['required', 'string', 'regex:/^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/'],
                         'maxofbatch_campaign' => 'required',
                 ], [
-
                         'p_time.required' => 'Vui lòng nhập thời gian chuẩn bị',
+                        'p_time.regex' => 'Thời gian chuẩn bị phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
                         'm_time.required' => 'Vui lòng nhập thời gian sản xuất',
-                        'C1_time.required' => 'Vui lòng nhập thời gian vệ sinh câp I',
-                        'C2_time.required' => 'Vui lòng nhập thời gian vệ sinh câp II',
+                        'm_time.regex' => 'Thời gian sản xuất phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
+                        'C1_time.required' => 'Vui lòng nhập thời gian vệ sinh cấp I',
+                        'C1_time.regex' => 'Thời gian vệ sinh cấp I phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
+                        'C2_time.required' => 'Vui lòng nhập thời gian vệ sinh cấp II',
+                        'C2_time.regex' => 'Thời gian vệ sinh cấp II phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)',
                         'maxofbatch_campaign.required' => 'Vui lòng nhập số lô tối đa',
-
                 ]);
 
                 if ($validator->fails()) {
+                        if ($request->expectsJson() || $request->ajax()) {
+                                return response()->json([
+                                        'errors' => [
+                                                'updateErrors' => $validator->errors()
+                                        ]
+                                ], 422);
+                        }
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 }
 

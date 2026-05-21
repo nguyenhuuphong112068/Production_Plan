@@ -1002,6 +1002,70 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
   const handleCreateQuota = () => {
     if (isSaving) return;
+
+    // Reset previous errors
+    setErrorsModal(null);
+
+    // Frontend validation
+    const validationErrors = {};
+    const timePattern = /^(?:\d{1,2}|1\d{2}|200):(00|15|30|45)$/;
+
+    if (!modalQuotaData.room_id || modalQuotaData.room_id.length === 0) {
+      validationErrors.room_id = ["Vui lòng chọn phòng sản xuất."];
+    }
+
+    if (!modalQuotaData.p_time) {
+      validationErrors.p_time = ["Vui lòng nhập thời gian chuẩn bị."];
+    } else if (!timePattern.test(modalQuotaData.p_time)) {
+      validationErrors.p_time = ["Thời gian chuẩn bị phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)."];
+    }
+
+    if (!modalQuotaData.m_time) {
+      validationErrors.m_time = ["Vui lòng nhập thời gian sản xuất."];
+    } else if (!timePattern.test(modalQuotaData.m_time)) {
+      validationErrors.m_time = ["Thời gian sản xuất phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)."];
+    }
+
+    if (!modalQuotaData.C1_time) {
+      validationErrors.C1_time = ["Vui lòng nhập thời gian vệ sinh cấp I."];
+    } else if (!timePattern.test(modalQuotaData.C1_time)) {
+      validationErrors.C1_time = ["Thời gian vệ sinh cấp I phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)."];
+    }
+
+    if (!modalQuotaData.C2_time) {
+      validationErrors.C2_time = ["Vui lòng nhập thời gian vệ sinh cấp II."];
+    } else if (!timePattern.test(modalQuotaData.C2_time)) {
+      validationErrors.C2_time = ["Thời gian vệ sinh cấp II phải đúng định dạng HH:mm (phút là 00, 15, 30 hoặc 45)."];
+    }
+
+    if (modalQuotaData.maxofbatch_campaign === undefined || modalQuotaData.maxofbatch_campaign === null || modalQuotaData.maxofbatch_campaign === "") {
+      validationErrors.maxofbatch_campaign = ["Vui lòng nhập số lô chiến dịch tối đa."];
+    } else if (Number(modalQuotaData.maxofbatch_campaign) < 0) {
+      validationErrors.maxofbatch_campaign = ["Số lô chiến dịch tối đa không được âm."];
+    }
+
+    if (modalQuotaData.stage_code <= 2) {
+      if (modalQuotaData.campaign_index === undefined || modalQuotaData.campaign_index === null || modalQuotaData.campaign_index === "") {
+        validationErrors.campaign_index = ["Vui lòng nhập hệ số chiến dịch."];
+      } else if (Number(modalQuotaData.campaign_index) < 1) {
+        validationErrors.campaign_index = ["Hệ số chiến dịch phải lớn hơn hoặc bằng 1."];
+      }
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrorsModal({
+        create_inter_Errors: validationErrors
+      });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Thông tin không hợp lệ',
+        text: 'Vui lòng kiểm tra lại các trường nhập liệu màu đỏ.',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      return;
+    }
+
     setIsSaving(true);
 
     axios.put('/quota/production/store', modalQuotaData)
@@ -1021,7 +1085,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
           timer: 1500
         }).then(() => {
           setShowModalQuota(false);
-          setErrorsModal({})
+          setErrorsModal({});
           setIsSaving(false);
         });
 
@@ -1030,9 +1094,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         Swal.fire({
           icon: 'error',
           title: 'Lỗi',
+          text: err.response?.data?.message || 'Lưu định mức thất bại',
           timer: 1500
         });
-        setErrorsModal(errors)
+        const apiErrors = err.response?.data?.errors || {};
+        setErrorsModal(apiErrors);
         setIsSaving(false);
         console.error("API error:", err.response?.data || err.message);
       }
@@ -2062,9 +2128,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                     <Form.Group >
                       <Form.Label>Hệ Số Chiến Dịch</Form.Label>
                       <Form.Control type="number" min="1" step="0.1" name='campaign_index' value={modalQuotaData.campaign_index ?? 1.0} onChange={(e) => setModalQuotaData({ ...modalQuotaData, campaign_index: e.target.value })} required placeholder="Bắt buộc" />
-                      {errorsModal?.create_inter_Errors?.maxofbatch_campaign && (
+                      {errorsModal?.create_inter_Errors?.campaign_index && (
                         <div className="alert alert-danger mt-1">
-                          {errorsModal.create_inter_Errors.maxofbatch_campaign}
+                          {errorsModal.create_inter_Errors.campaign_index}
                         </div>)}
 
                     </Form.Group>
