@@ -1458,9 +1458,22 @@ const ScheduleTest = () => {
     const m_time = currentQuota ? currentQuota.m_time : 0;
     const p_time = currentQuota ? currentQuota.p_time : 0;
 
+    // Chuẩn bị danh sách lô đã chọn để hiển thị trong modal
+    const currentSelectedEvents = selectedEventsRef.current || [];
+    const selectedBatchListHtml = currentSelectedEvents.length > 0
+      ? currentSelectedEvents.map((sel, idx) => {
+        const api = calendarRef.current?.getApi();
+        const ev = api?.getEventById(sel.id);
+        const evTitle = ev ? ev.title : sel.id;
+        return `<div style="padding: 4px 8px; background: #f0f7ff; border-radius: 4px; margin-bottom: 4px; font-size: 13px; border-left: 3px solid #3085d6;">
+            ${idx + 1}. ${evTitle}
+          </div>`;
+      }).join('')
+      : '<div style="padding: 8px; color: #999; font-style: italic;">Chưa có lô nào được chọn</div>';
+
     Swal.fire({
       title: 'Cập nhật sự kiện',
-      width: '500px',
+      width: '550px',
       html: `
         <div style="text-align: left; padding: 10px;">
           <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -1491,11 +1504,23 @@ const ScheduleTest = () => {
             </select>
           </div>
 
-          <div style="margin-top: 10px;">
-            <label style="display: flex; align-items: center; font-weight: bold; cursor: pointer;">
-              <input type="checkbox" id="swal-update-campaign" style="margin-right: 10px; width: 18px; height: 18px;" checked>
-              Di chuyển cả chiến dịch
-            </label>
+          <div style="margin-top: 10px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa;">
+            <label style="display: block; font-weight: bold; margin-bottom: 8px;">Chế độ di chuyển:</label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; align-items: center; font-weight: 500; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: background 0.2s;" id="swal-label-campaign">
+                <input type="radio" name="swal-move-mode" id="swal-move-campaign" value="campaign" style="margin-right: 10px; width: 18px; height: 18px;" checked>
+                Di chuyển cả chiến dịch
+              </label>
+              <label style="display: flex; align-items: center; font-weight: 500; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: background 0.2s;" id="swal-label-selected">
+                <input type="radio" name="swal-move-mode" id="swal-move-selected" value="selected" style="margin-right: 10px; width: 18px; height: 18px;">
+                Di chuyển các lô được chọn
+              </label>
+            </div>
+
+            <div id="swal-selected-batches-container" style="display: none; margin-top: 10px; padding: 8px; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; max-height: 150px; overflow-y: auto;">
+              <label style="display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #555;">Danh sách lô đã chọn (${currentSelectedEvents.length}):</label>
+              ${selectedBatchListHtml}
+            </div>
           </div>
         </div>
       `,
@@ -1520,37 +1545,146 @@ const ScheduleTest = () => {
             endInput.value = newEnd.format('YYYY-MM-DDTHH:mm');
           }
         });
+
+        // Toggle hiển thị danh sách lô khi chuyển radio
+        const radioCampaign = document.getElementById('swal-move-campaign');
+        const radioSelected = document.getElementById('swal-move-selected');
+        const batchesContainer = document.getElementById('swal-selected-batches-container');
+        const labelCampaign = document.getElementById('swal-label-campaign');
+        const labelSelected = document.getElementById('swal-label-selected');
+
+        const updateRadioStyle = () => {
+          if (radioCampaign.checked) {
+            labelCampaign.style.background = '#e8f4fd';
+            labelSelected.style.background = 'transparent';
+            batchesContainer.style.display = 'none';
+          } else {
+            labelCampaign.style.background = 'transparent';
+            labelSelected.style.background = '#e8f4fd';
+            batchesContainer.style.display = 'block';
+          }
+        };
+
+        radioCampaign.addEventListener('change', updateRadioStyle);
+        radioSelected.addEventListener('change', updateRadioStyle);
+        updateRadioStyle();
       },
       preConfirm: () => {
         const start = document.getElementById('swal-start').value;
         const end = document.getElementById('swal-end').value;
         const resourceId = document.getElementById('swal-resource').value;
-        const updateCampaign = document.getElementById('swal-update-campaign').checked;
+        const moveMode = document.querySelector('input[name="swal-move-mode"]:checked').value;
+        const updateCampaign = moveMode === 'campaign';
+        const moveSelectedBatches = moveMode === 'selected';
 
         if (!start || !end || !resourceId) {
           Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin');
           return false;
         }
-        return { start, end, resourceId, updateCampaign };
+
+        // Nếu chọn "Di chuyển các lô được chọn", kiểm tra các lô có cùng chiến dịch không
+        if (moveSelectedBatches) {
+          const selEvents = selectedEventsRef.current || [];
+          if (selEvents.length === 0) {
+            Swal.showValidationMessage('Chưa có lô nào được chọn. Vui lòng chọn ít nhất 1 lô trước khi sử dụng chế độ này.');
+            return false;
+          }
+
+          // Kiểm tra tất cả lô có cùng plan_master_id (cùng chiến dịch) không
+          // Bỏ qua các sự kiện vệ sinh (id chứa "-cleaning") khi xét cùng chiến dịch
+          const mainBatchEvents = selEvents.filter(ev => !String(ev.id).includes('-cleaning'));
+          const uniqueCampaigns = [...new Set(mainBatchEvents.map(ev => ev.campaign_code))];
+          if (uniqueCampaigns.length > 1) {
+            Swal.showValidationMessage('Các lô được chọn không cùng chiến dịch! Trong 1 lần di chuyển, chỉ được chọn các lô thuộc cùng một chiến dịch.');
+            return false;
+          }
+        }
+
+        return { start, end, resourceId, updateCampaign, moveSelectedBatches };
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        const { start, end, resourceId, updateCampaign } = result.value;
+        const { start, end, resourceId, updateCampaign, moveSelectedBatches } = result.value;
         const api = calendarRef.current?.getApi();
         const eventToUpdate = api.getEventById(event.id);
         const { activeStart, activeEnd } = api.view;
         const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
 
-        let changes = [{
-          id: event.id,
-          start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
-          end: moment(end).format('YYYY-MM-DD HH:mm:ss'),
-          resourceId: resourceId,
-          title: event.title,
-          C_end: false
-        }];
+        let changes = [];
 
-        if (isCascadeMode && eventToUpdate) {
+        if (moveSelectedBatches) {
+          // Chế độ di chuyển các lô được chọn:
+          // Tính delta thời gian dựa trên sự kiện hiện tại
+          const originalStart = moment(event.start);
+          const newStart = moment(start);
+          const deltaMs = newStart.diff(originalStart);
+
+          const selEvents = selectedEventsRef.current || [];
+
+          // Tách ra: sự kiện chính (-main) và sự kiện vệ sinh (-cleaning)
+          const mainIds = new Set();
+          const cleaningIds = new Set();
+          selEvents.forEach(sel => {
+            const id = String(sel.id);
+            if (id.includes('-cleaning')) {
+              cleaningIds.add(id);
+            } else {
+              mainIds.add(id);
+            }
+          });
+
+          // Chỉ xử lý các sự kiện chính (bỏ qua cleaning-only - chọn vệ sinh mà không chọn sự kiện chính)
+          // Với mỗi sự kiện chính, tự động kéo theo sự kiện vệ sinh tương ứng
+          const processedIds = new Set();
+
+          mainIds.forEach(mainId => {
+            const ev = api.getEventById(mainId);
+            if (!ev) return;
+
+            const evNewStart = moment(ev.start).add(deltaMs, 'milliseconds');
+            const evNewEnd = moment(ev.end).add(deltaMs, 'milliseconds');
+
+            changes.push({
+              id: ev.id,
+              start: evNewStart.format('YYYY-MM-DD HH:mm:ss'),
+              end: evNewEnd.format('YYYY-MM-DD HH:mm:ss'),
+              resourceId: resourceId,
+              title: ev.title,
+              C_end: false
+            });
+            processedIds.add(mainId);
+
+            // Tự động di chuyển sự kiện vệ sinh tương ứng (dù người dùng có chọn hay không)
+            const cleaningId = mainId.replace('-main', '-cleaning');
+            const cleanEv = api.getEventById(cleaningId);
+            if (cleanEv && !processedIds.has(cleaningId)) {
+              const cleanNewStart = moment(cleanEv.start).add(deltaMs, 'milliseconds');
+              const cleanNewEnd = moment(cleanEv.end).add(deltaMs, 'milliseconds');
+
+              changes.push({
+                id: cleanEv.id,
+                start: cleanNewStart.format('YYYY-MM-DD HH:mm:ss'),
+                end: cleanNewEnd.format('YYYY-MM-DD HH:mm:ss'),
+                resourceId: resourceId,
+                title: cleanEv.title,
+                C_end: false
+              });
+              processedIds.add(cleaningId);
+            }
+          });
+        } else {
+          // Chế độ mặc định: di chuyển sự kiện đơn (và cả chiến dịch nếu được chọn)
+          changes = [{
+            id: event.id,
+            start: moment(start).format('YYYY-MM-DD HH:mm:ss'),
+            end: moment(end).format('YYYY-MM-DD HH:mm:ss'),
+            resourceId: resourceId,
+            title: event.title,
+            C_end: false
+          }];
+        }
+
+        if (isCascadeMode && eventToUpdate && !moveSelectedBatches) {
           const oldEvent = {
             start: new Date(eventToUpdate.start),
             end: new Date(eventToUpdate.end)
@@ -1587,6 +1721,7 @@ const ScheduleTest = () => {
           theory: theoryHidden,
           cascade: isCascadeMode,
           update_campaign: updateCampaign,
+          move_selected_batches: moveSelectedBatches || false,
           changes: changes,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
