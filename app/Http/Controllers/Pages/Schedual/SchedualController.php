@@ -854,8 +854,11 @@ class SchedualController extends Controller
 
         $groupedMaintenance = $maintenanceEvents->groupBy(function ($event) {
             $e = (object) $event;
-            // Nhóm theo thời gian và phòng
-            return $e->start . '_' . $e->end . '_' . $e->resourceId;
+            $isTheory = strpos($e->id, '-theory') !== false;
+            $isClearning = $e->is_clearning ?? false;
+
+            // Nhóm theo start, resourceId, loại vệ sinh/chính, loại lý thuyết/thực tế (loại bỏ end để tránh lệch giây/phút)
+            return $e->start . '_' . $e->resourceId . '_' . ($isClearning ? 'CL' : 'MN') . '_' . ($isTheory ? 'TH' : 'AC');
         })->map(function ($group) {
             $first = (object) $group->first();
             $first = clone $first;
@@ -866,8 +869,14 @@ class SchedualController extends Controller
                     return explode('-', $id)[0];
                 })->toArray();
 
+                $isTheory = strpos($first->id, '-theory') !== false;
+                $suffix = $isTheory ? '-theory' : '';
                 $typeSuffix = ($first->is_clearning ?? false) ? '-cleaning' : '';
-                $first->id = implode(',', $allIds) . '-maintenance' . $typeSuffix;
+                $first->id = implode(',', $allIds) . '-maintenance' . $typeSuffix . $suffix;
+
+                // Tính toán min Start và max End cho các sự kiện gộp
+                $first->start = $group->min('start');
+                $first->end = $group->max('end');
 
                 // Gom tiêu đề
                 $uniqueTitles = $group->pluck('title')->unique();
@@ -882,7 +891,7 @@ class SchedualController extends Controller
                 }
             }
 
-            return $first;
+            return (array) $first;
         })->values();
 
         return $productionEvents->concat($groupedMaintenance)->values();
