@@ -62,6 +62,7 @@ class LoginController extends Controller
             'production_name' => $production_name,
         ]);
 
+
         // Tự động đồng bộ nhân sự khi đăng nhập
         $this->syncEmployees($getUser->deparment);
 
@@ -72,6 +73,7 @@ class LoginController extends Controller
 
     private function syncEmployees($departmentCode)
     {
+
 
         $depMapping = [
             'EN' => 3,
@@ -108,7 +110,9 @@ class LoginController extends Controller
             DB::transaction(function () use ($employeesFromApi, $apiEmployeeCodes, $departmentCode) {
                 // 1. Vô hiệu hóa các phân công (assignments) không còn trong API cho bộ phận này
                 // Bỏ qua bộ phận QA vì có một số nhân sự được quản lý thủ công (không có trong API)
-                if ($departmentCode !== 'QA') {
+
+                if ($departmentCode != 'QA') {
+
                     $activeAssignments = DB::table('employee_assignments as ea')
                         ->join('employees as e', 'ea.employees_id', '=', 'e.id')
                         ->where('ea.production_code', $departmentCode)
@@ -187,14 +191,16 @@ class LoginController extends Controller
                     } else {
                         // Nếu đã từng có dữ liệu tại đây (có thể là nhiều dòng bao gồm cả phân tổ/phòng), 
                         // thực hiện kích hoạt lại TẤT CẢ các dòng liên quan để khôi phục trạng thái cũ
-                        DB::table('employee_assignments')
-                            ->where('employees_id', $employeeId)
-                            ->where('production_code', $departmentCode)
-                            ->where('active', 0)
-                            ->update([
-                                'active' => 1,
-                                'updated_at' => now()
-                            ]);
+                        if ($departmentCode != 'QA') {
+                            DB::table('employee_assignments')
+                                ->where('employees_id', $employeeId)
+                                ->where('production_code', $departmentCode)
+                                ->where('active', 0)
+                                ->update([
+                                    'active' => 1,
+                                    'updated_at' => now()
+                                ]);
+                        }
                     }
                 }
             });

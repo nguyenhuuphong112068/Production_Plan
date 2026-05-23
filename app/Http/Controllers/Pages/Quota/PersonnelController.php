@@ -142,7 +142,7 @@ class PersonnelController extends Controller
             'PXVH' => 30,
             'PXDN' => 30,
             'EN' => 3,
-            'PXN' => 6,
+            'QA' => 9,
             'PXTN' => 6
         ];
 
