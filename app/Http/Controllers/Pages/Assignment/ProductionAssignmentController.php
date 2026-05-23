@@ -66,8 +66,7 @@ class ProductionAssignmentController extends Controller
 
         // 3. Lấy danh sách phòng (có lọc theo tổ)
         $roomQuery = DB::table('room')
-            ->where('deparment_code', $production_code)
-            ->where('stage_code', '!=', 8);
+            ->where('deparment_code', $production_code);
 
         if ($active_group_code) {
             if ($active_group_code == 7 || $active_group_code == 8) {
@@ -86,7 +85,7 @@ class ProductionAssignmentController extends Controller
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->where('sp.deparment_code', $production_code);
 
-        if ($active_group_code == 8) {
+        if ($active_group_code == 7 || $active_group_code == 8) {
             $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
         } else {
             $stagePlanQuery->where('sp.stage_code', '!=', 8);
@@ -289,7 +288,7 @@ class ProductionAssignmentController extends Controller
         }
 
         $personnel = $personnelQuery->select('e.*')
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL) as allowed_rooms_with_levels"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL AND room_id > 0) as allowed_rooms_with_levels"))
             ->orderBy('e.name')
             ->get();
 
@@ -515,7 +514,6 @@ class ProductionAssignmentController extends Controller
         // 1. Lấy danh sách các tổ có trong bộ phận
         $groups = DB::table('room')
             ->where('deparment_code', $production_code)
-            ->where('stage_code', '!=', 8)
             ->whereNotNull('group_code')
             ->select('group_code', 'production_group')
             ->distinct()
@@ -524,8 +522,7 @@ class ProductionAssignmentController extends Controller
 
         // 2. Lấy danh sách phòng (có lọc theo tổ)
         $roomQuery = DB::table('room')
-            ->where('deparment_code', $production_code)
-            ->where('stage_code', '!=', 8);
+            ->where('deparment_code', $production_code);
 
         if ($group_code) {
             $roomQuery->where('group_code', $group_code);
@@ -534,24 +531,30 @@ class ProductionAssignmentController extends Controller
         $rooms = $roomQuery->orderBy('group_code')->orderBy('order_by')->get();
 
         // 3. Lấy dữ liệu công việc lý thuyết trong ngày
-        $stagePlans = DB::table('stage_plan as sp')
+        $stagePlanQuery = DB::table('stage_plan as sp')
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->where('sp.deparment_code', $production_code)
-            ->where('sp.stage_code', '!=', 8)
             ->where('sp.active', 1)
-            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate])
-            ->select(
-                'sp.id',
-                'sp.resourceId as room_id',
-                'sp.start',
-                'sp.end',
-                'sp.title',
-                'sp.stage_code',
-                'pm.batch',
-                'product_name.name as product_name'
-            )
+            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate]);
+
+        if ($group_code == 7 || $group_code == 8) {
+            $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
+        } else {
+            $stagePlanQuery->where('sp.stage_code', '!=', 8);
+        }
+
+        $stagePlans = $stagePlanQuery->select(
+            'sp.id',
+            'sp.resourceId as room_id',
+            'sp.start',
+            'sp.end',
+            'sp.title',
+            'sp.stage_code',
+            'pm.batch',
+            'product_name.name as product_name'
+        )
             ->get()
             ->groupBy('room_id');
 

@@ -366,7 +366,7 @@
     $todayObj = \Carbon\Carbon::today();
     $isPastDate = $reportedDateObj->lt($todayObj);
     $hasEditPermission = user_has_permission(session('user')['userId'], 'production_assignment', 'boolean');
-    $canEdit = $hasEditPermission && !$isPastDate;
+    $canEdit = $hasEditPermission && !$isPastDate && !empty($group_code);
 @endphp
 
 <div class="content-wrapper">
@@ -388,28 +388,30 @@
                     class="form-control form-control-sm shadow-sm" style="border: 2px solid #003A4F"
                     onchange="this.form.submit()">
             </form>
+
             <div class="d-flex align-items-center">
-                <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task"
-                    {{ !$canEdit ? 'disabled' : '' }}>
-                    <i class="fas fa-plus"></i> Thêm Công Tác Khác
-                </button>
-                <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
-                    {{ !$canEdit ? 'disabled' : '' }} title="Sắp xếp tự động nhân sự cho các phòng">
-                    <i class="fas fa-robot"></i> Tự động phân công
-                </button>
                 <button class="btn btn-sm btn-secondary shadow-sm ml-2" id="btn-view-report"
                     title="Xem báo cáo tình hình nhân sự hiện tại">
                     <i class="fas fa-chart-bar"></i> Xem báo cáo
                 </button>
-                <button class="btn btn-sm btn-primary shadow-sm ml-2" id="btn-save-all"
-                    {{ !$canEdit ? 'disabled' : '' }}>
+                @if ($canEdit)
+                <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task">
+                    <i class="fas fa-plus"></i> Thêm Công Tác Khác
+                </button>
+                <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
+                    title="Sắp xếp tự động nhân sự cho các phòng">
+                    <i class="fas fa-robot"></i> Tự động phân công
+                </button>
+                <button class="btn btn-sm btn-primary shadow-sm ml-2" id="btn-save-all">
                     <i class="fas fa-save"></i> Lưu toàn bộ lịch
                 </button>
+                @endif
                 <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-toggle-theory"
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
+
         </div>
     </div>
 
@@ -874,15 +876,15 @@
     const personnelInfo = {
         @foreach ($personnel as $p)
             "{{ $p->id }}": {
-                name: "{{ $p->name }}",
+                name: {!! json_encode($p->name) !!},
                 code: "{{ $p->code }}"
             },
         @endforeach
     };
 
     const roomNames = {
-        @foreach ($rooms as $r)
-            "{{ $r->id }}": "{{ $r->name }}",
+        @foreach (DB::table('room')->where('deparment_code', $production_code)->get() as $r)
+            "{{ $r->id }}": {!! json_encode($r->name) !!},
         @endforeach
     };
 
@@ -1343,7 +1345,7 @@
                 return;
             }
 
-            const pairs = skillData.split(',');
+            const pairs = skillData.split('|');
             const allowedRoomIds = pairs.map(p => p.split(':')[0]);
 
             if (!allowedRoomIds.includes(roomId.toString())) {
@@ -1495,7 +1497,7 @@
 
             let html = '';
             if (skillData) {
-                const pairs = skillData.split(',');
+                const pairs = skillData.split('|');
                 pairs.forEach(pair => {
                     const [roomId, level] = pair.split(':');
                     const rName = roomNames[roomId] || 'Phòng không xác định';

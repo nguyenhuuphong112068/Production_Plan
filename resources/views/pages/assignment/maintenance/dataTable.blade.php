@@ -923,7 +923,7 @@
     const personnelInfo = {
         @foreach ($personnel as $p)
             "{{ $p->id }}": {
-                name: "{{ $p->name }}",
+                name: {!! json_encode($p->name) !!},
                 code: "{{ $p->code }}"
             },
         @endforeach
@@ -931,7 +931,7 @@
 
     const roomNames = {
         @foreach ($rooms as $r)
-            "{{ $r->id }}": "{{ $r->name }}",
+            "{{ $r->id }}": {!! json_encode($r->name) !!},
         @endforeach
     };
 

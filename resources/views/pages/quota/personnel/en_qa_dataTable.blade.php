@@ -350,7 +350,7 @@
                         <th style="width: 40px;">STT</th>
                         <th style="width: 80px;">Mã NV</th>
                         <th style="width: 150px;">Tên Nhân Viên</th>
-                        <th style="width: 100px;">Phân Xưởng Trực Thuộc</th>
+                        <th style="width: 100px;">Bộ Phận</th>
                         <th style="width: 180px;">Tổ Được Phép Công Tác</th>
                     </tr>
                 </thead>
@@ -384,7 +384,7 @@
                                                 $isActive = ($parts[1] ?? 1) == 1;
                                                 $gUser = $parts[2] ?? 'N/A';
                                                 $gDate = $parts[3] ?? '';
-                                                $groupName = $groups->where('id', $gId)->first()->name ?? 'N/A';
+                                                $groupName = $groups->where('code', $gId)->first()->name ?? 'N/A';
                                             @endphp
                                             <div class="assignment-item">
                                                 <span
@@ -402,24 +402,27 @@
                                             </div>
                                         @endforeach
                                     </div>
-                                    <select class="form-control form-control-sm select-add-group" style="width: 100%;"
-                                        {{ $disabled }}>
-                                        <option value="">+ Thêm Tổ...</option>
-                                        @foreach ($groups as $g)
-                                            @php
-                                                $isAlreadyInList = false;
-                                                foreach ($groupPermissions as $gp) {
-                                                    if (explode(':', $gp)[0] == $g->id) {
-                                                        $isAlreadyInList = true;
-                                                        break;
+                                    @if ($departments != 'QA')
+                                        <select class="form-control form-control-sm select-add-group"
+                                            style="width: 100%;" {{ $disabled }}>
+                                            <option value="">+ Thêm Tổ...</option>
+                                            @foreach ($groups as $g)
+                                                @php
+                                                    $isAlreadyInList = false;
+                                                    foreach ($groupPermissions as $gp) {
+                                                        if (explode(':', $gp)[0] == $g->id) {
+                                                            $isAlreadyInList = true;
+                                                            break;
+                                                        }
                                                     }
-                                                }
-                                            @endphp
-                                            @if (!$isAlreadyInList)
-                                                <option value="{{ $g->id }}">{{ $g->name }}</option>
-                                            @endif
-                                        @endforeach
-                                    </select>
+                                                @endphp
+                                                @if (!$isAlreadyInList)
+                                                    <option value="{{ $g->id }}">{{ $g->name }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    @endif
+
                                 </div>
                             </td>
                         </tr>
@@ -458,7 +461,35 @@
             });
         }
 
-        initPermissionsSelect2();
+        $('#data_table_personnel').DataTable({
+            paging: true,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            pageLength: 25,
+            lengthMenu: [
+                [10, 25, 50, 100, -1],
+                [10, 25, 50, 100, "Tất cả"]
+            ],
+            language: {
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ dòng",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+                paginate: {
+                    previous: "Trước",
+                    next: "Sau"
+                }
+            },
+            drawCallback: function() {
+                initPermissionsSelect2();
+                if (typeof updateDashboard === 'function' && $('#personnel-dashboard').is(
+                        ':visible')) {
+                    updateDashboard();
+                }
+            }
+        });
 
         // Handle Quick Add Group
         $(document).on('change', '.select-add-group', function() {
@@ -564,8 +595,10 @@
 
         function updateDashboard() {
             const groupStats = {};
+            var table = $('#data_table_personnel').DataTable();
+            var allRows = table.rows().nodes();
 
-            $('#data_table_personnel tbody tr').each(function() {
+            $(allRows).each(function() {
                 const $tr = $(this);
                 // Group stats
                 $tr.find('.btn-toggle-group').each(function() {
@@ -587,7 +620,6 @@
             renderSummaryTable(groupStats);
 
             // Update header counts
-            const totalActiveEmp = $('#data_table_personnel tbody tr').length;
             $('#dash-active-groups-count').text(Object.keys(groupStats).length);
         }
 
@@ -679,7 +711,8 @@
                         $('#shift-card-view').hide();
                         $('#shift-table-view').show();
                         renderShiftTable(res.data, range);
-                        if (range === 'week') $('#shift-range-title').text(`Tuần ${params.week}/${params.year}`);
+                        if (range === 'week') $('#shift-range-title').text(
+                            `Tuần ${params.week}/${params.year}`);
                         else $('#shift-range-title').text(`Tháng ${params.month}/${params.year}`);
                     }
                 },

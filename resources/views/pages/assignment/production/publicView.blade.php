@@ -381,7 +381,7 @@
                                     </tfoot>
                                 </table>
                             @endif
-                        </td>
+                        {{--
                         <td class="text-left" style="background:#d7eaff; font-size:12px; padding: 10px !important;">
                             @if (count($task->actual_details ?? []) > 0)
                                 @php $idx = 1; @endphp
@@ -413,6 +413,7 @@
                                 <span class="text-muted">—</span>
                             @endif
                         </td>
+                        --}}
                     </tr>
                 @endforeach
             </tbody>
