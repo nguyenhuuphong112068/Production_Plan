@@ -79,7 +79,7 @@ class SchedualController extends Controller
         // Lấy tất cả các bản ghi chồng lấn với khoảng thời gian yêu cầu
         $plans = DB::table('stage_plan as sp')
             ->select('sp.resourceId', 'sp.start', 'sp.end', 'sp.end_clearning')
-            ->where('sp.deparment_code', session('user.production_code'))
+            ->where('sp.deparment_code', session('user')['production_code'])
             ->whereRaw('GREATEST(sp.start, ?) < LEAST(COALESCE(sp.end_clearning, sp.end, sp.start), ?)', [$start,  $end])
             ->get();
 
@@ -168,7 +168,7 @@ class SchedualController extends Controller
         $stage_plan_100 = DB::table('stage_plan as sp')
             ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [$startDate,  $endDate])
             ->whereNotNull('sp.start')
-            ->where('sp.deparment_code', session('user.production_code'))
+            ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
                 DB::raw('SUM(sp.Theoretical_yields) as total_qty'),
@@ -185,7 +185,7 @@ class SchedualController extends Controller
         $stage_plan_part = DB::table('stage_plan as sp')
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate,  $startDate,  $startDate,  $endDate])
             ->whereNotNull('sp.start')
-            ->where('sp.deparment_code', session('user.production_code'))
+            ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
                 DB::raw('
@@ -1003,7 +1003,7 @@ class SchedualController extends Controller
 
             $pre = $plans->firstWhere('code', $plan->predecessor_code);
 
-            if ($pre && $plan->start < $pre->end  && $plan->end < $pre->end) {
+            if ($pre && $plan->start < $pre->end) {
 
                 $subtitles[] = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
                     . Carbon::parse($pre->end)->format('H:i d/m/y') . ')';
@@ -1018,7 +1018,7 @@ class SchedualController extends Controller
 
             $next = $plans->firstWhere('code', $plan->nextcessor_code);
 
-            if ($next && $plan->end > $next->start  && $plan->start > $next->start) {
+            if ($next && $plan->end > $next->start) {
 
                 $subtitles[] = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
                     . Carbon::parse($next->start)->format('H:i d/m/y') . ')';
@@ -1028,8 +1028,6 @@ class SchedualController extends Controller
                 $violation_colors[] = '#4d4b4bff';
             }
         }
-
-
         $criticalChecks = [
             [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
             [1,  3,  'allow_weight_before_date',  '➡️ Ngày được phép cân',  '>'],
@@ -1347,7 +1345,7 @@ class SchedualController extends Controller
 
         try {
 
-            $production = session('user.production_code');
+            $production = session('user')['production_code'];
 
             $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
 
@@ -1362,7 +1360,7 @@ class SchedualController extends Controller
 
                 $plan_waiting = $this->getPlanWaiting($production);
 
-                $bkc_code = DB::table('stage_plan_bkc')->where('deparment_code', session('user.production_code'))->select('bkc_code')->distinct()->orderByDesc('bkc_code')->get();
+                $bkc_code = DB::table('stage_plan_bkc')->where('deparment_code', session('user')['production_code'])->select('bkc_code')->distinct()->orderByDesc('bkc_code')->get();
 
                 $reason = DB::table('reason')->where('deparment_code', $production)->pluck('name');
 
@@ -1488,7 +1486,7 @@ class SchedualController extends Controller
                 'created_at' => now(),
             ]);
 
-            $production = session('user.production_code');
+            $production = session('user')['production_code'];
 
             $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
 
@@ -1737,7 +1735,7 @@ class SchedualController extends Controller
                         'resourceId' => $request->room_id,
                         'schedualed_by' => session('user')['fullName'],
                         'schedualed_at' => now(),
-                        'deparment_code' => session('user.production_code'),
+                        'deparment_code' => session('user')['production_code'],
                         'type_of_change' => $request->reason ?? 'Lập Lịch Thủ Công',
                     ]);
                 }
@@ -1830,7 +1828,7 @@ class SchedualController extends Controller
                         ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                         ->whereIn('sp.code', $nextcessor_codes)
                         ->where('sp.active', 1)
-                        ->where('sp.deparment_code', session('user.production_code'))
+                        ->where('sp.deparment_code', session('user')['production_code'])
                         ->orderBy('prev.start', 'asc')
                         ->get();
 
@@ -1873,7 +1871,7 @@ class SchedualController extends Controller
         | TRẢ KẾT QUẢ
         |--------------------------------------------------------------------------
         */
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
 
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
 
@@ -1903,7 +1901,7 @@ class SchedualController extends Controller
             ]);
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code'))
+            'plan' => $this->getPlanWaiting(session('user')['production_code'])
         ]);
     }
 
@@ -2010,7 +2008,7 @@ class SchedualController extends Controller
                                 'resourceId' => $request->room_id,
                                 'schedualed_by' => session('user')['fullName'],
                                 'schedualed_at' => now(),
-                                'deparment_code' => session('user.production_code'),
+                                'deparment_code' => session('user')['production_code'],
                                 'type_of_change' => $this->reason ?? 'Lập Lịch Thủ Công',
                             ]);
                     }
@@ -2074,7 +2072,7 @@ class SchedualController extends Controller
                                 'schedualed_at' => $update_row->schedualed_at,
                                 'version' => DB::table('stage_plan_history')->where('stage_plan_id', $product['id'])->max('version') + 1 ?? 1,
                                 'note' => $update_row->note,
-                                'deparment_code' => session('user.production_code'),
+                                'deparment_code' => session('user')['production_code'],
                                 'type_of_change' => $request->reason,
                                 'created_date' => now(),
                                 'created_by' => session('user')['fullName'],
@@ -2094,7 +2092,7 @@ class SchedualController extends Controller
             return response()->json(['status' => 'error',  'message' => $e->getMessage()], 500);
         }
 
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
 
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
 
@@ -2125,7 +2123,7 @@ class SchedualController extends Controller
                 DB::table('reason')->updateOrInsert(
                     [
                         'name' => $request->reason['reason'],
-                        'deparment_code' => session('user.production_code'),
+                        'deparment_code' => session('user')['production_code'],
                     ],
                     [
                         'created_by' => session('user')['fullName'],
@@ -2178,7 +2176,7 @@ class SchedualController extends Controller
                     ];
 
                     // 🔹 [Audit] Đánh dấu nếu Phân xưởng (PXV) tác động vào lịch Bảo trì - Hiệu chuẩn (stage_code 8)
-                    if (strpos(session('user.production_code'), 'PXV') === 0) {
+                    if (strpos(session('user')['production_code'], 'PXV') === 0) {
                         $updateData['keep_dry'] = DB::raw("CASE WHEN stage_code = 8 THEN 1 ELSE keep_dry END");
                     }
 
@@ -2228,7 +2226,7 @@ class SchedualController extends Controller
                             $update_row = DB::table('stage_plan')->where('id', $sid)->first();
 
                             // 🔹 [PXV1 Special Logic] Cập nhật cleaning ngay sau khi event kết thúc
-                            if (session('user.production_code') == 'PXV1' && $update_row->start_clearning && $update_row->end_clearning) {
+                            if (session('user')['production_code'] == 'PXV1' && $update_row->start_clearning && $update_row->end_clearning) {
                                 $durationSeconds = Carbon::parse($update_row->start_clearning)->diffInSeconds(Carbon::parse($update_row->end_clearning));
                                 $new_start_clearning = Carbon::parse($change['end']);
                                 $new_end_clearning = $new_start_clearning->copy()->addSeconds($durationSeconds);
@@ -2275,7 +2273,7 @@ class SchedualController extends Controller
                                     'schedualed_at' => $update_row->schedualed_at,
                                     'version' => DB::table('stage_plan_history')->where('stage_plan_id', $sid)->max('version') + 1 ?? 1,
                                     'note' => $update_row->note,
-                                    'deparment_code' => session('user.production_code'),
+                                    'deparment_code' => session('user')['production_code'],
                                     'type_of_change' => $request->reason['reason'],
                                     'created_date' => now(),
                                     'created_by' => session('user')['fullName'],
@@ -2290,7 +2288,7 @@ class SchedualController extends Controller
             return response()->json(['error' => 'Lỗi hệ thống'], 500);
         }
 
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
         $resources = $this->getResources($production, $request->startDate, $request->endDate);
@@ -2341,7 +2339,7 @@ class SchedualController extends Controller
             return response()->json(['error' => 'Lỗi hệ thống'], 500);
         }
 
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
 
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
 
@@ -2421,7 +2419,7 @@ class SchedualController extends Controller
             return response()->json(['status' => 'error',  'message' => $e->getMessage()], 500);
         }
 
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
 
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
 
@@ -2442,7 +2440,7 @@ class SchedualController extends Controller
     public function deActiveAll(Request $request)
     {
 
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
 
         try {
 
@@ -2507,7 +2505,7 @@ class SchedualController extends Controller
 
             if ($ids->isEmpty()) {
 
-                $production = session('user.production_code');
+                $production = session('user')['production_code'];
 
                 $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
 
@@ -2578,7 +2576,7 @@ class SchedualController extends Controller
             return response()->json(['status' => 'error',  'message' => $e->getMessage()], 500);
         }
 
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
 
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
 
@@ -2628,7 +2626,7 @@ class SchedualController extends Controller
             return response()->json(['status' => 'error',  'message' => $e->getMessage()], 500);
         }
 
-        $production = session('user.production_code');
+        $production = session('user')['production_code'];
 
         if (isset($request->temp)) {
 
@@ -2687,7 +2685,7 @@ class SchedualController extends Controller
         DB::statement($updateQuery);
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code'), $request->isShowLine),
+            'plan' => $this->getPlanWaiting(session('user')['production_code'], $request->isShowLine),
         ]);
     }
 
@@ -2749,7 +2747,7 @@ class SchedualController extends Controller
         }
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -2799,7 +2797,7 @@ class SchedualController extends Controller
 
         // trả lại dữ liệu mới
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -2835,7 +2833,7 @@ class SchedualController extends Controller
             return response()->json(['error' => 'Lỗi hệ thống'], 500);
         }
 
-        $events = $this->getEvents(session('user.production_code'), $request->startDate, $request->endDate, true, $this->theory);
+        $events = $this->getEvents(session('user')['production_code'], $request->startDate, $request->endDate, true, $this->theory);
 
         return response()->json([
             'events' => $events,
@@ -2941,7 +2939,7 @@ class SchedualController extends Controller
             return response()->json(['error' => 'Lỗi hệ thống'], 500);
         }
 
-        $events = $this->getEvents(session('user.production_code'), $request->startDate, $request->endDate, true, $this->theory);
+        $events = $this->getEvents(session('user')['production_code'], $request->startDate, $request->endDate, true, $this->theory);
 
         return response()->json([
             'events' => $events,
@@ -2978,7 +2976,7 @@ class SchedualController extends Controller
         }
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -3180,7 +3178,7 @@ class SchedualController extends Controller
             DB::commit();
 
             return response()->json([
-                'plan' => $this->getPlanWaiting(session('user.production_code')),
+                'plan' => $this->getPlanWaiting(session('user')['production_code']),
             ]);
         } catch (\Exception  $e) {
 
@@ -3205,7 +3203,7 @@ class SchedualController extends Controller
             ->update(['campaign_code' => null]);
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -3226,7 +3224,7 @@ class SchedualController extends Controller
                     'only_parkaging' => false,
                     'percent_parkaging' => 1,
                     'note' => $request->note ?? 'NA',
-                    'deparment_code' => session('user.production_code'),
+                    'deparment_code' => session('user')['production_code'],
                     'created_at' => now(),
                     'prepared_by' => session('user')['fullName'],
                 ]);
@@ -3244,7 +3242,7 @@ class SchedualController extends Controller
                         'finished' => 0,
                         'active' => 1,
                         'stage_code' => 9,
-                        'deparment_code' => session('user.production_code'),
+                        'deparment_code' => session('user')['production_code'],
                         'title' => $request->title,
                         'yields' => $request->checkedClearning ? 0 : -1,
                         'created_by' => session('user')['fullName'],
@@ -3260,7 +3258,7 @@ class SchedualController extends Controller
         }
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -3287,7 +3285,7 @@ class SchedualController extends Controller
         }
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -3341,7 +3339,7 @@ class SchedualController extends Controller
         }
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -3432,7 +3430,7 @@ class SchedualController extends Controller
             ->where('stage_code', $stageCode)
             ->where('finished', 0)
             ->where('active', 1)
-            ->where('deparment_code', session('user.production_code'))
+            ->where('deparment_code', session('user')['production_code'])
             ->whereIn('plan_master_id', $planMasters)
             ->orderByRaw('FIELD(plan_master_id, ' . implode(',', $planMasters->toArray()) . ')')
             ->update([
@@ -3440,7 +3438,7 @@ class SchedualController extends Controller
             ]);
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
             'message' => "Đã sắp xếp lại kế hoạch cho stage {$stageCode}.",
         ]);
     }
@@ -3456,7 +3454,7 @@ class SchedualController extends Controller
             ->where('finished', 0)
             ->where('active', 1)
             ->where('submit', 0)
-            ->where('deparment_code', session('user.production_code'))
+            ->where('deparment_code', session('user')['production_code'])
             ->when($submitType === 'production', function ($query) {
                 $query->where('stage_code', '!=', 8);
             })
@@ -3509,7 +3507,7 @@ class SchedualController extends Controller
                     'schedualed_at' => $row->schedualed_at,
                     'version' => $maxVersion + 1,
                     'note' => $row->note,
-                    'deparment_code' => session('user.production_code'),
+                    'deparment_code' => session('user')['production_code'],
                     'type_of_change' => 'Tạo Mới Lịch',
                     'created_date' => now(),
                     'created_by' => session('user')['fullName'],
@@ -3548,7 +3546,7 @@ class SchedualController extends Controller
 
         // Logic lọc người nhận: Không gửi cho 4 phân xưởng còn lại nếu người gửi thuộc 1 trong 5 phân xưởng
         $workshops = ['PXV1', 'PXV2', 'PXDN', 'PXTN', 'PXVH'];
-        $myWorkshop = session('user.production_code');
+        $myWorkshop = session('user')['production_code'];
         $targetUserIds = 'all';
 
         if (in_array($myWorkshop, $workshops)) {
@@ -3627,7 +3625,7 @@ class SchedualController extends Controller
             return response()->json(['status' => 'error',  'message' => $e->getMessage()], 500);
         }
 
-        $events = $this->getEvents(session('user.production_code'), $request->startDate, $request->endDate, true, $this->theory);
+        $events = $this->getEvents(session('user')['production_code'], $request->startDate, $request->endDate, true, $this->theory);
 
         return response()->json([
             'events' => $events,
@@ -3705,7 +3703,7 @@ class SchedualController extends Controller
         }
 
         return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'plan' => $this->getPlanWaiting(session('user')['production_code']),
         ]);
     }
 
@@ -3870,11 +3868,11 @@ class SchedualController extends Controller
                     'quarantined_date',
                 ])
                 ->where('finished', 0)
-                ->where('deparment_code', session('user.production_code'))
+                ->where('deparment_code', session('user')['production_code'])
         );
 
         // Xóa các bản sao lưu cũ để chỉ giữ lại 5 bản gần nhất cho phân xưởng hiện tại
-        $department = session('user.production_code');
+        $department = session('user')['production_code'];
         $recentBkcs = DB::table('stage_plan_bkc')
             ->where('deparment_code', $department)
             ->select('bkc_code')
@@ -3921,7 +3919,7 @@ class SchedualController extends Controller
             $affected = DB::table('stage_plan as sp')
                 ->join('stage_plan_bkc as bkc', 'bkc.stage_plan_id', '=', 'sp.id')
                 ->where('sp.finished', 0)
-                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->where('bkc.bkc_code', $bkcCode)
                 ->update([
                     'sp.start' => DB::raw('bkc.start'),
@@ -4385,7 +4383,7 @@ class SchedualController extends Controller
                         'resourceId' => $roomId,
                         'schedualed_by' => session('user')['fullName'],
                         'schedualed_at' => now(),
-                        'deparment_code' => session('user.production_code'),
+                        'deparment_code' => session('user')['production_code'],
                         'type_of_change' => $this->reason ?? 'Lập Lịch Tự Động',
                     ]);
             }
@@ -4394,7 +4392,6 @@ class SchedualController extends Controller
 
     public function scheduleAll(Request $request)
     {
-
 
         $this->selectedDates = $request->selectedDates ?? [];
 
@@ -4434,7 +4431,7 @@ class SchedualController extends Controller
             ->distinct()
             ->where('sp.stage_code', '>=', 3)
             ->where('sp.stage_code', '<=', $selectedStep)
-            ->where('sp.deparment_code', session('user.production_code'))
+            ->where('sp.deparment_code', session('user')['production_code'])
             ->orderBy('sp.stage_code')
             ->pluck('sp.stage_code');
 
@@ -4586,7 +4583,7 @@ class SchedualController extends Controller
 
                 $q->whereNotNull('plan_master.after_parkaging_date');
             })
-            ->where('sp.deparment_code', session('user.production_code'))
+            ->where('sp.deparment_code', session('user')['production_code'])
             ->orderBy('prev.start', 'asc')
             ->get();
 
@@ -4690,7 +4687,7 @@ class SchedualController extends Controller
 
                 $q->whereNotNull('plan_master.after_parkaging_date');
             })
-            ->where('sp.deparment_code', session('user.production_code'))
+            ->where('sp.deparment_code', session('user')['production_code'])
             ->orderBy('prev.start', 'asc')
             ->get();
 
@@ -4805,7 +4802,7 @@ class SchedualController extends Controller
                 ->whereNull('sp.start')
                 ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
-                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('prev.start', 'asc')
                 ->get();
         } else {
@@ -4857,14 +4854,10 @@ class SchedualController extends Controller
 
                     $q->whereNotNull('plan_master.after_parkaging_date');
                 })
-                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('order_by', 'asc')
                 ->get();
         }
-
-
-        //Log::info(['tasks' => $tasks]);
-        //return;
 
         $processedCampaigns = [];
         // campaign đã xử lý
@@ -4958,7 +4951,7 @@ class SchedualController extends Controller
             ->where('next.finished', 0)
             ->where('next.start', '>', now())
             ->whereNotNull('plan_master.after_weigth_date')
-            ->where('sp.deparment_code', session('user.production_code'))
+            ->where('sp.deparment_code', session('user')['production_code'])
             ->orderBy('next.start', 'asc')
             ->get();
 
@@ -5041,7 +5034,7 @@ class SchedualController extends Controller
 
                     $q->whereNotNull('plan_master.after_parkaging_date');
                 })
-                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('prev.start', 'asc')
                 ->get();
         } else {
@@ -5094,7 +5087,7 @@ class SchedualController extends Controller
                     $query->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
                         ->whereNotNull('prev.start');
                 })
-                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('order_by_line', 'asc')
                 ->get();
         }
@@ -5509,7 +5502,7 @@ class SchedualController extends Controller
 
                     $q->whereNotNull('plan_master.after_parkaging_date');
                 })
-                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->first();
 
             if ($nextTasks) {
@@ -6051,7 +6044,7 @@ class SchedualController extends Controller
                 // ->where('sp.stage_code', $nextcessor_code)
                 ->where('sp.active', 1)
                 // ->whereNotNull('plan_master.after_weigth_date')
-                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('sp.deparment_code', session('user')['production_code'])
                 ->orderBy('prev.start', 'asc')
                 ->get();
 

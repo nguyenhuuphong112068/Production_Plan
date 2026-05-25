@@ -15,6 +15,7 @@ use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController
 use App\Http\Controllers\Pages\Schedual\ShedualYieldController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Pages\Schedual\AutoSchedualController;
 
 Route::prefix('/Schedual')
         ->controller(SchedualController::class)
@@ -72,6 +73,14 @@ Route::prefix('/Schedual')
                 Route::get('test', 'test')->name('test');
         });
 
+Route::prefix('/Schedual')
+        ->controller(AutoSchedualController::class)
+        ->name('pages.Schedual.Auto.')
+        ->middleware(CheckLogin::class)
+        ->group(function () {
+                Route::post('simulateScheduleAll', 'simulateScheduleAll')->name('simulateScheduleAll');
+                Route::post('commitSimulatedSchedule', 'commitSimulatedSchedule')->name('commitSimulatedSchedule');
+        });
 Route::get('/assignment/{any?}', function () {
         session()->put(['title' => 'PHÂN CÔNG CÔNG VIỆC']);
         return view('app');

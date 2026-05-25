@@ -2064,6 +2064,11 @@ const ScheduleTest = () => {
               <input type="radio" name="sortType" value="line">
               <span> Sắp Lich Theo Line</span>
             </label>
+
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="simulate">
+              <span> Logic Mới (Simulate)</span>
+            </label>
           </div>
         </div>
 
@@ -2088,7 +2093,7 @@ const ScheduleTest = () => {
           <div class="cfg-row">
             <label class="cfg-label" for="prev_orderBy">Thứ tự công đoạn từ ĐH -> ĐG theo :</label>
             <label class="switch">
-              <input id="prev_orderBy" type="checkbox">
+              <input id="prev_orderBy" type="checkbox" checked>
               <span class="slider round"></span>
               <span class="switch-labels">
                 <span class="off">KHCĐ</span>
@@ -2493,14 +2498,16 @@ const ScheduleTest = () => {
 
           const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
 
-          axios.post('/Schedual/scheduleAll', {
+          const endpoint = result.value.runType === 'simulate' && result.value.selectedStep != 'CNL' ? '/Schedual/simulateScheduleAll' : '/Schedual/scheduleAll';
+
+          axios.post(endpoint, {
             ...result.value,
             startDate: toLocalISOString(activeStart),
             endDate: toLocalISOString(activeEnd),
             stage_plan_ids: handleShowLine(result.value['lines']),
             room_code: result.value['lines']
 
-          }, { timeout: 300000 })
+          }, { timeout: 1200000 })
             .then(res => {
               let data = res.data;
               if (typeof data === "string") {
@@ -2526,7 +2533,7 @@ const ScheduleTest = () => {
       });
   };
 
-  /// Xử lý Xóa Toàn Bộ Lịch
+
   const handleDeleteAllScheduale = () => {
     if (!authorization) return;
 
@@ -3376,10 +3383,33 @@ const ScheduleTest = () => {
         .hide-cleaning-events .cleaning-event {
           display: none !important;
         }
+        .fc-event-pending {
+          box-shadow: 0 0 12px 3px rgba(250, 204, 21, 0.9) !important; /* Yellow shadow */
+          border: 2px solid #eab308 !important; /* Darker yellow border */
+          z-index: 10 !important; /* Ensure it stays on top of others */
+        }
       `}</style>
+
+      {/* Visual Indicator for Selected Events and Pending Changes */}
+      <div className="flex gap-4 mb-2 align-items-center justify-content-end" style={{ minHeight: '32px' }}>
+        {selectedEvents && selectedEvents.length > 0 && (
+          <div className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200">
+            <i className="pi pi-check-square"></i>
+            <span className="font-bold text-sm">{selectedEvents.length} Lô đang chọn</span>
+          </div>
+        )}
+        {pendingChanges && pendingChanges.length > 0 && (
+          <div className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-200">
+            <i className="pi pi-exclamation-triangle"></i>
+            <span className="font-bold text-sm">{pendingChanges.length} Thay đổi chưa lưu</span>
+          </div>
+        )}
+      </div>
+
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
+        height="calc(100vh - 130px)"
         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
         initialView="resourceTimelineMonth1d"
         firstDay={1}
@@ -3393,6 +3423,11 @@ const ScheduleTest = () => {
           // Hiding/Showing cleaning events locally
           if (isCleaning) {
             classes.push('cleaning-event');
+          }
+
+          // Hiệu ứng bóng mờ màu vàng cho các thay đổi chưa lưu
+          if (pendingChanges && pendingChanges.some(p => String(p.id) === String(arg.event.id))) {
+            classes.push('fc-event-pending');
           }
 
           // Active Plan Master IDs focusing (logic from line 2956)
