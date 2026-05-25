@@ -19,10 +19,10 @@ class BlisterMoldController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'code' => 'required|max:15|unique:blister_mold,code',
+            'code' => 'required|max:50|unique:blister_mold,code',
         ], [
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
-            'code.max' => 'Mã Khuôn Mẫu tối đa 15 ký tự',
+            'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
         ]);
 
@@ -43,10 +43,10 @@ class BlisterMoldController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'code' => 'required|max:15|unique:blister_mold,code,' . $request->id,
+            'code' => 'required|max:50|unique:blister_mold,code,' . $request->id,
         ], [
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
-            'code.max' => 'Mã Khuôn Mẫu tối đa 15 ký tự',
+            'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
         ]);
 
