@@ -67,7 +67,8 @@ class ProductionAssignmentController extends Controller
 
         // 3. Lấy danh sách phòng (có lọc theo tổ)
         $roomQuery = DB::table('room')
-            ->where('deparment_code', $production_code);
+            ->where('deparment_code', $production_code)
+            ->where('only_maintenance', 0);
 
         if ($active_group_code) {
             if ($active_group_code == 7 || $active_group_code == 8) {
@@ -140,7 +141,7 @@ class ProductionAssignmentController extends Controller
         // $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
 
         // 7. Tổ chức lại dữ liệu theo từng phòng
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate, $active_group_code) {
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate, $active_group_code, $allPersonnelData) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
 
@@ -461,10 +462,10 @@ class ProductionAssignmentController extends Controller
                     elseif ($shiftCode == '3') $roomCol = 'number_of_employes_on_sheet3';
                     elseif ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4';
                     elseif ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular';
-
                     if ($roomCol && isset($row['number_of_employes'])) {
+                        $employes_count = max(1, (int)$row['number_of_employes']);
                         DB::table('room')->where('id', $room_id)->update([
-                            $roomCol => $row['number_of_employes']
+                            $roomCol => $employes_count
                         ]);
                     }
 
@@ -522,6 +523,7 @@ class ProductionAssignmentController extends Controller
         // 1. Lấy danh sách các tổ có trong bộ phận
         $groups = DB::table('room')
             ->where('deparment_code', $production_code)
+            ->where('only_maintenance', 0)
             ->whereNotNull('group_code')
             ->select('group_code', 'production_group')
             ->distinct()
@@ -530,7 +532,8 @@ class ProductionAssignmentController extends Controller
 
         // 2. Lấy danh sách phòng (có lọc theo tổ)
         $roomQuery = DB::table('room')
-            ->where('deparment_code', $production_code);
+            ->where('deparment_code', $production_code)
+            ->where('only_maintenance', 0);
 
         if ($group_code) {
             $roomQuery->where('group_code', $group_code);

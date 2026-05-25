@@ -45,6 +45,16 @@ class MaintenanceAssignmentController extends Controller
         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
         $endDate   = $startDate->copy()->addDays(1);
 
+        // Pre-fetch tất cả assignment_personnel của ngày để tránh N+1 Query
+        $allPersonnelData = DB::table('assignment_personnel')
+            ->join('assignments as a', 'a.id', '=', 'assignment_personnel.assignment_id')
+            ->whereDate('a.start', $reportedDate)
+            ->where('a.deparment_code', $dept_code)
+            ->where('a.active', 1)
+            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification')
+            ->get()
+            ->groupBy('assignment_id');
+
         // 0. Lấy danh sách tổ bảo trì (type = 2)
         $rawGroups = DB::table('stage_groups')->where('type', 2)->orderBy('id')->get();
         $stage_groups = [];
@@ -127,7 +137,7 @@ class MaintenanceAssignmentController extends Controller
         // 2. Gộp các task và lấy phân công kèm danh sách nhân viên
         $tasks = collect($rawTasks)->groupBy(function ($item) {
             return $item->start . '_' . $item->room_id;
-        })->map(function ($group) use ($group_code, $dept_code, $canEdit) {
+        })->map(function ($group) use ($group_code, $dept_code, $canEdit, $allPersonnelData) {
             $first      = $group->first();
             $allSpIds   = $group->pluck('sp_id')->sort()->toArray();
             $spIdString = implode(',', $allSpIds);
@@ -169,9 +179,7 @@ class MaintenanceAssignmentController extends Controller
             $assignments = $assignments->get();
 
             foreach ($assignments as $a) {
-                $a->personnel_data      = DB::table('assignment_personnel')
-                    ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification')->get();
+                $a->personnel_data      = $allPersonnelData->get($a->id) ?? collect();
                 $a->start_time_display  = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display    = $a->end   ? Carbon::parse($a->end)->format('H:i')   : null;
             }
@@ -276,12 +284,10 @@ class MaintenanceAssignmentController extends Controller
             return $item->stage_plan_id ?: ('ROOM_' . $item->room_id);
         });
 
-        $mappedExtra = $extraAssignments->map(function ($group, $groupKey) use ($group_code) {
+        $mappedExtra = $extraAssignments->map(function ($group, $groupKey) use ($group_code, $allPersonnelData) {
             $first = $group->first();
             foreach ($group as $a) {
-                $a->personnel_data     = DB::table('assignment_personnel')
-                    ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification')->get();
+                $a->personnel_data     = $allPersonnelData->get($a->id) ?? collect();
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display   = $a->end   ? Carbon::parse($a->end)->format('H:i')   : null;
             }
@@ -519,6 +525,16 @@ class MaintenanceAssignmentController extends Controller
         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
         $endDate = $startDate->copy()->addDays(1);
 
+        // Pre-fetch tất cả assignment_personnel của ngày để tránh N+1 Query
+        $allPersonnelData = DB::table('assignment_personnel')
+            ->join('assignments as a', 'a.id', '=', 'assignment_personnel.assignment_id')
+            ->whereDate('a.start', $reportedDate)
+            ->where('a.deparment_code', $dept_code)
+            ->where('a.active', 1)
+            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification')
+            ->get()
+            ->groupBy('assignment_id');
+
         $rawTasksQuery = DB::table('stage_plan as sp')
             ->join('room as r', 'sp.resourceId', '=', 'r.id')
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
@@ -584,7 +600,7 @@ class MaintenanceAssignmentController extends Controller
 
         $tasks = collect($rawTasks)->groupBy(function ($item) {
             return $item->start . '_' . $item->room_id;
-        })->map(function ($group) use ($group_code, $dept_code) {
+        })->map(function ($group) use ($group_code, $dept_code, $allPersonnelData) {
             $first = $group->first();
             $allSpIds = $group->pluck('sp_id')->sort()->toArray();
             $spIdString = implode(',', $allSpIds);
@@ -626,9 +642,7 @@ class MaintenanceAssignmentController extends Controller
             $assignments = $assignments->get();
 
             foreach ($assignments as $a) {
-                $a->personnel_data = DB::table('assignment_personnel')
-                    ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification')->get();
+                $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
@@ -681,9 +695,7 @@ class MaintenanceAssignmentController extends Controller
         foreach ($extraAssignments as $roomId => $group) {
             $first = $group->first();
             foreach ($group as $a) {
-                $a->personnel_data = DB::table('assignment_personnel')
-                    ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification')->get();
+                $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }

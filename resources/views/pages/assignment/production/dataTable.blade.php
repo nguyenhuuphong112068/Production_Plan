@@ -366,7 +366,7 @@
     $todayObj = \Carbon\Carbon::today();
     $isPastDate = $reportedDateObj->lt($todayObj);
     $hasEditPermission = user_has_permission(session('user')['userId'], 'production_assignment', 'boolean');
-    $canEdit = $hasEditPermission && !$isPastDate && !empty($group_code);
+    $canEdit = $hasEditPermission && !$isPastDate && (!empty($group_code) || $production_code != 'PXV1');
 @endphp
 
 <div class="content-wrapper">
@@ -375,7 +375,8 @@
             <form action="{{ route('pages.assignment.production.index') }}" method="GET" class="form-inline">
                 <span class="mr-2 font-weight-bold">Tổ:</span>
                 <select name="group_code" class="form-control form-control-sm mr-4 shadow-sm"
-                    style="border: 2px solid #003A4F" onchange="this.form.submit()" {{ $isLocked ? 'disabled' : '' }}>
+                    style="border: 2px solid #003A4F" onchange="this.form.submit()"
+                    {{ $isLocked || $production_code != 'PXV1' ? 'disabled' : '' }}>
                     <option value="">-- Tất cả --</option>
                     @foreach ($groups as $g)
                         <option value="{{ $g->group_code }}" {{ $group_code == $g->group_code ? 'selected' : '' }}>
@@ -394,17 +395,18 @@
                     title="Xem báo cáo tình hình nhân sự hiện tại">
                     <i class="fas fa-chart-bar"></i> Xem báo cáo
                 </button>
+
                 @if ($canEdit)
-                <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task">
-                    <i class="fas fa-plus"></i> Thêm Công Tác Khác
-                </button>
-                <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
-                    title="Sắp xếp tự động nhân sự cho các phòng">
-                    <i class="fas fa-robot"></i> Tự động phân công
-                </button>
-                <button class="btn btn-sm btn-primary shadow-sm ml-2" id="btn-save-all">
-                    <i class="fas fa-save"></i> Lưu toàn bộ lịch
-                </button>
+                    <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task">
+                        <i class="fas fa-plus"></i> Thêm Công Tác Khác
+                    </button>
+                    <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
+                        title="Sắp xếp tự động nhân sự cho các phòng">
+                        <i class="fas fa-robot"></i> Tự động phân công
+                    </button>
+                    <button class="btn btn-sm btn-primary shadow-sm ml-2" id="btn-save-all">
+                        <i class="fas fa-save"></i> Lưu toàn bộ lịch
+                    </button>
                 @endif
                 <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-toggle-theory"
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
@@ -461,7 +463,7 @@
                                             id="{{ $uniqueOsId }}"
                                             {{ $task->assignments->first()->off_stream ?? 0 ? 'checked' : '' }}>
                                         <label class="custom-control-label" for="{{ $uniqueOsId }}"
-                                            style="font-size: 11px; cursor: pointer;">Off-stream</label>
+                                            style="font-size: 11px; cursor: pointer;">Không chính qui</label>
                                     </div>
                                 @endif
                             </td>
@@ -522,7 +524,7 @@
                                                             <input type="number"
                                                                 class="form-control person-count-input"
                                                                 value="{{ $assignment->number_of_employes ?? 0 }}"
-                                                                min="0" title="Số lượng nhân sự cần"
+                                                                min="1" title="Số lượng nhân sự cần"
                                                                 {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                         </div>
                                                     </div>
@@ -1110,7 +1112,10 @@
 
     $(document).ready(function() {
         const productionCode = "{{ $production_code }}";
-        const globalPersonnelOptions = @json($personnel->map(function($p) { return ['id' => $p->id, 'text' => $p->name]; })->values());
+        const globalPersonnelOptions = @json(
+            $personnel->map(function ($p) {
+                    return ['id' => $p->id, 'text' => $p->name];
+                })->values());
 
         function markRoomDirty(row) {
             row.find('.btn-save-room').addClass('is-dirty').removeClass('btn-primary');
@@ -1139,7 +1144,7 @@
                         width: '100%',
                         data: globalPersonnelOptions
                     });
-                    
+
                     let selected = $this.data('selected');
                     if (selected) {
                         $this.val(selected).trigger('change.select2');
@@ -1613,7 +1618,7 @@
                                 <div class="input-group-prepend">
                                     <span class="input-group-text"><i class="fas fa-users"></i></span>
                                 </div>
-                                <input type="number" class="form-control person-count-input" value="0" min="0" title="Số lượng nhân sự cần">
+                                <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
                             </div>
                         </div>
                     </td>
@@ -2055,7 +2060,7 @@
                         </div>
                         <div class="custom-control custom-checkbox mt-2 text-center">
                             <input type="checkbox" class="custom-control-input off-stream-check" id="os_new_${Date.now()}">
-                            <label class="custom-control-label" for="os_new_${Date.now()}" style="font-size: 11px; cursor: pointer;">Off-stream</label>
+                            <label class="custom-control-label" for="os_new_${Date.now()}" style="font-size: 11px; cursor: pointer;">Không chính qui</label>
                         </div>
                     </td>
                     <td class="theory-cell text-left theory-col">
@@ -2077,7 +2082,7 @@
                                                 <div class="input-group-prepend">
                                                     <span class="input-group-text"><i class="fas fa-users"></i></span>
                                                 </div>
-                                                <input type="number" class="form-control person-count-input" value="0" min="0" title="Số lượng nhân sự cần">
+                                                <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
                                             </div>
                                         </div>
                                     </td>

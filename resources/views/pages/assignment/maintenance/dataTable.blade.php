@@ -393,7 +393,7 @@
     }
 
     $hasEditPermission = $hasBasePermission && $canAccessGroup;
-    $canEdit = $hasEditPermission && !$isPastDate && (request()->group_code !== 'EN_ALL');
+    $canEdit = $hasEditPermission && !$isPastDate && request()->group_code !== 'EN_ALL';
 @endphp
 
 <div class="content-wrapper">
@@ -502,7 +502,7 @@
                                             {{ $task->assignments->first()?->off_stream ?? 0 ? 'checked' : '' }}
                                             {{ !$canEdit ? 'disabled' : '' }}>
                                         <label class="custom-control-label" for="{{ $uniqueOsId }}"
-                                            style="font-size: 11px; cursor: pointer;">Off-stream</label>
+                                            style="font-size: 11px; cursor: pointer;">Không chính qui</label>
                                     </div>
                                 @endif
                             </td>
@@ -563,7 +563,7 @@
                                                             <input type="number"
                                                                 class="form-control person-count-input"
                                                                 value="{{ $assignment->number_of_employes ?? 0 }}"
-                                                                min="0" title="Số lượng nhân sự cần"
+                                                                min="1" title="Số lượng nhân sự cần"
                                                                 {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                         </div>
                                                     </div>
@@ -581,14 +581,10 @@
                                                                     <select
                                                                         class="form-control form-control-sm person-select"
                                                                         style="width: 40%"
+                                                                        data-selected="{{ $p_info->personnel_id }}"
                                                                         {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                                         <option value="">-- Chọn người --
                                                                         </option>
-                                                                        @foreach ($personnel as $p)
-                                                                            <option value="{{ $p->id }}"
-                                                                                {{ $p->id == $p_info->personnel_id ? 'selected' : '' }}>
-                                                                                {{ $p->name }}</option>
-                                                                        @endforeach
                                                                     </select>
                                                                     <input type="text"
                                                                         class="form-control form-control-sm person-notif ml-1"
@@ -674,7 +670,7 @@
                                                             </div>
                                                             <input type="number"
                                                                 class="form-control person-count-input" value="1"
-                                                                min="0" title="Số lượng nhân sự cần"
+                                                                min="1" title="Số lượng nhân sự cần"
                                                                 {{ !$canEdit ? 'disabled' : '' }}>
                                                         </div>
                                                     </div>
@@ -690,10 +686,6 @@
                                                                     style="width: 60%"
                                                                     {{ !$canEdit ? 'disabled' : '' }}>
                                                                     <option value="">-- Chọn người --</option>
-                                                                    @foreach ($personnel as $p)
-                                                                        <option value="{{ $p->id }}">
-                                                                            {{ $p->name }}</option>
-                                                                    @endforeach
                                                                 </select>
                                                                 <input type="text"
                                                                     class="form-control form-control-sm person-notif ml-1"
@@ -1165,8 +1157,10 @@
 
     $(document).ready(function() {
         const groupCode = "{{ $group_code }}";
-        const globalPersonnelOptions =
-            `@foreach ($personnel as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach`;
+        const globalPersonnelOptions = @json(
+            $personnel->map(function ($p) {
+                    return ['id' => $p->id, 'text' => $p->name];
+                })->values());
 
         function markRoomDirty(row) {
             row.find('.btn-save-room').addClass('is-dirty').removeClass('btn-primary');
@@ -1186,10 +1180,21 @@
         });
 
         function initSelect2(selector = '.person-select') {
-            $(selector).select2({
-                placeholder: "-- Chọn người --",
-                allowClear: true,
-                width: '100%'
+            $(selector).each(function() {
+                let $this = $(this);
+                if (!$this.hasClass("select2-hidden-accessible")) {
+                    $this.select2({
+                        placeholder: "-- Chọn người --",
+                        allowClear: true,
+                        width: '100%',
+                        data: globalPersonnelOptions
+                    });
+
+                    let selected = $this.data('selected');
+                    if (selected) {
+                        $this.val(selected).trigger('change.select2');
+                    }
+                }
             });
         }
 
@@ -1610,8 +1615,7 @@
                 }
             }
 
-            const personnel_options =
-                `@foreach ($personnel as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach`;
+            const personnel_options = "";
 
             const newRow = $(`
                 <tr class="assignment-item">
@@ -1631,7 +1635,7 @@
                                 <div class="input-group-prepend">
                                     <span class="input-group-text"><i class="fas fa-users"></i></span>
                                 </div>
-                                <input type="number" class="form-control person-count-input" value="1" min="0" title="Số lượng nhân sự cần">
+                                <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
                             </div>
                         </div>
                     </td>
@@ -1641,7 +1645,7 @@
                                 <div class="personnel-label">A</div>
                                 <div style="flex: 1" class="d-flex align-items-center">
                                     <select class="form-control form-control-sm person-select" style="width: 60%">
-                                        <option value="">-- Chọn người --</option>${personnel_options}
+                                        <option value="">-- Chọn người --</option>
                                     </select>
                                     <input type="text" class="form-control form-control-sm person-notif ml-1" 
                                            style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
@@ -2077,7 +2081,7 @@
                         </div>
                         <div class="custom-control custom-checkbox mt-2 text-center">
                             <input type="checkbox" class="custom-control-input off-stream-check" id="os_new_${Date.now()}">
-                            <label class="custom-control-label" for="os_new_${Date.now()}" style="font-size: 11px; cursor: pointer;">Off-stream</label>
+                            <label class="custom-control-label" for="os_new_${Date.now()}" style="font-size: 11px; cursor: pointer;">Không chính qui</label>
                         </div>
                     </td>
                     <td class="theory-cell text-left theory-col">
@@ -2099,7 +2103,7 @@
                                                 <div class="input-group-prepend">
                                                     <span class="input-group-text"><i class="fas fa-users"></i></span>
                                                 </div>
-                                                <input type="number" class="form-control person-count-input" value="1" min="0" title="Số lượng nhân sự cần">
+                                                <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
                                             </div>
                                         </div>
                                     </td>
