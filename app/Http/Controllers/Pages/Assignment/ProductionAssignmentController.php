@@ -13,6 +13,7 @@ class ProductionAssignmentController extends Controller
 {
     public function index(Request $request)
     {
+
         $production_code = session('user')['production_code'];
         $user_group_name = session('user')['group_name'];
         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
@@ -122,6 +123,17 @@ class ProductionAssignmentController extends Controller
 
         $allAssignments = $assignmentQuery->get()->groupBy('room_id');
 
+        // Pre-fetch tất cả assignment_personnel để tránh N+1 Query
+        $allAssignmentIds = $allAssignments->flatten()->pluck('id')->filter()->toArray();
+        $allPersonnelData = collect();
+        if (!empty($allAssignmentIds)) {
+            $allPersonnelData = DB::table('assignment_personnel')
+                ->whereIn('assignment_id', $allAssignmentIds)
+                ->select('assignment_id', 'personnel_id', 'notification')
+                ->get()
+                ->groupBy('assignment_id');
+        }
+
         // 6. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
         //$dailyReportController = app(DailyReportController::class);
         // $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId');
@@ -152,9 +164,7 @@ class ProductionAssignmentController extends Controller
             foreach ($assignments as $a) {
                 $a->is_foreign = ($active_group_code && $a->stage_groups_code != $active_group_code);
                 $a->is_scheduled = !empty($a->stage_plan_id);
-                $a->personnel_data = DB::table('assignment_personnel')
-                    ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification')->get();
+                $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
@@ -237,9 +247,7 @@ class ProductionAssignmentController extends Controller
                 foreach ($groupAssignments as $a) {
                     $a->is_foreign = ($active_group_code && $a->stage_groups_code != $active_group_code);
                     $a->is_scheduled = !empty($a->stage_plan_id);
-                    $a->personnel_data = DB::table('assignment_personnel')
-                        ->where('assignment_id', $a->id)
-                        ->select('personnel_id', 'notification')->get();
+                    $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
                 }

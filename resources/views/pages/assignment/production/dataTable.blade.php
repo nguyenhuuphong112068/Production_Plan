@@ -540,14 +540,10 @@
                                                                     <select
                                                                         class="form-control form-control-sm person-select"
                                                                         style="width: 40%"
+                                                                        data-selected="{{ $p_info->personnel_id }}"
                                                                         {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                                         <option value="">-- Chọn người --
                                                                         </option>
-                                                                        @foreach ($personnel as $p)
-                                                                            <option value="{{ $p->id }}"
-                                                                                {{ $p->id == $p_info->personnel_id ? 'selected' : '' }}>
-                                                                                {{ $p->name }}</option>
-                                                                        @endforeach
                                                                     </select>
                                                                     <input type="text"
                                                                         class="form-control form-control-sm person-notif ml-1"
@@ -648,10 +644,6 @@
                                                                     class="form-control form-control-sm person-select"
                                                                     {{ !$canEdit ? 'disabled' : '' }}>
                                                                     <option value="">-- Chọn người --</option>
-                                                                    @foreach ($personnel as $p)
-                                                                        <option value="{{ $p->id }}">
-                                                                            {{ $p->name }}</option>
-                                                                    @endforeach
                                                                 </select>
                                                             </div>
                                                             @if ($canEdit)
@@ -1118,8 +1110,7 @@
 
     $(document).ready(function() {
         const productionCode = "{{ $production_code }}";
-        const globalPersonnelOptions =
-            `@foreach ($personnel as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach`;
+        const globalPersonnelOptions = @json($personnel->map(function($p) { return ['id' => $p->id, 'text' => $p->name]; })->values());
 
         function markRoomDirty(row) {
             row.find('.btn-save-room').addClass('is-dirty').removeClass('btn-primary');
@@ -1139,10 +1130,21 @@
         });
 
         function initSelect2(selector = '.person-select') {
-            $(selector).select2({
-                placeholder: "-- Chọn người --",
-                allowClear: true,
-                width: '100%'
+            $(selector).each(function() {
+                let $this = $(this);
+                if (!$this.hasClass("select2-hidden-accessible")) {
+                    $this.select2({
+                        placeholder: "-- Chọn người --",
+                        allowClear: true,
+                        width: '100%',
+                        data: globalPersonnelOptions
+                    });
+                    
+                    let selected = $this.data('selected');
+                    if (selected) {
+                        $this.val(selected).trigger('change.select2');
+                    }
+                }
             });
         }
 
@@ -1591,8 +1593,7 @@
                 }
             }
 
-            const personnel_options =
-                `@foreach ($personnel as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach`;
+            const personnel_options = "";
 
             const newRow = $(`
                 <tr class="assignment-item">
@@ -1622,7 +1623,7 @@
                                 <div class="personnel-label">A</div>
                                 <div style="flex: 1" class="d-flex align-items-center">
                                     <select class="form-control form-control-sm person-select" style="width: 60%">
-                                        <option value="">-- Chọn người --</option>${personnel_options}
+                                        <option value="">-- Chọn người --</option>
                                     </select>
                                     <input type="text" class="form-control form-control-sm person-notif ml-1" 
                                            style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
