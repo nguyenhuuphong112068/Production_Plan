@@ -81,13 +81,13 @@
             <!-- Dashboard Section -->
             @php
                 $depMapping = [
-                    'PXV1' => 15,
-                    'PXV2' => 31,
-                    'PXVH' => 30,
-                    'PXDN' => 30,
                     'EN' => 3,
-                    'PXN' => 6,
+                    'QA' => 9,
                     'PXTN' => 6,
+                    'PXV1' => 15,
+                    'PXVH' => 30,
+                    'PXDN' => 34,
+                    'PXV2' => 31,
                 ];
                 $apiDepId = $depMapping[$currentDepartment] ?? 15;
 
@@ -330,8 +330,8 @@
                                 onchange="this.form.submit()">
                                 <option value="">-- Tất cả các Tổ --</option>
                                 @foreach ($groups as $g)
-                                    <option value="{{ $g->id }}"
-                                        {{ $filterGroupId == $g->id ? 'selected' : '' }}>{{ $g->name }}</option>
+                                    <option value="{{ $g->code }}"
+                                        {{ $filterGroupId == $g->code ? 'selected' : '' }}>{{ $g->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -410,14 +410,14 @@
                                                 @php
                                                     $isAlreadyInList = false;
                                                     foreach ($groupPermissions as $gp) {
-                                                        if (explode(':', $gp)[0] == $g->id) {
+                                                        if (explode(':', $gp)[0] == $g->code) {
                                                             $isAlreadyInList = true;
                                                             break;
                                                         }
                                                     }
                                                 @endphp
                                                 @if (!$isAlreadyInList)
-                                                    <option value="{{ $g->id }}">{{ $g->name }}</option>
+                                                    <option value="{{ $g->code }}">{{ $g->name }}</option>
                                                 @endif
                                             @endforeach
                                         </select>
@@ -675,9 +675,10 @@
             const department = '{{ $currentDepartment }}';
             const depId = '{{ $apiDepId }}';
 
-            let url = `http://192.168.1.248:8081/api/personnel/stats/${depId}`;
+            let url = `/quota/personnel/stats/${depId}`;
             let params = {
-                range: range
+                range: range,
+                group_id: '{{ $filterGroupId }}'
             };
 
             if (range === 'day') {

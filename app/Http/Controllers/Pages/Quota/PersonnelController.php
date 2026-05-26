@@ -23,7 +23,120 @@ class PersonnelController extends Controller
 
         session()->put(['title' => 'QUẢN LÝ NHÂN SỰ']);
 
-        return view('pages.quota.personnel.portal', compact('departments'));
+        $today = now();
+        $day = $today->day;
+        if ($day <= 20) {
+            $queryMonth = $today->month;
+            $queryYear = $today->year;
+        } else {
+            $queryMonth = $today->month + 1;
+            $queryYear = $today->year;
+            if ($queryMonth > 12) {
+                $queryMonth = 1;
+                $queryYear++;
+            }
+        }
+        $dayKey = 'day' . $day;
+
+        $depMapping = [
+            'EN' => 3,
+            'QA' => 9,
+            'PXTN' => 6,
+            'PXV1' => 15,
+            'PXVH' => 30,
+            'PXDN' => 34,
+            'PXV2' => 31
+        ];
+
+        $shiftCounts = [];
+
+        foreach ($departments as $d) {
+            $code = $d['code'];
+            $depId = $depMapping[$code] ?? null;
+
+            // Mặc định
+            $shiftCounts[$code] = [
+                'total' => 0,
+                'c1' => 0,
+                'c2' => 0,
+                'c3' => 0,
+                'c4' => 0,
+                'hc' => 0,
+                'p' => 0
+            ];
+
+            if (!$depId) {
+                continue;
+            }
+
+            // Cache trong 5 phút để tránh tải chậm
+            $cacheKey = "portal_shifts_{$code}_{$queryYear}_{$queryMonth}";
+            
+            $personnelData = cache()->remember($cacheKey, 300, function () use ($queryMonth, $queryYear, $depId) {
+                $url = "http://s-webdev:5070/api/shifts/by-department?month={$queryMonth}&year={$queryYear}&department={$depId}";
+                try {
+                    $ctx = stream_context_create(['http' => ['timeout' => 5]]); // 5s timeout
+                    $data = @file_get_contents($url, false, $ctx);
+                    if ($data) {
+                        return json_decode($data, true) ?: [];
+                    }
+                } catch (\Exception $e) {
+                    // Bỏ qua lỗi
+                }
+                return [];
+            });
+
+            if (is_array($personnelData) && count($personnelData) > 0) {
+                // Lọc theo danh sách nhân sự active ở local DB
+                $activeEmployeeCodes = DB::table('employees as e')
+                    ->whereExists(function ($q) use ($code) {
+                        $q->select(DB::raw(1))
+                            ->from('employee_assignments as ea')
+                            ->whereColumn('ea.employees_id', 'e.id')
+                            ->where('ea.production_code', $code)
+                            ->where('ea.active', 1);
+                    })
+                    ->pluck('e.code')
+                    ->toArray();
+
+                if (!empty($activeEmployeeCodes)) {
+                    $activeCodesSet = array_flip($activeEmployeeCodes);
+                    $filteredPersonnelData = [];
+                    foreach ($personnelData as $person) {
+                        $empCode = $person['employeeId'] ?? $person['code'] ?? null;
+                        if ($empCode && isset($activeCodesSet[$empCode])) {
+                            $filteredPersonnelData[] = $person;
+                        }
+                    }
+                    $personnelData = $filteredPersonnelData;
+                } else {
+                    $personnelData = [];
+                }
+
+                $shiftCounts[$code]['total'] = count($personnelData);
+                foreach ($personnelData as $person) {
+                    $shift = isset($person['days'][$dayKey]) ? strtoupper(trim($person['days'][$dayKey])) : '';
+                    if ($shift === '') {
+                        $shift = 'HC';
+                    }
+                    if ($shift === 'C1') {
+                        $shiftCounts[$code]['c1']++;
+                    } elseif ($shift === 'C2') {
+                        $shiftCounts[$code]['c2']++;
+                    } elseif ($shift === 'C3') {
+                        $shiftCounts[$code]['c3']++;
+                    } elseif ($shift === 'C4') {
+                        $shiftCounts[$code]['c4']++;
+                    } elseif ($shift === 'HC') {
+                        $shiftCounts[$code]['hc']++;
+                    } elseif ($shift === 'P') {
+                        $shiftCounts[$code]['p']++;
+                    }
+                }
+            }
+        }
+
+        return view('pages.quota.personnel.portal', compact('departments', 'shiftCounts'));
     }
 
     public function index(Request $request, $department = null)
@@ -321,7 +434,10 @@ class PersonnelController extends Controller
                     $departmentCode = $request->department ?? session('user')['department'] ?? session('user')['production_code'];
                     $isENorQA = in_array($departmentCode, ['EN', 'QA']);
                     if ($isENorQA) {
-                        $groupCode = DB::table('stage_groups')->where('id', $id)->value('code');
+                        $groupCode = DB::table('stage_groups')
+                            ->where('id', $id)
+                            ->orWhere('code', $id)
+                            ->value('code') ?? $id;
                     } else {
                         $groupCode = $id; // Với tổ sản xuất, ID chính là group_code từ list hardcode
                     }
@@ -344,7 +460,7 @@ class PersonnelController extends Controller
                     if ($active == 1) {
                         DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
-                            ->where('group_id', $id)
+                            ->where('group_id', $groupCode)
                             ->where('room_id', '>', 0)
                             ->update(['active' => 1, 'updated_at' => now()]);
                     }
@@ -353,7 +469,7 @@ class PersonnelController extends Controller
                     if ($active == 0) {
                         DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
-                            ->where('group_id', $id)
+                            ->where('group_id', $groupCode)
                             ->where('room_id', '>', 0)
                             ->update(['active' => 0, 'updated_at' => now()]);
                     }
@@ -361,14 +477,14 @@ class PersonnelController extends Controller
                     $exists = DB::table('employee_assignments')
                         ->where('employees_id', $employeeId)
                         ->where('production_code', $productionCode)
-                        ->where('group_id', $id)
+                        ->where('group_id', $groupCode)
                         ->where('room_id', 0)
                         ->exists();
 
                     // Nếu đã có bản ghi Phòng trong tổ này, không cần bản ghi Tổ trống (room_id=0)
                     $hasRooms = DB::table('employee_assignments')
                         ->where('employees_id', $employeeId)
-                        ->where('group_id', $id)
+                        ->where('group_id', $groupCode)
                         ->where('room_id', '>', 0)
                         ->exists();
 
@@ -376,7 +492,7 @@ class PersonnelController extends Controller
                         // Xóa bản ghi Tổ trống nếu nó tồn tại
                         DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
-                            ->where('group_id', $id)
+                            ->where('group_id', $groupCode)
                             ->where('room_id', 0)
                             ->delete();
 
@@ -393,7 +509,7 @@ class PersonnelController extends Controller
                         DB::table('employee_assignments')
                             ->where('employees_id', $employeeId)
                             ->where('production_code', $productionCode)
-                            ->where('group_id', $id)
+                            ->where('group_id', $groupCode)
                             ->where('room_id', 0)
                             ->update([
                                 'is_main' => 1,
@@ -421,7 +537,7 @@ class PersonnelController extends Controller
                             DB::table('employee_assignments')
                                 ->where('id', $placeholderRow->id)
                                 ->update([
-                                    'group_id' => $id,
+                                    'group_id' => $groupCode,
                                     'active' => $active,
                                     'created_by' => $userName,
                                     'updated_at' => now()
@@ -431,7 +547,7 @@ class PersonnelController extends Controller
                                 'employees_id' => $employeeId,
                                 'production_code' => $productionCode,
                                 'is_main' => 1,
-                                'group_id' => $id,
+                                'group_id' => $groupCode,
                                 'room_id' => 0,
                                 'active' => $active,
                                 'created_by' => $userName,
@@ -681,5 +797,243 @@ class PersonnelController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function getStats(Request $request, $depId)
+    {
+        $range = $request->input('range', 'day');
+        $groupId = $request->input('group_id');
+        
+        $activeEmployeeCodes = [];
+        if ($groupId) {
+            $activeEmployeeCodes = DB::table('employee_assignments as ea')
+                ->join('employees as e', 'ea.employees_id', '=', 'e.id')
+                ->where('ea.group_id', $groupId)
+                ->where('ea.active', 1)
+                ->pluck('e.code')
+                ->toArray();
+        } else {
+            $depMapping = [
+                3 => 'EN',
+                9 => 'QA',
+                6 => 'PXTN',
+                15 => 'PXV1',
+                30 => 'PXVH',
+                34 => 'PXDN',
+                31 => 'PXV2'
+            ];
+            $departmentCode = $depMapping[$depId] ?? null;
+            if ($departmentCode) {
+                $activeEmployeeCodes = DB::table('employees as e')
+                    ->whereExists(function ($q) use ($departmentCode) {
+                        $q->select(DB::raw(1))
+                            ->from('employee_assignments as ea')
+                            ->whereColumn('ea.employees_id', 'e.id')
+                            ->where('ea.production_code', $departmentCode)
+                            ->where('ea.active', 1);
+                    })
+                    ->pluck('e.code')
+                    ->toArray();
+            }
+        }
+
+        if ($range === 'day') {
+            $dateStr = $request->input('date', now()->format('Y-m-d'));
+            $date = \Carbon\Carbon::parse($dateStr);
+            $year = $date->year;
+            $month = $date->month;
+            $day = $date->day;
+
+            $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
+
+            $stats = [
+                'hc' => 0, 'c1' => 0, 'c2' => 0, 'c3' => 0, 'c4' => 0, 'p' => 0
+            ];
+
+            foreach ($merged as $person) {
+                $shift = isset($person['days'][$day]) ? strtoupper(trim($person['days'][$day])) : '';
+                if ($shift === '') {
+                    $shift = 'HC';
+                }
+                if ($shift === 'C1') $stats['c1']++;
+                elseif ($shift === 'C2') $stats['c2']++;
+                elseif ($shift === 'C3') $stats['c3']++;
+                elseif ($shift === 'C4') $stats['c4']++;
+                elseif ($shift === 'HC') $stats['hc']++;
+                elseif ($shift === 'P') $stats['p']++;
+            }
+
+            return response()->json([
+                'data' => [$stats]
+            ]);
+
+        } elseif ($range === 'week') {
+            $weekNum = intval($request->input('week', now()->weekOfYear));
+            $year = intval($request->input('year', now()->year));
+
+            $startOfWeek = \Carbon\Carbon::now()->setISODate($year, $weekNum)->startOfWeek();
+            $endOfWeek = $startOfWeek->copy()->endOfWeek();
+
+            $data = [];
+            for ($date = $startOfWeek->copy(); $date->lte($endOfWeek); $date->addDay()) {
+                $dYear = $date->year;
+                $dMonth = $date->month;
+                $dDay = $date->day;
+
+                $merged = $this->getFilteredMergedShifts($dYear, $dMonth, $depId, $activeEmployeeCodes);
+
+                $stats = [
+                    'date' => $date->format('d/m/Y'),
+                    'hc' => 0, 'c1' => 0, 'c2' => 0, 'c3' => 0, 'c4' => 0, 'p' => 0
+                ];
+
+                foreach ($merged as $person) {
+                    $shift = isset($person['days'][$dDay]) ? strtoupper(trim($person['days'][$dDay])) : '';
+                    if ($shift === '') {
+                        $shift = 'HC';
+                    }
+                    if ($shift === 'C1') $stats['c1']++;
+                    elseif ($shift === 'C2') $stats['c2']++;
+                    elseif ($shift === 'C3') $stats['c3']++;
+                    elseif ($shift === 'C4') $stats['c4']++;
+                    elseif ($shift === 'HC') $stats['hc']++;
+                    elseif ($shift === 'P') $stats['p']++;
+                }
+                $data[] = $stats;
+            }
+
+            return response()->json([
+                'data' => $data
+            ]);
+
+        } else { // month
+            $month = intval($request->input('month', now()->month));
+            $year = intval($request->input('year', now()->year));
+
+            $daysInMonth = \Carbon\Carbon::create($year, $month, 1)->daysInMonth;
+
+            $data = [];
+            $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
+
+            for ($dDay = 1; $dDay <= $daysInMonth; $dDay++) {
+                $stats = [
+                    'day_of_month' => $dDay,
+                    'hc' => 0, 'c1' => 0, 'c2' => 0, 'c3' => 0, 'c4' => 0, 'p' => 0
+                ];
+
+                foreach ($merged as $person) {
+                    $shift = isset($person['days'][$dDay]) ? strtoupper(trim($person['days'][$dDay])) : '';
+                    if ($shift === '') {
+                        $shift = 'HC';
+                    }
+                    if ($shift === 'C1') $stats['c1']++;
+                    elseif ($shift === 'C2') $stats['c2']++;
+                    elseif ($shift === 'C3') $stats['c3']++;
+                    elseif ($shift === 'C4') $stats['c4']++;
+                    elseif ($shift === 'HC') $stats['hc']++;
+                    elseif ($shift === 'P') $stats['p']++;
+                }
+                $data[] = $stats;
+            }
+
+            return response()->json([
+                'data' => $data
+            ]);
+        }
+    }
+
+    private function getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes)
+    {
+        $merged = $this->getMergedMonthlyShifts($year, $month, $depId);
+        if (!empty($activeEmployeeCodes)) {
+            $activeCodesSet = array_flip($activeEmployeeCodes);
+            $mergedFiltered = [];
+            foreach ($merged as $person) {
+                if (isset($activeCodesSet[$person['code']])) {
+                    $mergedFiltered[] = $person;
+                }
+            }
+            $merged = $mergedFiltered;
+        }
+        return $merged;
+    }
+
+    private function getMergedMonthlyShifts($year, $month, $depId)
+    {
+        $cacheKey = "merged_shifts_{$depId}_{$year}_{$month}";
+        return cache()->remember($cacheKey, 300, function () use ($year, $month, $depId) {
+            $url1 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
+            $data1 = [];
+            try {
+                $ctx = stream_context_create(['http' => ['timeout' => 5]]);
+                $res = @file_get_contents($url1, false, $ctx);
+                if ($res) {
+                    $data1 = json_decode($res, true) ?: [];
+                }
+            } catch (\Exception $e) {}
+
+            $nextMonth = $month + 1;
+            $nextYear = $year;
+            if ($nextMonth > 12) {
+                $nextMonth = 1;
+                $nextYear++;
+            }
+            $url2 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$depId}";
+            $data2 = [];
+            try {
+                $ctx = stream_context_create(['http' => ['timeout' => 5]]);
+                $res = @file_get_contents($url2, false, $ctx);
+                if ($res) {
+                    $data2 = json_decode($res, true) ?: [];
+                }
+            } catch (\Exception $e) {}
+
+            $empShifts = [];
+            foreach ($data1 as $person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
+                if ($code) {
+                    $empShifts[$code] = [
+                        'name' => $person['employeeName'] ?? '',
+                        'days' => $person['days'] ?? []
+                    ];
+                }
+            }
+
+            $empShiftsNext = [];
+            foreach ($data2 as $person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
+                if ($code) {
+                    $empShiftsNext[$code] = [
+                        'name' => $person['employeeName'] ?? '',
+                        'days' => $person['days'] ?? []
+                    ];
+                }
+            }
+
+            $allCodes = array_unique(array_merge(array_keys($empShifts), array_keys($empShiftsNext)));
+
+            $merged = [];
+            foreach ($allCodes as $code) {
+                $days = [];
+                $name = $empShifts[$code]['name'] ?? ($empShiftsNext[$code]['name'] ?? '');
+
+                for ($d = 1; $d <= 20; $d++) {
+                    $dayKey = 'day' . $d;
+                    $days[$d] = $empShifts[$code]['days'][$dayKey] ?? null;
+                }
+                for ($d = 21; $d <= 31; $d++) {
+                    $dayKey = 'day' . $d;
+                    $days[$d] = $empShiftsNext[$code]['days'][$dayKey] ?? null;
+                }
+
+                $merged[] = [
+                    'code' => $code,
+                    'name' => $name,
+                    'days' => $days
+                ];
+            }
+
+            return $merged;
+        });
     }
 }

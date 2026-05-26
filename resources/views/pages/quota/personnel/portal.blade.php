@@ -101,6 +101,45 @@
             margin: 0 auto;
             border-radius: 2px;
         }
+
+        /* Shift badges styles */
+        .shift-badges-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .portal-shift-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .portal-shift-badge.shift-total {
+            background-color: #003a4f;
+            width: 100%;
+            margin-bottom: 5px;
+            font-size: 0.78rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .portal-shift-badge.shift-c1 { background-color: #28a745; }
+        .portal-shift-badge.shift-c2 { background-color: #007bff; }
+        .portal-shift-badge.shift-c3 { background-color: #dc3545; }
+        .portal-shift-badge.shift-c4 { background-color: #6f42c1; }
+        .portal-shift-badge.shift-hc { background-color: #ffc107; color: #212529; }
+        .portal-shift-badge.shift-p { background-color: #6c757d; }
     </style>
     <div class="content-wrapper">
         <div class="portal-container">
@@ -112,9 +151,38 @@
 
                 <div class="portal-card-grid">
                     @foreach ($departments as $d)
+                        @php
+                            $counts = $shiftCounts[$d['code']] ?? [
+                                'total' => 0, 'c1' => 0, 'c2' => 0, 'c3' => 0, 'c4' => 0, 'hc' => 0, 'p' => 0
+                            ];
+                        @endphp
                         <a href="{{ route('pages.quota.personnel.list', ['department' => $d['code']]) }}" class="portal-card">
                             <i class="{{ $d['icon'] }}"></i>
                             <h5>{{ $d['name'] }}</h5>
+                            
+                            <div class="shift-badges-container">
+                                <span class="portal-shift-badge shift-total" title="Tổng nhân sự">
+                                    Tổng: {{ $counts['total'] }}
+                                </span>
+                                <span class="portal-shift-badge shift-c1" title="Ca 1">
+                                    C1: {{ $counts['c1'] }}
+                                </span>
+                                <span class="portal-shift-badge shift-c2" title="Ca 2">
+                                    Ca2: {{ $counts['c2'] }}
+                                </span>
+                                <span class="portal-shift-badge shift-c3" title="Ca 3">
+                                    Ca3: {{ $counts['c3'] }}
+                                </span>
+                                <span class="portal-shift-badge shift-c4" title="Ca 4">
+                                    C4: {{ $counts['c4'] }}
+                                </span>
+                                <span class="portal-shift-badge shift-hc" title="Hành chính">
+                                    HC: {{ $counts['hc'] }}
+                                </span>
+                                <span class="portal-shift-badge shift-p" title="Nghỉ phép">
+                                    P: {{ $counts['p'] }}
+                                </span>
+                            </div>
                         </a>
                     @endforeach
                 </div>
