@@ -16,7 +16,7 @@ class PersonnelController extends Controller
             ['code' => 'PXV2', 'name' => 'Phân Xưởng Viên 2', 'icon' => 'fas fa-capsules'],
             ['code' => 'PXVH', 'name' => 'Phân Xưởng Hormone', 'icon' => 'fas fa-tablets'],
             ['code' => 'PXTN', 'name' => 'Phân Xưởng Thuốc Nước', 'icon' => 'fas fa-wine-bottle'],
-            ['code' => 'PXDN', 'name' => 'Phân Xưởng Dùng Ngoài', 'icon' => 'fas fa-thermometer'],
+            ['code' => 'PXDN', 'name' => 'Phân Xưởng Dùng Ngoài', 'icon' => 'svg-tube'],
             ['code' => 'EN', 'name' => 'Kỹ Thuật Bảo Trì (EN)', 'icon' => 'fas fa-wrench'],
             ['code' => 'QA', 'name' => 'Đảm Bảo Chất Lượng (QA)', 'icon' => 'fas fa-clipboard-check'],
         ];

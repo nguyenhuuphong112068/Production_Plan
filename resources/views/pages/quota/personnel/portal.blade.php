@@ -162,7 +162,7 @@
                             ];
                         @endphp
                         <a href="{{ route('pages.quota.personnel.list', ['department' => $d['code']]) }}" class="portal-card">
-                            @if($d['code'] === 'PXDN')
+                            @if($d['icon'] === 'svg-tube')
                                 <svg class="portal-card-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="6" y1="2" x2="18" y2="2" />
                                     <line x1="6" y1="4" x2="18" y2="4" stroke-width="1" />
