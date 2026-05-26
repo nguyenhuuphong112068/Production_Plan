@@ -228,7 +228,10 @@ class PersonnelController extends Controller
             })->values();
         }
         //dd($groups);
-        $rooms = DB::table('room')->where('deparment_code', $departmentCode)->get();
+        $rooms = DB::table('room')
+            ->where('deparment_code', $departmentCode)
+            ->where('only_maintenance', 0)
+            ->get();
 
         $viewName = $isENorQA ? 'pages.quota.personnel.en_qa_list' : 'pages.quota.personnel.list';
         // dd($datas, $groups);
@@ -570,12 +573,18 @@ class PersonnelController extends Controller
                     $roomId = $parts[0];
                     $level = $parts[1] ?? 1;
                     $active = $parts[2] ?? 1;
+                    $submittedGroupId = $parts[3] ?? null;
 
                     // Lấy thông tin PX và Tổ từ bảng room
                     $room = DB::table('room')->where('id', $roomId)->first();
                     $productionCode = $room->deparment_code ?? '';
-                    $groupCode = $room->group_code ?? '';
-                    $groupId = DB::table('stage_groups')->where('code', $groupCode)->value('id') ?? 0;
+                    
+                    if ($submittedGroupId) {
+                        $groupId = $submittedGroupId;
+                    } else {
+                        $groupCode = $room->group_code ?? '';
+                        $groupId = DB::table('stage_groups')->where('code', $groupCode)->value('id') ?? 0;
+                    }
 
                     // Nếu gán phòng, tự động xóa các bản ghi cấp cha "trống" (Placeholder)
                     if ($active == 1) {

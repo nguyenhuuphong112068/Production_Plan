@@ -1020,9 +1020,14 @@
             const selectedGroupIds = [groupId.toString()];
             const selectedCodes = groupsData
                 .filter(g => selectedGroupIds.includes(g.id.toString()))
-                .map(g => g.code);
+                .map(g => g.code.toString());
 
-            const filteredRooms = roomsData.filter(r => selectedCodes.includes(r.group_code));
+            // ĐGTC (8) được phép chọn phòng của ĐGSC (7)
+            if (selectedCodes.includes('8') && !selectedCodes.includes('7')) {
+                selectedCodes.push('7');
+            }
+
+            const filteredRooms = roomsData.filter(r => selectedCodes.includes(r.group_code ? r.group_code.toString() : ''));
             const alreadySelectedIds = [];
             $tr.find('.room-id-select').each(function() {
                 const val = $(this).val();
@@ -1155,13 +1160,14 @@
                 const rId = $row.find('.room-id-select').val();
                 const rLvl = $row.find('.room-level-select').val();
                 const rActive = $row.attr('data-active') || '1';
+                const rGroupId = $row.attr('data-group-id') || $row.data('group-id');
 
                 if (rId && rId !== "") {
                     if (selectedRoomIds.has(rId)) {
                         duplicateFound = true;
                     } else {
                         selectedRoomIds.add(rId);
-                        idsWithLevels.push(rId + ':' + rLvl + ':' + rActive);
+                        idsWithLevels.push(rId + ':' + rLvl + ':' + rActive + ':' + rGroupId);
                     }
                 }
             });
