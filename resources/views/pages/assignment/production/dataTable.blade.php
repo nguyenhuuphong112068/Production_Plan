@@ -446,8 +446,9 @@
                             <td class="room-name-cell">
                                 <div><b>{{ $task->room_code }}</b></div>
                                 <div>{{ $task->room_name }}</div>
-                                @if(!empty($task->main_equiment_name))
-                                    <div class="text-muted" style="font-size: 0.85em;">{{ $task->main_equiment_name }}</div>
+                                @if (!empty($task->main_equiment_name))
+                                    <div class="text-muted" style="font-size: 0.85em;">{{ $task->main_equiment_name }}
+                                    </div>
                                 @endif
                                 <div class="mt-2 text-center">
                                     <button class="btn btn-outline-success btn-circle btn-add-shift"

@@ -28,6 +28,7 @@ class MaintenanceHistoryController extends Controller
                 'room.name as room_name',
                 'room.code as room_code',
                 'room.stage as stage',
+                'qm.inst_id as instrument_code'
             )
             ->where('sp.deparment_code', $productionCode)
             ->where('sp.actual_start', '>=', $fromDate)
@@ -64,15 +65,15 @@ class MaintenanceHistoryController extends Controller
                     }
                 }
             }
-
-            $datas->map(function ($item) use ($instruments) {
-                $inst = $instruments[$item->instrument_code] ?? null;
-                $item->name = $inst->Inst_Name ?? $item->title;
-                $item->parent_instrument_code = $inst->Parent_Equip_id ?? '';
-                $item->parent_instrument_name = $inst->Eqp_name ?? '';
-                return $item;
-            });
         }
+
+        $datas->map(function ($item) use ($instruments) {
+            $inst = isset($item->instrument_code) ? ($instruments[$item->instrument_code] ?? null) : null;
+            $item->name = $inst->Inst_Name ?? $item->title;
+            $item->parent_instrument_code = $inst->Parent_Equip_id ?? '';
+            $item->parent_instrument_name = $inst->Eqp_name ?? '';
+            return $item;
+        });
 
         $title = 'LỊCH SỬ BẢO TRÌ - HIỆU CHUẨN';
         session()->put(['title' => $title]);

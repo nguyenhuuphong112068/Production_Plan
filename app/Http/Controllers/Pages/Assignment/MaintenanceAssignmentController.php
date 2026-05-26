@@ -383,15 +383,73 @@ class MaintenanceAssignmentController extends Controller
             $data = file_get_contents($url);
             $personnelData = json_decode($data, true);
 
-            // Lấy thông tin hasAssignment từ bảng employees local
-            $localEmployees = DB::table('employees')->select('code', 'hasAssignment')->get()->keyBy('code');
+            if (is_array($personnelData)) {
+                // Lấy dữ liệu đi ca của tháng sau (month + 1) để điền cho day21 - day31
+                $nextMonth = intval($month) + 1;
+                $nextYear = intval($year);
+                if ($nextMonth > 12) {
+                    $nextMonth = 1;
+                    $nextYear += 1;
+                }
 
-            foreach ($personnelData as &$person) {
-                $code = $person['employeeId'] ?? $person['code'] ?? null;
-                if ($code && isset($localEmployees[$code])) {
-                    $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
-                } else {
-                    $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
+                $urlNext = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$departmentId}";
+                $personnelDataNext = [];
+                try {
+                    $ctx = stream_context_create(['http' => ['timeout' => 5]]);
+                    $dataNext = @file_get_contents($urlNext, false, $ctx);
+                    if ($dataNext) {
+                        $personnelDataNext = json_decode($dataNext, true) ?: [];
+                    }
+                } catch (\Exception $exNext) {
+                    // Bỏ qua lỗi lấy dữ liệu tháng tiếp theo nếu chưa có lịch
+                }
+
+                // Index nhân sự tháng tiếp theo theo employeeId / code
+                $nextMonthEmployees = [];
+                foreach ($personnelDataNext as $person) {
+                    $code = $person['employeeId'] ?? $person['code'] ?? null;
+                    if ($code) {
+                        $nextMonthEmployees[$code] = $person;
+                    }
+                }
+
+                // Lấy thông tin hasAssignment từ bảng employees local
+                $localEmployees = DB::table('employees')->select('code', 'hasAssignment')->get()->keyBy('code');
+
+                foreach ($personnelData as &$person) {
+                    $code = $person['employeeId'] ?? $person['code'] ?? null;
+
+                    // Ghép logic: day1-day20 từ tháng $month, day21-day31 từ tháng $month+1
+                    $originalDays = $person['days'] ?? [];
+                    $newDays = [];
+
+                    for ($i = 1; $i <= 20; $i++) {
+                        $dayKey = 'day' . $i;
+                        $newDays[$dayKey] = $originalDays[$dayKey] ?? null;
+                    }
+
+                    if ($code && isset($nextMonthEmployees[$code])) {
+                        $nextPersonDays = $nextMonthEmployees[$code]['days'] ?? [];
+                        for ($i = 21; $i <= 31; $i++) {
+                            $dayKey = 'day' . $i;
+                            $newDays[$dayKey] = $nextPersonDays[$dayKey] ?? null;
+                        }
+                    } else {
+                        // Fallback: nếu không lấy được tháng sau thì giữ nguyên dữ liệu gốc
+                        for ($i = 21; $i <= 31; $i++) {
+                            $dayKey = 'day' . $i;
+                            $newDays[$dayKey] = $originalDays[$dayKey] ?? null;
+                        }
+                    }
+
+                    $person['days'] = $newDays;
+
+                    // Gán hasAssignment
+                    if ($code && isset($localEmployees[$code])) {
+                        $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
+                    } else {
+                        $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
+                    }
                 }
             }
 
