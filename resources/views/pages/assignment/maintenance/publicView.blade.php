@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/font-awesome/css/all.min.css') }}">
     <!-- Bootstrap -->
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ asset('img/iconstella.svg') }}">
 
     <style>
         body {

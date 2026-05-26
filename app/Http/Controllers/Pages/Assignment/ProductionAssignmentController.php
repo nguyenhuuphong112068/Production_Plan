@@ -311,6 +311,12 @@ class ProductionAssignmentController extends Controller
 
         session()->put(['title' => 'LỊCH CÔNG TÁC SẢN XUẤT']);
 
+        $allRooms = DB::table('room')
+            ->where('deparment_code', $production_code)
+            ->orderBy('group_code')
+            ->orderBy('order_by')
+            ->get();
+
         return view('pages.assignment.production.index', [
             'tasks' => $tasks,
             'reportedDate' => $reportedDate,
@@ -320,7 +326,8 @@ class ProductionAssignmentController extends Controller
             'personnel' => $personnel,
             'skills' => $skills, // Truyền dữ liệu bậc kỹ năng
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
-            'rooms' => $rooms
+            'rooms' => $rooms,
+            'allRooms' => $allRooms
         ]);
     }
 
@@ -514,20 +521,6 @@ class ProductionAssignmentController extends Controller
                         'active' => 1
                     ]);
 
-                    // Cập nhật lại định mức ở bảng room tương ứng với ca
-                    $shiftCode = $row['shift'];
-                    $roomCol = null;
-                    if ($shiftCode == '1') $roomCol = 'number_of_employes_on_sheet1';
-                    elseif ($shiftCode == '2') $roomCol = 'number_of_employes_on_sheet2';
-                    elseif ($shiftCode == '3') $roomCol = 'number_of_employes_on_sheet3';
-                    elseif ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4';
-                    elseif ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular';
-                    if ($roomCol && isset($row['number_of_employes'])) {
-                        $employes_count = max(1, (int)$row['number_of_employes']);
-                        DB::table('room')->where('id', $room_id)->update([
-                            $roomCol => $employes_count
-                        ]);
-                    }
 
                     // Lưu danh sách nhân sự
                     $unique_p_data = collect($p_data)->unique('personnel_id');
@@ -590,13 +583,33 @@ class ProductionAssignmentController extends Controller
             ->orderBy('group_code')
             ->get();
 
+        // Split ĐGSC and ĐGTC
+        $hasGroup7 = false;
+        foreach ($groups as $g) {
+            if ($g->group_code == 7) {
+                $g->production_group = 'ĐGSC';
+                $hasGroup7 = true;
+            }
+        }
+        if ($hasGroup7 && !$groups->contains('group_code', 8)) {
+            $groups->push((object)[
+                'group_code' => 8,
+                'production_group' => 'ĐGTC'
+            ]);
+            $groups = $groups->sortBy('group_code')->values();
+        }
+
         // 2. Lấy danh sách phòng (có lọc theo tổ)
         $roomQuery = DB::table('room')
             ->where('deparment_code', $production_code)
             ->where('only_maintenance', 0);
 
         if ($group_code) {
-            $roomQuery->where('group_code', $group_code);
+            if ($group_code == 7 || $group_code == 8) {
+                $roomQuery->whereIn('group_code', [7, 8]);
+            } else {
+                $roomQuery->where('group_code', $group_code);
+            }
         }
 
         $rooms = $roomQuery->orderBy('group_code')->orderBy('order_by')->get();
@@ -630,12 +643,20 @@ class ProductionAssignmentController extends Controller
             ->groupBy('room_id');
 
         // 4. Lấy dữ liệu đã phân công
-        $allAssignments = DB::table('assignments as a')
+        $assignmentsQuery = DB::table('assignments as a')
             ->where('a.deparment_code', $production_code)
             ->whereDate('a.start', $reportedDate)
-            ->where('a.active', 1)
-            ->get()
-            ->groupBy('room_id');
+            ->where('a.active', 1);
+
+        if ($group_code) {
+            if ($group_code == 7 || $group_code == 8) {
+                $assignmentsQuery->whereIn('a.stage_groups_code', [7, 8]);
+            } else {
+                $assignmentsQuery->where('a.stage_groups_code', $group_code);
+            }
+        }
+
+        $allAssignments = $assignmentsQuery->get()->groupBy('room_id');
 
         // 5. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
         $dailyReportController = app(DailyReportController::class);
@@ -668,6 +689,7 @@ class ProductionAssignmentController extends Controller
                 'room_id' => $room->id,
                 'room_code' => $room->code,
                 'room_name' => $room->name,
+                'main_equiment_name' => $room->main_equiment_name ?? null,
                 'theory_display' => $theoryDisplay,
                 'assignments' => $assignments,
                 'actual_details' => $actuals
@@ -691,6 +713,7 @@ class ProductionAssignmentController extends Controller
                     'room_id' => null,
                     'room_code' => 'NA',
                     'room_name' => 'Công tác khác',
+                    'main_equiment_name' => null,
                     'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',
                     'assignments' => $groupAssignments->sortBy('start'),
                     'actual_details' => collect()

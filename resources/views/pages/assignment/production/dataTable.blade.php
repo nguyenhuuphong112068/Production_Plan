@@ -1334,7 +1334,13 @@
             }
         }
 
-        function checkRoomAuthorization(personId, roomId, callback) {
+        function checkRoomAuthorization(personId, roomId, $roomRow, callback) {
+            // Bỏ qua kiểm tra định mức cho "Công tác khác"
+            if ($roomRow && ($roomRow.find('.room-select-custom').length > 0 || ($roomRow.attr('data-sp-id') && $roomRow.attr('data-sp-id').startsWith('EXT_')))) {
+                callback(true);
+                return;
+            }
+
             if (!roomId) {
                 callback(true);
                 return;
@@ -1394,7 +1400,7 @@
                         .val();
 
                     // 1. Kiểm tra định mức phòng (Authorization)
-                    checkRoomAuthorization(personId, roomId, function(isAuthorized) {
+                    checkRoomAuthorization(personId, roomId, $roomRow, function(isAuthorized) {
                         if (!isAuthorized) return;
 
                         // 2. Kiểm tra lệch ca (Shift Mismatch)
@@ -1458,7 +1464,7 @@
                     const targetShiftCode = $el.closest('.assignment-item').find('.shift-select').val();
 
                     // 1. Kiểm tra định mức phòng
-                    checkRoomAuthorization(personId, roomId, function(isAuthorized) {
+                    checkRoomAuthorization(personId, roomId, $roomRow, function(isAuthorized) {
                         if (!isAuthorized) {
                             isProgrammaticChange = true;
                             $el.val(null).trigger('change');
@@ -2060,7 +2066,7 @@
         $(document).on('click', '#btn-add-custom-task', function() {
             const customSpId = 'EXT_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
             const room_options =
-                `@foreach ($rooms as $r)<option value="{{ $r->id }}">{{ $r->code }} - {{ $r->name }}</option>@endforeach`;
+                `@foreach ($allRooms as $r)<option value="{{ $r->id }}">{{ $r->code }} - {{ $r->name }}</option>@endforeach`;
 
             const newRoomRow = $(`
                 <tr class="room-row" data-sp-id="${customSpId}" data-room-id="">

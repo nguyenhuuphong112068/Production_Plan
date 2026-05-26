@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/font-awesome/css/all.min.css') }}">
     <!-- Bootstrap -->
     <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ asset('img/iconstella.svg') }}">
 
     <style>
         body {
@@ -61,7 +62,7 @@
             text-align: center;
             border: 1px solid #aaa !important;
             padding: 10px 5px;
-            font-size: 0.95rem;
+            font-size: 1.1rem;
         }
 
         .table-assignment tbody td {
@@ -75,6 +76,7 @@
             font-weight: bold;
             text-align: center;
             padding: 10px !important;
+            font-size: 1.1rem;
         }
 
         .theory-cell {
@@ -96,7 +98,7 @@
             border-bottom: 1px solid var(--border-color) !important;
             padding: 10px !important;
             vertical-align: top !important;
-            text-align: left !important;
+            font-size: 1.1rem;
         }
 
         .assignment-inner-table tr:last-child td {
@@ -108,10 +110,15 @@
             padding: 10px;
             text-align: left !important;
             white-space: pre-wrap;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: bold;
             display: block;
             width: 100%;
+        }
+        
+        .job-desc.multi-col {
+            column-count: 2;
+            column-gap: 20px;
         }
 
         .job-desc * {
@@ -170,15 +177,15 @@
         }
 
         .personnel-label {
-            width: 18px;
-            height: 18px;
+            width: 22px;
+            height: 22px;
             background-color: #003A4F;
             color: white;
             border-radius: 50%;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
             margin-right: 5px;
             flex-shrink: 0;
@@ -259,11 +266,11 @@
         <table class="table table-assignment w-100">
             <thead>
                 <tr>
-                    <th style="width: 10%">Phòng / Thiết Bị</th>
-                    <th style="width: 15%">Ca / Thời Gian</th>
-                    <th style="width: 45%">Nội Dung Phân Công</th>
-                    <th style="width: 15%">Người thực Hiện</th>
-                    <th style="width: 15%">Ghi chú / Lưu ý</th>
+                    <th style="width: 8%">Phòng / Thiết Bị</th>
+                    <th style="width: 10%">Ca / Thời Gian</th>
+                    <th style="width: 60%">Nội Dung Phân Công</th>
+                    <th style="width: 12%">Người thực Hiện</th>
+                    <th style="width: 10%">Ghi chú / Lưu ý</th>
                 </tr>
             </thead>
             <tbody>
@@ -280,6 +287,10 @@
                         <td class="room-name-cell">
                             <div class="d-block">{{ $task->room_code }}</div>
                             <div class="text-muted">{{ $task->room_name }}</div>
+                            @if (!empty($task->main_equiment_name))
+                                <div class="text-muted font-italic" style="font-size: 0.95rem;">
+                                    {{ $task->main_equiment_name }}</div>
+                            @endif
                         </td>
 
                         <td colspan="4" class="p-0">
@@ -288,22 +299,29 @@
                             @else
                                 <table class="table assignment-inner-table">
                                     <colgroup>
-                                        <col style="width: 16.7%"> {{-- Ca/Thời gian (15%) --}}
-                                        <col style="width: 50.0%"> {{-- Nội dung (45%) --}}
-                                        <col style="width: 16.7%"> {{-- Người thực hiện (15%) --}}
-                                        <col style="width: 16.6%"> {{-- Ghi chú (15%) --}}
+                                        <col style="width: 10.9%"> {{-- Ca/Thời gian --}}
+                                        <col style="width: 65.2%"> {{-- Nội dung --}}
+                                        <col style="width: 13.0%"> {{-- Người thực hiện --}}
+                                        <col style="width: 10.9%"> {{-- Ghi chú --}}
                                     </colgroup>
                                     <tbody>
                                         @foreach ($task->assignments as $a)
                                             <tr>
                                                 <!-- Ca làm việc -->
-                                                <td>
+                                                <td class="text-center">
                                                     <div class="font-weight-bold">Ca {{ $a->Sheet ?? '-' }}</div>
                                                     <small class="text-primary">{{ $a->start_time_display }} -
                                                         {{ $a->end_time_display }}</small>
                                                 </td>
 
-                                                <td><div class="job-desc">{!! trim($a->Job_description) !!}</div></td>
+                                                <td>
+                                                    @php
+                                                        $jobText = trim($a->Job_description);
+                                                        $lines = preg_split("/\r\n|\n|\r|<br\s*\/?>/i", $jobText);
+                                                        $linesCount = count(array_filter($lines, 'trim'));
+                                                    @endphp
+                                                    <div class="job-desc {{ $linesCount > 1 ? 'multi-col' : '' }}">{!! $jobText !!}</div>
+                                                </td>
 
                                                 <!-- Người thực hiện -->
                                                 <td>
@@ -381,7 +399,7 @@
                                     </tfoot>
                                 </table>
                             @endif
-                        {{--
+                            {{--
                         <td class="text-left" style="background:#d7eaff; font-size:12px; padding: 10px !important;">
                             @if (count($task->actual_details ?? []) > 0)
                                 @php $idx = 1; @endphp
