@@ -633,13 +633,13 @@
                                     <p> Báo Cáo Ngày SX </p>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            {{-- <li class="nav-item">
                                 <a href="{{ route('pages.report.maintenance_daily_report.index') }}"
                                     class="nav-link">
                                     <i class="far fa-circle nav-icon text-warning"></i>
                                     <p> Báo Cáo Ngày BT </p>
                                 </a>
-                            </li>
+                            </li> --}}
                             @if (user_has_permission(session('user')['userId'], 'layout_weekly_report', 'boolean'))
                                 <li class="nav-item">
                                     <a href="{{ route('pages.report.weekly_report.index') }}" class="nav-link">
