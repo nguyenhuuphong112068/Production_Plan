@@ -56,14 +56,19 @@
             border-color: #007bff;
         }
 
-        .portal-card i {
+        .portal-card i,
+        .portal-card-svg {
             font-size: 3.5rem;
+            width: 3.5rem;
+            height: 3.5rem;
             margin-bottom: 20px;
             color: #003A4F;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, color 0.3s ease;
+            display: inline-block;
         }
 
-        .portal-card:hover i {
+        .portal-card:hover i,
+        .portal-card:hover .portal-card-svg {
             transform: scale(1.1);
             color: #007bff;
         }
@@ -157,7 +162,16 @@
                             ];
                         @endphp
                         <a href="{{ route('pages.quota.personnel.list', ['department' => $d['code']]) }}" class="portal-card">
-                            <i class="{{ $d['icon'] }}"></i>
+                            @if($d['code'] === 'PXDN')
+                                <svg class="portal-card-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="6" y1="2" x2="18" y2="2" />
+                                    <line x1="6" y1="4" x2="18" y2="4" stroke-width="1" />
+                                    <path d="M 6,2 L 18,2 L 16,15 C 16,17.5 14,19 12,19 C 10,19 8,17.5 8,15 Z" fill="currentColor" stroke="none" />
+                                    <rect x="10" y="19" width="4" height="4" rx="1" fill="currentColor" stroke="none" />
+                                </svg>
+                            @else
+                                <i class="{{ $d['icon'] }}"></i>
+                            @endif
                             <h5>{{ $d['name'] }}</h5>
                             
                             <div class="shift-badges-container">

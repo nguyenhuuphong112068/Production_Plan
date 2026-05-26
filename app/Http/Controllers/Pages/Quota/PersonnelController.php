@@ -12,11 +12,11 @@ class PersonnelController extends Controller
     public function portal()
     {
         $departments = [
-            ['code' => 'PXV1', 'name' => 'Phân Xưởng Viên 1', 'icon' => 'fas fa-tablets'],
+            ['code' => 'PXV1', 'name' => 'Phân Xưởng Viên 1', 'icon' => 'fas fa-pills'],
             ['code' => 'PXV2', 'name' => 'Phân Xưởng Viên 2', 'icon' => 'fas fa-capsules'],
-            ['code' => 'PXVH', 'name' => 'Phân Xưởng Hormone', 'icon' => 'fas fa-microscope'],
-            ['code' => 'PXTN', 'name' => 'Phân Xưởng Thuốc Nước', 'icon' => 'fas fa-tint'],
-            ['code' => 'PXDN', 'name' => 'Phân Xưởng Dùng Ngoài', 'icon' => 'fas fa-flask'],
+            ['code' => 'PXVH', 'name' => 'Phân Xưởng Hormone', 'icon' => 'fas fa-tablets'],
+            ['code' => 'PXTN', 'name' => 'Phân Xưởng Thuốc Nước', 'icon' => 'fas fa-wine-bottle'],
+            ['code' => 'PXDN', 'name' => 'Phân Xưởng Dùng Ngoài', 'icon' => 'fas fa-thermometer'],
             ['code' => 'EN', 'name' => 'Kỹ Thuật Bảo Trì (EN)', 'icon' => 'fas fa-wrench'],
             ['code' => 'QA', 'name' => 'Đảm Bảo Chất Lượng (QA)', 'icon' => 'fas fa-clipboard-check'],
         ];
@@ -71,7 +71,7 @@ class PersonnelController extends Controller
 
             // Cache trong 5 phút để tránh tải chậm
             $cacheKey = "portal_shifts_{$code}_{$queryYear}_{$queryMonth}";
-            
+
             $personnelData = cache()->remember($cacheKey, 300, function () use ($queryMonth, $queryYear, $depId) {
                 $url = "http://s-webdev:5070/api/shifts/by-department?month={$queryMonth}&year={$queryYear}&department={$depId}";
                 try {
@@ -578,7 +578,7 @@ class PersonnelController extends Controller
                     // Lấy thông tin PX và Tổ từ bảng room
                     $room = DB::table('room')->where('id', $roomId)->first();
                     $productionCode = $room->deparment_code ?? '';
-                    
+
                     if ($submittedGroupId) {
                         $groupId = $submittedGroupId;
                     } else {
@@ -812,7 +812,7 @@ class PersonnelController extends Controller
     {
         $range = $request->input('range', 'day');
         $groupId = $request->input('group_id');
-        
+
         $activeEmployeeCodes = [];
         if ($groupId) {
             $activeEmployeeCodes = DB::table('employee_assignments as ea')
@@ -856,7 +856,12 @@ class PersonnelController extends Controller
             $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
 
             $stats = [
-                'hc' => 0, 'c1' => 0, 'c2' => 0, 'c3' => 0, 'c4' => 0, 'p' => 0
+                'hc' => 0,
+                'c1' => 0,
+                'c2' => 0,
+                'c3' => 0,
+                'c4' => 0,
+                'p' => 0
             ];
 
             foreach ($merged as $person) {
@@ -875,7 +880,6 @@ class PersonnelController extends Controller
             return response()->json([
                 'data' => [$stats]
             ]);
-
         } elseif ($range === 'week') {
             $weekNum = intval($request->input('week', now()->weekOfYear));
             $year = intval($request->input('year', now()->year));
@@ -893,7 +897,12 @@ class PersonnelController extends Controller
 
                 $stats = [
                     'date' => $date->format('d/m/Y'),
-                    'hc' => 0, 'c1' => 0, 'c2' => 0, 'c3' => 0, 'c4' => 0, 'p' => 0
+                    'hc' => 0,
+                    'c1' => 0,
+                    'c2' => 0,
+                    'c3' => 0,
+                    'c4' => 0,
+                    'p' => 0
                 ];
 
                 foreach ($merged as $person) {
@@ -914,7 +923,6 @@ class PersonnelController extends Controller
             return response()->json([
                 'data' => $data
             ]);
-
         } else { // month
             $month = intval($request->input('month', now()->month));
             $year = intval($request->input('year', now()->year));
@@ -927,7 +935,12 @@ class PersonnelController extends Controller
             for ($dDay = 1; $dDay <= $daysInMonth; $dDay++) {
                 $stats = [
                     'day_of_month' => $dDay,
-                    'hc' => 0, 'c1' => 0, 'c2' => 0, 'c3' => 0, 'c4' => 0, 'p' => 0
+                    'hc' => 0,
+                    'c1' => 0,
+                    'c2' => 0,
+                    'c3' => 0,
+                    'c4' => 0,
+                    'p' => 0
                 ];
 
                 foreach ($merged as $person) {
@@ -979,7 +992,8 @@ class PersonnelController extends Controller
                 if ($res) {
                     $data1 = json_decode($res, true) ?: [];
                 }
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
 
             $nextMonth = $month + 1;
             $nextYear = $year;
@@ -995,7 +1009,8 @@ class PersonnelController extends Controller
                 if ($res) {
                     $data2 = json_decode($res, true) ?: [];
                 }
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
 
             $empShifts = [];
             foreach ($data1 as $person) {
