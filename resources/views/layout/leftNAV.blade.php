@@ -731,7 +731,7 @@
                 @endif
 
                 <!-- Droplist Thống Kê -->
-                @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
+                {{-- @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
                     <li class="nav-item has-treeview">
                         <a href="#" class="nav-link">
                             <i class="nav-icon fas fa-chart-bar"></i>
@@ -766,7 +766,7 @@
 
                         </ul>
                     </li>
-                @endif
+                @endif --}}
 
                 <!-- History-->
                 @if (user_has_permission(session('user')['userId'], 'layout_history', 'boolean'))
