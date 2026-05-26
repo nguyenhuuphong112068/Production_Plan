@@ -323,12 +323,7 @@
     }
 
     .draggable-person.person-assigned::after {
-        content: '\f00c';
-        font-family: 'Font Awesome 5 Free';
-        font-weight: 900;
-        float: right;
-        color: #28a745;
-        margin-left: 5px;
+        display: none;
     }
 
     .person-assigned-c1 {
@@ -1533,10 +1528,13 @@
         });
 
         function updateSidebarHighlights() {
-            const assignedIds = new Set();
+            const assignedCounts = {};
             $('.person-select').each(function() {
                 const val = $(this).val();
-                if (val) assignedIds.add(val.toString());
+                if (val) {
+                    const idStr = val.toString();
+                    assignedCounts[idStr] = (assignedCounts[idStr] || 0) + 1;
+                }
             });
 
             $('.draggable-person').each(function() {
@@ -1545,10 +1543,23 @@
                 const $item = $(this);
                 const shiftKey = $item.data('shift-key') ? $item.data('shift-key').toLowerCase() : '';
 
-                if (id && assignedIds.has(id.toString())) {
+                let $badge = $item.find('.assign-count-badge');
+                const count = (id && assignedCounts[id.toString()]) ? assignedCounts[id.toString()] : 0;
+
+                if (count > 0) {
+                    if ($badge.length === 0) {
+                        const $rightSpan = $item.find('.float-right');
+                        $badge = $(`<span class="badge badge-success badge-pill assign-count-badge mr-1" style="font-size: 0.7rem; padding: 2px 5px; background-color: #28a745; color: white;" title="Số lần phân công trong ngày">${count}</span>`);
+                        $rightSpan.prepend($badge);
+                    } else {
+                        $badge.text(count).show();
+                    }
                     $item.addClass('person-assigned');
                     $item.addClass('person-assigned-' + shiftKey);
                 } else {
+                    if ($badge.length > 0) {
+                        $badge.hide();
+                    }
                     $item.removeClass('person-assigned');
                     $item.removeClass(
                         'person-assigned-c1 person-assigned-c2 person-assigned-c3 person-assigned-hc person-assigned-khác'
@@ -2208,7 +2219,7 @@
             try {
                 const result = await Swal.fire({
                     title: 'Tự động phân công',
-                    text: 'Hệ thống sẽ dựa vào số lượng yêu cầu và bậc kỹ năng để xếp tự động. Các thay đổi nhân sự chưa lưu trên màn hình sẽ bị ghi đè. Bạn có chắc chắn?',
+                    text: 'Hệ thống sẽ tự động phân công nhân sự vào các vị trí còn trống. Các phân công thủ công hiện tại sẽ được giữ lại. Bạn có chắc chắn?',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Đồng ý',
@@ -2227,7 +2238,16 @@
                     await fetchPersonnelShiftsPromise();
                 }
 
-                // 1. Phân loại nhân sự theo ca
+                // Thu thập tất cả ID nhân sự đã được sắp thủ công trên màn hình để loại trừ khỏi pool
+                const allManuallyAssignedIds = new Set();
+                $('.room-row .assignment-item .personnel-container .person-select').each(function() {
+                    const val = $(this).val();
+                    if (val) {
+                        allManuallyAssignedIds.add(val.toString());
+                    }
+                });
+
+                // 1. Phân loại nhân sự theo ca (loại trừ các nhân sự đã sắp thủ công)
                 const pools = {
                     'C1': [],
                     'C2': [],
@@ -2249,6 +2269,7 @@
                             personCode.toString())) return;
                     if (shiftCode === 'P') return; // Nghỉ phép
                     if (person.hasAssignment == 0) return; // Chặn tự động sắp
+                    if (allManuallyAssignedIds.has(personId.toString())) return; // Loại trừ nếu đã được sắp thủ công
 
                     let targetShift = shiftCode;
                     if (!pools[targetShift]) targetShift = 'Khác';
@@ -2279,12 +2300,21 @@
                         const requiredCount = parseInt($item.find('.person-count-input')
                             .val()) || 0;
                         if (requiredCount > 0) {
+                            // Thu thập nhân sự đã được sắp thủ công ở ca này
+                            const manuallyAssigned = [];
+                            $item.find('.personnel-container .person-select').each(function() {
+                                const val = $(this).val();
+                                if (val) {
+                                    manuallyAssigned.push(val.toString());
+                                }
+                            });
+
                             tasks.push({
                                 roomId: roomId.toString(),
                                 roomName: roomNameText,
                                 shiftKey: shiftKey,
                                 required: requiredCount,
-                                assigned: [],
+                                assigned: manuallyAssigned, // Khởi tạo danh sách bằng các nhân sự đã sắp
                                 $item: $item
                             });
                         }
@@ -2356,6 +2386,16 @@
                     const $item = task.$item;
                     const $container = $item.find('.personnel-container');
 
+                    // Lưu trữ ghi chú (notes) của các nhân sự đã sắp
+                    const notesMap = {};
+                    $container.find('.personnel-row').each(function() {
+                        const val = $(this).find('.person-select').val();
+                        const note = $(this).find('.person-notif').val();
+                        if (val) {
+                            notesMap[val.toString()] = note;
+                        }
+                    });
+
                     // Clear current 
                     $container.empty();
 
@@ -2363,7 +2403,10 @@
                         addPersonRow($container);
                     } else {
                         task.assigned.forEach(pid => {
-                            addPersonRow($container, pid);
+                            const newRow = addPersonRow($container, pid);
+                            if (newRow && notesMap[pid]) {
+                                newRow.find('.person-notif').val(notesMap[pid]);
+                            }
                         });
                     }
                     markRoomDirty($item.closest('.room-row'));

@@ -614,8 +614,26 @@
                                             </div>
                                         @endforeach
                                     </div>
+                                    @php
+                                        // Disable "Thêm phòng" nếu tất cả các tổ đang active là "Văn Phòng" (id=4) hoặc "VSCN + Kho BTP" (id=9)
+                                        $noRoomGroups = [4, 9]; // Văn Phòng, VSCN + Kho BTP
+                                        $activeGroupIds = [];
+                                        foreach ($groupPermissions as $gp) {
+                                            $gParts = explode(':', $gp);
+                                            $gIsActive = ($gParts[1] ?? 1) == 1;
+                                            if ($gIsActive) {
+                                                $activeGroupIds[] = (int)$gParts[0];
+                                            }
+                                        }
+                                        $hasRoomSupportedGroup = !empty(array_filter($activeGroupIds, fn($gid) => !in_array($gid, $noRoomGroups)));
+                                        $addRoomDisabled = ($disabled === 'disabled') || (!$hasRoomSupportedGroup && !empty($activeGroupIds)) ? 'disabled' : '';
+                                    @endphp
                                     <button class="btn btn-sm btn-outline-primary btn-add-room-row mt-1"
-                                        {{ $disabled }}><i class="fas fa-plus"></i> Thêm phòng</button>
+                                        {{ $addRoomDisabled }}
+                                        @if(!$hasRoomSupportedGroup && !empty($activeGroupIds) && $disabled !== 'disabled')
+                                            title="Tổ Văn Phòng và VSCN + Kho BTP không có phòng công tác"
+                                        @endif
+                                        ><i class="fas fa-plus"></i> Thêm phòng</button>
                                 </div>
                             </td>
                         </tr>

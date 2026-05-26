@@ -323,12 +323,7 @@
     }
 
     .draggable-person.person-assigned::after {
-        content: '\f00c';
-        font-family: 'Font Awesome 5 Free';
-        font-weight: 900;
-        float: right;
-        color: #28a745;
-        margin-left: 5px;
+        display: none;
     }
 
     .person-assigned-c1 {
@@ -1546,10 +1541,13 @@
         });
 
         function updateSidebarHighlights() {
-            const assignedIds = new Set();
+            const assignedCounts = {};
             $('.person-select').each(function() {
                 const val = $(this).val();
-                if (val) assignedIds.add(val.toString());
+                if (val) {
+                    const idStr = val.toString();
+                    assignedCounts[idStr] = (assignedCounts[idStr] || 0) + 1;
+                }
             });
 
             $('.draggable-person').each(function() {
@@ -1558,10 +1556,23 @@
                 const $item = $(this);
                 const shiftKey = $item.data('shift-key') ? $item.data('shift-key').toLowerCase() : '';
 
-                if (id && assignedIds.has(id.toString())) {
+                let $badge = $item.find('.assign-count-badge');
+                const count = (id && assignedCounts[id.toString()]) ? assignedCounts[id.toString()] : 0;
+
+                if (count > 0) {
+                    if ($badge.length === 0) {
+                        const $rightSpan = $item.find('.float-right');
+                        $badge = $(`<span class="badge badge-success badge-pill assign-count-badge mr-1" style="font-size: 0.7rem; padding: 2px 5px; background-color: #28a745; color: white;" title="Số lần phân công trong ngày">${count}</span>`);
+                        $rightSpan.prepend($badge);
+                    } else {
+                        $badge.text(count).show();
+                    }
                     $item.addClass('person-assigned');
                     $item.addClass('person-assigned-' + shiftKey);
                 } else {
+                    if ($badge.length > 0) {
+                        $badge.hide();
+                    }
                     $item.removeClass('person-assigned');
                     $item.removeClass(
                         'person-assigned-c1 person-assigned-c2 person-assigned-c3 person-assigned-hc person-assigned-khác'
