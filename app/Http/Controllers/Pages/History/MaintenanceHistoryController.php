@@ -39,7 +39,7 @@ class MaintenanceHistoryController extends Controller
             ->orderBy('sp.actual_start', 'desc')
             ->get();
 
-        dd($datas, $maintenanceType, $productionCode, $fromDate, $toDate);
+        //dd($datas, $maintenanceType, $productionCode, $fromDate, $toDate);
 
         // Fetch instrument names for stage 8
         $instIds = $datas->pluck('instrument_code')->filter()->unique()->toArray();
