@@ -15,6 +15,7 @@ import { createRoot } from 'react-dom/client';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
+import { Dialog } from 'primereact/dialog';
 import axios from "axios";
 import 'moment/locale/vi';
 import dayjs from 'dayjs';
@@ -59,10 +60,10 @@ const ScheduleTest = () => {
   const [events, setEvents] = useState([]);
   const [resources, setResources] = useState([]);
   const [historyData, setHistoryData] = useState([]);
-  const historyOverlayRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showHistoryHover, setShowHistoryHover] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [sumBatchByStage, setSumBatchByStage] = useState([]);
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
@@ -531,6 +532,9 @@ const ScheduleTest = () => {
     const newState = !showHistoryHover;
     setShowHistoryHover(newState);
     sessionStorage.setItem('showHistoryHover', JSON.stringify(newState));
+    if (!newState) {
+      setShowHistoryDialog(false);
+    }
   };
 
   // Cập nhật màu nền nút historyToggle khi showHistoryHover thay đổi
@@ -1210,7 +1214,7 @@ const ScheduleTest = () => {
     const eventId = info.event.id;
     if (!eventId) return;
 
-    // Xóa timeout cũ trước khi tạo cái mới để delay 2s
+    // Xóa timeout cũ trước khi tạo cái mới để delay 250ms
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
@@ -1221,26 +1225,20 @@ const ScheduleTest = () => {
         .then(res => {
           setHistoryData(res.data);
           setLoadingHistory(false);
-          if (historyOverlayRef.current) {
-            historyOverlayRef.current.show(info.jsEvent);
-          }
+          setShowHistoryDialog(true);
         })
         .catch(err => {
           console.error("Error fetching history:", err);
           setLoadingHistory(false);
         });
-    }, 1000); // Delay 1 giây
+    }, 250); // Delay 250ms để phản hồi cực nhạy
   };
 
   const handleEventMouseLeave = () => {
-    // Xóa timeout để hủy tiến trình show modal nếu user đã rời đi trước khi đủ thời gian 2s
+    // Hủy tiến trình tải nếu người dùng rời đi sớm
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
-    }
-
-    if (historyOverlayRef.current) {
-      historyOverlayRef.current.hide();
     }
   };
 
@@ -3965,31 +3963,54 @@ const ScheduleTest = () => {
         />)}
 
       {/* Modal / Overlay hiển thị lịch sử */}
-      <OverlayPanel ref={historyOverlayRef} id="history_overlay" style={{ width: '800px' }} className="shadow-2lg border-round">
-        <h5 className="font-bold mb-3 d-flex align-items-center">
-          <i className="pi pi-history mr-2 text-primary"></i>
-          Lịch Sử Thay Đổi
-          {loadingHistory && <i className="pi pi-spin pi-spinner ml-2"></i>}
-        </h5>
-
+      {/* Modal / Dialog hiển thị lịch sử thay đổi */}
+      <Dialog 
+        visible={showHistoryDialog} 
+        onHide={() => setShowHistoryDialog(false)}
+        style={{ width: 'min(1100px, 95vw)', maxHeight: '70vh' }} 
+        contentStyle={{ maxHeight: '55vh', overflowY: 'auto' }}
+        className="history-dialog"
+        header={
+          <div className="d-flex align-items-center justify-content-between w-100 pr-4">
+            <span className="d-flex align-items-center font-bold text-lg text-slate-800">
+              <i className="pi pi-history mr-2 text-primary" style={{ fontSize: '1.2rem' }}></i>
+              Lịch Sử Thay Đổi Lịch Sản Xuất
+            </span>
+            {loadingHistory && <i className="pi pi-spin pi-spinner ml-2 text-primary"></i>}
+          </div>
+        }
+        modal={false}
+        draggable={true}
+        resizable={true}
+        keepInViewport={true}
+        focusOnShow={false}
+        closeOnEscape={true}
+      >
         <DataTable
           value={historyData}
           loading={loadingHistory}
-          className="p-datatable-sm"
-          emptyMessage="Không có dữ liệu lịch sử"
+          className="history-table p-datatable-sm"
+          emptyMessage="Không có dữ liệu lịch sử thay đổi"
           stripedRows
         >
-          <Column header="STT" body={(rowData, options) => options.rowIndex + 1} style={{ width: '50px' }} />
-          <Column field="version" header="Version" style={{ width: '80px' }} />
-          <Column field="product_name" header="Sản phẩm" />
-          <Column field="batch" header="Số lô" />
-          <Column field="start" header="Bắt đầu" body={(row) => moment(row.start).format('DD/MM/YYYY HH:mm')} />
-          <Column field="end" header="Kết thúc" body={(row) => moment(row.end).format('DD/MM/YYYY HH:mm')} />
-          <Column field="schedualed_at" header="Ngày tạo" body={(row) => row.schedualed_at ? moment(row.schedualed_at).format('DD/MM/YYYY HH:mm') : '-'} />
-          <Column field="schedualed_by" header="Người tạo" />
-          <Column field="type_of_change" header="Lý do thay đổi" />
+          <Column header="STT" body={(rowData, options) => <span className="font-semibold text-slate-500">{options.rowIndex + 1}</span>} style={{ width: '50px', textAlign: 'center' }} />
+          <Column field="version" header="Bản" body={(row, options) => (
+            <span className={`version-badge ${options.rowIndex === 0 ? 'version-badge-current' : 'version-badge-old'}`}>
+              V{row.version} {options.rowIndex === 0 ? '★' : ''}
+            </span>
+          )} style={{ width: '110px' }} />
+          <Column field="product_name" header="Sản phẩm" style={{ minWidth: '160px' }} />
+          <Column field="batch" header="Số lô" style={{ width: '90px' }} />
+          <Column field="start" header="Bắt đầu" body={(row) => <span className="text-slate-600 font-medium">{moment(row.start).format('DD/MM/YYYY HH:mm')}</span>} style={{ width: '140px' }} />
+          <Column field="end" header="Kết thúc" body={(row) => <span className="text-slate-600 font-medium">{moment(row.end).format('DD/MM/YYYY HH:mm')}</span>} style={{ width: '140px' }} />
+          <Column field="schedualed_at" header="Ngày tạo" body={(row) => <span className="text-slate-500">{row.schedualed_at ? moment(row.schedualed_at).format('DD/MM/YYYY HH:mm') : '-'}</span>} style={{ width: '140px' }} />
+          <Column field="schedualed_by" header="Người tạo" body={(row) => <span className="font-semibold text-slate-700">{row.schedualed_by || '-'}</span>} style={{ width: '120px' }} />
+          <Column field="type_of_change" header="Lý do thay đổi" body={(row) => row.type_of_change ? (
+            <span className="change-reason-badge">{row.type_of_change}</span>
+          ) : '-'} style={{ minWidth: '150px' }} />
         </DataTable>
-      </OverlayPanel>
+      </Dialog>
+
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
       {authorization && (

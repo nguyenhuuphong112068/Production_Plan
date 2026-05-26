@@ -15,7 +15,26 @@
     }
 
     #data_table_personnel td {
-        vertical-align: middle;
+        vertical-align: top !important;
+        padding: 4px 8px !important;
+    }
+
+    /* Style Phân nhóm Tổ - Phòng */
+    .group-segment {
+        border-bottom: 2px solid #dee2e6 !important;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .group-segment:last-child {
+        border-bottom: none !important;
+    }
+
+    .room-list .group-segment {
+        min-height: 72px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     /* Level Color Gradient */
@@ -81,7 +100,11 @@
     .room-assignment-row {
         padding-top: 5px;
         padding-bottom: 5px;
-        border-bottom: 1.5px solid #ced4da;
+        border-bottom: 1px dashed #dee2e6;
+    }
+
+    .room-assignment-row:last-child {
+        border-bottom: none;
     }
 
     .room-assignment-row.inactive {
@@ -448,13 +471,17 @@
 
                         <th style="width: 100px;">Phân Xưởng Trực Thuộc</th>
 
-                        <th style="width: 180px;">Tổ Được Phép Công Tác</th>
-                        <th style="width: 500px;">Phòng Được Phép Công Tác</th>
+                        <th style="width: 680px; padding: 0;">
+                            <div class="d-flex w-100" style="margin: 0;">
+                                <div style="width: 180px; min-width: 180px; max-width: 180px; padding: .75rem; border-right: 1px solid #dee2e6; font-weight: bold;">Tổ Được Phép Công Tác</div>
+                                <div style="width: 500px; min-width: 500px; max-width: 500px; padding: .75rem; font-weight: bold;">Phòng Được Phép Công Tác</div>
+                            </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($datas as $data)
-                        <tr>
+                        <tr class="main-employee-row">
                             <td>{{ $loop->iteration }} <br>
                                 @if (session('user')['userGroup'] == 'Admin')
                                     {{ $data->id }}
@@ -467,176 +494,314 @@
                                 <span class="badge badge-info shadow-sm">{{ $data->main_production }}</span>
                             </td>
 
-                            <td>
-                                <div class="groups-list-container" data-employee-id="{{ $data->id }}">
-                                    <div class="groups-badges mb-2">
-                                        @php
-                                            $groupPermissions = $data->allowed_groups
-                                                ? explode('|', $data->allowed_groups)
-                                                : [];
-                                        @endphp
-                                        @foreach ($groupPermissions as $gp)
-                                            @php
-                                                $parts = explode(':', $gp);
-                                                $gId = $parts[0];
-                                                $isActive = ($parts[1] ?? 1) == 1;
-                                                $gUser = $parts[2] ?? 'N/A';
-                                                $gDate = $parts[3] ?? '';
-                                                $groupName = $groups->where('id', $gId)->first()->name ?? 'N/A';
-                                            @endphp
-                                            <div class="assignment-item">
-                                                <span
-                                                    class="badge badge-toggle {{ $isActive ? 'badge-primary active' : 'inactive' }} btn-toggle-group"
-                                                    data-group-id="{{ $gId }}"
-                                                    data-active="{{ $isActive ? 1 : 0 }}"
-                                                    style="{{ $pointerNone }}"
-                                                    title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
-                                                    {{ $groupName }}
-                                                </span>
-                                                <span class="assignment-meta">
-                                                    <i class="fas fa-user-edit"></i> {{ $gUser }} <br>
-                                                    <i class="fas fa-calendar-check"></i> {{ $gDate }}
-                                                </span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                    <select class="form-control form-control-sm select-add-group" style="width: 100%;"
-                                        {{ $disabled }}>
-                                        <option value="">+ Thêm Tổ...</option>
-                                        @foreach ($groups as $g)
-                                            @php
-                                                $isAlreadyInList = false;
-                                                foreach ($groupPermissions as $gp) {
-                                                    if (explode(':', $gp)[0] == $g->id) {
-                                                        $isAlreadyInList = true;
-                                                        break;
-                                                    }
-                                                }
-                                            @endphp
-                                            @if (!$isAlreadyInList)
-                                                <option value="{{ $g->id }}">{{ $g->name }}</option>
-                                            @endif
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="room-assignments-container" data-employee-id="{{ $data->id }}">
-                                    <div class="room-list">
-                                        @php
-                                            $groupPermissions = $data->allowed_groups
-                                                ? explode('|', $data->allowed_groups)
-                                                : [];
-                                            $assignments = $data->allowed_rooms_with_levels
-                                                ? explode('|', $data->allowed_rooms_with_levels)
-                                                : [];
-                                        @endphp
-                                        @foreach ($assignments as $as)
-                                            @php
-                                                $parts = explode(':', $as);
-                                                $rId = $parts[0];
-                                                $rLvl = $parts[1] ?? 1;
-                                                $rActive = $parts[2] ?? 1;
-                                                $rUser = $parts[3] ?? 'N/A';
-                                                $rDate = $parts[4] ?? '';
+                            <td class="p-0">
+                                @php
+                                    $groupPermissions = $data->allowed_groups
+                                        ? explode('|', $data->allowed_groups)
+                                        : [];
+                                    $assignments = $data->allowed_rooms_with_levels
+                                        ? explode('|', $data->allowed_rooms_with_levels)
+                                        : [];
 
-                                                $selectedGroupIds = [];
-                                                foreach ($groupPermissions as $gp) {
-                                                    $gParts = explode(':', $gp);
-                                                    // Luôn lấy ID tổ để hiển thị phòng, kể cả khi tổ bị deactive
-                                                    $selectedGroupIds[] = $gParts[0];
-                                                }
+                                    // Gom nhóm phòng theo ID tổ
+                                    $assignmentsByGroup = [];
+                                    foreach ($assignments as $as) {
+                                        $parts = explode(':', $as);
+                                        $rId = $parts[0];
+                                        $rLvl = $parts[1] ?? 1;
+                                        $rActive = $parts[2] ?? 1;
+                                        $rUser = $parts[3] ?? 'N/A';
+                                        $rDate = $parts[4] ?? '';
+                                        
+                                        $rObj = $rooms->firstWhere('id', $rId);
+                                        $rGrpId = 0;
+                                        if ($rObj) {
+                                            $rGrpCode = $rObj->group_code;
+                                            $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
+                                        }
+                                        $assignmentsByGroup[$rGrpId][] = [
+                                            'as' => $as,
+                                            'rId' => $rId,
+                                            'rLvl' => $rLvl,
+                                            'rActive' => $rActive,
+                                            'rUser' => $rUser,
+                                            'rDate' => $rDate
+                                        ];
+                                    }
 
-                                                $selectedGroupCodes = $groups
-                                                    ->whereIn('id', $selectedGroupIds)
-                                                    ->pluck('code')
-                                                    ->toArray();
-                                            @endphp
-                                            @php
-                                                $rObj = $rooms->firstWhere('id', $rId);
-                                                $rGrpId = 0;
-                                                if ($rObj) {
-                                                    $rGrpCode = $rObj->group_code;
-                                                    $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
-                                                }
-                                            @endphp
-                                            <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
-                                                data-active="{{ $rActive }}"
-                                                data-group-id="{{ $rGrpId }}">
-                                                <select class="form-control form-control-sm room-id-select mr-1"
-                                                    style="width: 350px;" {{ $disabled }}>
-                                                    <option value="">-- Phòng --</option>
-                                                    @foreach ($rooms->whereIn('group_code', $selectedGroupCodes) as $r)
-                                                        <option value="{{ $r->id }}"
-                                                            {{ $r->id == $rId ? 'selected' : '' }}>
-                                                            {{ $r->code }} - {{ $r->name }} -
-                                                            {{ $r->main_equiment_name }}
-                                                        </option>
+                                    $renderedGroupIds = [];
+                                    foreach ($groupPermissions as $gp) {
+                                        $renderedGroupIds[] = (int)explode(':', $gp)[0];
+                                    }
+
+                                    // Gom các phòng không thuộc về tổ nào đang hiển thị
+                                    $otherAssignments = [];
+                                    foreach ($assignments as $as) {
+                                        $parts = explode(':', $as);
+                                        $rId = $parts[0];
+                                        $rObj = $rooms->firstWhere('id', $rId);
+                                        $rGrpId = 0;
+                                        if ($rObj) {
+                                            $rGrpCode = $rObj->group_code;
+                                            $rGrpId = (int)($groups->firstWhere('code', $rGrpCode)->id ?? 0);
+                                        }
+                                        if (!in_array($rGrpId, $renderedGroupIds)) {
+                                            $otherAssignments[] = [
+                                                'as' => $as,
+                                                'rId' => $rId,
+                                                'rLvl' => $parts[1] ?? 1,
+                                                'rActive' => $parts[2] ?? 1,
+                                                'rUser' => $parts[3] ?? 'N/A',
+                                                'rDate' => $parts[4] ?? ''
+                                            ];
+                                        }
+                                    }
+                                @endphp
+                                <table class="w-100" style="margin: 0; border: none; border-collapse: collapse; background: transparent; table-layout: fixed;">
+                                    @foreach ($groupPermissions as $index => $gp)
+                                        @php
+                                            $parts = explode(':', $gp);
+                                            $gId = $parts[0];
+                                            $isActive = ($parts[1] ?? 1) == 1;
+                                            $gUser = $parts[2] ?? 'N/A';
+                                            $gDate = $parts[3] ?? '';
+                                            $groupName = $groups->where('id', $gId)->first()->name ?? 'N/A';
+                                            
+                                            $groupAssignments = $assignmentsByGroup[$gId] ?? [];
+                                        @endphp
+                                        <tr style="border-bottom: 2px solid #dee2e6; background: transparent;">
+                                            <!-- Cột Tổ -->
+                                            <td style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
+                                                <div class="groups-list-container" data-employee-id="{{ $data->id }}">
+                                                    <div class="assignment-item" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                                                        <span
+                                                            class="badge badge-toggle {{ $isActive ? 'badge-primary active' : 'inactive' }} btn-toggle-group"
+                                                            data-group-id="{{ $gId }}"
+                                                            data-active="{{ $isActive ? 1 : 0 }}"
+                                                            style="{{ $pointerNone }}"
+                                                            title="{{ $isActive ? 'Nhấn để vô hiệu hóa' : 'Nhấn để kích hoạt' }}">
+                                                            {{ $groupName }}
+                                                        </span>
+                                                        <span class="assignment-meta">
+                                                            <i class="fas fa-user-edit"></i> {{ $gUser }} <br>
+                                                            <i class="fas fa-calendar-check"></i> {{ $gDate }}
+                                                        </span>
+                                                    </div>
+                                                    @if ($isActive)
+                                                        @php
+                                                            $noRoomGroups = [4, 9]; // Văn Phòng, VSCN + Kho BTP
+                                                            $isRoomSupported = !in_array((int)$gId, $noRoomGroups);
+                                                            $addRoomDisabled = ($disabled === 'disabled') || !$isRoomSupported ? 'disabled' : '';
+                                                        @endphp
+                                                        <div class="mt-2 text-left">
+                                                            <button class="btn btn-xs btn-outline-primary btn-add-room-row"
+                                                                data-group-id="{{ $gId }}"
+                                                                {{ $addRoomDisabled }}
+                                                                @if(!$isRoomSupported && $disabled !== 'disabled')
+                                                                    title="Tổ này không có phòng công tác"
+                                                                @endif
+                                                                ><i class="fas fa-plus"></i> Thêm phòng</button>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            
+                                            <!-- Cột Phòng -->
+                                            <td style="border: none; vertical-align: top; padding: 8px; width: 500px; min-width: 500px; max-width: 500px;">
+                                                <div class="room-assignments-container" data-employee-id="{{ $data->id }}">
+                                                    <div class="room-list">
+                                                        @if (empty($groupAssignments))
+                                                            <div class="text-muted py-1 font-italic small" style="padding-left: 10px;">Chưa gán phòng cho tổ này</div>
+                                                        @else
+                                                            @foreach ($groupAssignments as $item)
+                                                                @php
+                                                                    $rId = $item['rId'];
+                                                                    $rLvl = $item['rLvl'];
+                                                                    $rActive = $item['rActive'];
+                                                                    $rUser = $item['rUser'];
+                                                                    $rDate = $item['rDate'];
+                                                                    
+                                                                    $selectedGroupIds = [];
+                                                                    foreach ($groupPermissions as $gPermission) {
+                                                                        $selectedGroupIds[] = explode(':', $gPermission)[0];
+                                                                    }
+                                                                    $selectedGroupCodes = $groups
+                                                                        ->whereIn('id', $selectedGroupIds)
+                                                                        ->pluck('code')
+                                                                        ->toArray();
+                                                                    
+                                                                    $rObj = $rooms->firstWhere('id', $rId);
+                                                                    $rGrpId = 0;
+                                                                    if ($rObj) {
+                                                                        $rGrpCode = $rObj->group_code;
+                                                                        $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
+                                                                    }
+                                                                @endphp
+                                                                <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
+                                                                    data-active="{{ $rActive }}"
+                                                                    data-group-id="{{ $rGrpId }}">
+                                                                    <select class="form-control form-control-sm room-id-select mr-1"
+                                                                        style="width: 250px;" {{ $disabled }}>
+                                                                        <option value="">-- Phòng --</option>
+                                                                        @foreach ($rooms->whereIn('group_code', $selectedGroupCodes) as $r)
+                                                                            <option value="{{ $r->id }}"
+                                                                                {{ $r->id == $rId ? 'selected' : '' }}>
+                                                                                {{ $r->code }} - {{ $r->name }} -
+                                                                                {{ $r->main_equiment_name }}
+                                                                            </option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                    <select
+                                                                        class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
+                                                                        style="width: 70px;" {{ $disabled }}>
+                                                                        <option value="1" {{ $rLvl == 1 ? 'selected' : '' }}>1</option>
+                                                                        <option value="2" {{ $rLvl == 2 ? 'selected' : '' }}>2</option>
+                                                                        <option value="3" {{ $rLvl == 3 ? 'selected' : '' }}>3</option>
+                                                                        <option value="4" {{ $rLvl == 4 ? 'selected' : '' }}>4</option>
+                                                                    </select>
+                                                                    
+                                                                    @php
+                                                                        $hYear = $workHours[$data->id][$rId]['year'] ?? 0;
+                                                                        $hTotal = $workHours[$data->id][$rId]['total'] ?? 0;
+                                                                    @endphp
+                                                                    <span class="work-hours-badge"
+                                                                        title="Thời gian đã làm việc tại phòng này">
+                                                                        <span class="yearly" title="Năm hiện tại"><i
+                                                                                class="fas fa-calendar-alt"></i>{{ $hYear }}h</span>
+                                                                        |
+                                                                        <span class="total" title="Tổng cộng"><i
+                                                                                class="fas fa-history"></i>{{ $hTotal }}h</span>
+                                                                    </span>
+                                                                    
+                                                                    <span class="assignment-meta mx-2" style="min-width: 100px;">
+                                                                        <i class="fas fa-user-edit"></i> {{ $rUser }} <br>
+                                                                        <i class="fas fa-calendar-check"></i> {{ $rDate }}
+                                                                    </span>
+                                                                    
+                                                                    <button
+                                                                        class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
+                                                                        {{ $disabled }}
+                                                                        title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
+                                                                        <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
+                                                                    </button>
+                                                                </div>
+                                                            @endforeach
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+
+                                    @if (!empty($otherAssignments))
+                                        <tr style="border-bottom: 2px solid #dee2e6; background: transparent;">
+                                            <td style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
+                                                <span class="badge badge-secondary">Khác</span>
+                                            </td>
+                                            <td style="border: none; vertical-align: top; padding: 8px; width: 500px; min-width: 500px; max-width: 500px;">
+                                                <div class="room-assignments-container" data-employee-id="{{ $data->id }}">
+                                                    <div class="room-list">
+                                                        <div class="text-warning small mb-1 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Khác (Không thuộc Tổ đã chọn)</div>
+                                                        @foreach ($otherAssignments as $item)
+                                                            @php
+                                                                $rId = $item['rId'];
+                                                                $rLvl = $item['rLvl'];
+                                                                $rActive = $item['rActive'];
+                                                                $rUser = $item['rUser'];
+                                                                $rDate = $item['rDate'];
+                                                                
+                                                                $rObj = $rooms->firstWhere('id', $rId);
+                                                                $rGrpId = 0;
+                                                                if ($rObj) {
+                                                                    $rGrpCode = $rObj->group_code;
+                                                                    $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
+                                                                }
+                                                            @endphp
+                                                            <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
+                                                                data-active="{{ $rActive }}"
+                                                                data-group-id="{{ $rGrpId }}">
+                                                                <select class="form-control form-control-sm room-id-select mr-1"
+                                                                    style="width: 250px;" {{ $disabled }}>
+                                                                    <option value="">-- Phòng --</option>
+                                                                    @foreach ($rooms as $r)
+                                                                        <option value="{{ $r->id }}"
+                                                                            {{ $r->id == $rId ? 'selected' : '' }}>
+                                                                            {{ $r->code }} - {{ $r->name }} -
+                                                                            {{ $r->main_equiment_name }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+                                                                <select
+                                                                    class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
+                                                                    style="width: 70px;" {{ $disabled }}>
+                                                                    <option value="1" {{ $rLvl == 1 ? 'selected' : '' }}>1</option>
+                                                                    <option value="2" {{ $rLvl == 2 ? 'selected' : '' }}>2</option>
+                                                                    <option value="3" {{ $rLvl == 3 ? 'selected' : '' }}>3</option>
+                                                                    <option value="4" {{ $rLvl == 4 ? 'selected' : '' }}>4</option>
+                                                                </select>
+                                                                
+                                                                @php
+                                                                    $hYear = $workHours[$data->id][$rId]['year'] ?? 0;
+                                                                    $hTotal = $workHours[$data->id][$rId]['total'] ?? 0;
+                                                                @endphp
+                                                                <span class="work-hours-badge"
+                                                                    title="Thời gian đã làm việc tại phòng này">
+                                                                    <span class="yearly" title="Năm hiện tại"><i
+                                                                            class="fas fa-calendar-alt"></i>{{ $hYear }}h</span>
+                                                                    |
+                                                                    <span class="total" title="Tổng cộng"><i
+                                                                            class="fas fa-history"></i>{{ $hTotal }}h</span>
+                                                                </span>
+                                                                
+                                                                <span class="assignment-meta mx-2" style="min-width: 100px;">
+                                                                    <i class="fas fa-user-edit"></i> {{ $rUser }} <br>
+                                                                    <i class="fas fa-calendar-check"></i> {{ $rDate }}
+                                                                </span>
+                                                                
+                                                                <button
+                                                                    class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
+                                                                    {{ $disabled }}
+                                                                    title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
+                                                                    <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
+                                                                </button>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endif
+
+                                    <tr style="background: transparent;">
+                                        <!-- Cột Tổ: dropdown + Thêm Tổ -->
+                                        <td style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; padding: 8px; vertical-align: bottom;">
+                                            <div class="groups-list-container" data-employee-id="{{ $data->id }}">
+                                                <select class="form-control form-control-sm select-add-group" style="width: 100%;"
+                                                    {{ $disabled }}>
+                                                    <option value="">+ Thêm Tổ...</option>
+                                                    @foreach ($groups as $g)
+                                                        @php
+                                                            $isAlreadyInList = false;
+                                                            foreach ($groupPermissions as $gp) {
+                                                                if (explode(':', $gp)[0] == $g->id) {
+                                                                    $isAlreadyInList = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        @endphp
+                                                        @if (!$isAlreadyInList)
+                                                            <option value="{{ $g->id }}">{{ $g->name }}</option>
+                                                        @endif
                                                     @endforeach
                                                 </select>
-                                                <select
-                                                    class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
-                                                    style="width: 70px;" {{ $disabled }}>
-                                                    <option value="1" {{ $rLvl == 1 ? 'selected' : '' }}>1
-                                                    </option>
-                                                    <option value="2" {{ $rLvl == 2 ? 'selected' : '' }}>2
-                                                    </option>
-                                                    <option value="3" {{ $rLvl == 3 ? 'selected' : '' }}>3
-                                                    </option>
-                                                    <option value="4" {{ $rLvl == 4 ? 'selected' : '' }}>4
-                                                    </option>
-                                                </select>
-
-                                                @php
-                                                    $hYear = $workHours[$data->id][$rId]['year'] ?? 0;
-                                                    $hTotal = $workHours[$data->id][$rId]['total'] ?? 0;
-                                                @endphp
-                                                <span class="work-hours-badge"
-                                                    title="Thời gian đã làm việc tại phòng này">
-                                                    <span class="yearly" title="Năm hiện tại"><i
-                                                            class="fas fa-calendar-alt"></i>{{ $hYear }}h</span>
-                                                    |
-                                                    <span class="total" title="Tổng cộng"><i
-                                                            class="fas fa-history"></i>{{ $hTotal }}h</span>
-                                                </span>
-
-                                                <span class="assignment-meta mx-2" style="min-width: 100px;">
-                                                    <i class="fas fa-user-edit"></i> {{ $rUser }} <br>
-                                                    <i class="fas fa-calendar-check"></i> {{ $rDate }}
-                                                </span>
-
-                                                <button
-                                                    class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
-                                                    {{ $disabled }}
-                                                    title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
-                                                    <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
-                                                </button>
                                             </div>
-                                        @endforeach
-                                    </div>
-                                    @php
-                                        // Disable "Thêm phòng" nếu tất cả các tổ đang active là "Văn Phòng" (id=4) hoặc "VSCN + Kho BTP" (id=9)
-                                        $noRoomGroups = [4, 9]; // Văn Phòng, VSCN + Kho BTP
-                                        $activeGroupIds = [];
-                                        foreach ($groupPermissions as $gp) {
-                                            $gParts = explode(':', $gp);
-                                            $gIsActive = ($gParts[1] ?? 1) == 1;
-                                            if ($gIsActive) {
-                                                $activeGroupIds[] = (int)$gParts[0];
-                                            }
-                                        }
-                                        $hasRoomSupportedGroup = !empty(array_filter($activeGroupIds, fn($gid) => !in_array($gid, $noRoomGroups)));
-                                        $addRoomDisabled = ($disabled === 'disabled') || (!$hasRoomSupportedGroup && !empty($activeGroupIds)) ? 'disabled' : '';
-                                    @endphp
-                                    <button class="btn btn-sm btn-outline-primary btn-add-room-row mt-1"
-                                        {{ $addRoomDisabled }}
-                                        @if(!$hasRoomSupportedGroup && !empty($activeGroupIds) && $disabled !== 'disabled')
-                                            title="Tổ Văn Phòng và VSCN + Kho BTP không có phòng công tác"
-                                        @endif
-                                        ><i class="fas fa-plus"></i> Thêm phòng</button>
-                                </div>
-                            </td>
-                        </tr>
+                                        </td>
+                                        
+                                        <!-- Cột Phòng trống -->
+                                        <td style="border: none; padding: 8px; vertical-align: bottom; width: 500px; min-width: 500px; max-width: 500px;">
+                                        </td>
+                                    </tr>
+                                </table>
                     @endforeach
 
                 </tbody>
@@ -679,18 +844,85 @@
         $(document).on('change', '.select-add-group', function() {
             if (!canEdit) return;
             const $select = $(this);
+            const $trMain = $select.closest('.main-employee-row');
             const employeeId = $select.closest('.groups-list-container').data('employee-id');
             const groupId = $select.val();
+            const groupName = $select.find('option:selected').text();
             if (!groupId) return;
 
             const groupData = [];
-            $select.closest('.groups-list-container').find('.btn-toggle-group').each(function() {
+            $trMain.find('.btn-toggle-group').each(function() {
                 groupData.push($(this).data('group-id') + ':' + $(this).data('active'));
             });
             groupData.push(groupId + ':1');
 
             updatePermissionAjax(employeeId, 'group', groupData);
-            location.reload();
+
+            // Remove option so it cannot be added again
+            $select.find(`option[value="${groupId}"]`).remove();
+            $select.val('');
+            
+            // Destory and re-init select2 to reflect changes visually
+            $select.select2('destroy');
+            $select.select2({
+                placeholder: "+ Thêm Tổ...",
+                allowClear: true,
+                theme: 'bootstrap4'
+            });
+
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = String(today.getFullYear()).slice(-2);
+            const todayStr = `${day}/${month}/${year}`;
+
+            const isRoomSupported = !([4, 9].includes(parseInt(groupId)));
+            let addRoomBtnHtml = '';
+            if (isRoomSupported) {
+                addRoomBtnHtml = `
+                    <div class="mt-2 text-left">
+                        <button class="btn btn-xs btn-outline-primary btn-add-room-row" data-group-id="${groupId}">
+                            <i class="fas fa-plus"></i> Thêm phòng
+                        </button>
+                    </div>
+                `;
+            } else {
+                addRoomBtnHtml = `
+                    <div class="mt-2 text-left">
+                        <button class="btn btn-xs btn-outline-primary btn-add-room-row" data-group-id="${groupId}" disabled title="Tổ này không có phòng công tác">
+                            <i class="fas fa-plus"></i> Thêm phòng
+                        </button>
+                    </div>
+                `;
+            }
+
+            const newGroupRow = `
+                <tr style="border-bottom: 2px solid #dee2e6; background: transparent;">
+                    <td style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
+                        <div class="groups-list-container" data-employee-id="${employeeId}">
+                            <div class="assignment-item" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                                <span class="badge badge-toggle badge-primary active btn-toggle-group" data-group-id="${groupId}" data-active="1" title="Nhấn để vô hiệu hóa">
+                                    ${groupName}
+                                </span>
+                                <span class="assignment-meta">
+                                    <i class="fas fa-user-edit"></i> System Sync <br>
+                                    <i class="fas fa-calendar-check"></i> ${todayStr}
+                                </span>
+                            </div>
+                            ${addRoomBtnHtml}
+                        </div>
+                    </td>
+                    <td style="border: none; vertical-align: top; padding: 8px; width: 500px; min-width: 500px; max-width: 500px;">
+                        <div class="room-assignments-container" data-employee-id="${employeeId}">
+                            <div class="room-list">
+                                <div class="text-muted py-1 font-italic small" style="padding-left: 10px;">Chưa gán phòng cho tổ này</div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            $select.closest('tr').before(newGroupRow);
         });
 
 
@@ -703,7 +935,7 @@
             const isActivating = !($badge.data('active') == 1);
 
             const $container = $badge.closest('.groups-list-container');
-            const $tr = $badge.closest('tr');
+            const $tr = $badge.closest('.main-employee-row');
 
             if (isActivating) {
                 $container.find('.btn-toggle-group').each(function() {
@@ -768,23 +1000,24 @@
         // Handle Room Assignment Actions
         $(document).on('click', '.btn-add-room-row', function() {
             if (!canEdit) return;
-            const $tr = $(this).closest('tr');
-            const $list = $tr.find('.room-list');
-            const selectedGroupIds = [];
-            $tr.find('.btn-toggle-group.active').each(function() {
-                selectedGroupIds.push($(this).data('group-id').toString());
-            });
+            const $btn = $(this);
+            const groupId = $btn.data('group-id');
+            const $tr = $btn.closest('.main-employee-row');
+            
+            // Find the room-list within the same row of the nested table
+            const $list = $btn.closest('tr').find('.room-list');
 
-            if (selectedGroupIds.length === 0) {
+            if (!groupId) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Chú ý',
-                    text: 'Vui lòng chọn ít nhất một Tổ ở cột "Tổ Được Phép Công Tác" trước khi thêm phòng.',
+                    text: 'Không xác định được Tổ để thêm phòng.',
                     timer: 3000
                 });
                 return;
             }
 
+            const selectedGroupIds = [groupId.toString()];
             const selectedCodes = groupsData
                 .filter(g => selectedGroupIds.includes(g.id.toString()))
                 .map(g => g.code);
@@ -818,9 +1051,15 @@
                     `<option value="${r.id}" ${isSelected}>${r.code} - ${r.name} - ${r.main_equiment_name}</option>`;
             });
 
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = String(today.getFullYear()).slice(-2);
+            const todayStr = `${day}/${month}/${year}`;
+
             const newRow = `
-                <div class="room-assignment-row d-flex align-items-center mb-1" data-active="1" data-group-id="${availableRoom ? availableRoom.group_id : ''}">
-                    <select class="form-control form-control-sm room-id-select mr-1">
+                <div class="room-assignment-row d-flex align-items-center mb-1" data-active="1" data-group-id="${groupId}">
+                    <select class="form-control form-control-sm room-id-select mr-1" style="width: 250px;">
                         ${roomOptions}
                     </select>
                     <select class="form-control form-control-sm room-level-select mr-1 lvl-4" style="width: 70px;">
@@ -829,16 +1068,34 @@
                         <option value="3">3</option>
                         <option value="4" selected>4</option>
                     </select>
-                    <button class="btn btn-danger btn-xs btn-toggle-room-active mr-1" title="Vô hiệu hóa">
+                    
+                    <span class="work-hours-badge" title="Thời gian đã làm việc tại phòng này">
+                        <span class="yearly" title="Năm hiện tại"><i class="fas fa-calendar-alt"></i>0h</span>
+                        |
+                        <span class="total" title="Tổng cộng"><i class="fas fa-history"></i>0h</span>
+                    </span>
+                    
+                    <span class="assignment-meta mx-2" style="min-width: 100px;">
+                        <i class="fas fa-user-edit"></i> System Sync <br>
+                        <i class="fas fa-calendar-check"></i> ${todayStr}
+                    </span>
+                    
+                    <button class="btn btn-sm btn-danger btn-toggle-room-active ml-1" title="Vô hiệu hóa">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             `;
+
+            // Clear the placeholder text if empty
+            if ($list.find('.text-muted').length) {
+                $list.empty();
+            }
+
             $list.append(newRow);
             if (availableRoom) {
                 const $newSelect = $list.find('.room-id-select').last();
                 $newSelect.val(availableRoom.id);
-                triggerRoomUpdate($tr.find('.room-assignments-container'));
+                triggerRoomUpdate($list.closest('.room-assignments-container'));
             }
         });
 
@@ -887,12 +1144,13 @@
         }
 
         function triggerRoomUpdate($container) {
-            const employeeId = $container.data('employee-id');
+            const $tr = $container.closest('.main-employee-row');
+            const employeeId = $tr.find('.room-assignments-container').first().data('employee-id');
             const idsWithLevels = [];
             const selectedRoomIds = new Set();
             let duplicateFound = false;
 
-            $container.find('.room-assignment-row').each(function() {
+            $tr.find('.room-assignment-row').each(function() {
                 const $row = $(this);
                 const rId = $row.find('.room-id-select').val();
                 const rLvl = $row.find('.room-level-select').val();
@@ -941,10 +1199,7 @@
                             icon: 'success',
                             title: res.message
                         });
-                        // Reload sau khi cập nhật để đồng bộ dữ liệu dashboard và tránh lỗi ẩn dòng
-                        setTimeout(() => {
-                            location.reload();
-                        }, 500);
+                        // Không reload lại trang để tránh nhảy vị trí cuộn
                     }
                 }
             });
