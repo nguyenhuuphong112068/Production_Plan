@@ -371,7 +371,7 @@ class ProductionAssignmentController extends Controller
 
                 foreach ($personnelData as &$person) {
                     $code = $person['employeeId'] ?? $person['code'] ?? null;
-                    
+
                     // Ghép logic: day1-day20 từ tháng $month, day21-day31 từ tháng $month+1
                     $originalDays = $person['days'] ?? [];
                     $newDays = [];

@@ -1549,7 +1549,9 @@
                 if (count > 0) {
                     if ($badge.length === 0) {
                         const $rightSpan = $item.find('.float-right');
-                        $badge = $(`<span class="badge badge-success badge-pill assign-count-badge mr-1" style="font-size: 0.7rem; padding: 2px 5px; background-color: #28a745; color: white;" title="Số lần phân công trong ngày">${count}</span>`);
+                        $badge = $(
+                            `<span class="badge badge-success badge-pill assign-count-badge mr-1" style="font-size: 0.7rem; padding: 2px 5px; background-color: #28a745; color: white;" title="Số lần phân công trong ngày">${count}</span>`
+                        );
                         $rightSpan.prepend($badge);
                     } else {
                         $badge.text(count).show();
@@ -2269,7 +2271,8 @@
                             personCode.toString())) return;
                     if (shiftCode === 'P') return; // Nghỉ phép
                     if (person.hasAssignment == 0) return; // Chặn tự động sắp
-                    if (allManuallyAssignedIds.has(personId.toString())) return; // Loại trừ nếu đã được sắp thủ công
+                    if (allManuallyAssignedIds.has(personId.toString()))
+                        return; // Loại trừ nếu đã được sắp thủ công
 
                     let targetShift = shiftCode;
                     if (!pools[targetShift]) targetShift = 'Khác';
@@ -2302,12 +2305,13 @@
                         if (requiredCount > 0) {
                             // Thu thập nhân sự đã được sắp thủ công ở ca này
                             const manuallyAssigned = [];
-                            $item.find('.personnel-container .person-select').each(function() {
-                                const val = $(this).val();
-                                if (val) {
-                                    manuallyAssigned.push(val.toString());
-                                }
-                            });
+                            $item.find('.personnel-container .person-select').each(
+                                function() {
+                                    const val = $(this).val();
+                                    if (val) {
+                                        manuallyAssigned.push(val.toString());
+                                    }
+                                });
 
                             tasks.push({
                                 roomId: roomId.toString(),
@@ -2725,7 +2729,7 @@
                 'PXV1': 15,
                 'PXV2': 31,
                 'PXVH': 30,
-                'PXDN': 30,
+                'PXDN': 34,
                 'EN': 3,
                 'PXTN': 6
             };
