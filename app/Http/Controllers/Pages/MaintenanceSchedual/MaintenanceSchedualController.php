@@ -471,7 +471,9 @@ class MaintenanceSchedualController extends SchedualController
                 'quota_maintenance.inst_id as instrument_code',
                 'quota_maintenance.is_HVAC',
                 'quota_maintenance.exe_time',
-                'plan_master.expected_date'
+                'plan_master.expected_date',
+                'plan_master.note',
+                'plan_master.actual_batch'
             )
             ->get()
             ->groupBy('plan_master_id')
@@ -545,6 +547,13 @@ class MaintenanceSchedualController extends SchedualController
 
             // Tính tổng thời gian thực hiện
             $item->PM = $item->exe_time ?? '00:00';
+
+            // Xử lý sch_type: Ưu tiên lấy từ Note nếu là bản ghi GỘP, ngược lại lấy từ actual_batch
+            if ($item->note && preg_match('/\[GỘP: (.*?)\]/', $item->note, $matches)) {
+                $item->sch_type = $matches[1];
+            } else {
+                $item->sch_type = $item->actual_batch ?? '';
+            }
 
             return $item;
         });

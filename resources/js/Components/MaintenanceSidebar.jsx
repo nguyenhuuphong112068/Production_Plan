@@ -150,6 +150,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     Eqp_name: '180px',
     PM: '100px',
     room_codes: '100px',
+    sch_type: '150px',
     expected_date: '120px',
     name: '130px',
     note: '200px',
@@ -162,6 +163,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     Inst_Name: '150px',
     PM: '100px',
     room_codes: '100px',
+    sch_type: '120px',
     expected_date: '100px',
   };
 
@@ -215,7 +217,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       : (percentShow === '100%' ? window.innerWidth : window.innerWidth * 0.3);
 
     if (currentWidthPx > window.innerWidth * 0.6) { // Chế độ xem rộng
-      const order = ["stt", "id", "room_codes", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "PM", "expected_date", "note"];
+      const order = ["stt", "id", "room_codes", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "sch_type", "expected_date", "PM", "note"];
       visibleCols = order.map(f => {
         const col = allColumns.find(c => c.field === f);
         if (!col) return null;
@@ -231,7 +233,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         };
       }).filter(Boolean);
     } else {
-      const order = ["room_codes", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "expected_date", "PM"];
+      const order = ["room_codes", "Parent_Equip_id", "Eqp_name", "name", "Inst_Name", "sch_type", "expected_date", "PM"];
       visibleCols = order.map(f => {
         const col = allColumns.find(c => c.field === f);
         if (!col) return null;
@@ -289,6 +291,19 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
   const isAdmin = (userID == 1 || userID == 5);
 
+  const schTypeBodyTemplate = (rowData) => {
+    if (!rowData.sch_type) return <span className="text-muted">NA</span>;
+    return (
+      <div>
+        {rowData.sch_type.split(',').map((type, idx) => (
+          <div key={idx} className="sch-type-item" style={{ whiteSpace: 'nowrap' }}>
+            {type.trim()}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const expectedDateBodyTemplate = (rowData) => {
     if (!rowData.expected_date) return <span className="text-muted">NA</span>;
 
@@ -334,6 +349,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     { field: "Eqp_name", header: "Tên Thiết Bị Lớn", sortable: true, body: naBody("Eqp_name") },
     { field: "name", header: "Mã Thiết Bị", sortable: true, body: naBody("name") },
     { field: "Inst_Name", header: "Tên Thiết Bị", sortable: true, body: naBody("Inst_Name") },
+    { field: "sch_type", header: "Loại BT-HC", sortable: true, body: schTypeBodyTemplate },
     { field: "expected_date", header: "Hạn Bảo Trì", sortable: true, body: expectedDateBodyTemplate },
     { field: "PM", header: "Thời gian thực hiện", sortable: true, body: naBody("PM") },
     { field: "note", header: "Ghi chú", sortable: true, body: naBody("note") },
@@ -624,7 +640,7 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             rowClassName={rowClassName}
             tableStyle={{
               minWidth: (typeof percentShow === 'string' && parseInt(percentShow) > window.innerWidth * 0.5) || percentShow === '100%'
-                ? "1300px" : "850px"
+                ? "1450px" : "970px"
             }}
             paginator
             rows={10}
