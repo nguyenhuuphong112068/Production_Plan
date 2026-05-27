@@ -473,8 +473,12 @@
 
                         <th style="width: 680px; padding: 0;">
                             <div class="d-flex w-100" style="margin: 0;">
-                                <div style="width: 180px; min-width: 180px; max-width: 180px; padding: .75rem; border-right: 1px solid #dee2e6; font-weight: bold;">Tổ Được Phép Công Tác</div>
-                                <div style="width: 500px; min-width: 500px; max-width: 500px; padding: .75rem; font-weight: bold;">Phòng Được Phép Công Tác</div>
+                                <div
+                                    style="width: 180px; min-width: 180px; max-width: 180px; padding: .75rem; border-right: 1px solid #dee2e6; font-weight: bold;">
+                                    Tổ Được Phép Công Tác</div>
+                                <div
+                                    style="width: 500px; min-width: 500px; max-width: 500px; padding: .75rem; font-weight: bold;">
+                                    Phòng Được Phép Công Tác</div>
                             </div>
                         </th>
                     </tr>
@@ -512,7 +516,7 @@
                                         $rActive = $parts[2] ?? 1;
                                         $rUser = $parts[3] ?? 'N/A';
                                         $rDate = $parts[4] ?? '';
-                                        
+
                                         $rObj = $rooms->firstWhere('id', $rId);
                                         $rGrpId = 0;
                                         if ($rObj) {
@@ -525,13 +529,13 @@
                                             'rLvl' => $rLvl,
                                             'rActive' => $rActive,
                                             'rUser' => $rUser,
-                                            'rDate' => $rDate
+                                            'rDate' => $rDate,
                                         ];
                                     }
 
                                     $renderedGroupIds = [];
                                     foreach ($groupPermissions as $gp) {
-                                        $renderedGroupIds[] = (int)explode(':', $gp)[0];
+                                        $renderedGroupIds[] = (int) explode(':', $gp)[0];
                                     }
 
                                     // Gom các phòng không thuộc về tổ nào đang hiển thị
@@ -543,7 +547,7 @@
                                         $rGrpId = 0;
                                         if ($rObj) {
                                             $rGrpCode = $rObj->group_code;
-                                            $rGrpId = (int)($groups->firstWhere('code', $rGrpCode)->id ?? 0);
+                                            $rGrpId = (int) ($groups->firstWhere('code', $rGrpCode)->id ?? 0);
                                         }
                                         if (!in_array($rGrpId, $renderedGroupIds)) {
                                             $otherAssignments[] = [
@@ -552,12 +556,13 @@
                                                 'rLvl' => $parts[1] ?? 1,
                                                 'rActive' => $parts[2] ?? 1,
                                                 'rUser' => $parts[3] ?? 'N/A',
-                                                'rDate' => $parts[4] ?? ''
+                                                'rDate' => $parts[4] ?? '',
                                             ];
                                         }
                                     }
                                 @endphp
-                                <table class="w-100" style="margin: 0; border: none; border-collapse: collapse; background: transparent; table-layout: fixed;">
+                                <table class="w-100"
+                                    style="margin: 0; border: none; border-collapse: collapse; background: transparent; table-layout: fixed;">
                                     @foreach ($groupPermissions as $index => $gp)
                                         @php
                                             $parts = explode(':', $gp);
@@ -566,14 +571,17 @@
                                             $gUser = $parts[2] ?? 'N/A';
                                             $gDate = $parts[3] ?? '';
                                             $groupName = $groups->where('id', $gId)->first()->name ?? 'N/A';
-                                            
+
                                             $groupAssignments = $assignmentsByGroup[$gId] ?? [];
                                         @endphp
                                         <tr style="border-bottom: 2px solid #dee2e6; background: transparent;">
                                             <!-- Cột Tổ -->
-                                            <td style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
-                                                <div class="groups-list-container" data-employee-id="{{ $data->id }}">
-                                                    <div class="assignment-item" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                                            <td
+                                                style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
+                                                <div class="groups-list-container"
+                                                    data-employee-id="{{ $data->id }}">
+                                                    <div class="assignment-item"
+                                                        style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
                                                         <span
                                                             class="badge badge-toggle {{ $isActive ? 'badge-primary active' : 'inactive' }} btn-toggle-group"
                                                             data-group-id="{{ $gId }}"
@@ -590,28 +598,34 @@
                                                     @if ($isActive)
                                                         @php
                                                             $noRoomGroups = [4, 9]; // Văn Phòng, VSCN + Kho BTP
-                                                            $isRoomSupported = !in_array((int)$gId, $noRoomGroups);
-                                                            $addRoomDisabled = ($disabled === 'disabled') || !$isRoomSupported ? 'disabled' : '';
+                                                            $isRoomSupported = !in_array((int) $gId, $noRoomGroups);
+                                                            $addRoomDisabled =
+                                                                $disabled === 'disabled' || !$isRoomSupported
+                                                                    ? 'disabled'
+                                                                    : '';
                                                         @endphp
                                                         <div class="mt-2 text-left">
-                                                            <button class="btn btn-xs btn-outline-primary btn-add-room-row"
+                                                            <button
+                                                                class="btn btn-xs btn-outline-primary btn-add-room-row"
                                                                 data-group-id="{{ $gId }}"
                                                                 {{ $addRoomDisabled }}
-                                                                @if(!$isRoomSupported && $disabled !== 'disabled')
-                                                                    title="Tổ này không có phòng công tác"
-                                                                @endif
-                                                                ><i class="fas fa-plus"></i> Thêm phòng</button>
+                                                                @if (!$isRoomSupported && $disabled !== 'disabled') title="Tổ này không có phòng công tác" @endif><i
+                                                                    class="fas fa-plus"></i> Thêm phòng</button>
                                                         </div>
                                                     @endif
                                                 </div>
                                             </td>
-                                            
+
                                             <!-- Cột Phòng -->
-                                            <td style="border: none; vertical-align: top; padding: 8px; width: 500px; min-width: 500px; max-width: 500px;">
-                                                <div class="room-assignments-container" data-employee-id="{{ $data->id }}">
+                                            <td
+                                                style="border: none; vertical-align: top; padding: 8px; width: 500px; min-width: 500px; max-width: 500px;">
+                                                <div class="room-assignments-container"
+                                                    data-employee-id="{{ $data->id }}">
                                                     <div class="room-list">
                                                         @if (empty($groupAssignments))
-                                                            <div class="text-muted py-1 font-italic small" style="padding-left: 10px;">Chưa gán phòng cho tổ này</div>
+                                                            <div class="text-muted py-1 font-italic small"
+                                                                style="padding-left: 10px;">Chưa gán phòng cho tổ này
+                                                            </div>
                                                         @else
                                                             @foreach ($groupAssignments as $item)
                                                                 @php
@@ -620,33 +634,40 @@
                                                                     $rActive = $item['rActive'];
                                                                     $rUser = $item['rUser'];
                                                                     $rDate = $item['rDate'];
-                                                                    
+
                                                                     $selectedGroupIds = [];
                                                                     foreach ($groupPermissions as $gPermission) {
-                                                                        $selectedGroupIds[] = explode(':', $gPermission)[0];
+                                                                        $selectedGroupIds[] = explode(
+                                                                            ':',
+                                                                            $gPermission,
+                                                                        )[0];
                                                                     }
                                                                     $selectedGroupCodes = $groups
                                                                         ->whereIn('id', $selectedGroupIds)
                                                                         ->pluck('code')
                                                                         ->toArray();
-                                                                    
+
                                                                     $rObj = $rooms->firstWhere('id', $rId);
                                                                     $rGrpId = 0;
                                                                     if ($rObj) {
                                                                         $rGrpCode = $rObj->group_code;
-                                                                        $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
+                                                                        $rGrpId =
+                                                                            $groups->firstWhere('code', $rGrpCode)
+                                                                                ->id ?? 0;
                                                                     }
                                                                 @endphp
                                                                 <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
                                                                     data-active="{{ $rActive }}"
                                                                     data-group-id="{{ $rGrpId }}">
-                                                                    <select class="form-control form-control-sm room-id-select mr-1"
+                                                                    <select
+                                                                        class="form-control form-control-sm room-id-select mr-1"
                                                                         style="width: 250px;" {{ $disabled }}>
                                                                         <option value="">-- Phòng --</option>
                                                                         @foreach ($rooms->whereIn('group_code', $selectedGroupCodes) as $r)
                                                                             <option value="{{ $r->id }}"
                                                                                 {{ $r->id == $rId ? 'selected' : '' }}>
-                                                                                {{ $r->code }} - {{ $r->name }} -
+                                                                                {{ $r->code }} -
+                                                                                {{ $r->name }} -
                                                                                 {{ $r->main_equiment_name }}
                                                                             </option>
                                                                         @endforeach
@@ -654,15 +675,25 @@
                                                                     <select
                                                                         class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
                                                                         style="width: 70px;" {{ $disabled }}>
-                                                                        <option value="1" {{ $rLvl == 1 ? 'selected' : '' }}>1</option>
-                                                                        <option value="2" {{ $rLvl == 2 ? 'selected' : '' }}>2</option>
-                                                                        <option value="3" {{ $rLvl == 3 ? 'selected' : '' }}>3</option>
-                                                                        <option value="4" {{ $rLvl == 4 ? 'selected' : '' }}>4</option>
+                                                                        <option value="1"
+                                                                            {{ $rLvl == 1 ? 'selected' : '' }}>1
+                                                                        </option>
+                                                                        <option value="2"
+                                                                            {{ $rLvl == 2 ? 'selected' : '' }}>2
+                                                                        </option>
+                                                                        <option value="3"
+                                                                            {{ $rLvl == 3 ? 'selected' : '' }}>3
+                                                                        </option>
+                                                                        <option value="4"
+                                                                            {{ $rLvl == 4 ? 'selected' : '' }}>4
+                                                                        </option>
                                                                     </select>
-                                                                    
+
                                                                     @php
-                                                                        $hYear = $workHours[$data->id][$rId]['year'] ?? 0;
-                                                                        $hTotal = $workHours[$data->id][$rId]['total'] ?? 0;
+                                                                        $hYear =
+                                                                            $workHours[$data->id][$rId]['year'] ?? 0;
+                                                                        $hTotal =
+                                                                            $workHours[$data->id][$rId]['total'] ?? 0;
                                                                     @endphp
                                                                     <span class="work-hours-badge"
                                                                         title="Thời gian đã làm việc tại phòng này">
@@ -672,17 +703,21 @@
                                                                         <span class="total" title="Tổng cộng"><i
                                                                                 class="fas fa-history"></i>{{ $hTotal }}h</span>
                                                                     </span>
-                                                                    
-                                                                    <span class="assignment-meta mx-2" style="min-width: 100px;">
-                                                                        <i class="fas fa-user-edit"></i> {{ $rUser }} <br>
-                                                                        <i class="fas fa-calendar-check"></i> {{ $rDate }}
+
+                                                                    <span class="assignment-meta mx-2"
+                                                                        style="min-width: 100px;">
+                                                                        <i class="fas fa-user-edit"></i>
+                                                                        {{ $rUser }} <br>
+                                                                        <i class="fas fa-calendar-check"></i>
+                                                                        {{ $rDate }}
                                                                     </span>
-                                                                    
+
                                                                     <button
                                                                         class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
                                                                         {{ $disabled }}
                                                                         title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
-                                                                        <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
+                                                                        <i
+                                                                            class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
                                                                     </button>
                                                                 </div>
                                                             @endforeach
@@ -695,13 +730,18 @@
 
                                     @if (!empty($otherAssignments))
                                         <tr style="border-bottom: 2px solid #dee2e6; background: transparent;">
-                                            <td style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
+                                            <td
+                                                style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
                                                 <span class="badge badge-secondary">Khác</span>
                                             </td>
-                                            <td style="border: none; vertical-align: top; padding: 8px; width: 500px; min-width: 500px; max-width: 500px;">
-                                                <div class="room-assignments-container" data-employee-id="{{ $data->id }}">
+                                            <td
+                                                style="border: none; vertical-align: top; padding: 8px; width: 500px; min-width: 500px; max-width: 500px;">
+                                                <div class="room-assignments-container"
+                                                    data-employee-id="{{ $data->id }}">
                                                     <div class="room-list">
-                                                        <div class="text-warning small mb-1 font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Khác (Không thuộc Tổ đã chọn)</div>
+                                                        <div class="text-warning small mb-1 font-weight-bold"><i
+                                                                class="fas fa-exclamation-triangle"></i> Khác (Không
+                                                            thuộc Tổ đã chọn)</div>
                                                         @foreach ($otherAssignments as $item)
                                                             @php
                                                                 $rId = $item['rId'];
@@ -709,24 +749,27 @@
                                                                 $rActive = $item['rActive'];
                                                                 $rUser = $item['rUser'];
                                                                 $rDate = $item['rDate'];
-                                                                
+
                                                                 $rObj = $rooms->firstWhere('id', $rId);
                                                                 $rGrpId = 0;
                                                                 if ($rObj) {
                                                                     $rGrpCode = $rObj->group_code;
-                                                                    $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
+                                                                    $rGrpId =
+                                                                        $groups->firstWhere('code', $rGrpCode)->id ?? 0;
                                                                 }
                                                             @endphp
                                                             <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
                                                                 data-active="{{ $rActive }}"
                                                                 data-group-id="{{ $rGrpId }}">
-                                                                <select class="form-control form-control-sm room-id-select mr-1"
+                                                                <select
+                                                                    class="form-control form-control-sm room-id-select mr-1"
                                                                     style="width: 250px;" {{ $disabled }}>
                                                                     <option value="">-- Phòng --</option>
                                                                     @foreach ($rooms as $r)
                                                                         <option value="{{ $r->id }}"
                                                                             {{ $r->id == $rId ? 'selected' : '' }}>
-                                                                            {{ $r->code }} - {{ $r->name }} -
+                                                                            {{ $r->code }} - {{ $r->name }}
+                                                                            -
                                                                             {{ $r->main_equiment_name }}
                                                                         </option>
                                                                     @endforeach
@@ -734,12 +777,16 @@
                                                                 <select
                                                                     class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
                                                                     style="width: 70px;" {{ $disabled }}>
-                                                                    <option value="1" {{ $rLvl == 1 ? 'selected' : '' }}>1</option>
-                                                                    <option value="2" {{ $rLvl == 2 ? 'selected' : '' }}>2</option>
-                                                                    <option value="3" {{ $rLvl == 3 ? 'selected' : '' }}>3</option>
-                                                                    <option value="4" {{ $rLvl == 4 ? 'selected' : '' }}>4</option>
+                                                                    <option value="1"
+                                                                        {{ $rLvl == 1 ? 'selected' : '' }}>1</option>
+                                                                    <option value="2"
+                                                                        {{ $rLvl == 2 ? 'selected' : '' }}>2</option>
+                                                                    <option value="3"
+                                                                        {{ $rLvl == 3 ? 'selected' : '' }}>3</option>
+                                                                    <option value="4"
+                                                                        {{ $rLvl == 4 ? 'selected' : '' }}>4</option>
                                                                 </select>
-                                                                
+
                                                                 @php
                                                                     $hYear = $workHours[$data->id][$rId]['year'] ?? 0;
                                                                     $hTotal = $workHours[$data->id][$rId]['total'] ?? 0;
@@ -752,17 +799,21 @@
                                                                     <span class="total" title="Tổng cộng"><i
                                                                             class="fas fa-history"></i>{{ $hTotal }}h</span>
                                                                 </span>
-                                                                
-                                                                <span class="assignment-meta mx-2" style="min-width: 100px;">
-                                                                    <i class="fas fa-user-edit"></i> {{ $rUser }} <br>
-                                                                    <i class="fas fa-calendar-check"></i> {{ $rDate }}
+
+                                                                <span class="assignment-meta mx-2"
+                                                                    style="min-width: 100px;">
+                                                                    <i class="fas fa-user-edit"></i>
+                                                                    {{ $rUser }} <br>
+                                                                    <i class="fas fa-calendar-check"></i>
+                                                                    {{ $rDate }}
                                                                 </span>
-                                                                
+
                                                                 <button
                                                                     class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
                                                                     {{ $disabled }}
                                                                     title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
-                                                                    <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
+                                                                    <i
+                                                                        class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
                                                                 </button>
                                                             </div>
                                                         @endforeach
@@ -774,10 +825,12 @@
 
                                     <tr style="background: transparent;">
                                         <!-- Cột Tổ: dropdown + Thêm Tổ -->
-                                        <td style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; padding: 8px; vertical-align: bottom;">
-                                            <div class="groups-list-container" data-employee-id="{{ $data->id }}">
-                                                <select class="form-control form-control-sm select-add-group" style="width: 100%;"
-                                                    {{ $disabled }}>
+                                        <td
+                                            style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; padding: 8px; vertical-align: bottom;">
+                                            <div class="groups-list-container"
+                                                data-employee-id="{{ $data->id }}">
+                                                <select class="form-control form-control-sm select-add-group"
+                                                    style="width: 100%;" {{ $disabled }}>
                                                     <option value="">+ Thêm Tổ...</option>
                                                     @foreach ($groups as $g)
                                                         @php
@@ -790,15 +843,17 @@
                                                             }
                                                         @endphp
                                                         @if (!$isAlreadyInList)
-                                                            <option value="{{ $g->id }}">{{ $g->name }}</option>
+                                                            <option value="{{ $g->id }}">{{ $g->name }}
+                                                            </option>
                                                         @endif
                                                     @endforeach
                                                 </select>
                                             </div>
                                         </td>
-                                        
+
                                         <!-- Cột Phòng trống -->
-                                        <td style="border: none; padding: 8px; vertical-align: bottom; width: 500px; min-width: 500px; max-width: 500px;">
+                                        <td
+                                            style="border: none; padding: 8px; vertical-align: bottom; width: 500px; min-width: 500px; max-width: 500px;">
                                         </td>
                                     </tr>
                                 </table>
@@ -861,7 +916,7 @@
             // Remove option so it cannot be added again
             $select.find(`option[value="${groupId}"]`).remove();
             $select.val('');
-            
+
             // Destory and re-init select2 to reflect changes visually
             $select.select2('destroy');
             $select.select2({
@@ -1003,7 +1058,7 @@
             const $btn = $(this);
             const groupId = $btn.data('group-id');
             const $tr = $btn.closest('.main-employee-row');
-            
+
             // Find the room-list within the same row of the nested table
             const $list = $btn.closest('tr').find('.room-list');
 
@@ -1027,7 +1082,8 @@
                 selectedCodes.push('7');
             }
 
-            const filteredRooms = roomsData.filter(r => selectedCodes.includes(r.group_code ? r.group_code.toString() : ''));
+            const filteredRooms = roomsData.filter(r => selectedCodes.includes(r.group_code ? r
+                .group_code.toString() : ''));
             const alreadySelectedIds = [];
             $tr.find('.room-id-select').each(function() {
                 const val = $(this).val();

@@ -209,10 +209,19 @@ class PersonnelController extends Controller
         $isENorQA = in_array($departmentCode, ['EN', 'QA']);
 
         if ($isENorQA) {
-            $groups = DB::table('stage_groups')
-                ->where('type', 2)
-                ->select('id', 'code', 'name')
-                ->get();
+
+            if ($departmentCode == 'QA') {
+                $groups = DB::table('stage_groups')
+                    ->where('code', 20)
+                    ->select('id', 'code', 'name')
+                    ->get();
+            } else {
+                $groups = DB::table('stage_groups')
+                    ->where('type', 2)
+                    ->where('code', "!=", 20)
+                    ->select('id', 'code', 'name')
+                    ->get();
+            }
         } else {
             $groups = collect([
                 1 => "Trung Tâm Cân",

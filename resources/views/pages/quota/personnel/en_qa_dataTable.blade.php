@@ -94,7 +94,8 @@
                 // Phân quyền: chi có người phòng đó mới có thể điều chỉnh nhân sự của bộ phận mình. Ngoài ra admin toàn quyền.
                 $user = session('user');
                 $isAdmin = ($user['userGroup'] ?? '') == 'Admin';
-                $isOwnDepartment = ($user['production_code'] ?? '') == ($user['department'] ?? '');
+                $isOwnDepartment = $currentDepartment == ($user['department'] ?? '');
+
                 $canEdit = $isAdmin || $isOwnDepartment;
                 $disabled = $canEdit ? '' : 'disabled';
                 $pointerNone = $canEdit ? '' : 'pointer-events: none; opacity: 0.7;';
@@ -331,7 +332,8 @@
                                 <option value="">-- Tất cả các Tổ --</option>
                                 @foreach ($groups as $g)
                                     <option value="{{ $g->code }}"
-                                        {{ $filterGroupId == $g->code ? 'selected' : '' }}>{{ $g->name }}</option>
+                                        {{ $filterGroupId == $g->code ? 'selected' : '' }}>{{ $g->name }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
