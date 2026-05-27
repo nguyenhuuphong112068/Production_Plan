@@ -779,14 +779,41 @@ class MaintenanceAssignmentController extends Controller
             ]);
         }
 
+        $personnelQuery = DB::table('employees as e')
+            ->where('e.active', 1)
+            ->whereExists(function ($query) use ($dept_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea')
+                    ->whereColumn('ea.employees_id', 'e.id')
+                    ->where('ea.production_code', $dept_code)
+                    ->where('ea.active', 1);
+            });
+
+        if ($group_code && $group_code !== 'EN_ALL') {
+            $personnelQuery->whereExists(function ($query) use ($group_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea2')
+                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
+                    ->whereColumn('ea2.employees_id', 'e.id')
+                    ->where(function ($q) use ($group_code) {
+                        $q->where('sg.code', $group_code)
+                            ->orWhere('ea2.group_id', $group_code);
+                    })
+                    ->where('ea2.active', 1);
+            });
+        }
+
+        $allowedPersonnelCodes = $personnelQuery->pluck('e.code')->toArray();
+
         $personnel = DB::table('employees')->where('active', 1)->orderBy('name')->get();
 
         return view('pages.assignment.maintenance.publicView', [
-            'tasks'         => $tasks,
-            'reportedDate'  => $reportedDate,
-            'group_code'    => $group_code,
-            'stage_groups'  => $stage_groups,
-            'personnel'     => $personnel
+            'tasks'                 => $tasks,
+            'reportedDate'          => $reportedDate,
+            'group_code'            => $group_code,
+            'stage_groups'          => $stage_groups,
+            'personnel'             => $personnel,
+            'allowedPersonnelCodes' => $allowedPersonnelCodes,
         ]);
     }
 }

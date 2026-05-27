@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/public-assignments', [MaintenanceAssignmentController::class, 'publicView'])->name('pages.assignment.public');
 Route::get('/public-production-assignments', [ProductionAssignmentController::class, 'publicView'])->name('pages.assignment.production.public');
+Route::get('/public-production-assignments/shifts', [ProductionAssignmentController::class, 'getPersonnelShifts'])->name('pages.assignment.production.public.shifts');
+Route::get('/public-assignments/shifts', [MaintenanceAssignmentController::class, 'getPersonnelShifts'])->name('pages.assignment.public.shifts');
 
 Route::prefix('/assignemnt/production')
     ->controller(ProductionAssignmentController::class)

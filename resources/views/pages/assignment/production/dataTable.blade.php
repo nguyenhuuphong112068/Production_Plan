@@ -86,11 +86,11 @@
     }
 
     .shift-c1 {
-        background-color: #28a745;
+        background-color: #007bff;
     }
 
     .shift-c2 {
-        background-color: #007bff;
+        background-color: #28a745;
     }
 
     .shift-c3 {
@@ -421,7 +421,7 @@
                         <th style="width: 150px" class="theory-col">Lịch Lý Thuyết</th>
                         <th style="width: 100px">Ca / SL</th>
                         <th style="width: 250px">Nhân sự</th>
-                        <th style="width: 600px">Hoạt Động</th>
+                        <th style="width: 350px">Hoạt Động</th>
                         {{-- <th style="width: 150px">Chi Tiết Công Việc</th> --}}
                         <th style="width: 60px">Hủy</th>
                         <th style="width: 60px" class="text-center">Lưu</th>
@@ -526,9 +526,21 @@
                                                                 min="1" title="Số lượng nhân sự cần"
                                                                 {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                         </div>
+                                                        <div class="input-group input-group-sm mt-1" title="Nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có">
+                                                            <div class="input-group-prepend">
+                                                                <span class="input-group-text" style="font-size:0.7rem;padding:2px 5px;"><i class="fas fa-star"></i></span>
+                                                            </div>
+                                                            <input type="number"
+                                                                class="form-control professional-count-input"
+                                                                value="{{ $assignment->Num_of_per_Level_3 ?? 0 }}"
+                                                                min="0" style="font-size:0.75rem;"
+                                                                title="Số lượng nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có"
+                                                                placeholder="Cấp ≥3"
+                                                                {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                        </div>
                                                     </div>
                                                 </td>
-                                                <td class="p-0" style="width: 250px">
+                                                <td class="p-0" style="width: 350px">
                                                     <div class="personnel-container">
                                                         @foreach ($assignment->personnel_data as $p_info)
                                                             <div
@@ -569,7 +581,7 @@
                                                         </div>
                                                     @endif
                                                 </td>
-                                                <td style="width: 600px">
+                                                <td style="width: 500px">
                                                     @if ($assignment->is_foreign ?? false)
                                                         <div class="badge badge-info mb-1">Lịch của
                                                             {{ $assignment->stage_groups_code == 7 ? 'ĐGSC' : 'ĐGTC' }}
@@ -633,9 +645,20 @@
                                                                 min="0" title="Số lượng nhân sự cần"
                                                                 {{ !$canEdit ? 'disabled' : '' }}>
                                                         </div>
+                                                        <div class="input-group input-group-sm mt-1" title="Nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có">
+                                                            <div class="input-group-prepend">
+                                                                <span class="input-group-text" style="font-size:0.7rem;padding:2px 5px;"><i class="fas fa-star"></i></span>
+                                                            </div>
+                                                            <input type="number"
+                                                                class="form-control professional-count-input" value="0"
+                                                                min="0" style="font-size:0.75rem;"
+                                                                title="Số lượng nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có"
+                                                                placeholder="Cấp ≥3"
+                                                                {{ !$canEdit ? 'disabled' : '' }}>
+                                                        </div>
                                                     </div>
                                                 </td>
-                                                <td class="p-0" style="width: 250px">
+                                                <td class="p-0" style="width: 350px">
                                                     <div class="personnel-container">
                                                         <div
                                                             class="personnel-row d-flex align-items-center p-1 border-bottom">
@@ -661,7 +684,7 @@
                                                         </div>
                                                     @endif
                                                 </td>
-                                                <td style="width: 600px">
+                                                <td style="width: 500px">
                                                     <div class="form-control form-control-sm job-desc"
                                                         contenteditable="{{ $canEdit ? 'true' : 'false' }}"
                                                         style="min-height: 80px; height: auto; white-space: pre-wrap;"
@@ -1112,8 +1135,9 @@
     $(document).ready(function() {
         const productionCode = "{{ $production_code }}";
         const globalPersonnelOptions = @json(
-            $personnel->map(function ($p) {
-                    return ['id' => $p->id, 'text' => $p->name];
+            $personnel->map(function ($p) use ($skills) {
+                    $skillStr = $skills[$p->id]->allowed_rooms_with_levels ?? '';
+                    return ['id' => $p->id, 'text' => $p->name, 'skills' => $skillStr];
                 })->values());
 
         function markRoomDirty(row) {
@@ -1133,15 +1157,51 @@
             markRoomDirty($(this).closest('.room-row'));
         });
 
-        function initSelect2(selector = '.person-select') {
+        function initSelect2(selector = '.person-select', roomId = null) {
+            if (!roomId) {
+                // Thử đọc roomId từ .room-row gần nhất khi gọi cho nhóm
+            }
             $(selector).each(function() {
                 let $this = $(this);
+                const rid = roomId || $this.closest('.room-row').attr('data-room-id') || null;
                 if (!$this.hasClass("select2-hidden-accessible")) {
                     $this.select2({
                         placeholder: "-- Chọn người --",
                         allowClear: true,
                         width: '100%',
-                        data: globalPersonnelOptions
+                        data: globalPersonnelOptions,
+                        templateResult: function(option) {
+                            if (!option.id) return option.text;
+                            const r = rid || $this.closest('.room-row').attr('data-room-id');
+                            let level = 0;
+                            if (r && option.skills) {
+                                const pairs = (option.skills + '').split('|');
+                                for (const pair of pairs) {
+                                    const parts = pair.split(':');
+                                    if (parts[0] == r) { level = parseInt(parts[1] || 0); break; }
+                                }
+                            }
+                            const badge = level > 0
+                                ? `<span class="badge badge-${level >= 3 ? 'success' : (level == 2 ? 'warning' : 'secondary')}" style="font-size:0.7rem;min-width:26px;">B${level}</span> `
+                                : `<span class="badge badge-light" style="font-size:0.7rem;min-width:26px;border:1px solid #ccc;">-</span> `;
+                            return $(badge + $('<span>').text(option.text).prop('outerHTML'));
+                        },
+                        templateSelection: function(option) {
+                            if (!option.id) return option.text;
+                            const r = rid || $this.closest('.room-row').attr('data-room-id');
+                            let level = 0;
+                            if (r && option.skills) {
+                                const pairs = (option.skills + '').split('|');
+                                for (const pair of pairs) {
+                                    const parts = pair.split(':');
+                                    if (parts[0] == r) { level = parseInt(parts[1] || 0); break; }
+                                }
+                            }
+                            const badge = level > 0
+                                ? `<span class="badge badge-${level >= 3 ? 'success' : (level == 2 ? 'warning' : 'secondary')}" style="font-size:0.7rem;min-width:22px;">B${level}</span> `
+                                : '';
+                            return $(badge + $('<span>').text(option.text).prop('outerHTML'));
+                        }
                     });
 
                     let selected = $this.data('selected');
@@ -1336,7 +1396,8 @@
 
         function checkRoomAuthorization(personId, roomId, $roomRow, callback) {
             // Bỏ qua kiểm tra định mức cho "Công tác khác"
-            if ($roomRow && ($roomRow.find('.room-select-custom').length > 0 || ($roomRow.attr('data-sp-id') && $roomRow.attr('data-sp-id').startsWith('EXT_')))) {
+            if ($roomRow && ($roomRow.find('.room-select-custom').length > 0 || ($roomRow.attr('data-sp-id') &&
+                    $roomRow.attr('data-sp-id').startsWith('EXT_')))) {
                 callback(true);
                 return;
             }
@@ -1643,9 +1704,15 @@
                                 </div>
                                 <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
                             </div>
+                            <div class="input-group input-group-sm mt-1" title="Nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text" style="font-size:0.7rem;padding:2px 5px;"><i class="fas fa-star"></i></span>
+                                </div>
+                                <input type="number" class="form-control professional-count-input" value="0" min="0" style="font-size:0.75rem;" title="Số lượng nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có" placeholder="Cấp ≥3">
+                            </div>
                         </div>
                     </td>
-                    <td style="width: 26.8%" class="p-0">
+                    <td style="width: 36.1%" class="p-0">
                         <div class="personnel-container">
                             <div class="personnel-row d-flex align-items-center p-1 border-bottom">
                                 <div class="personnel-label">A</div>
@@ -1662,7 +1729,7 @@
                         </div>
                         <div class="text-left p-1" style="border-top: 1px dashed #eee"><a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a></div>
                     </td>
-                    <td style="width: 53.6%">
+                    <td style="width: 44.4%">
                         <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
                     </td>
                     <td style="width: 5.3%" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
@@ -1690,6 +1757,41 @@
             else if (shift === '4') count = roomRow.data('nr') || 0;
 
             $(this).closest('.assignment-item').find('.person-count-input').val(count);
+            // Reset professional count khi đổi ca
+            $(this).closest('.assignment-item').find('.professional-count-input').val(0);
+        });
+
+        // Validation: professional-count không được vượt person-count
+        $(document).on('input change', '.person-count-input', function() {
+            const $item = $(this).closest('.assignment-item');
+            const total = parseInt($(this).val()) || 0;
+            const $prof = $item.find('.professional-count-input');
+            const prof = parseInt($prof.val()) || 0;
+            if (prof > total) {
+                $prof.val(total);
+                $prof.addClass('is-invalid');
+                setTimeout(() => $prof.removeClass('is-invalid'), 1500);
+            }
+        });
+
+        $(document).on('input change', '.professional-count-input', function() {
+            const $item = $(this).closest('.assignment-item');
+            const total = parseInt($item.find('.person-count-input').val()) || 0;
+            const prof = parseInt($(this).val()) || 0;
+            if (prof > total) {
+                $(this).val(total);
+                $(this).addClass('is-invalid');
+                setTimeout(() => $(this).removeClass('is-invalid'), 1500);
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: 'Số nhân sự chuyên nghiệp không thể vượt tổng nhân sự cần',
+                    showConfirmButton: false,
+                    timer: 2500
+                });
+            }
+            if (prof < 0) $(this).val(0);
         });
 
         $(document).on('click', '.btn-remove-shift', function() {
@@ -1791,6 +1893,7 @@
                         job_description: jobDesc,
                         number_of_employes: $(this).find('.person-count-input').val() ||
                             0,
+                        num_of_per_level_3: $(this).find('.professional-count-input').val() || 0,
                         off_stream: isOffStream,
                         personnel_list: p_list
                     });
@@ -1945,6 +2048,7 @@
                     end_time: $(this).find('.end-time-input').val(),
                     job_description: $(this).find('.job-desc').html().trim(),
                     number_of_employes: $(this).find('.person-count-input').val() || 0,
+                    num_of_per_level_3: $(this).find('.professional-count-input').val() || 0,
                     off_stream: isOffStream,
                     personnel_list: p_list
                 });
@@ -2107,9 +2211,15 @@
                                                 </div>
                                                 <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
                                             </div>
+                                            <div class="input-group input-group-sm mt-1" title="Nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text" style="font-size:0.7rem;padding:2px 5px;"><i class="fas fa-star"></i></span>
+                                                </div>
+                                                <input type="number" class="form-control professional-count-input" value="0" min="0" style="font-size:0.75rem;" title="Số lượng nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có" placeholder="Cấp ≥3">
+                                            </div>
                                         </div>
                                     </td>
-                                    <td style="width: 250px" class="p-0">
+                                    <td style="width: 350px" class="p-0">
                                         <div class="personnel-container">
                                             <div class="personnel-row d-flex align-items-center p-1 border-bottom">
                                                 <div class="personnel-label">A</div>
@@ -2128,7 +2238,7 @@
                                             <a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a>
                                         </div>
                                     </td>
-                                    <td style="width: 600px">
+                                    <td style="width: 500px">
                                         <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
                                     </td>
                                     <td style="width: 60px" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
@@ -2308,6 +2418,8 @@
 
                         const requiredCount = parseInt($item.find('.person-count-input')
                             .val()) || 0;
+                        const requiredProfCount = parseInt($item.find('.professional-count-input')
+                            .val()) || 0;
                         if (requiredCount > 0) {
                             // Thu thập nhân sự đã được sắp thủ công ở ca này
                             const manuallyAssigned = [];
@@ -2324,6 +2436,7 @@
                                 roomName: roomNameText,
                                 shiftKey: shiftKey,
                                 required: requiredCount,
+                                requiredProf: requiredProfCount, // SL nhân sự cấp >= 3 tối thiểu
                                 assigned: manuallyAssigned, // Khởi tạo danh sách bằng các nhân sự đã sắp
                                 $item: $item
                             });
@@ -2332,6 +2445,18 @@
                 });
 
                 // 3. Sắp xếp Round-robin theo ca
+                // Hàm lấy level của person cho room (sử dụng personnelSkills)
+                function getPersonLevel(pid, roomId) {
+                    const skillsStr = personnelSkills[pid] || '';
+                    if (!skillsStr) return 0;
+                    const pairs = skillsStr.split('|');
+                    for (const pair of pairs) {
+                        const parts = pair.split(':');
+                        if (parts[0] === roomId.toString()) return parseInt(parts[1] || 0);
+                    }
+                    return 0;
+                }
+
                 const shiftKeys = Object.keys(pools);
                 shiftKeys.forEach(shiftKey => {
                     const shiftTasks = tasks.filter(t => t.shiftKey === shiftKey);
@@ -2339,6 +2464,47 @@
 
                     const pool = [...pools[shiftKey]];
 
+                    // --- GIAI ĐOẠN 1: ƯU TIÊN XUẤT NHÂN SỰ CẤP >= 3 CHO CÁC PHÒNG CÓ YÊU CẦU ---
+                    // Xây dựng danh sách tất cả nhân sự >= level 3 trong pool
+                    const profPool = pool.filter(pid => {
+                        return shiftTasks.some(t => getPersonLevel(pid, t.roomId) >= 3);
+                    });
+
+                    // Theo dõi số nhân sự cấp >= 3 đã gán cho mỗi task
+                    shiftTasks.forEach(t => { t.assignedProfCount = 0; });
+
+                    // Phase 1a: Round-robin nhân sự cấp >= 3 vào các phòng có requiredProf > 0, chia đều
+                    let phase1Continue = true;
+                    const profPoolMutable = [...profPool];
+                    while (phase1Continue && profPoolMutable.length > 0) {
+                        phase1Continue = false;
+                        for (const task of shiftTasks) {
+                            if (task.requiredProf <= 0) continue;
+                            if (task.assignedProfCount >= task.requiredProf) continue;
+                            if (task.assigned.length >= task.required) continue;
+
+                            let bestPid = null, bestLevel = -1, bestIdx = -1;
+                            for (let i = 0; i < profPoolMutable.length; i++) {
+                                const pid = profPoolMutable[i];
+                                if (task.assigned.includes(pid.toString())) continue;
+                                const lv = getPersonLevel(pid, task.roomId);
+                                if (lv >= 3 && lv > bestLevel) {
+                                    bestLevel = lv; bestPid = pid; bestIdx = i;
+                                }
+                            }
+                            if (bestPid !== null) {
+                                task.assigned.push(bestPid.toString());
+                                task.assignedProfCount++;
+                                // Xóa khỏi cả hai pool (global & prof)
+                                profPoolMutable.splice(bestIdx, 1);
+                                const globalIdx = pool.indexOf(bestPid);
+                                if (globalIdx >= 0) pool.splice(globalIdx, 1);
+                                phase1Continue = true;
+                            }
+                        }
+                    }
+
+                    // --- GIAI ĐOẠN 2: ROUND-ROBIN BÌNH THƯỜNG CHO CÁC VỊ TRÍ CÒN LẠI ---
                     let hasMoreNeeds = true;
                     while (hasMoreNeeds && pool.length > 0) {
                         hasMoreNeeds = false;
@@ -2354,19 +2520,7 @@
 
                                 for (let i = 0; i < pool.length; i++) {
                                     const pid = pool[i];
-                                    const skillsStr = personnelSkills[pid] || '';
-                                    let level = 0;
-
-                                    if (skillsStr) {
-                                        const pairs = skillsStr.split('|');
-                                        for (const pair of pairs) {
-                                            const parts = pair.split(':');
-                                            if (parts[0] === task.roomId) {
-                                                level = parseInt(parts[1] || 0);
-                                                break;
-                                            }
-                                        }
-                                    }
+                                    const level = getPersonLevel(pid, task.roomId);
 
                                     if (level > 0 && level > bestLevel) {
                                         bestLevel = level;
@@ -2383,7 +2537,6 @@
                             }
                         }
 
-                        // Nếu đi qua tất cả các task mà không tìm được ai phù hợp thì thoát (chống vòng lặp vô hạn)
                         if (!progressMadeInThisRound) {
                             break;
                         }
@@ -2425,8 +2578,53 @@
 
                 updateSidebarHighlights();
 
+                // Kiểm tra cảnh báo phòng thiếu nhân sự cấp >= 3
+                const profWarnings = [];
+                tasks.forEach(task => {
+                    if (task.requiredProf <= 0) return;
+                    // Đếm số nhân sự được phân công có level >= 3 cho phòng này
+                    let actualProfCount = 0;
+                    task.assigned.forEach(pid => {
+                        if (getPersonLevel(pid.toString(), task.roomId) >= 3) actualProfCount++;
+                    });
+                    if (actualProfCount < task.requiredProf) {
+                        profWarnings.push({
+                            room: task.roomName,
+                            shift: task.shiftKey,
+                            required: task.requiredProf,
+                            actual: actualProfCount
+                        });
+                    }
+                });
+
                 // 5. Hiển thị báo cáo
                 showAssignmentReport();
+
+                if (profWarnings.length > 0) {
+                    const warningHtml = profWarnings.map(w =>
+                        `<tr>
+                            <td class="text-left" style="font-size:0.85rem;">${w.room}</td>
+                            <td class="text-center"><span class="badge badge-secondary">${w.shift}</span></td>
+                            <td class="text-center text-danger font-weight-bold">${w.actual}/${w.required}</td>
+                         </tr>`
+                    ).join('');
+                    setTimeout(() => {
+                        Swal.fire({
+                            title: '<i class="fas fa-exclamation-triangle text-warning"></i> Thiếu nhân sự chuyên nghiệp',
+                            html: `
+                                <p class="text-muted" style="font-size:0.9rem;">Các phòng sau đây chưa đủ nhân sự cấp ≥ 3 theo yêu cầu:</p>
+                                <table class="table table-sm table-bordered">
+                                    <thead class="thead-light">
+                                        <tr><th>Phòng / Ca</th><th>Ca</th><th>Thực tế / Yêu cầu</th></tr>
+                                    </thead>
+                                    <tbody>${warningHtml}</tbody>
+                                </table>`,
+                            icon: 'warning',
+                            confirmButtonText: 'Đã hiểu',
+                            customClass: { popup: 'text-left' }
+                        });
+                    }, 500);
+                }
 
             } catch (err) {
                 console.error(err);

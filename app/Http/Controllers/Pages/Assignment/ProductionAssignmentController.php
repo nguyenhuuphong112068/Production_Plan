@@ -514,6 +514,7 @@ class ProductionAssignmentController extends Controller
                         'end' => $endDt,
                         'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
                         'number_of_employes' => $row['number_of_employes'] ?? 0,
+                        'Num_of_per_Level_3' => $row['num_of_per_level_3'] ?? 0,
                         'off_stream' => $row['off_stream'] ?? 0,
                         'assigned_by' => session('user')['userName'] ?? 'System',
                         'created_at' => now(),
@@ -721,6 +722,32 @@ class ProductionAssignmentController extends Controller
             }
         }
 
+        $personnelQuery = DB::table('employees as e')
+            ->where('e.active', 1)
+            ->whereExists(function ($query) use ($production_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea')
+                    ->whereColumn('ea.employees_id', 'e.id')
+                    ->where('ea.production_code', $production_code)
+                    ->where('ea.active', 1);
+            });
+
+        if ($group_code && $group_code != 'HC') {
+            $personnelQuery->whereExists(function ($query) use ($group_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea2')
+                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
+                    ->whereColumn('ea2.employees_id', 'e.id')
+                    ->where(function ($q) use ($group_code) {
+                        $q->where('sg.code', $group_code)
+                            ->orWhere('ea2.group_id', $group_code);
+                    })
+                    ->where('ea2.active', 1);
+            });
+        }
+
+        $allowedPersonnelCodes = $personnelQuery->pluck('e.code')->toArray();
+
         $personnel = DB::table('employees')->where('active', 1)->get();
 
         return view('pages.assignment.production.publicView', [
@@ -729,7 +756,8 @@ class ProductionAssignmentController extends Controller
             'production_code' => $production_code,
             'group_code' => $group_code,
             'groups' => $groups,
-            'personnel' => $personnel
+            'personnel' => $personnel,
+            'allowedPersonnelCodes' => $allowedPersonnelCodes
         ]);
     }
 }
