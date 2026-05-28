@@ -323,27 +323,24 @@
 
             <!-- Filter Section -->
             <div class="filter-section">
-                <form action="{{ url()->current() }}" method="GET" id="filter-form">
-                    <div class="row align-items-end">
-                        <div class="col-md-3">
-                            <label class="small font-weight-bold">Lọc theo Tổ:</label>
-                            <select name="group_id" class="form-control form-control-sm select2-filter"
-                                onchange="this.form.submit()">
-                                <option value="">-- Tất cả các Tổ --</option>
-                                @foreach ($groups as $g)
-                                    <option value="{{ $g->code }}"
-                                        {{ $filterGroupId == $g->code ? 'selected' : '' }}>{{ $g->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <a href="{{ url()->current() }}" class="btn btn-sm btn-secondary shadow-sm mb-0">
-                                <i class="fas fa-undo"></i> Reset
-                            </a>
-                        </div>
+                <div class="row align-items-end">
+                    <div class="col-md-3">
+                        <label class="small font-weight-bold">Lọc theo Tổ:</label>
+                        <select id="filter-group-select" class="form-control form-control-sm select2-filter">
+                            <option value="">-- Tất cả các Tổ --</option>
+                            @foreach ($groups as $g)
+                                <option value="{{ $g->code }}"
+                                    {{ $filterGroupId == $g->code ? 'selected' : '' }}>{{ $g->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
-                </form>
+                    <div class="col-md-2">
+                        <button id="btn-reset-filter" class="btn btn-sm btn-secondary shadow-sm mb-0">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <table id="data_table_personnel" class="table table-bordered table-striped">
@@ -452,6 +449,25 @@
 
         const groupsData = @json($groups);
 
+        // ── Client-side group filter (no page reload) ──────────────────────
+        let activeGroupFilter = '{{ $filterGroupId }}';
+
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, counter) {
+            if (settings.nTable.id !== 'data_table_personnel') return true;
+            if (!activeGroupFilter) return true;
+
+            const $row = $(settings.nTable).find('tbody tr').eq(dataIndex);
+            let found = false;
+            $row.find('.btn-toggle-group').each(function() {
+                if ($(this).data('group-id') == activeGroupFilter) {
+                    found = true;
+                    return false; // break
+                }
+            });
+            return found;
+        });
+        // ──────────────────────────────────────────────────────────────────
+
         function initPermissionsSelect2() {
             $('.select2-filter').select2({
                 theme: 'bootstrap4'
@@ -463,7 +479,7 @@
             });
         }
 
-        $('#data_table_personnel').DataTable({
+        var dt = $('#data_table_personnel').DataTable({
             paging: true,
             lengthChange: true,
             searching: true,
@@ -493,22 +509,78 @@
             }
         });
 
+        // Group filter select2 — lọc không reload trang
+        $('#filter-group-select').select2({ theme: 'bootstrap4' });
+
+        $('#filter-group-select').on('change', function() {
+            activeGroupFilter = $(this).val();
+            dt.draw(); // re-apply custom search, giữ nguyên trang hiện tại
+        });
+
+        // Nút Reset — xóa filter, không reload trang
+        $('#btn-reset-filter').on('click', function() {
+            activeGroupFilter = '';
+            $('#filter-group-select').val('').trigger('change.select2'); // reset select2 UI
+            dt.draw();
+        });
+
+        // Kích hoạt filter ngay nếu đang có giá trị từ server (URL param)
+        if (activeGroupFilter) {
+            dt.draw();
+        }
+
         // Handle Quick Add Group
         $(document).on('change', '.select-add-group', function() {
             if (!canEdit) return;
             const $select = $(this);
-            const employeeId = $select.closest('.groups-list-container').data('employee-id');
+            const $container = $select.closest('.groups-list-container');
+            const employeeId = $container.data('employee-id');
             const groupId = $select.val();
+            const groupName = $select.find('option:selected').text();
             if (!groupId) return;
 
             const groupData = [];
-            $select.closest('.groups-list-container').find('.btn-toggle-group').each(function() {
+            $container.find('.btn-toggle-group').each(function() {
                 groupData.push($(this).data('group-id') + ':' + $(this).data('active'));
             });
             groupData.push(groupId + ':1');
 
             updatePermissionAjax(employeeId, 'group', groupData);
-            location.reload();
+
+            // Tính ngày hôm nay
+            const today = new Date();
+            const day   = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year  = String(today.getFullYear()).slice(-2);
+            const todayStr = `${day}/${month}/${year}`;
+
+            // Inject badge mới vào DOM — không reload trang
+            const newBadgeHtml = `
+                <div class="assignment-item">
+                    <span class="badge badge-toggle badge-primary active btn-toggle-group"
+                          data-group-id="${groupId}"
+                          data-active="1"
+                          title="Nhấn để vô hiệu hóa">
+                        ${groupName}
+                    </span>
+                    <span class="assignment-meta">
+                        <i class="fas fa-user-edit"></i> System Sync <br>
+                        <i class="fas fa-calendar-check"></i> ${todayStr}
+                    </span>
+                </div>`;
+            $container.find('.groups-badges').append(newBadgeHtml);
+
+            // Xóa option vừa chọn khỏi dropdown để không thêm lại
+            $select.find(`option[value="${groupId}"]`).remove();
+            $select.val('');
+
+            // Re-init select2 để phản ánh thay đổi
+            $select.select2('destroy');
+            $select.select2({
+                placeholder: '+ Thêm Tổ...',
+                allowClear: true,
+                theme: 'bootstrap4'
+            });
         });
 
         // Toggle Organizational Group Badge
