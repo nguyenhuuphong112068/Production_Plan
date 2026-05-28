@@ -181,22 +181,35 @@ class MaintenanceSchedualController extends SchedualController
             ->whereNotNull('resourceId')
             ->get();
 
-        $roomFreeTimes = [];
-        $dailyOccupancy = []; // count tasks per day to distribute load
+        // roomOccupiedByDate: per-day latest end time của existing events (tránh block khe trống giữa các ngày)
+        // roomFreeTimes: chỉ dùng để track tasks được sắp trong RUN HIỆN TẠI (sequential, global max)
+        $roomOccupiedByDate = []; // [roomId][dateStr] => Carbon (end time of existing event on that date)
+        $roomFreeTimes      = []; // [roomId] => Carbon (end of last task scheduled in current run)
+        $dailyOccupancy     = []; // count tasks per day to distribute load
 
         foreach ($existingEvents as $ev) {
-            $eTime = Carbon::parse($ev->end);
+            $eEnd = Carbon::parse($ev->end);
             if ($ev->end_clearning) {
                 $cTime = Carbon::parse($ev->end_clearning);
-                if ($cTime->gt($eTime)) $eTime = $cTime;
+                if ($cTime->gt($eEnd)) $eEnd = $cTime;
             }
-            if (!isset($roomFreeTimes[$ev->resourceId]) || $eTime->gt($roomFreeTimes[$ev->resourceId])) {
-                $roomFreeTimes[$ev->resourceId] = $eTime;
+            $eStart = Carbon::parse($ev->start);
+
+            // Đăng ký per-day: lặp qua từng ngày event chiếm dụng
+            $cur    = $eStart->copy()->startOfDay();
+            $endDay = $eEnd->copy()->startOfDay();
+            while ($cur->lte($endDay)) {
+                $ds = $cur->toDateString();
+                if (!isset($roomOccupiedByDate[$ev->resourceId][$ds])
+                    || $eEnd->gt($roomOccupiedByDate[$ev->resourceId][$ds])) {
+                    $roomOccupiedByDate[$ev->resourceId][$ds] = $eEnd->copy();
+                }
+                $cur->addDay();
             }
 
             // Chỉ đếm các task bảo trì (stage_code 8) để tính tải trọng nhân sự bảo trì
             if ($ev->stage_code == 8) {
-                $dateKey = Carbon::parse($ev->start)->toDateString();
+                $dateKey = $eStart->toDateString();
                 $dailyOccupancy[$dateKey] = ($dailyOccupancy[$dateKey] ?? 0) + 1;
             }
         }
@@ -230,60 +243,104 @@ class MaintenanceSchedualController extends SchedualController
 
                 // --- LOGIC TÌM NGÀY BẮT ĐẦU TỐI ƯU ---
                 $idealStart = $group['min_due']->copy()->subDays(7)->startOfDay();
+
+                // Điều kiện: không sắp lịch trước ngày 1 của tháng min_due
+                // VD: min_due = 02/05/2026 → chỉ sắp từ 01/05/2026 trở đi
+                $minDueMonthStart = $group['min_due']->copy()->startOfMonth()->startOfDay();
+                if ($idealStart->lt($minDueMonthStart)) {
+                    $idealStart = $minDueMonthStart->copy();
+                }
                 if ($idealStart->lt($startDate)) $idealStart = $startDate->copy()->startOfDay();
-                $deadline = $group['min_due'];
+
+                $deadline = $group['min_due']; // ngày tới hạn gốc (min_due)
+
+                // --- Tính deadline thực (effectiveDeadline) khớp với logic frontend ---
+                // Frontend: HC → không grace; Monthly → +7 ngày; khác → +21 ngày
+                $firstTask = $subTasks->first();
+                $taskCode  = strtoupper((string)($firstTask->code ?? ''));
+                $isHC      = str_ends_with($taskCode, '_HC');
+                if ($isHC) {
+                    $gracedays = 0;
+                } elseif (($firstTask->actual_batch ?? '') === 'Monthly') {
+                    $gracedays = 7;
+                } else {
+                    $gracedays = 21;
+                }
+                $effectiveDeadline = $deadline->copy()->addDays($gracedays)->endOfDay();
 
                 $possibleWorkingDays = [];
-                $possibleOffDays = [];
+                $possibleOffDays     = [];
 
-                // Tìm trong phạm vi 15 ngày hoặc cho đến ngày hạn (tùy cái nào xa hơn)
-                $searchLimit = max(15, (int)$idealStart->diffInDays($deadline) + 30);
+                // Tìm đủ xa để đảm bảo bao phủ effectiveDeadline (tối thiểu 15 ngày)
+                $searchLimit = max(15, (int)$idealStart->diffInDays($effectiveDeadline) + 5);
 
                 for ($i = 0; $i < $searchLimit; $i++) {
                     $checkDate = $idealStart->copy()->addDays($i);
-                    $dateStr = $checkDate->toDateString();
+                    $dateStr   = $checkDate->toDateString();
 
-                    // Kiểm tra room rảnh
-                    $roomFree = $roomFreeTimes[$roomId] ?? $startDate;
                     $actualStartInDay = $checkDate->copy()->setHour(7)->setMinute(15)->setSecond(0);
-                    if ($roomFree->gt($actualStartInDay)) $actualStartInDay = $roomFree->copy();
 
-                    // Nếu ngày này phòng rảnh quá muộn (sang ngày hôm sau) thì bỏ qua
+                    // 1. Ràng buộc từ existing events (per-day): chỉ block ngày đó, không block toàn bộ tương lai
+                    $existingEndThisDay = $roomOccupiedByDate[$roomId][$dateStr] ?? null;
+                    if ($existingEndThisDay && $existingEndThisDay->gt($actualStartInDay)) {
+                        if ($existingEndThisDay->toDateString() === $dateStr) {
+                            // Event kết thúc trong ngày → bắt đầu sau khi nó kết thúc
+                            $actualStartInDay = $existingEndThisDay->copy();
+                        } else {
+                            // Event tràn sang ngày hôm sau → bỏ qua ngày này
+                            continue;
+                        }
+                    }
+
+                    // 2. Ràng buộc từ tasks đã sắp trong current run (global max, chính xác vì sequential)
+                    $currentRunFree = $roomFreeTimes[$roomId] ?? null;
+                    if ($currentRunFree && $currentRunFree->gt($actualStartInDay)) {
+                        if ($currentRunFree->toDateString() === $dateStr) {
+                            $actualStartInDay = $currentRunFree->copy();
+                        } else {
+                            // Task trong run hiện tại tràn sang ngày hôm sau → bỏ qua ngày này
+                            continue;
+                        }
+                    }
+
+                    // Kiểm tra cuối: start vẫn phải nằm trong ngày checkDate
                     if ($actualStartInDay->toDateString() !== $dateStr) continue;
 
                     $tempEnd = $actualStartInDay->copy()->addMinutes($totalDuration);
-                    $isLate = $tempEnd->gt($deadline);
+
+                    // $isLate so sánh với effectiveDeadline (khớp frontend)
+                    $isLate = $tempEnd->gt($effectiveDeadline);
 
                     $dayData = [
-                        'start' => $actualStartInDay,
-                        'load' => $dailyOccupancy[$dateStr] ?? 0,
-                        'isLate' => $isLate
+                        'start'  => $actualStartInDay,
+                        'load'   => $dailyOccupancy[$dateStr] ?? 0,
+                        'isLate' => $isLate,
                     ];
 
                     if (in_array($dateStr, $offDays)) {
                         $possibleOffDays[] = $dayData;
                     } else {
-                        $possibleWorkingDays[] = $dayData;
+                        $possibleWorkingDays[] = $dayData; // Ưu tiên ngày trong tuần
                     }
                 }
 
-                // Chọn ngày theo thứ tự ưu tiên
+                // --- Chọn ngày theo thứ tự ưu tiên ---
                 $bestDateData = null;
 
-                // Ưu tiên 1: Ngày làm việc & Không trễ hạn
+                // Ưu tiên 1: Ngày làm việc (trong tuần) & KHÔNG trễ hạn
                 $bestDateData = collect($possibleWorkingDays)->where('isLate', false)->sortBy('load')->first();
 
-                // Ưu tiên 2: Ngày nghỉ & Không trễ hạn (Cứu hạn)
+                // Ưu tiên 2: Ngày nghỉ & KHÔNG trễ hạn (cứu hạn khi hết slot trong tuần)
                 if (!$bestDateData) {
                     $bestDateData = collect($possibleOffDays)->where('isLate', false)->sortBy('load')->first();
                 }
 
-                // Ưu tiên 3: Nếu buộc phải trễ, chọn ngày làm việc sớm nhất/ít tải nhất
+                // Ưu tiên 3: Buộc phải trễ → chọn ngày làm việc ít tải nhất
                 if (!$bestDateData) {
                     $bestDateData = collect($possibleWorkingDays)->sortBy('load')->first();
                 }
 
-                // Ưu tiên 4: Bất kỳ ngày nào còn lại
+                // Ưu tiên 4: Phương án cuối cùng → ngày nghỉ bất kỳ
                 if (!$bestDateData) {
                     $bestDateData = collect($possibleOffDays)->sortBy('load')->first();
                 }
@@ -296,7 +353,7 @@ class MaintenanceSchedualController extends SchedualController
                 $dailyOccupancy[$finalDateStr] = ($dailyOccupancy[$finalDateStr] ?? 0) + 1;
 
                 // --- TIẾN HÀNH LƯU LỊCH ---
-                $firstTask = $subTasks->first();
+                // $firstTask đã được khai báo ở trên (dùng cho effectiveDeadline)
                 $type = strtoupper(substr($firstTask->code ?? '', -2));
 
                 $parentIds = $subTasks->pluck('Parent_Equip_id')->unique()->filter()->implode(', ');
