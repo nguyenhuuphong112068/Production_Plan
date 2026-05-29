@@ -43,6 +43,7 @@ class ShedualYieldController extends Controller
             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->whereRaw('((sp.start >= ? AND sp.end <= ?))', [$startDate->toDateTimeString(), $endDate->toDateTimeString()])
             ->whereNotNull('sp.start')
+            ->where('sp.stage_code', '<=', 7)
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
@@ -66,6 +67,7 @@ class ShedualYieldController extends Controller
             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
             ->whereNotNull('sp.start')
+            ->where('sp.stage_code', '<=', 7)
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
                 "sp.$group_By",
@@ -110,16 +112,18 @@ class ShedualYieldController extends Controller
                         ->where('id', $first->$group_By)
                         ->first();
 
+                    // Bỏ qua nếu phòng không tồn tại (bị xóa hoặc resourceId không hợp lệ)
+                    if (!$room) return null;
+
                     return (object)[
                         'stage_code' => $room->stage_code,
-                        'order_by' => $room->order_by,
-                        $group_By => $first->$group_By,
-                        'room_code' => $room->code ?? null,
-                        'room_name' => $room->name ?? null,
-                        'unit' => $first->unit,
-                        'total_qty' => $total_qty,
-                        'total_qty_unit' => $total_qty_unit
-
+                        'order_by'   => $room->order_by,
+                        $group_By    => $first->$group_By,
+                        'room_code'  => $room->code ?? null,
+                        'room_name'  => $room->name ?? null,
+                        'unit'       => $first->unit,
+                        'total_qty'      => $total_qty,
+                        'total_qty_unit' => $total_qty_unit,
                     ];
                 }
 
@@ -130,6 +134,7 @@ class ShedualYieldController extends Controller
                     'total_qty' => $total_qty,
                 ];
             })
+            ->filter(fn($item) => $item !== null) // Lọc bỏ phòng không tìm thấy
             ->values();
 
 
@@ -234,7 +239,7 @@ class ShedualYieldController extends Controller
 
             ->where('sp.deparment_code', session('user')['production_code'])
             ->whereNotNull('sp.resourceId')
-
+            ->where('sp.stage_code', '<=', 7)
             // overlap yield time
             ->whereRaw('(y.start < ? AND y.end > ?)', [$endDateStr, $startDateStr])
 
