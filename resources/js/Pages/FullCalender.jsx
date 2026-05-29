@@ -3505,8 +3505,6 @@ const ScheduleTest = () => {
         droppable={true}
         selectable={true}
         eventResizableFromStart={true}
-
-        //slotDuration="01:00:00"
         eventDurationEditable={true}
 
 
@@ -3520,7 +3518,7 @@ const ScheduleTest = () => {
         eventAllow={finisedEvent}
 
         resourceGroupField="stage_name"
-        resourceOrder='order_by'
+        resourceOrder='stage_code,order_by'
 
 
         resourceGroupLabelContent={(arg) => {

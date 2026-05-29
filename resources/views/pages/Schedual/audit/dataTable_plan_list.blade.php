@@ -10,23 +10,20 @@
                         <th rowspan="2">Người Tạo</th>
                         <th rowspan="2">Ngày Tạo</th>
                         <th rowspan="2">Tình Trạng</th>
-                       
-                        <th colspan="6" style="text-align:center;">
-                            Tình Trạng thay đổi
-                        </th>
 
-                        <th rowspan="2">Người Gửi</th>
-                        <th rowspan="2">Ngày Gửi</th>
+                        <th colspan="6" style="text-align:center;">
+                            Số lần thay đổi
+                        </th>
                         <th rowspan="2">Chi Tiết</th>
                     </tr>
 
                     <tr>
-                        <th>Đã Cân</th> 
-                        <th>Đã PC</th>
-                        <th>Đã THT</th>
-                        <th>Đã ĐH</th>
-                        <th>Đã BP</th>
-                        <th>Đã ĐG</th>
+                        <th>Cân</th>
+                        <th>Pha Chế</th>
+                        <th>Trộn Hoàn Tất</th>
+                        <th>Định Hình</th>
+                        <th>Bao Phim</th>
+                        <th>ĐGSC-ĐGTC</th>
                     </tr>
                 </thead>
 
@@ -37,7 +34,8 @@
                             <td>{{ $data->name }}</td>
                             <td>{{ $data->deparment_code }}</td>
                             <td>{{ $data->prepared_by ?? 'NA' }}</td>
-                            <td>{{ $data->created_at ? \Carbon\Carbon::parse($data->created_at ?? now())->format('d/m/Y H:i') : '' }}</td>
+                            <td>{{ $data->created_at ? \Carbon\Carbon::parse($data->created_at ?? now())->format('d/m/Y H:i') : '' }}
+                            </td>
 
                             @php
                                 $colors = [
@@ -51,7 +49,8 @@
                             @endphp
 
                             <td style="text-align: center; vertical-align: middle;">
-                                <span style="padding: 6px 15px; border-radius: 20px; {{ $colors[$data->send ?? 1] ?? '' }}">
+                                <span
+                                    style="padding: 6px 15px; border-radius: 20px; {{ $colors[$data->send ?? 1] ?? '' }}">
                                     {{ $status[$data->send ?? 1] }}
                                 </span>
                             </td>
@@ -63,11 +62,11 @@
                             <td>{{ $data->status_counts['Đã Bao phim'] ?? 0 }}</td>
                             <td>{{ $data->status_counts['Hoàn Tất ĐG'] ?? 0 }}</td>
 
-                            <td>{{ $data->send_by ?? 'NA' }}</td>
-                            <td>{{ $data->send_date ? \Carbon\Carbon::parse($data->send_date)->format('d/m/Y') : '' }}</td>
+                            </td>
 
                             <td class="text-center align-middle">
-                                <a href="{{ route('pages.Schedual.audit.open', ['plan_list_id' => $data->id]) }}" class="btn btn-success">
+                                <a href="{{ route('pages.Schedual.audit.open', ['plan_list_id' => $data->id]) }}"
+                                    class="btn btn-success">
                                     <i class="fas fa-eye"></i>
                                 </a>
                             </td>

@@ -1309,6 +1309,7 @@ class SchedualController extends Controller
                 ! $hasMaintenance,
                 fn($query) => $query->where('only_maintenance', 0)
             )
+
             ->orderBy('order_by', 'asc')
             ->get()
             ->map(function ($room) use ($statsMap, $yieldMap) {
@@ -1330,7 +1331,10 @@ class SchedualController extends Controller
                 return $room;
             });
 
-        return $result;
+        // Sắp xếp lại theo 'stage_code'
+        $sortedResult = $result->sortBy('stage_code')->values();
+
+        return $sortedResult;
     }
 
     // hàm view gọn hơn request

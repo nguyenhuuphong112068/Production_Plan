@@ -51,7 +51,8 @@
                 </div>
             </form> --}}
 
-            <form id="filterForm" method="GET" action="{{ isset($plan_list_id) ? route('pages.Schedual.audit.open') : route('pages.Schedual.audit.index') }}"
+            <form id="filterForm" method="GET"
+                action="{{ isset($plan_list_id) ? route('pages.Schedual.audit.open') : route('pages.Schedual.audit.index') }}"
                 class="d-flex flex-wrap gap-2">
                 @csrf
                 @if (isset($plan_list_id))
@@ -73,26 +74,7 @@
                     </div> --}}
 
                 <div class="row w-100 align-items-center">
-
-                    <!-- Filter From/To -->
-                    <div class="col-md-4 d-flex gap-2">
-                        @php
-                            use Carbon\Carbon;
-                            $defaultFrom = Carbon::now()->toDateString();
-                            $defaultTo = Carbon::now()->addMonth(2)->toDateString();
-                        @endphp
-                        <div class="form-group d-flex align-items-center">
-                            <label for="from_date" class="mr-2 mb-0">From:</label>
-                            <input type="date" id="from_date" name="from_date"
-                                value="{{ request('from_date') ?? $defaultFrom }}" class="form-control" />
-                        </div>
-                        <div class="form-group d-flex align-items-center">
-                            <label for="to_date" class="mr-2 mb-0">To:</label>
-                            <input type="date" id="to_date" name="to_date"
-                                value="{{ request('to_date') ?? $defaultTo }}" class="form-control" />
-                        </div>
-                    </div>
-                    <div class="col-md-4 d-flex gap-2"></div>
+                    <div class="col-md-8"></div>
 
                     <!-- Stage Selector -->
                     <div class="col-md-4 d-flex justify-content-end" style="gap: 10px; height: 40px;">
@@ -108,10 +90,7 @@
                                 <option {{ $stageCode == 7 ? 'selected' : '' }} value=7>Đóng Gói</option>
                             </select>
                         </div>
-
                     </div>
-
-
                 </div>
 
 
@@ -144,7 +123,8 @@
                         <tr>
                             <td>{{ $loop->iteration }}
                                 @if (session('user')['userGroup'] == 'Admin')
-                                    <div> {{ $data->id }} </div>
+                                    <div> {{ $data->id }} </div> <br>
+                                    <div> {{ $data->stage_plan_id }} </div>
                                 @endif
                             </td>
                             <td>
@@ -182,8 +162,8 @@
                             <td class="text-center align-middle">
                                 @if ($data->version > 1)
                                     <button type="button" class="btn btn-warning btn-sm btn-history position-relative"
-                                        data-id="{{ $data->stage_plan_id }}"
-                                        data-toggle="modal" data-target="#historyModal">
+                                        data-id="{{ $data->stage_plan_id }}" data-toggle="modal"
+                                        data-target="#historyModal">
                                         <i class="fas fa-history"></i>
                                         <span class="badge badge-danger"
                                             style="position: absolute; top: -5px; right: -5px; border-radius: 50%; font-size: 10px; min-width: 18px;">
@@ -257,17 +237,24 @@
             $('#historyModal').modal('show');
 
             $.ajax({
-                url: '{{ route("pages.Schedual.audit.history") }}',
+                url: '{{ route('pages.Schedual.audit.history') }}',
                 method: 'GET',
-                data: { id: stagePlanId },
+                data: {
+                    id: stagePlanId
+                },
                 success: function(rows) {
                     if (!rows || rows.length === 0) {
-                        $('#data_table_history_body').html('<tr><td colspan="11" class="text-center text-muted">Không có lịch sử</td></tr>');
+                        $('#data_table_history_body').html(
+                            '<tr><td colspan="11" class="text-center text-muted">Không có lịch sử</td></tr>'
+                            );
                     } else {
                         rows.forEach(function(r, idx) {
                             const isLatest = (idx === 0);
-                            const rowClass = isLatest ? 'table-success font-weight-bold' : '';
-                            const badge    = isLatest ? ' <span class="badge badge-success" style="font-size:11px;">Latest</span>' : '';
+                            const rowClass = isLatest ?
+                                'table-success font-weight-bold' : '';
+                            const badge = isLatest ?
+                                ' <span class="badge badge-success" style="font-size:11px;">Latest</span>' :
+                                '';
                             // Helper: "yyyy-mm-dd HH:mm:ss" → "dd/mm/yyyy HH:mm"
                             function fmtDT(val) {
                                 if (!val) return '-';
@@ -278,13 +265,18 @@
                                 const hm = timePart ? timePart.substring(0, 5) : '';
                                 return `${d}/${m}/${y}${hm ? ' ' + hm : ''}`;
                             }
-                            const code    = (r.intermediate_code || '') + (r.finished_product_code ? '<br>' + r.finished_product_code : '');
-                            const start   = fmtDT(r.start);
-                            const end     = fmtDT(r.end);
+                            const code = (r.intermediate_code || '') + (r
+                                .finished_product_code ? '<br>' + r
+                                .finished_product_code : '');
+                            const start = fmtDT(r.start);
+                            const end = fmtDT(r.end);
                             const scStart = fmtDT(r.start_clearning);
-                            const scEnd   = fmtDT(r.end_clearning);
-                            const scheAt  = r.schedualed_at ? fmtDT(r.schedualed_at.substring(0,10) + ' 00:00:00').split(' ')[0] : '-';
-                            const batchQty = (r.batch_qty || '') + ' ' + (r.unit_batch_qty || '');
+                            const scEnd = fmtDT(r.end_clearning);
+                            const scheAt = r.schedualed_at ? fmtDT(r.schedualed_at
+                                    .substring(0, 10) + ' 00:00:00').split(' ')[0] :
+                                '-';
+                            const batchQty = (r.batch_qty || '') + ' ' + (r
+                                .unit_batch_qty || '');
                             $('#data_table_history_body').append(
                                 `<tr class="${rowClass}">
                                     <td class="text-center">${idx + 1}</td>
@@ -316,7 +308,9 @@
                 },
                 error: function(xhr) {
                     console.error('History error:', xhr.status, xhr.responseText);
-                    $('#data_table_history_body').html('<tr><td colspan="11" class="text-center text-danger">Lỗi tải dữ liệu (HTTP ' + xhr.status + ')</td></tr>');
+                    $('#data_table_history_body').html(
+                        '<tr><td colspan="11" class="text-center text-danger">Lỗi tải dữ liệu (HTTP ' +
+                        xhr.status + ')</td></tr>');
                 }
             });
         });
@@ -353,17 +347,6 @@
 
 
 
-<script>
-    const form = document.getElementById('filterForm');
-    const fromInput = document.getElementById('from_date');
-    const toInput = document.getElementById('to_date');
-
-    [fromInput, toInput].forEach(input => {
-        input.addEventListener('input', function() {
-            form.submit();
-        });
-    });
-</script>
 
 {{-- <script>
     document.addEventListener('DOMContentLoaded', function() {
