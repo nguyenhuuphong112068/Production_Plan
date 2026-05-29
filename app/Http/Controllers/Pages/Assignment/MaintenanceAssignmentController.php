@@ -322,7 +322,11 @@ class MaintenanceAssignmentController extends Controller
         $tasks = $tasks->concat($mappedExtra);
 
         $personnelQuery = DB::table('employees as e')
-            ->where('e.active', 1);
+            ->where('e.active', 1)
+            ->where(function ($q) {
+                $q->whereNull('e.resign')
+                  ->orWhere('e.resign', 0);
+            });
 
         if ($group_code) {
             $personnelQuery->whereExists(function ($query) use ($group_code) {
@@ -356,6 +360,8 @@ class MaintenanceAssignmentController extends Controller
         $rooms     = DB::table('room')->orderBy('code')->get();
         session()->put(['title' => 'PHÂN CÔNG CÔNG VIỆC']);
 
+        $dbAssignments = $this->getDbAssignments($reportedDate);
+
         return view('pages.assignment.maintenance.index', [
             'tasks'        => $tasks,
             'reportedDate' => $reportedDate,
@@ -368,6 +374,7 @@ class MaintenanceAssignmentController extends Controller
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
             'canEdit'      => $canEdit,
             'currentGroup' => $currentGroup,
+            'dbAssignments' => $dbAssignments,
         ]);
     }
 
@@ -381,9 +388,21 @@ class MaintenanceAssignmentController extends Controller
 
         try {
             $data = file_get_contents($url);
-            $personnelData = json_decode($data, true);
+            $personnelData = json_decode($data, true) ?: [];
 
             if (is_array($personnelData)) {
+                // Filter out resigned employees
+                $resignedCodes = DB::table('employees')->where('resign', 1)->pluck('code')->toArray();
+                $resignedCodesSet = array_flip($resignedCodes);
+                $filteredPersonnelData = [];
+                foreach ($personnelData as $person) {
+                    $code = $person['employeeId'] ?? $person['code'] ?? null;
+                    if ($code && isset($resignedCodesSet[$code])) {
+                        continue;
+                    }
+                    $filteredPersonnelData[] = $person;
+                }
+                $personnelData = $filteredPersonnelData;
                 // Lấy dữ liệu đi ca của tháng sau (month + 1) để điền cho day21 - day31
                 $nextMonth = intval($month) + 1;
                 $nextYear = intval($year);
@@ -505,6 +524,17 @@ class MaintenanceAssignmentController extends Controller
             }
             $deleteQuery->update(['active' => 0, 'updated_at' => now()]);
 
+            $prodGroups = [
+                1 => "Trung Tâm Cân",
+                3 => "Pha Chế",
+                4 => "Văn Phòng",
+                5 => "Định Hình",
+                6 => "Bao Phim",
+                7 => "ĐGSC",
+                8 => "ĐGTC",
+                9 => "VSCN + Kho BTP"
+            ];
+
             if (!empty($assignments_data)) {
                 foreach ($assignments_data as $row) {
                     $p_data = $row['personnel_list'] ?? [];
@@ -514,6 +544,38 @@ class MaintenanceAssignmentController extends Controller
                     $endDt = $reportedDate . ' ' . $row['end_time'];
                     if ($row['end_time'] < $row['start_time']) {
                         $endDt = Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
+                    }
+
+                    // Kiểm tra trùng lịch của từng nhân sự
+                    foreach ($p_data as $p) {
+                        if (empty($p['personnel_id'])) continue;
+
+                        $overlap = DB::table('assignments as a')
+                            ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+                            ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
+                            ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
+                            ->leftJoin('employees as e', 'ap.personnel_id', '=', 'e.id')
+                            ->where('ap.personnel_id', $p['personnel_id'])
+                            ->where('a.active', 1)
+                            ->where('a.start', '<', $endDt)
+                            ->where('a.end', '>', $startDt)
+                            ->select('a.start', 'a.end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+                            ->first();
+
+                        if ($overlap) {
+                            $grpName = $overlap->group_name;
+                            if ($overlap->deparment_code == 'EN') {
+                                $grpName = 'Bảo trì';
+                            } elseif ($overlap->deparment_code == 'QA') {
+                                $grpName = 'Hiệu chuẩn';
+                            } else {
+                                $grpName = $prodGroups[$overlap->stage_groups_code] ?? $overlap->group_name ?? ('Tổ ' . $overlap->stage_groups_code);
+                            }
+                            $roomName = $overlap->room_name ?: 'Công tác khác';
+                            $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
+                            
+                            throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
+                        }
                     }
 
                     $assignmentId = DB::table('assignments')->insertGetId([
@@ -807,6 +869,8 @@ class MaintenanceAssignmentController extends Controller
 
         $personnel = DB::table('employees')->where('active', 1)->orderBy('name')->get();
 
+        $dbAssignments = $this->getDbAssignments($reportedDate);
+
         return view('pages.assignment.maintenance.publicView', [
             'tasks'                 => $tasks,
             'reportedDate'          => $reportedDate,
@@ -814,6 +878,69 @@ class MaintenanceAssignmentController extends Controller
             'stage_groups'          => $stage_groups,
             'personnel'             => $personnel,
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
+            'dbAssignments'         => $dbAssignments,
         ]);
+    }
+
+    private function getDbAssignments($reportedDate)
+    {
+        $dailyAssignments = DB::table('assignments as a')
+            ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+            ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
+            ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
+            ->whereDate('a.start', $reportedDate)
+            ->where('a.active', 1)
+            ->select(
+                'ap.personnel_id',
+                'a.id as assignment_id',
+                'a.start',
+                'a.end',
+                'a.stage_groups_code',
+                'a.deparment_code',
+                'sg.name as group_name',
+                'r.name as room_name',
+                'r.code as room_code'
+            )
+            ->get();
+
+        $prodGroups = [
+            1 => "Trung Tâm Cân",
+            3 => "Pha Chế",
+            4 => "Văn Phòng",
+            5 => "Định Hình",
+            6 => "Bao Phim",
+            7 => "ĐGSC",
+            8 => "ĐGTC",
+            9 => "VSCN + Kho BTP"
+        ];
+
+        $dbAssignments = [];
+        foreach ($dailyAssignments as $ass) {
+            $pId = $ass->personnel_id;
+            $startDisplay = $ass->start ? Carbon::parse($ass->start)->format('H:i') : '';
+            $endDisplay = $ass->end ? Carbon::parse($ass->end)->format('H:i') : '';
+
+            $groupName = '';
+            if ($ass->deparment_code == 'EN') {
+                $groupName = 'Bảo trì';
+            } elseif ($ass->deparment_code == 'QA') {
+                $groupName = 'Hiệu chuẩn';
+            } else {
+                $groupName = $prodGroups[$ass->stage_groups_code] ?? $ass->group_name ?? ('Tổ ' . $ass->stage_groups_code);
+            }
+
+            $dbAssignments[$pId][] = [
+                'assignment_id' => $ass->assignment_id,
+                'room_code' => $ass->room_code,
+                'room_name' => $ass->room_name ?: 'Công tác khác',
+                'start' => $startDisplay,
+                'end' => $endDisplay,
+                'stage_groups_code' => $ass->stage_groups_code,
+                'deparment_code' => $ass->deparment_code,
+                'group_name' => $groupName
+            ];
+        }
+
+        return $dbAssignments;
     }
 }

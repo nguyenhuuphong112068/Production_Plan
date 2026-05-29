@@ -799,13 +799,17 @@
                         class="fas fa-times"></i></button>
             </div>
             <div class="p-2 border-bottom bg-white">
-                <div class="input-group input-group-sm shadow-sm">
+                <div class="input-group input-group-sm shadow-sm mb-2">
                     <div class="input-group-prepend">
                         <span class="input-group-text bg-white border-right-0"><i
                                 class="fas fa-search text-muted"></i></span>
                     </div>
                     <input type="text" class="form-control border-left-0" id="sidebar-personnel-search"
                         placeholder="Tìm tên hoặc mã NV...">
+                </div>
+                <div class="custom-control custom-switch pl-4">
+                    <input type="checkbox" class="custom-control-input" id="filter-under-8h">
+                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer" for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
                 </div>
             </div>
             <div class="sidebar-body p-0 overflow-auto" id="sidebar-data-container" style="flex: 1">
@@ -901,6 +905,8 @@
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 
 <script>
+    const dbAssignments = @json($dbAssignments ?? []);
+
     const employeeCodeToId = {
         @foreach ($personnel as $p)
             "{{ $p->code }}": "{{ $p->id }}",
@@ -927,6 +933,142 @@
             "{{ $pid }}": "{{ $s->allowed_rooms_with_levels }}",
         @endforeach
     };
+
+    function updateSidebarPersonnelTimes() {
+        // Helper to calculate hours between HH:mm times
+        function calculateDurationHours(startStr, endStr) {
+            if (!startStr || !endStr) return 0;
+            const sParts = startStr.split(':');
+            const eParts = endStr.split(':');
+            
+            let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
+            let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
+            
+            if (eMin < sMin) {
+                // Crosses midnight
+                eMin += 24 * 60;
+            }
+            
+            return (eMin - sMin) / 60;
+        }
+
+        const filterUnder8h = $('#filter-under-8h').is(':checked');
+
+        $('.draggable-person').each(function() {
+            const $el = $(this);
+            const code = $el.attr('data-code');
+            const personId = employeeCodeToId[code];
+            const isLeave = $el.attr('data-shift-key') === 'P';
+            
+            // Remove existing badges container
+            $el.find('.personnel-time-ranges').remove();
+            
+            let totalHours = 0;
+            
+            if (personId) {
+                const assignments = [];
+                // 1. Scan DOM
+                $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
+                    const $item = $(this);
+                    const assId = $item.attr('data-id');
+                    let found = false;
+                    $item.find('.personnel-container .person-select').each(function() {
+                        if ($(this).val() == personId.toString()) {
+                            found = true;
+                        }
+                    });
+                    if (found) {
+                        const roomRow = $item.closest('.room-row');
+                        let roomCode = 'Khác';
+                        const customSelect = roomRow.find('.room-select-custom');
+                        if (customSelect.length > 0) {
+                            const selectedOption = customSelect.find('option:selected');
+                            const selectedText = selectedOption.text().trim();
+                            if (selectedText && !selectedText.startsWith('--')) {
+                                roomCode = selectedText.split('-')[0].trim();
+                            } else {
+                                roomCode = 'Khác';
+                            }
+                        } else {
+                            roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
+                        }
+                        const start = $item.find('.start-time-input').val() || '';
+                        const end = $item.find('.end-time-input').val() || '';
+                        
+                        if (start || end) {
+                            assignments.push({ assignment_id: assId, room: roomCode, start: start, end: end, is_local: true });
+                        }
+                    }
+                });
+
+                // 2. Scan DB assignments from other groups/departments
+                const dbList = dbAssignments[personId.toString()] || [];
+                dbList.forEach(dbAss => {
+                    const existsInDom = dbAss.assignment_id && $(`.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
+                    if (!existsInDom) {
+                        assignments.push({
+                            assignment_id: dbAss.assignment_id,
+                            room: dbAss.room_code || 'Khác',
+                            start: dbAss.start,
+                            end: dbAss.end,
+                            is_local: false,
+                            group_name: dbAss.group_name
+                        });
+                    }
+                });
+                
+                if (assignments.length > 0) {
+                    assignments.forEach(a => {
+                        totalHours += calculateDurationHours(a.start, a.end);
+                    });
+                    totalHours = Math.round(totalHours * 100) / 100;
+
+                    let badgeHtml = '<div class="personnel-time-ranges mt-1">';
+                    badgeHtml += `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
+                    assignments.forEach(a => {
+                        if (a.is_local) {
+                            badgeHtml += `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+                        } else {
+                            badgeHtml += `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
+                        }
+                    });
+                    badgeHtml += '</div>';
+                    $el.append(badgeHtml);
+                }
+            }
+
+            // Apply filter under 8h
+            if (filterUnder8h) {
+                if (totalHours >= 8 || isLeave) {
+                    $el.hide();
+                } else {
+                    $el.show();
+                }
+            } else {
+                $el.show();
+            }
+        });
+
+        // Hide empty shift headers or update visible count
+        $('.shift-header-item').each(function() {
+            const shiftKey = $(this).attr('data-shift-key');
+            const visibleCount = $(`.draggable-person[data-shift-key="${shiftKey}"]:visible`).length;
+            if (visibleCount === 0) {
+                $(this).hide();
+            } else {
+                $(this).show();
+                $(this).find('.shift-count-badge').text(visibleCount);
+            }
+        });
+    }
+
+    function markRoomDirty(row) {
+        row.find('.btn-save-room').addClass('is-dirty').removeClass('btn-primary');
+    }
+
+    function markRoomSaved(row) {
+        row.find('.btn-save-room').removeClass('is-dirty').addClass('btn-primary');
+    }
 
     function timeToOffset(timeStr) {
         if (!timeStr) return null;
@@ -1146,6 +1288,10 @@
                 isResizing = false;
                 $(document).off('.resizing');
                 updateTimelines(); // Vẽ lại chuẩn
+                if (currentTargetRow) {
+                    markRoomDirty(currentTargetRow.closest('.room-row'));
+                }
+                updateSidebarPersonnelTimes();
             }
         });
     });
@@ -1157,13 +1303,7 @@
                     return ['id' => $p->id, 'text' => $p->name];
                 })->values());
 
-        function markRoomDirty(row) {
-            row.find('.btn-save-room').addClass('is-dirty').removeClass('btn-primary');
-        }
 
-        function markRoomSaved(row) {
-            row.find('.btn-save-room').removeClass('is-dirty').addClass('btn-primary');
-        }
 
         // Theo dõi thay đổi trong các input/select/div
         $(document).on('change input', '.room-row select, .room-row input, .room-row .job-desc', function() {
@@ -1172,6 +1312,46 @@
 
         $(document).on('change', '.person-select', function() {
             markRoomDirty($(this).closest('.room-row'));
+            updateSidebarPersonnelTimes();
+        });
+
+        $(document).on('focus', '.start-time-input, .end-time-input', function() {
+            $(this).data('prev-val', $(this).val());
+        });
+
+        $(document).on('change', '.start-time-input, .end-time-input', function() {
+            const $el = $(this);
+            const $item = $el.closest('.assignment-item');
+            const prevVal = $el.data('prev-val') || '';
+            
+            let hasOverlap = false;
+            let overlapMsg = '';
+            $item.find('.personnel-container .person-select').each(function() {
+                const personId = $(this).val();
+                if (personId) {
+                    const check = checkTimeOverlapForEmployee(personId, $item);
+                    if (check.overlap) {
+                        hasOverlap = true;
+                        overlapMsg = check.message;
+                        return false;
+                    }
+                }
+            });
+            
+            if (hasOverlap) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Trùng lịch làm việc',
+                    text: overlapMsg
+                });
+                isProgrammaticChange = true;
+                $el.val(prevVal);
+                isProgrammaticChange = false;
+            } else {
+                $el.data('prev-val', $el.val());
+                updateTimelines();
+                updateSidebarPersonnelTimes();
+            }
         });
 
         function initSelect2(selector = '.person-select') {
@@ -1194,6 +1374,7 @@
         }
 
         initSelect2();
+        updateSidebarPersonnelTimes();
 
         $(document).on('change', '.shift-select', function() {
             const shift = $(this).val();
@@ -1226,6 +1407,7 @@
                     break;
             }
             updateTimelines();
+            updateSidebarPersonnelTimes();
         });
 
         let isProgrammaticChange = false;
@@ -1375,6 +1557,92 @@
             }
         }
 
+        function checkTimeOverlapForEmployee(personId, currentAssignmentItem) {
+            if (!personId) return { overlap: false };
+            
+            const startStr = currentAssignmentItem.find('.start-time-input').val();
+            const endStr = currentAssignmentItem.find('.end-time-input').val();
+            if (!startStr || !endStr) return { overlap: false };
+            
+            const sOffset = timeToOffset(startStr);
+            let eOffset = timeToOffset(endStr);
+            if (eOffset <= sOffset) {
+                eOffset += 24.0;
+            }
+            
+            let hasOverlap = false;
+            let overlapMsg = '';
+            
+            // 1. Scan DOM
+            $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
+                const $item = $(this);
+                if ($item.is(currentAssignmentItem)) return; // Skip ourselves!
+                
+                let hasPerson = false;
+                $item.find('.personnel-container .person-select').each(function() {
+                    if ($(this).val() == personId.toString()) {
+                        hasPerson = true;
+                    }
+                });
+                
+                if (hasPerson) {
+                    const otherStart = $item.find('.start-time-input').val();
+                    const otherEnd = $item.find('.end-time-input').val();
+                    if (otherStart && otherEnd) {
+                        const sOther = timeToOffset(otherStart);
+                        let eOther = timeToOffset(otherEnd);
+                        if (eOther <= sOther) {
+                            eOther += 24.0;
+                        }
+                        
+                        if (sOffset < eOther && sOther < eOffset) {
+                            hasOverlap = true;
+                            const roomRow = $item.closest('.room-row');
+                            let roomCode = 'Khác';
+                            const customSelect = roomRow.find('.room-select-custom');
+                            if (customSelect.length > 0) {
+                                const selectedOption = customSelect.find('option:selected');
+                                const selectedText = selectedOption.text().trim();
+                                if (selectedText && !selectedText.startsWith('--')) {
+                                    roomCode = selectedText.split('-')[0].trim();
+                                }
+                            } else {
+                                roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
+                            }
+                            overlapMsg = `Trùng lịch trên trang hiện tại: Nhân sự đã được phân công tại phòng ${roomCode} trong khoảng ${otherStart} - ${otherEnd}.`;
+                            return false; // Break loop
+                        }
+                    }
+                }
+            });
+            
+            if (hasOverlap) {
+                return { overlap: true, message: overlapMsg };
+            }
+            
+            // 2. Scan DB assignments
+            const dbList = dbAssignments[personId.toString()] || [];
+            for (const dbAss of dbList) {
+                const existsInDom = dbAss.assignment_id && $(`.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
+                if (existsInDom) continue;
+                
+                const sOther = timeToOffset(dbAss.start);
+                let eOther = timeToOffset(dbAss.end);
+                if (eOther <= sOther) {
+                    eOther += 24.0;
+                }
+                
+                if (sOffset < eOther && sOther < eOffset) {
+                    return {
+                        overlap: true,
+                        message: `Trùng lịch với tổ khác: Nhân sự đã được phân công tại ${dbAss.group_name} (${dbAss.room_name}) trong khoảng ${dbAss.start} - ${dbAss.end}.`
+                    };
+                }
+            }
+            
+            return { overlap: false };
+        }
+
         function checkRoomAuthorization(personId, roomId, callback) {
             // Đối với lịch Bảo trì - Hiệu chuẩn, không cần kiểm tra định mức phòng
             callback(true);
@@ -1410,7 +1678,18 @@
                     checkRoomAuthorization(personId, roomId, function(isAuthorized) {
                         if (!isAuthorized) return;
 
-                        // 2. Kiểm tra lệch ca (Shift Mismatch)
+                        // 2. Kiểm tra trùng lịch (Time Overlap)
+                        const overlapCheck = checkTimeOverlapForEmployee(personId, $container.closest('.assignment-item'));
+                        if (overlapCheck.overlap) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Không thể sắp lịch',
+                                text: overlapCheck.message
+                            });
+                            return;
+                        }
+
+                        // 3. Kiểm tra lệch ca (Shift Mismatch)
                         checkShiftMismatch(personId, targetShiftCode, function(canProceed) {
                             if (canProceed) {
                                 isProgrammaticChange = true;
@@ -1451,6 +1730,7 @@
                 updatePersonnelLabels(container);
                 markRoomDirty(row);
                 updateSidebarHighlights();
+                updateSidebarPersonnelTimes();
             }
         });
 
@@ -1460,6 +1740,7 @@
             markRoomDirty($roomRow);
 
             if ($el.hasClass('person-select')) {
+                updateSidebarPersonnelTimes();
                 const personId = $el.val();
 
                 if (isProgrammaticChange) {
@@ -1479,7 +1760,21 @@
                             return;
                         }
 
-                        // 2. Kiểm tra lệch ca
+                        // 2. Kiểm tra trùng lịch
+                        const overlapCheck = checkTimeOverlapForEmployee(personId, $el.closest('.assignment-item'));
+                        if (overlapCheck.overlap) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Không thể sắp lịch',
+                                text: overlapCheck.message
+                            });
+                            isProgrammaticChange = true;
+                            $el.val(null).trigger('change');
+                            isProgrammaticChange = false;
+                            return;
+                        }
+
+                        // 3. Kiểm tra lệch ca
                         checkShiftMismatch(personId, targetShiftCode, function(canProceed) {
                             if (!canProceed) {
                                 isProgrammaticChange = true;
@@ -1724,6 +2019,8 @@
                                 if (res.success) {
                                     row.remove();
                                     updateTimelines();
+                                    updateSidebarHighlights();
+                                    updateSidebarPersonnelTimes();
                                 }
                             }
                         });
@@ -1738,6 +2035,8 @@
                     row.remove();
                     updateTimelines();
                     markRoomDirty(roomRow);
+                    updateSidebarHighlights();
+                    updateSidebarPersonnelTimes();
                 } else if (isCustomTask) {
                     // Nếu là công tác khác và là ca cuối cùng, cho phép hủy cả dòng
                     Swal.fire({
@@ -1752,6 +2051,8 @@
                             roomRow.fadeOut(300, function() {
                                 $(this).remove();
                                 updateTimelines();
+                                updateSidebarHighlights();
+                                updateSidebarPersonnelTimes();
                             });
                         }
                     });
@@ -2210,10 +2511,11 @@
 
         $(document).on('change', '.room-select-custom', function() {
             $(this).closest('.room-row').attr('data-room-id', $(this).val());
+            updateSidebarPersonnelTimes();
         });
 
-        // Cập nhật thanh thời gian khi đổi giờ bắt đầu/kết thúc
-        $(document).on('change', '.start-time-input, .end-time-input', function() {
+        // Cập nhật thanh thời gian khi đổi giờ bắt đầu/kết thúc (chỉ cập nhật giao diện khi gõ)
+        $(document).on('input', '.start-time-input, .end-time-input', function() {
             updateTimelines();
         });
 
@@ -2382,6 +2684,7 @@
                 isProgrammaticChange = false;
 
                 updateSidebarHighlights();
+                updateSidebarPersonnelTimes();
 
                 // 5. Hiển thị báo cáo
                 showAssignmentReport();
@@ -2681,6 +2984,11 @@
             renderSidebarData(currentSidebarData, currentSidebarDay, query);
         });
 
+        $(document).on('change', '#filter-under-8h', function() {
+            const query = $('#sidebar-personnel-search').val();
+            renderSidebarData(currentSidebarData, currentSidebarDay, query);
+        });
+
         $toggleBtn.on('click', toggleSidebar);
         $closeBtn.on('click', toggleSidebar);
 
@@ -2808,9 +3116,9 @@
                 if (shifts[key].length > 0) {
                     const bgClass = 'shift-' + key.toLowerCase();
                     html += `
-                        <div class="list-group-item bg-light py-2 font-weight-bold d-flex align-items-center">
+                        <div class="list-group-item bg-light py-2 font-weight-bold d-flex align-items-center shift-header-item" data-shift-key="${key}">
                             <div class="shift-badge ${bgClass} mr-2" style="width:25px; height:25px; font-size:0.7rem">${key}</div>
-                            ${shiftLabels[key]} (${shifts[key].length})
+                            ${shiftLabels[key]} (<span class="shift-count-badge">${shifts[key].length}</span>)
                         </div>
                     `;
                     const isLeave = key === 'P';
@@ -2840,6 +3148,8 @@
 
             html += '</div>';
             $container.html(html);
+
+            updateSidebarPersonnelTimes();
 
             // Handler cho nút cho phép tự động sắp
             $('.btn-toggle-has-assign').on('change', function(e) {

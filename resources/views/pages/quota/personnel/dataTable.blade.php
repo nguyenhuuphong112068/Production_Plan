@@ -993,23 +993,6 @@
             const $tr = $badge.closest('.main-employee-row');
 
             if (isActivating) {
-                $container.find('.btn-toggle-group').each(function() {
-                    if ($(this).is($badge)) return;
-                    $(this).data('active', 0).removeClass('badge-primary active').addClass(
-                        'inactive');
-                    $(this).attr('title', 'Nhấn để kích hoạt');
-                    const otherGroupId = $(this).data('group-id');
-                    $tr.find('.room-assignment-row[data-group-id="' + otherGroupId + '"]').each(
-                        function() {
-                            const $row = $(this);
-                            $row.attr('data-active', 0).addClass('inactive');
-                            const $btn = $row.find('.btn-toggle-room-active');
-                            $btn.removeClass('btn-danger').addClass('btn-success').attr(
-                                'title', 'Kích hoạt');
-                            $btn.find('i').removeClass('fas fa-times').addClass(
-                                'fas fa-undo');
-                        });
-                });
                 $badge.data('active', 1).addClass('badge-primary active').removeClass('inactive');
                 $badge.attr('title', 'Nhấn để vô hiệu hóa');
                 const currentGroupId = $badge.data('group-id');
@@ -1023,7 +1006,7 @@
                         $btn.find('i').addClass('fas fa-times').removeClass('fas fa-undo');
                     });
             } else {
-                const activeCount = $container.find('.btn-toggle-group.active').length;
+                const activeCount = $tr.find('.btn-toggle-group.active').length;
                 if (activeCount <= 1) {
                     Swal.fire({
                         icon: 'error',
@@ -1046,7 +1029,7 @@
             }
 
             const groupData = [];
-            $container.find('.btn-toggle-group').each(function() {
+            $tr.find('.btn-toggle-group').each(function() {
                 groupData.push($(this).data('group-id') + ':' + $(this).data('active'));
             });
             updatePermissionAjax(employeeId, 'group', groupData);

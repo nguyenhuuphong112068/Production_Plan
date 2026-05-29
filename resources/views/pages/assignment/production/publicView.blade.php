@@ -407,12 +407,12 @@
                                     </colgroup>
                                     <tbody>
                                         @foreach ($task->assignments as $a)
-                                            <tr>
+                                            <tr data-id="{{ $a->id }}">
                                                 <!-- Ca làm việc -->
                                                 <td class="text-center">
                                                     <div class="font-weight-bold">Ca {{ $a->Sheet ?? '-' }}</div>
-                                                    <small class="text-primary">{{ $a->start_time_display }} -
-                                                        {{ $a->end_time_display }}</small>
+                                                    <small class="text-primary"><span class="start-time-text">{{ $a->start_time_display }}</span> -
+                                                        <span class="end-time-text">{{ $a->end_time_display }}</span></small>
                                                 </td>
 
                                                 <td>
@@ -434,7 +434,7 @@
                                                                         ->where('id', $pData->personnel_id)
                                                                         ->first()->name ?? 'N/A';
                                                             @endphp
-                                                            <div class="mb-1 d-flex align-items-center">
+                                                            <div class="mb-1 d-flex align-items-center personnel-assigned-item" data-personnel-id="{{ $pData->personnel_id }}">
                                                                 <span
                                                                     class="personnel-label">{{ chr(65 + $loop->index) }}</span>
                                                                 <span>{{ $personName }}</span>
@@ -547,13 +547,17 @@
                         class="fas fa-times"></i></button>
             </div>
             <div class="p-2 border-bottom bg-white">
-                <div class="input-group input-group-sm shadow-sm">
+                <div class="input-group input-group-sm shadow-sm mb-2">
                     <div class="input-group-prepend">
                         <span class="input-group-text bg-white border-right-0"><i
                                 class="fas fa-search text-muted"></i></span>
                     </div>
                     <input type="text" class="form-control border-left-0" id="sidebar-personnel-search"
                         placeholder="Tìm tên hoặc mã NV...">
+                </div>
+                <div class="custom-control custom-switch pl-4">
+                    <input type="checkbox" class="custom-control-input" id="filter-under-8h">
+                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer" for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
                 </div>
             </div>
             <div class="sidebar-body p-0" id="sidebar-data-container" style="flex: 1; min-height: 0; overflow-y: scroll;">
@@ -607,6 +611,127 @@
     <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
     <script src="{{ asset('js/bootstrap.min.js') }}"></script>
     <script>
+        const dbAssignments = @json($dbAssignments ?? []);
+
+        const employeeCodeToId = {
+            @foreach ($personnel as $p)
+                "{{ $p->code }}": "{{ $p->id }}",
+            @endforeach
+        };
+
+        function updateSidebarPersonnelTimes() {
+            // Helper to calculate hours between HH:mm times
+            function calculateDurationHours(startStr, endStr) {
+                if (!startStr || !endStr) return 0;
+                const sParts = startStr.split(':');
+                const eParts = endStr.split(':');
+                
+                let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
+                let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
+                
+                if (eMin < sMin) {
+                    // Crosses midnight
+                    eMin += 24 * 60;
+                }
+                
+                return (eMin - sMin) / 60;
+            }
+
+            const filterUnder8h = $('#filter-under-8h').is(':checked');
+
+            $('.draggable-person').each(function() {
+                const $el = $(this);
+                const code = $el.attr('data-code');
+                const personId = employeeCodeToId[code];
+                const isLeave = $el.attr('data-shift-key') === 'P' || $el.hasClass('person-on-leave');
+                
+                // Remove existing badges container
+                $el.find('.personnel-time-ranges').remove();
+                
+                let totalHours = 0;
+                
+                if (personId) {
+                    const assignments = [];
+                    // 1. Scan DOM
+                    $('.personnel-assigned-item').each(function() {
+                        const $assignedItem = $(this);
+                        if ($assignedItem.attr('data-personnel-id') == personId.toString()) {
+                            const $assignmentRow = $assignedItem.closest('tr');
+                            const assId = $assignmentRow.attr('data-id');
+                            const start = $assignmentRow.find('.start-time-text').text().trim() || '';
+                            const end = $assignmentRow.find('.end-time-text').text().trim() || '';
+                            
+                            const roomCell = $assignmentRow.closest('td').siblings('.room-name-cell');
+                            const roomCode = roomCell.find('div.d-block').text().trim() || roomCell.text().trim() || 'NA';
+                            
+                            if (start || end) {
+                                assignments.push({ assignment_id: assId, room: roomCode, start: start, end: end, is_local: true });
+                            }
+                        }
+                    });
+
+                    // 2. Scan DB assignments from other groups/departments
+                    const dbList = dbAssignments[personId.toString()] || [];
+                    dbList.forEach(dbAss => {
+                        const existsInDom = dbAss.assignment_id && $(`.assignment-inner-table tr[data-id="${dbAss.assignment_id}"]`).length > 0;
+                        if (!existsInDom) {
+                            assignments.push({
+                                assignment_id: dbAss.assignment_id,
+                                room: dbAss.room_code || 'Khác',
+                                start: dbAss.start,
+                                end: dbAss.end,
+                                is_local: false,
+                                group_name: dbAss.group_name
+                            });
+                        }
+                    });
+                    
+                    if (assignments.length > 0) {
+                        let totalHoursCalculated = 0;
+                        assignments.forEach(a => {
+                            totalHoursCalculated += calculateDurationHours(a.start, a.end);
+                        });
+                        totalHours = Math.round(totalHoursCalculated * 100) / 100;
+
+                        let badgeHtml = '<div class="personnel-time-ranges mt-1">';
+                        badgeHtml += `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
+                        assignments.forEach(a => {
+                            if (a.is_local) {
+                                badgeHtml += `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+                            } else {
+                                badgeHtml += `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
+                            }
+                        });
+                        badgeHtml += '</div>';
+                        $el.append(badgeHtml);
+                    }
+                }
+
+                // Apply filter under 8h
+                if (filterUnder8h) {
+                    if (totalHours >= 8 || isLeave) {
+                        $el.hide();
+                    } else {
+                        $el.show();
+                    }
+                } else {
+                    $el.show();
+                }
+            });
+
+            // Hide empty shift headers or update visible count
+            $('.shift-header-item').each(function() {
+                const shiftKey = $(this).attr('data-shift-key');
+                const visibleCount = $(`.draggable-person[data-shift-key="${shiftKey}"]:visible`).length;
+                if (visibleCount === 0) {
+                    $(this).hide();
+                } else {
+                    $(this).show();
+                    $(this).find('.shift-count-badge').text(visibleCount);
+                }
+            });
+        }
+
         $(document).ready(function() {
             const $sidebar = $('#personnel-sidebar');
             const $toggleBtn = $('#toggle-sidebar-btn');
@@ -633,6 +758,11 @@
 
             $('#sidebar-personnel-search').on('input', function() {
                 const query = $(this).val();
+                renderSidebarData(currentSidebarData, currentSidebarDay, query);
+            });
+
+            $(document).on('change', '#filter-under-8h', function() {
+                const query = $('#sidebar-personnel-search').val();
                 renderSidebarData(currentSidebarData, currentSidebarDay, query);
             });
 
@@ -756,17 +886,18 @@
                     if (shifts[key].length > 0) {
                         const bgClass = 'shift-' + key.toLowerCase();
                         html += `
-                            <div class="list-group-item bg-light py-2 font-weight-bold d-flex align-items-center">
+                            <div class="list-group-item bg-light py-2 font-weight-bold d-flex align-items-center shift-header-item" data-shift-key="${key}">
                                 <div class="shift-badge ${bgClass} mr-2" style="width:25px; height:25px; font-size:0.7rem">${key}</div>
-                                ${shiftLabels[key]} (${shifts[key].length})
+                                ${shiftLabels[key]} (<span class="shift-count-badge">${shifts[key].length}</span>)
                             </div>
                         `;
                         const isLeave = key === 'P';
                         shifts[key].forEach(p => {
                             html += `
-                                <div class="list-group-item py-2 pl-4 small ${isLeave ? 'person-on-leave text-muted' : ''}" 
+                                <div class="list-group-item py-2 pl-4 small draggable-person ${isLeave ? 'person-on-leave text-muted' : ''}" 
                                      data-code="${p.code}" 
                                      data-name="${p.name}"
+                                     data-shift-key="${key}"
                                      ${isLeave ? 'style="background-color: #f8f9fa;"' : ''}>
                                     <span class="${isLeave ? 'text-decoration-line-through' : 'text-dark'}">${p.name}</span>
                                     <span class="text-muted float-right">
@@ -780,6 +911,8 @@
 
                 html += '</div>';
                 $container.html(html);
+
+                updateSidebarPersonnelTimes();
 
                 $('#sidebar-count-c1').text(shifts['C1'].length);
                 $('#sidebar-count-c2').text(shifts['C2'].length);

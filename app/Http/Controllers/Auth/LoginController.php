@@ -100,8 +100,31 @@ class LoginController extends Controller
 
             if (!$data) return;
 
-            $employeesFromApi = json_decode($data);
-            if (empty($employeesFromApi) || !is_array($employeesFromApi)) return;
+            $employeesFromApi = json_decode($data) ?: [];
+            if (!is_array($employeesFromApi)) return;
+
+            if ($departmentCode === 'PXV1') {
+                $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
+                try {
+                    $ctx17 = stream_context_create(['http' => ['timeout' => 5]]);
+                    $data17 = @file_get_contents($url17, false, $ctx17);
+                    if ($data17) {
+                        $employees17 = json_decode($data17);
+                        if (is_array($employees17)) {
+                            foreach ($employees17 as $emp17) {
+                                $emp17->is_warehouse = true;
+                                if (isset($emp17->employeeName)) {
+                                    $emp17->employeeName = trim($emp17->employeeName) . ' - WH';
+                                }
+                                $employeesFromApi[] = $emp17;
+                            }
+                        }
+                    }
+                } catch (\Exception $ex17) {
+                }
+            }
+
+            if (empty($employeesFromApi)) return;
 
             $apiEmployeeCodes = array_map(function ($emp) {
                 return $emp->employeeId;
@@ -143,28 +166,45 @@ class LoginController extends Controller
                     }
                 }
 
+                $warehouseAllowedCodes = ['21049', '21048', '21077', '21064', '21080', '21090', '21120', '21122', '21130', '21143', '21148', '21152'];
+
                 // 2. Cập nhật hoặc thêm mới nhân sự từ API
                 foreach ($employeesFromApi as $emp) {
                     if (empty($emp->employeeId)) continue;
 
                     // Đảm bảo nhân sự tồn tại trong bảng employees
                     $employee = DB::table('employees')->where('code', $emp->employeeId)->first();
+                    
+                    // Rule: "các nhân sự có employees.resign không tiến hành cập nhật lại"
+                    if ($employee && $employee->resign == 1) {
+                        continue;
+                    }
+
+                    $isWarehouse = !empty($emp->is_warehouse);
+                    $isAllowedWarehouse = $isWarehouse && in_array((string)$emp->employeeId, $warehouseAllowedCodes);
+
+                    $resignVal = $isWarehouse ? ($isAllowedWarehouse ? 0 : 1) : 0;
+                    $activeVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 1;
+                    $groupIdVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 0;
+
                     $employeeId = null;
 
                     if (!$employee) {
                         $employeeId = DB::table('employees')->insertGetId([
                             'code' => $emp->employeeId,
                             'name' => $emp->employeeName ?? 'N/A',
-                            'active' => 1,
+                            'active' => $activeVal,
+                            'resign' => $resignVal,
                             'created_at' => now(),
                             'updated_at' => now()
                         ]);
                     } else {
                         $employeeId = $employee->id;
-                        // Cập nhật lại tên và đảm bảo active = 1
+                        // Cập nhật lại tên và đảm bảo active status được đồng bộ đúng
                         DB::table('employees')->where('id', $employeeId)->update([
                             'name' => $emp->employeeName ?? $employee->name,
-                            'active' => 1,
+                            'active' => $activeVal,
+                            'resign' => $resignVal,
                             'updated_at' => now()
                         ]);
                     }
@@ -181,9 +221,9 @@ class LoginController extends Controller
                             'employees_id' => $employeeId,
                             'production_code' => $departmentCode,
                             'is_main' => 1,
-                            'group_id' => 0,
+                            'group_id' => $groupIdVal,
                             'room_id' => 0,
-                            'active' => 1,
+                            'active' => $activeVal,
                             'created_by' => 'System Sync',
                             'created_at' => now(),
                             'updated_at' => now()
@@ -192,14 +232,17 @@ class LoginController extends Controller
                         // Nếu đã từng có dữ liệu tại đây (có thể là nhiều dòng bao gồm cả phân tổ/phòng), 
                         // thực hiện kích hoạt lại TẤT CẢ các dòng liên quan để khôi phục trạng thái cũ
                         if ($departmentCode != 'QA') {
+                            $updateData = [
+                                'active' => $activeVal,
+                                'updated_at' => now()
+                            ];
+                            if ($isWarehouse) {
+                                $updateData['group_id'] = $groupIdVal;
+                            }
                             DB::table('employee_assignments')
                                 ->where('employees_id', $employeeId)
                                 ->where('production_code', $departmentCode)
-                                ->where('active', 0)
-                                ->update([
-                                    'active' => 1,
-                                    'updated_at' => now()
-                                ]);
+                                ->update($updateData);
                         }
                     }
                 }

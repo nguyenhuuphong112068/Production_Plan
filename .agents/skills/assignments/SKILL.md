@@ -74,6 +74,7 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - `EN` (Kỹ Thuật): **3**
     - `PXTN` (Phân xưởng Thuốc Nước): **6**
     - `PXV1` (Phân xưởng Viên 1): **15**
+    - `WH` (Kho): **17**
     - `PXVH` (Phân xưởng Viên H): **30**
     - `PXDN` (Phân xưởng Dùng Ngoài): **34**
     - `PXV2` (Phân xưởng Viên 2): **31**
