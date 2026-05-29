@@ -51,9 +51,12 @@
                 </div>
             </form> --}}
 
-            <form id="filterForm" method="GET" action="{{ route('pages.Schedual.audit.index') }}"
+            <form id="filterForm" method="GET" action="{{ isset($plan_list_id) ? route('pages.Schedual.audit.open') : route('pages.Schedual.audit.index') }}"
                 class="d-flex flex-wrap gap-2">
                 @csrf
+                @if (isset($plan_list_id))
+                    <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
+                @endif
                 {{-- <div class="row w-100 align-items-center">
                         <!-- Stage Selector -->
                         <div class="col-md-4 d-flex justify-content-center align-items-center"
@@ -130,7 +133,8 @@
                         <th>Thời Gian Vệ Sinh</th>
                         <th>Lý Do Tạo Lịch</th>
                         <th>Người Tạo/ Ngày Tạo</th>
-                        <th>Xem version cũ</th>
+                        <th>Version</th>
+                        <th>Lịch Sử</th>
 
                     </tr>
                 </thead>
@@ -172,20 +176,24 @@
                                 <div> {{ $data->schedualed_by }} </div>
                                 <div>{{ \Carbon\Carbon::parse($data->schedualed_at)->format('d/m/Y') }} </div>
                             </td>
-                            <td>
+                            <td class="text-center align-middle">
                                 {{ $data->version }}
                             </td>
-
-                            {{-- <td class="text-center align-middle">
-                                <button type="button" class="btn btn-primary btn-history position-relative"
-                                    data-id="{{ $data->stage_plan_id }}" data-toggle="modal" data-target="#historyModal">
-                                    <i class="fas fa-history"></i>
-                                    <span class="badge badge-danger"
-                                        style="position: absolute; top: -5px;  right: -5px; border-radius: 50%;">
-                                        {{ $data->version}} 
-                                    </span>
-                                </button>
-                            </td> --}}
+                            <td class="text-center align-middle">
+                                @if ($data->version > 1)
+                                    <button type="button" class="btn btn-warning btn-sm btn-history position-relative"
+                                        data-id="{{ $data->stage_plan_id }}"
+                                        data-toggle="modal" data-target="#historyModal">
+                                        <i class="fas fa-history"></i>
+                                        <span class="badge badge-danger"
+                                            style="position: absolute; top: -5px; right: -5px; border-radius: 50%; font-size: 10px; min-width: 18px;">
+                                            {{ $data->version }}
+                                        </span>
+                                    </button>
+                                @else
+                                    <span class="text-muted" style="font-size:12px;">—</span>
+                                @endif
+                            </td>
 
                         </tr>
                     @endforeach
@@ -196,6 +204,9 @@
         <!-- /.card-body -->
     </div>
 </div>
+
+{{-- Modal Lịch Sử --}}
+@include('pages.Schedual.audit.history')
 
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
@@ -231,6 +242,84 @@
             },
         });
 
+        // Nút Lịch Sử: load tất cả version
+        let historyDT = null;
+
+        $(document).on('click', '.btn-history', function() {
+            const stagePlanId = $(this).data('id');
+
+            // Reset bảng
+            if (historyDT) {
+                historyDT.destroy();
+                historyDT = null;
+            }
+            $('#data_table_history_body').empty();
+            $('#historyModal').modal('show');
+
+            $.ajax({
+                url: '{{ route("pages.Schedual.audit.history") }}',
+                method: 'GET',
+                data: { id: stagePlanId },
+                success: function(rows) {
+                    if (!rows || rows.length === 0) {
+                        $('#data_table_history_body').html('<tr><td colspan="11" class="text-center text-muted">Không có lịch sử</td></tr>');
+                    } else {
+                        rows.forEach(function(r, idx) {
+                            const isLatest = (idx === 0);
+                            const rowClass = isLatest ? 'table-success font-weight-bold' : '';
+                            const badge    = isLatest ? ' <span class="badge badge-success" style="font-size:11px;">Latest</span>' : '';
+                            // Helper: "yyyy-mm-dd HH:mm:ss" → "dd/mm/yyyy HH:mm"
+                            function fmtDT(val) {
+                                if (!val) return '-';
+                                const s = val.replace('T', ' ');
+                                const [datePart, timePart] = s.split(' ');
+                                if (!datePart) return '-';
+                                const [y, m, d] = datePart.split('-');
+                                const hm = timePart ? timePart.substring(0, 5) : '';
+                                return `${d}/${m}/${y}${hm ? ' ' + hm : ''}`;
+                            }
+                            const code    = (r.intermediate_code || '') + (r.finished_product_code ? '<br>' + r.finished_product_code : '');
+                            const start   = fmtDT(r.start);
+                            const end     = fmtDT(r.end);
+                            const scStart = fmtDT(r.start_clearning);
+                            const scEnd   = fmtDT(r.end_clearning);
+                            const scheAt  = r.schedualed_at ? fmtDT(r.schedualed_at.substring(0,10) + ' 00:00:00').split(' ')[0] : '-';
+                            const batchQty = (r.batch_qty || '') + ' ' + (r.unit_batch_qty || '');
+                            $('#data_table_history_body').append(
+                                `<tr class="${rowClass}">
+                                    <td class="text-center">${idx + 1}</td>
+                                    <td>${code}</td>
+                                    <td>${r.product_name || '-'}</td>
+                                    <td>${batchQty}</td>
+                                    <td>${r.batch || '-'}</td>
+                                    <td>${(r.room_name || '-') + ' - ' + (r.room_code || '')}</td>
+                                    <td>${start}<br>${end}</td>
+                                    <td>${scStart}<br>${scEnd}</td>
+                                    <td>${r.type_of_change || '-'}</td>
+                                    <td>${r.schedualed_by || '-'}<br>${scheAt}</td>
+                                    <td class="text-center">${r.version}${badge}</td>
+                                </tr>`
+                            );
+                        });
+                    }
+                    // Khởi tạo DataTable
+                    historyDT = $('#data_table_history').DataTable({
+                        paging: false,
+                        searching: true,
+                        ordering: true,
+                        info: false,
+                        autoWidth: false,
+                        language: {
+                            search: "Tìm kiếm:",
+                        },
+                    });
+                },
+                error: function(xhr) {
+                    console.error('History error:', xhr.status, xhr.responseText);
+                    $('#data_table_history_body').html('<tr><td colspan="11" class="text-center text-danger">Lỗi tải dữ liệu (HTTP ' + xhr.status + ')</td></tr>');
+                }
+            });
+        });
 
     });
 </script>

@@ -150,7 +150,8 @@ Route::prefix('/Schedual')
                         ->name('audit.')
                         ->group(function () {
                                 Route::get('', 'index')->name('index');
-                                Route::post('history', 'history')->name('history');
+                                Route::get('open', 'open')->name('open');
+                                Route::get('history', 'history')->name('history');
                         });
 
                 Route::prefix('/finised')

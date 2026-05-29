@@ -1731,6 +1731,8 @@ class SchedualController extends Controller
                         'stage_plan_id' => $product['id'],
                         'version' => $last_version + 1,
                         'start' => $current_start,
+                        'start_clearning' => $end_man,
+                        'end_clearning' => $end_clearning,
                         'end' => $end_man,
                         'resourceId' => $request->room_id,
                         'schedualed_by' => session('user')['fullName'],

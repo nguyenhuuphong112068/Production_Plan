@@ -2269,6 +2269,8 @@ class AutoSchedualController extends Controller
                         'version' => (DB::table('stage_plan_history')->where('stage_plan_id', $stageId)->max('version') ?? 0) + 1,
                         'start' => $start,
                         'end' => $end,
+                        'start_clearning' => $start_clearning,
+                        'end_clearning' => $endCleaning,
                         'resourceId' => $roomId,
                         'schedualed_by' => session('user')['fullName'],
                         'schedualed_at' => now(),

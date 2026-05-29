@@ -1221,7 +1221,7 @@ const ScheduleTest = () => {
 
     hoverTimeoutRef.current = setTimeout(() => {
       setLoadingHistory(true);
-      axios.post('/Schedual/audit/history', { id: eventId })
+      axios.get('/Schedual/audit/history', { params: { id: eventId } })
         .then(res => {
           setHistoryData(res.data);
           setLoadingHistory(false);
@@ -1470,7 +1470,7 @@ const ScheduleTest = () => {
       : '<div style="padding: 8px; color: #999; font-style: italic;">Chưa có lô nào được chọn</div>';
 
     Swal.fire({
-      title: 'Cập nhật sự kiện',
+      title: 'Cập nhật lịch sản xuất',
       width: '550px',
       html: `
         <div style="text-align: left; padding: 10px;">
@@ -1500,6 +1500,16 @@ const ScheduleTest = () => {
             <select id="swal-resource" class="swal2-select" style="width: 100%; margin: 0; display: block;">
               ${roomOptions}
             </select>
+          </div>
+
+          <div id="swal-reason-container" style="margin-bottom: 15px; border: 1px solid #ffe066; border-radius: 8px; padding: 12px; background: #fffbe6; display: none;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #856404;">
+              <i>⚠</i> Lý do Thay đổi <span style="color:red;">*</span>
+            </label>
+            <textarea id="swal-reason" class="swal2-textarea"
+              placeholder="Nhập lý do thay đổi lịch..."
+              style="width: 100%; margin: 0; min-height: 60px; resize: vertical; border: 1px solid #ffc107; border-radius: 6px; padding: 6px 10px; font-size: 13px;"
+            ></textarea>
           </div>
 
           <div style="margin-top: 10px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa;">
@@ -1551,6 +1561,40 @@ const ScheduleTest = () => {
         const labelCampaign = document.getElementById('swal-label-campaign');
         const labelSelected = document.getElementById('swal-label-selected');
 
+        const checkReasonRequired = () => {
+          const api = calendarRef.current?.getApi();
+          const allEvents = api ? api.getEvents() : [];
+          const isCampaign = radioCampaign.checked;
+
+          let hasSubmit1 = false;
+          if (isCampaign) {
+            const campaignEvents = allEvents.filter(e =>
+              e.extendedProps.campaign_code === props.campaign_code &&
+              e.extendedProps.stage_code === props.stage_code
+            );
+            hasSubmit1 = campaignEvents.some(e => Number(e.extendedProps.submit) === 1);
+          } else {
+            const selEvents = selectedEventsRef.current || [];
+            hasSubmit1 = selEvents.some(sel => {
+              const ev = api?.getEventById(sel.id);
+              return ev && Number(ev.extendedProps.submit) === 1;
+            });
+          }
+
+          const reasonContainer = document.getElementById('swal-reason-container');
+          if (reasonContainer) {
+            if (hasSubmit1) {
+              reasonContainer.style.display = 'block';
+            } else {
+              reasonContainer.style.display = 'none';
+              const reasonTextarea = document.getElementById('swal-reason');
+              if (reasonTextarea) {
+                reasonTextarea.value = '';
+              }
+            }
+          }
+        };
+
         const updateRadioStyle = () => {
           if (radioCampaign.checked) {
             labelCampaign.style.background = '#e8f4fd';
@@ -1561,6 +1605,7 @@ const ScheduleTest = () => {
             labelSelected.style.background = '#e8f4fd';
             batchesContainer.style.display = 'block';
           }
+          checkReasonRequired();
         };
 
         radioCampaign.addEventListener('change', updateRadioStyle);
@@ -1575,8 +1620,18 @@ const ScheduleTest = () => {
         const updateCampaign = moveMode === 'campaign';
         const moveSelectedBatches = moveMode === 'selected';
 
+        const reasonContainer = document.getElementById('swal-reason-container');
+        const isReasonRequired = reasonContainer && reasonContainer.style.display !== 'none';
+        const reason = document.getElementById('swal-reason')?.value?.trim();
+
         if (!start || !end || !resourceId) {
           Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin');
+          return false;
+        }
+
+        if (isReasonRequired && !reason) {
+          Swal.showValidationMessage('Vui lòng nhập Lý do Thay đổi!');
+          document.getElementById('swal-reason').focus();
           return false;
         }
 
@@ -1598,11 +1653,11 @@ const ScheduleTest = () => {
           }
         }
 
-        return { start, end, resourceId, updateCampaign, moveSelectedBatches };
+        return { start, end, resourceId, updateCampaign, moveSelectedBatches, reason };
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        const { start, end, resourceId, updateCampaign, moveSelectedBatches } = result.value;
+        const { start, end, resourceId, updateCampaign, moveSelectedBatches, reason } = result.value;
         const api = calendarRef.current?.getApi();
         const eventToUpdate = api.getEventById(event.id);
         const { activeStart, activeEnd } = api.view;
@@ -1723,7 +1778,7 @@ const ScheduleTest = () => {
           changes: changes,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
-          reason: { reason: 'Cập nhật nhanh qua modal' }
+          reason: { reason: reason || 'Cập nhật qua modal' }
         })
           .then(res => {
             let data = res.data;
@@ -3964,10 +4019,10 @@ const ScheduleTest = () => {
 
       {/* Modal / Overlay hiển thị lịch sử */}
       {/* Modal / Dialog hiển thị lịch sử thay đổi */}
-      <Dialog 
-        visible={showHistoryDialog} 
+      <Dialog
+        visible={showHistoryDialog}
         onHide={() => setShowHistoryDialog(false)}
-        style={{ width: 'min(1100px, 95vw)', maxHeight: '70vh' }} 
+        style={{ width: 'min(1100px, 95vw)', maxHeight: '70vh' }}
         contentStyle={{ maxHeight: '55vh', overflowY: 'auto' }}
         className="history-dialog"
         header={
