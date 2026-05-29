@@ -26,7 +26,7 @@
     #data_table_yield td {
         white-space: nowrap;
         /* Không cho xuống hàng */
-        padding: 8px 15px !important;
+        padding: 4px 8px !important;
         /* Thêm khoảng trống cho dữ liệu dễ nhìn */
     }
 
@@ -46,9 +46,10 @@
         position: sticky !important;
         left: 0;
         z-index: 10;
-        width: 300px;
+        width: 150px;
         /* Tăng độ rộng để show hết tên phòng */
-        min-width: 300px;
+        min-width: 150px;
+        white-space: normal !important;
         background-color: white;
         /* Màu nền cho thân bảng */
         border-right: 2px solid #dee2e6 !important;
@@ -56,11 +57,11 @@
 
     .sticky-col-2 {
         position: sticky !important;
-        left: 300px;
+        left: 150px;
         /* Phải khớp với width của cột 1 */
         z-index: 10;
-        width: 80px;
-        min-width: 80px;
+        width: 40px;
+        min-width: 40px;
         background-color: white;
         border-right: 2px solid #dee2e6 !important;
     }
@@ -178,9 +179,9 @@
             </form>
 
             <div class="table-responsive-custom">
-                <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 15px;">
+                <table id="data_table_yield" class="table table-bordered table-striped" style="font-size: 13px;">
                     <thead>
-                        <tr style="background-color: #CDC717; color:#003A4F; font-size: 20px; font-weight: bold;">
+                        <tr style="background-color: #CDC717; color:#003A4F; font-size: 13px; font-weight: bold;">
                             <th class="text-center sticky-col-1">Phòng SX</th>
                             <th class="text-center sticky-col-2">ĐV</th>
 
@@ -206,7 +207,7 @@
                         </tr>
                     </thead>
 
-                    <tbody style="font-size: 20px;">
+                    <tbody style="font-size: 13px;">
                         @foreach ($theory['yield_room'] as $index => $roomLT)
                             @php
                                 $resourceId = $roomLT->resourceId;
@@ -237,11 +238,11 @@
 
                                     @endphp
                                     <td class="text-end" style="background:#93f486;">{{ number_format($qty, 2) }}
-                                        {{ $roomLT->stage_code == 4 ? ' # ' . number_format($qty_unit, 2) : '' }}</td>
+                                        {!! in_array($roomLT->stage_code, [3, 4]) ? '<br># ' . number_format($qty_unit, 2) : '' !!}</td>
                                 @endforeach
 
                                 <td class="text-end fw-bold" style="background:#93f486;">{{ number_format($sumLT, 2) }}
-                                    {{ $roomLT->stage_code == 4 ? ' # ' . number_format($sumLT_unit, 2) : '' }} </td>
+                                    {!! in_array($roomLT->stage_code, [3, 4]) ? '<br># ' . number_format($sumLT_unit, 2) : '' !!} </td>
                                 <td class="text-center" style="background:#93f486;">{{ $unit }}</td>
                             </tr>
 
@@ -301,12 +302,12 @@
 
                                     @foreach ($allDates as $date)
                                         <td class="text-end">{{ number_format($stageLT[$date], 2) }}
-                                            {{ $roomLT->stage_code == 4 ? ' # ' . number_format($stageLT_unit[$date], 2) : '' }}
+                                            {!! in_array($roomLT->stage_code, [3, 4]) ? '<br># ' . number_format($stageLT_unit[$date], 2) : '' !!}
                                         </td>
                                     @endforeach
 
                                     <td class="text-end">{{ number_format(array_sum($stageLT), 2) }}
-                                        {{ $roomLT->stage_code == 4 ? ' # ' . number_format(array_sum($stageLT_unit), 2) : '' }}
+                                        {!! in_array($roomLT->stage_code, [3, 4]) ? '<br># ' . number_format(array_sum($stageLT_unit), 2) : '' !!}
                                     </td>
                                     <td class="text-center">{{ $unit }}</td>
                                 </tr>
@@ -495,6 +496,14 @@
     const monthInput = document.getElementById('month');
     const yearInput = document.getElementById('year');
 
+    // Hàm định dạng ngày local YYYY-MM-DD tránh lệch múi giờ (UTC)
+    function formatDateLocal(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     // Submit form với kiểm tra From/To
     function submitForm() {
         const fromDate = new Date(fromInput.value);
@@ -546,8 +555,8 @@
         const toDate = new Date(fromDate);
         toDate.setDate(fromDate.getDate() + 6);
 
-        fromInput.value = fromDate.toISOString().slice(0, 10);
-        toInput.value = toDate.toISOString().slice(0, 10);
+        fromInput.value = formatDateLocal(fromDate);
+        toInput.value = formatDateLocal(toDate);
     }
 
     // Khi thay đổi tháng => cập nhật From/To dựa trên tháng
@@ -559,8 +568,8 @@
         const fromDate = new Date(year, month - 1, 1);
         const toDate = new Date(year, month, 0);
 
-        fromInput.value = fromDate.toISOString().slice(0, 10);
-        toInput.value = toDate.toISOString().slice(0, 10);
+        fromInput.value = formatDateLocal(fromDate);
+        toInput.value = formatDateLocal(toDate);
 
         weekInput.value = getWeekNumber(toDate);
     }
@@ -574,20 +583,11 @@
         // Ngày cuối năm
         const toDate = new Date(year, 11, 31);
 
-        fromInput.value = fromDate.toISOString().slice(0, 10);
-        toInput.value = toDate.toISOString().slice(0, 10);
+        fromInput.value = formatDateLocal(fromDate);
+        toInput.value = formatDateLocal(toDate);
 
         // Tuần cuối năm theo ISO week
         weekInput.value = getWeekNumber(toDate);
-    }
-
-    // Hàm lấy số tuần ISO
-    function getWeekNumber(d) {
-        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        const dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     }
 
     // Lắng nghe event
