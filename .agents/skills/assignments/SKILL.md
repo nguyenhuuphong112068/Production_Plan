@@ -77,7 +77,7 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - `WH` (Kho): **17**
     - `PXVH` (Phân xưởng Viên H): **30**
     - `PXDN` (Phân xưởng Dùng Ngoài): **34**
-    - `PXV2` (Phân xưởng Viên 2): **31**
+    - `PXV2` (Phân xưởng Viên 2): **32**
     - *Ghi chú:* Các mã ID này được sử dụng làm tham số `department` trong URL API để lấy đúng dữ liệu ca trực của từng đơn vị.
 
 ### 7.1 Tự động Phân công Nhân sự Sản Xuất (Auto Assign)

@@ -82,7 +82,7 @@ class LoginController extends Controller
             'PXV1' => 15,
             'PXVH' => 30,
             'PXDN' => 34,
-            'PXV2' => 31
+            'PXV2' => 32
         ];
 
 

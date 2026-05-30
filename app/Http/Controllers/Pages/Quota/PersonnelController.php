@@ -45,7 +45,7 @@ class PersonnelController extends Controller
             'PXV1' => 15,
             'PXVH' => 30,
             'PXDN' => 34,
-            'PXV2' => 31
+            'PXV2' => 32
         ];
 
         $shiftCounts = [];
@@ -263,7 +263,7 @@ class PersonnelController extends Controller
         // Mapping department codes to IDs for the external API
         $depMapping = [
             'PXV1' => 15,
-            'PXV2' => 31,
+            'PXV2' => 32,
             'PXVH' => 30,
             'PXDN' => 30,
             'EN' => 3,
@@ -870,7 +870,7 @@ class PersonnelController extends Controller
                 15 => 'PXV1',
                 30 => 'PXVH',
                 34 => 'PXDN',
-                31 => 'PXV2'
+                32 => 'PXV2'
             ];
             $departmentCode = $depMapping[$depId] ?? null;
             if ($departmentCode) {
