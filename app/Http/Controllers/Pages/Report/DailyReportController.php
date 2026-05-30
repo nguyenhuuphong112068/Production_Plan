@@ -102,6 +102,7 @@ class DailyReportController extends Controller
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
+            ->where('sp.stage_code', '<=', 7)
             ->where('sp.active', 1)
             ->where('sp.deparment_code', $production_code)
             // Hỗ trợ overlap
