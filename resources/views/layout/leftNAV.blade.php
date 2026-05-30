@@ -600,6 +600,16 @@
                                     <p>Sản Xuất</p>
                                 </a>
                             </li>
+
+                            {{-- <li class="nav-item">
+                                <a href="{{ route('pages.assignment.production.portal') }}"
+                                    class="nav-link {{ str_contains(url()->current(), 'assignment/production/portal') || str_contains(url()->current(), 'assignment/production/chart') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Sản Xuất - Gantt Chart</p>
+                                </a>
+                            </li> --}}
+
+
                             {{-- @endif
                             @if (user_has_permission(session('user')['userId'], 'maintenance_assignment', 'boolean')) --}}
                             <li class="nav-item">

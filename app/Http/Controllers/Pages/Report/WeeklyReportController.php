@@ -250,7 +250,7 @@ class WeeklyReportController extends Controller
                 "sp.resourceId",
                 DB::raw("
                     SUM(
-                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
+                        (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                         TIME_TO_SEC(
                             TIMEDIFF(
                                 LEAST(sp.end, '$endDateStr'),

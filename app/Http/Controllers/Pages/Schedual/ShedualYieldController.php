@@ -48,7 +48,7 @@ class ShedualYieldController extends Controller
             ->select(
                 "sp.$group_By",
                 //'sp.start',
-                DB::raw('SUM(CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) as total_qty'),
+                DB::raw('SUM(sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) as total_qty'),
                 DB::raw('SUM(sp.Theoretical_yields_qty) as total_qty_unit'),
                 DB::raw('
                     CASE
@@ -73,7 +73,7 @@ class ShedualYieldController extends Controller
                 "sp.$group_By",
                 DB::raw('
                     SUM(
-                        (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
+                        (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                         TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $endDate . '"), GREATEST(sp.start, "' . $startDate . '"))) /
                         TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                     ) as total_qty
@@ -175,7 +175,7 @@ class ShedualYieldController extends Controller
                     'r.stage_code as stage_code',
                     DB::raw('
                         SUM(
-                            (CASE WHEN plan_master.only_parkaging = 1 THEN sp.Theoretical_yields * plan_master.percent_parkaging ELSE sp.Theoretical_yields END) *
+                            (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
                             TIME_TO_SEC(TIMEDIFF(LEAST(sp.end, "' . $dayEnd . '"), GREATEST(sp.start, "' . $dayStart . '"))) /
                             TIME_TO_SEC(TIMEDIFF(sp.end, sp.start))
                         ) as total_qty

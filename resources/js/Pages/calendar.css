@@ -532,3 +532,40 @@ input:checked + .slider:before {
   border: 1px solid #fde68a !important;
 }
 
+/* Reduce height of personnel sub-resource rows and align event items */
+[data-resource-id^="personnel-"],
+[data-resource-id^="personnel-"] .fc-datagrid-cell,
+[data-resource-id^="personnel-"] .fc-datagrid-cell-cushion,
+[data-resource-id^="personnel-"] .fc-datagrid-cell-main,
+[data-resource-id^="personnel-"] .fc-timeline-row,
+[data-resource-id^="personnel-"] .fc-timeline-lane,
+[data-resource-id^="personnel-"] .fc-timeline-lane-frame,
+[data-resource-id^="personnel-"] .fc-timeline-events {
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  padding: 0 !important;
+  vertical-align: middle !important;
+  line-height: 24px !important;
+}
+
+[data-resource-id^="personnel-"] .fc-timeline-event-harness {
+  top: 2px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  height: 20px !important;
+}
+
+[data-resource-id^="personnel-"] .fc-timeline-event {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  height: 20px !important;
+}
+
+[data-resource-id^="personnel-"] .fc-event-main-frame {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+

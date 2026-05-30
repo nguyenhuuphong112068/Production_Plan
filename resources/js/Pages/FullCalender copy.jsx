@@ -59,8 +59,6 @@ const ScheduleTest = () => {
 
   const [events, setEvents] = useState([]);
   const [resources, setResources] = useState([]);
-  const [personnelEvents, setPersonnelEvents] = useState([]);
-  const [showPersonnel, setShowPersonnel] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const hoverTimeoutRef = useRef(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -146,9 +144,6 @@ const ScheduleTest = () => {
 
         setEvents(data.events);
         setResources(data.resources);
-        if (data.personnel_events) {
-          setPersonnelEvents(data.personnel_events);
-        }
         setType(data.type)
         setStageMap(data.stageMap);
         setSumBatchByStage(data.sumBatchByStage);
@@ -519,9 +514,6 @@ const ScheduleTest = () => {
       // 🔹 5. Cập nhật dữ liệu mới
       setEvents(cleanData.events);
       setResources(cleanData.resources);
-      if (cleanData.personnel_events) {
-        setPersonnelEvents(cleanData.personnel_events);
-      }
       setSumBatchByStage(cleanData.sumBatchByStage);
       setViewName(viewType);
     } finally {
@@ -3046,35 +3038,6 @@ const ScheduleTest = () => {
   const EventContent = (arg) => {
     const event = arg.event;
     const props = event._def.extendedProps;
-
-    if (props.is_personnel) {
-      const startTime = moment(event.start).format('HH:mm');
-      const endTime = moment(event.end).format('HH:mm');
-      const html = `
-        <div class="custom-personnel-event" style="
-          padding: 2px 6px; 
-          font-size: 11px; 
-          font-weight: bold;
-          line-height: 16px; 
-          white-space: nowrap; 
-          overflow: hidden; 
-          text-overflow: ellipsis; 
-          background-color: #dbeafe; 
-          color: #1e40af; 
-          border: 1px solid #bfdbfe; 
-          border-radius: 4px;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          width: 100%;
-          box-sizing: border-box;
-        ">
-          <span>${event.title} (${startTime} - ${endTime})</span>
-        </div>
-      `;
-      return { html };
-    }
-
     const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
     const eventDate = dayjs(event.start).format('YYYY-MM-DD'); // Ngày thực hiện trên lịch
 
@@ -3305,22 +3268,11 @@ const ScheduleTest = () => {
   };
 
   const calendarEvents = useMemo(() => {
-    const base = [
+    return [
       ...events,                     // event sản xuất
       ...buildOffDayEvents(offDays), // background ngày nghỉ
     ];
-    if (showPersonnel) {
-      return [...base, ...personnelEvents];
-    }
-    return base;
-  }, [events, offDays, personnelEvents, showPersonnel]);
-
-  const displayResources = useMemo(() => {
-    if (showPersonnel) {
-      return resources;
-    }
-    return (resources || []).filter(r => !r.is_personnel_sub);
-  }, [resources, showPersonnel]);
+  }, [events, offDays]);
 
   const handleConfirmClearningValidation = (e) => {
     const ids = selectedEvents.map(row =>
@@ -3542,7 +3494,7 @@ const ScheduleTest = () => {
 
           return classes;
         }}
-        resources={displayResources}
+        resources={resources}
         resourceAreaHeaderContent="Phòng Sản Xuất"
 
         locale="vi"
@@ -3593,17 +3545,6 @@ const ScheduleTest = () => {
         // Phòng
         resourceLabelContent={(arg) => {
           const res = arg.resource.extendedProps;
-
-          if (res.is_personnel_sub) {
-            return {
-              html: `
-                <div style="font-size: 11px; font-weight: bold; padding-left: 15px; color: #475569; line-height: 20px; display: flex; align-items: center; height: 20px;">
-                  ${arg.resource.title}
-                </div>
-              `
-            };
-          }
-
           const busy = parseFloat(res.busy_hours) || 0;
           const yields = parseFloat(res.yield) || 0;
           const unit = res.unit || "";
@@ -3794,7 +3735,7 @@ const ScheduleTest = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -3985,12 +3926,6 @@ const ScheduleTest = () => {
             text: '🆚',
             click: handleCleaninglevelchange,
             hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 🆚 hộp thoại chọn cấp vệ sinh xuất hiện, chọn cấp vệ sinh cần thay đổi. Bấm Lưu'
-          },
-
-          togglePersonnel: {
-            text: showPersonnel ? '👥' : '👥',
-            click: () => setShowPersonnel(prev => !prev),
-            hint: 'Ẩn/Hiện phân công nhân sự tại từng phòng'
           },
 
 

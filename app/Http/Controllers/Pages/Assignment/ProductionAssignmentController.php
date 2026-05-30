@@ -929,4 +929,331 @@ class ProductionAssignmentController extends Controller
 
         return $dbAssignments;
     }
+
+    public function portal()
+    {
+        $groups = collect([
+            1 => "Trung Tâm Cân",
+            3 => "Pha Chế",
+            4 => "Văn Phòng",
+            5 => "Định Hình",
+            6 => "Bao Phim",
+            7 => "ĐGSC",
+            8 => "ĐGTC",
+            9 => "VSCN + Kho BTP"
+        ])->map(function ($name, $id) {
+            return (object) ['group_code' => $id, 'production_group' => $name];
+        })->values();
+
+        session()->put(['title' => 'CỔNG PHÂN CÔNG SẢN XUẤT']);
+        return view('pages.assignment.production.portal', compact('groups'));
+    }
+
+    public function chartIndex(Request $request)
+    {
+        session()->put(['title' => 'PHÂN CÔNG SẢN XUẤT - CHART']);
+        return view('app');
+    }
+
+    public function chartView(Request $request)
+    {
+        $production_code = session('user')['production_code'] ?? 'PXV1';
+        $group_code = $request->group_code;
+        $startDate = Carbon::parse($request->startDate)->format('Y-m-d H:i:s');
+        $endDate = Carbon::parse($request->endDate)->format('Y-m-d H:i:s');
+        
+        $roomQuery = DB::table('room')
+            ->where('deparment_code', $production_code)
+            ->where('only_maintenance', 0);
+        if ($group_code) {
+            if ($group_code == 7 || $group_code == 8) {
+                $roomQuery->whereIn('group_code', [7, 8]);
+            } else {
+                $roomQuery->where('group_code', $group_code);
+            }
+        }
+        $rooms = $roomQuery->orderBy('order_by')->get();
+
+        $resources = [];
+        foreach ($rooms as $room) {
+            $resources[] = [
+                'id' => (string)$room->id,
+                'title' => $room->code . ' - ' . $room->name,
+                'stage_name' => $room->production_group ?: 'Phòng Sản Xuất',
+                'order_by' => $room->order_by,
+                'code' => $room->code,
+                'main_equiment_name' => $room->main_equiment_name,
+                'is_personnel_sub' => false
+            ];
+            $resources[] = [
+                'id' => 'personnel-' . $room->id,
+                'parentId' => (string)$room->id,
+                'title' => '👥 Nhân sự trực',
+                'stage_name' => $room->production_group ?: 'Phòng Sản Xuất',
+                'order_by' => $room->order_by,
+                'code' => $room->code,
+                'is_personnel_sub' => true
+            ];
+        }
+
+        $stagePlanQuery = DB::table('stage_plan as sp')
+            ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
+            ->where('sp.deparment_code', $production_code)
+            ->where('sp.active', 1)
+            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate]);
+            
+        if ($group_code) {
+            if ($group_code == 7 || $group_code == 8) {
+                $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
+            } else {
+                $stagePlanQuery->where('sp.stage_code', $group_code);
+            }
+        }
+        $plans = $stagePlanQuery->select(
+            'sp.id',
+            'sp.resourceId as room_id',
+            'sp.start',
+            'sp.end',
+            'sp.title',
+            'sp.stage_code',
+            'pm.batch',
+            'product_name.name as product_name'
+        )->get();
+
+        $events = [];
+        foreach ($plans as $p) {
+            $events[] = [
+                'id' => 'plan-' . $p->id,
+                'resourceId' => (string)$p->room_id,
+                'start' => $p->start,
+                'end' => $p->end,
+                'title' => "📦 " . ($p->product_name ?: $p->title) . " - Ca: " . ($p->batch ?: ''),
+                'color' => '#86efac',
+                'textColor' => '#166534',
+                'borderColor' => '#bbf7d0',
+                'editable' => false,
+                'is_plan' => true
+            ];
+        }
+
+        $assignmentQuery = DB::table('assignments as a')
+            ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+            ->join('employees as e', 'ap.personnel_id', '=', 'e.id')
+            ->where('a.deparment_code', $production_code)
+            ->where('a.active', 1)
+            ->whereRaw('(a.start < ? AND a.end > ?)', [$endDate, $startDate]);
+
+        if ($group_code) {
+            if ($group_code == 7 || $group_code == 8) {
+                $assignmentQuery->whereIn('a.stage_groups_code', [7, 8]);
+            } else {
+                $assignmentQuery->where('a.stage_groups_code', $group_code);
+            }
+        }
+
+        $assignments = $assignmentQuery->select(
+            'a.id as assignment_id',
+            'a.room_id',
+            'a.start',
+            'a.end',
+            'a.Job_description',
+            'a.Sheet',
+            'e.id as personnel_id',
+            'e.name as employee_name',
+            'ap.notification'
+        )->get()->groupBy('assignment_id');
+
+        foreach ($assignments as $assId => $items) {
+            $first = $items->first();
+            if (!$first->room_id) continue;
+            
+            $names = $items->pluck('employee_name')->implode(', ');
+            $personnelIds = $items->map(function($i) {
+                return ['personnel_id' => $i->personnel_id, 'notification' => $i->notification];
+            })->toArray();
+
+            $events[] = [
+                'id' => 'assign-' . $assId,
+                'resourceId' => 'personnel-' . $first->room_id,
+                'start' => $first->start,
+                'end' => $first->end,
+                'title' => '👥 ' . $names . ($first->Job_description ? ' (' . $first->Job_description . ')' : ''),
+                'color' => '#dbeafe',
+                'textColor' => '#1e40af',
+                'borderColor' => '#bfdbfe',
+                'editable' => true,
+                'is_assignment' => true,
+                'extendedProps' => [
+                    'assignment_id' => $assId,
+                    'room_id' => $first->room_id,
+                    'sheet' => $first->Sheet,
+                    'job_description' => $first->Job_description,
+                    'personnel_list' => $personnelIds
+                ]
+            ];
+        }
+
+        $personnelQuery = DB::table('employees as e')
+            ->where('e.active', 1)
+            ->where(function ($q) {
+                $q->whereNull('e.resign')
+                  ->orWhere('e.resign', 0);
+            })
+            ->whereExists(function ($query) use ($production_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea')
+                    ->whereColumn('ea.employees_id', 'e.id')
+                    ->where('ea.production_code', $production_code)
+                    ->where('ea.active', 1);
+            });
+
+        if ($group_code) {
+            $personnelQuery->whereExists(function ($query) use ($group_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea2')
+                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
+                    ->whereColumn('ea2.employees_id', 'e.id')
+                    ->where(function ($q) use ($group_code) {
+                        $q->where('sg.code', $group_code)
+                          ->orWhere('ea2.group_id', $group_code);
+                    })
+                    ->where('ea2.active', 1);
+            });
+        }
+
+        $personnel = $personnelQuery->select('e.*')
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL AND room_id > 0) as allowed_rooms_with_levels"))
+            ->orderBy('e.name')
+            ->get();
+
+        $authorization = session('user')['userGroup'];
+        $dbAssignments = $this->getDbAssignments(Carbon::parse($startDate)->format('Y-m-d'));
+
+        return response()->json([
+            'resources' => $resources,
+            'events' => $events,
+            'personnel' => $personnel,
+            'dbAssignments' => $dbAssignments,
+            'authorization' => $authorization,
+            'production' => $production_code,
+            'department' => session('user')['department'] ?? ''
+        ]);
+    }
+
+    public function chartStore(Request $request)
+    {
+        $production_code = session('user')['production_code'] ?? 'PXV1';
+        $group_code = $request->group_code;
+        $reportedDate = $request->reportedDate;
+        $assignments_data = $request->assignments ?? [];
+
+        try {
+            DB::beginTransaction();
+
+            $deleteQuery = DB::table('assignments')
+                ->where('deparment_code', $production_code)
+                ->whereDate('start', $reportedDate)
+                ->where('active', 1);
+
+            if ($group_code) {
+                if ($group_code == 7 || $group_code == 8) {
+                    $deleteQuery->whereIn('stage_groups_code', [7, 8]);
+                } else {
+                    $deleteQuery->where('stage_groups_code', $group_code);
+                }
+            }
+            $deleteQuery->update(['active' => 0, 'updated_at' => now()]);
+
+            $prodGroups = [
+                1 => "Trung Tâm Cân",
+                3 => "Pha Chế",
+                4 => "Văn Phòng",
+                5 => "Định Hình",
+                6 => "Bao Phim",
+                7 => "ĐGSC",
+                8 => "ĐGTC",
+                9 => "VSCN + Kho BTP"
+            ];
+
+            foreach ($assignments_data as $row) {
+                $p_data = $row['personnel_list'] ?? [];
+                if (empty($row['start']) || empty($row['end'])) {
+                    continue;
+                }
+
+                $startDt = Carbon::parse($row['start'])->format('Y-m-d H:i:s');
+                $endDt = Carbon::parse($row['end'])->format('Y-m-d H:i:s');
+                $roomId = $row['room_id'] ?? null;
+                if ($roomId === "") $roomId = null;
+
+                foreach ($p_data as $p) {
+                    if (empty($p['personnel_id'])) continue;
+
+                    $overlap = DB::table('assignments as a')
+                        ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+                        ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
+                        ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
+                        ->leftJoin('employees as e', 'ap.personnel_id', '=', 'e.id')
+                        ->where('ap.personnel_id', $p['personnel_id'])
+                        ->where('a.active', 1)
+                        ->where('a.start', '<', $endDt)
+                        ->where('a.end', '>', $startDt)
+                        ->select('a.start', 'a.end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+                        ->first();
+
+                    if ($overlap) {
+                        $grpName = $overlap->group_name;
+                        if ($overlap->deparment_code == 'EN') {
+                            $grpName = 'Bảo trì';
+                        } elseif ($overlap->deparment_code == 'QA') {
+                            $grpName = 'Hiệu chuẩn';
+                        } else {
+                            $grpName = $prodGroups[$overlap->stage_groups_code] ?? $overlap->group_name ?? ('Tổ ' . $overlap->stage_groups_code);
+                        }
+                        $roomName = $overlap->room_name ?: 'Công tác khác';
+                        $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
+                        
+                        throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
+                    }
+                }
+
+                $assignmentId = DB::table('assignments')->insertGetId([
+                    'room_id' => $roomId,
+                    'deparment_code' => $production_code,
+                    'stage_groups_code' => $group_code,
+                    'Sheet' => $row['sheet'] ?? 1,
+                    'start' => $startDt,
+                    'end' => $endDt,
+                    'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
+                    'number_of_employes' => count($p_data),
+                    'assigned_by' => session('user')['userName'] ?? 'System',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'active' => 1
+                ]);
+
+                $unique_p_data = collect($p_data)->unique('personnel_id');
+                foreach ($unique_p_data as $p) {
+                    if (empty($p['personnel_id'])) continue;
+                    DB::table('assignment_personnel')->insert([
+                        'assignment_id' => $assignmentId,
+                        'personnel_id' => $p['personnel_id'],
+                        'notification' => $p['notification'] ?? null
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Đã lưu phân công thành công.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
+    

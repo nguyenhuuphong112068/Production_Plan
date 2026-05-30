@@ -22,6 +22,11 @@ Route::prefix('/assignemnt/production')
         Route::get('shifts', 'getPersonnelShifts')->name('shifts');
         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
+
+        Route::get('portal', 'portal')->name('portal');
+        Route::get('chart', 'chartIndex')->name('chart');
+        Route::post('chart/view', 'chartView')->name('chart_view');
+        Route::put('chart/store', 'chartStore')->name('chart_store');
     });
 
 Route::prefix('/assignemnt/maintenance')

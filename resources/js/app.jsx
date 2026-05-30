@@ -12,6 +12,7 @@ import NoteModal from './Components/NoteModal';
 import ScheduleTest from "./Pages/FullCalender.jsx";
 import AssignmentCalender from './Pages/AssignmentCalender.jsx';
 import MaintenanceCalender from "./Pages/MaintenanceCalender .jsx";
+import AssignmentChart from "./Pages/AssignmentChart.jsx";
 
 
 createRoot(document.getElementById("root")).render(
@@ -20,6 +21,7 @@ createRoot(document.getElementById("root")).render(
       <Route path="/Schedual" element={<ScheduleTest />} />
       <Route path="/assignment" element={<AssignmentCalender />} />
       <Route path="/maintenance-calendar" element={<MaintenanceCalender />} />
+      <Route path="/assignemnt/production/chart" element={<AssignmentChart />} />
     </Routes>
   </BrowserRouter>
 

@@ -1334,7 +1334,36 @@ class SchedualController extends Controller
         // Sắp xếp lại theo 'stage_code'
         $sortedResult = $result->sortBy('stage_code')->values();
 
-        return $sortedResult;
+        $finalResources = [];
+        foreach ($sortedResult as $room) {
+            $finalResources[] = $room;
+
+            // Dòng con đại diện cho nhân sự trực thuộc phòng này
+            $personnelSub = new \stdClass();
+            $personnelSub->id = 'personnel-' . $room->id;
+            $personnelSub->parentId = (string) $room->id;
+            $personnelSub->code = $room->code;
+            $personnelSub->title = '👥 Nhân sự trực';
+            $personnelSub->main_equiment_name = '';
+            $personnelSub->order_by = $room->order_by;
+            $personnelSub->stage_code = $room->stage_code;
+            $personnelSub->production_group = $room->production_group;
+            $personnelSub->stage_name = $room->stage_name;
+            $personnelSub->sheet_1 = 0;
+            $personnelSub->sheet_2 = 0;
+            $personnelSub->sheet_3 = 0;
+            $personnelSub->sheet_regular = 0;
+            $personnelSub->busy_hours = 0;
+            $personnelSub->free_hours = 0;
+            $personnelSub->total_hours = 0;
+            $personnelSub->yield = 0;
+            $personnelSub->unit = '';
+            $personnelSub->is_personnel_sub = true;
+
+            $finalResources[] = $personnelSub;
+        }
+
+        return collect($finalResources);
     }
 
     // hàm view gọn hơn request
@@ -1416,6 +1445,37 @@ class SchedualController extends Controller
 
             $UesrID = session('user')['userId'];
 
+            // Truy vấn lịch phân công nhân sự trong khoảng thời gian đang xem
+            $assignments = DB::table('assignments as a')
+                ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+                ->join('employees as e', 'ap.personnel_id', '=', 'e.id')
+                ->where('a.active', 1)
+                ->where('a.deparment_code', $production)
+                ->whereBetween('a.start', [$startDate, $endDate])
+                ->select('a.id', 'a.room_id', 'a.start', 'a.end', 'e.name as employee_name')
+                ->get()
+                ->groupBy('id');
+
+            $personnelEvents = [];
+            foreach ($assignments as $assignmentId => $items) {
+                $first = $items->first();
+                $names = $items->pluck('employee_name')->implode(', ');
+                
+                $personnelEvents[] = [
+                    'id' => 'personnel-' . $assignmentId,
+                    'resourceId' => 'personnel-' . $first->room_id,
+                    'start' => $first->start,
+                    'end' => $first->end,
+                    'title' => '👥 ' . $names,
+                    'color' => '#dbeafe',
+                    'textColor' => '#1e40af',
+                    'borderColor' => '#bfdbfe',
+                    'editable' => false,
+                    'is_personnel' => true,
+                    'display' => 'block'
+                ];
+            }
+
             return response()->json([
                 'title' => $title,
                 'events' => $events,
@@ -1435,6 +1495,7 @@ class SchedualController extends Controller
                 'off_days' => DB::table('off_days')->where('off_date', '>=', now())->get()->pluck('off_date') ?? [],
                 'bkc_code' => $bkc_code ?? [],
                 'UesrID' => $UesrID,
+                'personnel_events' => $personnelEvents,
             ]);
         } catch (\Throwable  $e) {
 
