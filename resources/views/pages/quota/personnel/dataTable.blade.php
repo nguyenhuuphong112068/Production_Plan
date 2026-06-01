@@ -1065,7 +1065,7 @@
             const filteredRooms = roomsData.filter(r => selectedCodes.includes(r.group_code ? r
                 .group_code.toString() : ''));
             const alreadySelectedIds = [];
-            $tr.find('.room-id-select').each(function() {
+            $list.find('.room-id-select').each(function() {
                 const val = $(this).val();
                 if (val) alreadySelectedIds.push(val.toString());
             });
@@ -1199,10 +1199,11 @@
                 const rGroupId = $row.attr('data-group-id') || $row.data('group-id');
 
                 if (rId && rId !== "") {
-                    if (selectedRoomIds.has(rId)) {
+                    const uniqueKey = rId + '_' + rGroupId;
+                    if (selectedRoomIds.has(uniqueKey)) {
                         duplicateFound = true;
                     } else {
-                        selectedRoomIds.add(rId);
+                        selectedRoomIds.add(uniqueKey);
                         idsWithLevels.push(rId + ':' + rLvl + ':' + rActive + ':' + rGroupId);
                     }
                 }
