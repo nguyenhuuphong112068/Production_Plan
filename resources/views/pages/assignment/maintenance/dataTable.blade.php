@@ -430,6 +430,9 @@
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
                     <i class="fas fa-eye"></i>
                 </button>
+                <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác" data-url="{{ route('pages.assignment.public') }}?group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
+                    <i class="fas fa-print"></i> In Lịch
+                </button>
             </div>
         </div>
     </div>
@@ -2248,6 +2251,35 @@
                 Swal.fire('Hoàn tất', `Đã lưu thành công ${successCount}/${rows.length} phòng.`,
                     'success');
             }
+        });
+
+        $(document).on('click', '#btn-print-schedule', function() {
+            const url = $(this).attr('data-url');
+            
+            // Hiện thông báo đang chuẩn bị trang in
+            Swal.fire({
+                title: 'Đang chuẩn bị trang in...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Xóa iframe cũ nếu có
+            $('#print-iframe').remove();
+            
+            // Tạo iframe ẩn
+            const iframe = document.createElement('iframe');
+            iframe.id = 'print-iframe';
+            iframe.style.display = 'none';
+            iframe.src = url;
+            
+            document.body.appendChild(iframe);
+            
+            // Iframe tải xong sẽ tự gọi window.print() từ bên trong do có mã xử lý phía publicView
+            setTimeout(() => {
+                Swal.close();
+            }, 2000);
         });
 
         function getRoomAssignments(row) {

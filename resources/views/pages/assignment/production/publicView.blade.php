@@ -24,6 +24,101 @@
             overflow: hidden;
         }
 
+        @media print {
+            @page {
+                size: landscape;
+                margin: 10mm;
+            }
+
+            body {
+                background-color: #fff;
+                overflow: visible !important;
+                height: auto !important;
+                display: block !important;
+            }
+
+            .header-bar,
+            .personnel-sidebar,
+            .sidebar-toggle-btn {
+                display: none !important;
+            }
+
+            .main-content-layout {
+                overflow: visible !important;
+                display: block !important;
+                height: auto !important;
+            }
+
+            .table-container {
+                overflow: visible !important;
+                padding: 0 !important;
+                height: auto !important;
+            }
+
+            .table-assignment {
+                box-shadow: none !important;
+            }
+
+            .table-assignment thead th {
+                position: static !important;
+            }
+
+            .print-header {
+                display: block !important;
+            }
+
+            .no-assignment {
+                display: none !important;
+            }
+
+            .timeline-container {
+                display: none !important;
+            }
+
+            .table-assignment tr {
+                page-break-inside: avoid;
+            }
+
+            .table-assignment thead th {
+                padding: 4px !important;
+                font-size: 0.85rem !important;
+            }
+
+            .assignment-inner-table td, 
+            .room-name-cell, 
+            .theory-cell {
+                padding: 4px !important;
+                font-size: 0.85rem !important;
+            }
+
+            .job-desc {
+                font-size: 0.85rem !important;
+                padding: 4px !important;
+                min-height: auto !important;
+            }
+
+            .personnel-label {
+                width: 16px !important;
+                height: 16px !important;
+                font-size: 0.7rem !important;
+                line-height: 16px !important;
+            }
+
+            .print-header {
+                font-size: 1.2rem !important;
+                margin-bottom: 10px !important;
+            }
+        }
+
+        .print-header {
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #000;
+        }
+
         :root {
             --primary-gold: #c5c500;
             --light-gold: #fdfde0;
@@ -118,7 +213,7 @@
             display: block;
             width: 100%;
         }
-        
+
         .job-desc.multi-col {
             column-count: 2;
             column-gap: 20px;
@@ -362,145 +457,163 @@
         </div>
     </div>
 
+    <div class="print-header">
+        @php
+            $groupNamePrint = 'Tất cả';
+            if ($group_code) {
+                $gObj = collect($groups)->where('group_code', $group_code)->first();
+                if ($gObj) {
+                    $groupNamePrint = $gObj->production_group;
+                }
+            }
+        @endphp
+        Lịch Công Tác {{ $groupNamePrint }} Ngày {{ date('d/m/Y', strtotime($reportedDate)) }}
+    </div>
+
     <div class="main-content-layout">
         <div class="table-container">
             <table class="table table-assignment w-100">
-            <thead>
-                <tr>
-                    <th style="width: 8%">Phòng / Thiết Bị</th>
-                    <th style="width: 10%">Ca / Thời Gian</th>
-                    <th style="width: 60%">Nội Dung Phân Công</th>
-                    <th style="width: 12%">Người thực Hiện</th>
-                    <th style="width: 10%">Ghi chú / Lưu ý</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (count($tasks) === 0)
+                <thead>
                     <tr>
-                        <td colspan="5" class="text-center font-weight-bold text-muted p-4">
-                            Không có lịch phân công nào.
-                        </td>
+                        <th style="width: 8%">Phòng / Thiết Bị</th>
+                        <th style="width: 10%">Ca / Thời Gian</th>
+                        <th style="width: 60%">Nội Dung Phân Công</th>
+                        <th style="width: 12%">Người thực Hiện</th>
+                        <th style="width: 10%">Ghi chú / Lưu ý</th>
                     </tr>
-                @endif
-                @foreach ($tasks as $task)
-                    <tr class="{{ $task->assignments->first()->off_stream ?? 0 ? 'off-stream-row' : '' }}">
-                        <!-- Phòng / Khu vực -->
-                        <td class="room-name-cell">
-                            <div class="d-block">{{ $task->room_code }}</div>
-                            <div class="text-muted">{{ $task->room_name }}</div>
-                            @if (!empty($task->main_equiment_name))
-                                <div class="text-muted font-italic" style="font-size: 0.95rem;">
-                                    {{ $task->main_equiment_name }}</div>
-                            @endif
-                        </td>
+                </thead>
+                <tbody>
+                    @if (count($tasks) === 0)
+                        <tr>
+                            <td colspan="5" class="text-center font-weight-bold text-muted p-4">
+                                Không có lịch phân công nào.
+                            </td>
+                        </tr>
+                    @endif
+                    @foreach ($tasks as $task)
+                        <tr
+                            class="{{ $task->assignments->first()->off_stream ?? 0 ? 'off-stream-row' : '' }} {{ count($task->assignments ?? []) === 0 ? 'no-assignment' : '' }}">
+                            <!-- Phòng / Khu vực -->
+                            <td class="room-name-cell">
+                                <div class="d-block">{{ $task->room_code }}</div>
+                                <div class="text-muted">{{ $task->room_name }}</div>
+                                @if (!empty($task->main_equiment_name))
+                                    <div class="text-muted font-italic" style="font-size: 0.95rem;">
+                                        {{ $task->main_equiment_name }}</div>
+                                @endif
+                            </td>
 
-                        <td colspan="4" class="p-0">
-                            @if (count($task->assignments ?? []) === 0)
-                                <div class="p-3 text-center text-muted font-italic">Chưa có phân công</div>
-                            @else
-                                <table class="table assignment-inner-table">
-                                    <colgroup>
-                                        <col style="width: 10.9%"> {{-- Ca/Thời gian --}}
-                                        <col style="width: 65.2%"> {{-- Nội dung --}}
-                                        <col style="width: 13.0%"> {{-- Người thực hiện --}}
-                                        <col style="width: 10.9%"> {{-- Ghi chú --}}
-                                    </colgroup>
-                                    <tbody>
-                                        @foreach ($task->assignments as $a)
-                                            <tr data-id="{{ $a->id }}">
-                                                <!-- Ca làm việc -->
-                                                <td class="text-center">
-                                                    <div class="font-weight-bold">Ca {{ $a->Sheet ?? '-' }}</div>
-                                                    <small class="text-primary"><span class="start-time-text">{{ $a->start_time_display }}</span> -
-                                                        <span class="end-time-text">{{ $a->end_time_display }}</span></small>
-                                                </td>
+                            <td colspan="4" class="p-0">
+                                @if (count($task->assignments ?? []) === 0)
+                                    <div class="p-3 text-center text-muted font-italic">Chưa có phân công</div>
+                                @else
+                                    <table class="table assignment-inner-table">
+                                        <colgroup>
+                                            <col style="width: 10.9%"> {{-- Ca/Thời gian --}}
+                                            <col style="width: 65.2%"> {{-- Nội dung --}}
+                                            <col style="width: 13.0%"> {{-- Người thực hiện --}}
+                                            <col style="width: 10.9%"> {{-- Ghi chú --}}
+                                        </colgroup>
+                                        <tbody>
+                                            @foreach ($task->assignments as $a)
+                                                <tr data-id="{{ $a->id }}">
+                                                    <!-- Ca làm việc -->
+                                                    <td class="text-center">
+                                                        <div class="font-weight-bold">Ca {{ $a->Sheet ?? '-' }}</div>
+                                                        <small class="text-primary"><span
+                                                                class="start-time-text">{{ $a->start_time_display }}</span>
+                                                            -
+                                                            <span
+                                                                class="end-time-text">{{ $a->end_time_display }}</span></small>
+                                                    </td>
 
-                                                <td>
-                                                    @php
-                                                        $jobText = trim($a->Job_description);
-                                                        $lines = preg_split("/\r\n|\n|\r|<br\s*\/?>/i", $jobText);
-                                                        $linesCount = count(array_filter($lines, 'trim'));
-                                                    @endphp
-                                                    <div class="job-desc {{ $linesCount > 1 ? 'multi-col' : '' }}">{!! $jobText !!}</div>
-                                                </td>
+                                                    <td>
+                                                        @php
+                                                            $jobText = trim($a->Job_description);
+                                                            $lines = preg_split("/\r\n|\n|\r|<br\s*\/?>/i", $jobText);
+                                                            $linesCount = count(array_filter($lines, 'trim'));
+                                                        @endphp
+                                                        <div class="job-desc {{ $linesCount > 1 ? 'multi-col' : '' }}">{!! $jobText !!}</div>
+                                                    </td>
 
-                                                <!-- Người thực hiện -->
-                                                <td>
-                                                    @if (count($a->personnel_data ?? []) > 0)
+                                                    <!-- Người thực hiện -->
+                                                    <td>
+                                                        @if (count($a->personnel_data ?? []) > 0)
+                                                            @foreach ($a->personnel_data as $pData)
+                                                                @php
+                                                                    $personName =
+                                                                        collect($personnel)
+                                                                            ->where('id', $pData->personnel_id)
+                                                                            ->first()->name ?? 'N/A';
+                                                                @endphp
+                                                                <div class="mb-1 d-flex align-items-center personnel-assigned-item"
+                                                                    data-personnel-id="{{ $pData->personnel_id }}">
+                                                                    <span
+                                                                        class="personnel-label">{{ chr(65 + $loop->index) }}</span>
+                                                                    <span>{{ $personName }}</span>
+                                                                </div>
+                                                            @endforeach
+                                                        @else
+                                                            <span class="text-muted font-italic">Chưa chỉ định</span>
+                                                        @endif
+                                                    </td>
+
+                                                    <!-- Ghi chú/Lưu ý -->
+                                                    <td>
                                                         @foreach ($a->personnel_data as $pData)
-                                                            @php
-                                                                $personName =
-                                                                    collect($personnel)
-                                                                        ->where('id', $pData->personnel_id)
-                                                                        ->first()->name ?? 'N/A';
-                                                            @endphp
-                                                            <div class="mb-1 d-flex align-items-center personnel-assigned-item" data-personnel-id="{{ $pData->personnel_id }}">
-                                                                <span
-                                                                    class="personnel-label">{{ chr(65 + $loop->index) }}</span>
-                                                                <span>{{ $personName }}</span>
+                                                            <div class="mb-1">
+                                                                @if ($pData->notification)
+                                                                    <i class="fas fa-info-circle text-success"></i>
+                                                                    {{ $pData->notification }}
+                                                                @else
+                                                                    <span class="text-muted">-</span>
+                                                                @endif
                                                             </div>
                                                         @endforeach
-                                                    @else
-                                                        <span class="text-muted font-italic">Chưa chỉ định</span>
-                                                    @endif
-                                                </td>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="4" class="p-2 border-top-0">
+                                                    <div class="timeline-container">
+                                                        <!-- Markers -->
+                                                        <div class="timeline-line-solid" style="left: 0%"></div>
+                                                        <div class="timeline-marker" style="left: 0%">06h</div>
+                                                        <div class="timeline-line-dashed" style="left: 25%"></div>
+                                                        <div class="timeline-marker" style="left: 25%">12h</div>
+                                                        <div class="timeline-line-dashed" style="left: 50%"></div>
+                                                        <div class="timeline-marker" style="left: 50%">18h</div>
+                                                        <div class="timeline-line-dashed" style="left: 75%"></div>
+                                                        <div class="timeline-marker" style="left: 75%">00h</div>
+                                                        <div class="timeline-line-solid" style="left: 100%"></div>
+                                                        <div class="timeline-marker" style="left: 100%">06h</div>
 
-                                                <!-- Ghi chú/Lưu ý -->
-                                                <td>
-                                                    @foreach ($a->personnel_data as $pData)
-                                                        <div class="mb-1">
-                                                            @if ($pData->notification)
-                                                                <i class="fas fa-info-circle text-success"></i>
-                                                                {{ $pData->notification }}
-                                                            @else
-                                                                <span class="text-muted">-</span>
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
+                                                        <!-- Segments -->
+                                                        @foreach ($task->assignments as $idx => $a)
+                                                            @php
+                                                                $startOff = timeToOffset($a->start_time_display);
+                                                                $endOff = timeToOffset($a->end_time_display);
+                                                                if ($endOff <= $startOff) {
+                                                                    $endOff += 24.0;
+                                                                }
+                                                                $width = (($endOff - $startOff) / 24.0) * 100;
+                                                                $left = ($startOff / 24.0) * 100;
+                                                                $color = $bgColors[$idx % count($bgColors)];
+                                                            @endphp
+                                                            <div class="timeline-segment"
+                                                                style="left: {{ $left }}%; width: {{ $width }}%; background: {{ $color }};"
+                                                                title="{{ $a->start_time_display }} - {{ $a->end_time_display }}">
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
                                                 </td>
                                             </tr>
-                                        @endforeach
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="4" class="p-2 border-top-0">
-                                                <div class="timeline-container">
-                                                    <!-- Markers -->
-                                                    <div class="timeline-line-solid" style="left: 0%"></div>
-                                                    <div class="timeline-marker" style="left: 0%">06h</div>
-                                                    <div class="timeline-line-dashed" style="left: 25%"></div>
-                                                    <div class="timeline-marker" style="left: 25%">12h</div>
-                                                    <div class="timeline-line-dashed" style="left: 50%"></div>
-                                                    <div class="timeline-marker" style="left: 50%">18h</div>
-                                                    <div class="timeline-line-dashed" style="left: 75%"></div>
-                                                    <div class="timeline-marker" style="left: 75%">00h</div>
-                                                    <div class="timeline-line-solid" style="left: 100%"></div>
-                                                    <div class="timeline-marker" style="left: 100%">06h</div>
-
-                                                    <!-- Segments -->
-                                                    @foreach ($task->assignments as $idx => $a)
-                                                        @php
-                                                            $startOff = timeToOffset($a->start_time_display);
-                                                            $endOff = timeToOffset($a->end_time_display);
-                                                            if ($endOff <= $startOff) {
-                                                                $endOff += 24.0;
-                                                            }
-                                                            $width = (($endOff - $startOff) / 24.0) * 100;
-                                                            $left = ($startOff / 24.0) * 100;
-                                                            $color = $bgColors[$idx % count($bgColors)];
-                                                        @endphp
-                                                        <div class="timeline-segment"
-                                                            style="left: {{ $left }}%; width: {{ $width }}%; background: {{ $color }};"
-                                                            title="{{ $a->start_time_display }} - {{ $a->end_time_display }}">
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            @endif
-                            {{--
+                                        </tfoot>
+                                    </table>
+                                @endif
+                                {{--
                         <td class="text-left" style="background:#d7eaff; font-size:12px; padding: 10px !important;">
                             @if (count($task->actual_details ?? []) > 0)
                                 @php $idx = 1; @endphp
@@ -533,10 +646,10 @@
                             @endif
                         </td>
                         --}}
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
 
         <!-- Sidebar Nhân Sự -->
@@ -557,10 +670,12 @@
                 </div>
                 <div class="custom-control custom-switch pl-4">
                     <input type="checkbox" class="custom-control-input" id="filter-under-8h">
-                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer" for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
+                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer"
+                        for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
                 </div>
             </div>
-            <div class="sidebar-body p-0" id="sidebar-data-container" style="flex: 1; min-height: 0; overflow-y: scroll;">
+            <div class="sidebar-body p-0" id="sidebar-data-container"
+                style="flex: 1; min-height: 0; overflow-y: scroll;">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status"></div>
                     <div class="mt-2 text-muted">Đang tải dữ liệu...</div>
@@ -625,15 +740,15 @@
                 if (!startStr || !endStr) return 0;
                 const sParts = startStr.split(':');
                 const eParts = endStr.split(':');
-                
+
                 let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
                 let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
-                
+
                 if (eMin < sMin) {
                     // Crosses midnight
                     eMin += 24 * 60;
                 }
-                
+
                 return (eMin - sMin) / 60;
             }
 
@@ -644,12 +759,12 @@
                 const code = $el.attr('data-code');
                 const personId = employeeCodeToId[code];
                 const isLeave = $el.attr('data-shift-key') === 'P' || $el.hasClass('person-on-leave');
-                
+
                 // Remove existing badges container
                 $el.find('.personnel-time-ranges').remove();
-                
+
                 let totalHours = 0;
-                
+
                 if (personId) {
                     const assignments = [];
                     // 1. Scan DOM
@@ -660,12 +775,19 @@
                             const assId = $assignmentRow.attr('data-id');
                             const start = $assignmentRow.find('.start-time-text').text().trim() || '';
                             const end = $assignmentRow.find('.end-time-text').text().trim() || '';
-                            
+
                             const roomCell = $assignmentRow.closest('td').siblings('.room-name-cell');
-                            const roomCode = roomCell.find('div.d-block').text().trim() || roomCell.text().trim() || 'NA';
-                            
+                            const roomCode = roomCell.find('div.d-block').text().trim() || roomCell.text()
+                                .trim() || 'NA';
+
                             if (start || end) {
-                                assignments.push({ assignment_id: assId, room: roomCode, start: start, end: end, is_local: true });
+                                assignments.push({
+                                    assignment_id: assId,
+                                    room: roomCode,
+                                    start: start,
+                                    end: end,
+                                    is_local: true
+                                });
                             }
                         }
                     });
@@ -673,7 +795,8 @@
                     // 2. Scan DB assignments from other groups/departments
                     const dbList = dbAssignments[personId.toString()] || [];
                     dbList.forEach(dbAss => {
-                        const existsInDom = dbAss.assignment_id && $(`.assignment-inner-table tr[data-id="${dbAss.assignment_id}"]`).length > 0;
+                        const existsInDom = dbAss.assignment_id && $(
+                            `.assignment-inner-table tr[data-id="${dbAss.assignment_id}"]`).length > 0;
                         if (!existsInDom) {
                             assignments.push({
                                 assignment_id: dbAss.assignment_id,
@@ -685,7 +808,7 @@
                             });
                         }
                     });
-                    
+
                     if (assignments.length > 0) {
                         let totalHoursCalculated = 0;
                         assignments.forEach(a => {
@@ -694,12 +817,15 @@
                         totalHours = Math.round(totalHoursCalculated * 100) / 100;
 
                         let badgeHtml = '<div class="personnel-time-ranges mt-1">';
-                        badgeHtml += `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
+                        badgeHtml +=
+                            `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
                         assignments.forEach(a => {
                             if (a.is_local) {
-                                badgeHtml += `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+                                badgeHtml +=
+                                    `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
                             } else {
-                                badgeHtml += `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
+                                badgeHtml +=
+                                    `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
                             }
                         });
                         badgeHtml += '</div>';
@@ -927,6 +1053,14 @@
                 icon.removeClass('fa-chevron-left').addClass('fa-chevron-right');
                 fetchPersonnelShifts();
             }
+
+            @if (request()->has('print'))
+                // Chờ load xong giao diện rồi in
+                setTimeout(function() {
+                    window.print();
+                    // Tuỳ chọn: sau khi in có thể đóng tab hoặc làm gì đó
+                }, 1000);
+            @endif
         });
     </script>
 </body>

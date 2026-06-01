@@ -24,6 +24,93 @@
             overflow: hidden;
         }
 
+        @media print {
+            @page {
+                size: landscape;
+                margin: 10mm;
+            }
+
+            body {
+                background-color: #fff;
+                overflow: visible !important;
+                height: auto !important;
+            }
+
+            .header-bar,
+            .personnel-sidebar,
+            .sidebar-toggle-btn {
+                display: none !important;
+            }
+
+            .main-content-layout {
+                overflow: visible !important;
+                display: block !important;
+                height: auto !important;
+            }
+
+            .table-container {
+                overflow: visible !important;
+                padding: 0 !important;
+                height: auto !important;
+            }
+
+            .table-assignment {
+                box-shadow: none !important;
+            }
+
+            .table-assignment thead th {
+                position: static !important;
+            }
+
+            .print-header {
+                display: block !important;
+            }
+
+            .no-assignment {
+                display: none !important;
+            }
+
+            .table-assignment tr {
+                page-break-inside: avoid;
+            }
+
+            .table-assignment thead th {
+                padding: 4px !important;
+                font-size: 0.85rem !important;
+            }
+
+            .assignment-inner-table td, 
+            .room-name-cell, 
+            .theory-cell {
+                padding: 4px !important;
+                font-size: 0.85rem !important;
+            }
+
+            .job-desc {
+                font-size: 0.85rem !important;
+                padding: 4px !important;
+                min-height: auto !important;
+            }
+
+            .personnel-list {
+                font-size: 0.85rem !important;
+            }
+
+            .print-header {
+                font-size: 1.2rem !important;
+                margin-bottom: 10px !important;
+            }
+        }
+
+        .print-header {
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #000;
+        }
+
         :root {
             --primary-gold: #c5c500;
             --light-gold: #fdfde0;
@@ -120,12 +207,30 @@
             font-size: 0.8rem;
         }
 
-        .shift-c1 { background-color: #007bff; }
-        .shift-c2 { background-color: #28a745; }
-        .shift-c3 { background-color: #dc3545; }
-        .shift-c4 { background-color: #6f42c1; }
-        .shift-hc  { background-color: #ffc107; color: black; }
-        .shift-p   { background-color: #6c757d; }
+        .shift-c1 {
+            background-color: #007bff;
+        }
+
+        .shift-c2 {
+            background-color: #28a745;
+        }
+
+        .shift-c3 {
+            background-color: #dc3545;
+        }
+
+        .shift-c4 {
+            background-color: #6f42c1;
+        }
+
+        .shift-hc {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        .shift-p {
+            background-color: #6c757d;
+        }
 
         /* Table styles */
         .table-assignment {
@@ -232,6 +337,19 @@
         </div>
     </div>
 
+    <div class="print-header">
+        @php
+            $groupNamePrint = 'Tất cả';
+            if ($group_code) {
+                $gObj = collect($stage_groups)->where('code', $group_code)->first();
+                if ($gObj) {
+                    $groupNamePrint = $gObj->name;
+                }
+            }
+        @endphp
+        Lịch Công Tác {{ $groupNamePrint }} Ngày {{ date('d/m/Y', strtotime($reportedDate)) }}
+    </div>
+
     <div class="main-content-layout">
         <div class="table-container">
             <table class="table table-assignment w-100">
@@ -253,7 +371,7 @@
                         </tr>
                     @endif
                     @foreach ($tasks as $task)
-                        <tr>
+                        <tr class="{{ count($task->assignments ?? []) === 0 ? 'no-assignment' : '' }}">
                             <!-- Phòng / Khu vực -->
                             <td class="room-name-cell">
                                 <span class="d-block font-weight-bold"
@@ -279,8 +397,11 @@
                                                     <!-- Ca làm việc -->
                                                     <td>
                                                         <div class="font-weight-bold">Ca {{ $a->Sheet ?? '-' }}</div>
-                                                        <small class="text-primary"><span class="start-time-text">{{ $a->start_time_display }}</span> -
-                                                            <span class="end-time-text">{{ $a->end_time_display }}</span></small>
+                                                        <small class="text-primary"><span
+                                                                class="start-time-text">{{ $a->start_time_display }}</span>
+                                                            -
+                                                            <span
+                                                                class="end-time-text">{{ $a->end_time_display }}</span></small>
                                                     </td>
 
                                                     <!-- Nội Dung Công Việc -->
@@ -299,7 +420,9 @@
                                                                                 ->where('id', $pData->personnel_id)
                                                                                 ->first()->name ?? 'N/A';
                                                                     @endphp
-                                                                    <li class="personnel-assigned-item" data-personnel-id="{{ $pData->personnel_id }}">{{ $personName }}</li>
+                                                                    <li class="personnel-assigned-item"
+                                                                        data-personnel-id="{{ $pData->personnel_id }}">
+                                                                        {{ $personName }}</li>
                                                                 @endforeach
                                                             </ul>
                                                         @else
@@ -314,7 +437,8 @@
                                                                 style="list-style-type: none; padding-left: 0;">
                                                                 @foreach ($a->personnel_data as $pData)
                                                                     @if ($pData->notification)
-                                                                        <li><i class="fas fa-angle-right text-success"></i>
+                                                                        <li><i
+                                                                                class="fas fa-angle-right text-success"></i>
                                                                             {{ $pData->notification }}</li>
                                                                     @else
                                                                         <li><span class="text-muted">-</span></li>
@@ -341,29 +465,34 @@
         <div class="personnel-sidebar" id="personnel-sidebar">
             <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light shadow-sm">
                 <h6 class="mb-0 font-weight-bold text-primary"><i class="fas fa-users mr-2"></i>Tình Hình Nhân Sự</h6>
-                <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i class="fas fa-times"></i></button>
+                <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i
+                        class="fas fa-times"></i></button>
             </div>
             <div class="p-2 border-bottom bg-white">
                 <div class="input-group input-group-sm shadow-sm mb-2">
                     <div class="input-group-prepend">
-                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                        <span class="input-group-text bg-white border-right-0"><i
+                                class="fas fa-search text-muted"></i></span>
                     </div>
                     <input type="text" class="form-control border-left-0" id="sidebar-personnel-search"
                         placeholder="Tìm tên hoặc mã NV...">
                 </div>
                 <div class="custom-control custom-switch pl-4">
                     <input type="checkbox" class="custom-control-input" id="filter-under-8h">
-                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer" for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
+                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer"
+                        for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
                 </div>
             </div>
-            <div class="sidebar-body p-0" id="sidebar-data-container" style="flex: 1; min-height: 0; overflow-y: scroll;">
+            <div class="sidebar-body p-0" id="sidebar-data-container"
+                style="flex: 1; min-height: 0; overflow-y: scroll;">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status"></div>
                     <div class="mt-2 text-muted">Đang tải dữ liệu...</div>
                 </div>
             </div>
             <div class="p-2 border-top bg-light flex-shrink-0">
-                <div class="d-flex justify-content-around font-weight-bold small text-center" style="font-size: 0.75rem;">
+                <div class="d-flex justify-content-around font-weight-bold small text-center"
+                    style="font-size: 0.75rem;">
                     <div>
                         <div class="shift-badge shift-c1 mx-auto mb-1">C1</div>
                         <div>Ca 1</div>
@@ -420,15 +549,15 @@
                 if (!startStr || !endStr) return 0;
                 const sParts = startStr.split(':');
                 const eParts = endStr.split(':');
-                
+
                 let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
                 let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
-                
+
                 if (eMin < sMin) {
                     // Crosses midnight
                     eMin += 24 * 60;
                 }
-                
+
                 return (eMin - sMin) / 60;
             }
 
@@ -439,12 +568,12 @@
                 const code = $el.attr('data-code');
                 const personId = employeeCodeToId[code];
                 const isLeave = $el.attr('data-shift-key') === 'P' || $el.hasClass('person-on-leave');
-                
+
                 // Remove existing badges container
                 $el.find('.personnel-time-ranges').remove();
-                
+
                 let totalHours = 0;
-                
+
                 if (personId) {
                     const assignments = [];
                     // 1. Scan DOM
@@ -455,12 +584,19 @@
                             const assId = $assignmentRow.attr('data-id');
                             const start = $assignmentRow.find('.start-time-text').text().trim() || '';
                             const end = $assignmentRow.find('.end-time-text').text().trim() || '';
-                            
+
                             const roomCell = $assignmentRow.closest('td').siblings('.room-name-cell');
-                            const roomCode = roomCell.find('small.text-muted').text().trim() || roomCell.text().trim() || 'NA';
-                            
+                            const roomCode = roomCell.find('small.text-muted').text().trim() || roomCell
+                                .text().trim() || 'NA';
+
                             if (start || end) {
-                                assignments.push({ assignment_id: assId, room: roomCode, start: start, end: end, is_local: true });
+                                assignments.push({
+                                    assignment_id: assId,
+                                    room: roomCode,
+                                    start: start,
+                                    end: end,
+                                    is_local: true
+                                });
                             }
                         }
                     });
@@ -468,7 +604,8 @@
                     // 2. Scan DB assignments from other groups/departments
                     const dbList = dbAssignments[personId.toString()] || [];
                     dbList.forEach(dbAss => {
-                        const existsInDom = dbAss.assignment_id && $(`.assignment-inner-table tr[data-id="${dbAss.assignment_id}"]`).length > 0;
+                        const existsInDom = dbAss.assignment_id && $(
+                            `.assignment-inner-table tr[data-id="${dbAss.assignment_id}"]`).length > 0;
                         if (!existsInDom) {
                             assignments.push({
                                 assignment_id: dbAss.assignment_id,
@@ -480,7 +617,7 @@
                             });
                         }
                     });
-                    
+
                     if (assignments.length > 0) {
                         let totalHoursCalculated = 0;
                         assignments.forEach(a => {
@@ -489,12 +626,15 @@
                         totalHours = Math.round(totalHoursCalculated * 100) / 100;
 
                         let badgeHtml = '<div class="personnel-time-ranges mt-1">';
-                        badgeHtml += `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
+                        badgeHtml +=
+                            `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
                         assignments.forEach(a => {
                             if (a.is_local) {
-                                badgeHtml += `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+                                badgeHtml +=
+                                    `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
                             } else {
-                                badgeHtml += `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
+                                badgeHtml +=
+                                    `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
                             }
                         });
                         badgeHtml += '</div>';
@@ -527,12 +667,12 @@
             });
         }
 
-        $(document).ready(function () {
-            const $sidebar    = $('#personnel-sidebar');
-            const $toggleBtn  = $('#toggle-sidebar-btn');
-            const $closeBtn   = $('#close-sidebar-btn');
-            const $container  = $('#sidebar-data-container');
-            const groupCode   = '{{ $group_code }}';
+        $(document).ready(function() {
+            const $sidebar = $('#personnel-sidebar');
+            const $toggleBtn = $('#toggle-sidebar-btn');
+            const $closeBtn = $('#close-sidebar-btn');
+            const $container = $('#sidebar-data-container');
+            const groupCode = '{{ $group_code }}';
 
             let isSidebarLoaded = false;
 
@@ -549,9 +689,9 @@
             }
 
             let currentSidebarData = [];
-            let currentSidebarDay  = null;
+            let currentSidebarDay = null;
 
-            $('#sidebar-personnel-search').on('input', function () {
+            $('#sidebar-personnel-search').on('input', function() {
                 renderSidebarData(currentSidebarData, currentSidebarDay, $(this).val());
             });
 
@@ -561,47 +701,55 @@
             });
 
             $toggleBtn.on('click', toggleSidebar);
-            $closeBtn.on('click',  toggleSidebar);
+            $closeBtn.on('click', toggleSidebar);
 
             function fetchPersonnelShifts() {
-                const dateStr   = '{{ $reportedDate }}';
-                const date      = new Date(dateStr);
-                const month     = date.getMonth() + 1;
-                const year      = date.getFullYear();
-                const day       = date.getDate();
+                const dateStr = '{{ $reportedDate }}';
+                const date = new Date(dateStr);
+                const month = date.getMonth() + 1;
+                const year = date.getFullYear();
+                const day = date.getDate();
 
                 // Mapping tổ -> department ID cho API ca trực
                 const depMapping = {
                     'EN_ALL': 3,
-                    '11':  3,
-                    '12':  3,
-                    '14':  3,
-                    '15':  3,
-                    '16':  3,
-                    '20': 35   // QA
+                    '11': 3,
+                    '12': 3,
+                    '14': 3,
+                    '15': 3,
+                    '16': 3,
+                    '20': 35 // QA
                 };
                 const department = depMapping[groupCode] || 3;
 
-                $container.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Đang tải dữ liệu...</div></div>');
+                $container.html(
+                    '<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Đang tải dữ liệu...</div></div>'
+                );
 
                 $.ajax({
                     url: `{{ route('pages.assignment.public.shifts') }}`,
                     method: 'GET',
-                    data: { month, year, department },
-                    success: function (res) {
-                        isSidebarLoaded    = true;
+                    data: {
+                        month,
+                        year,
+                        department
+                    },
+                    success: function(res) {
+                        isSidebarLoaded = true;
                         currentSidebarData = res;
-                        currentSidebarDay  = day;
+                        currentSidebarDay = day;
                         renderSidebarData(res, day);
                     },
-                    error: function () {
-                        $container.html('<div class="alert alert-danger m-3">Không thể tải dữ liệu từ máy chủ API.</div>');
+                    error: function() {
+                        $container.html(
+                            '<div class="alert alert-danger m-3">Không thể tải dữ liệu từ máy chủ API.</div>'
+                        );
                     }
                 });
             }
 
             const allowedPersonnelCodes = {!! json_encode($allowedPersonnelCodes ?? []) !!};
-            const isGroupFiltered = {!! ($group_code && $group_code !== 'EN_ALL') ? 'true' : 'false' !!};
+            const isGroupFiltered = {!! $group_code && $group_code !== 'EN_ALL' ? 'true' : 'false' !!};
 
             function renderSidebarData(data, currentDay, query = '') {
                 if (!data || data.length === 0) {
@@ -611,19 +759,32 @@
 
                 const searchStr = query.toLowerCase().trim();
 
-                const shifts = { 'C1': [], 'C2': [], 'C3': [], 'C4': [], 'HC': [], 'P': [], 'Khác': [] };
+                const shifts = {
+                    'C1': [],
+                    'C2': [],
+                    'C3': [],
+                    'C4': [],
+                    'HC': [],
+                    'P': [],
+                    'Khác': []
+                };
 
                 data.forEach(person => {
-                    const dayKey    = 'day' + currentDay;
-                    let shiftCode   = (person.days && person.days[dayKey]) ? person.days[dayKey].toUpperCase() : 'HC';
+                    const dayKey = 'day' + currentDay;
+                    let shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
+                        .toUpperCase() : 'HC';
                     const personName = person.employeeName || person.name || '';
-                    const personCode = person.employeeId  || person.code || '';
+                    const personCode = person.employeeId || person.code || '';
 
-                    if (searchStr && !personName.toLowerCase().includes(searchStr) && !personCode.toLowerCase().includes(searchStr)) return;
+                    if (searchStr && !personName.toLowerCase().includes(searchStr) && !personCode
+                        .toLowerCase().includes(searchStr)) return;
 
                     if (isGroupFiltered && !allowedPersonnelCodes.includes(personCode.toString())) return;
 
-                    const personInfo = { name: personName, code: personCode };
+                    const personInfo = {
+                        name: personName,
+                        code: personCode
+                    };
                     if (shifts.hasOwnProperty(shiftCode)) {
                         shifts[shiftCode].push(personInfo);
                     } else if (shiftCode) {
@@ -632,11 +793,20 @@
                 });
 
                 if (searchStr && !Object.values(shifts).some(arr => arr.length > 0)) {
-                    $container.html('<div class="p-3 text-center text-muted">Không tìm thấy nhân sự phù hợp.</div>');
+                    $container.html(
+                        '<div class="p-3 text-center text-muted">Không tìm thấy nhân sự phù hợp.</div>');
                     return;
                 }
 
-                const shiftLabels = { 'C1': 'Ca 1', 'C2': 'Ca 2', 'C3': 'Ca 3', 'C4': 'Ca 4', 'HC': 'Hành chính', 'P': 'Nghỉ phép', 'Khác': 'Khác' };
+                const shiftLabels = {
+                    'C1': 'Ca 1',
+                    'C2': 'Ca 2',
+                    'C3': 'Ca 3',
+                    'C4': 'Ca 4',
+                    'HC': 'Hành chính',
+                    'P': 'Nghỉ phép',
+                    'Khác': 'Khác'
+                };
                 let html = '<div class="list-group list-group-flush">';
 
                 Object.keys(shifts).forEach(key => {
@@ -677,6 +847,13 @@
             if (!$sidebar.hasClass('collapsed')) {
                 fetchPersonnelShifts();
             }
+
+            @if (request()->has('print'))
+                // Chờ load xong giao diện rồi in
+                setTimeout(function() {
+                    window.print();
+                }, 1000);
+            @endif
         });
     </script>
 </body>
