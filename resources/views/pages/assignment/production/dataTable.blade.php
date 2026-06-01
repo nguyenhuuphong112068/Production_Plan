@@ -3738,7 +3738,7 @@
 
             const btn = $(this);
             btn.prop('disabled', true).html(
-            '<i class="fas fa-spinner fa-spin mr-1"></i> Đang xử lý...');
+                '<i class="fas fa-spinner fa-spin mr-1"></i> Đang xử lý...');
 
             $.ajax({
                 url: "{{ route('pages.assignment.production.clone_custom_task') }}",
