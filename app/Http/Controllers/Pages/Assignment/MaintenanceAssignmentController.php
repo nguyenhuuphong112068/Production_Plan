@@ -163,6 +163,7 @@ class MaintenanceAssignmentController extends Controller
             }
 
             $assignments = DB::table('assignments')
+                ->select('*')
                 ->where('stage_plan_id', $spIdString)
                 ->where('deparment_code', $dept_code)
                 ->where('active', 1)
@@ -304,7 +305,7 @@ class MaintenanceAssignmentController extends Controller
                 'sp_id'          => str_starts_with($groupKey, 'ROOM_') ? 'EXT_' . $groupKey : $groupKey,
                 'room_id'        => $first->room_id,
                 'room_code'      => $first->room_code,
-                'room_name'      => $first->room_name,
+                'room_name'      => $first->work_location ?? ($first->room_name ?? 'Công tác khác'),
                 'workshop_code'  => $first->workshop_code,
                 'group_code'     => $first->group_code,
                 'number_of_employes_on_sheet1' => $first->number_of_employes_on_sheet1 ?? 1,
@@ -498,6 +499,13 @@ class MaintenanceAssignmentController extends Controller
     {
         $spIdString       = $request->sp_id;
         $room_id          = $request->room_id ?: null;
+        $work_location    = null;
+
+        if ($room_id !== null && !is_numeric($room_id)) {
+            $work_location = $room_id;
+            $room_id = null;
+        }
+
         $reportedDate     = $request->reportedDate;
         $group_code        = $request->group_code;
         $stage_groups_code = $request->stage_groups_code ?? null;
@@ -581,6 +589,7 @@ class MaintenanceAssignmentController extends Controller
                     $assignmentId = DB::table('assignments')->insertGetId([
                         'stage_plan_id'     => $spIdString,
                         'room_id'           => $room_id,
+                        'work_location'     => $work_location,
                         'deparment_code'    => $dept_code,
                         'stage_groups_code' => $final_group_code,
                         'Sheet'             => $row['shift'],
@@ -746,6 +755,7 @@ class MaintenanceAssignmentController extends Controller
             }
 
             $assignments = DB::table('assignments')
+                ->select('*')
                 ->where('stage_plan_id', $spIdString)
                 ->where('deparment_code', $dept_code)
                 ->where('active', 1)
@@ -831,7 +841,7 @@ class MaintenanceAssignmentController extends Controller
                 'sp_id'          => $first->stage_plan_id ?? '',
                 'room_id'        => $first->room_id,
                 'room_code' => $first->room_code,
-                'room_name' => $first->room_name,
+                'room_name' => $first->work_location ?? ($first->room_name ?? 'Công tác khác'),
                 'workshop_code' => $first->workshop_code,
                 'group_code' => $first->group_code,
                 'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',
@@ -897,6 +907,8 @@ class MaintenanceAssignmentController extends Controller
                 'a.end',
                 'a.stage_groups_code',
                 'a.deparment_code',
+                'a.stage_plan_id',
+                'a.work_location',
                 'sg.name as group_name',
                 'r.name as room_name',
                 'r.code as room_code'
@@ -929,10 +941,14 @@ class MaintenanceAssignmentController extends Controller
                 $groupName = $prodGroups[$ass->stage_groups_code] ?? $ass->group_name ?? ('Tổ ' . $ass->stage_groups_code);
             }
 
-            $dbAssignments[$pId][] = [
+            $spId = $ass->stage_plan_id ?: ('EXT_EXISTING_' . $ass->assignment_id);
+            $roomName = $ass->work_location ?? ($ass->room_name ?: 'Công tác khác');
+
+            $dbAssignments[$pId][] = (object) [
                 'assignment_id' => $ass->assignment_id,
+                'sp_id' => $spId,
                 'room_code' => $ass->room_code,
-                'room_name' => $ass->room_name ?: 'Công tác khác',
+                'room_name' => $roomName,
                 'start' => $startDisplay,
                 'end' => $endDisplay,
                 'stage_groups_code' => $ass->stage_groups_code,

@@ -464,16 +464,12 @@
                                 @if (str_starts_with($task->sp_id, 'EXT_'))
                                     <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác
                                         khác</div>
-                                    <select class="form-control form-control-sm room-select-custom mb-2"
-                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                        <option value="">-- Chọn phòng --</option>
+                                    <input type="text" list="room-list-options-{{ $loop->index }}" class="form-control form-control-sm room-select-custom mb-2" value="{{ $task->room_name !== 'Công tác khác' ? $task->room_name : '' }}" placeholder="-- Vị trí công tác --" {{ !$canEdit ? 'disabled' : '' }}>
+                                    <datalist id="room-list-options-{{ $loop->index }}">
                                         @foreach ($rooms as $r)
-                                            <option value="{{ $r->id }}"
-                                                {{ $task->room_id == $r->id ? 'selected' : '' }}>
-                                                {{ $r->code }} - {{ $r->name }}
-                                            </option>
+                                            <option value="{{ $r->name }}">{{ $r->code }} - {{ $r->name }}</option>
                                         @endforeach
-                                    </select>
+                                    </datalist>
                                 @else
                                     <div><b>{{ $task->room_code }}</b></div>
                                     <div>{{ $task->room_name }}</div>
@@ -2195,6 +2191,24 @@
                     continue;
                 }
 
+                let isValid = true;
+                $row.find('.assignment-item:not(.foreign-assignment)').each(function() {
+                    const jobDesc = $(this).find('.job-desc').html().trim();
+                    let pCount = 0;
+                    $(this).find('.person-select').each(function() {
+                        if ($(this).val()) pCount++;
+                    });
+                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...' || pCount === 0) {
+                        isValid = false;
+                        return false; // Break loop
+                    }
+                });
+
+                if (!isValid) {
+                    totalProcessed++;
+                    continue; // Bỏ qua không lưu
+                }
+
                 try {
                     const res = await $.ajax({
                         url: "{{ route('pages.assignment.maintenance.store') }}",
@@ -2376,16 +2390,16 @@
         $(document).on('click', '#btn-add-custom-task', function() {
             const customSpId = 'EXT_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
             const room_options =
-                `@foreach ($rooms as $r)<option value="{{ $r->id }}">{{ $r->code }} - {{ $r->name }}</option>@endforeach`;
+                `@foreach ($rooms as $r)<option value="{{ $r->name }}">{{ $r->code }} - {{ $r->name }}</option>@endforeach`;
 
             const newRoomRow = $(`
                 <tr class="room-row" data-sp-id="${customSpId}" data-room-id="">
                     <td class="room-name-cell">
                         <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác khác</div>
-                        <select class="form-control form-control-sm room-select-custom mb-2">
-                            <option value="">-- Chọn phòng --</option>
+                        <input type="text" list="room-list-options-${customSpId}" class="form-control form-control-sm room-select-custom mb-2" placeholder="-- Vị trí công tác --">
+                        <datalist id="room-list-options-${customSpId}">
                             ${room_options}
-                        </select>
+                        </datalist>
                         <div class="mt-2 text-center">
                             <button class="btn btn-outline-success btn-circle btn-add-shift" title="Thêm ca làm việc">
                                 <i class="fas fa-plus"></i> Thêm Ca

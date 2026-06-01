@@ -110,6 +110,7 @@ class ProductionAssignmentController extends Controller
 
         // 5. Lấy dữ liệu đã phân công (Assignments)
         $assignmentQuery = DB::table('assignments as a')
+            ->select('a.*')
             ->where('a.deparment_code', $production_code)
             ->whereDate('a.start', $reportedDate)
             ->where('a.active', 1);
@@ -260,7 +261,7 @@ class ProductionAssignmentController extends Controller
                     'room_id' => null,
                     'group_code' => $active_group_code,
                     'room_code' => 'NA',
-                    'room_name' => 'Công tác khác',
+                    'room_name' => $groupAssignments->first()->work_location ?? 'Công tác khác',
                     'main_equiment_name' => null,
                     'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',
                     'assignments' => $groupAssignments->sortBy('start'),
@@ -501,7 +502,15 @@ class ProductionAssignmentController extends Controller
         //Log::info($request->all());
         $spIdString = $request->sp_id;
         $room_id = $request->room_id;
-        if ($room_id === "") $room_id = null;
+        $work_location = null;
+
+        // Nếu room_id không phải số (ví dụ: text tự do), ta gán cho work_location và set room_id null
+        if ($room_id !== "" && !is_numeric($room_id)) {
+            $work_location = $room_id;
+            $room_id = null;
+        } else if ($room_id === "") {
+            $room_id = null;
+        }
         $reportedDate = $request->reportedDate;
         $stage_groups_code = $request->stage_groups_code;
         if (empty($stage_groups_code)) $stage_groups_code = null;
@@ -533,6 +542,11 @@ class ProductionAssignmentController extends Controller
                         $deleteQuery->where('stage_plan_id', $spIdString);
                     } else {
                         $deleteQuery->whereNull('stage_plan_id');
+                    }
+                } else if ($work_location) {
+                    $deleteQuery->where('work_location', $work_location);
+                    if ($spIdString) {
+                        $deleteQuery->where('stage_plan_id', $spIdString);
                     }
                 } else {
                     // Trường hợp không có cả room_id và sp_id (không nên xảy ra với EXT_ logic mới)
@@ -611,6 +625,7 @@ class ProductionAssignmentController extends Controller
                     $assignmentId = DB::table('assignments')->insertGetId([
                         'stage_plan_id' => $spIdString,
                         'room_id' => $room_id,
+                        'work_location' => $work_location,
                         'deparment_code' => $production_code,
                         'stage_groups_code' => $stage_groups_code,
                         'Sheet' => $row['shift'],
@@ -749,6 +764,7 @@ class ProductionAssignmentController extends Controller
 
         // 4. Lấy dữ liệu đã phân công
         $assignmentsQuery = DB::table('assignments as a')
+            ->select('a.*')
             ->where('a.deparment_code', $production_code)
             ->whereDate('a.start', $reportedDate)
             ->where('a.active', 1);
@@ -817,7 +833,7 @@ class ProductionAssignmentController extends Controller
                 $tasks->push((object)[
                     'room_id' => null,
                     'room_code' => 'NA',
-                    'room_name' => 'Công tác khác',
+                    'room_name' => $groupAssignments->first()->work_location ?? 'Công tác khác',
                     'main_equiment_name' => null,
                     'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',
                     'assignments' => $groupAssignments->sortBy('start'),
@@ -883,6 +899,8 @@ class ProductionAssignmentController extends Controller
                 'a.end',
                 'a.stage_groups_code',
                 'a.deparment_code',
+                'a.stage_plan_id',
+                'a.work_location',
                 'sg.name as group_name',
                 'r.name as room_name',
                 'r.code as room_code'
@@ -914,11 +932,15 @@ class ProductionAssignmentController extends Controller
             } else {
                 $groupName = $prodGroups[$ass->stage_groups_code] ?? $ass->group_name ?? ('Tổ ' . $ass->stage_groups_code);
             }
-
-            $dbAssignments[$pId][] = [
+            
+            $spId = $ass->stage_plan_id ?: ('EXT_EXISTING_' . $ass->id);
+            $roomName = $ass->work_location ?? ($ass->room_name ?: 'Công tác khác');
+            
+            $dbAssignments[$pId][] = (object) [
                 'assignment_id' => $ass->assignment_id,
+                'sp_id' => $spId,
                 'room_code' => $ass->room_code,
-                'room_name' => $ass->room_name ?: 'Công tác khác',
+                'room_name' => $roomName,
                 'start' => $startDisplay,
                 'end' => $endDisplay,
                 'stage_groups_code' => $ass->stage_groups_code,
