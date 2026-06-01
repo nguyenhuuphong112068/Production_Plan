@@ -8,24 +8,27 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 
-class StatusHistoryController extends Controller{
-    
-    protected array $stage = [
-                        'Cân Nguyên Liệu' => 'Cân',
-                        'Pha Chế' => 'PC',
-                        'Trộn Hoàn Tất'=> 'THT',
-                        'Định Hình' => "ĐH",
-                        'Bao Phim' => 'BP',
-                        'ĐGSC-ĐGTC' =>'ĐGSC-ĐGTC'
-    ];    
-        
-    public function index(Request $request){
+class StatusHistoryController extends Controller
+{
 
-        $production =  session('user')['production_code']??"PXV1";
-        $startDate = $request->startDate?? Carbon::now();
+    protected array $stage = [
+        'Cân Nguyên Liệu' => 'Cân',
+        'Pha Chế' => 'PC',
+        'Trộn Hoàn Tất' => 'THT',
+        'Định Hình' => "ĐH",
+        'Bao Phim' => 'BP',
+        'ĐGSC-ĐGTC' => 'ĐGSC-ĐGTC'
+    ];
+
+    public function index(Request $request)
+    {
+
+        $production =  session('user')['production_code'] ?? "PXV1";
+        $startDate = $request->startDate ?? Carbon::now();
 
         $room = DB::table('room')
             ->where('deparment_code', $production)
+            ->where('room.stage_code', '!=', 8)
             ->select(
                 'room.id',
                 'room.production_group',
@@ -37,10 +40,11 @@ class StatusHistoryController extends Controller{
 
         $process = DB::table('stage_plan')
             ->where('submit', 1)
+            ->where('stage_plan.stage_code', '!=', 8)
             ->where('deparment_code', $production)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start', $startDate)
-                ->orWhereDate('end', $startDate);
+                    ->orWhereDate('end', $startDate);
             })
             ->where('active', 1)
             ->select(
@@ -54,9 +58,10 @@ class StatusHistoryController extends Controller{
         $cleaning = DB::table('stage_plan')
             ->where('submit', 1)
             ->where('deparment_code', $production)
+            ->where('stage_plan.stage_code', '!=', 8)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start_clearning', $startDate)
-                ->orWhereDate('end_clearning', $startDate);
+                    ->orWhereDate('end_clearning', $startDate);
             })
             ->where('active', 1)
             ->select(
@@ -68,10 +73,10 @@ class StatusHistoryController extends Controller{
             ->get();
 
         $actual = DB::table('room_status')
-            ->where ('room_status.is_daily_report',0)
+            ->where('room_status.is_daily_report', 0)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start', $startDate)
-                ->orWhereDate('end', $startDate);
+                    ->orWhereDate('end', $startDate);
             })
             //->where('active', 1)
             ->select(
@@ -86,7 +91,7 @@ class StatusHistoryController extends Controller{
                 'status',
                 'active'
             )
-        ->get();
+            ->get();
 
         $rooms = [];
 
@@ -150,64 +155,67 @@ class StatusHistoryController extends Controller{
         }
 
         //dd ($rooms);
-        session()->put(['title'=> "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production"]);
-        
-        
-        return view('pages.status.history.list',[
+        session()->put(['title' => "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production"]);
+
+
+        return view('pages.status.history.list', [
             'datas' =>  $rooms,
             'production' =>  $production,
             'stage' => $this->stage
         ]);
     }
 
-    public function update (Request $request) {
-        
+    public function update(Request $request)
+    {
+
 
         $validator = Validator::make($request->all(), [
             'room_name' => 'required',
             'in_production' => 'required',
             'status' => 'required',
-            
-        ],[
-            'room_name.required' => 'Chọn phòng sản xuất', 
-            'in_production.required' => 'Chọn sản phẩm đang sản xuất', 
-            'status.required' => 'Chọn trạng thái phòng sản xuất hiện tại.',  
-            
+
+        ], [
+            'room_name.required' => 'Chọn phòng sản xuất',
+            'in_production.required' => 'Chọn sản phẩm đang sản xuất',
+            'status.required' => 'Chọn trạng thái phòng sản xuất hiện tại.',
+
         ]);
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
         }
 
-                
-        DB::table('room_status')->where ('id', $request->id)->update([
-                        'status' => $request->status,
-                        'start' => $request->start,
-                        'end' => $request->end,
-                        'in_production' => $request->in_production,
-                        'notification' => $request->notification??"NA",
-                        'created_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                ]);
-        return redirect()->back()->with('success', 'Đã thêm thành công!');    
+
+        DB::table('room_status')->where('id', $request->id)->update([
+            'status' => $request->status,
+            'start' => $request->start,
+            'end' => $request->end,
+            'in_production' => $request->in_production,
+            'notification' => $request->notification ?? "NA",
+            'created_by' => session('user')['fullName'],
+            'created_at' => now(),
+        ]);
+        return redirect()->back()->with('success', 'Đã thêm thành công!');
     }
 
-    public function deActive (Request $request){
-        
-         DB::table('room_status')->where ('id', $request->id)->update([
-                        'active' => 0,
-                        'notification' => $request->deactive_reason,
-                        'created_by' => session('user')['fullName'],
-                        'created_at' => now(),
+    public function deActive(Request $request)
+    {
+
+        DB::table('room_status')->where('id', $request->id)->update([
+            'active' => 0,
+            'notification' => $request->deactive_reason,
+            'created_by' => session('user')['fullName'],
+            'created_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'Đã xóa thành công!');   
+        return redirect()->back()->with('success', 'Đã xóa thành công!');
     }
 
-    public function show (Request $request){
+    public function show(Request $request)
+    {
         //dd ($request->all());
-        $production =  session('user')['production_code']??"PXV1";
-        $startDate = $request->startDate?? Carbon::now();
+        $production =  session('user')['production_code'] ?? "PXV1";
+        $startDate = $request->startDate ?? Carbon::now();
 
         $room = DB::table('room')
             ->where('deparment_code', $production)
@@ -224,7 +232,7 @@ class StatusHistoryController extends Controller{
             ->where('submit', 1)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start', $startDate)
-                ->orWhereDate('end', $startDate);
+                    ->orWhereDate('end', $startDate);
             })
             ->where('active', 1)
             ->select(
@@ -239,7 +247,7 @@ class StatusHistoryController extends Controller{
             ->where('submit', 1)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start_clearning', $startDate)
-                ->orWhereDate('end_clearning', $startDate);
+                    ->orWhereDate('end_clearning', $startDate);
             })
             ->where('active', 1)
             ->select(
@@ -251,10 +259,10 @@ class StatusHistoryController extends Controller{
             ->get();
 
         $actual = DB::table('room_status')
-            ->where ('room_status.is_daily_report',0)
+            ->where('room_status.is_daily_report', 0)
             ->where(function ($q) use ($startDate) {
                 $q->whereDate('start', $startDate)
-                ->orWhereDate('end', $startDate);
+                    ->orWhereDate('end', $startDate);
             })
             //->where('active', 1)
             ->select(
@@ -269,7 +277,7 @@ class StatusHistoryController extends Controller{
                 'status',
                 'active'
             )
-        ->get();
+            ->get();
 
         $rooms = [];
 
@@ -333,36 +341,36 @@ class StatusHistoryController extends Controller{
         }
 
         //dd ($rooms);
-        session()->put(['title'=> "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production"]);
-              
-        return view('pages.status.history.dataTableShow',[
+        session()->put(['title' => "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production"]);
+
+        return view('pages.status.history.dataTableShow', [
             'datas' =>  $rooms,
             'production' =>  $production,
             'stage' => $this->stage
         ]);
     }
-    
-    public function next(Request $request){
-              
-                if ($request->production == "PXV1"){
-                     $production_code = "PXV2";
-                }elseif ($request->production == "PXV2"){
-                     $production_code = "PXVH";
-                }elseif ($request->production == "PXVH"){
-                     $production_code = "PXTN";
-                }elseif ($request->production == "PXTN"){
-                     $production_code = "PXDN";
-                }else {
-                        $production_code = "PXV1";
-                }
 
-                $request->session()->put('user', [
-                        'production_code' => $production_code
-                ]);
-                                
-                session()->put(['title'=> "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production_code"]);
-                // Nếu có redirect URL thì quay lại đó
-                return redirect()->back();
+    public function next(Request $request)
+    {
+
+        if ($request->production == "PXV1") {
+            $production_code = "PXV2";
+        } elseif ($request->production == "PXV2") {
+            $production_code = "PXVH";
+        } elseif ($request->production == "PXVH") {
+            $production_code = "PXTN";
+        } elseif ($request->production == "PXTN") {
+            $production_code = "PXDN";
+        } else {
+            $production_code = "PXV1";
+        }
+
+        $request->session()->put('user', [
+            'production_code' => $production_code
+        ]);
+
+        session()->put(['title' => "LỊCH SỬ TRANG THÁI PHÒNG SẢN XUẤT $production_code"]);
+        // Nếu có redirect URL thì quay lại đó
+        return redirect()->back();
     }
-
 }

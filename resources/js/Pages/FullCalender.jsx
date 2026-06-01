@@ -3566,7 +3566,7 @@ const ScheduleTest = () => {
         eventAllow={finisedEvent}
 
         resourceGroupField="stage_name"
-        resourceOrder='stage_code,order_by'
+        resourceOrder='order_by'
 
 
         resourceGroupLabelContent={(arg) => {
