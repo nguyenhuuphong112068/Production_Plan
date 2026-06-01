@@ -684,6 +684,134 @@ class ProductionAssignmentController extends Controller
         }
     }
 
+    public function cloneCustomTask(Request $request)
+    {
+        $room_id = $request->room_id;
+        $work_location = null;
+        if ($room_id !== "" && !is_numeric($room_id)) {
+            $work_location = $room_id;
+            $room_id = null;
+        } else if ($room_id === "") {
+            $room_id = null;
+        }
+        
+        $stage_groups_code = $request->stage_groups_code;
+        if (empty($stage_groups_code)) $stage_groups_code = null;
+
+        $assignments_data = $request->assignments ?? [];
+        $production_code = $request->production_code ?? session('user')['production_code'] ?? 'PXV1';
+        $target_dates = $request->target_dates ?? []; // Array of dates: ['2026-06-02', '2026-06-03']
+
+        if (empty($target_dates)) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ngày để nhân bản.']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $prodGroups = [
+                1 => "Trung Tâm Cân",
+                3 => "Pha Chế",
+                4 => "Văn Phòng",
+                5 => "Định Hình",
+                6 => "Bao Phim",
+                7 => "ĐGSC",
+                8 => "ĐGTC",
+                9 => "VSCN + Kho BTP"
+            ];
+
+            foreach ($target_dates as $targetDate) {
+                // Generate a new EXT ID for the cloned task on this date
+                $spIdString = 'EXT_CLONE_' . time() . '_' . rand(1000, 9999);
+
+                foreach ($assignments_data as $row) {
+                    $p_data = $row['personnel_list'] ?? [];
+
+                    if (empty($row['start_time']) || empty($row['end_time'])) {
+                        continue;
+                    }
+
+                    $startDt = $targetDate . ' ' . $row['start_time'];
+                    $endDt = $targetDate . ' ' . $row['end_time'];
+
+                    if ($row['end_time'] < $row['start_time']) {
+                        $endDt = Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
+                    }
+
+                    foreach ($p_data as $p) {
+                        if (empty($p['personnel_id'])) continue;
+
+                        $overlap = DB::table('assignments as a')
+                            ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+                            ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
+                            ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
+                            ->leftJoin('employees as e', 'ap.personnel_id', '=', 'e.id')
+                            ->where('ap.personnel_id', $p['personnel_id'])
+                            ->where('a.active', 1)
+                            ->where('a.start', '<', $endDt)
+                            ->where('a.end', '>', $startDt)
+                            ->select('a.start', 'a.end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+                            ->first();
+
+                        if ($overlap) {
+                            $grpName = $overlap->group_name;
+                            if ($overlap->deparment_code == 'EN') {
+                                $grpName = 'Bảo trì';
+                            } elseif ($overlap->deparment_code == 'QA') {
+                                $grpName = 'Hiệu chuẩn';
+                            } else {
+                                $grpName = $prodGroups[$overlap->stage_groups_code] ?? $overlap->group_name ?? ('Tổ ' . $overlap->stage_groups_code);
+                            }
+                            $roomName = $overlap->room_name ?: 'Công tác khác';
+                            $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
+
+                            $formattedTargetDate = Carbon::parse($targetDate)->format('d/m/Y');
+                            throw new \Exception("Ngày {$formattedTargetDate}: Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
+                        }
+                    }
+
+                    $assignmentId = DB::table('assignments')->insertGetId([
+                        'stage_plan_id' => $spIdString,
+                        'room_id' => $room_id,
+                        'work_location' => $work_location,
+                        'deparment_code' => $production_code,
+                        'stage_groups_code' => $stage_groups_code,
+                        'Sheet' => $row['shift'],
+                        'start' => $startDt,
+                        'end' => $endDt,
+                        'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
+                        'number_of_employes' => $row['number_of_employes'] ?? 0,
+                        'Num_of_per_Level_3' => $row['num_of_per_level_3'] ?? 0,
+                        'off_stream' => $row['off_stream'] ?? 0,
+                        'assigned_by' => session('user')['userName'] ?? 'System',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'active' => 1
+                    ]);
+
+                    $unique_p_data = collect($p_data)->unique('personnel_id');
+                    foreach ($unique_p_data as $p) {
+                        if (empty($p['personnel_id'])) continue;
+                        DB::table('assignment_personnel')->insert([
+                            'assignment_id' => $assignmentId,
+                            'personnel_id' => $p['personnel_id'],
+                            'notification' => $p['notification'] ?? null
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Đã nhân bản công tác thành công.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi nhân bản dữ liệu: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function publicView(Request $request)
     {
         $production_code = $request->production_code ?? 'PXV1'; // Mặc định PXV1 nếu không có

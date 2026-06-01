@@ -1,5 +1,6 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <link href="{{ asset('assets/vendor/select2/select2.min.css') }}" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
 <style>
     :root {
@@ -407,7 +408,8 @@
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
                     <i class="fas fa-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác" data-url="{{ route('pages.assignment.production.public') }}?production_code={{ $production_code }}&group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
+                <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác"
+                    data-url="{{ route('pages.assignment.production.public') }}?production_code={{ $production_code }}&group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
                     <i class="fas fa-print"></i> In Lịch
                 </button>
             </div>
@@ -443,18 +445,24 @@
                             data-nr="{{ $task->number_of_employes_on_sheet_regular }}">
                             <td class="room-name-cell">
                                 @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
-                                    <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác khác</div>
-                                    <input type="text" list="room-list-options-{{ $loop->index }}" class="form-control form-control-sm room-select-custom mb-2" value="{{ $task->room_name !== 'Công tác khác' ? $task->room_name : '' }}" placeholder="-- Vị trí công tác --">
+                                    <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác
+                                        khác</div>
+                                    <input type="text" list="room-list-options-{{ $loop->index }}"
+                                        class="form-control form-control-sm room-select-custom mb-2"
+                                        value="{{ $task->room_name !== 'Công tác khác' ? $task->room_name : '' }}"
+                                        placeholder="-- Vị trí công tác --">
                                     <datalist id="room-list-options-{{ $loop->index }}">
                                         @foreach ($allRooms as $r)
-                                            <option value="{{ $r->name }}">{{ $r->code }} - {{ $r->name }}</option>
+                                            <option value="{{ $r->name }}">{{ $r->code }} -
+                                                {{ $r->name }}</option>
                                         @endforeach
                                     </datalist>
                                 @else
                                     <div><b>{{ $task->room_code }}</b></div>
                                     <div>{{ $task->room_name }}</div>
                                     @if (!empty($task->main_equiment_name))
-                                        <div class="text-muted" style="font-size: 0.85em;">{{ $task->main_equiment_name }}
+                                        <div class="text-muted" style="font-size: 0.85em;">
+                                            {{ $task->main_equiment_name }}
                                         </div>
                                     @endif
                                 @endif
@@ -617,8 +625,13 @@
                                                 </td>
                                                 <td style="width: 60px" class="text-center">
                                                     @if ($canEdit)
-                                                        <i
-                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
+                                                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2"
+                                                            style="font-size: 1.1rem" title="Xóa ca này"></i>
+                                                        @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
+                                                            <br />
+                                                            <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
+                                                                style="font-size: 1.1rem" title="Nhân bản ca này"></i>
+                                                        @endif
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -712,8 +725,13 @@
                                                 </td>
                                                 <td style="width: 60px" class="text-center">
                                                     @if ($canEdit)
-                                                        <i
-                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
+                                                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2"
+                                                            style="font-size: 1.1rem" title="Xóa ca này"></i>
+                                                        @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
+                                                            <br />
+                                                            <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
+                                                                style="font-size: 1.1rem" title="Nhân bản ca này"></i>
+                                                        @endif
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -811,7 +829,8 @@
                 </div>
                 <div class="custom-control custom-switch pl-4">
                     <input type="checkbox" class="custom-control-input" id="filter-under-8h">
-                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer" for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
+                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer"
+                        for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
                 </div>
             </div>
             <div class="sidebar-body p-0 overflow-auto" id="sidebar-data-container" style="flex: 1">
@@ -903,8 +922,46 @@
     </div>
 </div>
 
+<!-- Modal Clone Custom Task -->
+<div class="modal fade" id="modalCloneCustomTask" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-copy mr-2"></i>Nhân Bản Công Tác Khác
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                {{-- <div class="alert alert-warning small">
+                    <i class="fas fa-info-circle mr-1"></i> Chọn các ngày trong tương lai (lớn hơn ngày hiện tại) để nhân bản công tác này. Dữ liệu công tác và nhân sự sẽ được sao chép nguyên trạng.
+                </div> --}}
+                <div class="form-group d-flex justify-content-center">
+                    <input type="text" id="clone-date-input" class="d-none">
+                </div>
+                <div class="mt-3">
+                    <label class="font-weight-bold">Các ngày đã chọn:</label>
+                    <div id="clone-dates-container" class="d-flex flex-wrap"
+                        style="gap: 8px; min-height: 40px; border: 1px dashed #ccc; padding: 10px; border-radius: 5px;">
+                        <span class="text-muted small w-100 text-center" id="clone-dates-empty">Chưa có ngày nào được
+                            chọn</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-info font-weight-bold" id="btn-confirm-clone">
+                    <i class="fas fa-check mr-1"></i> Xác nhận Clone
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script>
     const dbAssignments = @json($dbAssignments ?? []);
@@ -962,10 +1019,12 @@
 
         if (requiredProf > 0 && actualProfCount < requiredProf) {
             $item.find('.professional-count-input').addClass('is-invalid');
-            $item.find('.professional-count-input').closest('.input-group').find('.input-group-text').addClass('bg-danger text-white');
+            $item.find('.professional-count-input').closest('.input-group').find('.input-group-text').addClass(
+                'bg-danger text-white');
         } else {
             $item.find('.professional-count-input').removeClass('is-invalid');
-            $item.find('.professional-count-input').closest('.input-group').find('.input-group-text').removeClass('bg-danger text-white');
+            $item.find('.professional-count-input').closest('.input-group').find('.input-group-text').removeClass(
+                'bg-danger text-white');
         }
     }
 
@@ -975,15 +1034,15 @@
             if (!startStr || !endStr) return 0;
             const sParts = startStr.split(':');
             const eParts = endStr.split(':');
-            
+
             let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
             let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
-            
+
             if (eMin < sMin) {
                 // Crosses midnight
                 eMin += 24 * 60;
             }
-            
+
             return (eMin - sMin) / 60;
         }
 
@@ -994,12 +1053,12 @@
             const code = $el.attr('data-code');
             const personId = employeeCodeToId[code];
             const isLeave = $el.attr('data-shift-key') === 'P';
-            
+
             // Remove existing badges container
             $el.find('.personnel-time-ranges').remove();
-            
+
             let totalHours = 0;
-            
+
             if (personId) {
                 const assignments = [];
                 // 1. Scan DOM
@@ -1029,9 +1088,15 @@
                         }
                         const start = $item.find('.start-time-input').val() || '';
                         const end = $item.find('.end-time-input').val() || '';
-                        
+
                         if (start || end) {
-                            assignments.push({ assignment_id: assId, room: roomCode, start: start, end: end, is_local: true });
+                            assignments.push({
+                                assignment_id: assId,
+                                room: roomCode,
+                                start: start,
+                                end: end,
+                                is_local: true
+                            });
                         }
                     }
                 });
@@ -1039,7 +1104,8 @@
                 // 2. Scan DB assignments from other groups/departments
                 const dbList = dbAssignments[personId.toString()] || [];
                 dbList.forEach(dbAss => {
-                    const existsInDom = dbAss.assignment_id && $(`.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
+                    const existsInDom = dbAss.assignment_id && $(
+                        `.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
                     if (!existsInDom) {
                         assignments.push({
                             assignment_id: dbAss.assignment_id,
@@ -1051,7 +1117,7 @@
                         });
                     }
                 });
-                
+
                 if (assignments.length > 0) {
                     assignments.forEach(a => {
                         totalHours += calculateDurationHours(a.start, a.end);
@@ -1059,12 +1125,15 @@
                     totalHours = Math.round(totalHours * 100) / 100;
 
                     let badgeHtml = '<div class="personnel-time-ranges mt-1">';
-                    badgeHtml += `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
+                    badgeHtml +=
+                        `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
                     assignments.forEach(a => {
                         if (a.is_local) {
-                            badgeHtml += `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+                            badgeHtml +=
+                                `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
                         } else {
-                            badgeHtml += `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
+                            badgeHtml +=
+                                `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
                         }
                     });
                     badgeHtml += '</div>';
@@ -1360,7 +1429,7 @@
             const $el = $(this);
             const $item = $el.closest('.assignment-item');
             const prevVal = $el.data('prev-val') || '';
-            
+
             let hasOverlap = false;
             let overlapMsg = '';
             $item.find('.personnel-container .person-select').each(function() {
@@ -1374,7 +1443,7 @@
                     }
                 }
             });
-            
+
             if (hasOverlap) {
                 Swal.fire({
                     icon: 'error',
@@ -1407,7 +1476,7 @@
                         templateResult: function(option) {
                             if (!option.id) return option.text;
                             const r = rid || $this.closest('.room-row').attr(
-                            'data-room-id');
+                                'data-room-id');
                             let level = 0;
                             if (r && option.skills) {
                                 const pairs = (option.skills + '').split('|');
@@ -1428,7 +1497,7 @@
                         templateSelection: function(option) {
                             if (!option.id) return option.text;
                             const r = rid || $this.closest('.room-row').attr(
-                            'data-room-id');
+                                'data-room-id');
                             let level = 0;
                             if (r && option.skills) {
                                 const pairs = (option.skills + '').split('|');
@@ -1646,33 +1715,37 @@
         }
 
         function checkTimeOverlapForEmployee(personId, currentAssignmentItem) {
-            if (!personId) return { overlap: false };
-            
+            if (!personId) return {
+                overlap: false
+            };
+
             const startStr = currentAssignmentItem.find('.start-time-input').val();
             const endStr = currentAssignmentItem.find('.end-time-input').val();
-            if (!startStr || !endStr) return { overlap: false };
-            
+            if (!startStr || !endStr) return {
+                overlap: false
+            };
+
             const sOffset = timeToOffset(startStr);
             let eOffset = timeToOffset(endStr);
             if (eOffset <= sOffset) {
                 eOffset += 24.0;
             }
-            
+
             let hasOverlap = false;
             let overlapMsg = '';
-            
+
             // 1. Scan DOM
             $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
                 const $item = $(this);
                 if ($item.is(currentAssignmentItem)) return; // Skip ourselves!
-                
+
                 let hasPerson = false;
                 $item.find('.personnel-container .person-select').each(function() {
                     if ($(this).val() == personId.toString()) {
                         hasPerson = true;
                     }
                 });
-                
+
                 if (hasPerson) {
                     const otherStart = $item.find('.start-time-input').val();
                     const otherEnd = $item.find('.end-time-input').val();
@@ -1682,7 +1755,7 @@
                         if (eOther <= sOther) {
                             eOther += 24.0;
                         }
-                        
+
                         if (sOffset < eOther && sOther < eOffset) {
                             hasOverlap = true;
                             const roomRow = $item.closest('.room-row');
@@ -1697,29 +1770,34 @@
                             } else {
                                 roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
                             }
-                            overlapMsg = `Trùng lịch trên trang hiện tại: Nhân sự đã được phân công tại phòng ${roomCode} trong khoảng ${otherStart} - ${otherEnd}.`;
+                            overlapMsg =
+                                `Trùng lịch trên trang hiện tại: Nhân sự đã được phân công tại phòng ${roomCode} trong khoảng ${otherStart} - ${otherEnd}.`;
                             return false; // Break loop
                         }
                     }
                 }
             });
-            
+
             if (hasOverlap) {
-                return { overlap: true, message: overlapMsg };
+                return {
+                    overlap: true,
+                    message: overlapMsg
+                };
             }
-            
+
             // 2. Scan DB assignments
             const dbList = dbAssignments[personId.toString()] || [];
             for (const dbAss of dbList) {
-                const existsInDom = dbAss.assignment_id && $(`.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
+                const existsInDom = dbAss.assignment_id && $(
+                    `.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
                 if (existsInDom) continue;
-                
+
                 const sOther = timeToOffset(dbAss.start);
                 let eOther = timeToOffset(dbAss.end);
                 if (eOther <= sOther) {
                     eOther += 24.0;
                 }
-                
+
                 if (sOffset < eOther && sOther < eOffset) {
                     return {
                         overlap: true,
@@ -1727,8 +1805,10 @@
                     };
                 }
             }
-            
-            return { overlap: false };
+
+            return {
+                overlap: false
+            };
         }
 
         function checkRoomAuthorization(personId, roomId, $roomRow, callback) {
@@ -1802,7 +1882,8 @@
                         if (!isAuthorized) return;
 
                         // 2. Kiểm tra trùng lịch (Time Overlap)
-                        const overlapCheck = checkTimeOverlapForEmployee(personId, $container.closest('.assignment-item'));
+                        const overlapCheck = checkTimeOverlapForEmployee(personId, $container
+                            .closest('.assignment-item'));
                         if (overlapCheck.overlap) {
                             Swal.fire({
                                 icon: 'error',
@@ -1887,7 +1968,8 @@
                         }
 
                         // 2. Kiểm tra trùng lịch
-                        const overlapCheck = checkTimeOverlapForEmployee(personId, $el.closest('.assignment-item'));
+                        const overlapCheck = checkTimeOverlapForEmployee(personId, $el.closest(
+                            '.assignment-item'));
                         if (overlapCheck.overlap) {
                             Swal.fire({
                                 icon: 'error',
@@ -2099,10 +2181,20 @@
                     <td style="width: 44.4%">
                         <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
                     </td>
-                    <td style="width: 5.3%" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
+                    <td style="width: 5.3%" class="text-center">
+                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                        <br/>
+                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1" style="font-size: 1.1rem" title="Nhân bản ca này" style="display: none;"></i>
+                    </td>
                 </tr>
             `);
             container.append(newRow);
+
+            // Show clone button only if it's a custom task
+            if ($(this).closest('.room-row').attr('data-room-id') === '' || $(this).closest('.room-row')
+                .attr('data-sp-id')?.startsWith('EXT_')) {
+                newRow.find('.btn-clone-shift').show();
+            }
 
             // Tự động điền số lượng nhân sự định mức
             newRow.find('.shift-select').trigger('change');
@@ -2361,7 +2453,8 @@
                     $(this).find('.person-select').each(function() {
                         if ($(this).val()) pCount++;
                     });
-                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...' || pCount === 0) {
+                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...' ||
+                        pCount === 0) {
                         isValid = false;
                         return false; // Break loop
                     }
@@ -2415,7 +2508,7 @@
 
         $(document).on('click', '#btn-print-schedule', function() {
             const url = $(this).attr('data-url');
-            
+
             // Hiện thông báo đang chuẩn bị trang in
             Swal.fire({
                 title: 'Đang chuẩn bị trang in...',
@@ -2427,15 +2520,15 @@
 
             // Xóa iframe cũ nếu có
             $('#print-iframe').remove();
-            
+
             // Tạo iframe ẩn
             const iframe = document.createElement('iframe');
             iframe.id = 'print-iframe';
             iframe.style.display = 'none';
             iframe.src = url;
-            
+
             document.body.appendChild(iframe);
-            
+
             // Iframe tải xong sẽ tự gọi window.print() từ bên trong do có mã xử lý phía publicView
             // Chúng ta chỉ cần đóng Swal sau vài giây
             setTimeout(() => {
@@ -3518,5 +3611,157 @@
             icon.removeClass('fa-chevron-left').addClass('fa-chevron-right');
             fetchPersonnelShifts();
         }
+
+        // --- Logic cho chức năng Clone Công Tác Khác ---
+        let currentCloneShift = null;
+        let cloneTargetDates = new Set();
+        const reportedDateStr = "{{ $reportedDate }}";
+
+        // Khởi tạo Flatpickr
+        const fp = flatpickr("#clone-date-input", {
+            inline: true,
+            mode: "multiple",
+            minDate: new Date(new Date(reportedDateStr).getTime() + 86400000), // > reportedDateStr
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates, dateStr, instance) {
+                cloneTargetDates = new Set(dateStr.split(', ').filter(d => d));
+                renderCloneDates();
+            }
+        });
+
+        $(document).on('click', '.btn-clone-shift', function() {
+            currentCloneShift = $(this).closest('.assignment-item');
+            cloneTargetDates.clear();
+            fp.clear();
+            renderCloneDates();
+            $('#modalCloneCustomTask').modal('show');
+        });
+
+        $(document).on('click', '.btn-remove-clone-date', function() {
+            const dateToRemove = $(this).data('date');
+            cloneTargetDates.delete(dateToRemove);
+            fp.setDate(Array.from(cloneTargetDates));
+            renderCloneDates();
+        });
+
+        function renderCloneDates() {
+            const container = $('#clone-dates-container');
+            const emptyLabel = $('#clone-dates-empty');
+
+            container.find('.badge').remove();
+
+            if (cloneTargetDates.size === 0) {
+                emptyLabel.show();
+            } else {
+                emptyLabel.hide();
+                const sortedDates = Array.from(cloneTargetDates).sort();
+                sortedDates.forEach(dateStr => {
+                    if (!dateStr) return;
+                    const parts = dateStr.split('-');
+                    const displayDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+                    const badgeHtml = `
+                        <span class="badge badge-info p-2 d-flex align-items-center" style="font-size: 14px;">
+                            <i class="far fa-calendar-alt mr-2"></i> ${displayDate}
+                            <i class="fas fa-times ml-2 text-white cursor-pointer btn-remove-clone-date" data-date="${dateStr}"></i>
+                        </span>
+                    `;
+                    container.append(badgeHtml);
+                });
+            }
+        }
+
+        $('#btn-confirm-clone').on('click', function() {
+            if (cloneTargetDates.size === 0) {
+                Swal.fire('Lỗi', 'Vui lòng chọn ít nhất 1 ngày để nhân bản.', 'warning');
+                return;
+            }
+
+            if (!currentCloneShift) return;
+
+            const roomRow = currentCloneShift.closest('.room-row');
+
+            // Lấy dữ liệu của 1 ca hiện tại
+            const p_list = [];
+            currentCloneShift.find('.personnel-row').each(function() {
+                const pid = $(this).find('.person-select').val();
+                if (pid) p_list.push({
+                    personnel_id: pid,
+                    notification: $(this).find('.person-notif').val()
+                });
+            });
+
+            const jobDesc = currentCloneShift.find('.job-desc').html().trim();
+            const shiftName = currentCloneShift.find('.shift-select option:selected').text();
+
+            if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
+                Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng nhập nội dung công việc.`,
+                    'warning');
+                return;
+            }
+            if (p_list.length === 0) {
+                Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`,
+                    'warning');
+                return;
+            }
+
+            const isOffStream = roomRow.find('.off-stream-check').is(':checked') ? 1 : 0;
+            const singleAssignment = {
+                shift: currentCloneShift.find('.shift-select').val(),
+                start_time: currentCloneShift.find('.start-time-input').val(),
+                end_time: currentCloneShift.find('.end-time-input').val(),
+                job_description: jobDesc,
+                number_of_employes: currentCloneShift.find('.person-count-input').val() || 0,
+                num_of_per_level_3: currentCloneShift.find('.professional-count-input').val() || 0,
+                off_stream: isOffStream,
+                personnel_list: p_list
+            };
+
+            const assignments = [singleAssignment];
+
+            let spId = roomRow.attr('data-sp-id');
+            const roomId = roomRow.attr('data-room-id');
+            const groupCode = $('select[name="group_code"]').val() || roomRow.attr('data-group-code');
+
+            if (!roomId && (!spId || spId === 'undefined')) {
+                spId = 'EXT_FALLBACK_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+            }
+
+            const payload = {
+                _token: "{{ csrf_token() }}",
+                sp_id: spId,
+                room_id: roomId,
+                production_code: "{{ $production_code }}",
+                stage_groups_code: groupCode,
+                target_dates: Array.from(cloneTargetDates),
+                assignments: assignments
+            };
+
+            const btn = $(this);
+            btn.prop('disabled', true).html(
+            '<i class="fas fa-spinner fa-spin mr-1"></i> Đang xử lý...');
+
+            $.ajax({
+                url: "{{ route('pages.assignment.production.clone_custom_task') }}",
+                method: "POST",
+                data: payload,
+                success: function(res) {
+                    btn.prop('disabled', false).html(
+                        '<i class="fas fa-check mr-1"></i> Xác nhận Clone');
+                    if (res.success) {
+                        $('#modalCloneCustomTask').modal('hide');
+                        Swal.fire('Thành công', res.message, 'success');
+                    } else {
+                        Swal.fire('Lỗi', res.message || 'Có lỗi xảy ra', 'error');
+                    }
+                },
+                error: function(err) {
+                    btn.prop('disabled', false).html(
+                        '<i class="fas fa-check mr-1"></i> Xác nhận Clone');
+                    const msg = err.responseJSON && err.responseJSON.message ? err
+                        .responseJSON.message : 'Không thể kết nối đến máy chủ';
+                    Swal.fire('Lỗi', msg, 'error');
+                }
+            });
+        });
     });
 </script>
