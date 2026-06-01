@@ -80,13 +80,13 @@ class ProductionQuotaController extends Controller
                                 ->where("{$category}.active", true)
                                 ->where("{$category}.deparment_code", $production)
                                 // Lọc chỉ lấy 1 dòng duy nhất cho mỗi mã sản phẩm để tránh nhân dòng khi bảng danh mục bị trùng
-                                ->whereIn("{$category}.id", function($q) use ($category, $joinField, $production, $stage_name) {
+                                ->whereIn("{$category}.id", function ($q) use ($category, $joinField, $production, $stage_name) {
                                         $q->select(DB::raw("MIN(id)"))
-                                          ->from($category)
-                                          ->where('active', true)
-                                          ->where('deparment_code', $production)
-                                          ->where($stage_name, 1)
-                                          ->groupBy($joinField);
+                                                ->from($category)
+                                                ->where('active', true)
+                                                ->where('deparment_code', $production)
+                                                ->where($stage_name, 1)
+                                                ->groupBy($joinField);
                                 })
                                 // join product_name (sử dụng product_name.id = category.product_name_id)
                                 ->leftJoin('product_name', 'product_name.id', '=', "{$category}.product_name_id")
@@ -138,12 +138,12 @@ class ProductionQuotaController extends Controller
                                 ->where("{$category}.active", true)
                                 ->where("{$category}.deparment_code", $production)
                                 // Lọc chỉ lấy 1 dòng duy nhất cho mỗi mã sản phẩm để tránh nhân dòng khi bảng danh mục bị trùng
-                                ->whereIn("{$category}.id", function($q) use ($category, $joinField, $production) {
+                                ->whereIn("{$category}.id", function ($q) use ($category, $joinField, $production) {
                                         $q->select(DB::raw("MIN(id)"))
-                                          ->from($category)
-                                          ->where('active', true)
-                                          ->where('deparment_code', $production)
-                                          ->groupBy($joinField, 'intermediate_code');
+                                                ->from($category)
+                                                ->where('active', true)
+                                                ->where('deparment_code', $production)
+                                                ->groupBy($joinField, 'intermediate_code');
                                 })
                                 ->orderBy('quota.id', 'desc');
 

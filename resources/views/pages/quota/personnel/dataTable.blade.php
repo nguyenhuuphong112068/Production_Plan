@@ -517,9 +517,13 @@
                                         $rUser = $parts[3] ?? 'N/A';
                                         $rDate = $parts[4] ?? '';
 
+                                        $rGrpId_passed = $parts[5] ?? null;
+
                                         $rObj = $rooms->firstWhere('id', $rId);
                                         $rGrpId = 0;
-                                        if ($rObj) {
+                                        if (is_numeric($rGrpId_passed) && $rGrpId_passed > 0) {
+                                            $rGrpId = (int) $rGrpId_passed;
+                                        } elseif ($rObj) {
                                             $rGrpCode = $rObj->group_code;
                                             $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
                                         }
@@ -543,9 +547,12 @@
                                     foreach ($assignments as $as) {
                                         $parts = explode(':', $as);
                                         $rId = $parts[0];
+                                        $rGrpId_passed = $parts[5] ?? null;
                                         $rObj = $rooms->firstWhere('id', $rId);
                                         $rGrpId = 0;
-                                        if ($rObj) {
+                                        if (is_numeric($rGrpId_passed) && $rGrpId_passed > 0) {
+                                            $rGrpId = (int) $rGrpId_passed;
+                                        } elseif ($rObj) {
                                             $rGrpCode = $rObj->group_code;
                                             $rGrpId = (int) ($groups->firstWhere('code', $rGrpCode)->id ?? 0);
                                         }
@@ -557,6 +564,7 @@
                                                 'rActive' => $parts[2] ?? 1,
                                                 'rUser' => $parts[3] ?? 'N/A',
                                                 'rDate' => $parts[4] ?? '',
+                                                'rGrpId' => $rGrpId,
                                             ];
                                         }
                                     }
@@ -648,13 +656,7 @@
                                                                         ->toArray();
 
                                                                     $rObj = $rooms->firstWhere('id', $rId);
-                                                                    $rGrpId = 0;
-                                                                    if ($rObj) {
-                                                                        $rGrpCode = $rObj->group_code;
-                                                                        $rGrpId =
-                                                                            $groups->firstWhere('code', $rGrpCode)
-                                                                                ->id ?? 0;
-                                                                    }
+                                                                    $rGrpId = $gId;
                                                                 @endphp
                                                                 <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
                                                                     data-active="{{ $rActive }}"
@@ -663,7 +665,7 @@
                                                                         class="form-control form-control-sm room-id-select mr-1"
                                                                         style="width: 250px;" {{ $disabled }}>
                                                                         <option value="">-- Phòng --</option>
-                                                                        @foreach ($rooms->whereIn('group_code', $selectedGroupCodes) as $r)
+                                                                        @foreach ($rooms as $r)
                                                                             <option value="{{ $r->id }}"
                                                                                 {{ $r->id == $rId ? 'selected' : '' }}>
                                                                                 {{ $r->code }} -
@@ -751,12 +753,7 @@
                                                                 $rDate = $item['rDate'];
 
                                                                 $rObj = $rooms->firstWhere('id', $rId);
-                                                                $rGrpId = 0;
-                                                                if ($rObj) {
-                                                                    $rGrpCode = $rObj->group_code;
-                                                                    $rGrpId =
-                                                                        $groups->firstWhere('code', $rGrpCode)->id ?? 0;
-                                                                }
+                                                                $rGrpId = $item['rGrpId'] ?? 0;
                                                             @endphp
                                                             <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
                                                                 data-active="{{ $rActive }}"

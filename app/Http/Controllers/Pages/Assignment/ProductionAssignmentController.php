@@ -280,7 +280,7 @@ class ProductionAssignmentController extends Controller
             ->where('e.active', 1)
             ->where(function ($q) {
                 $q->whereNull('e.resign')
-                  ->orWhere('e.resign', 0);
+                    ->orWhere('e.resign', 0);
             })
             ->whereExists(function ($query) use ($production_code) {
                 $query->select(DB::raw(1))
@@ -617,7 +617,7 @@ class ProductionAssignmentController extends Controller
                             }
                             $roomName = $overlap->room_name ?: 'Công tác khác';
                             $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
-                            
+
                             throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                         }
                     }
@@ -932,10 +932,10 @@ class ProductionAssignmentController extends Controller
             } else {
                 $groupName = $prodGroups[$ass->stage_groups_code] ?? $ass->group_name ?? ('Tổ ' . $ass->stage_groups_code);
             }
-            
+
             $spId = $ass->stage_plan_id ?: ('EXT_EXISTING_' . $ass->id);
             $roomName = $ass->work_location ?? ($ass->room_name ?: 'Công tác khác');
-            
+
             $dbAssignments[$pId][] = (object) [
                 'assignment_id' => $ass->assignment_id,
                 'sp_id' => $spId,
@@ -983,7 +983,7 @@ class ProductionAssignmentController extends Controller
         $group_code = $request->group_code;
         $startDate = Carbon::parse($request->startDate)->format('Y-m-d H:i:s');
         $endDate = Carbon::parse($request->endDate)->format('Y-m-d H:i:s');
-        
+
         $roomQuery = DB::table('room')
             ->where('deparment_code', $production_code)
             ->where('only_maintenance', 0);
@@ -1025,7 +1025,7 @@ class ProductionAssignmentController extends Controller
             ->where('sp.deparment_code', $production_code)
             ->where('sp.active', 1)
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate]);
-            
+
         if ($group_code) {
             if ($group_code == 7 || $group_code == 8) {
                 $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
@@ -1090,9 +1090,9 @@ class ProductionAssignmentController extends Controller
         foreach ($assignments as $assId => $items) {
             $first = $items->first();
             if (!$first->room_id) continue;
-            
+
             $names = $items->pluck('employee_name')->implode(', ');
-            $personnelIds = $items->map(function($i) {
+            $personnelIds = $items->map(function ($i) {
                 return ['personnel_id' => $i->personnel_id, 'notification' => $i->notification];
             })->toArray();
 
@@ -1121,7 +1121,7 @@ class ProductionAssignmentController extends Controller
             ->where('e.active', 1)
             ->where(function ($q) {
                 $q->whereNull('e.resign')
-                  ->orWhere('e.resign', 0);
+                    ->orWhere('e.resign', 0);
             })
             ->whereExists(function ($query) use ($production_code) {
                 $query->select(DB::raw(1))
@@ -1139,7 +1139,7 @@ class ProductionAssignmentController extends Controller
                     ->whereColumn('ea2.employees_id', 'e.id')
                     ->where(function ($q) use ($group_code) {
                         $q->where('sg.code', $group_code)
-                          ->orWhere('ea2.group_id', $group_code);
+                            ->orWhere('ea2.group_id', $group_code);
                     })
                     ->where('ea2.active', 1);
             });
@@ -1236,7 +1236,7 @@ class ProductionAssignmentController extends Controller
                         }
                         $roomName = $overlap->room_name ?: 'Công tác khác';
                         $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
-                        
+
                         throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                     }
                 }
@@ -1278,4 +1278,3 @@ class ProductionAssignmentController extends Controller
         }
     }
 }
-    
