@@ -88,18 +88,19 @@
                 {{-- BẢNG TRÁI --}}
                 <div class="col-md-12">
                     <div class="card">
-                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-                            <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
-                                <tr>
-                                <th style="width: 10%">Phòng Sản xuất</th>
-                                    <th style="width: 25%">Lịch Sản Xuất</th>
-                                    <th style="width: 5%">T.Gian LT</th>
-                                    <th style="width: 25%">Sản Xuất Thực Tế</th>
-                                    <th style="width: 5%">T.Gian TT</th>
-                                    <th style="width: 20%" class="text-center">Thông Báo</th>
-                                    <th  class="text-center" style="width: 5%">Người/Ngày Cập Nhật</th>
-                                </tr>
-                            </thead>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; width: 100%; min-width: 1600px; table-layout: fixed;">
+                                <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
+                                    <tr>
+                                        <th style="width: 12%">Phòng Sản xuất</th>
+                                        <th style="width: 22%">Lịch Sản Xuất</th>
+                                        <th style="width: 10%">T.Gian LT</th>
+                                        <th style="width: 22%">Sản Xuất Thực Tế</th>
+                                        <th style="width: 10%">T.Gian TT</th>
+                                        <th style="width: 12%" class="text-center">Thông Báo</th>
+                                        <th class="text-center" style="width: 12%">Người/Ngày Cập Nhật</th>
+                                    </tr>
+                                </thead>
 
                             <tbody style="font-size: 22px; font-weight: bold; color: #003A4F;">
                                 @php $current_stage = null; @endphp
@@ -210,14 +211,13 @@
                                                
                                             </td>
                                         </tr>
-
                                     @endfor
-
                                 @endforeach
-
                             </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
 
         </div>
     </div>
@@ -390,6 +390,11 @@
           white-space: normal;
           word-break: break-word;
           overflow-wrap: anywhere;
+    }
+
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
 </style>

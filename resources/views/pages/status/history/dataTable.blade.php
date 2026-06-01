@@ -72,189 +72,185 @@
             {{-- BẢNG TRÁI --}}
             <div class="col-md-12">
                 <div class="card">
-                    <table class="table table-bordered table-striped" style="border: 3px solid #003A4F;">
-                        <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
-                            <tr>
-                                <th style="width: 10%">Phòng Sản xuất</th>
-                                <th style="width: 25%">Lịch Sản Xuất</th>
-                                <th style="width: 5%">T.Gian LT</th>
-                                <th style="width: 25%">Sản Xuất Thực Tế</th>
-                                <th style="width: 5%">T.Gian TT</th>
-                                <th style="width: 20%" class="text-center">Thông Báo</th>
-                                <th class="text-center" style="width: 5%">Người/Ngày Cập Nhật</th>
-                                <th class="text-center" style="width: 5%">Cập Nhật</th>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" style="border: 3px solid #003A4F; width: 100%; min-width: 1600px; table-layout: fixed;">
+                            <thead style=" color:#003A4F; font-size: 30px; padding: 2px 0;">
+                                <tr>
+                                    <th style="width: 12%">Phòng Sản xuất</th>
+                                    <th style="width: 20%">Lịch Sản Xuất</th>
+                                    <th style="width: 10%">T.Gian LT</th>
+                                    <th style="width: 20%">Sản Xuất Thực Tế</th>
+                                    <th style="width: 10%">T.Gian TT</th>
+                                    <th style="width: 12%" class="text-center">Thông Báo</th>
+                                    <th class="text-center" style="width: 10%">Người/Ngày Cập Nhật</th>
+                                    <th class="text-center" style="width: 6%">Cập Nhật</th>
+                                </tr>
+                            </thead>
 
-                            </tr>
-                        </thead>
+                            <tbody style="font-size: 22px; font-weight: bold; color: #003A4F;">
+                                @php $current_stage = null; @endphp
 
-                        <tbody style="font-size: 22px; font-weight: bold; color: #003A4F;">
-                            @php $current_stage = null; @endphp
-
-                            @php
-                                $current_stage = null;
-                            @endphp
-
-                            @foreach ($leftData as $roomName => $roomData)
                                 @php
-                                    $thero = $roomData['thero'] ?? [];
-                                    $actual = $roomData['actual'] ?? [];
-
-                                    // Nếu phòng không có dữ liệu => vẫn hiển thị 1 dòng
-                                    $maxRows = max(1, count($thero), count($actual));
-
-                                    $production_group = $roomData['production_group'] ?? '';
-
+                                    $current_stage = null;
                                 @endphp
 
-
-                                {{-- ==== HEADER GROUP ==== --}}
-                                @if ($production_group !== $current_stage)
-                                    <tr style="background:#CDC717; text-align:center; font-size:24px;">
-                                        <td colspan="8">{{ $production_group }}</td>
-                                    </tr>
-                                @endif
-
-                                @php $current_stage = $production_group; @endphp
-
-
-                                {{-- ==== RENDER TỪNG DÒNG ==== --}}
-                                @for ($i = 0; $i < $maxRows; $i++)
+                                @foreach ($leftData as $roomName => $roomData)
                                     @php
-                                        $t = $thero[$i] ?? null; // THERO
-                                        $a = $actual[$i] ?? null; // ACTUAL
-                                        $color = '#ffffff';
-                                        $font_color = '#003A4F;';
-                                        if ($a && isset($a['status'])) {
-                                            switch ($a['status']) {
-                                                case 0:
-                                                    $color = '#ffffff';
-                                                    break;
-                                                case 1:
-                                                    $color = '#46f905ff';
-                                                    break;
-                                                case 2:
-                                                    $color = '#a1a2a2ff';
-                                                    break;
-                                                case 3:
-                                                    $color = '#f99e02ff';
-                                                    break;
-                                                case 4:
-                                                    $color = '#FF0000';
-                                                    break;
-                                            }
-                                        }
+                                        $thero = $roomData['thero'] ?? [];
+                                        $actual = $roomData['actual'] ?? [];
 
-                                        if (isset($a['active']) && $a['active'] == 0) {
-                                            $color = '#3f2643';
-                                            $font_color = 'white';
-                                        }
+                                        // Nếu phòng không có dữ liệu => vẫn hiển thị 1 dòng
+                                        $maxRows = max(1, count($thero), count($actual));
+
+                                        $production_group = $roomData['production_group'] ?? '';
+
                                     @endphp
 
-                                    <tr>
-                                        {{-- ROOM — chỉ hiện ở dòng đầu --}}
-                                        @if ($i === 0)
-                                            <td rowspan="{{ $maxRows }}" style="background:#fff;">
-                                                <div style="display:flex; align-items:center; gap:6px;">
-                                                    <span>{{ $roomName }}</span>
-                                                </div>
+
+                                    {{-- ==== HEADER GROUP ==== --}}
+                                    @if ($production_group !== $current_stage)
+                                        <tr style="background:#CDC717; text-align:center; font-size:24px;">
+                                            <td colspan="8">{{ $production_group }}</td>
+                                        </tr>
+                                    @endif
+
+                                    @php $current_stage = $production_group; @endphp
+
+
+                                    {{-- ==== RENDER TỪNG DÒNG ==== --}}
+                                    @for ($i = 0; $i < $maxRows; $i++)
+                                        @php
+                                            $t = $thero[$i] ?? null; // THERO
+                                            $a = $actual[$i] ?? null; // ACTUAL
+                                            $color = '#ffffff';
+                                            $font_color = '#003A4F;';
+                                            if ($a && isset($a['status'])) {
+                                                switch ($a['status']) {
+                                                    case 0:
+                                                        $color = '#ffffff';
+                                                        break;
+                                                    case 1:
+                                                        $color = '#46f905ff';
+                                                        break;
+                                                    case 2:
+                                                        $color = '#a1a2a2ff';
+                                                        break;
+                                                    case 3:
+                                                        $color = '#f99e02ff';
+                                                        break;
+                                                    case 4:
+                                                        $color = '#FF0000';
+                                                        break;
+                                                }
+                                            }
+
+                                            if (isset($a['active']) && $a['active'] == 0) {
+                                                $color = '#3f2643';
+                                                $font_color = 'white';
+                                            }
+                                        @endphp
+
+                                        <tr>
+                                            {{-- ROOM — chỉ hiện ở dòng đầu --}}
+                                            @if ($i === 0)
+                                                <td rowspan="{{ $maxRows }}" style="background:#fff;">
+                                                    <div style="display:flex; align-items:center; gap:6px;">
+                                                        <span>{{ $roomName }}</span>
+                                                    </div>
+                                                </td>
+                                            @endif
+
+
+                                            {{-- THERO title --}}
+                                            <td>
+                                                {{ $t['title'] ?? '-' }}
                                             </td>
-                                        @endif
+
+                                            {{-- THERO time --}}
+                                            <td>
+                                                @if ($t)
+                                                    <div>{{ \Carbon\Carbon::parse($t['start'])->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>{{ \Carbon\Carbon::parse($t['end'])->format('H:i d/m') }}</div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
 
 
-                                        {{-- THERO title --}}
-                                        <td>
-                                            {{ $t['title'] ?? '-' }}
-                                        </td>
+                                            {{-- ACTUAL in_production --}}
+                                            <td style="background: {{ $color }}; color: {{ $font_color }};">
+                                                {{ $a['in_production'] ?? '-' }}
+                                                {{ isset($a['active']) && $a['active'] == 0 && !empty($a['created_by']) ? " => Đã Hủy bởi {$a['created_by']}" : '' }}
+                                            </td>
 
-                                        {{-- THERO time --}}
-                                        <td>
-                                            @if ($t)
-                                                <div>{{ \Carbon\Carbon::parse($t['start'])->format('H:i d/m') }}
+
+                                            {{-- ACTUAL time --}}
+                                            <td>
+                                                @if ($a)
+                                                    <div>{{ \Carbon\Carbon::parse($a['start'])->format('H:i d/m') }}
+                                                    </div>
+                                                    <div>{{ \Carbon\Carbon::parse($a['end'])->format('H:i d/m') }}
+                                                    </div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+
+                                            {{-- Notification --}}
+                                            <td>{{ $a['notification'] ?? '-' }}</td>
+
+                                            <td>
+                                                <div> {{ $a['created_by'] ?? '-' }} </div>
+                                                <div>
+                                                    {{ isset($a['created_at']) ? \Carbon\Carbon::parse($a['created_at'])->format('d/m/Y H:i') : '-' }}
                                                 </div>
-                                                <div>{{ \Carbon\Carbon::parse($t['end'])->format('H:i d/m') }}</div>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
 
+                                            </td>
 
-                                        {{-- ACTUAL in_production --}}
-                                        <td style="background: {{ $color }}; color: {{ $font_color }};">
-                                            {{ $a['in_production'] ?? '-' }}
-                                            {{ isset($a['active']) && $a['active'] == 0 && !empty($a['created_by']) ? " => Đã Hủy bởi {$a['created_by']}" : '' }}
-                                        </td>
-
-
-                                        {{-- ACTUAL time --}}
-                                        <td>
-                                            @if ($a)
-                                                <div>{{ \Carbon\Carbon::parse($a['start'])->format('H:i d/m') }}
-                                                </div>
-                                                <div>{{ \Carbon\Carbon::parse($a['end'])->format('H:i d/m') }}
-                                                </div>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-
-                                        {{-- Notification --}}
-                                        <td>{{ $a['notification'] ?? '-' }}</td>
-
-                                        <td>
-                                            <div> {{ $a['created_by'] ?? '-' }} </div>
-                                            <div>
-                                                {{ isset($a['created_at']) ? \Carbon\Carbon::parse($a['created_at'])->format('d/m/Y H:i') : '-' }}
-                                            </div>
-
-                                        </td>
-
-                                        <td class="text-center">
-                                            @if (isset($a['in_production']) && isset($a['active']) && $a['active'] == 1)
-                                                <div class="d-flex justify-content-center gap-2">
-                                                    <button class="btn btn-warning btn-edit mx-1"
-                                                        style="width:40px; height:40px; padding:0;"
-                                                        data-room_name="{{ $roomName }}"
-                                                        data-id="{{ $a['id'] }}"
-                                                        data-in_production="{{ $a['in_production'] }}"
-                                                        data-status="{{ $a['status'] }}"
-                                                        data-start="{{ $a['start'] }}"
-                                                        data-end="{{ $a['end'] }}"
-                                                        data-notification="{{ $a['notification'] }}"
-                                                        data-toggle="modal" data-target="#Modal">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-
-                                                    <form class="form-deActive"
-                                                        action="{{ route('pages.status.history.deActive') }}"
-                                                        method="post">
-                                                        @csrf
-                                                        <input type="hidden" name="id"
-                                                            value="{{ $a['id'] }}">
-
-                                                        <button class="btn btn-danger btn-deactive mx-1"
-                                                            style="width:40px; height:40px; padding:10px;">
-                                                            <i class="fas fa-trash"></i>
+                                            <td class="text-center">
+                                                @if (isset($a['in_production']) && isset($a['active']) && $a['active'] == 1)
+                                                    <div class="d-flex justify-content-center gap-2">
+                                                        <button class="btn btn-warning btn-edit mx-1"
+                                                            style="width:40px; height:40px; padding:0;"
+                                                            data-room_name="{{ $roomName }}"
+                                                            data-id="{{ $a['id'] }}"
+                                                            data-in_production="{{ $a['in_production'] }}"
+                                                            data-status="{{ $a['status'] }}"
+                                                            data-start="{{ $a['start'] }}"
+                                                            data-end="{{ $a['end'] }}"
+                                                            data-notification="{{ $a['notification'] }}"
+                                                            data-toggle="modal" data-target="#Modal">
+                                                            <i class="fas fa-edit"></i>
                                                         </button>
 
-                                                    </form>
-                                                </div>
-                                            @endif
-                                        </td>
+                                                        <form class="form-deActive"
+                                                            action="{{ route('pages.status.history.deActive') }}"
+                                                            method="post">
+                                                            @csrf
+                                                            <input type="hidden" name="id"
+                                                                value="{{ $a['id'] }}">
 
+                                                            <button class="btn btn-danger btn-deactive mx-1"
+                                                                style="width:40px; height:40px; padding:10px;">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
 
-
-                                    </tr>
-                                @endfor
-                            @endforeach
-
-                        </tbody>
+                                                        </form>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endfor
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
         </div>
     </div>
-</div>
-
 </div>
 
 <!-- ====== SCRIPT ====== -->
@@ -330,59 +326,6 @@
             const modal = $('#Modal');
             //alert (button.data('in_production'))
             let lastStatusRoom = null;
-
-            // $.ajax({
-            //         url: "{{ route('pages.status.getLastStatusRoom') }}",
-            //         type: 'post',
-            //         data: {
-            //             room_id: button.data('room_id'),
-            //             _token: "{{ csrf_token() }}"
-            //         },
-            //         success: function(res) {
-            //           lastStatusRoom = res.last_row;
-
-            //         //   modal.find('input[name="start"]').val(res.last_row.start);
-            //         //   modal.find('input[name="end"]').val(res.last_row.end);
-            //           modal.find('select[name="in_production"]').val(res.last_row.in_production);
-            //           modal.find('textarea[name="notification"]').val(res.last_row.notification);
-
-            //           modal.find(`input[name="status"][value="${lastStatusRoom.status}"]`).prop('checked', true);
-
-
-
-            //           // Nếu "sheet" là chuỗi như "Đầu Ca", "Giữa Ca", "Cuối Ca", "NA"
-            //         //   switch (lastStatusRoom.sheet) {
-            //         //       case "Đầu Ca":
-            //         //           modal.find('input[name="sheet"][value="1"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Giữa Ca":
-            //         //           modal.find('input[name="sheet"][value="2"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Cuối Ca":
-            //         //           modal.find('input[name="sheet"][value="3"]').prop('checked', true);
-            //         //           break;
-            //         //       default:
-            //         //           modal.find('input[name="sheet"][value="0"]').prop('checked', true);
-            //         //   }
-
-            //         //   // Nếu "step_batch" là chuỗi như "Đầu Lô", "Giữa Lô", "Cuối Lô", "NA"
-            //         //   switch (lastStatusRoom.step_batch) {
-            //         //       case "Đầu Lô":
-            //         //           modal.find('input[name="step_batch"][value="1"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Giữa Lô":
-            //         //           modal.find('input[name="step_batch"][value="2"]').prop('checked', true);
-            //         //           break;
-            //         //       case "Cuối Lô":
-            //         //           modal.find('input[name="step_batch"][value="3"]').prop('checked', true);
-            //         //           break;
-            //         //       default:
-            //         //           modal.find('input[name="step_batch"][value="0"]').prop('checked', true);
-            //         //   }
-
-
-            //         }
-            // });
 
             modal.find('input[name="start"]').val(button.data('start'));
             modal.find('input[name="end"]').val(button.data('end'));
@@ -570,5 +513,10 @@
         white-space: normal;
         word-break: break-word;
         overflow-wrap: anywhere;
+    }
+
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 </style>
