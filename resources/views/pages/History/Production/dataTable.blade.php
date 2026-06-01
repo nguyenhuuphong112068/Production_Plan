@@ -121,9 +121,9 @@
                                 <div> {{ $data->finished_by }} </div>
                                 <div>{{ \Carbon\Carbon::parse($data->finished_date)->format('d/m/Y') }} </div>
                             </td>
+                            @if (user_has_permission(session('user')['userId'], 'return_event', 'boolean'))
+                                <td class="text-center align-middle">
 
-                            <td class="text-center align-middle">
-                                @if (user_has_permission(session('user')['userId'], 'return_event', 'boolean'))
                                     <div style="position: relative; display: inline-block;">
                                         <button type="button" class="btn btn-return btn-danger"
                                             data-id="{{ $data->id }}" title="Trả về">
@@ -137,8 +137,9 @@
                                             </span>
                                         @endif
                                     </div>
-                                @endif
-                            </td>
+
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                 </tbody>
