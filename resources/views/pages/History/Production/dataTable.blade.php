@@ -71,9 +71,7 @@
                         <th>Phòng BT</th>
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
-                        @if (session('user')['userName'] == 'Admin' ||
-                                session('user')['userName'] == '19764' ||
-                                session('user')['userName'] == '19713')
+                        @if (user_has_permission(session('user')['userId'], 'return_event', 'boolean'))
                             <th>Return</th>
                         @endif
                     </tr>
@@ -124,20 +122,61 @@
                                 <div>{{ \Carbon\Carbon::parse($data->finished_date)->format('d/m/Y') }} </div>
                             </td>
 
-                            @if (session('user')['userName'] == 'Admin' ||
-                                    session('user')['userName'] == '19764' ||
-                                    session('user')['userName'] == '19713')
-                                <td class="text-center align-middle">
-                                    <button type="button" class="btn btn-return btn-danger"
-                                        data-id="{{ $data->id }}">
-                                        <i class="fas fa-undo"></i>
-                                    </button>
-                                </td>
-                            @endif
+                            <td class="text-center align-middle">
+                                @if (user_has_permission(session('user')['userId'], 'return_event', 'boolean'))
+                                    <div style="position: relative; display: inline-block;">
+                                        <button type="button" class="btn btn-return btn-danger"
+                                            data-id="{{ $data->id }}" title="Trả về">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                        @if ($data->return_count > 0)
+                                            <span class="badge badge-info btn-history" data-id="{{ $data->id }}"
+                                                style="position: absolute; top: -8px; right: -8px; cursor: pointer; border-radius: 50%; font-size: 12px; padding: 4px 7px; box-shadow: 0 0 3px rgba(0,0,0,0.5);"
+                                                title="Lịch sử trả về">
+                                                {{ $data->return_count }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Lịch Sử Trả Về -->
+<div class="modal fade" id="returnsHistoryModal" tabindex="-1" role="dialog"
+    aria-labelledby="returnsHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="returnsHistoryModalLabel">Lịch Sử Trả Về (Return)</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm" id="returnsHistoryTable">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>STT</th>
+                                <th>Người Trả Về</th>
+                                <th>Thời Gian Trả Về</th>
+                                <th>Sản Lượng (Cũ)</th>
+                                <th>TG Sản Xuất (Cũ)</th>
+                                <th>TG Vệ Sinh (Cũ)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dữ liệu được render bằng JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -204,4 +243,58 @@
             form.submit();
         });
     });
+
+    $(document).on('click', '.btn-history', function() {
+        const stage_plan_id = $(this).data('id');
+        const tbody = $('#returnsHistoryTable tbody');
+        tbody.html('<tr><td colspan="6" class="text-center">Đang tải...</td></tr>');
+        $('#returnsHistoryModal').modal('show');
+
+        $.ajax({
+            url: "/History/production/returns/" + stage_plan_id,
+            type: 'GET',
+            success: function(res) {
+                if (res.success && res.data.length > 0) {
+                    tbody.empty();
+                    res.data.forEach((item, index) => {
+                        let actualProd = item.previous_actual_start ?
+                            `${formatDate(item.previous_actual_start)} - ${formatDate(item.previous_actual_end)}` :
+                            '-';
+                        let actualClean = item.previous_actual_start_clearning ?
+                            `${formatDate(item.previous_actual_start_clearning)} - ${formatDate(item.previous_actual_end_clearning)}` :
+                            '-';
+                        let row = `<tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td>${item.returned_by || '-'}</td>
+                            <td>${formatDate(item.returned_at)}</td>
+                            <td class="text-center">${item.previous_yields !== null ? parseFloat(item.previous_yields) : '-'}</td>
+                            <td style="font-size: 14px;">${actualProd}</td>
+                            <td style="font-size: 14px;">${actualClean}</td>
+                        </tr>`;
+                        tbody.append(row);
+                    });
+                } else {
+                    tbody.html(
+                        '<tr><td colspan="6" class="text-center">Chưa có lịch sử trả về nào.</td></tr>'
+                    );
+                }
+            },
+            error: function() {
+                tbody.html(
+                    '<tr><td colspan="6" class="text-center text-danger">Có lỗi xảy ra khi lấy dữ liệu!</td></tr>'
+                );
+            }
+        });
+    });
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        let d = new Date(dateStr);
+        let day = String(d.getDate()).padStart(2, '0');
+        let month = String(d.getMonth() + 1).padStart(2, '0');
+        let year = d.getFullYear();
+        let hr = String(d.getHours()).padStart(2, '0');
+        let min = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hr}:${min}`;
+    }
 </script>

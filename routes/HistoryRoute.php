@@ -14,6 +14,7 @@ Route::prefix('/History')
         Route::get('/maintenance', [MaintenanceHistoryController::class, 'index'])->name('pages.History.maintenance.list');
         
         Route::post('production/returnStage', [ProductionHistoryController::class, 'returnStage'])->name('pages.History.production.returnStage');
+        Route::get('production/returns/{id}', [ProductionHistoryController::class, 'getReturnsHistory'])->name('pages.History.production.getReturnsHistory');
         Route::post('maintenance/returnStage', [MaintenanceHistoryController::class, 'returnStage'])->name('pages.History.maintenance.returnStage');
         Route::post('returnStage', [ProductionHistoryController::class, 'returnStage'])->name('pages.History.returnStage');
     });

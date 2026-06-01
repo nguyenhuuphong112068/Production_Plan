@@ -27,9 +27,19 @@ class ProductionHistoryController extends Controller
             )
             ->groupBy('stage_plan_id');
 
+        $returnsSub = DB::table('stage_plan_returns')
+            ->select(
+                'stage_plan_id',
+                DB::raw('COUNT(*) as return_count')
+            )
+            ->groupBy('stage_plan_id');
+
         $query = DB::table('stage_plan')
             ->leftJoinSub($yieldSub, 'y_sum', function ($join) {
                 $join->on('stage_plan.id', '=', 'y_sum.stage_plan_id');
+            })
+            ->leftJoinSub($returnsSub, 'r_count', function ($join) {
+                $join->on('stage_plan.id', '=', 'r_count.stage_plan_id');
             })
             ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
             ->leftJoin('plan_master', 'stage_plan.plan_master_id', 'plan_master.id')
@@ -57,7 +67,8 @@ class ProductionHistoryController extends Controller
                                         TRIM(TRAILING '.' FROM TRIM(TRAILING '0' 
                                         FROM FORMAT(COALESCE(y_sum.sum_actual_yeild,0), 3)
                                         )) as sum_actual_yeild
-                                ")
+                                "),
+                DB::raw("COALESCE(r_count.return_count, 0) as return_count")
             )
             ->where('stage_plan.deparment_code', $production)
             ->whereBetween('stage_plan.actual_start', [$fromDate, $toDate])
@@ -161,6 +172,24 @@ class ProductionHistoryController extends Controller
                 ], 400);
             }
 
+            $stagePlan = DB::table('stage_plan')->where('id', $request->stage_plan_id)->first();
+            if ($stagePlan) {
+                $yieldsSum = DB::table('yields')->where('stage_plan_id', $request->stage_plan_id)->sum('yield');
+                
+                DB::table('stage_plan_returns')->insert([
+                    'stage_plan_id' => $stagePlan->id,
+                    'returned_by' => session('user')['fullName'] ?? session('user')['userName'] ?? 'Unknown',
+                    'returned_at' => now(),
+                    'previous_actual_start' => $stagePlan->actual_start,
+                    'previous_actual_end' => $stagePlan->actual_end,
+                    'previous_actual_start_clearning' => $stagePlan->actual_start_clearning,
+                    'previous_actual_end_clearning' => $stagePlan->actual_end_clearning,
+                    'previous_yields' => $yieldsSum,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             // ✅ Reset trạng thái stage
             DB::table('stage_plan')
                 ->where('id', $request->stage_plan_id)
@@ -197,5 +226,18 @@ class ProductionHistoryController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getReturnsHistory($id)
+    {
+        $returns = DB::table('stage_plan_returns')
+            ->where('stage_plan_id', $id)
+            ->orderBy('returned_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $returns
+        ]);
     }
 }
