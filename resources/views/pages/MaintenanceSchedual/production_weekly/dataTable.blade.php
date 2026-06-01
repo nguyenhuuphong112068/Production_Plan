@@ -25,12 +25,15 @@
                         </div>
                     </form>
                 </div>
-                <div class="col-md-6 text-center" style="font-size: 20px; color: #CDC717">
+                <div class="col-md-5 text-center" style="font-size: 20px; color: #CDC717">
                     <div class="font-weight-bold">
                         {{ $displayWeek }}
                     </div>
                 </div>
-                <div class="col-md-3 text-right">
+                <div class="col-md-4 text-right">
+                    <button type="button" class="btn btn-info mr-2" onclick="$('.theory-time').toggle()">
+                        <i class="fas fa-eye"></i> Hiện/Ẩn Lý Thuyết
+                    </button>
                     <button class="btn btn-primary" onclick="window.print()">
                         <i class="fas fa-print"></i> In Kế Hoạch
                     </button>
@@ -56,7 +59,7 @@
                                     <th class="text-center align-middle" width="40" rowspan="2">#</th>
                                     <th class="text-center align-middle" style="min-width: 150px;" rowspan="2">Phòng
                                         SX / Khu Vực</th>
-                                    <th class="text-center align-middle" colspan="7">Lịch Lý Thuyết</th>
+                                    <th class="text-center align-middle" colspan="7">Kế Hoạch Sản Xuất</th>
                                 </tr>
                                 <tr style="color:#003A4F; font-size: 15px;">
                                     @foreach ($weekDays as $day)
@@ -118,8 +121,12 @@
                                                         @php $eventIdx = 1; @endphp
                                                         @foreach ($dayEvents as $e)
                                                             @php
-                                                                $start = \Carbon\Carbon::parse($e->slot_start ?? $e->planned_start);
-                                                                $end = \Carbon\Carbon::parse($e->slot_end ?? $e->planned_end);
+                                                                $start = \Carbon\Carbon::parse(
+                                                                    $e->slot_start ?? $e->planned_start,
+                                                                );
+                                                                $end = \Carbon\Carbon::parse(
+                                                                    $e->slot_end ?? $e->planned_end,
+                                                                );
 
                                                                 $totalMins = $start->diffInMinutes($end);
                                                                 $hours = (int) ($totalMins / 60);
@@ -128,22 +135,62 @@
                                                                 $batchDisplay = $e->actual_batch ?? $e->batch;
                                                             @endphp
                                                             <div class="mb-2 p-1 border-bottom last-child-no-border"
-                                                                style="line-height: 1.3;">
+                                                                style="line-height: 1.3; {{ isset($e->is_actual) && $e->is_actual ? 'background-color: #f0fdf4;' : '' }}">
                                                                 <div style="font-size: 13px; color: #333;">
                                                                     <b>{{ $eventIdx++ }}.</b>
                                                                     <span
-                                                                        class="{{ isset($e->is_cleaning) && $e->is_cleaning ? 'text-success' : 'text-dark' }} font-weight-bold">{{ $e->display_title }}</span>
+                                                                        class="{{ isset($e->is_cleaning) && $e->is_cleaning ? 'text-success' : 'text-dark' }} font-weight-bold">
+                                                                        {{ $e->display_title }}
+                                                                        @if (!(isset($e->is_actual) && $e->is_actual))
+                                                                            <span class="badge badge-success ml-1"
+                                                                                style="font-weight: normal">Lý
+                                                                                Thuyết</span>
+                                                                        @endif
+                                                                    </span>
                                                                     -
                                                                     <span
                                                                         class="text-danger font-weight-bold">{{ $batchDisplay }}</span>
+
+                                                                    @if (isset($e->is_actual) && $e->is_actual && empty($e->is_cleaning))
+                                                                        @if ($e->finished)
+                                                                            <span class="badge badge-primary ml-1">Hoàn
+                                                                                thành</span>
+                                                                        @endif
+                                                                        @if ($e->yields !== null && $e->stage_code >= 3)
+                                                                            <span class="badge badge-warning ml-1"
+                                                                                style="color: #000;">SL:
+                                                                                {{ (float) $e->yields }}
+                                                                                {{ $e->stage_code <= 4 ? 'Kg' : 'ĐVL' }}
+                                                                                {{ $e->yields_batch_qty > 0 ? '(' . $e->yields_batch_qty . ')' : '' }}</span>
+                                                                        @endif
+                                                                    @endif
                                                                 </div>
-                                                                <div class="text-primary font-weight-bold mt-1"
+                                                                <div class="{{ isset($e->is_actual) && $e->is_actual ? 'text-success' : 'text-primary' }} font-weight-bold mt-1"
                                                                     style="font-size: 12px;">
                                                                     {{ $start->format('H:i') }} ->
                                                                     {{ $end->format('H:i') }}
                                                                     <span class="text-dark"> =
                                                                         {{ $hours }}h{{ $mins }}p</span>
                                                                 </div>
+                                                                @if (isset($e->is_actual) && $e->is_actual && empty($e->is_cleaning) && $e->finished)
+                                                                    @php
+                                                                        $thStart = \Carbon\Carbon::parse(
+                                                                            $e->planned_start_val,
+                                                                        );
+                                                                        $thEnd = \Carbon\Carbon::parse(
+                                                                            $e->planned_end_val,
+                                                                        );
+                                                                        $thTotalMins = $thStart->diffInMinutes($thEnd);
+                                                                        $thHours = (int) ($thTotalMins / 60);
+                                                                        $thMins = $thTotalMins % 60;
+                                                                    @endphp
+                                                                    <div class="theory-time mt-1 text-secondary"
+                                                                        style="display: none; font-size: 11px; font-style: italic;">
+                                                                        LT: {{ $thStart->format('d/m H:i') }} ->
+                                                                        {{ $thEnd->format('d/m H:i') }} =
+                                                                        {{ $thHours }}h{{ $thMins }}p
+                                                                    </div>
+                                                                @endif
                                                             </div>
                                                         @endforeach
                                                     @endif

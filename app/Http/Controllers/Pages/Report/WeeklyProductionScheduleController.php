@@ -51,12 +51,27 @@ class WeeklyProductionScheduleController extends Controller
                             $q2->whereNotNull('sp.start_clearning')
                                 ->where('sp.start_clearning', '<', $endOfWeek)
                                 ->where('sp.end_clearning', '>=', $startOfWeek);
+                        })->orWhere(function ($q3) use ($startOfWeek, $endOfWeek) {
+                            $q3->whereNotNull('sp.actual_start')
+                                ->where('sp.actual_start', '<', $endOfWeek)
+                                ->where('sp.actual_end', '>=', $startOfWeek);
+                        })->orWhere(function ($q4) use ($startOfWeek, $endOfWeek) {
+                            $q4->whereNotNull('sp.actual_start_clearning')
+                                ->where('sp.actual_start_clearning', '<', $endOfWeek)
+                                ->where('sp.actual_end_clearning', '>=', $startOfWeek);
                         });
                     });
             })
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name as pn', 'fpc.product_name_id', '=', 'pn.id')
+            ->leftJoinSub(
+                DB::table('yields')->select('stage_plan_id', DB::raw('SUM(yield) as actual_yield'))->groupBy('stage_plan_id'),
+                'y',
+                'sp.id',
+                '=',
+                'y.stage_plan_id'
+            )
             ->where('r.deparment_code', $production_code)
             ->where('r.stage_code', '!=', 8)
             ->select(
@@ -69,11 +84,18 @@ class WeeklyProductionScheduleController extends Controller
                 'sp.id as sp_id',
                 'sp.start as planned_start',
                 'sp.end as planned_end',
+                'sp.actual_start',
+                'sp.actual_end',
+                'sp.finished',
+                'y.actual_yield as yields',
+                'sp.yields_batch_qty',
                 'sp.stage_code',
                 'sp.title',
                 'sp.title_clearning',
                 'sp.start_clearning',
                 'sp.end_clearning',
+                'sp.actual_start_clearning',
+                'sp.actual_end_clearning',
                 'pn.name as product_name',
                 'pm.batch',
                 'pm.actual_batch'
@@ -91,7 +113,32 @@ class WeeklyProductionScheduleController extends Controller
             }
 
             // --- 1. Xử lý sự kiện SẢN XUẤT ---
-            if ($item->planned_start && $item->planned_end) {
+            if ($item->actual_start && $item->actual_end) {
+                // Thực tế
+                $startA = Carbon::parse($item->actual_start);
+                $endA = Carbon::parse($item->actual_end);
+
+                for ($i = 0; $i < 7; $i++) {
+                    $dayStartBound = $startOfWeek->copy()->addDays($i);
+                    $dayEndBound = $dayStartBound->copy()->addDays(1);
+
+                    if ($startA->lt($dayEndBound) && $endA->gt($dayStartBound)) {
+                        $newItemA = clone $item;
+                        $newItemA->day_key = $dayStartBound->format('Y-m-d');
+                        $slotStart = $startA->gt($dayStartBound) ? $startA : $dayStartBound;
+                        $slotEnd = $endA->lt($dayEndBound) ? $endA : $dayEndBound;
+                        $newItemA->slot_start = $slotStart->toDateTimeString();
+                        $newItemA->slot_end   = $slotEnd->toDateTimeString();
+                        $newItemA->display_title = $item->product_name ?? $item->title;
+                        $newItemA->is_actual = true;
+                        $newItemA->is_cleaning = false;
+                        $newItemA->planned_start_val = $item->planned_start;
+                        $newItemA->planned_end_val = $item->planned_end;
+                        $expandedDatas->push($newItemA);
+                    }
+                }
+            } elseif ($item->planned_start && $item->planned_end) {
+                // Lý thuyết
                 $start = Carbon::parse($item->planned_start);
                 $end = Carbon::parse($item->planned_end);
 
@@ -106,17 +153,43 @@ class WeeklyProductionScheduleController extends Controller
                         $slotEnd = $end->lt($dayEndBound) ? $end : $dayEndBound;
                         $newItem->slot_start = $slotStart->toDateTimeString();
                         $newItem->slot_end   = $slotEnd->toDateTimeString();
-
-                        // Giữ nguyên title hoặc product name
                         $newItem->display_title = $item->product_name ?? $item->title;
-
+                        $newItem->is_actual = false;
+                        $newItem->is_cleaning = false;
                         $expandedDatas->push($newItem);
                     }
                 }
             }
 
             // --- 2. Xử lý sự kiện VỆ SINH ---
-            if ($item->start_clearning && $item->end_clearning) {
+            if ($item->actual_start_clearning && $item->actual_end_clearning) {
+                // Thực tế
+                $startCA = Carbon::parse($item->actual_start_clearning);
+                $endCA = Carbon::parse($item->actual_end_clearning);
+
+                for ($i = 0; $i < 7; $i++) {
+                    $dayStartBound = $startOfWeek->copy()->addDays($i);
+                    $dayEndBound = $dayStartBound->copy()->addDays(1);
+
+                    if ($startCA->lt($dayEndBound) && $endCA->gt($dayStartBound)) {
+                        $newItemCA = clone $item;
+                        $newItemCA->day_key = $dayStartBound->format('Y-m-d');
+                        $slotStart = $startCA->gt($dayStartBound) ? $startCA : $dayStartBound;
+                        $slotEnd = $endCA->lt($dayEndBound) ? $endCA : $dayEndBound;
+                        $newItemCA->slot_start = $slotStart->toDateTimeString();
+                        $newItemCA->slot_end   = $slotEnd->toDateTimeString();
+                        $cleanTitle = $item->title_clearning ?: 'VS';
+                        $productPart = $item->product_name ?? $item->title;
+                        $newItemCA->display_title = "($cleanTitle) " . $productPart;
+                        $newItemCA->is_actual = true;
+                        $newItemCA->is_cleaning = true;
+                        $newItemCA->planned_start_val = $item->start_clearning;
+                        $newItemCA->planned_end_val = $item->end_clearning;
+                        $expandedDatas->push($newItemCA);
+                    }
+                }
+            } elseif ($item->start_clearning && $item->end_clearning) {
+                // Lý thuyết
                 $startC = Carbon::parse($item->start_clearning);
                 $endC = Carbon::parse($item->end_clearning);
 
@@ -131,15 +204,11 @@ class WeeklyProductionScheduleController extends Controller
                         $slotEnd = $endC->lt($dayEndBound) ? $endC : $dayEndBound;
                         $newItemC->slot_start = $slotStart->toDateTimeString();
                         $newItemC->slot_end   = $slotEnd->toDateTimeString();
-
-                        // Thêm prefix (VS)
                         $cleanTitle = $item->title_clearning ?: 'VS';
                         $productPart = $item->product_name ?? $item->title;
                         $newItemC->display_title = "($cleanTitle) " . $productPart;
-
-                        // Đánh dấu là sự kiện vệ sinh để view có thể tô màu nếu cần (tùy chọn)
+                        $newItemC->is_actual = false;
                         $newItemC->is_cleaning = true;
-
                         $expandedDatas->push($newItemC);
                     }
                 }
