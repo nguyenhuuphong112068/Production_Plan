@@ -484,6 +484,16 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $roomsById = clone $rooms;
+                        $roomsById = $roomsById->keyBy('id')->all();
+                        
+                        $groupsByCode = clone $groups;
+                        $groupsByCode = $groupsByCode->keyBy('code')->all();
+                        
+                        $groupsById = clone $groups;
+                        $groupsById = $groupsById->keyBy('id')->all();
+                    @endphp
                     @foreach ($datas as $data)
                         <tr class="main-employee-row">
                             <td>{{ $loop->iteration }} <br>
@@ -519,13 +529,13 @@
 
                                         $rGrpId_passed = $parts[5] ?? null;
 
-                                        $rObj = $rooms->firstWhere('id', $rId);
+                                        $rObj = $roomsById[$rId] ?? null;
                                         $rGrpId = 0;
                                         if (is_numeric($rGrpId_passed) && $rGrpId_passed > 0) {
                                             $rGrpId = (int) $rGrpId_passed;
                                         } elseif ($rObj) {
                                             $rGrpCode = $rObj->group_code;
-                                            $rGrpId = $groups->firstWhere('code', $rGrpCode)->id ?? 0;
+                                            $rGrpId = isset($groupsByCode[$rGrpCode]) ? $groupsByCode[$rGrpCode]->id : 0;
                                         }
                                         $assignmentsByGroup[$rGrpId][] = [
                                             'as' => $as,
@@ -548,13 +558,13 @@
                                         $parts = explode(':', $as);
                                         $rId = $parts[0];
                                         $rGrpId_passed = $parts[5] ?? null;
-                                        $rObj = $rooms->firstWhere('id', $rId);
+                                        $rObj = $roomsById[$rId] ?? null;
                                         $rGrpId = 0;
                                         if (is_numeric($rGrpId_passed) && $rGrpId_passed > 0) {
                                             $rGrpId = (int) $rGrpId_passed;
                                         } elseif ($rObj) {
                                             $rGrpCode = $rObj->group_code;
-                                            $rGrpId = (int) ($groups->firstWhere('code', $rGrpCode)->id ?? 0);
+                                            $rGrpId = (int) (isset($groupsByCode[$rGrpCode]) ? $groupsByCode[$rGrpCode]->id : 0);
                                         }
                                         if (!in_array($rGrpId, $renderedGroupIds)) {
                                             $otherAssignments[] = [
@@ -578,7 +588,7 @@
                                             $isActive = ($parts[1] ?? 1) == 1;
                                             $gUser = $parts[2] ?? 'N/A';
                                             $gDate = $parts[3] ?? '';
-                                            $groupName = $groups->where('id', $gId)->first()->name ?? 'N/A';
+                                            $groupName = isset($groupsById[$gId]) ? $groupsById[$gId]->name : 'N/A';
 
                                             $groupAssignments = $assignmentsByGroup[$gId] ?? [];
                                         @endphp
