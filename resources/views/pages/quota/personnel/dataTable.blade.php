@@ -642,20 +642,6 @@
                                                                     $rActive = $item['rActive'];
                                                                     $rUser = $item['rUser'];
                                                                     $rDate = $item['rDate'];
-
-                                                                    $selectedGroupIds = [];
-                                                                    foreach ($groupPermissions as $gPermission) {
-                                                                        $selectedGroupIds[] = explode(
-                                                                            ':',
-                                                                            $gPermission,
-                                                                        )[0];
-                                                                    }
-                                                                    $selectedGroupCodes = $groups
-                                                                        ->whereIn('id', $selectedGroupIds)
-                                                                        ->pluck('code')
-                                                                        ->toArray();
-
-                                                                    $rObj = $rooms->firstWhere('id', $rId);
                                                                     $rGrpId = $gId;
                                                                 @endphp
                                                                 <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
@@ -751,8 +737,6 @@
                                                                 $rActive = $item['rActive'];
                                                                 $rUser = $item['rUser'];
                                                                 $rDate = $item['rDate'];
-
-                                                                $rObj = $rooms->firstWhere('id', $rId);
                                                                 $rGrpId = $item['rGrpId'] ?? 0;
                                                             @endphp
                                                             <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"

@@ -111,6 +111,18 @@
         background-color: #6c757d;
     }
 
+    .selected-for-drag {
+        background-color: #d1ecf1 !important;
+        border-left: 3px solid #0c5460 !important;
+    }
+
+    .room-row:has(.btn-save-room.is-dirty) .btn-clone-row,
+    .room-row:has(.btn-save-room.btn-warning) .btn-clone-row,
+    .room-row:has(.btn-save-room.is-dirty) .btn-clone-shift,
+    .room-row:has(.btn-save-room.btn-warning) .btn-clone-shift {
+        display: none !important;
+    }
+
     .table-assignment {
         border-collapse: separate;
         border-spacing: 0;
@@ -467,10 +479,17 @@
                                     @endif
                                 @endif
                                 <div class="mt-2 text-center">
-                                    <button class="btn btn-outline-success btn-circle btn-add-shift"
+                                    <button class="btn btn-outline-success btn-circle btn-add-shift mb-1"
                                         title="Thêm ca làm việc" {{ !$canEdit ? 'disabled' : '' }}>
                                         <i class="fas fa-plus"></i> Thêm Ca
                                     </button>
+                                    @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
+                                        <br>
+                                        <button class="btn btn-outline-info btn-circle btn-clone-row"
+                                            title="Nhân bản toàn bộ ca" {{ !$canEdit ? 'disabled' : '' }}>
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    @endif
                                 </div>
                                 @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
                                     @php
@@ -1634,6 +1653,17 @@
             return newPersonRow;
         }
 
+        // Click to select multiple personnel
+        $(document).on('click', '.draggable-person', function(e) {
+            if ($(e.target).closest('.custom-control, .btn-view-skills, .btn-toggle-has-assign')
+                .length > 0) {
+                return;
+            }
+            if ($(this).hasClass('person-on-leave')) return;
+
+            $(this).toggleClass('selected-for-drag');
+        });
+
         // Drag & Drop Handlers
         $(document).on('dragstart', '.draggable-person', function(e) {
             const $this = $(this);
@@ -1641,12 +1671,23 @@
                 e.preventDefault();
                 return;
             }
-            const personData = {
-                code: $this.data('code'),
-                name: $this.data('name'),
-                shiftKey: $this.data('shift-key')
-            };
-            e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(personData));
+
+            let $draggedItems = $('.draggable-person.selected-for-drag');
+            // If dragging an item that isn't selected, just drag that one item
+            if (!$this.hasClass('selected-for-drag')) {
+                $draggedItems = $this;
+            }
+
+            const personsData = [];
+            $draggedItems.each(function() {
+                personsData.push({
+                    code: $(this).data('code'),
+                    name: $(this).data('name'),
+                    shiftKey: $(this).data('shift-key')
+                });
+            });
+
+            e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(personsData));
             e.originalEvent.dataTransfer.effectAllowed = 'copy';
         });
 
@@ -1851,7 +1892,7 @@
             }
         }
 
-        $(document).on('drop', '.personnel-container', function(e) {
+        $(document).on('drop', '.personnel-container', async function(e) {
             e.preventDefault();
             $(this).removeClass('drag-over');
 
@@ -1859,61 +1900,73 @@
             if (!dataStr) return;
 
             try {
-                const person = JSON.parse(dataStr);
-                if (person.shiftKey === 'P') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Không thể sắp lịch',
-                        text: `Nhân sự ${person.name} đang nghỉ phép (P), không thể sắp vào ca sản xuất.`
-                    });
-                    return;
+                let persons = JSON.parse(dataStr);
+                if (!Array.isArray(persons)) {
+                    persons = [persons];
                 }
 
-                const personId = employeeCodeToId[person.code];
-                if (personId) {
-                    const $container = $(this);
-                    const $roomRow = $container.closest('.room-row');
-                    const roomId = $roomRow.attr('data-room-id');
-                    const targetShiftCode = $container.closest('.assignment-item').find('.shift-select')
-                        .val();
+                const $container = $(this);
+                const $roomRow = $container.closest('.room-row');
+                const roomId = $roomRow.attr('data-room-id');
+                const targetShiftCode = $container.closest('.assignment-item').find('.shift-select')
+                    .val();
 
-                    // 1. Kiểm tra định mức phòng (Authorization)
-                    checkRoomAuthorization(personId, roomId, $roomRow, function(isAuthorized) {
-                        if (!isAuthorized) return;
+                for (const person of persons) {
+                    if (person.shiftKey === 'P') {
+                        await Swal.fire({
+                            icon: 'error',
+                            title: 'Không thể sắp lịch',
+                            text: `Nhân sự ${person.name} đang nghỉ phép (P), không thể sắp vào ca sản xuất.`
+                        });
+                        continue;
+                    }
+
+                    const personId = employeeCodeToId[person.code];
+                    if (personId) {
+                        // 1. Kiểm tra định mức phòng (Authorization)
+                        const isAuthorized = await new Promise(resolve => {
+                            checkRoomAuthorization(personId, roomId, $roomRow, resolve);
+                        });
+                        if (!isAuthorized) continue;
 
                         // 2. Kiểm tra trùng lịch (Time Overlap)
                         const overlapCheck = checkTimeOverlapForEmployee(personId, $container
                             .closest('.assignment-item'));
                         if (overlapCheck.overlap) {
-                            Swal.fire({
+                            await Swal.fire({
                                 icon: 'error',
                                 title: 'Không thể sắp lịch',
-                                text: overlapCheck.message
+                                text: `Nhân sự ${person.name}: ` + overlapCheck.message
                             });
-                            return;
+                            continue;
                         }
 
                         // 3. Kiểm tra lệch ca (Shift Mismatch)
-                        checkShiftMismatch(personId, targetShiftCode, function(canProceed) {
-                            if (canProceed) {
-                                isProgrammaticChange = true;
-                                const newRow = addPersonRow($container, personId);
-                                isProgrammaticChange = false;
-
-                                if (newRow) {
-                                    markRoomDirty($container.closest('.room-row'));
-                                    updateSidebarHighlights();
-                                }
-                            }
+                        const canProceed = await new Promise(resolve => {
+                            checkShiftMismatch(personId, targetShiftCode, resolve);
                         });
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Thông báo',
-                        text: `Không tìm thấy nhân sự có mã ${person.code} trong hệ thống.`
-                    });
+
+                        if (canProceed) {
+                            isProgrammaticChange = true;
+                            const newRow = addPersonRow($container, personId);
+                            isProgrammaticChange = false;
+
+                            if (newRow) {
+                                markRoomDirty($container.closest('.room-row'));
+                            }
+                        }
+                    } else {
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Thông báo',
+                            text: `Không tìm thấy nhân sự có mã ${person.code} trong hệ thống.`
+                        });
+                    }
                 }
+
+                updateSidebarHighlights();
+                $('.draggable-person').removeClass('selected-for-drag');
+
             } catch (err) {
                 console.error("Drop error:", err);
             }
@@ -2688,8 +2741,12 @@
                             ${room_options}
                         </datalist>
                         <div class="mt-2 text-center">
-                            <button class="btn btn-outline-success btn-circle btn-add-shift" title="Thêm ca làm việc">
+                            <button class="btn btn-outline-success btn-circle btn-add-shift mb-1" title="Thêm ca làm việc">
                                 <i class="fas fa-plus"></i> Thêm Ca
+                            </button>
+                            <br>
+                            <button class="btn btn-outline-info btn-circle btn-clone-row" title="Nhân bản toàn bộ ca">
+                                <i class="fas fa-copy"></i> Nhân bản
                             </button>
                         </div>
                         <div class="custom-control custom-checkbox mt-2 text-center">
@@ -3613,7 +3670,7 @@
         }
 
         // --- Logic cho chức năng Clone Công Tác Khác ---
-        let currentCloneShift = null;
+        let currentCloneTarget = null;
         let cloneTargetDates = new Set();
         const reportedDateStr = "{{ $reportedDate }}";
 
@@ -3630,7 +3687,15 @@
         });
 
         $(document).on('click', '.btn-clone-shift', function() {
-            currentCloneShift = $(this).closest('.assignment-item');
+            currentCloneTarget = $(this).closest('.assignment-item');
+            cloneTargetDates.clear();
+            fp.clear();
+            renderCloneDates();
+            $('#modalCloneCustomTask').modal('show');
+        });
+
+        $(document).on('click', '.btn-clone-row', function() {
+            currentCloneTarget = $(this).closest('.room-row');
             cloneTargetDates.clear();
             fp.clear();
             renderCloneDates();
@@ -3676,47 +3741,111 @@
                 return;
             }
 
-            if (!currentCloneShift) return;
+            if (!currentCloneTarget) return;
 
-            const roomRow = currentCloneShift.closest('.room-row');
+            let assignments = [];
+            let roomRow = null;
 
-            // Lấy dữ liệu của 1 ca hiện tại
-            const p_list = [];
-            currentCloneShift.find('.personnel-row').each(function() {
-                const pid = $(this).find('.person-select').val();
-                if (pid) p_list.push({
-                    personnel_id: pid,
-                    notification: $(this).find('.person-notif').val()
+            if (currentCloneTarget.hasClass('assignment-item')) {
+                roomRow = currentCloneTarget.closest('.room-row');
+
+                // Lấy dữ liệu của 1 ca hiện tại
+                const p_list = [];
+                currentCloneTarget.find('.personnel-row').each(function() {
+                    const pid = $(this).find('.person-select').val();
+                    if (pid) p_list.push({
+                        personnel_id: pid,
+                        notification: $(this).find('.person-notif').val()
+                    });
                 });
-            });
 
-            const jobDesc = currentCloneShift.find('.job-desc').html().trim();
-            const shiftName = currentCloneShift.find('.shift-select option:selected').text();
+                const jobDesc = currentCloneTarget.find('.job-desc').html().trim();
+                const shiftName = currentCloneTarget.find('.shift-select option:selected').text();
 
-            if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
-                Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng nhập nội dung công việc.`,
-                    'warning');
-                return;
+                if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
+                    Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng nhập nội dung công việc.`,
+                        'warning');
+                    return;
+                }
+                if (p_list.length === 0) {
+                    Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`,
+                        'warning');
+                    return;
+                }
+
+                const isOffStream = roomRow.find('.off-stream-check').is(':checked') ? 1 : 0;
+                assignments.push({
+                    shift: currentCloneTarget.find('.shift-select').val(),
+                    start_time: currentCloneTarget.find('.start-time-input').val(),
+                    end_time: currentCloneTarget.find('.end-time-input').val(),
+                    job_description: jobDesc,
+                    number_of_employes: currentCloneTarget.find('.person-count-input').val() ||
+                        0,
+                    num_of_per_level_3: currentCloneTarget.find('.professional-count-input')
+                        .val() || 0,
+                    off_stream: isOffStream,
+                    personnel_list: p_list
+                });
+            } else if (currentCloneTarget.hasClass('room-row')) {
+                roomRow = currentCloneTarget;
+
+                let isValid = true;
+                let validationError = '';
+                const isOffStream = roomRow.find('.off-stream-check').is(':checked') ? 1 : 0;
+
+                roomRow.find('.assignment-item:not(.foreign-assignment)').each(function() {
+                    const jobDesc = $(this).find('.job-desc').html().trim();
+                    const shiftName = $(this).find('.shift-select option:selected').text();
+
+                    let pCount = 0;
+                    const p_list = [];
+                    $(this).find('.personnel-row').each(function() {
+                        const pid = $(this).find('.person-select').val();
+                        if (pid) {
+                            pCount++;
+                            p_list.push({
+                                personnel_id: pid,
+                                notification: $(this).find('.person-notif')
+                                .val()
+                            });
+                        }
+                    });
+
+                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
+                        validationError = `Ca ${shiftName}: Vui lòng nhập nội dung công việc.`;
+                        isValid = false;
+                        return false;
+                    }
+                    if (pCount === 0) {
+                        validationError = `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`;
+                        isValid = false;
+                        return false;
+                    }
+
+                    assignments.push({
+                        shift: $(this).find('.shift-select').val(),
+                        start_time: $(this).find('.start-time-input').val(),
+                        end_time: $(this).find('.end-time-input').val(),
+                        job_description: jobDesc,
+                        number_of_employes: $(this).find('.person-count-input').val() ||
+                            0,
+                        num_of_per_level_3: $(this).find('.professional-count-input')
+                            .val() || 0,
+                        off_stream: isOffStream,
+                        personnel_list: p_list
+                    });
+                });
+
+                if (!isValid) {
+                    Swal.fire('Thiếu thông tin', validationError, 'warning');
+                    return;
+                }
+
+                if (assignments.length === 0) {
+                    Swal.fire('Lỗi', 'Không có ca nào để nhân bản.', 'warning');
+                    return;
+                }
             }
-            if (p_list.length === 0) {
-                Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`,
-                    'warning');
-                return;
-            }
-
-            const isOffStream = roomRow.find('.off-stream-check').is(':checked') ? 1 : 0;
-            const singleAssignment = {
-                shift: currentCloneShift.find('.shift-select').val(),
-                start_time: currentCloneShift.find('.start-time-input').val(),
-                end_time: currentCloneShift.find('.end-time-input').val(),
-                job_description: jobDesc,
-                number_of_employes: currentCloneShift.find('.person-count-input').val() || 0,
-                num_of_per_level_3: currentCloneShift.find('.professional-count-input').val() || 0,
-                off_stream: isOffStream,
-                personnel_list: p_list
-            };
-
-            const assignments = [singleAssignment];
 
             let spId = roomRow.attr('data-sp-id');
             const roomId = roomRow.attr('data-room-id');
