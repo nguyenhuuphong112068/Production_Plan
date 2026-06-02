@@ -490,7 +490,28 @@
                             </td>
                         </tr>
                     @endif
-                    @foreach ($tasks as $task)
+                    @php
+                        $sortedTasks = collect($tasks)->map(function($task, $index) {
+                            $hasJob = false;
+                            if (!empty($task->assignments) && count($task->assignments) > 0) {
+                                foreach ($task->assignments as $a) {
+                                    $desc = trim(strip_tags(str_replace(['&nbsp;', '<br>', '<br/>'], '', $a->Job_description ?? '')));
+                                    if ($desc !== '' && $desc !== 'Nội dung...') {
+                                        $hasJob = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            return (object)[
+                                'task' => $task,
+                                'hasJob' => $hasJob,
+                                'originalIndex' => $index
+                            ];
+                        })->sortBy(function($item) {
+                            return ($item->hasJob ? 0 : 1) . '-' . sprintf('%06d', $item->originalIndex);
+                        })->pluck('task')->all();
+                    @endphp
+                    @foreach ($sortedTasks as $task)
                         <tr
                             class="{{ $task->assignments->first()->off_stream ?? 0 ? 'off-stream-row' : '' }} {{ count($task->assignments ?? []) === 0 ? 'no-assignment' : '' }}">
                             <!-- Phòng / Khu vực -->
