@@ -493,6 +493,11 @@
                         
                         $groupsById = clone $groups;
                         $groupsById = $groupsById->keyBy('id')->all();
+
+                        $roomOptionsHtml = '';
+                        foreach ($rooms as $r) {
+                            $roomOptionsHtml .= '<option value="' . $r->id . '">' . htmlspecialchars($r->code . ' - ' . $r->name . ' - ' . $r->main_equiment_name) . '</option>';
+                        }
                     @endphp
                     @foreach ($datas as $data)
                         <tr class="main-employee-row">
@@ -661,14 +666,7 @@
                                                                         class="form-control form-control-sm room-id-select mr-1"
                                                                         style="width: 250px;" {{ $disabled }}>
                                                                         <option value="">-- Phòng --</option>
-                                                                        @foreach ($rooms as $r)
-                                                                            <option value="{{ $r->id }}"
-                                                                                {{ $r->id == $rId ? 'selected' : '' }}>
-                                                                                {{ $r->code }} -
-                                                                                {{ $r->name }} -
-                                                                                {{ $r->main_equiment_name }}
-                                                                            </option>
-                                                                        @endforeach
+                                                                        {!! str_replace('value="' . $rId . '"', 'value="' . $rId . '" selected', $roomOptionsHtml) !!}
                                                                     </select>
                                                                     <select
                                                                         class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
@@ -756,14 +754,7 @@
                                                                     class="form-control form-control-sm room-id-select mr-1"
                                                                     style="width: 250px;" {{ $disabled }}>
                                                                     <option value="">-- Phòng --</option>
-                                                                    @foreach ($rooms as $r)
-                                                                        <option value="{{ $r->id }}"
-                                                                            {{ $r->id == $rId ? 'selected' : '' }}>
-                                                                            {{ $r->code }} - {{ $r->name }}
-                                                                            -
-                                                                            {{ $r->main_equiment_name }}
-                                                                        </option>
-                                                                    @endforeach
+                                                                    {!! str_replace('value="' . $rId . '"', 'value="' . $rId . '" selected', $roomOptionsHtml) !!}
                                                                 </select>
                                                                 <select
                                                                     class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
