@@ -152,6 +152,8 @@ Route::prefix('/Schedual')
                                 Route::get('', 'index')->name('index');
                                 Route::get('open', 'open')->name('open');
                                 Route::get('history', 'history')->name('history');
+                                Route::get('compare', 'compare')->name('compare');
+                                Route::get('compare_data', 'compare_data')->name('compare_data');
                         });
 
                 Route::prefix('/finised')

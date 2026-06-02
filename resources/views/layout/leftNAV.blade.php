@@ -531,6 +531,13 @@
                             </a>
                         </li>
 
+                        <li class="nav-item">
+                            <a href="{{ route('pages.Schedual.audit.compare') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>So Sánh Lịch Sử </p>
+                            </a>
+                        </li>
+
                         @if (user_has_permission(session('user')['userId'], 'layout_finised', 'boolean'))
                             <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.finised.index') }}" class="nav-link">

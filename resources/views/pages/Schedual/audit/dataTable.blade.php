@@ -124,7 +124,6 @@
                             <td>{{ $loop->iteration }}
                                 @if (session('user')['userGroup'] == 'Admin')
                                     <div> {{ $data->id }} </div> <br>
-                                    <div> {{ $data->stage_plan_id }} </div>
                                 @endif
                             </td>
                             <td>
@@ -246,7 +245,7 @@
                     if (!rows || rows.length === 0) {
                         $('#data_table_history_body').html(
                             '<tr><td colspan="11" class="text-center text-muted">Không có lịch sử</td></tr>'
-                            );
+                        );
                     } else {
                         rows.forEach(function(r, idx) {
                             const isLatest = (idx === 0);
