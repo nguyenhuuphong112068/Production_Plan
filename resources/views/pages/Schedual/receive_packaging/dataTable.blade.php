@@ -177,6 +177,14 @@
                                 <tbody>
 
                                     @foreach ($datas->sortBy('receive_packaging_date') as $data)
+                                        @php
+                                            $countType0 = 0;
+                                            $countType1 = 0;
+                                            if (isset($historyCounts) && isset($historyCounts[$data->id])) {
+                                                $countType0 = $historyCounts[$data->id]->where('type_packaging', 0)->first()->count ?? 0;
+                                                $countType1 = $historyCounts[$data->id]->where('type_packaging', 1)->first()->count ?? 0;
+                                            }
+                                        @endphp
                                         <tr>
                                             <td>{{ $loop->iteration }} <br>
                                                 @if (session('user')['userGroup'] == 'Admin')
@@ -231,11 +239,14 @@
                                                             {{ $data->receive_packaging_date ? \Carbon\Carbon::parse($data->receive_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
                                                         <button type="button"
-                                                            class="btn btn-sm btn-outline-info show-packaging-history mt-0"
+                                                            class="btn btn-sm btn-outline-info show-packaging-history mt-0 position-relative"
                                                             data-id="{{ $data->id }}" data-type="0"
                                                             title="Lịch sử thay đổi"
                                                             style="padding:2px 6px; font-size:12px; margin-left: auto;">
                                                             <i class="fas fa-history"></i>
+                                                            @if($countType0 > 0)
+                                                                <span class="badge badge-danger position-absolute" style="top: -5px; right: -5px; font-size: 10px; padding: 2px 4px;">{{ $countType0 }}</span>
+                                                            @endif
                                                         </button>
                                                     </div>
                                                     <div class="tc-confirm-info">
@@ -267,11 +278,14 @@
                                                             {{ $data->receive_second_packaging_date ? \Carbon\Carbon::parse($data->receive_second_packaging_date)->format('d/m/Y') : '' }}
                                                         @endif
                                                         <button type="button"
-                                                            class="btn btn-sm btn-outline-info show-packaging-history mt-0"
+                                                            class="btn btn-sm btn-outline-info show-packaging-history mt-0 position-relative"
                                                             data-id="{{ $data->id }}" data-type="1"
                                                             title="Lịch sử thay đổi"
                                                             style="padding:2px 6px; font-size:12px; margin-left: auto;">
                                                             <i class="fas fa-history"></i>
+                                                            @if($countType1 > 0)
+                                                                <span class="badge badge-danger position-absolute" style="top: -5px; right: -5px; font-size: 10px; padding: 2px 4px;">{{ $countType1 }}</span>
+                                                            @endif
                                                         </button>
                                                     </div>
                                                     <div class="tc-confirm-info">
@@ -362,6 +376,9 @@
                             <th>Stt</th>
                             <th>Ngày nhận</th>
                             <th>Version</th>
+                            @if(session('user')['userGroup'] == 'Admin')
+                                <th>Nguồn cập nhật</th>
+                            @endif
                             <th>Người tạo</th>
                             <th>Ngày tạo</th>
                         </tr>
@@ -386,6 +403,7 @@
 
 
 <script>
+    const isAdmin = @json(session('user')['userGroup'] == 'Admin');
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
         $('#data_table_Schedual_list').DataTable({
@@ -675,11 +693,14 @@
                             .receive_packaging_date).format('DD/MM/YYYY') : '-';
                         let createdAtText = item.created_at ? moment(item.created_at)
                             .format('DD/MM/YYYY HH:mm') : '-';
+                        let typeText = item.type ? item.type : '-';
+                        let typeColumn = isAdmin ? `<td>${typeText}</td>` : '';
                         html += `
                             <tr>
                                 <td>${index + 1}</td>
                                 <td>${dateText}</td>
                                 <td>${item.ver}</td>
+                                ${typeColumn}
                                 <td>${item.created_by}</td>
                                 <td>${createdAtText}</td>
                             </tr>

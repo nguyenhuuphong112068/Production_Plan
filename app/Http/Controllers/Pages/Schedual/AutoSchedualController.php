@@ -2176,7 +2176,7 @@ class AutoSchedualController extends Controller
     }
 
 
-    protected function syncPackagingDate($stagePlanId, $date, $type)
+    protected function syncPackagingDate($stagePlanId, $date, $type, $updateType = null)
     {
         $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first(['received', 'received_second_packaging']);
         if ($plan) {
@@ -2194,12 +2194,16 @@ class AutoSchedualController extends Controller
             ->orderBy('ver', 'desc')
             ->first();
 
-        if (! $latest || $latest->receive_packaging_date != $date) {
+        $latestDateStr = ($latest && $latest->receive_packaging_date) ? \Carbon\Carbon::parse($latest->receive_packaging_date)->format('Y-m-d') : null;
+        $newDateStr = $date ? \Carbon\Carbon::parse($date)->format('Y-m-d') : null;
+
+        if (! $latest || $latestDateStr !== $newDateStr) {
             DB::table('packaging_issuance_date')->insert([
                 'stage_plane_id' => $stagePlanId,
                 'type_packaging' => $type,
                 'receive_packaging_date' => $date,
                 'ver' => ($latest->ver ?? 0) + 1,
+                'type' => $updateType,
                 'created_at' => now(),
                 'created_by' => session('user')['fullName'] ?? 'System',
             ]);
@@ -2260,8 +2264,8 @@ class AutoSchedualController extends Controller
             // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
             if ($submit == 1) {
 
-                $this->syncPackagingDate($stageId, $receiveDate, 0);
-                $this->syncPackagingDate($stageId, $receiveDate, 1);
+                $this->syncPackagingDate($stageId, $receiveDate, 0, 'AutoSchedualController.commitSimulatedSchedule');
+                $this->syncPackagingDate($stageId, $receiveDate, 1, 'AutoSchedualController.commitSimulatedSchedule');
 
                 DB::table('stage_plan_history')
                     ->insert([

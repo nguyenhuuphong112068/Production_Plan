@@ -1460,7 +1460,7 @@ class SchedualController extends Controller
             foreach ($assignments as $assignmentId => $items) {
                 $first = $items->first();
                 $names = $items->pluck('employee_name')->implode(', ');
-                
+
                 $personnelEvents[] = [
                     'id' => 'personnel-' . $assignmentId,
                     'resourceId' => 'personnel-' . $first->room_id,
@@ -1758,6 +1758,8 @@ class SchedualController extends Controller
                         $receiveDate->subDay();
                     }
 
+                    $receiveDateStr = $receiveDate->toDateString();
+
                     DB::table('stage_plan')
                         ->where('id', $product['id'])
                         ->update([
@@ -1773,8 +1775,8 @@ class SchedualController extends Controller
                             'schedualed' => 1,
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
-                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
-                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
+                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                         ]);
                 }
 
@@ -1791,8 +1793,8 @@ class SchedualController extends Controller
                         ->where('stage_plan_id', $product['id'])
                         ->max('version') ?? 0;
 
-                    $this->syncPackagingDate($product['id'], $receiveDate, 0);
-                    $this->syncPackagingDate($product['id'], $receiveDate, 1);
+                    $this->syncPackagingDate($product['id'], $receiveDate, 0, 'SchedualController.store');
+                    $this->syncPackagingDate($product['id'], $receiveDate, 1, 'SchedualController.store');
 
                     $update_row = DB::table('stage_plan')->where('id', $product['id'])->first();
                     if ($update_row) {
@@ -2273,7 +2275,7 @@ class SchedualController extends Controller
                     while (in_array($receiveDate->toDateString(), $offDays)) {
                         $receiveDate->subDay();
                     }
-
+                    $receiveDateStr = $receiveDate->toDateString();
                     $idsArray = explode(',', $realId);
                     $original_event = DB::table('stage_plan')->where('id', $idsArray[0])->first();
 
@@ -2281,8 +2283,8 @@ class SchedualController extends Controller
                         'schedualed_by' => session('user')['fullName'],
                         'schedualed_at' => now(),
                         'accept_quarantine' => 0,
-                        'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
-                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
+                        'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                     ];
 
                     // 🔹 [Audit] Đánh dấu nếu Phân xưởng (PXV) tác động vào lịch Bảo trì - Hiệu chuẩn (stage_code 8)
@@ -2353,21 +2355,18 @@ class SchedualController extends Controller
                     // Toàn bộ logic Cascade đã được tính toán ở Frontend và gửi về qua mảng 'changes'.
                     // Loại bỏ cơ chế tự động tịnh tiến ở Backend để tránh sai lệch dữ liệu.
 
-                    Log::info('[History Debug] idsArray:', ['ids' => $idsArray, 'reason' => $request->reason]);
+
 
                     foreach ($idsArray as $sid) {
 
                         $update_row = DB::table('stage_plan')->where('id', $sid)->first();
 
-                        Log::info('[History Debug] checking sid=' . $sid, [
-                            'submit'    => $update_row->submit ?? 'NULL',
-                            'plan_list' => $update_row->plan_list_id ?? 'NULL',
-                        ]);
+
 
                         if ($update_row && $update_row->submit == 1) {
 
-                            $this->syncPackagingDate($sid, $receiveDate, 0);
-                            $this->syncPackagingDate($sid, $receiveDate, 1);
+                            $this->syncPackagingDate($sid, $receiveDate, 0, 'SchedualController.multiStore');
+                            $this->syncPackagingDate($sid, $receiveDate, 1, 'SchedualController.multiStore');
 
                             try {
                                 DB::table('stage_plan_history')
@@ -4490,8 +4489,8 @@ class SchedualController extends Controller
                     'scheduling_direction' => $direction,
                     'AHU_group' => $AHU_group ?? null,
                     'schedualed_at' => now(),
-                    'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
-                    'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
+                    'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_packaging_date END"),
+                    'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
                 ]);
 
             $submit = DB::table('stage_plan')->where('id', $stageId)->value('submit');
@@ -4499,8 +4498,8 @@ class SchedualController extends Controller
             // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
             if ($submit == 1) {
 
-                $this->syncPackagingDate($stageId, $receiveDate, 0);
-                $this->syncPackagingDate($stageId, $receiveDate, 1);
+                $this->syncPackagingDate($stageId, $receiveDate, 0, 'SchedualController.update');
+                $this->syncPackagingDate($stageId, $receiveDate, 1, 'SchedualController.update');
 
                 $update_row = DB::table('stage_plan')->where('id', $stageId)->first();
                 if ($update_row) {
@@ -6745,7 +6744,7 @@ class SchedualController extends Controller
     }
 
 
-    protected function syncPackagingDate($stagePlanId, $date, $type)
+    protected function syncPackagingDate($stagePlanId, $date, $type, $updateType = null)
     {
         $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first(['received', 'received_second_packaging']);
         if ($plan) {
@@ -6763,12 +6762,16 @@ class SchedualController extends Controller
             ->orderBy('ver', 'desc')
             ->first();
 
-        if (! $latest || $latest->receive_packaging_date != $date) {
+        $latestDateStr = ($latest && $latest->receive_packaging_date) ? \Carbon\Carbon::parse($latest->receive_packaging_date)->format('Y-m-d') : null;
+        $newDateStr = $date ? \Carbon\Carbon::parse($date)->format('Y-m-d') : null;
+
+        if (! $latest || $latestDateStr !== $newDateStr) {
             DB::table('packaging_issuance_date')->insert([
                 'stage_plane_id' => $stagePlanId,
                 'type_packaging' => $type,
                 'receive_packaging_date' => $date,
                 'ver' => ($latest->ver ?? 0) + 1,
+                'type' => $updateType,
                 'created_at' => now(),
                 'created_by' => session('user')['fullName'] ?? 'System',
             ]);

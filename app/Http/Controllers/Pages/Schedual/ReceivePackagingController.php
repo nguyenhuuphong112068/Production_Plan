@@ -77,10 +77,18 @@ class ReceivePackagingController extends Controller
             $data->comments = $comments[$data->plan_master_id] ?? collect();
         }
 
+        $stagePlanIds = $datas->pluck('id')->unique();
+        $historyCounts = DB::table('packaging_issuance_date')
+            ->whereIn('stage_plane_id', $stagePlanIds)
+            ->select('stage_plane_id', 'type_packaging', DB::raw('count(*) as count'))
+            ->groupBy('stage_plane_id', 'type_packaging')
+            ->get()
+            ->groupBy('stage_plane_id');
+
         session()->put(['title' => 'LỊCH NHẬN BAO BÌ']);
         return view('pages.Schedual.receive_packaging.list', [
-
             'datas' => $datas,
+            'historyCounts' => $historyCounts,
         ]);
     }
 
@@ -137,13 +145,13 @@ class ReceivePackagingController extends Controller
 
         if (in_array($name, ['receive_packaging_date', 'receive_second_packaging_date'])) {
             $type = ($name == 'receive_packaging_date') ? 0 : 1;
-            $this->syncPackagingDate($id, $value, $type);
+            $this->syncPackagingDate($id, $value, $type, 'ReceivePackagingController.updateInput');
         }
 
         return response()->json(['updateValue' => $value]);
     }
 
-    protected function syncPackagingDate($stagePlanId, $date, $type)
+    protected function syncPackagingDate($stagePlanId, $date, $type, $updateType = null)
     {
         $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first(['received', 'received_second_packaging']);
         if ($plan) {
@@ -157,12 +165,16 @@ class ReceivePackagingController extends Controller
             ->orderBy('ver', 'desc')
             ->first();
 
-        if (!$latest || $latest->receive_packaging_date != $date) {
+        $latestDateStr = ($latest && $latest->receive_packaging_date) ? \Carbon\Carbon::parse($latest->receive_packaging_date)->format('Y-m-d') : null;
+        $newDateStr = $date ? \Carbon\Carbon::parse($date)->format('Y-m-d') : null;
+
+        if (! $latest || $latestDateStr !== $newDateStr) {
             DB::table('packaging_issuance_date')->insert([
                 'stage_plane_id'         => $stagePlanId,
                 'type_packaging'         => $type,
                 'receive_packaging_date' => $date,
                 'ver'                    => ($latest->ver ?? 0) + 1,
+                'type'                   => $updateType,
                 'created_at'             => now(),
                 'created_by'             => session('user')['fullName'] ?? 'System'
             ]);

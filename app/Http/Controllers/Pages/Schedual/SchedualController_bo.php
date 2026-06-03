@@ -1724,8 +1724,8 @@ class SchedualController extends Controller
                         ->where('stage_plan_id', $product['id'])
                         ->max('version') ?? 0;
 
-                    $this->syncPackagingDate($product['id'], $receiveDate, 0);
-                    $this->syncPackagingDate($product['id'], $receiveDate, 1);
+                    $this->syncPackagingDate($product['id'], $receiveDate, 0, 'SchedualController_bo.store');
+                    $this->syncPackagingDate($product['id'], $receiveDate, 1, 'SchedualController_bo.store');
 
                     DB::table('stage_plan_history')->insert([
                         'stage_plan_id' => $product['id'],
@@ -2250,8 +2250,8 @@ class SchedualController extends Controller
 
                         if ($update_row && $update_row->submit == 1) {
 
-                            $this->syncPackagingDate($sid, $receiveDate, 0);
-                            $this->syncPackagingDate($sid, $receiveDate, 1);
+                            $this->syncPackagingDate($sid, $receiveDate, 0, 'SchedualController_bo.multiStore');
+                            $this->syncPackagingDate($sid, $receiveDate, 1, 'SchedualController_bo.multiStore');
 
                             DB::table('stage_plan_history')
                                 ->insert([
@@ -4373,8 +4373,8 @@ class SchedualController extends Controller
             // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
             if ($submit == 1) {
 
-                $this->syncPackagingDate($stageId, $receiveDate, 0);
-                $this->syncPackagingDate($stageId, $receiveDate, 1);
+                $this->syncPackagingDate($stageId, $receiveDate, 0, 'SchedualController_bo.update');
+                $this->syncPackagingDate($stageId, $receiveDate, 1, 'SchedualController_bo.update');
 
                 DB::table('stage_plan_history')
                     ->insert([
@@ -6593,7 +6593,7 @@ class SchedualController extends Controller
     }
 
 
-    protected function syncPackagingDate($stagePlanId, $date, $type)
+    protected function syncPackagingDate($stagePlanId, $date, $type, $updateType = null)
     {
         $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first(['received', 'received_second_packaging']);
         if ($plan) {
@@ -6611,12 +6611,16 @@ class SchedualController extends Controller
             ->orderBy('ver', 'desc')
             ->first();
 
-        if (! $latest || $latest->receive_packaging_date != $date) {
+        $latestDateStr = ($latest && $latest->receive_packaging_date) ? \Carbon\Carbon::parse($latest->receive_packaging_date)->format('Y-m-d') : null;
+        $newDateStr = $date ? \Carbon\Carbon::parse($date)->format('Y-m-d') : null;
+
+        if (! $latest || $latestDateStr !== $newDateStr) {
             DB::table('packaging_issuance_date')->insert([
                 'stage_plane_id' => $stagePlanId,
                 'type_packaging' => $type,
                 'receive_packaging_date' => $date,
                 'ver' => ($latest->ver ?? 0) + 1,
+                'type' => $updateType,
                 'created_at' => now(),
                 'created_by' => session('user')['fullName'] ?? 'System',
             ]);
