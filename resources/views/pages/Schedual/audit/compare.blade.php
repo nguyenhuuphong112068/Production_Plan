@@ -40,21 +40,11 @@
                             </div>
                             <small class="text-muted mt-1 d-block">
                                 <i class="fas fa-info-circle text-primary"></i>
-                                Hệ thống lấy bản lưu gần nhất trước thời điểm này để so sánh với lịch hiện tại.
+                                Hệ thống sẽ hiển thị lịch hiện hành với các các bản lưu thay đổi trong khoảng thời gian làm
+                                mốc so sánh đến hiên tại.
                             </small>
                         </div>
                         <div class="col-md-4 mt-3 mt-md-0">
-                            <div class="d-flex align-items-center mt-3">
-                                <div class="custom-control custom-switch mr-3">
-                                    <input type="checkbox" class="custom-control-input" id="toggle-finished">
-                                    <label class="custom-control-label font-weight-bold" for="toggle-finished"
-                                        style="font-size:13px; color:#003A4F;">
-                                        Hiển thị lịch đã hoàn thành
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 mt-3 mt-md-0">
                             {{-- Legend --}}
                             <div class="d-flex flex-column" style="font-size:12px; gap:4px;">
                                 <span><span class="badge" style="background:#dc3545; color:white;">Cũ</span> &nbsp;Giá trị
@@ -63,6 +53,18 @@
                                     hiện tại</span>
                                 <span><span class="badge" style="background:#6c757d; color:white;">—</span> &nbsp;Không
                                     thay đổi</span>
+                            </div>
+
+                        </div>
+                        <div class="col-md-3 mt-3 mt-md-0">
+                            <div class="d-flex align-items-center mt-3">
+                                <div class="custom-control custom-switch mr-3">
+                                    <input type="checkbox" class="custom-control-input" id="toggle-finished">
+                                    <label class="custom-control-label font-weight-bold" for="toggle-finished"
+                                        style="font-size:13px; color:#003A4F;">
+                                        Hiển thị lịch đã hoàn thành
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -321,9 +323,11 @@
 
                         let changeBadgeHtml = '';
                         if (isNewPlan) {
-                            changeBadgeHtml = `<span class="change-count-badge" style="background:#28a745">Lịch mới</span>`;
+                            changeBadgeHtml =
+                                `<span class="change-count-badge" style="background:#28a745">Lịch mới</span>`;
                         } else if (changeCount > 0) {
-                            changeBadgeHtml = `<span class="change-count-badge">${changeCount} thay đổi</span>`;
+                            changeBadgeHtml =
+                                `<span class="change-count-badge">${changeCount} thay đổi</span>`;
                         }
 
                         let statusBadge = currentItem.finished == 1 ?
@@ -332,9 +336,9 @@
 
                         function renderDiffField(label, icon, type, showBadge = false) {
                             let newVal = type === 'room' ? currentItem.current_room_name :
-                                         type === 'start' ? newStart :
-                                         type === 'end' ? newEnd :
-                                         createdDate;
+                                type === 'start' ? newStart :
+                                type === 'end' ? newEnd :
+                                createdDate;
 
                             if (isNewPlan) {
                                 let valueHtml = `<div class="field-same d-flex justify-content-between align-items-center">
@@ -350,21 +354,21 @@
                             let oldValsHtml = '';
                             items.forEach(h => {
                                 let oldVal = type === 'room' ? h.old_room_name :
-                                             type === 'start' ? formatDate(h.old_start) :
-                                             type === 'end' ? formatDate(h.old_end) :
-                                             formatDate(h.history_saved_at);
-                                
+                                    type === 'start' ? formatDate(h.old_start) :
+                                    type === 'end' ? formatDate(h.old_end) :
+                                    formatDate(h.history_saved_at);
+
                                 oldValsHtml += `<div class="field-old mb-1 d-flex justify-content-between align-items-center" title="Version ${h.version}">
                                     <span>${oldVal || '—'}</span>
                                     ${showBadge ? `<span class="badge badge-danger">v.${h.version}</span>` : ''}
                                 </div>`;
                             });
-                            
+
                             let valueHtml = oldValsHtml + `<div class="field-new mt-1 d-flex justify-content-between align-items-center">
                                     <span>${newVal || '—'}</span>
                                     ${showBadge ? `<span class="badge badge-success">Hiện hành</span>` : ''}
                                 </div>`;
-                            
+
                             return `<div class="diff-field changed">
                                         <div class="field-label"><i class="${icon}"></i> ${label}</div>
                                         ${valueHtml}
