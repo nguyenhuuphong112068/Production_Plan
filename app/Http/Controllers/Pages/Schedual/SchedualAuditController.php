@@ -278,12 +278,58 @@ class SchedualAuditController extends Controller
                 DB::raw("COALESCE(pm.actual_batch, pm.batch) AS batch"),
                 'p.finished',
                 'p.stage_code',
-                'p.created_date as current_created_date',
+                'p.schedualed_at as current_created_date',
                 'h.version'
             )
             ->orderBy('h.created_date', 'desc')
             ->get();
 
-        return response()->json($changedPlans);
+        // Bước 3: Lấy các lịch tạo mới trong khoảng thời gian này (không có trong history)
+        $newPlans = DB::table('stage_plan as p')
+            ->join('plan_master as pm', 'p.plan_master_id', '=', 'pm.id')
+            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+            ->join('finished_product_category as fpc', 'p.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->leftJoin('product_name as pn', 'ic.product_name_id', '=', 'pn.id')
+            ->leftJoin('room as current_room', 'p.resourceId', '=', 'current_room.id')
+            ->leftJoin('stage_plan_history as h', 'p.id', '=', 'h.stage_plan_id')
+            ->whereNull('h.stage_plan_id')
+            ->where('p.deparment_code', $production)
+            ->where('p.schedualed_at', '>=', $targetDate)
+            ->where('p.active', 1)
+            ->where('p.stage_code', '<=', 7)
+            ->select(
+                'p.id as plan_id',
+                DB::raw("
+                    CASE
+                            WHEN p.stage_code >=8 THEN p.title
+                            ELSE CONCAT(
+                            pn.name,
+                            '-',
+                            COALESCE(pm.actual_batch, pm.batch)
+                            )
+                    END AS plan_title
+                "),
+                'pn.name as product_name',
+                'p.start as current_start',
+                DB::raw("NULL as old_start"),
+                'p.end as current_end',
+                DB::raw("NULL as old_end"),
+                'current_room.name as current_room_name',
+                DB::raw("NULL as old_room_name"),
+                DB::raw("NULL as history_saved_at"),
+                'fpc.finished_product_code',
+                DB::raw("COALESCE(pm.actual_batch, pm.batch) AS batch"),
+                'p.finished',
+                'p.stage_code',
+                'p.schedualed_at as current_created_date',
+                DB::raw("1 as version")
+            )
+            ->orderBy('p.schedualed_at', 'desc')
+            ->get();
+
+        $allPlans = $changedPlans->merge($newPlans);
+
+        return response()->json($allPlans);
     }
 }

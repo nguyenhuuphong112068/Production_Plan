@@ -317,48 +317,55 @@
                         let createdDate = formatDate(currentItem.current_created_date);
 
                         let changeCount = items.length;
+                        let isNewPlan = changeCount === 1 && currentItem.history_saved_at === null;
+
+                        let changeBadgeHtml = '';
+                        if (isNewPlan) {
+                            changeBadgeHtml = `<span class="change-count-badge" style="background:#28a745">Lịch mới</span>`;
+                        } else if (changeCount > 0) {
+                            changeBadgeHtml = `<span class="change-count-badge">${changeCount} thay đổi</span>`;
+                        }
 
                         let statusBadge = currentItem.finished == 1 ?
                             '<span class="badge-finished"><i class="fas fa-check-circle mr-1"></i>Đã hoàn thành</span>' :
                             '<span class="badge-pending"><i class="fas fa-clock mr-1"></i>Lịch Lý Thuyết</span>';
 
-                        function renderDiffField(label, icon, type) {
-                            let oldValsHtml = '';
-                            let isAnyChanged = false;
-                            
+                        function renderDiffField(label, icon, type, showBadge = false) {
                             let newVal = type === 'room' ? currentItem.current_room_name :
                                          type === 'start' ? newStart :
                                          type === 'end' ? newEnd :
                                          createdDate;
 
+                            if (isNewPlan) {
+                                let valueHtml = `<div class="field-same d-flex justify-content-between align-items-center">
+                                    <span>${newVal || '—'}</span>
+                                    ${showBadge ? `<span class="badge badge-success">Lịch mới</span>` : ''}
+                                </div>`;
+                                return `<div class="diff-field">
+                                            <div class="field-label"><i class="${icon}"></i> ${label}</div>
+                                            ${valueHtml}
+                                        </div>`;
+                            }
+
+                            let oldValsHtml = '';
                             items.forEach(h => {
                                 let oldVal = type === 'room' ? h.old_room_name :
                                              type === 'start' ? formatDate(h.old_start) :
                                              type === 'end' ? formatDate(h.old_end) :
                                              formatDate(h.history_saved_at);
                                 
-                                if (oldVal != newVal) isAnyChanged = true;
                                 oldValsHtml += `<div class="field-old mb-1 d-flex justify-content-between align-items-center" title="Version ${h.version}">
                                     <span>${oldVal || '—'}</span>
-                                    <span class="badge badge-danger">v.${h.version}</span>
+                                    ${showBadge ? `<span class="badge badge-danger">v.${h.version}</span>` : ''}
                                 </div>`;
                             });
                             
-                            let valueHtml = '';
-                            if (isAnyChanged) {
-                                valueHtml = oldValsHtml + `<div class="field-new mt-1 d-flex justify-content-between align-items-center">
+                            let valueHtml = oldValsHtml + `<div class="field-new mt-1 d-flex justify-content-between align-items-center">
                                     <span>${newVal || '—'}</span>
-                                    <span class="badge badge-success">Hiện hành</span>
+                                    ${showBadge ? `<span class="badge badge-success">Hiện hành</span>` : ''}
                                 </div>`;
-                            } else {
-                                valueHtml = `<div class="field-same d-flex justify-content-between align-items-center">
-                                    <span>${newVal || '—'}</span>
-                                    <span class="badge badge-success">Hiện hành</span>
-                                </div>`;
-                            }
                             
-                            let classChanged = isAnyChanged ? 'changed' : '';
-                            return `<div class="diff-field ${classChanged}">
+                            return `<div class="diff-field changed">
                                         <div class="field-label"><i class="${icon}"></i> ${label}</div>
                                         ${valueHtml}
                                     </div>`;
@@ -372,12 +379,12 @@
                                 <span class="product-code">${currentItem.finished_product_code}</span>
     
                                 <span class="plan-title-text">· ${currentItem.plan_title}</span>
-                                ${changeCount > 0 ? `<span class="change-count-badge">${changeCount} thay đổi</span>` : ''}
+                                ${changeBadgeHtml}
                             </div>
                             <div>${statusBadge}</div>
                         </div>
                         <div class="card-body-inner">
-                            ${renderDiffField('Phòng', 'fas fa-door-open', 'room')}
+                            ${renderDiffField('Phòng', 'fas fa-door-open', 'room', true)}
                             ${renderDiffField('Bắt Đầu', 'fas fa-play-circle', 'start')}
                             ${renderDiffField('Kết Thúc', 'fas fa-stop-circle', 'end')}
                             ${renderDiffField('Ngày Tạo Lịch', 'fas fa-calendar-plus', 'created')}
