@@ -602,11 +602,36 @@ class PersonnelController extends Controller
                     }
                 }
             } else {
-                // Đánh dấu tất cả room là inactive trước
-                DB::table('employee_assignments')
+                // Get list of submitted room_id & group_id pairs
+                $submittedPairs = [];
+                foreach ($ids as $item) {
+                    if (empty($item)) continue;
+                    $parts = explode(':', $item);
+                    $roomId = $parts[0];
+                    $submittedGroupId = $parts[3] ?? null;
+
+                    if ($submittedGroupId) {
+                        $groupId = $submittedGroupId;
+                    } else {
+                        $room = DB::table('room')->where('id', $roomId)->first();
+                        $groupCode = $room->group_code ?? '';
+                        $groupId = DB::table('stage_groups')->where('code', $groupCode)->value('id') ?? 0;
+                    }
+                    $submittedPairs[] = $groupId . '_' . $roomId;
+                }
+
+                // Delete assignments that are NOT in the submitted list
+                $currentAssignments = DB::table('employee_assignments')
                     ->where('employees_id', $employeeId)
                     ->where('room_id', '>', 0)
-                    ->update(['active' => 0]);
+                    ->get();
+
+                foreach ($currentAssignments as $ca) {
+                    $pair = $ca->group_id . '_' . $ca->room_id;
+                    if (!in_array($pair, $submittedPairs)) {
+                        DB::table('employee_assignments')->where('id', $ca->id)->delete();
+                    }
+                }
 
                 foreach ($ids as $item) {
                     if (empty($item)) continue;
