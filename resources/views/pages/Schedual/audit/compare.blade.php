@@ -301,7 +301,15 @@
                 </div>
                 <div id="${collapseId}" class="collapse ${showClass}" aria-labelledby="heading${sc}">
                     <div class="card-body bg-light">
-                        <div class="row">
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                                </div>
+                                <input type="text" class="form-control search-plan-input" data-stage="${sc}" placeholder="Tìm kiếm mã sản phẩm, tên lịch, phòng, thời gian...">
+                            </div>
+                        </div>
+                        <div class="row" id="stage-list-${sc}">
             `;
 
                     let planGroups = {};
@@ -376,7 +384,7 @@
                         }
 
                         html += `
-                <div class="col-md-6 mb-3">
+                <div class="col-md-6 mb-3 plan-item-card">
                     <div class="diff-card h-100 bg-white" data-finished="${currentItem.finished}">
                         <div class="card-header-info">
                             <div class="d-flex align-items-center" style="gap:10px;">
@@ -446,6 +454,26 @@
                 if (allData.length > 0) {
                     renderResults(allData);
                 }
+            });
+
+            // Search functionality in each stage
+            $('#compare-result').on('input', '.search-plan-input', function() {
+                let stage = $(this).data('stage');
+                let searchTerm = $(this).val().toLowerCase();
+                // Normalize for Vietnamese search (remove accents)
+                let normalizedSearchTerm = searchTerm.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                
+                let $listContainer = $('#stage-list-' + stage);
+                $listContainer.find('.plan-item-card').each(function() {
+                    let text = $(this).text().toLowerCase();
+                    let normalizedText = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    
+                    if (normalizedText.indexOf(normalizedSearchTerm) > -1) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
             });
         });
     </script>
