@@ -316,7 +316,7 @@ class PersonnelController extends Controller
             foreach ($employees as $emp) {
                 // 1. Kiểm tra/Tạo nhân viên
                 $employee = DB::table('employees')->where('code', $emp->employeeId)->first();
-                
+
                 // Rule: "các nhân sự có employees.resign không tiến hành cập nhật lại"
                 if ($employee && $employee->resign == 1) {
                     continue;
@@ -324,7 +324,7 @@ class PersonnelController extends Controller
 
                 $isWarehouse = !empty($emp->is_warehouse);
                 $isAllowedWarehouse = $isWarehouse && in_array((string)$emp->employeeId, $warehouseAllowedCodes);
-                
+
                 $resignVal = $isWarehouse ? ($isAllowedWarehouse ? 0 : 1) : 0;
                 $activeVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 1;
                 $groupIdVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 0;
@@ -629,7 +629,21 @@ class PersonnelController extends Controller
                 foreach ($currentAssignments as $ca) {
                     $pair = $ca->group_id . '_' . $ca->room_id;
                     if (!in_array($pair, $submittedPairs)) {
-                        DB::table('employee_assignments')->where('id', $ca->id)->delete();
+                        $groupRoomsCount = DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('group_id', $ca->group_id)
+                            ->where('room_id', '>', 0)
+                            ->count();
+                            
+                        if ($groupRoomsCount <= 1) {
+                            DB::table('employee_assignments')->where('id', $ca->id)->update([
+                                'room_id' => 0,
+                                'level' => 1,
+                                'updated_at' => now()
+                            ]);
+                        } else {
+                            DB::table('employee_assignments')->where('id', $ca->id)->delete();
+                        }
                     }
                 }
 

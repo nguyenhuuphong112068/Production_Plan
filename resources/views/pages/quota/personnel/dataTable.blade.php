@@ -487,16 +487,21 @@
                     @php
                         $roomsById = clone $rooms;
                         $roomsById = $roomsById->keyBy('id')->all();
-                        
+
                         $groupsByCode = clone $groups;
                         $groupsByCode = $groupsByCode->keyBy('code')->all();
-                        
+
                         $groupsById = clone $groups;
                         $groupsById = $groupsById->keyBy('id')->all();
 
                         $roomOptionsHtml = '';
                         foreach ($rooms as $r) {
-                            $roomOptionsHtml .= '<option value="' . $r->id . '">' . htmlspecialchars($r->code . ' - ' . $r->name . ' - ' . $r->main_equiment_name) . '</option>';
+                            $roomOptionsHtml .=
+                                '<option value="' .
+                                $r->id .
+                                '">' .
+                                htmlspecialchars($r->code . ' - ' . $r->name . ' - ' . $r->main_equiment_name) .
+                                '</option>';
                         }
                     @endphp
                     @foreach ($datas as $data)
@@ -540,7 +545,9 @@
                                             $rGrpId = (int) $rGrpId_passed;
                                         } elseif ($rObj) {
                                             $rGrpCode = $rObj->group_code;
-                                            $rGrpId = isset($groupsByCode[$rGrpCode]) ? $groupsByCode[$rGrpCode]->id : 0;
+                                            $rGrpId = isset($groupsByCode[$rGrpCode])
+                                                ? $groupsByCode[$rGrpCode]->id
+                                                : 0;
                                         }
                                         $assignmentsByGroup[$rGrpId][] = [
                                             'as' => $as,
@@ -569,7 +576,9 @@
                                             $rGrpId = (int) $rGrpId_passed;
                                         } elseif ($rObj) {
                                             $rGrpCode = $rObj->group_code;
-                                            $rGrpId = (int) (isset($groupsByCode[$rGrpCode]) ? $groupsByCode[$rGrpCode]->id : 0);
+                                            $rGrpId = (int) (isset($groupsByCode[$rGrpCode])
+                                                ? $groupsByCode[$rGrpCode]->id
+                                                : 0);
                                         }
                                         if (!in_array($rGrpId, $renderedGroupIds)) {
                                             $otherAssignments[] = [
@@ -712,8 +721,13 @@
                                                                         class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
                                                                         {{ $disabled }}
                                                                         title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
-                                                                        <i
-                                                                            class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
+                                                                        <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
+                                                                    </button>
+                                                                    <button
+                                                                        class="btn btn-sm btn-danger btn-remove-room-row ml-1"
+                                                                        {{ $disabled }}
+                                                                        title="Xóa phòng">
+                                                                        <i class="fas fa-trash"></i>
                                                                     </button>
                                                                 </div>
                                                             @endforeach
@@ -1108,6 +1122,9 @@
                     
                     <button class="btn btn-sm btn-danger btn-toggle-room-active ml-1" title="Vô hiệu hóa">
                         <i class="fas fa-times"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-remove-room-row ml-1" title="Xóa phòng">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             `;

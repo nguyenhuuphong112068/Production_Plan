@@ -325,6 +325,11 @@ class ProductionAssignmentController extends Controller
 
         $dbAssignments = $this->getDbAssignments($reportedDate);
 
+        $suggestions = DB::table('assignment_suggestions')
+            ->where('target_date', $reportedDate)
+            ->where('deparment_code', $production_code)
+            ->get();
+
         return view('pages.assignment.production.index', [
             'tasks' => $tasks,
             'reportedDate' => $reportedDate,
@@ -336,7 +341,8 @@ class ProductionAssignmentController extends Controller
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
             'rooms' => $rooms,
             'allRooms' => $allRooms,
-            'dbAssignments' => $dbAssignments
+            'dbAssignments' => $dbAssignments,
+            'suggestions' => $suggestions
         ]);
     }
 
@@ -513,7 +519,7 @@ class ProductionAssignmentController extends Controller
         }
         $reportedDate = $request->reportedDate;
         $stage_groups_code = $request->stage_groups_code;
-        if (empty($stage_groups_code)) $stage_groups_code = null;
+        if (empty($stage_groups_code)) $stage_groups_code = 0;
 
         $assignments_data = $request->assignments ?? [];
         $production_code = $request->production_code ?? session('user')['production_code'] ?? 'PXV1';
@@ -696,11 +702,12 @@ class ProductionAssignmentController extends Controller
         }
         
         $stage_groups_code = $request->stage_groups_code;
-        if (empty($stage_groups_code)) $stage_groups_code = null;
+        if (empty($stage_groups_code)) $stage_groups_code = 0;
 
         $assignments_data = $request->assignments ?? [];
         $production_code = $request->production_code ?? session('user')['production_code'] ?? 'PXV1';
         $target_dates = $request->target_dates ?? []; // Array of dates: ['2026-06-02', '2026-06-03']
+        $is_suggestion = filter_var($request->is_suggestion, FILTER_VALIDATE_BOOLEAN);
 
         if (empty($target_dates)) {
             return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ngày để nhân bản.']);
@@ -728,6 +735,34 @@ class ProductionAssignmentController extends Controller
                     $p_data = $row['personnel_list'] ?? [];
 
                     if (empty($row['start_time']) || empty($row['end_time'])) {
+                        continue;
+                    }
+
+                    if ($is_suggestion) {
+                        // Delete old suggestion for same room/shift
+                        DB::table('assignment_suggestions')
+                            ->where('target_date', $targetDate)
+                            ->where('room_id', $room_id)
+                            ->where('work_location', $work_location)
+                            ->where('deparment_code', $production_code)
+                            ->where('stage_groups_code', $stage_groups_code)
+                            ->where('shift', $row['shift'])
+                            ->delete();
+
+                        DB::table('assignment_suggestions')->insert([
+                            'target_date' => $targetDate,
+                            'room_id' => $room_id,
+                            'work_location' => $work_location,
+                            'deparment_code' => $production_code,
+                            'stage_groups_code' => $stage_groups_code,
+                            'shift' => $row['shift'],
+                            'start_time' => $row['start_time'],
+                            'end_time' => $row['end_time'],
+                            'personnel_data' => json_encode($p_data),
+                            'created_by' => session('user')['userName'] ?? 'System',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
                         continue;
                     }
 
@@ -1000,6 +1035,11 @@ class ProductionAssignmentController extends Controller
 
         $dbAssignments = $this->getDbAssignments($reportedDate);
 
+        $suggestions = DB::table('assignment_suggestions')
+            ->where('target_date', $reportedDate)
+            ->where('deparment_code', $production_code)
+            ->get();
+
         return view('pages.assignment.production.publicView', [
             'tasks' => $tasks,
             'reportedDate' => $reportedDate,
@@ -1008,7 +1048,8 @@ class ProductionAssignmentController extends Controller
             'groups' => $groups,
             'personnel' => $personnel,
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
-            'dbAssignments' => $dbAssignments
+            'dbAssignments' => $dbAssignments,
+            'suggestions' => $suggestions
         ]);
     }
 

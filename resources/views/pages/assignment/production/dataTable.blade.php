@@ -478,6 +478,7 @@
                                         </div>
                                     @endif
                                 @endif
+                                <div class="suggestion-container mt-2"></div>
                                 <div class="mt-2 text-center">
                                     <button class="btn btn-outline-success btn-circle btn-add-shift mb-1"
                                         title="Thêm ca làm việc" {{ !$canEdit ? 'disabled' : '' }}>
@@ -646,11 +647,9 @@
                                                     @if ($canEdit)
                                                         <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2"
                                                             style="font-size: 1.1rem" title="Xóa ca này"></i>
-                                                        @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
                                                             <br />
                                                             <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
-                                                                style="font-size: 1.1rem" title="Nhân bản ca này"></i>
-                                                        @endif
+                                                                style="font-size: 1.1rem; display: none;" title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -746,11 +745,9 @@
                                                     @if ($canEdit)
                                                         <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2"
                                                             style="font-size: 1.1rem" title="Xóa ca này"></i>
-                                                        @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
                                                             <br />
                                                             <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
-                                                                style="font-size: 1.1rem" title="Nhân bản ca này"></i>
-                                                        @endif
+                                                                style="font-size: 1.1rem; display: none;" title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -967,6 +964,14 @@
                             chọn</span>
                     </div>
                 </div>
+                <div class="mt-3">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="clone-as-suggestion" value="1">
+                        <label class="custom-control-label font-weight-bold text-info" for="clone-as-suggestion">
+                            <i class="fas fa-lightbulb mr-1"></i> Chỉ lưu làm Gợi ý Nhân sự (Không lưu thành phân công chính thức)
+                        </label>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
@@ -984,6 +989,7 @@
 
 <script>
     const dbAssignments = @json($dbAssignments ?? []);
+    const assignmentSuggestions = @json($suggestions ?? []);
 
     const employeeCodeToId = {
         @foreach ($personnel as $p)
@@ -1990,8 +1996,23 @@
                 updateSidebarHighlights();
                 validateProfRequirement(item);
                 updateSidebarPersonnelTimes();
+                toggleCloneShiftButton(item);
             }
         });
+
+        function toggleCloneShiftButton($assignmentItem) {
+            let hasPerson = false;
+            $assignmentItem.find('.person-select').each(function() {
+                if ($(this).val() && $(this).val() !== '') {
+                    hasPerson = true;
+                }
+            });
+            if (hasPerson) {
+                $assignmentItem.find('.btn-clone-shift').show();
+            } else {
+                $assignmentItem.find('.btn-clone-shift').hide();
+            }
+        }
 
         $(document).on('change', '.person-select, .person-notif, .off-stream-check', function() {
             const $el = $(this);
@@ -2042,10 +2063,14 @@
                                 $el.val(null).trigger('change');
                                 isProgrammaticChange = false;
                             }
+                            if (canProceed) {
+                                toggleCloneShiftButton($el.closest('.assignment-item'));
+                            }
                             updateSidebarHighlights();
                         });
                     });
                 } else {
+                    toggleCloneShiftButton($el.closest('.assignment-item'));
                     updateSidebarHighlights();
                 }
             }
@@ -2139,6 +2164,52 @@
             });
         }
 
+        function addShiftHtml(nextShift, startTime, endTime) {
+            return `
+                <tr class="assignment-item">
+                    <td style="width: 14.3%">
+                        <div class="d-flex flex-column align-items-center">
+                            <select class="form-control form-control-sm shift-select mb-1">
+                                <option value="1" ${nextShift == '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${nextShift == '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${nextShift == '3' ? 'selected' : ''}>3</option>
+                                <option value="6" ${nextShift == '6' ? 'selected' : ''}>4</option>
+                                <option value="4" ${nextShift == '4' ? 'selected' : ''}>HC</option>
+                                <option value="5" ${nextShift == '5' ? 'selected' : ''}>Khác</option>
+                            </select>
+                            <input type="time" class="form-control form-control-sm start-time-input mb-1" value="${startTime}">
+                            <input type="time" class="form-control form-control-sm end-time-input mb-1" value="${endTime}">
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text"><i class="fas fa-users"></i></span>
+                                </div>
+                                <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
+                            </div>
+                            <div class="input-group input-group-sm mt-1" title="Nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text" style="font-size:0.7rem;padding:2px 5px;"><i class="fas fa-star"></i></span>
+                                </div>
+                                <input type="number" class="form-control professional-count-input" value="1" min="0" style="font-size:0.75rem;" title="Số lượng nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có" placeholder="Cấp ≥3">
+                            </div>
+                        </div>
+                    </td>
+                    <td style="width: 36.1%" class="p-0">
+                        <div class="personnel-container">
+                        </div>
+                        <div class="text-left p-1" style="border-top: 1px dashed #eee"><a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a></div>
+                    </td>
+                    <td style="width: 44.4%">
+                        <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
+                    </td>
+                    <td style="width: 5.3%" class="text-center">
+                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                        <br/>
+                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1" style="font-size: 1.1rem; display: none;" title="Nhân bản ca này"></i>
+                    </td>
+                </tr>
+            `;
+        }
+
         $(document).on('click', '.btn-add-shift', function() {
             const container = $(this).closest('tr').find('.assignment-container');
 
@@ -2186,68 +2257,14 @@
 
             const personnel_options = "";
 
-            const newRow = $(`
-                <tr class="assignment-item">
-                    <td style="width: 14.3%">
-                        <div class="d-flex flex-column align-items-center">
-                            <select class="form-control form-control-sm shift-select mb-1">
-                                <option value="1" ${nextShift === '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${nextShift === '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${nextShift === '3' ? 'selected' : ''}>3</option>
-                                <option value="6" ${nextShift === '6' ? 'selected' : ''}>4</option>
-                                <option value="4" ${nextShift === '4' ? 'selected' : ''}>HC</option>
-                                <option value="5" ${nextShift === '5' ? 'selected' : ''}>Khác</option>
-                            </select>
-                            <input type="time" class="form-control form-control-sm start-time-input mb-1" value="${startTime}">
-                            <input type="time" class="form-control form-control-sm end-time-input mb-1" value="${endTime}">
-                            <div class="input-group input-group-sm">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text"><i class="fas fa-users"></i></span>
-                                </div>
-                                <input type="number" class="form-control person-count-input" value="1" min="1" title="Số lượng nhân sự cần">
-                            </div>
-                            <div class="input-group input-group-sm mt-1" title="Nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text" style="font-size:0.7rem;padding:2px 5px;"><i class="fas fa-star"></i></span>
-                                </div>
-                                <input type="number" class="form-control professional-count-input" value="1" min="0" style="font-size:0.75rem;" title="Số lượng nhân sự chuyên nghiệp (cấp ≥ 3) tối thiểu cần có" placeholder="Cấp ≥3">
-                            </div>
-                        </div>
-                    </td>
-                    <td style="width: 36.1%" class="p-0">
-                        <div class="personnel-container">
-                            <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                <div class="personnel-label">A</div>
-                                <div style="flex: 1" class="d-flex align-items-center">
-                                    <select class="form-control form-control-sm person-select" style="width: 60%">
-                                        <option value="">-- Chọn người --</option>
-                                    </select>
-                                    <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                                           style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                           placeholder="Lưu ý...">
-                                </div>
-                                <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
-                            </div>
-                        </div>
-                        <div class="text-left p-1" style="border-top: 1px dashed #eee"><a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a></div>
-                    </td>
-                    <td style="width: 44.4%">
-                        <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
-                    </td>
-                    <td style="width: 5.3%" class="text-center">
-                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2" style="font-size: 1.1rem" title="Xóa ca này"></i>
-                        <br/>
-                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1" style="font-size: 1.1rem" title="Nhân bản ca này" style="display: none;"></i>
-                    </td>
-                </tr>
-            `);
+            const newRow = $(addShiftHtml(nextShift, startTime, endTime));
             container.append(newRow);
 
-            // Show clone button only if it's a custom task
-            if ($(this).closest('.room-row').attr('data-room-id') === '' || $(this).closest('.room-row')
-                .attr('data-sp-id')?.startsWith('EXT_')) {
-                newRow.find('.btn-clone-shift').show();
+            if (newRow.find('.personnel-row').length === 0) {
+                addPersonRow(newRow.find('.personnel-container'));
             }
+
+            newRow.find('.btn-clone-shift').show();
 
             // Tự động điền số lượng nhân sự định mức
             newRow.find('.shift-select').trigger('change');
@@ -2805,7 +2822,10 @@
                                     <td style="width: 500px">
                                         <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
                                     </td>
-                                    <td style="width: 60px" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
+                                    <td style="width: 60px" class="text-center">
+                                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer mb-2"></i><br/>
+                                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1" style="font-size: 1.1rem" title="Nhân bản ca này"></i>
+                                    </td>
                                 </tr>
                             </tbody>
                                 <tfoot class="timeline-tfoot">
@@ -3686,8 +3706,21 @@
             }
         });
 
+        function setupCloneModalCheckbox(roomRow) {
+            const isCustom = (!roomRow.attr('data-room-id') && roomRow.attr('data-sp-id')) || roomRow.find('.room-select-custom').length > 0;
+            const $chk = $('#clone-as-suggestion');
+            if (!isCustom) {
+                $chk.prop('checked', true);
+                $chk.prop('disabled', true);
+            } else {
+                $chk.prop('checked', false);
+                $chk.prop('disabled', false);
+            }
+        }
+
         $(document).on('click', '.btn-clone-shift', function() {
             currentCloneTarget = $(this).closest('.assignment-item');
+            setupCloneModalCheckbox(currentCloneTarget.closest('.room-row'));
             cloneTargetDates.clear();
             fp.clear();
             renderCloneDates();
@@ -3696,6 +3729,7 @@
 
         $(document).on('click', '.btn-clone-row', function() {
             currentCloneTarget = $(this).closest('.room-row');
+            setupCloneModalCheckbox(currentCloneTarget);
             cloneTargetDates.clear();
             fp.clear();
             renderCloneDates();
@@ -3862,7 +3896,8 @@
                 production_code: "{{ $production_code }}",
                 stage_groups_code: groupCode,
                 target_dates: Array.from(cloneTargetDates),
-                assignments: assignments
+                assignments: assignments,
+                is_suggestion: $('#clone-as-suggestion').is(':checked') ? 1 : 0
             };
 
             const btn = $(this);
@@ -3892,5 +3927,85 @@
                 }
             });
         });
+
+        function renderSuggestions() {
+            if (!assignmentSuggestions || assignmentSuggestions.length === 0) return;
+            
+            assignmentSuggestions.forEach(sug => {
+                let $roomRow = null;
+                if (sug.room_id) {
+                    $roomRow = $(`.room-row[data-room-id="${sug.room_id}"]`);
+                } else if (sug.work_location) {
+                    $('.room-row[data-room-id=""]').each(function() {
+                        const val = $(this).find('.room-select-custom').val();
+                        if (val === sug.work_location) {
+                            $roomRow = $(this);
+                        }
+                    });
+                }
+                
+                if ($roomRow && $roomRow.length > 0) {
+                    const shift = sug.shift;
+                    const start = sug.start_time;
+                    const end = sug.end_time;
+                    const pData = typeof sug.personnel_data === 'string' ? JSON.parse(sug.personnel_data) : sug.personnel_data;
+                    
+                    let $targetItem = null;
+                    let isExistingSaved = false;
+
+                    $roomRow.find('.assignment-item').each(function() {
+                        if ($(this).find('.shift-select').val() == shift) {
+                            $targetItem = $(this);
+                            if ($targetItem.attr('data-id') && $targetItem.attr('data-id') !== '') {
+                                isExistingSaved = true;
+                            }
+                        }
+                    });
+
+                    // Only apply if the shift is not already officially saved
+                    if (!isExistingSaved) {
+                        if (!$targetItem) {
+                            const $container = $roomRow.find('.assignment-container');
+                            const startHM = start ? start.substring(0, 5) : '07:15';
+                            const endHM = end ? end.substring(0, 5) : '16:00';
+                            $container.append(addShiftHtml(shift, startHM, endHM));
+                            $targetItem = $container.find('.assignment-item').last();
+                            if ($targetItem.find('.personnel-row').length === 0) {
+                                addPersonRow($targetItem.find('.personnel-container'));
+                            }
+                        }
+                        
+                        if ($targetItem && pData && pData.length > 0) {
+                            const $pContainer = $targetItem.find('.personnel-container');
+                            $pContainer.empty();
+                            
+                            pData.forEach(p => {
+                                const newRow = addPersonRow($pContainer, p.personnel_id);
+                                if (newRow && p.notification) {
+                                    newRow.find('.person-notif').val(p.notification);
+                                }
+                            });
+                            
+                            $targetItem.find('.person-count-input').val(pData.length);
+                            
+                            // Mark as dirty so user can save it
+                            markRoomDirty($roomRow);
+                            validateProfRequirement($targetItem);
+                            toggleCloneShiftButton($targetItem);
+                            updateSidebarHighlights();
+                            updateSidebarPersonnelTimes();
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Execute suggestion logic on load
+        renderSuggestions();
+
+        $('.assignment-item').each(function() {
+            toggleCloneShiftButton($(this));
+        });
+
     });
 </script>
