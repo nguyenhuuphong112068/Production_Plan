@@ -1061,7 +1061,7 @@ class ProductionAssignmentController extends Controller
                 $groupName = $prodGroups[$ass->stage_groups_code] ?? $ass->group_name ?? ('Tổ ' . $ass->stage_groups_code);
             }
 
-            $spId = $ass->stage_plan_id ?: ('EXT_EXISTING_' . $ass->id);
+            $spId = $ass->stage_plan_id ?: ('EXT_EXISTING_' . $ass->assignment_id);
             $roomName = $ass->work_location ?? ($ass->room_name ?: 'Công tác khác');
 
             $dbAssignments[$pId][] = (object) [
