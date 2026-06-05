@@ -116,6 +116,7 @@ class ProductionPlanController extends Controller
                         ->select(
                                 'pm.plan_list_id',
                                 'fc.batch_qty',
+                                DB::raw("DATE_FORMAT(pm.expected_date, '%m-%Y') as expected_month"),
                                 DB::raw("
                                 CASE
                                 WHEN pm.cancel = 1 THEN 'Hủy'
@@ -155,6 +156,38 @@ class ProductionPlanController extends Controller
                                                 ->whereNotIn('status', ['Hoàn Tất ĐG', 'Hủy'])
                                                 ->sum('batch_qty'),
                                 ];
+                        });
+
+                /*
+                |--------------------------------------------------------------------------
+                | 5.1 GOM THEO THÁNG EXPECTED DATE
+                |--------------------------------------------------------------------------
+                */
+
+                $summary_by_month = $batch_status
+                        ->filter(function ($row) {
+                                return !empty($row->expected_month);
+                        })
+                        ->groupBy('expected_month')
+                        ->map(function ($rows, $month) {
+
+                                $statusCount = $rows->groupBy('status')->map->count();
+
+                                return (object)[
+                                        'month' => $month,
+                                        'tong_lo' => $rows->count(),
+                                        'total_batch_qty' => $rows->sum('batch_qty'),
+                                        'status_counts' => $statusCount,
+                                        'batch_qty_pending' => $rows
+                                                ->where('status', 'Chưa làm')
+                                                ->sum('batch_qty'),
+                                        'batch_qty_not_finished' => $rows
+                                                ->whereNotIn('status', ['Hoàn Tất ĐG', 'Hủy'])
+                                                ->sum('batch_qty'),
+                                ];
+                        })
+                        ->sortByDesc(function ($item) {
+                                return \Carbon\Carbon::createFromFormat('m-Y', $item->month);
                         });
 
 
@@ -259,6 +292,7 @@ class ProductionPlanController extends Controller
                 //dd ($datas);
                 return view('pages.plan.production.plan_list', [
                         'datas' => $datas,
+                        'summary_by_month' => $summary_by_month,
                 ]);
         }
 
@@ -340,13 +374,17 @@ class ProductionPlanController extends Controller
                         ->where('pl.type', 1)
                         ->when(
                                 $request->plan_list_id < 0,
-                                function ($q) {
-                                        return $q->where('plan_master.cancel', 0)
-                                                //->where('plan_master.only_parkaging', 0)
-                                                ->where(function ($sub) {
-                                                        $sub->whereNull('sp_max.max_stage_code')
-                                                                ->orWhereRaw('sp_max.max_stage_code < sp_possible.max_possible_stage_code');
-                                                });
+                                function ($q) use ($request) {
+                                        if ($request->plan_list_id == -1) {
+                                                return $q->where('plan_master.cancel', 0)
+                                                        //->where('plan_master.only_parkaging', 0)
+                                                        ->where(function ($sub) {
+                                                                $sub->whereNull('sp_max.max_stage_code')
+                                                                        ->orWhereRaw('sp_max.max_stage_code < sp_possible.max_possible_stage_code');
+                                                        });
+                                        } else {
+                                                return $q->whereRaw("DATE_FORMAT(plan_master.expected_date, '%m-%Y') = ?", [$request->expected_month]);
+                                        }
                                 },
                                 function ($q) use ($request) {
                                         return $q->where('plan_master.plan_list_id', $request->plan_list_id);
@@ -2499,5 +2537,57 @@ class ProductionPlanController extends Controller
                 }
 
                 return response()->json([]);
+        }
+
+        public function getWaitingPlans(Request $request)
+        {
+                $production = session('user')['production_code'];
+                $month = $request->month;
+
+                $plan_waiting = DB::table('stage_plan as sp')
+                        ->whereNull('sp.start')
+                        ->where('sp.active', 1)
+                        ->where('sp.finished', 0)
+                        ->where('sp.stage_code', '!=', 8)
+                        ->where('sp.deparment_code', $production)
+                        ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+                        ->leftJoin('plan_list', 'sp.plan_list_id', '=', 'plan_list.id')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+                        ->leftJoin('finished_product_category', function ($join) {
+                                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                                        ->where('sp.stage_code', '<=', 7);
+                        })
+                        ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                        ->leftJoin('product_name', function ($join) {
+                                $join->on('intermediate_category.product_name_id', '=', 'product_name.id')
+                                        ->where('sp.stage_code', '<=', 7);
+                        })
+                        ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                        ->whereRaw("DATE_FORMAT(plan_master.expected_date, '%m-%Y') = ?", [$month])
+                        ->select(
+                                'sp.id',
+                                'sp.code',
+                                'sp.stage_code',
+                                DB::raw("
+                        CASE
+                                WHEN sp.stage_code >= 8 THEN sp.title
+                                ELSE CONCAT(
+                                product_name.name,
+                                '-',
+                                COALESCE(plan_master.actual_batch, plan_master.batch)
+                                )
+                        END AS title
+                "),
+                                'product_name.name as name',
+                                DB::raw('COALESCE(plan_master.actual_batch, plan_master.batch) as batch'),
+                                'plan_master.expected_date',
+                                'plan_master.responsed_date',
+                                'plan_master.is_val',
+                                'plan_master.level',
+                                DB::raw("CONCAT(LPAD(plan_list.month, 2, '0'), '-', plan_list.year) as month")
+                        )
+                        ->get();
+
+                return response()->json($plan_waiting);
         }
 }
