@@ -507,6 +507,9 @@ class ProductionAssignmentController extends Controller
     {
         //Log::info($request->all());
         $spIdString = $request->sp_id;
+        if ($spIdString === 'undefined' || $spIdString === 'null' || trim($spIdString) === '') {
+            $spIdString = null;
+        }
         $room_id = $request->room_id;
         $work_location = null;
 
@@ -537,18 +540,13 @@ class ProductionAssignmentController extends Controller
                 ->whereDate('start', $reportedDate)
                 ->where('active', 1);
 
-            if ($spIdString && str_starts_with($spIdString, 'EXT_')) {
-                // Đối với công việc ngoài lịch có ID định danh riêng
+            if ($spIdString && str_starts_with($spIdString, 'EXT_') && !$room_id) {
+                // Đối với công việc ngoài lịch có ID định danh riêng và không có phòng cố định
                 $deleteQuery->where('stage_plan_id', $spIdString);
             } else {
                 // Đối với công việc theo phòng (có hoặc không có sp_id)
                 if ($room_id) {
                     $deleteQuery->where('room_id', $room_id);
-                    if ($spIdString) {
-                        $deleteQuery->where('stage_plan_id', $spIdString);
-                    } else {
-                        $deleteQuery->whereNull('stage_plan_id');
-                    }
                 } else if ($work_location) {
                     $deleteQuery->where('work_location', $work_location);
                     if ($spIdString) {
