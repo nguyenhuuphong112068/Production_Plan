@@ -3979,12 +3979,14 @@
                             const $pContainer = $targetItem.find('.personnel-container');
                             $pContainer.empty();
                             
+                            isProgrammaticChange = true;
                             pData.forEach(p => {
                                 const newRow = addPersonRow($pContainer, p.personnel_id);
                                 if (newRow && p.notification) {
                                     newRow.find('.person-notif').val(p.notification);
                                 }
                             });
+                            isProgrammaticChange = false;
                             
                             $targetItem.find('.person-count-input').val(pData.length);
                             

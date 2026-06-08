@@ -357,8 +357,8 @@
                     <tr>
                         <th style="width: 15%">Phòng / Thiết Bị</th>
                         <th style="width: 15%">Ca / Thời Gian</th>
-                        <th style="width: 40%">Nội Dung Công Việc</th>
-                        <th style="width: 15%">Người thực Hiện</th>
+                        <th style="width: 30%">Nội Dung Công Việc</th>
+                        <th style="width: 25%">Người thực Hiện</th>
                         <th style="width: 15%">Chi Tiết &amp; Lưu Ý</th>
                     </tr>
                 </thead>
@@ -408,8 +408,8 @@
                                     <table class="table assignment-inner-table">
                                         <colgroup>
                                             <col style="width: 17.6%"> <!-- Ca/Thời gian -->
-                                            <col style="width: 47.1%"> <!-- Nội dung -->
-                                            <col style="width: 17.6%"> <!-- Người thực hiện -->
+                                            <col style="width: 35.3%"> <!-- Nội dung -->
+                                            <col style="width: 29.4%"> <!-- Người thực hiện -->
                                             <col style="width: 17.6%"> <!-- Ghi chú -->
                                         </colgroup>
                                         <tbody>
@@ -417,7 +417,11 @@
                                                 <tr data-id="{{ $a->id }}">
                                                     <!-- Ca làm việc -->
                                                     <td>
-                                                        <div class="font-weight-bold">Ca {{ $a->Sheet ?? '-' }}</div>
+                                                        @php
+                                                            $shiftNames = ['1' => 'Ca 1', '2' => 'Ca 2', '3' => 'Ca 3', '4' => 'HC', '5' => 'Khác', '6' => 'Ca 4'];
+                                                            $sName = isset($a->Sheet) ? ($shiftNames[$a->Sheet] ?? 'Ca ' . $a->Sheet) : '-';
+                                                        @endphp
+                                                        <div class="font-weight-bold">{{ $sName }}</div>
                                                         <small class="text-primary"><span
                                                                 class="start-time-text">{{ $a->start_time_display }}</span>
                                                             -
