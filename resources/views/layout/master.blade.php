@@ -589,9 +589,20 @@
 
 
         @keyframes badge-blink {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.05); }
-            100% { opacity: 1; transform: scale(1); }
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(1.05);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         @keyframes chat-blink {
@@ -930,7 +941,6 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-                        <button type="button" class="btn btn-primary" id="btn-notif-nav">Đi tới trang quản lý</button>
                     </div>
                 </div>
             </div>
@@ -1023,6 +1033,7 @@
                 $.get("{{ route('notifications.list') }}", function(data) {
                     let unreadCount = data.filter(n => n.is_read == 0).length;
                     let unreadMentions = data.filter(n => n.is_read == 0 && n.activity_type === 'Nhắc tên');
+                    let unreadReminders = data.filter(n => n.is_read == 0 && n.activity_type === 'Nhắc nhở lịch chưa sắp');
 
                     if (unreadCount > 0) {
                         $('#notif-badge-navbar').text(unreadCount).show();
@@ -1032,19 +1043,48 @@
 
                     if (unreadMentions.length > 0) {
                         let latestSender = unreadMentions[0].sender_name;
-                        $('#mention-badge-navbar').html(`<i class="fas fa-at"></i> ${latestSender} đã nhắc đến bạn`).show();
+                        $('#mention-badge-navbar').html(
+                            `<i class="fas fa-at"></i> ${latestSender} đã nhắc đến bạn`).show();
+                    } else if (unreadReminders.length > 0) {
+                        let d = new Date();
+                        let m = d.getMonth() + 1;
+                        let y = d.getFullYear();
+                        if (d.getDate() >= 25) {
+                            m += 1;
+                            if (m > 12) { m = 1; y += 1; }
+                        }
+                        let yy = (m < 10 ? '0' + m : m) + '/' + y;
+                        
+                        let xx = 0;
+                        let latestReminder = unreadReminders[0];
+                        let match = latestReminder.message && latestReminder.message.match(/có (\d+) lô/);
+                        if (match) {
+                            xx = parseInt(match[1], 10);
+                        } else {
+                            xx = 1;
+                        }
+
+                        $('#mention-badge-navbar').html(
+                            `<i class="fas fa-exclamation-triangle"></i> Còn ${xx} lịch tháng ${yy} chưa sắp`).show();
                     } else {
                         $('#mention-badge-navbar').hide();
                     }
-
-
 
                     let html = '';
                     if (data.length === 0) {
                         html = '<div class="text-center p-5 text-muted">Không có thông báo mới</div>';
                     } else {
-                        // Nhóm theo ngày
                         let groups = {};
+                        
+                        let d = new Date();
+                        let m = d.getMonth() + 1;
+                        let y = d.getFullYear();
+                        if (d.getDate() >= 25) {
+                            m += 1;
+                            if (m > 12) { m = 1; y += 1; }
+                        }
+                        let yy = (m < 10 ? '0' + m : m) + '/' + y;
+
                         data.forEach(n => {
                             let dateLabel = moment(n.created_at).calendar(null, {
                                 sameDay: '[Hôm nay]',
@@ -1060,14 +1100,23 @@
                             html += `<div class="notif-date-group">${date}</div>`;
                             groups[date].forEach(n => {
                                 let isUnread = n.is_read == 0 ? 'unread' : '';
-                                let mentionBadge = n.activity_type === 'Nhắc tên' 
-                                    ? '<span class="badge bg-danger ms-2" style="animation: badge-blink 1.5s infinite;">Bạn được nhắc đến</span>' 
-                                    : '';
-                                let extendData = n.modal_content_extend ? btoa(unescape(encodeURIComponent(n.modal_content_extend))) : '';
+                                
+                                let n_xx = 1;
+                                let match = n.message && n.message.match(/có (\d+) lô/);
+                                if(match) n_xx = match[1];
+
+                                let mentionBadge = n.activity_type === 'Nhắc tên' ?
+                                    '<span class="badge bg-danger ms-2" style="animation: badge-blink 1.5s infinite;">Bạn được nhắc đến</span>' :
+                                    (n.activity_type === 'Nhắc nhở lịch chưa sắp' ?
+                                        `<span class="badge bg-warning text-dark ms-2" style="animation: badge-blink 1.5s infinite;"><i class="fas fa-exclamation-triangle"></i> Còn ${n_xx} lịch tháng ${yy} chưa sắp</span>` :
+                                        '');
+                                let extendData = n.modal_content_extend ? btoa(unescape(
+                                    encodeURIComponent(n.modal_content_extend))) : '';
+                                let senderName = n.sender_name ? n.sender_name : 'PMS';
                                 html += `
                                     <div class="notif-item ${isUnread}" onclick="handleNotifClick(${n.id}, '${n.url}', '${extendData}')">
                                         <div class="notif-content">
-                                            <div class="notif-title"><b>${n.sender_name}</b> đã ${n.activity_type} ${mentionBadge}</div>
+                                            <div class="notif-title"><b>${senderName}</b> đã ${n.activity_type} ${mentionBadge}</div>
                                             <div class="notif-message">${n.message}</div>
                                             <div class="notif-time">${moment(n.created_at).format('HH:mm DD/MM/YYYY')}</div>
                                         </div>
@@ -1096,7 +1145,8 @@
                         // Kiểm tra nếu nó vẫn là chuỗi JSON do dữ liệu cũ thì xử lý fallback
                         if (html.trim().startsWith('[')) {
                             let data = JSON.parse(html);
-                            html = '<table class="table table-bordered table-sm" style="font-size: 13px;"><thead><tr><th>Sản phẩm / Nội dung</th><th>Bắt đầu</th><th>Kết thúc</th></tr></thead><tbody>';
+                            html =
+                                '<table class="table table-bordered table-sm" style="font-size: 13px;"><thead><tr><th>Sản phẩm / Nội dung</th><th>Bắt đầu</th><th>Kết thúc</th></tr></thead><tbody>';
                             data.forEach(item => {
                                 html += `<tr>
                                     <td>${item.title || '-'}</td>
@@ -1106,15 +1156,10 @@
                             });
                             html += '</tbody></table>';
                         }
-                        
+
                         $('#notif-extend-content').html(html);
                         $('#notifExtendModal').modal('show');
-                        
-                        $('#btn-notif-nav').off('click').on('click', function() {
-                            if (targetUrl && targetUrl !== 'null' && targetUrl !== 'undefined') {
-                                window.location.href = targetUrl;
-                            }
-                        });
+
                     } catch (e) {
                         console.error('Lỗi parse data extend:', e);
                         if (targetUrl && targetUrl !== 'null' && targetUrl !== 'undefined') {
@@ -1606,8 +1651,8 @@
                                     <i class="fas fa-reply"></i>
                                 </span>
                                 ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi, sau 30p sẽ không được thu hồi" data-msg-id="${m.id}">
-                                                                        <i class="fas fa-undo"></i>
-                                                                    </span>` : ''}
+                                                                            <i class="fas fa-undo"></i>
+                                                                        </span>` : ''}
                             </div>
                         `;
                     }

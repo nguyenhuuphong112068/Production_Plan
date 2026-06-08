@@ -22,7 +22,7 @@ class NotificationController extends Controller
 
         // 1. Tạo bản ghi thông báo chính
         $notificationId = DB::table('notifications')->insertGetId([
-            'sender_id' => session('user')['userId'],
+            'sender_id' => $senderId,
             'activity_type' => $activityType,
             'message' => $message,
             'reference_id' => $referenceId,
