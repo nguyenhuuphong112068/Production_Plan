@@ -417,7 +417,9 @@ class DailyReportController extends Controller
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
+            ->whereNotNull('sp.resourceId')
             ->where('sp.active', 1)
+            ->where('sp.stage_code', '<=', 7)
             ->whereRaw('(sp.start >= ? AND sp.end <= ?)', [$startDate, $endDate])
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
@@ -469,7 +471,9 @@ class DailyReportController extends Controller
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
+            ->whereNotNull('sp.resourceId')
             ->where('sp.active', 1)
+            ->where('sp.stage_code', '<=', 7)
             ->whereRaw('(sp.start < ? AND sp.end > ?) AND NOT (sp.start >= ? AND sp.end <= ?)', [$endDate, $startDate, $startDate, $endDate])
             ->where('sp.deparment_code', session('user')['production_code'])
             ->select(
@@ -546,7 +550,7 @@ class DailyReportController extends Controller
                         ->first();
 
                     return (object)[
-                        'stage_code' => ($room->stage_code == 2 ? 1 : $room->stage_code),
+                        'stage_code' => $room ? ($room->stage_code == 2 ? 1 : $room->stage_code) : null,
                         'order_by' => $room->order_by ?? null,
                         $group_By => $first->$group_By,
                         'room_code' => $room->code ?? null,
@@ -639,7 +643,9 @@ class DailyReportController extends Controller
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->where('sp.deparment_code', session('user')['production_code'])
             ->whereNotNull('sp.start')
+            ->whereNotNull('sp.resourceId')
             ->where('sp.active', 1)
+            ->where('sp.stage_code', '<=', 7)
             ->whereRaw('(sp.start <= ? AND sp.end >= ?)', [$dayEnd, $dayStart])
             ->select(
                 "sp.$group_By",

@@ -2302,9 +2302,18 @@ class SchedualController extends Controller
 
                         $currentStart = Carbon::parse($change['start']);
                         $idsArray = []; // Cập nhật danh sách ID để ghi log history ở phía dưới
+                        $newMTime = $request->input('newMTime');
+                        $pTime = $request->input('pTime', 0);
 
                         foreach ($campaignEvents as $ev) {
-                            $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
+                            if ($newMTime > 0) {
+                                // Tính thời lượng mới bằng newMTime + pTime (nếu là mẻ đầu hoặc VS-II)
+                                $durationHours = ($ev->first_in_campaign == 1 || $ev->title_clearning == "VS-II") ? ($newMTime + $pTime) : $newMTime;
+                                $duration = $durationHours * 3600; // Đổi ra giây
+                            } else {
+                                $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
+                            }
+                            
                             $newStart = $currentStart->copy();
                             $newEnd = $newStart->copy()->addSeconds($duration);
 

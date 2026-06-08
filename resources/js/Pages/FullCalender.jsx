@@ -1489,7 +1489,7 @@ const ScheduleTest = () => {
             </div>
             <div style="flex: 1;">
               <label style="display: block; font-weight: bold; margin-bottom: 5px;">Định mức SX (h):</label>
-              <input type="number" id="swal-m-time" class="swal2-input" style="width: 100%; margin: 0; background: #f8f9fa;" value="${m_time}" readonly>
+              <input type="number" id="swal-m-time" class="swal2-input" style="width: 100%; margin: 0;" value="${m_time}">
             </div>
           </div>
 
@@ -1547,20 +1547,22 @@ const ScheduleTest = () => {
       didOpen: () => {
         const startInput = document.getElementById('swal-start');
         const endInput = document.getElementById('swal-end');
-        const mTime = parseFloat(document.getElementById('swal-m-time').value) || 0;
-        const pTime = parseFloat(document.getElementById('swal-p-time').value) || 0;
+        const mTimeInput = document.getElementById('swal-m-time');
+        const pTimeInput = document.getElementById('swal-p-time');
 
-        startInput.addEventListener('input', () => {
+        const calculateEnd = () => {
+          const mTime = parseFloat(mTimeInput.value) || 0;
+          const pTime = parseFloat(pTimeInput.value) || 0;
           if (startInput.value && (mTime > 0 || pTime > 0)) {
             const newStart = moment(startInput.value);
-            // Nếu là đầu chiến dịch (first_in_campaign == 1) hoặc vệ sinh VS-II, cộng cả p_time và m_time
-            // Ngược lại chỉ cộng m_time
             const duration = (props.first_in_campaign == 1 || props.title_clearning == "VS-II") ? (mTime + pTime) : mTime;
-
             const newEnd = newStart.clone().add(duration, 'hours');
             endInput.value = newEnd.format('YYYY-MM-DDTHH:mm');
           }
-        });
+        };
+
+        startInput.addEventListener('input', calculateEnd);
+        mTimeInput.addEventListener('input', calculateEnd);
 
         // Toggle hiển thị danh sách lô khi chuyển radio
         const radioCampaign = document.getElementById('swal-move-campaign');
@@ -1627,6 +1629,9 @@ const ScheduleTest = () => {
         const moveMode = document.querySelector('input[name="swal-move-mode"]:checked').value;
         const updateCampaign = moveMode === 'campaign';
         const moveSelectedBatches = moveMode === 'selected';
+        
+        const newMTime = parseFloat(document.getElementById('swal-m-time').value) || 0;
+        const pTime = parseFloat(document.getElementById('swal-p-time').value) || 0;
 
         const reasonContainer = document.getElementById('swal-reason-container');
         const isReasonRequired = reasonContainer && reasonContainer.style.display !== 'none';
@@ -1661,11 +1666,11 @@ const ScheduleTest = () => {
           }
         }
 
-        return { start, end, resourceId, updateCampaign, moveSelectedBatches, reason };
+        return { start, end, resourceId, updateCampaign, moveSelectedBatches, reason, newMTime, pTime };
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        const { start, end, resourceId, updateCampaign, moveSelectedBatches, reason } = result.value;
+        const { start, end, resourceId, updateCampaign, moveSelectedBatches, reason, newMTime, pTime } = result.value;
         const api = calendarRef.current?.getApi();
         const eventToUpdate = api.getEventById(event.id);
         const { activeStart, activeEnd } = api.view;
@@ -1702,8 +1707,14 @@ const ScheduleTest = () => {
             const ev = api.getEventById(mainId);
             if (!ev) return;
 
-            const evNewStart = moment(ev.start).add(deltaMs, 'milliseconds');
-            const evNewEnd = moment(ev.end).add(deltaMs, 'milliseconds');
+            let evNewStart = moment(ev.start).add(deltaMs, 'milliseconds');
+            let evNewEnd = moment(ev.end).add(deltaMs, 'milliseconds');
+
+            // Nếu người dùng thay đổi mTime, tính lại duration cho từng sự kiện được chọn
+            if (newMTime > 0) {
+                const duration = (ev.extendedProps.first_in_campaign == 1 || ev.extendedProps.title_clearning == "VS-II") ? (newMTime + pTime) : newMTime;
+                evNewEnd = evNewStart.clone().add(duration, 'hours');
+            }
 
             changes.push({
               id: ev.id,
@@ -1719,8 +1730,10 @@ const ScheduleTest = () => {
             const cleaningId = mainId.replace('-main', '-cleaning');
             const cleanEv = api.getEventById(cleaningId);
             if (cleanEv && !processedIds.has(cleaningId)) {
-              const cleanNewStart = moment(cleanEv.start).add(deltaMs, 'milliseconds');
-              const cleanNewEnd = moment(cleanEv.end).add(deltaMs, 'milliseconds');
+              // Sự kiện vệ sinh nối liền sau sự kiện chính mới
+              const cleanDurationMs = moment(cleanEv.end).diff(moment(cleanEv.start));
+              const cleanNewStart = evNewEnd.clone();
+              const cleanNewEnd = cleanNewStart.clone().add(cleanDurationMs, 'milliseconds');
 
               changes.push({
                 id: cleanEv.id,
@@ -1786,7 +1799,9 @@ const ScheduleTest = () => {
           changes: changes,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
-          reason: { reason: reason || 'Cập nhật qua modal' }
+          reason: { reason: reason || 'Cập nhật qua modal' },
+          newMTime: newMTime,
+          pTime: pTime
         })
           .then(res => {
             let data = res.data;
