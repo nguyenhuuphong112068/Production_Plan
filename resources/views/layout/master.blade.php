@@ -917,6 +917,25 @@
             </div>
         </div>
 
+        <!-- Modal hiển thị chi tiết thông báo mở rộng -->
+        <div class="modal fade" id="notifExtendModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chi tiết thông báo lô đã Submit</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="notif-extend-content"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                        <button type="button" class="btn btn-primary" id="btn-notif-nav">Đi tới trang quản lý</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         @yield('model')
 
         @yield('script')
@@ -1044,8 +1063,9 @@
                                 let mentionBadge = n.activity_type === 'Nhắc tên' 
                                     ? '<span class="badge bg-danger ms-2" style="animation: badge-blink 1.5s infinite;">Bạn được nhắc đến</span>' 
                                     : '';
+                                let extendData = n.modal_content_extend ? btoa(unescape(encodeURIComponent(n.modal_content_extend))) : '';
                                 html += `
-                                    <div class="notif-item ${isUnread}" onclick="markNotificationRead(${n.id}, '${n.url}')">
+                                    <div class="notif-item ${isUnread}" onclick="handleNotifClick(${n.id}, '${n.url}', '${extendData}')">
                                         <div class="notif-content">
                                             <div class="notif-title"><b>${n.sender_name}</b> đã ${n.activity_type} ${mentionBadge}</div>
                                             <div class="notif-message">${n.message}</div>
@@ -1062,18 +1082,54 @@
                 });
             }
 
-            window.markNotificationRead = function(id, targetUrl) {
+            window.handleNotifClick = function(id, targetUrl, extendData) {
                 $.post("{{ route('notifications.markAsRead') }}", {
                     _token: "{{ csrf_token() }}",
                     notification_id: id
                 }, function() {
                     loadNotifications();
+                });
 
-                    // ĐIỀU HƯỚNG ĐỘNG TỪ DATABASE
+                if (extendData) {
+                    try {
+                        let html = decodeURIComponent(escape(atob(extendData)));
+                        // Kiểm tra nếu nó vẫn là chuỗi JSON do dữ liệu cũ thì xử lý fallback
+                        if (html.trim().startsWith('[')) {
+                            let data = JSON.parse(html);
+                            html = '<table class="table table-bordered table-sm" style="font-size: 13px;"><thead><tr><th>Sản phẩm / Nội dung</th><th>Bắt đầu</th><th>Kết thúc</th></tr></thead><tbody>';
+                            data.forEach(item => {
+                                html += `<tr>
+                                    <td>${item.title || '-'}</td>
+                                    <td>${moment(item.start).format('HH:mm DD/MM/YYYY')}</td>
+                                    <td>${moment(item.end).format('HH:mm DD/MM/YYYY')}</td>
+                                </tr>`;
+                            });
+                            html += '</tbody></table>';
+                        }
+                        
+                        $('#notif-extend-content').html(html);
+                        $('#notifExtendModal').modal('show');
+                        
+                        $('#btn-notif-nav').off('click').on('click', function() {
+                            if (targetUrl && targetUrl !== 'null' && targetUrl !== 'undefined') {
+                                window.location.href = targetUrl;
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Lỗi parse data extend:', e);
+                        if (targetUrl && targetUrl !== 'null' && targetUrl !== 'undefined') {
+                            window.location.href = targetUrl;
+                        }
+                    }
+                } else {
                     if (targetUrl && targetUrl !== 'null' && targetUrl !== 'undefined') {
                         window.location.href = targetUrl;
                     }
-                });
+                }
+            };
+
+            window.markNotificationRead = function(id, targetUrl) {
+                handleNotifClick(id, targetUrl, '');
             };
 
             loadNotifications();

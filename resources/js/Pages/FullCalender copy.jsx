@@ -1448,13 +1448,26 @@ const ScheduleTest = () => {
       `<option value="${res.id}" ${res.id == currentResourceId ? 'selected' : ''}>${res.title}</option>`
     ).join('');
 
-    const baseProcessCode = props.process_code.split('_').slice(0, 2).join('_');
+    const baseProcessCode = props.process_code ? props.process_code.split('_').slice(0, 2).join('_') : '';
     const currentQuota = (quota && props.process_code)
       ? quota.find(q => q.process_code == baseProcessCode + "_" + currentResourceId)
       : null;
 
-    const m_time = currentQuota ? currentQuota.m_time : 0;
-    const p_time = currentQuota ? currentQuota.p_time : 0;
+    let p_time = currentQuota ? currentQuota.p_time : 0;
+    let m_time = currentQuota ? currentQuota.m_time : 0;
+
+    // Lấy định mức thực tế từ duration của event (ưu tiên hơn quota mặc định)
+    if (event.start && event.end) {
+        const durationHours = moment(event.end).diff(moment(event.start), 'hours', true);
+        if (props.first_in_campaign == 1 || props.title_clearning == "VS-II") {
+            m_time = durationHours - p_time;
+        } else {
+            m_time = durationHours;
+        }
+        // Làm tròn 2 chữ số thập phân
+        m_time = Math.round(m_time * 100) / 100;
+        if (m_time < 0) m_time = 0;
+    }
 
     // Chuẩn bị danh sách lô đã chọn để hiển thị trong modal
     const currentSelectedEvents = selectedEventsRef.current || [];
@@ -1662,40 +1675,48 @@ const ScheduleTest = () => {
         const eventToUpdate = api.getEventById(event.id);
         const { activeStart, activeEnd } = api.view;
         const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+        const newMTime = parseFloat(document.getElementById('swal-m-time').value) || 0;
+        const pTime = parseFloat(document.getElementById('swal-p-time').value) || 0;
 
         let changes = [];
 
         if (moveSelectedBatches) {
           // Chế độ di chuyển các lô được chọn:
-          // Tính delta thời gian dựa trên sự kiện hiện tại
-          const originalStart = moment(event.start);
-          const newStart = moment(start);
-          const deltaMs = newStart.diff(originalStart);
-
+          // Sắp xếp các sự kiện chính theo thời gian bắt đầu cũ và xếp chúng liên tục
+          let currentStart = moment(start);
           const selEvents = selectedEventsRef.current || [];
 
-          // Tách ra: sự kiện chính (-main) và sự kiện vệ sinh (-cleaning)
+          // Tách ra: sự kiện chính (-main)
           const mainIds = new Set();
-          const cleaningIds = new Set();
           selEvents.forEach(sel => {
             const id = String(sel.id);
-            if (id.includes('-cleaning')) {
-              cleaningIds.add(id);
-            } else {
+            if (!id.includes('-cleaning')) {
               mainIds.add(id);
             }
           });
 
-          // Chỉ xử lý các sự kiện chính (bỏ qua cleaning-only - chọn vệ sinh mà không chọn sự kiện chính)
-          // Với mỗi sự kiện chính, tự động kéo theo sự kiện vệ sinh tương ứng
-          const processedIds = new Set();
-
+          // Lấy danh sách các sự kiện chính và sắp xếp
+          let sortedMainEvents = [];
           mainIds.forEach(mainId => {
             const ev = api.getEventById(mainId);
-            if (!ev) return;
+            if (ev) sortedMainEvents.push(ev);
+          });
+          sortedMainEvents.sort((a, b) => a.start - b.start);
 
-            const evNewStart = moment(ev.start).add(deltaMs, 'milliseconds');
-            const evNewEnd = moment(ev.end).add(deltaMs, 'milliseconds');
+          const processedIds = new Set();
+
+          sortedMainEvents.forEach(ev => {
+            let evNewStart = currentStart.clone();
+
+            // Nếu người dùng thay đổi mTime, tính lại duration cho từng sự kiện được chọn
+            let durationHours;
+            if (newMTime > 0) {
+                durationHours = (ev.extendedProps.first_in_campaign == 1 || ev.extendedProps.title_clearning == "VS-II") ? (newMTime + pTime) : newMTime;
+            } else {
+                durationHours = moment(ev.end).diff(moment(ev.start), 'hours', true);
+            }
+            
+            let evNewEnd = evNewStart.clone().add(durationHours, 'hours');
 
             changes.push({
               id: ev.id,

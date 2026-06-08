@@ -16,7 +16,7 @@ class NotificationController extends Controller
      * $targetUserIds: Mảng ID người nhận cụ thể (ví dụ [1, 2, 5])
      * $targetUserGroups: Mảng nhóm người nhận (ví dụ ['Admin', 'QC'])
      */
-    public static function sendNotification($message, $activityType = 'Thông báo', $referenceId = null, $targetUserIds = 'all', $targetUserGroups = [], $url = null)
+    public static function sendNotification($message, $activityType = 'Thông báo', $referenceId = null, $targetUserIds = 'all', $targetUserGroups = [], $url = null, $modalContentExtend = null)
     {
         $senderId = session('user')['userId'] ?? 0;
 
@@ -27,6 +27,7 @@ class NotificationController extends Controller
             'message' => $message,
             'reference_id' => $referenceId,
             'url' => $url,
+            'modal_content_extend' => is_array($modalContentExtend) ? json_encode($modalContentExtend) : $modalContentExtend,
             'created_at' => now(),
         ]);
 

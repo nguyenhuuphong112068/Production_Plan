@@ -2221,6 +2221,8 @@ class SchedualController extends Controller
     public function update(Request $request)
     {
 
+        //Log::info($request->all());
+        //return;
         $offDays = DB::table('off_days')
             ->whereDate('off_date', '>=', now())
             ->pluck('off_date')
@@ -2313,7 +2315,7 @@ class SchedualController extends Controller
                             } else {
                                 $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
                             }
-                            
+
                             $newStart = $currentStart->copy();
                             $newEnd = $newStart->copy()->addSeconds($duration);
 
@@ -3581,7 +3583,7 @@ class SchedualController extends Controller
 
     public function submit(Request $request)
     {
-        Log::info($request->all());
+
         // 1️⃣ Lấy danh sách các dòng sẽ update
         $submitType = $request->input('submit_type', 'production'); // production, HC, BT, TI
 
@@ -3705,6 +3707,20 @@ class SchedualController extends Controller
             }
         }
 
+        $modalContentExtend = null;
+        if (isset($updatedRows) && !$updatedRows->isEmpty()) {
+            $html = '<table class="table table-bordered table-sm" style="font-size: 13px;">';
+            $html .= '<thead><tr><th>Sản phẩm / Nội dung</th><th>Bắt đầu</th><th>Kết thúc</th></tr></thead><tbody>';
+            foreach ($updatedRows as $row) {
+                $start = \Carbon\Carbon::parse($row->start)->format('H:i d/m/Y');
+                $end = \Carbon\Carbon::parse($row->end)->format('H:i d/m/Y');
+                $title = $row->title ?: '-';
+                $html .= "<tr><td>{$title}</td><td>{$start}</td><td>{$end}</td></tr>";
+            }
+            $html .= '</tbody></table>';
+            $modalContentExtend = $html;
+        }
+
         // Gửi thông báo chung
         \App\Http\Controllers\General\NotificationController::sendNotification(
             $message,
@@ -3712,7 +3728,8 @@ class SchedualController extends Controller
             null,
             $targetUserIds,
             [],
-            $targetUrl
+            $targetUrl,
+            $modalContentExtend
         );
 
         // Gửi thông báo riêng cho người được nhắc tên
@@ -3723,7 +3740,8 @@ class SchedualController extends Controller
                 null,
                 $mentionedUserIds,
                 [],
-                $targetUrl
+                $targetUrl,
+                $modalContentExtend
             );
         }
 
