@@ -66,6 +66,12 @@ const ScheduleTest = () => {
     const uniqueStages = [...new Set((resources || []).map(r => r.stage_name).filter(Boolean))];
     return uniqueStages.map(s => ({ label: s, value: s }));
   }, [resources]);
+  
+  const [selectedRoomsFilter, setSelectedRoomsFilter] = useState(null);
+  const roomFilterOptions = useMemo(() => {
+    const uniqueRooms = [...new Set((resources || []).map(r => r.title).filter(Boolean))];
+    return uniqueRooms.map(s => ({ label: s, value: s }));
+  }, [resources]);
   const [personnelEvents, setPersonnelEvents] = useState([]);
   const [showPersonnel, setShowPersonnel] = useState(false);
   const [historyData, setHistoryData] = useState([]);
@@ -3284,8 +3290,11 @@ const ScheduleTest = () => {
     if (selectedStagesFilter && selectedStagesFilter.length > 0) {
       baseRes = baseRes.filter(r => selectedStagesFilter.includes(r.stage_name));
     }
+    if (selectedRoomsFilter && selectedRoomsFilter.length > 0) {
+      baseRes = baseRes.filter(r => selectedRoomsFilter.includes(r.title));
+    }
     return baseRes;
-  }, [resources, showPersonnel, selectedStagesFilter]);
+  }, [resources, showPersonnel, selectedStagesFilter, selectedRoomsFilter]);
 
   const handleConfirmClearningValidation = (e) => {
     const ids = selectedEvents.map(row =>
@@ -3458,16 +3467,28 @@ const ScheduleTest = () => {
 
       {/* Visual Indicator for Selected Events and Pending Changes */}
       <div className="flex gap-4 mb-2 align-items-center justify-content-between" style={{ minHeight: '20px' }}>
-        <div style={{ zIndex: 10, marginLeft: '20px' }}>
+        <div style={{ zIndex: 10, marginLeft: '20px', display: 'flex', gap: '10px' }}>
           <MultiSelect
             value={selectedStagesFilter || stageFilterOptions.map(o => o.value)}
             options={stageFilterOptions}
             onChange={(e) => setSelectedStagesFilter(e.value)}
             optionLabel="label"
-            placeholder="Lọc công đoạn hiển thị"
+            placeholder="Lọc công đoạn"
             display="chip"
-            maxSelectedLabels={3}
-            className="w-full md:w-30rem"
+            maxSelectedLabels={2}
+            className="w-full md:w-16rem"
+            filter
+          />
+          <MultiSelect
+            value={selectedRoomsFilter || roomFilterOptions.map(o => o.value)}
+            options={roomFilterOptions}
+            onChange={(e) => setSelectedRoomsFilter(e.value)}
+            optionLabel="label"
+            placeholder="Lọc phòng sản xuất"
+            display="chip"
+            maxSelectedLabels={2}
+            className="w-full md:w-20rem"
+            filter
           />
         </div>
         <div className="flex gap-4 align-items-center justify-content-end">
