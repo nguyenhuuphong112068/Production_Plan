@@ -642,6 +642,7 @@ class ProductionPlanController extends Controller
                         $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
                         $total =  $first_val_batch +  $second_val_batch + $third_val_batch;
 
+                        $current_val_batch = 0;
                         if ($first_val_batch == 1) {
                                 $current_val_batch = 1;
                         } else if ($second_val_batch == 1) {
@@ -1199,6 +1200,7 @@ class ProductionPlanController extends Controller
                         'updated_at' => now(),
                 ];
 
+                $active_stage_plan = 1;
                 if ($request->type === 'delete') {
                         $updatesql['active'] = 0;
                         $active_stage_plan = 0;

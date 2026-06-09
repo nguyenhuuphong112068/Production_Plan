@@ -39,7 +39,7 @@
                     </button>
                 </div>
             </div>
-            <div class="card-body" style="height: 95vh; overflow-y: auto;">
+            <div class="card-body" style="max-height: 95vh; overflow-y: auto;">
                 @php
                     $auth_view_material = user_has_permission(
                         session('user')['userId'],
