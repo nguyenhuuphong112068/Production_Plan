@@ -66,6 +66,24 @@ class LoginController extends Controller
         // Tự động đồng bộ nhân sự khi đăng nhập
         $this->syncEmployees($getUser->deparment);
 
+        // Kích hoạt gửi thông báo nhắc lịch chưa sắp lúc 8h00 nếu chưa chạy trong ngày
+        if ($getUser->userGroup === 'Schedualer') {
+            $now = \Carbon\Carbon::now();
+            if ($now->hour >= 8) {
+                $today = $now->toDateString();
+                $lastRun = \Illuminate\Support\Facades\Cache::get('last_unscheduled_notification_date');
+                
+                if ($lastRun !== $today) {
+                    try {
+                        \Illuminate\Support\Facades\Artisan::call('notify:unscheduled-batches');
+                        \Illuminate\Support\Facades\Cache::put('last_unscheduled_notification_date', $today);
+                    } catch (\Exception $e) {
+                        // Bỏ qua lỗi nếu command chạy thất bại để không chặn luồng login
+                    }
+                }
+            }
+        }
+
         AuditTrialController::log('Login', 'NA', 0, 'NA', 'Đăng Nhập Thành Công');
 
         return redirect()->route('pages.general.home');

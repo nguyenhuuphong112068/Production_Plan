@@ -1,10 +1,1 @@
-<?php
-require 'vendor/autoload.php';
-$app = require_once 'bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
-$request = request();
-$controller = new \App\Http\Controllers\Pages\Plan\ProductionPlanController();
-$view = $controller->index($request);
-$summary = $view->getData()['summary_by_actual_month'];
-echo json_encode(array_values($summary->toArray()), JSON_PRETTY_PRINT);
+<?php require 'vendor/autoload.php'; \ = require_once 'bootstrap/app.php'; \ = \->make(Illuminate\Contracts\Console\Kernel::class); \->bootstrap(); \ = request(); \ = new \App\Http\Controllers\Pages\Plan\ProductionPlanController(); \ = \->index(\); \ = \->getData()['summary_by_actual_month']; echo json_encode(array_values(\->toArray()), JSON_PRETTY_PRINT);
