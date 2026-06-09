@@ -42,6 +42,7 @@ Route::prefix('/plan')
 
                 Route::get('feedback_list', 'feedback_list')->name('feedback_list');
                 Route::get('get_waiting_plans', 'getWaitingPlans')->name('get_waiting_plans');
+                Route::get('get_batches_by_status', 'getBatchesByStatus')->name('get_batches_by_status');
                 Route::get('open_feedback', 'open_feedback')->name('open_feedback');
                 Route::post('accept_expected_date', 'accept_expected_date')->name('accept_expected_date');
                 Route::post('all_feedback', 'all_feedback')->name('all_feedback');

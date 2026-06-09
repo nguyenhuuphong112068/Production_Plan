@@ -117,6 +117,7 @@ class ProductionPlanController extends Controller
                                 'pm.plan_list_id',
                                 'fc.batch_qty',
                                 DB::raw("DATE_FORMAT(pm.expected_date, '%m-%Y') as expected_month"),
+                                DB::raw("DATE_FORMAT(sp.actual_start, '%m-%Y') as actual_month"),
                                 DB::raw("
                                 CASE
                                 WHEN pm.cancel = 1 THEN 'Hủy'
@@ -190,6 +191,102 @@ class ProductionPlanController extends Controller
                                 return \Carbon\Carbon::createFromFormat('m-Y', $item->month);
                         });
 
+                /*
+                |--------------------------------------------------------------------------
+                | 5.2 GOM THEO THÁNG ACTUAL START (THỰC TẾ)
+                |--------------------------------------------------------------------------
+                */
+
+                $yieldSub = DB::table('yields')
+                        ->select('stage_plan_id', DB::raw('SUM(yield) as total_yield'))
+                        ->groupBy('stage_plan_id');
+
+                $actual_stages = DB::table('stage_plan as sp')
+                        ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+                        ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+                        ->join('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
+                        ->leftJoinSub($yieldSub, 'ys', function ($join) {
+                                $join->on('sp.id', '=', 'ys.stage_plan_id');
+                        })
+                        ->where('pm.active', 1)
+                        ->where('pl.type', 1)
+                        ->where('pm.only_parkaging', 0)
+                        ->where('pm.plan_list_id', '!=', 0)
+                        ->where('pm.plan_list_id', '>', 23)
+                        ->where('pm.deparment_code', $production_code)
+                        ->whereNotNull('sp.actual_start')
+                        ->where('sp.actual_start', '>=', '2026-01-01')
+                        ->where('sp.finished', 1)
+                        ->where('sp.active', 1)
+                        ->select(
+                                'sp.plan_master_id',
+                                'sp.stage_code',
+                                'fc.batch_qty',
+                                DB::raw("COALESCE(ys.total_yield, 0) as total_yield"),
+                                DB::raw("DATE_FORMAT(sp.actual_start, '%m-%Y') as actual_month"),
+                                DB::raw("TIMESTAMPDIFF(MINUTE, sp.actual_start, sp.actual_end) as production_minutes"),
+                                DB::raw("TIMESTAMPDIFF(MINUTE, sp.actual_start_clearning, sp.actual_end_clearning) as cleaning_minutes")
+                        )
+                        ->get();
+
+                $off_days_query = DB::table('off_days')
+                        ->where('off_date', '>=', '2026-01-01')
+                        ->select(DB::raw("DATE_FORMAT(off_date, '%m-%Y') as month"), DB::raw('count(*) as count'))
+                        ->groupBy('month')
+                        ->pluck('count', 'month');
+
+                $summary_by_actual_month = $actual_stages
+                        ->groupBy('actual_month')
+                        ->map(function ($rows, $month) use ($off_days_query) {
+                                $status_counts = [];
+                                $status_yields = [];
+                                $status_production_minutes = [];
+                                $status_cleaning_minutes = [];
+                                $total_production_minutes = 0;
+                                $total_cleaning_minutes = 0;
+                                
+                                foreach ($rows as $row) {
+                                        $status = '';
+                                        if ($row->stage_code == 1) $status = 'Đã Cân';
+                                        elseif ($row->stage_code == 3) $status = 'Đã Pha chế';
+                                        elseif ($row->stage_code == 4) $status = 'Đã THT';
+                                        elseif ($row->stage_code == 5) $status = 'Đã định hình';
+                                        elseif ($row->stage_code == 6) $status = 'Đã Bao phim';
+                                        elseif ($row->stage_code == 7) $status = 'Hoàn Tất ĐG';
+                                        
+                                        if ($status) {
+                                                $status_counts[$status] = ($status_counts[$status] ?? 0) + 1;
+                                                $status_yields[$status] = ($status_yields[$status] ?? 0) + $row->total_yield;
+                                                
+                                                $p_mins = $row->production_minutes > 0 ? $row->production_minutes : 0;
+                                                $c_mins = $row->cleaning_minutes > 0 ? $row->cleaning_minutes : 0;
+                                                
+                                                $status_production_minutes[$status] = ($status_production_minutes[$status] ?? 0) + $p_mins;
+                                                $status_cleaning_minutes[$status] = ($status_cleaning_minutes[$status] ?? 0) + $c_mins;
+                                                
+                                                $total_production_minutes += $p_mins;
+                                                $total_cleaning_minutes += $c_mins;
+                                        }
+                                }
+
+                                $unique_batches = $rows->unique('plan_master_id');
+
+                                return (object)[
+                                        'month' => $month,
+                                        'tong_lo' => $unique_batches->count(),
+                                        'total_batch_qty' => $unique_batches->sum('batch_qty'),
+                                        'status_counts' => $status_counts,
+                                        'status_yields' => $status_yields,
+                                        'status_production_minutes' => $status_production_minutes,
+                                        'status_cleaning_minutes' => $status_cleaning_minutes,
+                                        'total_production_minutes' => $total_production_minutes,
+                                        'total_cleaning_minutes' => $total_cleaning_minutes,
+                                        'off_days' => $off_days_query[$month] ?? 0,
+                                ];
+                        })
+                        ->sortByDesc(function ($item) {
+                                return \Carbon\Carbon::createFromFormat('m-Y', $item->month);
+                        });
 
                 /*
                 |--------------------------------------------------------------------------
@@ -293,6 +390,7 @@ class ProductionPlanController extends Controller
                 return view('pages.plan.production.plan_list', [
                         'datas' => $datas,
                         'summary_by_month' => $summary_by_month,
+                        'summary_by_actual_month' => $summary_by_actual_month,
                 ]);
         }
 
@@ -2589,5 +2687,211 @@ class ProductionPlanController extends Controller
                         ->get();
 
                 return response()->json($plan_waiting);
+        }
+
+        public function getBatchesByStatus(Request $request)
+        {
+                $production_code = session('user')['production_code'];
+                $month = $request->month;
+                $status_filter = $request->status;
+                $filter_type = $request->filter_type ?? 'expected';
+
+                $maxStageFinished = DB::table('stage_plan')
+                        ->where('finished', 1)
+                        ->where('active', 1)
+                        ->where('stage_code', '!=', 8)
+                        ->where('deparment_code', $production_code)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
+                $maxPossibleStage = DB::table('stage_plan')
+                        ->where('active', 1)
+                        ->where('stage_code', '!=', 8)
+                        ->where('deparment_code', $production_code)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_possible_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
+                $yieldSub = DB::table('yields')
+                        ->select('stage_plan_id', DB::raw('SUM(yield) as total_yield'))
+                        ->groupBy('stage_plan_id');
+
+                $target_stage_code = null;
+                if ($filter_type === 'actual') {
+                        $stage_code_map = [
+                                'Đã Cân' => 1,
+                                'Đã Pha chế' => 3,
+                                'Đã THT' => 4,
+                                'Đã định hình' => 5,
+                                'Đã Bao phim' => 6,
+                                'Hoàn Tất ĐG' => 7,
+                        ];
+                        $target_stage_code = $stage_code_map[$status_filter] ?? null;
+                }
+
+                $batches = DB::table('plan_master as pm')
+                        ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                $join->on('pm.id', '=', 'sp_max.plan_master_id');
+                        })
+                        ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                                $join->on('pm.id', '=', 'sp_possible.plan_master_id');
+                        })
+                        ->leftJoin('stage_plan as sp', function ($join) {
+                                $join->on('pm.id', '=', 'sp.plan_master_id')
+                                        ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
+                        })
+                        ->when($filter_type === 'actual' && $target_stage_code, function ($q) use ($target_stage_code) {
+                                $q->join('stage_plan as sp_target', function ($join) use ($target_stage_code) {
+                                        $join->on('pm.id', '=', 'sp_target.plan_master_id')
+                                                ->where('sp_target.stage_code', '=', $target_stage_code)
+                                                ->where('sp_target.finished', '=', 1)
+                                                ->where('sp_target.active', '=', 1);
+                                });
+                        })
+                        ->leftJoinSub($yieldSub, 'ys', function ($join) {
+                                $join->on('sp.id', '=', 'ys.stage_plan_id');
+                        })
+                        ->leftJoin('finished_product_category as fc', 'pm.product_caterogy_id', '=', 'fc.id')
+                        ->leftJoin('product_name as pn', 'fc.product_name_id', '=', 'pn.id')
+                        ->where('pm.active', 1)
+                        ->where('pl.type', 1)
+                        ->where('pm.only_parkaging', 0)
+                        ->where('pm.plan_list_id', '!=', 0)
+                        ->where('pm.plan_list_id', '>', 23)
+                        ->where('pm.deparment_code', $production_code)
+                        ->when($request->plan_list_id, function ($q) use ($request) {
+                                if ($request->plan_list_id == -1) {
+                                        return $q->where('pm.cancel', 0)->where(function ($sub) {
+                                                $sub->whereNull('sp_max.max_stage_code')
+                                                        ->orWhereRaw('sp_max.max_stage_code < sp_possible.max_possible_stage_code');
+                                        });
+                                }
+                                return $q->where('pm.plan_list_id', $request->plan_list_id);
+                        })
+                        ->when($month, function ($q) use ($month, $filter_type, $target_stage_code) {
+                                if ($filter_type === 'actual') {
+                                        if ($target_stage_code) {
+                                                return $q->whereRaw("DATE_FORMAT(sp_target.actual_start, '%m-%Y') = ?", [$month]);
+                                        } else {
+                                                return $q->whereRaw("1 = 0");
+                                        }
+                                } else {
+                                        return $q->whereRaw("DATE_FORMAT(pm.expected_date, '%m-%Y') = ?", [$month]);
+                                }
+                        })
+                        ->select(
+                                'pm.id',
+                                'fc.finished_product_code as ma_san_pham',
+                                'pn.name as ten_san_pham',
+                                DB::raw("COALESCE(pm.actual_batch, pm.batch) AS so_lo"),
+                                DB::raw("COALESCE(ys.total_yield, 0) as san_luong"),
+                                'sp_max.max_stage_code',
+                                DB::raw("CASE
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+                                WHEN sp.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
+                                ELSE 'Chưa làm'
+                                END AS current_status
+                        ")
+                        )
+                        ->when($filter_type === 'actual' && $target_stage_code, function ($q) {
+                                $q->addSelect(
+                                        'sp_target.deparment_code as phong_san_xuat',
+                                        DB::raw("TIMESTAMPDIFF(MINUTE, sp_target.actual_start, sp_target.actual_end) as production_minutes"),
+                                        DB::raw("TIMESTAMPDIFF(MINUTE, sp_target.actual_start_clearning, sp_target.actual_end_clearning) as cleaning_minutes")
+                                );
+                        })
+                        ->get();
+
+                if ($filter_type !== 'actual') {
+                        $batches = $batches->filter(function ($b) use ($status_filter) {
+                                return $b->current_status == $status_filter;
+                        })->values();
+                }
+
+                $plan_master_ids = $batches->pluck('id')->toArray();
+                $all_stages = DB::table('stage_plan')
+                        ->whereIn('plan_master_id', $plan_master_ids)
+                        ->where('active', 1)
+                        ->get()
+                        ->groupBy('plan_master_id');
+
+                $formatMins = function ($mins) {
+                        if (!$mins) {
+                                return '0 giờ';
+                        }
+                        $total_hours = round($mins / 60);
+                        if ($total_hours == 0) {
+                                return '0 giờ';
+                        }
+                        $d = floor($total_hours / 24);
+                        $h = $total_hours % 24;
+                        if ($d > 0 && $h > 0) {
+                                return "{$d} ngày {$h} giờ";
+                        }
+                        if ($d > 0) {
+                                return "{$d} ngày";
+                        }
+                        return "{$h} giờ";
+                };
+
+                foreach ($batches as $batch) {
+                        $batch->cong_doan_tiep_theo = 'N/A';
+                        $batch->thoi_gian_bat_dau = 'N/A';
+                        if ($filter_type === 'actual') {
+                                $batch->thoi_gian_san_xuat_thuc_te = $formatMins($batch->production_minutes ?? 0);
+                                $batch->thoi_gian_ve_sinh_thuc_te = $formatMins($batch->cleaning_minutes ?? 0);
+                        }
+
+                        if (in_array($batch->current_status, ['Hoàn Tất ĐG', 'Hoàn Tất', 'Hủy'])) {
+                                continue;
+                        }
+
+                        if (isset($all_stages[$batch->id])) {
+                                $stages = $all_stages[$batch->id];
+                                $next_stage_code = null;
+
+                                if ($batch->max_stage_code) {
+                                        $current_stage = $stages->where('stage_code', $batch->max_stage_code)->where('finished', 1)->first();
+                                        if ($current_stage && $current_stage->nextcessor_code) {
+                                                $parts = explode('_', $current_stage->nextcessor_code);
+                                                $next_stage_code = isset($parts[1]) ? (int)$parts[1] : 0;
+                                        }
+                                } else {
+                                        $first_stage = $stages->where('finished', 0)->sortBy('stage_code')->first();
+                                        if ($first_stage) {
+                                                $next_stage_code = $first_stage->stage_code;
+                                        }
+                                }
+
+                                if ($next_stage_code) {
+                                        $next_stage = $stages->where('stage_code', $next_stage_code)->first();
+                                        if ($next_stage) {
+                                                $stageNames = [
+                                                        1 => "Cân Nguyên Liệu",
+                                                        3 => "Pha Chế",
+                                                        4 => "Trộn Hoàn Tất",
+                                                        5 => "Định Hình",
+                                                        6 => "Bao Phim",
+                                                        7 => "ĐGSC - ĐGTC",
+                                                        8 => "N/A"
+                                                ];
+                                                $batch->cong_doan_tiep_theo = $stageNames[$next_stage->stage_code] ?? $next_stage->stage_code;
+                                                $batch->thoi_gian_bat_dau = $next_stage->start ? \Carbon\Carbon::parse($next_stage->start)->format('d/m/Y H:i') : 'Chưa bắt đầu';
+                                        }
+                                }
+                        }
+                }
+
+                return response()->json($batches);
         }
 }
