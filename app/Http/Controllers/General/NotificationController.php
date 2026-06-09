@@ -16,9 +16,9 @@ class NotificationController extends Controller
      * $targetUserIds: Mảng ID người nhận cụ thể (ví dụ [1, 2, 5])
      * $targetUserGroups: Mảng nhóm người nhận (ví dụ ['Admin', 'QC'])
      */
-    public static function sendNotification($message, $activityType = 'Thông báo', $referenceId = null, $targetUserIds = 'all', $targetUserGroups = [], $url = null, $modalContentExtend = null)
+    public static function sendNotification($message, $activityType = 'Thông báo', $referenceId = null, $targetUserIds = 'all', $targetUserGroups = [], $url = null, $modalContentExtend = null, $forceSystemSender = false)
     {
-        $senderId = session('user')['userId'] ?? 0;
+        $senderId = $forceSystemSender ? 0 : (session('user')['userId'] ?? 0);
 
         // 1. Tạo bản ghi thông báo chính
         $notificationId = DB::table('notifications')->insertGetId([
@@ -85,7 +85,7 @@ class NotificationController extends Controller
             ->where('nr.user_id', $userId)
             ->select(
                 'n.*',
-                'u.fullName as sender_name',
+                DB::raw('COALESCE(u.fullName, "Hệ thống PMS") as sender_name'),
                 'nr.is_read',
                 'nr.read_at'
             )

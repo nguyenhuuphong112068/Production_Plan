@@ -137,7 +137,8 @@ class NotifyUnscheduledBatches extends Command
                         $schedulers,
                         [],
                         null,
-                        $html
+                        $html,
+                        true
                     );
                 }
             }
