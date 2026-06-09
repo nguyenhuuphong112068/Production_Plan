@@ -600,6 +600,15 @@
                         </a>
                         <ul class="nav nav-treeview">
                             {{-- @if (user_has_permission(session('user')['userId'], 'production_assignment', 'boolean')) --}}
+
+                            <li class="nav-item">
+                                <a href="{{ route('pages.assignment.dashboard.index') }}"
+                                    class="nav-link {{ str_contains(url()->current(), 'assignemnt/dashboard') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>DashBoard Nhân Sự</p>
+                                </a>
+                            </li>
+
                             <li class="nav-item">
                                 <a href="{{ route('pages.assignment.production.index') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'assignment/production') ? 'active' : '' }}">

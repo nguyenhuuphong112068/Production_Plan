@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Pages\Assignment\MaintenanceAssignmentController;
 use App\Http\Controllers\Pages\Assignment\ProductionAssignmentController;
+use App\Http\Controllers\Pages\Assignment\DashBoardController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
 
@@ -42,4 +43,13 @@ Route::prefix('/assignemnt/maintenance')
         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
         Route::post('store', 'store')->name('store');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
+    });
+
+Route::prefix('/assignemnt/dashboard')
+    ->controller(DashBoardController::class)
+    ->name('pages.assignment.dashboard.')
+    ->middleware(CheckLogin::class)
+    ->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::get('data', 'getData')->name('data');
     });
