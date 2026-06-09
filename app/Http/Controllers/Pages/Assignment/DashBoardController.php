@@ -13,7 +13,7 @@ class DashBoardController extends Controller
     {
         // View for Dashboard
         session()->put(['title' => 'DASHBOARD TÌNH HÌNH NHÂN SỰ']);
-        
+
         // Departments list
         $departments = [
             'PXV1' => 'Phân xưởng Viên 1',
@@ -23,7 +23,7 @@ class DashBoardController extends Controller
             'PXVH' => 'Phân xưởng Viên H',
             'EN'   => 'Kỹ Thuật Bảo Trì',
             'QA'   => 'Hiệu chuẩn',
-            'WH'   => 'Kho'
+
         ];
 
         // Không load groups mặc định nữa, sẽ load qua API getData
@@ -38,9 +38,9 @@ class DashBoardController extends Controller
         $type = $request->type ?? 'day'; // day, week, month
         $date = $request->date ?? Carbon::now()->format('Y-m-d');
         $group_id = $request->group_id; // Thêm lọc tổ
-        
+
         $carbonDate = Carbon::parse($date);
-        
+
         if ($type == 'day') {
             $startDate = $carbonDate->copy()->setTime(6, 0, 0);
             $endDate = $startDate->copy()->addDays(1);
@@ -62,7 +62,6 @@ class DashBoardController extends Controller
                 $q->whereNull('e.resign')->orWhere('e.resign', 0);
             })
             ->join('employee_assignments as ea', 'e.id', '=', 'ea.employees_id')
-            ->leftJoin('stage_groups as sg', 'ea.group_id', '=', 'sg.code')
             ->where('ea.production_code', $production_code)
             ->where('ea.active', 1);
 
@@ -71,12 +70,38 @@ class DashBoardController extends Controller
         }
 
         $personnelList = $personnelQuery
-            ->select('e.id', 'e.code', 'e.name', DB::raw('GROUP_CONCAT(DISTINCT sg.name SEPARATOR ", ") as group_names'))
+            ->select('e.id', 'e.code', 'e.name', DB::raw('GROUP_CONCAT(DISTINCT ea.group_id SEPARATOR ",") as group_ids'))
             ->groupBy('e.id', 'e.code', 'e.name')
             ->get();
-            
+
+        $isENorQA = in_array($production_code, ['EN', 'QA']);
+        $hardcodedGroups = [
+            1 => "Trung Tâm Cân",
+            3 => "Pha Chế",
+            4 => "Văn Phòng",
+            5 => "Định Hình",
+            6 => "Bao Phim",
+            7 => "ĐGSC",
+            8 => "ĐGTC",
+            9 => "VSCN + Kho BTP"
+        ];
+        $dbGroups = [];
+        if ($isENorQA) {
+            $dbGroups = DB::table('stage_groups')->pluck('name', 'code')->toArray();
+        }
+
         $employees = [];
         foreach ($personnelList as $emp) {
+            $ids = array_filter(explode(',', $emp->group_ids), 'strlen');
+            $names = [];
+            foreach ($ids as $gid) {
+                if ($isENorQA) {
+                    $names[] = $dbGroups[$gid] ?? 'NA';
+                } else {
+                    $names[] = $hardcodedGroups[$gid] ?? 'NA';
+                }
+            }
+            $emp->group_names = count($names) > 0 ? implode(', ', array_unique($names)) : '-';
             $employees[$emp->id] = $emp;
         }
         $employeeIds = array_keys($employees);
@@ -111,7 +136,7 @@ class DashBoardController extends Controller
         foreach ($assignments as $assignment) {
             $aStart = Carbon::parse($assignment->start);
             $aEnd = Carbon::parse($assignment->end);
-            
+
             // Limit to the selected period
             if ($aStart->lt($startDate)) {
                 $aStart = $startDate->copy();
@@ -119,7 +144,7 @@ class DashBoardController extends Controller
             if ($aEnd->gt($endDate)) {
                 $aEnd = $endDate->copy();
             }
-            
+
             $hours = $aStart->diffInMinutes($aEnd) / 60;
             if (isset($employeeHours[$assignment->personnel_id])) {
                 $employeeHours[$assignment->personnel_id] += $hours;
@@ -133,12 +158,12 @@ class DashBoardController extends Controller
             'exact_8h' => 0,
             'over_8h' => 0,
         ];
-        
+
         $details = [];
 
         foreach ($employeeHours as $empId => $totalHours) {
             $avgHoursPerDay = $daysInPeriod > 0 ? ($totalHours / $daysInPeriod) : 0;
-            
+
             $status = '';
             // Allow small floating point rounding
             if ($totalHours == 0) {
@@ -154,7 +179,7 @@ class DashBoardController extends Controller
                 $stats['over_8h']++;
                 $status = '> 8h';
             }
-            
+
             $details[] = [
                 'code' => $employees[$empId]->code,
                 'name' => $employees[$empId]->name,
@@ -164,14 +189,14 @@ class DashBoardController extends Controller
                 'status' => $status
             ];
         }
-        
+
         // Sort details by total_hours ascending
-        usort($details, function($a, $b) {
+        usort($details, function ($a, $b) {
             return $a['total_hours'] <=> $b['total_hours'];
         });
 
         // 4. Lấy danh sách tất cả các tổ khả dụng trong phân xưởng này (không bị ảnh hưởng bởi filter group_id)
-        $availableGroups = DB::table('employee_assignments as ea')
+        $availableGroupsRaw = DB::table('employee_assignments as ea')
             ->join('employees as e', 'ea.employees_id', '=', 'e.id')
             ->where('e.active', 1)
             ->where(function ($q) {
@@ -180,18 +205,33 @@ class DashBoardController extends Controller
             ->where('ea.production_code', $production_code)
             ->where('ea.active', 1)
             ->whereNotNull('ea.group_id')
-            ->join('stage_groups as sg', 'ea.group_id', '=', 'sg.code')
-            ->select('sg.code', 'sg.name')
+            ->select('ea.group_id as code')
             ->distinct()
-            ->orderBy('sg.name')
             ->get();
+
+        $availableGroupsArray = [];
+        foreach ($availableGroupsRaw as $g) {
+            $code = $g->code;
+            if ($isENorQA) {
+                $name = $dbGroups[$code] ?? 'NA';
+            } else {
+                $name = $hardcodedGroups[$code] ?? 'NA';
+            }
+            if ($name !== 'NA') {
+                $availableGroupsArray[] = ['code' => $code, 'name' => $name];
+            }
+        }
+
+        usort($availableGroupsArray, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
 
         return response()->json([
             'success' => true,
             'total_personnel' => count($employees),
             'stats' => $stats,
             'details' => $details,
-            'available_groups' => $availableGroups,
+            'available_groups' => $availableGroupsArray,
             'period' => [
                 'start' => $startDate->format('Y-m-d H:i'),
                 'end' => $endDate->format('Y-m-d H:i'),
