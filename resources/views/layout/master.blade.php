@@ -1659,8 +1659,8 @@
                                     <i class="fas fa-reply"></i>
                                 </span>
                                 ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi, sau 30p sẽ không được thu hồi" data-msg-id="${m.id}">
-                                                                                    <i class="fas fa-undo"></i>
-                                                                                </span>` : ''}
+                                                                                        <i class="fas fa-undo"></i>
+                                                                                    </span>` : ''}
                             </div>
                         `;
                     }

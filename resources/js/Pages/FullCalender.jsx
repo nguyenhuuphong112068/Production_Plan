@@ -13,6 +13,7 @@ import { Stepper } from 'primereact/stepper';
 import { StepperPanel } from 'primereact/stepperpanel';
 import { createRoot } from 'react-dom/client';
 import { OverlayPanel } from 'primereact/overlaypanel';
+import { MultiSelect } from 'primereact/multiselect';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
@@ -59,6 +60,12 @@ const ScheduleTest = () => {
 
   const [events, setEvents] = useState([]);
   const [resources, setResources] = useState([]);
+
+  const [selectedStagesFilter, setSelectedStagesFilter] = useState(null);
+  const stageFilterOptions = useMemo(() => {
+    const uniqueStages = [...new Set((resources || []).map(r => r.stage_name).filter(Boolean))];
+    return uniqueStages.map(s => ({ label: s, value: s }));
+  }, [resources]);
   const [personnelEvents, setPersonnelEvents] = useState([]);
   const [showPersonnel, setShowPersonnel] = useState(false);
   const [historyData, setHistoryData] = useState([]);
@@ -1466,15 +1473,15 @@ const ScheduleTest = () => {
 
     // Lấy định mức thực tế từ duration của event (ưu tiên hơn quota mặc định)
     if (event.start && event.end) {
-        const durationHours = moment(event.end).diff(moment(event.start), 'hours', true);
-        if (props.first_in_campaign == 1 || props.title_clearning == "VS-II") {
-            m_time = durationHours - p_time;
-        } else {
-            m_time = durationHours;
-        }
-        // Làm tròn 2 chữ số thập phân
-        m_time = Math.round(m_time * 100) / 100;
-        if (m_time < 0) m_time = 0;
+      const durationHours = moment(event.end).diff(moment(event.start), 'hours', true);
+      if (props.first_in_campaign == 1 || props.title_clearning == "VS-II") {
+        m_time = durationHours - p_time;
+      } else {
+        m_time = durationHours;
+      }
+      // Làm tròn 2 chữ số thập phân
+      m_time = Math.round(m_time * 100) / 100;
+      if (m_time < 0) m_time = 0;
     }
 
     // Chuẩn bị danh sách lô đã chọn để hiển thị trong modal
@@ -1642,7 +1649,7 @@ const ScheduleTest = () => {
         const moveMode = document.querySelector('input[name="swal-move-mode"]:checked').value;
         const updateCampaign = moveMode === 'campaign';
         const moveSelectedBatches = moveMode === 'selected';
-        
+
         const newMTime = parseFloat(document.getElementById('swal-m-time').value) || 0;
         const pTime = parseFloat(document.getElementById('swal-p-time').value) || 0;
 
@@ -1722,11 +1729,11 @@ const ScheduleTest = () => {
             // Nếu người dùng thay đổi mTime, tính lại duration cho từng sự kiện được chọn
             let durationHours;
             if (newMTime > 0) {
-                durationHours = (ev.extendedProps.first_in_campaign == 1 || ev.extendedProps.title_clearning == "VS-II") ? (newMTime + pTime) : newMTime;
+              durationHours = (ev.extendedProps.first_in_campaign == 1 || ev.extendedProps.title_clearning == "VS-II") ? (newMTime + pTime) : newMTime;
             } else {
-                durationHours = moment(ev.end).diff(moment(ev.start), 'hours', true);
+              durationHours = moment(ev.end).diff(moment(ev.start), 'hours', true);
             }
-            
+
             let evNewEnd = evNewStart.clone().add(durationHours, 'hours');
 
             changes.push({
@@ -1742,7 +1749,7 @@ const ScheduleTest = () => {
             // Tự động di chuyển sự kiện vệ sinh tương ứng (dù người dùng có chọn hay không)
             const cleaningId = ev.id.replace('-main', '-cleaning');
             const cleanEv = api.getEventById(cleaningId);
-            
+
             if (cleanEv && !processedIds.has(cleaningId)) {
               // Sự kiện vệ sinh nối liền sau sự kiện chính mới
               const cleanDurationMs = moment(cleanEv.end).diff(moment(cleanEv.start));
@@ -1758,7 +1765,7 @@ const ScheduleTest = () => {
                 C_end: false
               });
               processedIds.add(cleaningId);
-              
+
               currentStart = cleanNewEnd.clone();
             } else {
               currentStart = evNewEnd.clone();
@@ -3246,86 +3253,7 @@ const ScheduleTest = () => {
     return { html };
   };
 
-  // const EventContent = (arg) => {
-  //   const event = arg.event;
-  //   const props = event._def.extendedProps;
-  //   const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
 
-  //   if (event.title == undefined) {
-  //     console.log(event)
-  //   }
-
-  //   const isTank = props.tank == 1 && props.stage_code == 8;
-  //   const tankStyle = isTank ? 'border: 3px solid #ff0000; border-radius: 0px; box-shadow: 0 0 8px rgba(255,0,0,0.6);' : '';
-
-  //   let html = `
-  //     <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}">
-  //       <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''}">
-
-  //       ${!props.is_clearning && props.finished == 0 ? `
-  //           <span 
-  //             style="
-  //               position:absolute;
-  //               top:2px;
-  //               right:2px;
-  //               display:inline-block;
-  //               width:8px;
-  //               height:8px;
-  //               border-radius:50%;
-  //               background:${props.submit ? 'green' : 'red'};
-  //               z-index:10;
-  //             ">
-  //           </span>
-  //         ` : ''}
-
-  //         <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>
-  //         ${!isTimelineMonth ? `
-  //           <br/>
-  //           ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
-  //         `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
-  //         : ''}
-  //         ` : ''}
-  //     </div>
-  //   `;
-
-  //   if (!props.is_clearning && showRenderBadge && authorization) {
-  //     html += `
-  //             <div 
-  //               class="absolute top-[20px] right-5 px-1 rounded shadow bg-white text-red-600"
-  //               title="% biệt trữ"
-  //             ><b>${props.campaign_code ?? ''}</b></div>`;
-  //   }
-
-
-  //   if (!props.is_clearning && showRenderBadge && props.status) {
-  //     const style = getStatusStyleString(props.status);
-
-  //     html += `
-  //           <div 
-  //             class="absolute top-[-20px] right-5 px-1 rounded shadow"
-  //             style="${style}"
-  //             title="Trạng Thái SX"
-  //           >
-  //             <b>${props.status ?? ''}</b>
-  //           </div>
-  //         `;
-  //   }
-
-  //   if (authorization && props.finished == 0 && props.stage_code != 8) {
-  //     html += `
-  //       <button 
-  //         class="edit-single-event-btn"
-  //         data-event-id="${event.id}"
-  //         title="Sửa nhanh"
-  //       >
-  //         ✏️
-  //       </button>
-  //     `;
-  //   }
-
-  //   html += `</div>`;
-  //   return { html };
-  // };
 
   const buildOffDayEvents = (offDays) => {
     return offDays.map(dateStr => ({
@@ -3349,11 +3277,15 @@ const ScheduleTest = () => {
   }, [events, offDays, personnelEvents, showPersonnel]);
 
   const displayResources = useMemo(() => {
-    if (showPersonnel) {
-      return resources;
+    let baseRes = resources || [];
+    if (!showPersonnel) {
+      baseRes = baseRes.filter(r => !r.is_personnel_sub);
     }
-    return (resources || []).filter(r => !r.is_personnel_sub);
-  }, [resources, showPersonnel]);
+    if (selectedStagesFilter && selectedStagesFilter.length > 0) {
+      baseRes = baseRes.filter(r => selectedStagesFilter.includes(r.stage_name));
+    }
+    return baseRes;
+  }, [resources, showPersonnel, selectedStagesFilter]);
 
   const handleConfirmClearningValidation = (e) => {
     const ids = selectedEvents.map(row =>
@@ -3525,19 +3457,33 @@ const ScheduleTest = () => {
       `}</style>
 
       {/* Visual Indicator for Selected Events and Pending Changes */}
-      <div className="flex gap-4 mb-2 align-items-center justify-content-end" style={{ minHeight: '32px' }}>
-        {selectedEvents && selectedEvents.length > 0 && (
-          <div className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200">
-            <i className="pi pi-check-square"></i>
-            <span className="font-bold text-sm">{selectedEvents.length} Lô đang chọn</span>
-          </div>
-        )}
-        {pendingChanges && pendingChanges.length > 0 && (
-          <div className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-200">
-            <i className="pi pi-exclamation-triangle"></i>
-            <span className="font-bold text-sm">{pendingChanges.length} Thay đổi chưa lưu</span>
-          </div>
-        )}
+      <div className="flex gap-4 mb-2 align-items-center justify-content-between" style={{ minHeight: '20px' }}>
+        <div style={{ zIndex: 10, marginLeft: '20px' }}>
+          <MultiSelect
+            value={selectedStagesFilter || stageFilterOptions.map(o => o.value)}
+            options={stageFilterOptions}
+            onChange={(e) => setSelectedStagesFilter(e.value)}
+            optionLabel="label"
+            placeholder="Lọc công đoạn hiển thị"
+            display="chip"
+            maxSelectedLabels={3}
+            className="w-full md:w-30rem"
+          />
+        </div>
+        <div className="flex gap-4 align-items-center justify-content-end">
+          {selectedEvents && selectedEvents.length > 0 && (
+            <div className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200">
+              <i className="pi pi-check-square"></i>
+              <span className="font-bold text-sm">{selectedEvents.length} Lô đang chọn</span>
+            </div>
+          )}
+          {pendingChanges && pendingChanges.length > 0 && (
+            <div className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-200">
+              <i className="pi pi-exclamation-triangle"></i>
+              <span className="font-bold text-sm">{pendingChanges.length} Thay đổi chưa lưu</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <FullCalendar
