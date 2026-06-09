@@ -241,7 +241,8 @@
         groupSelect.innerHTML = '<option value="">-- Tất cả --</option>';
         if (data.available_groups) {
             data.available_groups.forEach(g => {
-                const isSelected = g.code === currentSelectedGroup ? 'selected' : '';
+                // Use == instead of === because g.code might be a number and currentSelectedGroup is a string
+                const isSelected = (g.code == currentSelectedGroup) ? 'selected' : '';
                 groupSelect.innerHTML += `<option value="${g.code}" ${isSelected}>${g.name}</option>`;
             });
         }
