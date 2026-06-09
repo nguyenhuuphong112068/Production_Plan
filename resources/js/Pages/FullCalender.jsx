@@ -69,9 +69,13 @@ const ScheduleTest = () => {
   
   const [selectedRoomsFilter, setSelectedRoomsFilter] = useState(null);
   const roomFilterOptions = useMemo(() => {
-    const uniqueRooms = [...new Set((resources || []).map(r => r.title).filter(Boolean))];
+    let filteredResources = resources || [];
+    if (selectedStagesFilter && selectedStagesFilter.length > 0) {
+      filteredResources = filteredResources.filter(r => selectedStagesFilter.includes(r.stage_name));
+    }
+    const uniqueRooms = [...new Set(filteredResources.map(r => r.title).filter(Boolean))];
     return uniqueRooms.map(s => ({ label: s, value: s }));
-  }, [resources]);
+  }, [resources, selectedStagesFilter]);
   const [personnelEvents, setPersonnelEvents] = useState([]);
   const [showPersonnel, setShowPersonnel] = useState(false);
   const [historyData, setHistoryData] = useState([]);
