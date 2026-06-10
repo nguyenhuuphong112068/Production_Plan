@@ -14,6 +14,7 @@
                     <tr>
                         <th>STT</th>
                         <th>Mã Khuôn Mẫu</th>
+                        <th>Số Lượng</th>
                         <th>Trạng Thái</th>
                         <th>Người Tạo</th>
                         <th>Ngày Tạo</th>
@@ -25,6 +26,7 @@
                         <tr>
                             <td>{{ $loop->iteration }} </td>
                              <td>{{ $data->code }}</td>
+                             <td>{{ $data->amount }}</td>
                             <td class="text-center">
                                 @if($data->active)
                                     <span class="badge badge-success">Hoạt động</span>
@@ -38,6 +40,7 @@
                                 <button type="button" class="btn btn-warning btn-edit mb-1" 
                                     data-id="{{ $data->id }}" 
                                      data-code="{{ $data->code }}"
+                                     data-amount="{{ $data->amount }}"
                                     data-toggle="modal" 
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
@@ -87,6 +90,7 @@
 
             modal.find('#update_id').val(button.data('id'));
             modal.find('#update_code').val(button.data('code'));
+            modal.find('#update_amount').val(button.data('amount'));
         });
 
         $('.form-deActive').on('submit', function(e) {

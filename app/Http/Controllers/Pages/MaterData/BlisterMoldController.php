@@ -20,10 +20,13 @@ class BlisterMoldController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'code' => 'required|max:50|unique:blister_mold,code',
+            'amount' => 'nullable|integer|min:0',
         ], [
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
+            'amount.integer' => 'Số lượng phải là một số nguyên.',
+            'amount.min' => 'Số lượng không được nhỏ hơn 0.',
         ]);
 
         if ($validator->fails()) {
@@ -32,6 +35,7 @@ class BlisterMoldController extends Controller
 
         DB::table('blister_mold')->insert([
             'code' => $request->code,
+            'amount' => $request->amount,
             'active' => true,
             'created_by' => session('user')['fullName'] ?? 'Admin',
             'created_at' => now(),
@@ -44,10 +48,13 @@ class BlisterMoldController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'code' => 'required|max:50|unique:blister_mold,code,' . $request->id,
+            'amount' => 'nullable|integer|min:0',
         ], [
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
+            'amount.integer' => 'Số lượng phải là một số nguyên.',
+            'amount.min' => 'Số lượng không được nhỏ hơn 0.',
         ]);
 
         if ($validator->fails()) {
@@ -56,6 +63,7 @@ class BlisterMoldController extends Controller
 
         DB::table('blister_mold')->where('id', $request->id)->update([
             'code' => $request->code,
+            'amount' => $request->amount,
             'updated_at' => now(),
         ]);
 

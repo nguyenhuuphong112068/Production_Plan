@@ -18,6 +18,13 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+                    <div class="form-group">
+                        <label for="update_amount">Số Lượng</label>
+                        <input type="number" name="amount" id="update_amount" min="0" class="form-control @error('amount', 'updateErrors') is-invalid @enderror">
+                        @error('amount', 'updateErrors')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
