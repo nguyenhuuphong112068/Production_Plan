@@ -922,37 +922,40 @@ class SchedualController extends Controller
                     ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
                     ->where('blister_mold.active', 1)
                     ->select('blister_mold.code', 'blister_mold.amount')
-                    ->first();
+                    ->get();
             }
-            $mold = $moldCache[$plan->product_caterogy_id];
+            $molds = $moldCache[$plan->product_caterogy_id];
 
-            if ($mold && $mold->amount > 0) {
-                $overlappingRooms = DB::table('stage_plan')
-                    ->join('finished_product_mold', 'stage_plan.product_caterogy_id', '=', 'finished_product_mold.finished_product_category_id')
-                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                    ->where('stage_plan.stage_code', 7)
-                    ->where('blister_mold.code', $mold->code)
-                    ->where('stage_plan.active', 1)
-                    ->where('stage_plan.finished', 0)
-                    ->whereNotNull('stage_plan.start')
-                    ->whereNotNull('stage_plan.resourceId')
-                    ->where(function ($q) use ($plan) {
-                        $q->where('stage_plan.start', '<', $plan->end)
-                            ->where('stage_plan.end', '>', $plan->start);
-                    })
-                    ->pluck('stage_plan.resourceId');
+            foreach ($molds as $mold) {
+                if ($mold && $mold->amount > 0) {
+                    $overlappingRooms = DB::table('stage_plan')
+                        ->join('finished_product_mold', 'stage_plan.product_caterogy_id', '=', 'finished_product_mold.finished_product_category_id')
+                        ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+                        ->where('stage_plan.stage_code', 7)
+                        ->where('blister_mold.code', $mold->code)
+                        ->where('stage_plan.active', 1)
+                        ->where('stage_plan.finished', 0)
+                        ->whereNotNull('stage_plan.start')
+                        ->whereNotNull('stage_plan.resourceId')
+                        ->where(function ($q) use ($plan) {
+                            $q->where('stage_plan.start', '<', $plan->end)
+                                ->where('stage_plan.end', '>', $plan->start);
+                        })
+                        ->pluck('stage_plan.resourceId');
 
-                // convert to collection to use unique() and push()
-                $overlappingRooms = collect($overlappingRooms);
-                $overlappingRooms->push($plan->resourceId);
-                $concurrentCount = $overlappingRooms->unique()->count();
+                    // convert to collection to use unique() and push()
+                    $overlappingRooms = collect($overlappingRooms);
+                    $overlappingRooms->push($plan->resourceId);
+                    $concurrentCount = $overlappingRooms->unique()->count();
 
-                if ($concurrentCount > $mold->amount) {
-                    $subtitles[] = "⚠️ Trùng Khuôn: {$mold->code} (Đang dùng: {$concurrentCount}, Tổng: {$mold->amount})";
-                    $color_event = '#ffd500ff';
-                    $textColor = '#ffffff';
-                    $violation_colors[] = '#ffd500ff';
-                    $mold_warning = "⚠️ Trùng Khuôn: {$mold->code}";
+                    if ($concurrentCount > $mold->amount) {
+                        $subtitles[] = "⚠️ Trùng Khuôn: {$mold->code} (Đang dùng: {$concurrentCount}, Tổng: {$mold->amount})";
+                        $color_event = '#ffd500ff';
+                        $textColor = '#ffffff';
+                        $violation_colors[] = '#ffd500ff';
+                        $mold_warning = "⚠️ Trùng Khuôn: {$mold->code}";
+                        break; // Đã tìm thấy trùng khuôn thì gán cảnh báo và thoát vòng lặp khuôn
+                    }
                 }
             }
         }
