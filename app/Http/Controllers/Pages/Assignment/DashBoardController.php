@@ -110,7 +110,7 @@ class DashBoardController extends Controller
             return response()->json([
                 'success' => true,
                 'total_personnel' => 0,
-                'stats' => ['unassigned' => 0, 'under_8h' => 0, 'exact_8h' => 0, 'over_8h' => 0],
+                'stats' => ['on_leave' => 0, 'unassigned' => 0, 'under_8h' => 0, 'exact_8h' => 0, 'over_8h' => 0],
                 'details' => [],
                 'period' => ['start' => $startDate->format('Y-m-d H:i'), 'end' => $endDate->format('Y-m-d H:i'), 'days' => $daysInPeriod]
             ]);
@@ -151,8 +151,76 @@ class DashBoardController extends Controller
             }
         }
 
+        // --- Fetch Shifts to determine Leave (P) ---
+        $month = $startDate->format('m');
+        $year = $startDate->format('Y');
+
+        $deptMapping = [
+            'EN' => 3,
+            'PXTN' => 6,
+            'PXV1' => 15,
+            'WH' => 17,
+            'PXVH' => 30,
+            'PXDN' => 34,
+            'PXV2' => 32,
+            'QA' => 18,
+        ];
+
+        $departmentId = $deptMapping[$production_code] ?? null;
+        $leaveEmployees = [];
+
+        if ($departmentId) {
+            $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$departmentId}";
+            try {
+                $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+                $data = @file_get_contents($url, false, $ctx);
+                if ($data) {
+                    $personnelData = json_decode($data, true) ?: [];
+                    
+                    if ($departmentId == 15) {
+                        try {
+                            $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
+                            $data17 = @file_get_contents($url17, false, $ctx);
+                            if ($data17) {
+                                $personnelData17 = json_decode($data17, true) ?: [];
+                                if (is_array($personnelData17)) {
+                                    $personnelData = array_merge($personnelData, $personnelData17);
+                                }
+                            }
+                        } catch (\Exception $ex) {}
+                    }
+
+                    foreach ($personnelData as $person) {
+                        $code = $person['employeeId'] ?? $person['code'] ?? null;
+                        if (!$code) continue;
+                        
+                        $pCount = 0;
+                        for ($d = 0; $d < $daysInPeriod; $d++) {
+                            $currentDay = $startDate->copy()->addDays($d);
+                            if ($currentDay->month == $month) {
+                                $dayKey = 'day' . $currentDay->day;
+                                if (isset($person['days'][$dayKey]) && trim($person['days'][$dayKey]) === 'P') {
+                                    $pCount++;
+                                }
+                            }
+                        }
+                        
+                        if ($pCount > 0) {
+                            foreach ($employees as $empId => $emp) {
+                                if ($emp->code == $code) {
+                                    $leaveEmployees[$empId] = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {}
+        }
+
         // 3. Classify personnel
         $stats = [
+            'on_leave' => 0,
             'unassigned' => 0,
             'under_8h' => 0,
             'exact_8h' => 0,
@@ -167,8 +235,13 @@ class DashBoardController extends Controller
             $status = '';
             // Allow small floating point rounding
             if ($totalHours == 0) {
-                $stats['unassigned']++;
-                $status = 'Chưa phân công';
+                if (isset($leaveEmployees[$empId])) {
+                    $stats['on_leave']++;
+                    $status = 'Nghỉ phép (P)';
+                } else {
+                    $stats['unassigned']++;
+                    $status = 'Chưa phân công';
+                }
             } elseif ($avgHoursPerDay < 7.9) {
                 $stats['under_8h']++;
                 $status = '< 8h';

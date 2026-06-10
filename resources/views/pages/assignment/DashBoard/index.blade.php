@@ -86,13 +86,22 @@
 
                 <!-- KPI Cards -->
                 <div class="row">
-                    <div class="col-lg-3 col-6">
+                    <div class="col-lg-2 col-6">
                         <div class="small-box bg-info">
                             <div class="inner">
                                 <h3 id="kpi_total">0</h3>
                                 <p>Tổng nhân sự</p>
                             </div>
                             <div class="icon"><i class="fas fa-users"></i></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-6">
+                        <div class="small-box bg-secondary">
+                            <div class="inner">
+                                <h3 id="kpi_on_leave">0</h3>
+                                <p>Nghỉ phép (P)</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-bed"></i></div>
                         </div>
                     </div>
                     <div class="col-lg-2 col-6">
@@ -122,7 +131,7 @@
                             <div class="icon"><i class="fas fa-battery-full"></i></div>
                         </div>
                     </div>
-                    <div class="col-lg-3 col-6">
+                    <div class="col-lg-2 col-6">
                         <div class="small-box bg-primary">
                             <div class="inner">
                                 <h3 id="kpi_over8">0</h3>
@@ -249,6 +258,7 @@
 
         // Update KPIs
         document.getElementById('kpi_total').innerText = data.total_personnel;
+        document.getElementById('kpi_on_leave').innerText = data.stats.on_leave;
         document.getElementById('kpi_unassigned').innerText = data.stats.unassigned;
         document.getElementById('kpi_under8').innerText = data.stats.under_8h;
         document.getElementById('kpi_exact8').innerText = data.stats.exact_8h;
@@ -263,7 +273,8 @@
         
         data.details.forEach(item => {
             let badgeClass = 'badge-secondary';
-            if (item.status === 'Chưa phân công') badgeClass = 'badge-danger';
+            if (item.status === 'Nghỉ phép (P)') badgeClass = 'badge-secondary';
+            else if (item.status === 'Chưa phân công') badgeClass = 'badge-danger';
             else if (item.status === '< 8h') badgeClass = 'badge-warning';
             else if (item.status === 'Đủ 8h') badgeClass = 'badge-success';
             else if (item.status === '> 8h') badgeClass = 'badge-primary';
@@ -284,9 +295,9 @@
         const ctxPie = document.getElementById('assignmentPieChart').getContext('2d');
         const ctxBar = document.getElementById('assignmentBarChart').getContext('2d');
 
-        const chartLabels = ['Chưa phân công', '< 8h', 'Đủ 8h', '> 8h'];
-        const chartData = [data.stats.unassigned, data.stats.under_8h, data.stats.exact_8h, data.stats.over_8h];
-        const chartColors = ['#dc3545', '#ffc107', '#28a745', '#007bff'];
+        const chartLabels = ['Nghỉ phép', 'Chưa phân công', '< 8h', 'Đủ 8h', '> 8h'];
+        const chartData = [data.stats.on_leave, data.stats.unassigned, data.stats.under_8h, data.stats.exact_8h, data.stats.over_8h];
+        const chartColors = ['#6c757d', '#dc3545', '#ffc107', '#28a745', '#007bff'];
 
         if (currentPieChart) currentPieChart.destroy();
         currentPieChart = new Chart(ctxPie, {
