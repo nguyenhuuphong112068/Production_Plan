@@ -912,8 +912,8 @@ class SchedualController extends Controller
         $color_event = '#eb0cb3ff';
         // default fallback
 
-        /* 0️⃣ Kiểm tra trùng khuôn ép vỉ (chỉ áp dụng cho công đoạn 7 - Đóng gói) */
-        if ($plan->stage_code == 7 && $plan->start && $plan->end && $plan->resourceId) {
+        /* 0️⃣ Kiểm tra trùng khuôn ép vỉ (chỉ áp dụng cho công đoạn 7 - Đóng gói và sự kiện chưa hoàn thành) */
+        if ($plan->stage_code == 7 && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
             static $moldCache = [];
 
             if (!array_key_exists($plan->product_caterogy_id, $moldCache)) {
@@ -933,6 +933,7 @@ class SchedualController extends Controller
                     ->where('stage_plan.stage_code', 7)
                     ->where('blister_mold.code', $mold->code)
                     ->where('stage_plan.active', 1)
+                    ->where('stage_plan.finished', 0)
                     ->whereNotNull('stage_plan.start')
                     ->whereNotNull('stage_plan.resourceId')
                     ->where(function ($q) use ($plan) {
