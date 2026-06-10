@@ -342,6 +342,7 @@ class SchedualController extends Controller
                 'sp.title_clearning',
                 'sp.resourceId',
                 'sp.plan_master_id',
+                'sp.product_caterogy_id',
                 'sp.stage_code',
                 'sp.finished',
                 'sp.quarantine_time',
@@ -434,7 +435,7 @@ class SchedualController extends Controller
                 $subtitle = null;
                 $violation_colors = [];
 
-                [$color_event,  $textColor,  $subtitle, $violation_colors] = $this->colorEvent($plan, $plans, $i, $room_code);
+                [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning] = $this->colorEvent($plan, $plans, $i, $room_code);
 
                 // 🎯 lịch chưa hoàn thành
                 if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
@@ -472,6 +473,7 @@ class SchedualController extends Controller
                         //'Inst_sch_type' => $plan->Inst_sch_type,
                         'schedualed_by' => $plan->schedualed_by,
                         'title_clearning' => $plan->title_clearning,
+                        'mold_warning' => $mold_warning,
                     ]);
                 }
 
@@ -566,6 +568,7 @@ class SchedualController extends Controller
                             'code' => $plan->code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                             //'Inst_sch_type' => $plan->Inst_sch_type,
+                            'mold_warning' => $mold_warning,
 
                         ]);
 
@@ -902,16 +905,60 @@ class SchedualController extends Controller
 
         $subtitles = [];
         $violation_colors = [];
+        $mold_warning = null;
 
         $textColor = '#fefefee2';
 
         $color_event = '#eb0cb3ff';
         // default fallback
 
+        /* 0️⃣ Kiểm tra trùng khuôn ép vỉ (chỉ áp dụng cho công đoạn 7 - Đóng gói) */
+        if ($plan->stage_code == 7 && $plan->start && $plan->end && $plan->resourceId) {
+            static $moldCache = [];
+
+            if (!array_key_exists($plan->product_caterogy_id, $moldCache)) {
+                $moldCache[$plan->product_caterogy_id] = DB::table('finished_product_mold')
+                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+                    ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
+                    ->where('blister_mold.active', 1)
+                    ->select('blister_mold.code', 'blister_mold.amount')
+                    ->first();
+            }
+            $mold = $moldCache[$plan->product_caterogy_id];
+
+            if ($mold && $mold->amount > 0) {
+                $overlappingRooms = DB::table('stage_plan')
+                    ->join('finished_product_mold', 'stage_plan.product_caterogy_id', '=', 'finished_product_mold.finished_product_category_id')
+                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+                    ->where('stage_plan.stage_code', 7)
+                    ->where('blister_mold.code', $mold->code)
+                    ->where('stage_plan.active', 1)
+                    ->whereNotNull('stage_plan.start')
+                    ->whereNotNull('stage_plan.resourceId')
+                    ->where(function ($q) use ($plan) {
+                        $q->where('stage_plan.start', '<', $plan->end)
+                            ->where('stage_plan.end', '>', $plan->start);
+                    })
+                    ->pluck('stage_plan.resourceId');
+
+                // convert to collection to use unique() and push()
+                $overlappingRooms = collect($overlappingRooms);
+                $overlappingRooms->push($plan->resourceId);
+                $concurrentCount = $overlappingRooms->unique()->count();
+
+                if ($concurrentCount > $mold->amount) {
+                    $subtitles[] = "⚠️ Trùng Khuôn: {$mold->code} (Đang dùng: {$concurrentCount}, Tổng: {$mold->amount})";
+                    $color_event = '#ffd500ff';
+                    $textColor = '#ffffff';
+                    $violation_colors[] = '#ffd500ff';
+                    $mold_warning = "⚠️ Trùng Khuôn: {$mold->code}";
+                }
+            }
+        }
+
         /* 1️⃣ finished */
         if ($plan->finished == 1) {
-
-            return ['#002af9ff',  $textColor,  '', []];
+            return ['#002af9ff',  '#fefefee2',  '', [], $mold_warning];
         }
 
         /* 2️⃣ màu mặc định theo stage */
@@ -1030,6 +1077,11 @@ class SchedualController extends Controller
         }
 
 
+        if ($mold_warning) {
+            $color_event = '#ffd500ff';
+            $textColor = '#ffffff';
+        }
+
         $criticalChecks = [
             [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
             [1,  3,  'allow_weight_before_date',  '➡️ Ngày được phép cân',  '>'],
@@ -1044,7 +1096,6 @@ class SchedualController extends Controller
         ];
 
         foreach ($criticalChecks as [$from,  $to,  $field,  $label,  $operator]) {
-
             if (
                 $plan->stage_code < $from ||
                 $plan->stage_code > $to ||
@@ -1086,6 +1137,8 @@ class SchedualController extends Controller
             }
         }
 
+
+
         $violation_colors = array_unique($violation_colors);
 
         $filtered_violation_colors = array_filter($violation_colors, function ($color) use ($color_event) {
@@ -1094,7 +1147,7 @@ class SchedualController extends Controller
 
         $finalSubtitle = implode("\n", $subtitles);
 
-        return [$color_event,  $textColor,  $finalSubtitle, array_values($filtered_violation_colors)];
+        return [$color_event,  $textColor,  $finalSubtitle, array_values($filtered_violation_colors), $mold_warning];
     }
 
     // hàm lấy quota
@@ -3643,17 +3696,17 @@ class SchedualController extends Controller
                 ->whereIn('id', $updatedRows->pluck('id'))
                 ->update(['submit' => 1]);
 
-        $historyData = $updatedRows->map(function ($row) use (&$newSchedules, &$modifiedSchedules) {
+            $historyData = $updatedRows->map(function ($row) use (&$newSchedules, &$modifiedSchedules) {
 
-            $maxVersion = DB::table('stage_plan_history')
-                ->where('stage_plan_id', $row->id)
-                ->max('version') ?? 0;
+                $maxVersion = DB::table('stage_plan_history')
+                    ->where('stage_plan_id', $row->id)
+                    ->max('version') ?? 0;
 
-            if ($maxVersion == 0) {
-                $newSchedules++;
-            } else {
-                $modifiedSchedules++;
-            }
+                if ($maxVersion == 0) {
+                    $newSchedules++;
+                } else {
+                    $modifiedSchedules++;
+                }
 
                 return [
                     'stage_plan_id' => $row->id,
@@ -3711,7 +3764,7 @@ class SchedualController extends Controller
         if ($newSchedules > 0 || $modifiedSchedules > 0) {
             $message .= " (Bao gồm: {$newSchedules} tạo mới, {$modifiedSchedules} thay đổi)";
         }
-        
+
         if ($notification) {
             $message .= "\nNhắc nhở: {$notification}";
         }
@@ -3765,10 +3818,10 @@ class SchedualController extends Controller
             foreach ($updatedRows as $row) {
                 // Lấy thời gian cũ từ lần submit trước đó
                 $lastSubmit = DB::table('stage_plan_history')
-                                ->where('stage_plan_id', $row->id)
-                                ->where('type_of_change', 'Tạo Mới Lịch')
-                                ->orderBy('version', 'desc')
-                                ->first();
+                    ->where('stage_plan_id', $row->id)
+                    ->where('type_of_change', 'Tạo Mới Lịch')
+                    ->orderBy('version', 'desc')
+                    ->first();
 
                 if ($lastSubmit) {
                     $oldStart = \Carbon\Carbon::parse($lastSubmit->start)->format('H:i d/m/Y');
@@ -3780,11 +3833,11 @@ class SchedualController extends Controller
 
                 // Lấy lý do thay đổi gần nhất
                 $lastChange = DB::table('stage_plan_history')
-                                ->where('stage_plan_id', $row->id)
-                                ->where('type_of_change', '!=', 'Tạo Mới Lịch')
-                                ->whereNotNull('type_of_change')
-                                ->orderBy('version', 'desc')
-                                ->first();
+                    ->where('stage_plan_id', $row->id)
+                    ->where('type_of_change', '!=', 'Tạo Mới Lịch')
+                    ->whereNotNull('type_of_change')
+                    ->orderBy('version', 'desc')
+                    ->first();
                 $reason = $lastChange ? $lastChange->type_of_change : '-';
                 $reasonHtml = $reason !== '-' ? "<span style='color: #b91c1c; font-style: italic; font-weight: 500;'>{$reason}</span>" : "<span style='color: #94a3b8;'>-</span>";
 
@@ -3796,7 +3849,7 @@ class SchedualController extends Controller
                 $code = $row->product_code ?: ($row->code ?: '-');
                 // Sử dụng real_product_name nếu title bị rỗng
                 $title = $row->title ?: ($row->real_product_name ? "{$row->real_product_name} - {$row->batch}" : '-');
-                
+
                 $room = DB::table('room')->where('id', $row->resourceId)->first();
                 $roomTitle = $room ? "{$room->code} - {$room->name}" : '-';
                 $scheduledBy = $row->schedualed_by ?? '-';

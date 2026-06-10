@@ -59,6 +59,8 @@ const ScheduleTest = () => {
   const [multiStage, setMultiStage] = useState(false);
 
   const [events, setEvents] = useState([]);
+  const [moldWarningIndex, setMoldWarningIndex] = useState(-1);
+  const moldWarningEvents = useMemo(() => events.filter(e => e.mold_warning), [events]);
   const [resources, setResources] = useState([]);
 
   const [selectedStagesFilter, setSelectedStagesFilter] = useState(null);
@@ -487,6 +489,49 @@ const ScheduleTest = () => {
       window.scrollBy({ top: -50, left: -500, behavior: "auto" });
     }, 1);
 
+  };
+
+  const handleNextMoldWarning = () => {
+    if (moldWarningEvents.length === 0) return;
+    
+    // Lấy danh sách resourceId của các event trùng khuôn
+    const resourceIds = [...new Set(moldWarningEvents.map(e => String(e.resourceId)))];
+    
+    // Tìm các resource tương ứng
+    const affectedResources = resources.filter(r => resourceIds.includes(String(r.id)));
+    
+    // Lấy tên phòng (stage_name) và tên thiết bị (title)
+    const affectedStages = [...new Set(affectedResources.map(r => r.stage_name).filter(Boolean))];
+    const affectedTitles = [...new Set(affectedResources.map(r => r.title).filter(Boolean))];
+    
+    // Cập nhật filter
+    setSelectedStagesFilter(affectedStages.length > 0 ? affectedStages : null);
+    setSelectedRoomsFilter(affectedTitles.length > 0 ? affectedTitles : null);
+
+    // Chuyển tới index tiếp theo
+    let nextIndex = moldWarningIndex + 1;
+    if (nextIndex >= moldWarningEvents.length) {
+      nextIndex = 0;
+    }
+    setMoldWarningIndex(nextIndex);
+    
+    const ev = moldWarningEvents[nextIndex];
+    if (ev) {
+      setTimeout(() => {
+        const api = calendarRef.current?.getApi();
+        if (api?.view?.scrollToResource) {
+            api.view.scrollToResource(ev.resourceId);
+        }
+        clearHighlights();
+        setTimeout(() => {
+          const el = document.querySelector(`[data-event-id="${ev.id}"]`);
+          if (el) {
+            el.classList.add("highlight-current-event");
+            scrollToEvent(el);
+          }
+        }, 300); 
+      }, 100);
+    }
   };
 
   const handleShowList = () => {
@@ -3235,6 +3280,14 @@ const ScheduleTest = () => {
                 ><b>${props.campaign_code}</b></div>`;
     }
 
+    if (!props.is_clearning && props.mold_warning) {
+      html += `
+                <div 
+                  class="absolute top-[-10px] left-[2px] px-1 rounded shadow-sm bg-red-600 text-white z-[20]"
+                  style="font-size: 10px; line-height: 1;"
+                ><b>${props.mold_warning}</b></div>`;
+    }
+
 
     if (!props.is_clearning && showRenderBadge && props.status) {
       const style = getStatusStyleString(props.status);
@@ -3520,6 +3573,16 @@ const ScheduleTest = () => {
             <div className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-200">
               <i className="pi pi-exclamation-triangle"></i>
               <span className="font-bold text-sm">{pendingChanges.length} Thay đổi chưa lưu</span>
+            </div>
+          )}
+          {moldWarningEvents.length > 0 && (
+            <div 
+              className="flex align-items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-yellow-300 cursor-pointer hover:bg-yellow-200 transition-colors"
+              onClick={handleNextMoldWarning}
+              title="Click để lọc các phòng/thiết bị bị trùng khuôn"
+            >
+              <i className="pi pi-exclamation-triangle"></i>
+              <span className="font-bold text-sm">{moldWarningEvents.length} Lịch trùng khuôn</span>
             </div>
           )}
         </div>
