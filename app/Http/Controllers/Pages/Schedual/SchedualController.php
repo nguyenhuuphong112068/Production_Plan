@@ -1830,6 +1830,9 @@ class SchedualController extends Controller
                     }
                 }
 
+                // Cập nhật submit = 0 sau khi lưu lịch sử
+                DB::table('stage_plan')->where('id', $product['id'])->update(['submit' => 0]);
+
                 /*
                 |--------------------------------------------------------------------------
                 | tính current_start cho sản phẩm tiếp theo
@@ -2417,6 +2420,9 @@ class SchedualController extends Controller
                         } else {
                             Log::info('[History Debug] SKIP sid=' . $sid . ' (submit=' . ($update_row->submit ?? 'NULL') . ')');
                         }
+
+                        // Cập nhật submit = 0 sau khi lưu lịch sử
+                        DB::table('stage_plan')->where('id', $sid)->update(['submit' => 0]);
                     }
                 }
             }
@@ -2525,6 +2531,7 @@ class SchedualController extends Controller
                             'AHU_group' => 0,
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
+                            'submit' => 0,
                         ]);
                 } else {
 
@@ -2547,6 +2554,7 @@ class SchedualController extends Controller
                             'schedualed' => 0,
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
+                            'submit' => 0,
                         ]);
                 }
             }
@@ -2706,6 +2714,7 @@ class SchedualController extends Controller
                     'AHU_group' => 0,
                     'schedualed_by' => session('user')['fullName'],
                     'schedualed_at' => now(),
+                    'submit' => 0,
                 ]);
         } catch (\Exception  $e) {
 
@@ -3587,19 +3596,36 @@ class SchedualController extends Controller
         // 1️⃣ Lấy danh sách các dòng sẽ update
         $submitType = $request->input('submit_type', 'production'); // production, HC, BT, TI
 
-        $updatedRows = DB::table('stage_plan')
-            ->whereNotNull('start')
-            ->where('finished', 0)
-            ->where('active', 1)
-            ->where('submit', 0)
-            ->where('deparment_code', session('user.production_code'))
+        $updatedRows = DB::table('stage_plan as sp')
+            ->select(
+                'sp.*',
+                DB::raw("COALESCE(intermediate_category.intermediate_code, finished_product_category.finished_product_code) as product_code"),
+                DB::raw("COALESCE(p2.name, p1.name) as real_product_name"),
+                'plan_master.batch'
+            )
+            ->whereNotNull('sp.start')
+            ->where('sp.finished', 0)
+            ->where('sp.active', 1)
+            ->where('sp.submit', 0)
+            ->where('sp.deparment_code', session('user.production_code'))
             ->when($submitType === 'production', function ($query) {
-                $query->where('stage_code', '!=', 8);
+                $query->where('sp.stage_code', '!=', 8);
             })
             ->when(in_array($submitType, ['HC', 'BT', 'TI']), function ($query) use ($submitType) {
-                $query->where('stage_code', 8)
-                    ->where('code', 'LIKE', '%_' . $submitType);
+                $query->where('sp.stage_code', 8)
+                    ->where('sp.code', 'LIKE', '%_' . $submitType);
             })
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+            ->leftJoin('finished_product_category', function ($join) {
+                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                    ->where('sp.stage_code', '<=', 7);
+            })
+            ->leftJoin('product_name as p1', 'finished_product_category.product_name_id', '=', 'p1.id')
+            ->leftJoin('intermediate_category', function ($join) {
+                $join->on('sp.product_caterogy_id', '=', 'intermediate_category.id')
+                    ->where('sp.stage_code', '<=', 2);
+            })
+            ->leftJoin('product_name as p2', 'intermediate_category.product_name_id', '=', 'p2.id')
             ->get();
 
         $notification = $request->input('notification');
@@ -3608,18 +3634,26 @@ class SchedualController extends Controller
             return response()->json(['message' => 'Không có lịch mới để submit!', 'type' => 'info']);
         }
 
+        $newSchedules = 0;
+        $modifiedSchedules = 0;
+
         if (!$updatedRows->isEmpty()) {
             // 2️⃣ Update submit = 1
             DB::table('stage_plan')
                 ->whereIn('id', $updatedRows->pluck('id'))
                 ->update(['submit' => 1]);
 
-            // 3️⃣ Insert log cho từng dòng
-            $historyData = $updatedRows->map(function ($row) {
+        $historyData = $updatedRows->map(function ($row) use (&$newSchedules, &$modifiedSchedules) {
 
-                $maxVersion = DB::table('stage_plan_history')
-                    ->where('stage_plan_id', $row->id)
-                    ->max('version') ?? 0;
+            $maxVersion = DB::table('stage_plan_history')
+                ->where('stage_plan_id', $row->id)
+                ->max('version') ?? 0;
+
+            if ($maxVersion == 0) {
+                $newSchedules++;
+            } else {
+                $modifiedSchedules++;
+            }
 
                 return [
                     'stage_plan_id' => $row->id,
@@ -3646,7 +3680,7 @@ class SchedualController extends Controller
                     'version' => $maxVersion + 1,
                     'note' => $row->note,
                     'deparment_code' => session('user.production_code'),
-                    'type_of_change' => 'Tạo Mới Lịch',
+                    'type_of_change' => $maxVersion == 0 ? 'Tạo Mới Lịch' : 'Cập Nhật Lịch',
                     'created_date' => now(),
                     'created_by' => session('user')['fullName'],
                 ];
@@ -3674,6 +3708,10 @@ class SchedualController extends Controller
         $typeLabel = $typeLabels[$submitType] ?? 'Lịch Sản Xuất';
 
         $message = "{$senderName} đã Submit {$typeLabel} ngày {$sendDate} PX {$productionName}";
+        if ($newSchedules > 0 || $modifiedSchedules > 0) {
+            $message .= " (Bao gồm: {$newSchedules} tạo mới, {$modifiedSchedules} thay đổi)";
+        }
+        
         if ($notification) {
             $message .= "\nNhắc nhở: {$notification}";
         }
@@ -3709,15 +3747,75 @@ class SchedualController extends Controller
 
         $modalContentExtend = null;
         if (isset($updatedRows) && !$updatedRows->isEmpty()) {
-            $html = '<table class="table table-bordered table-sm" style="font-size: 13px;">';
-            $html .= '<thead><tr><th>Sản phẩm / Nội dung</th><th>Bắt đầu</th><th>Kết thúc</th></tr></thead><tbody>';
+            $html = '<div style="margin-top: 15px; overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">';
+            $html .= '<table style="width: 100%; border-collapse: collapse; font-family: \'Inter\', Arial, sans-serif; font-size: 13px; text-align: left;">';
+            $html .= '<thead style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">';
+            $html .= '<tr>';
+            $html .= '<th style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap;">Mã Sản Phẩm</th>';
+            $html .= '<th style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">Sản phẩm / Nội dung</th>';
+            $html .= '<th style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap;">Phòng SX</th>';
+            $html .= '<th style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap;">Thời gian cũ</th>';
+            $html .= '<th style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap;">Thời gian mới</th>';
+            $html .= '<th style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap;">Người thực hiện</th>';
+            $html .= '<th style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">Lý do</th>';
+            $html .= '</tr></thead>';
+            $html .= '<tbody style="background-color: #ffffff;">';
+
+            $rowIndex = 0;
             foreach ($updatedRows as $row) {
+                // Lấy thời gian cũ từ lần submit trước đó
+                $lastSubmit = DB::table('stage_plan_history')
+                                ->where('stage_plan_id', $row->id)
+                                ->where('type_of_change', 'Tạo Mới Lịch')
+                                ->orderBy('version', 'desc')
+                                ->first();
+
+                if ($lastSubmit) {
+                    $oldStart = \Carbon\Carbon::parse($lastSubmit->start)->format('H:i d/m/Y');
+                    $oldEnd = \Carbon\Carbon::parse($lastSubmit->end)->format('H:i d/m/Y');
+                    $oldTimeHtml = "<span style='color: #64748b;'>{$oldStart} &rarr; {$oldEnd}</span>";
+                } else {
+                    $oldTimeHtml = "<span style='color: #94a3b8;'>-</span>";
+                }
+
+                // Lấy lý do thay đổi gần nhất
+                $lastChange = DB::table('stage_plan_history')
+                                ->where('stage_plan_id', $row->id)
+                                ->where('type_of_change', '!=', 'Tạo Mới Lịch')
+                                ->whereNotNull('type_of_change')
+                                ->orderBy('version', 'desc')
+                                ->first();
+                $reason = $lastChange ? $lastChange->type_of_change : '-';
+                $reasonHtml = $reason !== '-' ? "<span style='color: #b91c1c; font-style: italic; font-weight: 500;'>{$reason}</span>" : "<span style='color: #94a3b8;'>-</span>";
+
                 $start = \Carbon\Carbon::parse($row->start)->format('H:i d/m/Y');
                 $end = \Carbon\Carbon::parse($row->end)->format('H:i d/m/Y');
-                $title = $row->title ?: '-';
-                $html .= "<tr><td>{$title}</td><td>{$start}</td><td>{$end}</td></tr>";
+                $newTime = "{$start} &rarr; {$end}";
+
+                // Sử dụng product_code (Mã BTP/TP) thay cho mã lệnh
+                $code = $row->product_code ?: ($row->code ?: '-');
+                // Sử dụng real_product_name nếu title bị rỗng
+                $title = $row->title ?: ($row->real_product_name ? "{$row->real_product_name} - {$row->batch}" : '-');
+                
+                $room = DB::table('room')->where('id', $row->resourceId)->first();
+                $roomTitle = $room ? "{$room->code} - {$room->name}" : '-';
+                $scheduledBy = $row->schedualed_by ?? '-';
+
+                $rowBg = ($rowIndex % 2 === 0) ? '#ffffff' : '#f8fafc';
+
+                $html .= "<tr style='background-color: {$rowBg}; border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s ease;' onmouseover=\"this.style.backgroundColor='#e2e8f0'\" onmouseout=\"this.style.backgroundColor='{$rowBg}'\">";
+                $html .= "<td style='padding: 12px 16px; color: #0f172a; font-weight: 600; border-right: 1px solid #f1f5f9;'>{$code}</td>";
+                $html .= "<td style='padding: 12px 16px; color: #334155; border-right: 1px solid #f1f5f9; font-weight: 500;'>{$title}</td>";
+                $html .= "<td style='padding: 12px 16px; color: #475569; border-right: 1px solid #f1f5f9;'>{$roomTitle}</td>";
+                $html .= "<td style='padding: 12px 16px; border-right: 1px solid #f1f5f9;'>{$oldTimeHtml}</td>";
+                $html .= "<td style='padding: 12px 16px; color: #16a34a; font-weight: 600; border-right: 1px solid #f1f5f9;'>{$newTime}</td>";
+                $html .= "<td style='padding: 12px 16px; color: #475569; border-right: 1px solid #f1f5f9;'>{$scheduledBy}</td>";
+                $html .= "<td style='padding: 12px 16px;'>{$reasonHtml}</td>";
+                $html .= "</tr>";
+
+                $rowIndex++;
             }
-            $html .= '</tbody></table>';
+            $html .= '</tbody></table></div>';
             $modalContentExtend = $html;
         }
 
@@ -4562,6 +4660,9 @@ class SchedualController extends Controller
                         ]);
                 }
             }
+
+            // Cập nhật submit = 0 sau khi lưu lịch sử
+            DB::table('stage_plan')->where('id', $stageId)->update(['submit' => 0]);
         });
     }
 

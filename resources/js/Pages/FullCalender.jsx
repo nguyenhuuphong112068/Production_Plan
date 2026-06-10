@@ -66,7 +66,7 @@ const ScheduleTest = () => {
     const uniqueStages = [...new Set((resources || []).map(r => r.stage_name).filter(Boolean))];
     return uniqueStages.map(s => ({ label: s, value: s }));
   }, [resources]);
-  
+
   const [selectedRoomsFilter, setSelectedRoomsFilter] = useState(null);
   const roomFilterOptions = useMemo(() => {
     let filteredResources = resources || [];
@@ -2998,6 +2998,9 @@ const ScheduleTest = () => {
               showConfirmButton: false,
             });
 
+            // Reload events after submit
+            handleViewChange();
+
           })
           .catch(err => {
             Swal.fire({
@@ -3455,6 +3458,11 @@ const ScheduleTest = () => {
     });
   }, [resources, selectedRows]);
 
+  const unsubmittedCount = useMemo(() => {
+    if (!events) return 0;
+    return events.filter(e => e.submit === 0 && e.finished === 0 && !e.is_clearning && e.stage_code !== 8).length;
+  }, [events]);
+
   return (
 
     <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2 ${isCleaningHidden ? 'hide-cleaning-events' : ''}`}>
@@ -3500,6 +3508,12 @@ const ScheduleTest = () => {
             <div className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200">
               <i className="pi pi-check-square"></i>
               <span className="font-bold text-sm">{selectedEvents.length} Lô đang chọn</span>
+            </div>
+          )}
+          {unsubmittedCount > 0 && (
+            <div className="flex align-items-center gap-2 bg-red-100 text-red-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-red-200">
+              <i className="pi pi-exclamation-circle"></i>
+              <span className="font-bold text-sm">{unsubmittedCount} Lịch chưa submit</span>
             </div>
           )}
           {pendingChanges && pendingChanges.length > 0 && (

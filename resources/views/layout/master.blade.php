@@ -930,7 +930,7 @@
 
         <!-- Modal hiển thị chi tiết thông báo mở rộng -->
         <div class="modal fade" id="notifExtendModal" tabindex="-1">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-lg" style="max-width: 80%;">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Chi tiết thông báo/Nhắc Nhở</h5>

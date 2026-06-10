@@ -176,7 +176,7 @@ class DashBoardController extends Controller
                 $data = @file_get_contents($url, false, $ctx);
                 if ($data) {
                     $personnelData = json_decode($data, true) ?: [];
-                    
+
                     if ($departmentId == 15) {
                         try {
                             $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
@@ -187,13 +187,14 @@ class DashBoardController extends Controller
                                     $personnelData = array_merge($personnelData, $personnelData17);
                                 }
                             }
-                        } catch (\Exception $ex) {}
+                        } catch (\Exception $ex) {
+                        }
                     }
 
                     foreach ($personnelData as $person) {
                         $code = $person['employeeId'] ?? $person['code'] ?? null;
                         if (!$code) continue;
-                        
+
                         $pCount = 0;
                         for ($d = 0; $d < $daysInPeriod; $d++) {
                             $currentDay = $startDate->copy()->addDays($d);
@@ -204,7 +205,7 @@ class DashBoardController extends Controller
                                 }
                             }
                         }
-                        
+
                         if ($pCount > 0) {
                             foreach ($employees as $empId => $emp) {
                                 if ($emp->code == $code) {
@@ -215,7 +216,8 @@ class DashBoardController extends Controller
                         }
                     }
                 }
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         }
 
         // 3. Classify personnel
@@ -295,7 +297,7 @@ class DashBoardController extends Controller
             }
         }
 
-        usort($availableGroupsArray, function($a, $b) {
+        usort($availableGroupsArray, function ($a, $b) {
             return strcmp($a['name'], $b['name']);
         });
 
