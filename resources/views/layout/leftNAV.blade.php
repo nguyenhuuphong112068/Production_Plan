@@ -216,7 +216,14 @@
                                 <p>Khuôn Mẫu</p>
                             </a>
                         </li>
-
+                        @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
+                            <li class="nav-item">
+                                <a href="{{ route('pages.materData.blister_type.list') }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon text-info"></i>
+                                    <p>Loại Máy Ép Vỉ</p>
+                                </a>
+                            </li>
+                        @endif
 
                     </ul>
                 </li>

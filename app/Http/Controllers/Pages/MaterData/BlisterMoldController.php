@@ -12,8 +12,12 @@ class BlisterMoldController extends Controller
     public function index()
     {
         $datas = DB::table('blister_mold')->orderBy('code', 'asc')->get();
+        $blister_types = DB::table('blister_type')->where('active', true)->get();
         session()->put(['title' => 'DỮ LIỆU GỐC - KHUÔN MẪU']);
-        return view('pages.materData.BlisterMold.list', ['datas' => $datas]);
+        return view('pages.materData.BlisterMold.list', [
+            'datas' => $datas,
+            'blister_types' => $blister_types
+        ]);
     }
 
     public function store(Request $request)
@@ -21,7 +25,9 @@ class BlisterMoldController extends Controller
         $validator = Validator::make($request->all(), [
             'code' => 'required|max:50|unique:blister_mold,code',
             'amount' => 'nullable|integer|min:0',
+            'blister_type_code' => 'required|integer',
         ], [
+            'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
@@ -36,6 +42,7 @@ class BlisterMoldController extends Controller
         DB::table('blister_mold')->insert([
             'code' => $request->code,
             'amount' => $request->amount,
+            'blister_type_code' => $request->blister_type_code,
             'active' => true,
             'created_by' => session('user')['fullName'] ?? 'Admin',
             'created_at' => now(),
@@ -49,7 +56,9 @@ class BlisterMoldController extends Controller
         $validator = Validator::make($request->all(), [
             'code' => 'required|max:50|unique:blister_mold,code,' . $request->id,
             'amount' => 'nullable|integer|min:0',
+            'blister_type_code' => 'required|integer',
         ], [
+            'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
@@ -64,6 +73,7 @@ class BlisterMoldController extends Controller
         DB::table('blister_mold')->where('id', $request->id)->update([
             'code' => $request->code,
             'amount' => $request->amount,
+            'blister_type_code' => $request->blister_type_code,
             'updated_at' => now(),
         ]);
 

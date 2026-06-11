@@ -12,6 +12,7 @@ use App\Http\Controllers\Pages\MaterData\OffDaysController;
 use App\Http\Controllers\Pages\MaterData\StageGroupController;
 use App\Http\Controllers\Pages\MaterData\DepartmentController;
 use App\Http\Controllers\Pages\MaterData\BlisterMoldController;
+use App\Http\Controllers\Pages\MaterData\BlisterTypeController;
 use App\Http\Controllers\UploadDataController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
@@ -136,6 +137,16 @@ Route::prefix('/materData')
         Route::prefix('/blister_mold')
         ->name('blister_mold.')
         ->controller(BlisterMoldController::class)
+        ->group(function(){
+                Route::get('','index')->name('list');
+                Route::post('store','store')->name('store');
+                Route::post('update', 'update')->name('update');
+                Route::post('deActive','deActive')->name('deActive');
+        });
+
+        Route::prefix('/blister_type')
+        ->name('blister_type.')
+        ->controller(BlisterTypeController::class)
         ->group(function(){
                 Route::get('','index')->name('list');
                 Route::post('store','store')->name('store');

@@ -15,6 +15,7 @@
                         <th>STT</th>
                         <th>Mã Khuôn Mẫu</th>
                         <th>Số Lượng</th>
+                        <th>Loại Máy</th>
                         <th>Trạng Thái</th>
                         <th>Người Tạo</th>
                         <th>Ngày Tạo</th>
@@ -24,9 +25,15 @@
                 <tbody>
                     @foreach ($datas as $data)
                         <tr>
-                            <td>{{ $loop->iteration }} </td>
+                             <td>{{ $loop->iteration }} </td>
                              <td>{{ $data->code }}</td>
                              <td>{{ $data->amount }}</td>
+                             <td>
+                                 @php
+                                     $typeNames = collect($blister_types)->where('code', $data->blister_type_code)->pluck('name')->join(', ');
+                                 @endphp
+                                 {{ $typeNames ?: $data->blister_type_code }}
+                             </td>
                             <td class="text-center">
                                 @if($data->active)
                                     <span class="badge badge-success">Hoạt động</span>
@@ -41,6 +48,7 @@
                                     data-id="{{ $data->id }}" 
                                      data-code="{{ $data->code }}"
                                      data-amount="{{ $data->amount }}"
+                                     data-blister_type_code="{{ $data->blister_type_code }}"
                                     data-toggle="modal" 
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
@@ -91,6 +99,7 @@
             modal.find('#update_id').val(button.data('id'));
             modal.find('#update_code').val(button.data('code'));
             modal.find('#update_amount').val(button.data('amount'));
+            modal.find('#update_blister_type_code').val(button.data('blister_type_code'));
         });
 
         $('.form-deActive').on('submit', function(e) {

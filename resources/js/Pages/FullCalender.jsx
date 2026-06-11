@@ -493,17 +493,17 @@ const ScheduleTest = () => {
 
   const handleNextMoldWarning = () => {
     if (moldWarningEvents.length === 0) return;
-    
+
     // Lấy danh sách resourceId của các event trùng khuôn
     const resourceIds = [...new Set(moldWarningEvents.map(e => String(e.resourceId)))];
-    
+
     // Tìm các resource tương ứng
     const affectedResources = resources.filter(r => resourceIds.includes(String(r.id)));
-    
+
     // Lấy tên phòng (stage_name) và tên thiết bị (title)
     const affectedStages = [...new Set(affectedResources.map(r => r.stage_name).filter(Boolean))];
     const affectedTitles = [...new Set(affectedResources.map(r => r.title).filter(Boolean))];
-    
+
     // Cập nhật filter
     setSelectedStagesFilter(affectedStages.length > 0 ? affectedStages : null);
     setSelectedRoomsFilter(affectedTitles.length > 0 ? affectedTitles : null);
@@ -514,13 +514,13 @@ const ScheduleTest = () => {
       nextIndex = 0;
     }
     setMoldWarningIndex(nextIndex);
-    
+
     const ev = moldWarningEvents[nextIndex];
     if (ev) {
       setTimeout(() => {
         const api = calendarRef.current?.getApi();
         if (api?.view?.scrollToResource) {
-            api.view.scrollToResource(ev.resourceId);
+          api.view.scrollToResource(ev.resourceId);
         }
         clearHighlights();
         setTimeout(() => {
@@ -529,7 +529,7 @@ const ScheduleTest = () => {
             el.classList.add("highlight-current-event");
             scrollToEvent(el);
           }
-        }, 300); 
+        }, 300);
       }, 100);
     }
   };
@@ -570,7 +570,7 @@ const ScheduleTest = () => {
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
         viewtype: currentView,
-        clearning: cleaningHidden,
+        clearning: true,
         theory: theoryHidden,
       });
 
@@ -3576,7 +3576,7 @@ const ScheduleTest = () => {
             </div>
           )}
           {moldWarningEvents.length > 0 && (
-            <div 
+            <div
               className="flex align-items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-yellow-300 cursor-pointer hover:bg-yellow-200 transition-colors"
               onClick={handleNextMoldWarning}
               title="Click để lọc các phòng/thiết bị bị trùng khuôn"

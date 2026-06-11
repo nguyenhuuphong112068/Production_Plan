@@ -64,7 +64,7 @@
                     {{-- Stage --}}
                     <div class="form-group">
                         <label for="belongGroup_id">Công Đoạn</label>
-                        <select class="form-control" name="stage_code">
+                        <select class="form-control" name="stage_code" id="create_stage_code">
                             <option value="">-- Chọn Công Đoạn --</option>
                             @foreach ($stages as $stage)
                                 <option value="{{ $stage->code }}"
@@ -75,6 +75,25 @@
 
                         </select>
                         @error('stage_code', 'createErrors')
+                            <div class="alert alert-danger mt-1">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Blister Type --}}
+                    <div class="form-group" id="create_blister_type_container" style="display: none;">
+                        <label for="blister_type_code">Loại Máy Ép Vỉ</label>
+                        <select class="form-control" name="blister_type_code" id="create_blister_type_code">
+                            <option value="">-- Chọn Loại Máy (Không bắt buộc) --</option>
+                            @if(isset($blister_types))
+                                @foreach ($blister_types as $blister_type)
+                                    <option value="{{ $blister_type->code }}"
+                                        {{ old('blister_type_code') == $blister_type->code ? 'selected' : '' }}>
+                                        {{ $blister_type->name }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                        @error('blister_type_code', 'createErrors')
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
                     </div>
@@ -122,3 +141,21 @@
         });
     </script>
 @endif
+
+<script>
+    $(document).ready(function() {
+        function toggleBlisterType() {
+            if ($('#create_stage_code').val() == '7') {
+                $('#create_blister_type_container').show();
+            } else {
+                $('#create_blister_type_container').hide();
+                $('#create_blister_type_code').val('');
+            }
+        }
+        
+        $('#create_stage_code').on('change', toggleBlisterType);
+        
+        // Initial check on load (for validation error re-render)
+        toggleBlisterType();
+    });
+</script>

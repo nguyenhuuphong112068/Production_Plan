@@ -34,6 +34,7 @@
                         <th>Thiết Bị Chính</th>
                         <th>Công Suất (ĐVL/Giờ)</th>
                         <th>Công Đoạn</th>
+                        <th>Loại Máy Ép Vỉ</th>
                         <th>Tổ Quản Lý</th>
                         <th>Phân Xưởng</th>
                         <th>Người Tạo</th>
@@ -56,6 +57,12 @@
                             <td>{{ $data->main_equiment_name }}</td>
                             <td>{{ $data->capacity}}</td>
                             <td>{{ $data->stage }}</td>
+                            <td>
+                                @php
+                                    $typeNames = collect($blister_types)->where('code', $data->blister_type_code)->pluck('name')->join(', ');
+                                @endphp
+                                {{ $typeNames ?: $data->blister_type_code }}
+                            </td>
                             <td>{{ $data->production_group }}</td>
                             <td>{{ $data->deparment_code }}</td>
 
@@ -70,6 +77,7 @@
                                     data-production_group="{{ $data->production_group }}" 
                                     data-capacity="{{ $data->capacity }}"
                                     data-main_equiment_name="{{ $data->main_equiment_name }}"
+                                    data-blister_type_code="{{ $data->blister_type_code }}"
 
                                     data-toggle="modal"
                                     data-target="#updateModal"
@@ -150,6 +158,14 @@
             modal.find('select[name="production_group"]').val(button.data('production_group'));
             modal.find('input[name="main_equiment_name"]').val(button.data('main_equiment_name'));
             modal.find('input[name="capacity"]').val(button.data('capacity'));
+            modal.find('select[name="blister_type_code"]').val(button.data('blister_type_code'));
+            
+            if (button.data('stage_code') == '7') {
+                $('#update_blister_type_container').show();
+            } else {
+                $('#update_blister_type_container').hide();
+                $('#update_blister_type_code').val('');
+            }
 
 
         });

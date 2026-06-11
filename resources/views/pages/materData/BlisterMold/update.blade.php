@@ -25,6 +25,22 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+                    <div class="form-group">
+                        <label for="update_blister_type_code">Loại Máy Ép Vỉ <span class="text-danger">*</span></label>
+                        <select name="blister_type_code" id="update_blister_type_code" class="form-control @error('blister_type_code', 'updateErrors') is-invalid @enderror" required>
+                            <option value="">-- Chọn Loại Máy --</option>
+                            @if(isset($blister_types))
+                                @foreach ($blister_types as $blister_type)
+                                    <option value="{{ $blister_type->code }}" {{ old('blister_type_code') == $blister_type->code ? 'selected' : '' }}>
+                                        {{ $blister_type->name }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                        @error('blister_type_code', 'updateErrors')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>

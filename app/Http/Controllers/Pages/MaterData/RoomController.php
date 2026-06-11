@@ -15,11 +15,13 @@ class RoomController extends Controller
                 $datas = DB::table('room')->where('deparment_code', session('user')['production_code'])->orderBy('stage_code', 'asc')->orderBy('order_by', 'asc')->get();
                 $stages = DB::table('stages')->get();
                 $stage_groups = DB::table('stage_groups')->get();
+                $blister_types = DB::table('blister_type')->where('active', true)->get();
                 session()->put(['title' => 'DỮ LIỆU GỐC - PHÒNG SẢN XUẤT']);
                 return view('pages.materData.room.list', [
                         'datas' => $datas,
                         'stages' => $stages,
-                        'stage_groups' => $stage_groups
+                        'stage_groups' => $stage_groups,
+                        'blister_types' => $blister_types
                 ]);
         }
 
@@ -64,6 +66,7 @@ class RoomController extends Controller
                         'stage_code' => $request->stage_code,
                         'group_code' => $request->stage_code,
                         'production_group' => $request->production_group,
+                        'blister_type_code' => $request->stage_code == 7 ? $request->blister_type_code : null,
                         'deparment_code' => session('user')['production_code'],
                         'active' => true,
                         'only_maintenance' => $request->stage_code == 8 ? 1 : 0,
@@ -98,13 +101,13 @@ class RoomController extends Controller
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 }
 
-                //$stage_code = DB::table('stages')->where ('code', $request->stage_code)->pluck('name');
-                //$order_by =  DB::table('room')->where ('stage_code', $request->stage_code)->count('name');
+                $room = DB::table('room')->where('code', $request->code)->first();
 
                 DB::table('room')->where('code', $request->code)->update([
 
                         'main_equiment_name' => $request->main_equiment_name,
                         'capacity' => $request->capacity,
+                        'blister_type_code' => $room->stage_code == 7 ? $request->blister_type_code : null,
 
                         'prepareBy' => session('user')['fullName'],
                         'updated_at' => now(),

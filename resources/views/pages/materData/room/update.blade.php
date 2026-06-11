@@ -86,6 +86,25 @@
                 @enderror
             </div>
 
+            {{-- Blister Type --}}
+            <div class="form-group" id="update_blister_type_container" style="display: none;">
+                <label for="blister_type_code">Loại Máy Ép Vỉ</label>
+                <select class="form-control" name="blister_type_code" id="update_blister_type_code">
+                    <option value="">-- Chọn Loại Máy (Không bắt buộc) --</option>
+                    @if(isset($blister_types))
+                        @foreach ($blister_types as $blister_type)
+                            <option value="{{ $blister_type->code }}"
+                                {{ old('blister_type_code') == $blister_type->code ? 'selected' : '' }}>
+                                {{ $blister_type->name }}
+                            </option>
+                        @endforeach
+                    @endif
+                </select>
+                @error('blister_type_code', 'updateErrors')
+                    <div class="alert alert-danger mt-1">{{ $message }}</div>
+                @enderror
+            </div>
+
             {{-- Stage_groups --}}
             <div class="form-group">
                 <label for="belongGroup_id">Tổ Quản Lý</label>
