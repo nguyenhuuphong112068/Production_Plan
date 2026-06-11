@@ -3327,6 +3327,14 @@ const ScheduleTest = () => {
           `<div style="color: ${props.textColor} ;" >${moment(event.start).format('HH:mm DD/MM/YY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YY')}</div>`
           : ''}
             ` : ''}
+
+            ${!props.is_clearning && props.blister_mold_code && props.stage_code == 7 ? `
+              <div style="margin-top: 4px; margin-bottom: 2px;">
+                <span class="px-1.5 py-0.5 rounded shadow-sm bg-[#3b82f6] text-white" style="font-size: 11px; display: inline-block;">
+                  <b>${props.blister_mold_code}</b>
+                </span>
+              </div>
+            ` : ''}
         </div>
       `;
 
@@ -3339,14 +3347,7 @@ const ScheduleTest = () => {
                 ><b>${props.campaign_code}</b></div>`;
     }
 
-    if (!props.is_clearning && props.blister_mold_code && props.stage_code == 7) {
-      html += `
-                <div 
-                  class="absolute bottom-[-15px] left-[2px] px-1.5 py-0.5 rounded shadow-sm bg-[#3b82f6] text-white z-[3000]"
-                  style="font-size: 12px; line-height: 1;"
-                  title="Mã Khuôn"
-                ><b>${props.blister_mold_code}</b></div>`;
-    }
+
 
     if (!props.is_clearning && props.mold_warning) {
       html += `
