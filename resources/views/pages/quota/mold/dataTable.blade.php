@@ -12,7 +12,7 @@
         max-height: 150px;
         overflow-y: auto !important;
     }
-    
+
     #data_table_quota td {
         vertical-align: middle;
         font-size: 16px;
@@ -39,6 +39,7 @@
                         <th>Thị Trường</th>
                         <th>Qui Cách</th>
                         <th style="width: 30%;">Khuôn mẫu</th>
+                        <th>Phòng SX Đã định mức</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                     </tr>
                 </thead>
@@ -62,6 +63,7 @@
         var moldsData = @json($molds);
         var tableData = @json($datas);
         var authUpdate = '{{ $auth_update }}';
+        var blisterTypesData = @json($blister_types);
 
         const table = $('#data_table_quota').DataTable({
             data: tableData,
@@ -75,23 +77,30 @@
             searching: true,
             ordering: true,
             autoWidth: false,
-            columns: [
-                {
+            columns: [{
                     data: null,
                     render: function(data, type, row, meta) {
                         return meta.row + 1;
                     }
                 },
-                { data: 'finished_product_code' },
-                { data: 'product_name' },
-                { 
+                {
+                    data: 'finished_product_code'
+                },
+                {
+                    data: 'product_name'
+                },
+                {
                     data: null,
                     render: function(data, type, row) {
                         return (row.batch_qty || '') + ' ' + (row.unit_batch_qty || '');
                     }
                 },
-                { data: 'market_name' },
-                { data: 'specification_name' },
+                {
+                    data: 'market_name'
+                },
+                {
+                    data: 'specification_name'
+                },
                 {
                     data: 'mold_ids',
                     render: function(data, type, row) {
@@ -108,11 +117,30 @@
                                 return m.code;
                             }).join(' ');
                         }
-                        
-                        var options = moldsData.map(function(mold) {
-                            var isSelected = selectedIds.indexOf(parseInt(mold.id)) !== -1 ? 'selected' : '';
+
+                        var allowedTypeCodes = [];
+                        if (row.quota_rooms) {
+                            var rooms = row.quota_rooms.split('::');
+                            rooms.forEach(function(r) {
+                                var parts = r.split('|');
+                                if (parts[1]) {
+                                    allowedTypeCodes.push(parseInt(parts[1]));
+                                }
+                            });
+                        }
+
+                        var filteredMolds = moldsData.filter(function(mold) {
+                            if (allowedTypeCodes.length === 0) return true;
+                            return allowedTypeCodes.indexOf(parseInt(mold.blister_type_code)) !== -1 || selectedIds.indexOf(parseInt(mold.id)) !== -1;
+                        });
+
+                        var options = filteredMolds.map(function(mold) {
+                            var isSelected = selectedIds.indexOf(parseInt(mold.id)) !==
+                                -1 ? 'selected' : '';
                             var typeName = mold.type_name ? mold.type_name : '';
-                            return '<option value="' + mold.id + '" data-type="' + typeName + '" ' + isSelected + '>' + mold.code + '</option>';
+                            return '<option value="' + mold.id + '" data-type="' +
+                                typeName + '" ' + isSelected + '>' + mold.code +
+                                '</option>';
                         }).join('');
 
                         var isDisabled = authUpdate === 'disabled' ? 'disabled' : '';
@@ -123,12 +151,43 @@
                     }
                 },
                 {
+                    data: 'quota_rooms',
+                    render: function(data, type, row) {
+                        if (!data) return '<span class="text-muted">Chưa định mức</span>';
+                        
+                        var rooms = data.split('::');
+                        var html = rooms.map(function(roomStr) {
+                            var parts = roomStr.split('|');
+                            var roomName = parts[0];
+                            var typeCode = parts[1];
+                            
+                            var badgeHtml = '';
+                            if (typeCode && typeof blisterTypesData !== 'undefined') {
+                                var typeNames = blisterTypesData.filter(function(bt) {
+                                    return bt.code == typeCode;
+                                }).map(function(bt) {
+                                    return bt.name;
+                                }).join(', ');
+                                
+                                if (typeNames) {
+                                    badgeHtml = ' <span class="badge badge-success ml-1" style="font-size: 0.8em; padding: 0.2em 0.5em;">' + typeNames + '</span>';
+                                }
+                            }
+                            
+                            return '<div>' + roomName + badgeHtml + '</div>';
+                        }).join('');
+                        
+                        return html;
+                    }
+                },
+                {
                     data: null,
                     render: function(data, type, row) {
-                        var date = row.mold_created_at ? new Date(row.mold_created_at).toLocaleDateString('vi-VN') : '-';
+                        var date = row.mold_created_at ? new Date(row.mold_created_at)
+                            .toLocaleDateString('vi-VN') : '-';
                         var creator = row.mold_created_by || '-';
                         return '<div>' + creator + '</div>' +
-                               '<small class="text-muted">' + date + '</small>';
+                            '<small class="text-muted">' + date + '</small>';
                     }
                 }
             ],
@@ -140,7 +199,9 @@
                     var typeName = $(mold.element).data('type');
                     var $state = $('<span>' + mold.text + '</span>');
                     if (typeName) {
-                        $state.append(' <span class="badge badge-primary ml-1" style="font-size: 0.8em; padding: 0.2em 0.5em;">' + typeName + '</span>');
+                        $state.append(
+                            ' <span class="badge badge-primary ml-1" style="font-size: 0.8em; padding: 0.2em 0.5em;">' +
+                            typeName + '</span>');
                     }
                     return $state;
                 }
@@ -158,7 +219,7 @@
         // Handle multi-select change
         $(document).on('change', '.select-mold', function() {
             var id = $(this).data('id');
-            var moldIds = $(this).val(); 
+            var moldIds = $(this).val();
 
             $.ajax({
                 url: "{{ route('pages.quota.mold.update') }}",

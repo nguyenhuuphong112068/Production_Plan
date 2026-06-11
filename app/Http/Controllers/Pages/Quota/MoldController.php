@@ -23,14 +23,23 @@ class MoldController extends Controller
                 's.name as specification_name',
                 DB::raw('GROUP_CONCAT(fpm.blister_mold_id) as mold_ids'),
                 DB::raw('MAX(fpm.created_at) as mold_created_at'),
-                DB::raw('GROUP_CONCAT(DISTINCT fpm.created_by) as mold_created_by')
+                DB::raw('GROUP_CONCAT(DISTINCT fpm.created_by) as mold_created_by'),
+                DB::raw('GROUP_CONCAT(DISTINCT CONCAT(r.name, "|", IFNULL(r.blister_type_code, "")) SEPARATOR "::") as quota_rooms')
             )
             ->leftJoin('product_name as pn', 'fpc.product_name_id', '=', 'pn.id')
             ->leftJoin('market as m', 'fpc.market_id', '=', 'm.id')
             ->leftJoin('specification as s', 'fpc.specification_id', '=', 's.id')
             ->leftJoin('finished_product_mold as fpm', 'fpc.id', '=', 'fpm.finished_product_category_id')
+            ->leftJoin('quota as q', function ($join) {
+                $join->on('fpc.finished_product_code', '=', 'q.finished_product_code')
+                    ->on('fpc.intermediate_code', '=', 'q.intermediate_code')
+                    ->where('q.stage_code', '=', 7)
+                    ->where('q.active', '=', 1);
+            })
+            ->leftJoin('room as r', 'q.room_id', '=', 'r.id')
             ->where('fpc.active', 1)
             ->where('fpc.cancel', 0)
+            ->where('fpc.deparment_code', session('user')['production_code'])
             ->groupBy('fpc.id', 'fpc.finished_product_code', 'fpc.batch_qty', 'fpc.unit_batch_qty', 'pn.name', 'm.name', 's.name')
             ->get();
 
@@ -40,7 +49,7 @@ class MoldController extends Controller
             ->where('active', 1)
             ->select('id', 'code', 'blister_type_code')
             ->get();
-            
+
         foreach ($molds as $mold) {
             $mold->type_name = $blister_types->where('code', $mold->blister_type_code)->pluck('name')->join(', ');
         }
@@ -49,7 +58,8 @@ class MoldController extends Controller
 
         return view('pages.quota.mold.list', [
             'datas' => $datas,
-            'molds' => $molds
+            'molds' => $molds,
+            'blister_types' => $blister_types
         ]);
     }
 
