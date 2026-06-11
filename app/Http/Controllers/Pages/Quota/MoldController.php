@@ -35,10 +35,15 @@ class MoldController extends Controller
             ->get();
 
         // Get all available molds for the multi-select
+        $blister_types = DB::table('blister_type')->where('active', true)->get();
         $molds = DB::table('blister_mold')
             ->where('active', 1)
-            ->select('id', 'code')
+            ->select('id', 'code', 'blister_type_code')
             ->get();
+            
+        foreach ($molds as $mold) {
+            $mold->type_name = $blister_types->where('code', $mold->blister_type_code)->pluck('name')->join(', ');
+        }
 
         session()->put(['title' => 'ĐỊNH MỨC - KHUÔN MẪU']);
 

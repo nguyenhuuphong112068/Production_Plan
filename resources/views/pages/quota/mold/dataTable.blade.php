@@ -111,7 +111,8 @@
                         
                         var options = moldsData.map(function(mold) {
                             var isSelected = selectedIds.indexOf(parseInt(mold.id)) !== -1 ? 'selected' : '';
-                            return '<option value="' + mold.id + '" ' + isSelected + '>' + mold.code + '</option>';
+                            var typeName = mold.type_name ? mold.type_name : '';
+                            return '<option value="' + mold.id + '" data-type="' + typeName + '" ' + isSelected + '>' + mold.code + '</option>';
                         }).join('');
 
                         var isDisabled = authUpdate === 'disabled' ? 'disabled' : '';
@@ -132,10 +133,24 @@
                 }
             ],
             drawCallback: function() {
+                function formatMold(mold) {
+                    if (!mold.id) {
+                        return mold.text;
+                    }
+                    var typeName = $(mold.element).data('type');
+                    var $state = $('<span>' + mold.text + '</span>');
+                    if (typeName) {
+                        $state.append(' <span class="badge badge-primary ml-1" style="font-size: 0.8em; padding: 0.2em 0.5em;">' + typeName + '</span>');
+                    }
+                    return $state;
+                }
+
                 $('.select-mold:not(.select2-hidden-accessible)').select2({
                     placeholder: "-- Chọn khuôn mẫu --",
                     allowClear: true,
-                    theme: 'bootstrap4'
+                    theme: 'bootstrap4',
+                    templateSelection: formatMold,
+                    templateResult: formatMold
                 });
             }
         });
