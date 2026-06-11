@@ -2292,12 +2292,22 @@ const ScheduleTest = () => {
                   required>
           </div>
 
+          <hr/>
+          <div class="cfg-row">
+            <label class="cfg-label">Phân Bổ Khuôn (Auto):</label>
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+              <button type="button" id="btn-allocate-missing" class="btn btn-info" style="flex: 1; font-size: 13px; color: white;">Bổ sung khuôn thiếu</button>
+              <button type="button" id="btn-allocate-all" class="btn btn-warning" style="flex: 1; font-size: 13px;">Làm mới & Phân bổ</button>
+            </div>
+          </div>
+          <hr/>
+
           
           <div class="cfg-row">
              
 
-              <button id="btn-backup" class="btn btn-primary mx-2">Tạo bản sao lưu</button>
-              <button id="btn-restore" class="btn btn-success mx-2">Khôi phục</button>
+              <button type="button" id="btn-backup" class="btn btn-primary mx-2">Tạo bản sao lưu</button>
+              <button type="button" id="btn-restore" class="btn btn-success mx-2">Khôi phục</button>
 
               <div class="response-date-wrap text-center" style="display:block;">
                 <label class="cfg-label">Chọn Mã bản sao lưu </label>
@@ -2504,6 +2514,55 @@ const ScheduleTest = () => {
             opt.value = r.bkc_code;
             opt.textContent = r.bkc_code;
             retoreList.appendChild(opt);
+          });
+        }
+
+        // ================= Allocate Mold =================
+        const btnAllocateMissing = document.getElementById('btn-allocate-missing');
+        const btnAllocateAll = document.getElementById('btn-allocate-all');
+
+        const handleAllocate = (type) => {
+          Swal.fire({
+            title: 'Đang phân bổ khuôn...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+          });
+
+          axios.post('/Schedual/autoAllocateMold', { type })
+            .then(res => {
+              Swal.fire({
+                icon: 'success',
+                title: 'Thành công',
+                text: res.data.message,
+                timer: 2000,
+                showConfirmButton: false
+              });
+              setLoading(v => !v); // reload calendar
+            })
+            .catch(err => {
+              Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                text: err.response?.data?.message || err.message
+              });
+            });
+        };
+
+        if (btnAllocateMissing) {
+          btnAllocateMissing.addEventListener('click', () => handleAllocate('missing'));
+        }
+        if (btnAllocateAll) {
+          btnAllocateAll.addEventListener('click', () => {
+            Swal.fire({
+              title: 'Xác nhận?',
+              text: 'Thao tác này sẽ xóa toàn bộ phân bổ cũ của các lô chưa bắt đầu và phân bổ lại từ đầu!',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Đồng ý',
+              cancelButtonText: 'Hủy'
+            }).then(r => {
+              if (r.isConfirmed) handleAllocate('all');
+            });
           });
         }
 
@@ -3278,6 +3337,15 @@ const ScheduleTest = () => {
                   style="font-size: 8px; line-height: 1;"
                   title="Mã Chiến dịch"
                 ><b>${props.campaign_code}</b></div>`;
+    }
+
+    if (!props.is_clearning && props.blister_mold_code && props.stage_code == 7) {
+      html += `
+                <div 
+                  class="absolute bottom-[-15px] left-[2px] px-1.5 py-0.5 rounded shadow-sm bg-[#3b82f6] text-white z-[3000]"
+                  style="font-size: 12px; line-height: 1;"
+                  title="Mã Khuôn"
+                ><b>${props.blister_mold_code}</b></div>`;
     }
 
     if (!props.is_clearning && props.mold_warning) {

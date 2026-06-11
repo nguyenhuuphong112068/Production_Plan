@@ -359,6 +359,7 @@ class SchedualController extends Controller
                 'sp.accept_quarantine',
                 'sp.campaign_code',
                 'sp.schedualed_by',
+                'sp.blister_mold_id',
                 'blister_mold.code as blister_mold_code',
                 //'quota_maintenance.Inst_sch_type',
 
@@ -912,40 +913,6 @@ class SchedualController extends Controller
         $color_event = '#eb0cb3ff';
         // default fallback
 
-        if ($plan->stage_code == 7 && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
-            if (!empty($plan->blister_mold_id)) {
-                // Đã được gán khuôn cụ thể. Kiểm tra xem có bị quá tải không (trùng).
-                $mold = DB::table('blister_mold')->where('id', $plan->blister_mold_id)->first();
-                if ($mold) {
-                    $mold_code = $mold->code;
-                    $concurrentCount = DB::table('stage_plan')
-                        ->where('stage_code', 7)
-                        ->where('blister_mold_id', $mold->id)
-                        ->where('active', 1)
-                        ->where('finished', 0)
-                        ->whereNotNull('start')
-                        ->whereNotNull('resourceId')
-                        ->where(function ($q) use ($plan) {
-                            $q->where('start', '<', $plan->end)
-                                ->where('end', '>', $plan->start);
-                        })
-                        ->pluck('resourceId')
-                        ->unique()
-                        ->count();
-
-                    if ($concurrentCount > $mold->amount) {
-                        $subtitles[] = "⚠️ Trùng Khuôn: {$mold->code} (Đang dùng: {$concurrentCount}, Tổng: {$mold->amount})";
-                        $color_event = '#ffd500ff';
-                        $textColor = '#ffffff';
-                        $violation_colors[] = '#ffd500ff';
-                        $mold_warning = "⚠️ Trùng Khuôn: {$mold->code}";
-                    }
-                }
-            } else {
-                // Tạm thời ẩn cảnh báo thiếu khuôn vì dữ liệu chưa đầy đủ
-            }
-        }
-
         /* 1️⃣ finished */
         if ($plan->finished == 1) {
             return ['#002af9ff',  '#fefefee2',  '', [], null, $mold_code];
@@ -953,22 +920,16 @@ class SchedualController extends Controller
 
         /* 2️⃣ màu mặc định theo stage */
         if ($plan->stage_code <= 7) {
-
             $color_event = '#4CAF50';
         } elseif ($plan->stage_code == 8) {
-
             // Mặc định cho Bảo trì (BT)
             $color_event = '#003A4F';
-
             // tinh chỉnh màu theo loại block (hc, bt, ti)
             if (isset($plan->code)) {
-
                 if (substr($plan->code, -2) === 'HC') {
-
                     $color_event = '#9a1b72ff';
                     // Tím đậm cho Hiệu chuẩn
                 } elseif (substr($plan->code, -2) === 'TI') {
-
                     $color_event = '#830cbfff';
                     // Cam đất cho Tiện ích
                 }
@@ -977,8 +938,53 @@ class SchedualController extends Controller
 
         /* 3️⃣ validation ok */
         if ($plan->is_val == 1) {
-
             $color_event = '#40E0D0';
+        }
+
+        // 🚨 Mold validation
+
+        if ($plan->stage_code == 7 && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
+            if (!empty($plan->blister_mold_id)) {
+                // Đã được gán khuôn cụ thể. Kiểm tra xem có bị quá tải không (trùng).
+                $mold = DB::table('blister_mold')->where('id', $plan->blister_mold_id)->first();
+                if ($mold) {
+                    $mold_code = $mold->code;
+                    $room = DB::table('room')->where('id', $plan->resourceId)->first();
+
+                    if ($room && !empty($room->blister_type_code) && !empty($mold->blister_type_code) && $room->blister_type_code !== $mold->blister_type_code) {
+                        $subtitles[] = "❌ Sai Khuôn: {$mold->code} không lắp được cho máy {$room->blister_type_code}";
+                        $color_event = '#e54a4aff'; // Đỏ báo lỗi
+                        $textColor = '#ffffff';
+                        $violation_colors[] = '#e54a4aff';
+                        $mold_warning = "❌ Sai Khuôn: {$mold->code} / {$room->blister_type_code}";
+                    } else {
+                        $concurrentCount = DB::table('stage_plan')
+                            ->where('stage_code', 7)
+                            ->where('blister_mold_id', $mold->id)
+                            ->where('active', 1)
+                            ->where('finished', 0)
+                            ->whereNotNull('start')
+                            ->whereNotNull('resourceId')
+                            ->where(function ($q) use ($plan) {
+                                $q->where('start', '<', $plan->end)
+                                    ->where('end', '>', $plan->start);
+                            })
+                            ->pluck('resourceId')
+                            ->unique()
+                            ->count();
+
+                        if ($concurrentCount > $mold->amount) {
+                            $subtitles[] = "⚠️ Trùng Khuôn: {$mold->code} (Đang dùng: {$concurrentCount}, Tổng: {$mold->amount})";
+                            $color_event = '#ffd500ff';
+                            $textColor = '#ffffff';
+                            $violation_colors[] = '#ffd500ff';
+                            $mold_warning = "⚠️ Trùng Khuôn: {$mold->code}";
+                        }
+                    }
+                }
+            } else {
+                // Tạm thời ẩn cảnh báo thiếu khuôn vì dữ liệu chưa đầy đủ
+            }
         }
 
         /* 4️⃣ clearning */
@@ -7066,10 +7072,13 @@ class SchedualController extends Controller
         try {
             $type = $request->input('type', 'missing');
 
+            $now = now();
+
             if ($type === 'all') {
                 DB::table('stage_plan')
                     ->where('stage_code', 7)
                     ->where('finished', 0)
+                    ->where('start', '>=', $now)
                     ->update(['blister_mold_id' => null]);
             }
 
@@ -7078,18 +7087,29 @@ class SchedualController extends Controller
                 ->where('finished', 0)
                 ->whereNull('blister_mold_id')
                 ->whereNotNull('start')
+                ->where('start', '>=', $now)
                 ->orderBy('start', 'asc')
                 ->get();
 
             $allocatedCount = 0;
 
             foreach ($plans as $plan) {
-                $compatibleMolds = DB::table('finished_product_mold')
+                $room = DB::table('room')->where('id', $plan->resourceId)->first();
+                $roomType = $room ? $room->blister_type_code : null;
+
+                $compatibleMoldsQuery = DB::table('finished_product_mold')
                     ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
                     ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
-                    ->where('blister_mold.active', 1)
-                    ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount')
-                    ->get();
+                    ->where('blister_mold.active', 1);
+
+                if (!empty($roomType)) {
+                    $compatibleMoldsQuery->where(function ($q) use ($roomType) {
+                        $q->where('blister_mold.blister_type_code', $roomType)
+                            ->orWhereNull('blister_mold.blister_type_code');
+                    });
+                }
+
+                $compatibleMolds = $compatibleMoldsQuery->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount')->get();
 
                 foreach ($compatibleMolds as $mold) {
                     if ($mold->amount > 0) {
