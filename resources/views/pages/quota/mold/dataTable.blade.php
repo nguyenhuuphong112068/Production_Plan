@@ -71,8 +71,8 @@
             deferRender: true,
             pageLength: 25,
             lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "Tất cả"]
+                [10, 25, 50, 100],
+                [10, 25, 50, 100]
             ],
             searching: true,
             ordering: true,
@@ -131,7 +131,9 @@
 
                         var filteredMolds = moldsData.filter(function(mold) {
                             if (allowedTypeCodes.length === 0) return true;
-                            return allowedTypeCodes.indexOf(parseInt(mold.blister_type_code)) !== -1 || selectedIds.indexOf(parseInt(mold.id)) !== -1;
+                            return allowedTypeCodes.indexOf(parseInt(mold
+                                .blister_type_code)) !== -1 || selectedIds.indexOf(
+                                parseInt(mold.id)) !== -1;
                         });
 
                         var options = filteredMolds.map(function(mold) {
@@ -154,13 +156,13 @@
                     data: 'quota_rooms',
                     render: function(data, type, row) {
                         if (!data) return '<span class="text-muted">Chưa định mức</span>';
-                        
+
                         var rooms = data.split('::');
                         var html = rooms.map(function(roomStr) {
                             var parts = roomStr.split('|');
                             var roomName = parts[0];
                             var typeCode = parts[1];
-                            
+
                             var badgeHtml = '';
                             if (typeCode && typeof blisterTypesData !== 'undefined') {
                                 var typeNames = blisterTypesData.filter(function(bt) {
@@ -168,15 +170,17 @@
                                 }).map(function(bt) {
                                     return bt.name;
                                 }).join(', ');
-                                
+
                                 if (typeNames) {
-                                    badgeHtml = ' <span class="badge badge-success ml-1" style="font-size: 0.8em; padding: 0.2em 0.5em;">' + typeNames + '</span>';
+                                    badgeHtml =
+                                        ' <span class="badge badge-success ml-1" style="font-size: 0.8em; padding: 0.2em 0.5em;">' +
+                                        typeNames + '</span>';
                                 }
                             }
-                            
+
                             return '<div>' + roomName + badgeHtml + '</div>';
                         }).join('');
-                        
+
                         return html;
                     }
                 },
