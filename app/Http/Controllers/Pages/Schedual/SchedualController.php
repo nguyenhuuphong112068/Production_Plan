@@ -260,6 +260,7 @@ class SchedualController extends Controller
                 $join->on('sp.plan_master_id', '=', 'sp_last.plan_master_id')
                     ->on('sp_last.stage_code', '=', 'sp_max.max_finished_stage');
             })
+            ->leftJoin('blister_mold', 'sp.blister_mold_id', '=', 'blister_mold.id')
 
             ->where('sp.active', 1)
             ->whereNotNull('sp.resourceId')
@@ -358,6 +359,7 @@ class SchedualController extends Controller
                 'sp.accept_quarantine',
                 'sp.campaign_code',
                 'sp.schedualed_by',
+                'blister_mold.code as blister_mold_code',
                 //'quota_maintenance.Inst_sch_type',
 
                 'finished_product_category.intermediate_code',
@@ -434,8 +436,9 @@ class SchedualController extends Controller
 
                 $subtitle = null;
                 $violation_colors = [];
+                $mold_code = null;
 
-                [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning] = $this->colorEvent($plan, $plans, $i, $room_code);
+                [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code] = $this->colorEvent($plan, $plans, $i, $room_code);
 
                 // 🎯 lịch chưa hoàn thành
                 if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
@@ -469,11 +472,10 @@ class SchedualController extends Controller
                         'batch_name' => $plan->batch_name,
                         'actual_batch' => $plan->actual_batch,
                         'code' => $plan->code,
-                        'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                        //'Inst_sch_type' => $plan->Inst_sch_type,
                         'schedualed_by' => $plan->schedualed_by,
                         'title_clearning' => $plan->title_clearning,
                         'mold_warning' => $mold_warning,
+                        'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
                     ]);
                 }
 
@@ -531,8 +533,6 @@ class SchedualController extends Controller
                         'product_name' => $plan->product_name,
                         'batch_name' => $plan->batch_name,
                         'actual_batch' => $plan->actual_batch,
-                        //'Inst_sch_type' => $plan->Inst_sch_type,
-                        'code' => $plan->code,
                         'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                         'title_clearning' => $plan->title_clearning,
                     ]);
@@ -567,9 +567,8 @@ class SchedualController extends Controller
                             'actual_batch' => $plan->actual_batch,
                             'code' => $plan->code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
-                            //'Inst_sch_type' => $plan->Inst_sch_type,
                             'mold_warning' => $mold_warning,
-
+                            'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
                         ]);
 
                         // event lich vs thực tế
@@ -906,47 +905,33 @@ class SchedualController extends Controller
         $subtitles = [];
         $violation_colors = [];
         $mold_warning = null;
+        $mold_code = null;
 
         $textColor = '#fefefee2';
 
         $color_event = '#eb0cb3ff';
         // default fallback
 
-        /* 0️⃣ Kiểm tra trùng khuôn ép vỉ (chỉ áp dụng cho công đoạn 7 - Đóng gói và sự kiện chưa hoàn thành) */
         if ($plan->stage_code == 7 && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
-            static $moldCache = [];
-
-            if (!array_key_exists($plan->product_caterogy_id, $moldCache)) {
-                $moldCache[$plan->product_caterogy_id] = DB::table('finished_product_mold')
-                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                    ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
-                    ->where('blister_mold.active', 1)
-                    ->select('blister_mold.code', 'blister_mold.amount')
-                    ->get();
-            }
-            $molds = $moldCache[$plan->product_caterogy_id];
-
-            foreach ($molds as $mold) {
-                if ($mold && $mold->amount > 0) {
-                    $overlappingRooms = DB::table('stage_plan')
-                        ->join('finished_product_mold', 'stage_plan.product_caterogy_id', '=', 'finished_product_mold.finished_product_category_id')
-                        ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                        ->where('stage_plan.stage_code', 7)
-                        ->where('blister_mold.code', $mold->code)
-                        ->where('stage_plan.active', 1)
-                        ->where('stage_plan.finished', 0)
-                        ->whereNotNull('stage_plan.start')
-                        ->whereNotNull('stage_plan.resourceId')
+            if (!empty($plan->blister_mold_id)) {
+                // Đã được gán khuôn cụ thể. Kiểm tra xem có bị quá tải không (trùng).
+                $mold = DB::table('blister_mold')->where('id', $plan->blister_mold_id)->first();
+                if ($mold) {
+                    $mold_code = $mold->code;
+                    $concurrentCount = DB::table('stage_plan')
+                        ->where('stage_code', 7)
+                        ->where('blister_mold_id', $mold->id)
+                        ->where('active', 1)
+                        ->where('finished', 0)
+                        ->whereNotNull('start')
+                        ->whereNotNull('resourceId')
                         ->where(function ($q) use ($plan) {
-                            $q->where('stage_plan.start', '<', $plan->end)
-                                ->where('stage_plan.end', '>', $plan->start);
+                            $q->where('start', '<', $plan->end)
+                                ->where('end', '>', $plan->start);
                         })
-                        ->pluck('stage_plan.resourceId');
-
-                    // convert to collection to use unique() and push()
-                    $overlappingRooms = collect($overlappingRooms);
-                    $overlappingRooms->push($plan->resourceId);
-                    $concurrentCount = $overlappingRooms->unique()->count();
+                        ->pluck('resourceId')
+                        ->unique()
+                        ->count();
 
                     if ($concurrentCount > $mold->amount) {
                         $subtitles[] = "⚠️ Trùng Khuôn: {$mold->code} (Đang dùng: {$concurrentCount}, Tổng: {$mold->amount})";
@@ -954,15 +939,16 @@ class SchedualController extends Controller
                         $textColor = '#ffffff';
                         $violation_colors[] = '#ffd500ff';
                         $mold_warning = "⚠️ Trùng Khuôn: {$mold->code}";
-                        break; // Đã tìm thấy trùng khuôn thì gán cảnh báo và thoát vòng lặp khuôn
                     }
                 }
+            } else {
+                // Tạm thời ẩn cảnh báo thiếu khuôn vì dữ liệu chưa đầy đủ
             }
         }
 
         /* 1️⃣ finished */
         if ($plan->finished == 1) {
-            return ['#002af9ff',  '#fefefee2',  '', [], $mold_warning];
+            return ['#002af9ff',  '#fefefee2',  '', [], null, $mold_code];
         }
 
         /* 2️⃣ màu mặc định theo stage */
@@ -1080,7 +1066,7 @@ class SchedualController extends Controller
             }
         }
 
-
+        // Nếu có trùng khuôn thì đổi màu
         if ($mold_warning) {
             $color_event = '#ffd500ff';
             $textColor = '#ffffff';
@@ -1151,7 +1137,7 @@ class SchedualController extends Controller
 
         $finalSubtitle = implode("\n", $subtitles);
 
-        return [$color_event,  $textColor,  $finalSubtitle, array_values($filtered_violation_colors), $mold_warning];
+        return [$color_event,  $textColor,  $finalSubtitle, array_values($filtered_violation_colors), $mold_warning, $mold_code];
     }
 
     // hàm lấy quota
@@ -1217,6 +1203,7 @@ class SchedualController extends Controller
                 'sp.id',
                 'sp.code',
                 'sp.plan_master_id',
+                'sp.product_caterogy_id',
                 'sp.campaign_code',
                 'sp.stage_code',
                 'sp.order_by',
@@ -1227,6 +1214,7 @@ class SchedualController extends Controller
                 'sp.nextcessor_code',
                 'sp.immediately',
                 'sp.not_schedule',
+                'sp.blister_mold_id',
 
                 DB::raw("
                                         CASE
@@ -1321,6 +1309,22 @@ class SchedualController extends Controller
 
             // ✅ Thêm field để React có thể filter/search nhanh
             $plan->permisson_room_filter = $plan->permisson_room->values()->implode(', ');
+            
+            // Lấy danh sách khuôn cho stage 7
+            if ($plan->stage_code == 7) {
+                static $moldCache = [];
+                if (!array_key_exists($plan->product_caterogy_id, $moldCache)) {
+                    $moldCache[$plan->product_caterogy_id] = DB::table('finished_product_mold')
+                        ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+                        ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
+                        ->where('blister_mold.active', 1)
+                        ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount')
+                        ->get();
+                }
+                $plan->compatible_molds = $moldCache[$plan->product_caterogy_id];
+            } else {
+                $plan->compatible_molds = [];
+            }
 
             return $plan;
         });
@@ -6960,6 +6964,96 @@ class SchedualController extends Controller
                 'created_at' => now(),
                 'created_by' => session('user')['fullName'] ?? 'System',
             ]);
+        }
+    }
+    public function autoAllocateMold(Request $request) {
+        try {
+            $type = $request->input('type', 'missing');
+            
+            if ($type === 'all') {
+                DB::table('stage_plan')
+                    ->where('stage_code', 7)
+                    ->where('finished', 0)
+                    ->update(['blister_mold_id' => null]);
+            }
+            
+            $plans = DB::table('stage_plan')
+                ->where('stage_code', 7)
+                ->where('finished', 0)
+                ->whereNull('blister_mold_id')
+                ->whereNotNull('start')
+                ->orderBy('start', 'asc')
+                ->get();
+                
+            $allocatedCount = 0;
+            
+            foreach ($plans as $plan) {
+                $compatibleMolds = DB::table('finished_product_mold')
+                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+                    ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
+                    ->where('blister_mold.active', 1)
+                    ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount')
+                    ->get();
+                    
+                foreach ($compatibleMolds as $mold) {
+                    if ($mold->amount > 0) {
+                        $concurrentCount = DB::table('stage_plan')
+                            ->where('stage_code', 7)
+                            ->where('blister_mold_id', $mold->id)
+                            ->where('active', 1)
+                            ->where('finished', 0)
+                            ->whereNotNull('start')
+                            ->where(function ($q) use ($plan) {
+                                $q->where('start', '<', $plan->end)
+                                    ->where('end', '>', $plan->start);
+                            })
+                            ->pluck('resourceId')
+                            ->unique()
+                            ->count();
+                            
+                        if ($concurrentCount < $mold->amount) {
+                            DB::table('stage_plan')
+                                ->where('id', $plan->id)
+                                ->update(['blister_mold_id' => $mold->id]);
+                            $allocatedCount++;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Đã phân bổ khuôn cho {$allocatedCount} lô sản xuất.",
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateBlisterMold(Request $request) {
+        try {
+            $stagePlanId = $request->input('stage_plan_id');
+            $moldId = $request->input('blister_mold_id');
+            
+            DB::table('stage_plan')
+                ->where('id', $stagePlanId)
+                ->update(['blister_mold_id' => $moldId ?: null]);
+                
+            $plan_waiting = $this->getSumaryDataArray(session('user.production_code'));
+            return response()->json([
+                'success' => true,
+                'plan' => $plan_waiting
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

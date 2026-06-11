@@ -3770,6 +3770,7 @@ const ScheduleTest = () => {
               </div>
 
 
+              ${authorization ? `
               <div style="display:flex; gap:12px; margin-top:4px; font-size:11px;">
                 <label>
                   <input
@@ -3807,6 +3808,7 @@ const ScheduleTest = () => {
                   /> HC
                 </label>
               </div>
+              ` : ""}
 
 
             </div>

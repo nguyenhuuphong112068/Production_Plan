@@ -100,6 +100,14 @@
                         if (rawIds) {
                             selectedIds = rawIds.split(',').map(id => parseInt(id));
                         }
+
+                        if (type === 'filter' || type === 'search' || type === 'sort') {
+                            return moldsData.filter(function(m) {
+                                return selectedIds.indexOf(parseInt(m.id)) !== -1;
+                            }).map(function(m) {
+                                return m.code;
+                            }).join(' ');
+                        }
                         
                         var options = moldsData.map(function(mold) {
                             var isSelected = selectedIds.indexOf(parseInt(mold.id)) !== -1 ? 'selected' : '';

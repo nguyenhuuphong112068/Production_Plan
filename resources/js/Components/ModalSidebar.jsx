@@ -1408,6 +1408,46 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     };
   }
 
+  const handleMoldChange = (moldId, planId) => {
+    axios.put('/Schedual/updateBlisterMold', {
+      stage_plan_id: planId,
+      blister_mold_id: moldId
+    }).then(res => {
+      let data = res.data;
+      if (typeof data === "string") {
+        data = data.replace(/^<!--.*?-->/, "").trim();
+        data = JSON.parse(data);
+      }
+      setPlan(data.plan);
+    }).catch(err => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: err.response?.data?.message || err.message,
+      });
+    });
+  };
+
+  const moldBodyTemplate = (rowData) => {
+    if (rowData.stage_code != 7) return null;
+    const molds = rowData.compatible_molds || [];
+    if (molds.length === 0) return <span className="text-muted">Không có</span>;
+
+    const options = molds.map(m => ({ label: m.code, value: m.id }));
+    options.unshift({ label: '-- Tự động / Chưa gán --', value: '' });
+
+    return (
+      <Dropdown
+        value={rowData.blister_mold_id || ''}
+        options={options}
+        onChange={(e) => handleMoldChange(e.value, rowData.id)}
+        placeholder="Chọn khuôn"
+        className="w-100"
+        appendTo="self"
+      />
+    );
+  };
+
   const handleConfirmClearningValidation = (e) => {
     if (isSaving) return;
     setIsSaving(true);
@@ -1488,6 +1528,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         setIsSaving(false);
       });
   };
+
+
+
 
 
   const hasAnyRoom = (filterStr, userRoomStr) => {
@@ -1620,6 +1663,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
     { field: "immediately", header: (<><i className="fa fa-bolt me-1"></i></>), body: ImmediatelyBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
     { field: "clearning_validation", header: "🚿", body: clearningValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
+    { field: "blister_mold_id", header: "Khuôn ép vỉ", body: moldBodyTemplate, style: { width: '10rem', maxWidth: '10rem', ...longTextStyle } },
     { field: "note", header: "Ghi chú", sortable: true, body: naBody("note"), filter: false, filterField: "note", style: { width: '20%', maxWidth: '20%', ...longTextStyle } },
   ];
 

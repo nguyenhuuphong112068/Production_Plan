@@ -71,6 +71,7 @@ const MaintenanceCalender = () => {
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
   const [authorizationAccept, setAuthorizationAccept] = useState(false);
+  const [showPersonnel, setShowPersonnel] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
   const [reasons, setReasons] = useState([]);
   const [bkcCode, setBkcCode] = useState([]);
@@ -1814,8 +1815,11 @@ const MaintenanceCalender = () => {
     }
 
     // 3. Cuối cùng, hiển thị toàn bộ
-    return resList;
-  }, [resources, selectedRows, lockedResourceCodes]);
+    return resList.filter(res => {
+      if (!showPersonnel && res.is_personnel_sub) return false;
+      return true;
+    });
+  }, [resources, selectedRows, lockedResourceCodes, showPersonnel]);
 
   // Xóa "khóa" bộ lọc khi người dùng bắt đầu chọn một công việc mới
   useEffect(() => {
@@ -1946,6 +1950,17 @@ const MaintenanceCalender = () => {
         // Phòng
         resourceLabelContent={(arg) => {
           const res = arg.resource.extendedProps;
+
+          if (res.is_personnel_sub) {
+            return {
+              html: `
+                <div style="font-size: 11px; font-weight: bold; padding-left: 15px; color: #475569; line-height: 20px; display: flex; align-items: center; height: 20px;">
+                  ${arg.resource.title}
+                </div>
+              `
+            };
+          }
+
           const busy = parseFloat(res.busy_hours) || 0;
           const yields = parseFloat(res.yield) || 0;
           const unit = res.unit || "";
@@ -1984,83 +1999,7 @@ const MaintenanceCalender = () => {
                 ${arg.resource.title} - ${res.main_equiment_name ?? ""}
               </div>
 
-              <div
-                class="resource-bar"
-                style="
-                  position:relative;
-                  top:-26px;
-                  height:15px;
-                  background:#eeeeeeff;
-                  border-radius:20px;
-                  overflow:hidden;
-                  display:flex;
-                  align-items:center;
-                "
-              >
-                <div
-                  class="busy"
-                  style="
-                    width:${busyWidth}%;
-                    background:red;
-                    height:100%;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                  "
-                ></div>
 
-                <b
-                  style="
-                    position:absolute;
-                    top:50%;
-                    left:50%;
-                    transform:translate(-50%,-50%);
-                    font-size:70%;
-                    color:#060606ff;
-                  "
-                >
-                  ${efficiency}% - ${formatNumberWithComma(yields)} ${unit}
-                </b>
-              </div>
-
-
-              <div style="display:flex; gap:12px; margin-top:4px; font-size:11px;">
-                <label>
-                  <input
-                    type="checkbox"
-                    data-room="${res.code}"
-                    data-sheet="sheet_1"
-                    ${res.sheet_1 == 1 ? "checked" : ""}
-                  /> Ca 1
-                </label>
-
-                <label>
-                  <input
-                    type="checkbox"
-                    data-room="${res.code}"
-                    data-sheet="sheet_2"
-                    ${res.sheet_2 == 1 ? "checked" : ""}
-                  /> Ca 2
-                </label>
-
-                <label>
-                  <input
-                    type="checkbox"
-                    data-room="${res.code}"
-                    data-sheet="sheet_3"
-                    ${res.sheet_3 == 1 ? "checked" : ""}
-                  /> Ca 3
-                </label>
-
-                <label>
-                  <input
-                    type="checkbox"
-                    data-room="${res.code}"
-                    data-sheet="sheet_regular"
-                    ${res.sheet_regular == 1 ? "checked" : ""}
-                  /> HC
-                </label>
-              </div>
 
 
             </div>
@@ -2129,7 +2068,7 @@ const MaintenanceCalender = () => {
         }}
         //hiddenTheory 
         headerToolbar={{
-          left: `customPre,myToday,customNext noteModal hiddenProduction${authorization ? ' changeSchedualer unSelect confirmFinish Submit' : ''}${authorizationAccept ? ' approveMaintenance' : ''}`,
+          left: `customPre,myToday,customNext noteModal hiddenProduction togglePersonnel${authorization ? ' changeSchedualer unSelect confirmFinish Submit' : ''}${authorizationAccept ? ' approveMaintenance' : ''}`,
           center: 'title',
           right: `fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter${authorization ? ' customList' : ''}` //customYear
         }}
@@ -2236,6 +2175,11 @@ const MaintenanceCalender = () => {
             text: '🏭',
             click: toggleProductionEvents,
             hint: 'Ẩn/ Hiện lịch sản xuất'
+          },
+          togglePersonnel: {
+            text: showPersonnel ? '👥' : '👥',
+            click: () => setShowPersonnel(prev => !prev),
+            hint: 'Ẩn/Hiện phân công nhân sự tại từng phòng'
           },
 
           hiddenTheory: {

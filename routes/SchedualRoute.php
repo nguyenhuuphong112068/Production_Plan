@@ -60,6 +60,8 @@ Route::prefix('/Schedual')
                 Route::put('groupGranulationAndBlending', 'groupGranulationAndBlending')->name('groupGranulationAndBlending');
                 Route::put('cleaninglevelchange', 'cleaninglevelchange')->name('cleaninglevelchange');
                 Route::put('toggleNotSchedule', 'toggleNotSchedule')->name('toggleNotSchedule');
+                Route::post('autoAllocateMold', 'autoAllocateMold')->name('autoAllocateMold');
+                Route::put('updateBlisterMold', 'updateBlisterMold')->name('updateBlisterMold');
 
 
                 //Route::put('updateOffdays','updateOffdays')->name('updateOffdays');
