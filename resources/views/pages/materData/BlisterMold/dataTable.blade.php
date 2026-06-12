@@ -168,7 +168,7 @@
         $('.btn-history').off('click').on('click', function() {
             var id = $(this).data('id');
             $.ajax({
-                url: "{{ route('pages.materData.BlisterMold.history') }}",
+                url: "{{ route('pages.materData.blister_mold.history') }}",
                 type: "GET",
                 data: { id: id },
                 success: function(res) {

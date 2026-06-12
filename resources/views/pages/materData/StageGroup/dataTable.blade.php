@@ -118,7 +118,7 @@
         $('.btn-history').off('click').on('click', function() {
             var id = $(this).data('id');
             $.ajax({
-                url: "{{ route('pages.materData.StageGroup.history') }}",
+                url: "{{ route('pages.materData.stageGroup.history') }}",
                 type: "GET",
                 data: { id: id },
                 success: function(res) {

@@ -17,8 +17,9 @@ class BlisterMoldController extends Controller
         $historyCounts = DB::table('blister_mold_history')->select('blister_mold_id', DB::raw('count(*) as total'))->groupBy('blister_mold_id')->get()->keyBy('blister_mold_id');
         return view('pages.materData.BlisterMold.list', [
             'datas' => $datas,
-            'blister_types' => $blister_types
-        , 'historyCounts' => $historyCounts]);
+            'blister_types' => $blister_types,
+            'historyCounts' => $historyCounts
+        ]);
     }
 
     public function store(Request $request)
@@ -113,7 +114,7 @@ class BlisterMoldController extends Controller
             ->where('blister_mold_id', $request->id)
             ->orderBy('id', 'desc')
             ->get();
-            
+
         $current = DB::table('blister_mold')->where('id', $request->id)->first();
 
         return response()->json([
@@ -121,5 +122,4 @@ class BlisterMoldController extends Controller
             'history' => $histories
         ]);
     }
-
 }
