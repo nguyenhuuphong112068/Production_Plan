@@ -118,6 +118,7 @@ class QuarantineRoomController extends Controller
                 ->leftJoin('product_name', 'fc.product_name_id', '=', 'product_name.id')
                 ->leftJoin('quarantine_room', 't.quarantine_room_code', '=', 'quarantine_room.code')
                 ->leftJoin('room', 't2.resourceId', '=', 'room.id')
+                ->leftJoin(DB::raw('(SELECT stage_plan_id, SUM(yield) as sum_yield FROM yields GROUP BY stage_plan_id) as y'), 't.id', '=', 'y.stage_plan_id')
                 ->whereNotNull('t.actual_start')
                 ->whereNotNull('t.yields')
                 ->where('t.active', 1)
@@ -145,7 +146,7 @@ class QuarantineRoomController extends Controller
                     DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
                     't.quarantine_room_code',
                     'quarantine_room.name as quarantine_room_name',
-                    't.yields',
+                    'y.sum_yield as yields',
                     't.stage_code',
                     't.number_of_boxes',
                     't.finished_by',
@@ -211,6 +212,7 @@ class QuarantineRoomController extends Controller
                 ->leftJoin('product_name', 'fc.product_name_id', 'product_name.id')
                 ->leftJoin('quarantine_room', 't.quarantine_room_code', 'quarantine_room.code')
                 ->leftJoin('room', 't.resourceId', 'room.id')
+                ->leftJoin(DB::raw('(SELECT stage_plan_id, SUM(yield) as sum_yield FROM yields GROUP BY stage_plan_id) as y'), 't.id', '=', 'y.stage_plan_id')
                 ->whereNotNull('t.start')
                 ->whereNotNull('t.yields')
                 ->where('t2.resourceId', $request->room_id)
@@ -233,7 +235,7 @@ class QuarantineRoomController extends Controller
                     DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
                     't.quarantine_room_code',
                     'quarantine_room.name',
-                    't.yields',
+                    'y.sum_yield as yields',
                     't.stage_code',
                     't2.stage_code as next_stage',
                     't2.start as next_start',
