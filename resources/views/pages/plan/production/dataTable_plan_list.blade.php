@@ -95,7 +95,10 @@
 
                                 </td>
                                 {{-- <td>{{ $data->code}}</td> --}}
-                                <td>{{ $data->name }}</td>
+                                <td>
+                                    {{ $data->name }}
+                                    <span style="display: none;">{{ $data->product_names }} {{ $data->product_codes }} {{ $data->intermediate_codes }}</span>
+                                </td>
                                 <td>{{ $data->deparment_code }}
                                     @if (session('user')['userGroup'] == 'Admin')
                                         <div> {{ $data->id }} </div>

@@ -59,6 +59,24 @@ class ProductionPlanController extends Controller
                         ->get()
                         ->keyBy('plan_list_id');
 
+                $products_in_plans = DB::table('plan_master as pm')
+                        ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                        ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+                        ->join('product_name as pn', 'fpc.product_name_id', '=', 'pn.id')
+                        ->where('pm.active', 1)
+                        ->where('pm.cancel', 0)
+                        ->where('pm.deparment_code', $production_code)
+                        ->where('pl.type', 1)
+                        ->groupBy('pm.plan_list_id')
+                        ->select(
+                                'pm.plan_list_id',
+                                DB::raw('GROUP_CONCAT(DISTINCT pn.name SEPARATOR ", ") as product_names'),
+                                DB::raw('GROUP_CONCAT(DISTINCT fpc.finished_product_code SEPARATOR ", ") as product_codes'),
+                                DB::raw('GROUP_CONCAT(DISTINCT fpc.intermediate_code SEPARATOR ", ") as intermediate_codes')
+                        )
+                        ->get()
+                        ->keyBy('plan_list_id');
+
 
                 /*
                 |--------------------------------------------------------------------------
@@ -294,7 +312,7 @@ class ProductionPlanController extends Controller
                 |--------------------------------------------------------------------------
                 */
 
-                $datas = $datas->map(function ($item) use ($total_batch_qtys, $batch_summary) {
+                $datas = $datas->map(function ($item) use ($total_batch_qtys, $batch_summary, $products_in_plans) {
 
                         $item->total_batch_qty =
 
@@ -309,6 +327,11 @@ class ProductionPlanController extends Controller
                         $item->batch_qty_pending = $summary->batch_qty_pending ?? 0;
 
                         $item->batch_qty_not_finished = $summary->batch_qty_not_finished ?? 0;
+
+                        $products = $products_in_plans[$item->id] ?? null;
+                        $item->product_names = $products ? $products->product_names : '';
+                        $item->product_codes = $products ? $products->product_codes : '';
+                        $item->intermediate_codes = $products ? $products->intermediate_codes : '';
 
                         return $item;
                 });
@@ -343,6 +366,9 @@ class ProductionPlanController extends Controller
                                 'Đã Bao phim' => 0,
                         ],
                         'batch_qty_pending' => 0,
+                        'product_names' => '',
+                        'product_codes' => '',
+                        'intermediate_codes' => '',
                 ];
 
 
@@ -370,6 +396,16 @@ class ProductionPlanController extends Controller
                                 }
 
                                 $pending_plan->total_batch_qty += $item->batch_qty_not_finished ?? 0;
+                                
+                                if (!empty($item->product_names)) {
+                                        $pending_plan->product_names .= ($pending_plan->product_names ? ', ' : '') . $item->product_names;
+                                }
+                                if (!empty($item->product_codes)) {
+                                        $pending_plan->product_codes .= ($pending_plan->product_codes ? ', ' : '') . $item->product_codes;
+                                }
+                                if (!empty($item->intermediate_codes)) {
+                                        $pending_plan->intermediate_codes .= ($pending_plan->intermediate_codes ? ', ' : '') . $item->intermediate_codes;
+                                }
                         }
                 }
 
