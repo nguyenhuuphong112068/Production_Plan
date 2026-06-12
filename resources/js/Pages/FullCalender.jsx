@@ -2227,10 +2227,7 @@ const ScheduleTest = () => {
               <span> Sắp Lich Theo Line</span>
             </label>
 
-            <label class="sort-card">
-              <input type="radio" name="sortType" value="simulate">
-              <span> Logic Mới (Simulate)</span>
-            </label>
+
             
           </div>
         </div>
