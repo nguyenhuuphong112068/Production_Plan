@@ -12,7 +12,8 @@ class BlisterTypeController extends Controller
         public function index(){
                 $datas = DB::table('blister_type')->orderBy('name','asc')->get();
                 session()->put(['title'=> 'DỮ LIỆU GỐC - LOẠI MÁY ÉP VỈ']);
-                return view('pages.materData.BlisterType.list',['datas' => $datas]);
+                $historyCounts = DB::table('blister_type_history')->select('blister_type_id', DB::raw('count(*) as total'))->groupBy('blister_type_id')->get()->keyBy('blister_type_id');
+        return view('pages.materData.BlisterType.list', ['datas' => $datas, 'historyCounts' => $historyCounts]);
         }
 
         public function store (Request $request) {
@@ -54,7 +55,8 @@ class BlisterTypeController extends Controller
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 } 
 
-                DB::table('blister_type')->where('id', $request->id)->update([
+                $this->logHistory($request->id);
+        DB::table('blister_type')->where('id', $request->id)->update([
                         'name' => $request->name,
                         'code' => $request->code,
                         'created_by' => session('user')['fullName'] ?? 'Admin',
@@ -67,11 +69,39 @@ class BlisterTypeController extends Controller
         public function deActive(Request $request){
             $blister_type = DB::table('blister_type')->where('id', $request->id)->first();
             if ($blister_type) {
-                DB::table('blister_type')->where('id', $request->id)->update([
+                $this->logHistory($request->id);
+        DB::table('blister_type')->where('id', $request->id)->update([
                     'active' => !$blister_type->active,
                     'updated_at' => now()
                 ]);
             }
             return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }
+
+    public function logHistory($id)
+    {
+        $current = DB::table('blister_type')->where('id', $id)->first();
+        if ($current) {
+            $data = (array) $current;
+            $data['blister_type_id'] = $data['id'];
+            unset($data['id']);
+            DB::table('blister_type_history')->insert($data);
+        }
+    }
+
+    public function history(Request $request)
+    {
+        $histories = DB::table('blister_type_history')
+            ->where('blister_type_id', $request->id)
+            ->orderBy('id', 'desc')
+            ->get();
+            
+        $current = DB::table('blister_type')->where('id', $request->id)->first();
+
+        return response()->json([
+            'current' => $current,
+            'history' => $histories
+        ]);
+    }
+
 }

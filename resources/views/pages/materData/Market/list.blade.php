@@ -16,4 +16,5 @@
 @section('model')
   @include('pages.materData.Market.create')
   @include('pages.materData.Market.update') 
+  @include('pages.materData.Market.history')
 @endsection

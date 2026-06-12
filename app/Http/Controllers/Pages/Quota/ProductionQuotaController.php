@@ -152,12 +152,19 @@ class ProductionQuotaController extends Controller
                         $datas = collect(); // an toàn nếu stage_code ngoài dự kiến
                 }
 
+                $historyCounts = DB::table('quota_history')
+                        ->select('quota_id', DB::raw('count(*) as total'))
+                        ->groupBy('quota_id')
+                        ->get()
+                        ->keyBy('quota_id');
+
                 session()->put(['title' => "ĐỊNH MỨC THỜI GIAN SẢN XUẤT"]);
                 //dd ($datas);
                 return view('pages.quota.production.list', [
                         'datas' => $datas,
                         'stage_code' => $stage_code,
-                        'room' => $room
+                        'room' => $room,
+                        'historyCounts' => $historyCounts
                 ]);
         }
 
@@ -307,6 +314,8 @@ class ProductionQuotaController extends Controller
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 }
 
+                $this->logQuotaHistory($request->id);
+
                 DB::table('quota')->where('id', $request->id)->update([
 
                         'p_time' => $request->p_time,
@@ -347,6 +356,8 @@ class ProductionQuotaController extends Controller
                         ]);
                 }
 
+                $this->logQuotaHistory($request->id);
+
                 DB::table('quota')->where('id', $request->id)->update([
                         'active' => $newActive,
                         'prepared_by' => session('user')['fullName'],
@@ -360,24 +371,73 @@ class ProductionQuotaController extends Controller
         }
         public function tank_keepDry(Request $request)
         {
+                $this->logQuotaHistory($request->id);
+
                 DB::table('quota')
                         ->where('id', $request->id)
                         ->when($request->stage_code == 3 || $request->stage_code == 4, function ($query) use ($request) {
                                 $query->update(['tank' => $request->checked == "false" ? 0 : 1]);
                         })
-                        ->when($request->stage_code == 7, function ($query) use ($request) {
+                        ->when($request->stage_code == 5, function ($query) use ($request) {
                                 $query->update(['keep_dry' => $request->checked == "false" ? 0 : 1]);
                         });
+
                 return response()->json(['success' => true]);
         }
 
         public function updateTime(Request $request)
         {
+                $this->logQuotaHistory($request->id);
+
                 DB::table('quota')
                         ->where('id', $request->id)
                         ->update([
                                 $request->name => $request->time
                         ]);
+
                 return response()->json(['success' => true]);
+        }
+
+        public function history(Request $request)
+        {
+                $histories = DB::table('quota_history')
+                        ->where('quota_id', $request->quota_id)
+                        ->orderBy('id', 'desc')
+                        ->get();
+
+                $current = DB::table('quota')
+                        ->where('id', $request->quota_id)
+                        ->first();
+
+                return response()->json([
+                        'current' => $current,
+                        'history' => $histories
+                ]);
+        }
+
+        private function logQuotaHistory($quota_id)
+        {
+                $quota = DB::table('quota')->where('id', $quota_id)->first();
+                if ($quota) {
+                        DB::table('quota_history')->insert([
+                                'quota_id' => $quota->id,
+                                'process_code' => $quota->process_code . '_' . time() . '_' . rand(100, 999),
+                                'intermediate_code' => $quota->intermediate_code ?? '',
+                                'finished_product_code' => $quota->finished_product_code ?? '',
+                                'room_id' => $quota->room_id ?? 0,
+                                'p_time' => $quota->p_time ?? '0',
+                                'm_time' => $quota->m_time ?? '0',
+                                'C1_time' => $quota->C1_time ?? '0',
+                                'C2_time' => $quota->C2_time ?? '0',
+                                'stage_code' => $quota->stage_code ?? 0,
+                                'maxofbatch_campaign' => $quota->maxofbatch_campaign ?? 0,
+                                'note' => $quota->note ?? '',
+                                'deparment_code' => $quota->deparment_code ?? '',
+                                'active' => $quota->active ?? 1,
+                                'prepared_by' => session('user')['fullName'] ?? '',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                        ]);
+                }
         }
 }

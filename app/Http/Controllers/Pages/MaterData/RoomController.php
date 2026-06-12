@@ -17,12 +17,13 @@ class RoomController extends Controller
                 $stage_groups = DB::table('stage_groups')->get();
                 $blister_types = DB::table('blister_type')->where('active', true)->get();
                 session()->put(['title' => 'DỮ LIỆU GỐC - PHÒNG SẢN XUẤT']);
-                return view('pages.materData.room.list', [
+                $historyCounts = DB::table('room_history')->select('room_id', DB::raw('count(*) as total'))->groupBy('room_id')->get()->keyBy('room_id');
+        return view('pages.materData.room.list', [
                         'datas' => $datas,
                         'stages' => $stages,
                         'stage_groups' => $stage_groups,
                         'blister_types' => $blister_types
-                ]);
+                , 'historyCounts' => $historyCounts]);
         }
 
 
@@ -103,7 +104,9 @@ class RoomController extends Controller
 
                 $room = DB::table('room')->where('code', $request->code)->first();
 
-                DB::table('room')->where('code', $request->code)->update([
+                $room = DB::table('room')->where('code', $request->code)->first();
+        if ($room) {$this->logHistory($room->id);}
+        DB::table('room')->where('code', $request->code)->update([
 
                         'main_equiment_name' => $request->main_equiment_name,
                         'capacity' => $request->capacity,
@@ -117,7 +120,7 @@ class RoomController extends Controller
 
         public function deActive(Request $request)
         {
-
+                $this->logHistory($request->id);
                 DB::table('room')->where('id', $request->id)->update([
                         'active' => !$request->active,
                         'prepareBy' => session('user')['fullName'],
@@ -125,4 +128,31 @@ class RoomController extends Controller
                 ]);
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
+
+    public function logHistory($id)
+    {
+        $current = DB::table('room')->where('id', $id)->first();
+        if ($current) {
+            $data = (array) $current;
+            $data['room_id'] = $data['id'];
+            unset($data['id']);
+            DB::table('room_history')->insert($data);
+        }
+    }
+
+    public function history(Request $request)
+    {
+        $histories = DB::table('room_history')
+            ->where('room_id', $request->id)
+            ->orderBy('id', 'desc')
+            ->get();
+            
+        $current = DB::table('room')->where('id', $request->id)->first();
+
+        return response()->json([
+            'current' => $current,
+            'history' => $histories
+        ]);
+    }
+
 }

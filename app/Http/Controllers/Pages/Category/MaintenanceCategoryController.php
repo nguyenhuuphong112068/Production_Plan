@@ -150,6 +150,13 @@ class MaintenanceCategoryController extends Controller
 
                 $quota_rooms = DB::table('quota_maintenance_rooms')->get()->groupBy('quota_maintenance_id');
 
+                
+                $history_counts = DB::table('quota_maintenance_history')
+                        ->select('category_id', DB::raw('count(*) as total'))
+                        ->groupBy('category_id')
+                        ->pluck('total', 'category_id')
+                        ->toArray();
+
                 $datas = collect();
                 foreach ($quota_maintenance as $quota) {
                         $inst = $inst_lookup[$quota->inst_id . '_' . ($quota->Inst_sch_type ?? '') . '_' . $quota->block] ?? null;
@@ -179,6 +186,7 @@ class MaintenanceCategoryController extends Controller
                                 'active' =>  $quota->active,
                                 'created_by' => $quota->created_by,
                                 'created_at' => $quota->created_time,
+                                'history_count' => $history_counts[$quota->id] ?? 0,
                         ]);
                 }
 
@@ -199,6 +207,8 @@ class MaintenanceCategoryController extends Controller
                 if (!$this->checkPermission($request->id)) {
                         return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
                 }
+
+                $this->logHistory($request->id);
 
                 try {
                         DB::table('quota_maintenance')
@@ -221,6 +231,8 @@ class MaintenanceCategoryController extends Controller
                         return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
                 }
 
+                $this->logHistory($request->id);
+
                 DB::table('quota_maintenance')
                         ->where('id', $request->id)
                         ->update([
@@ -236,6 +248,8 @@ class MaintenanceCategoryController extends Controller
                 if (!$this->checkPermission($request->id)) {
                         return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
                 }
+
+                $this->logHistory($request->id);
 
                 $quota_id = $request->id;
                 $room_ids = $request->room_ids;
@@ -303,6 +317,8 @@ class MaintenanceCategoryController extends Controller
                         return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật mục này.'], 403);
                 }
 
+                $this->logHistory($request->id);
+
                 $dept_code = $request->department_code ?? $request->deparment_code;
                 DB::table('quota_maintenance')
                         ->where('id', $request->id)
@@ -312,6 +328,74 @@ class MaintenanceCategoryController extends Controller
                                 'created_time' => now(),
                         ]);
                 return response()->json(['success' => true]);
+        }
+
+        
+        private function logHistory($id)
+        {
+                $current = DB::table('quota_maintenance')->where('id', $id)->first();
+                if ($current) {
+                        $history_id = DB::table('quota_maintenance_history')->insertGetId([
+                                'category_id' => $current->id,
+                                'inst_id' => $current->inst_id,
+                                'parent_eqp_id' => $current->parent_eqp_id,
+                                'inst_name' => $current->inst_name,
+                                'Eqp_name' => $current->Eqp_name,
+                                'exe_time' => $current->exe_time,
+                                'Inst_sch_type' => $current->Inst_sch_type,
+                                'block' => $current->block,
+                                'is_HVAC' => $current->is_HVAC,
+                                'deparment_code' => $current->deparment_code,
+                                'active' => $current->active,
+                                'created_by' => $current->created_by,
+                                'created_time' => $current->created_time,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                        ]);
+
+                        $rooms = DB::table('quota_maintenance_rooms')->where('quota_maintenance_id', $id)->get();
+                        foreach ($rooms as $room) {
+                                DB::table('quota_maintenance_rooms_history')->insert([
+                                        'history_id' => $history_id,
+                                        'quota_maintenance_id' => $id,
+                                        'room_id' => $room->room_id,
+                                        'created_at' => now(),
+                                        'updated_at' => now()
+                                ]);
+                        }
+                }
+        }
+
+        public function history(Request $request)
+        {
+                $histories = DB::table('quota_maintenance_history')
+                        ->where('category_id', $request->id)
+                        ->orderBy('id', 'desc')
+                        ->get();
+                
+                foreach($histories as $h) {
+                        $room_names = DB::table('quota_maintenance_rooms_history')
+                                ->join('room', 'quota_maintenance_rooms_history.room_id', '=', 'room.id')
+                                ->where('quota_maintenance_rooms_history.history_id', $h->id)
+                                ->pluck('room.name')
+                                ->toArray();
+                        $h->room_names = implode(', ', $room_names);
+                }
+
+                $current = DB::table('quota_maintenance')->where('id', $request->id)->first();
+                if ($current) {
+                        $room_names = DB::table('quota_maintenance_rooms')
+                                ->join('room', 'quota_maintenance_rooms.room_id', '=', 'room.id')
+                                ->where('quota_maintenance_rooms.quota_maintenance_id', $current->id)
+                                ->pluck('room.name')
+                                ->toArray();
+                        $current->room_names = implode(', ', $room_names);
+                }
+
+                return response()->json([
+                        'current' => $current,
+                        'history' => $histories
+                ]);
         }
 
         private function checkPermission($id)

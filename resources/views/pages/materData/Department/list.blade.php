@@ -15,4 +15,5 @@
 @section('model')
     @include('pages.materData.Department.create')
     @include('pages.materData.Department.update')
+    @include('pages.materData.Department.history')
 @endsection

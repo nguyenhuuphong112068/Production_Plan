@@ -13,7 +13,8 @@ class StageGroupController extends Controller
     {
         $datas = DB::table('stage_groups')->orderBy('name', 'asc')->get();
         session()->put(['title' => 'DỮ LIỆU GỐC - TỔ QUẢN LÝ']);
-        return view('pages.materData.StageGroup.list', ['datas' => $datas]);
+        $historyCounts = DB::table('stage_groups_history')->select('stage_group_id', DB::raw('count(*) as total'))->groupBy('stage_group_id')->get()->keyBy('stage_group_id');
+        return view('pages.materData.StageGroup.list', ['datas' => $datas, 'historyCounts' => $historyCounts]);
     }
 
     public function store(Request $request)
@@ -58,6 +59,7 @@ class StageGroupController extends Controller
             return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
         }
 
+        $this->logHistory($request->id);
         DB::table('stage_groups')->where('id', $request->id)->update([
             'code' => $request->code,
             'name' => $request->name,
@@ -66,4 +68,31 @@ class StageGroupController extends Controller
 
         return redirect()->back()->with('success', 'Cập nhật thành công!');
     }
+
+    public function logHistory($id)
+    {
+        $current = DB::table('stage_groups')->where('id', $id)->first();
+        if ($current) {
+            $data = (array) $current;
+            $data['stage_group_id'] = $data['id'];
+            unset($data['id']);
+            DB::table('stage_groups_history')->insert($data);
+        }
+    }
+
+    public function history(Request $request)
+    {
+        $histories = DB::table('stage_groups_history')
+            ->where('stage_group_id', $request->id)
+            ->orderBy('id', 'desc')
+            ->get();
+            
+        $current = DB::table('stage_groups')->where('id', $request->id)->first();
+
+        return response()->json([
+            'current' => $current,
+            'history' => $histories
+        ]);
+    }
+
 }

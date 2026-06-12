@@ -16,4 +16,5 @@
 @section('model')
   @include('pages.materData.room.create')
   @include('pages.materData.room.update') 
+  @include('pages.materData.room.history')
 @endsection

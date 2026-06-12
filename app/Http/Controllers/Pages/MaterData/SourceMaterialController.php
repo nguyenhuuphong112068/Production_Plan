@@ -15,7 +15,8 @@ class SourceMaterialController extends Controller
                
                 session()->put(['title'=> 'DỮ LIỆU GỐC - NGUỒN NGUYÊN LIỆU CHÍNH']);
             
-                return view('pages.materData.source_material.list',['datas' => $datas]);
+                $historyCounts = DB::table('source_material_history')->select('source_material_id', DB::raw('count(*) as total'))->groupBy('source_material_id')->get()->keyBy('source_material_id');
+        return view('pages.materData.source_material.list', ['datas' => $datas, 'historyCounts' => $historyCounts]);
         }
 
         public function store(Request $request){
@@ -83,6 +84,9 @@ class SourceMaterialController extends Controller
             }
 
 
+            // Log history
+            $this->logHistory($request->id);
+
             // Insert dữ liệu
             DB::table('source_material')->where ('id',$request->id )->update([
                 'name' => $request->name,
@@ -97,7 +101,8 @@ class SourceMaterialController extends Controller
 
         public function deActive(Request $request){
           
-               DB::table('source_material')->where('id', $request->id)->update([
+               $this->logHistory($request->id);
+        DB::table('source_material')->where('id', $request->id)->update([
                         'Active' => !$request->active,
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(), 
@@ -108,4 +113,31 @@ class SourceMaterialController extends Controller
                 ]);
                 //return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
+
+    public function logHistory($id)
+    {
+        $current = DB::table('source_material')->where('id', $id)->first();
+        if ($current) {
+            $data = (array) $current;
+            $data['source_material_id'] = $data['id'];
+            unset($data['id']);
+            DB::table('source_material_history')->insert($data);
+        }
+    }
+
+    public function history(Request $request)
+    {
+        $histories = DB::table('source_material_history')
+            ->where('source_material_id', $request->id)
+            ->orderBy('id', 'desc')
+            ->get();
+            
+        $current = DB::table('source_material')->where('id', $request->id)->first();
+
+        return response()->json([
+            'current' => $current,
+            'history' => $histories
+        ]);
+    }
+
 }

@@ -37,6 +37,8 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                 Route::post('deActive','deActive')->name('deActive'); 
+            Route::get('history', 'history')->name('history');
+ 
         });
 
         Route::prefix('/room')
@@ -47,6 +49,8 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                 Route::post('deActive','deActive')->name('deActive');          
+            Route::get('history', 'history')->name('history');
+          
         });
 
 
@@ -58,6 +62,9 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                
+            Route::get('history', 'history')->name('history');
+
+               
         });
 
         Route::prefix('/Unit')
@@ -67,6 +74,9 @@ Route::prefix('/materData')
                 Route::get('','index')->name('list');
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
+                   
+            Route::get('history', 'history')->name('history');
+
                    
         });
 
@@ -79,6 +89,9 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
               
+            Route::get('history', 'history')->name('history');
+
+              
         });
 
         
@@ -89,6 +102,9 @@ Route::prefix('/materData')
                 Route::get('','index')->name('list');
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
+               
+            Route::get('history', 'history')->name('history');
+
                
         });
 
@@ -101,6 +117,8 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                 Route::post('deActive','deActive')->name('deActive');          
+            Route::get('history', 'history')->name('history');
+          
         });
 
         Route::prefix('/offdays')
@@ -113,6 +131,8 @@ Route::prefix('/materData')
                 Route::post('delete_ajax','deleteAjax')->name('delete_ajax');
                 Route::post('flags/store_ajax','storeFlagAjax')->name('flags_store_ajax');
                 Route::post('flags/delete_ajax','deleteFlagAjax')->name('flags_delete_ajax');
+            Route::get('history', 'history')->name('history');
+
         });
 
         Route::prefix('/stageGroup')
@@ -122,6 +142,8 @@ Route::prefix('/materData')
                 Route::get('','index')->name('list');
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
+            Route::get('history', 'history')->name('history');
+
         });
 
         Route::prefix('/department')
@@ -132,6 +154,8 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                 Route::post('deActive','deActive')->name('deActive');
+            Route::get('history', 'history')->name('history');
+
         });
 
         Route::prefix('/blister_mold')
@@ -142,6 +166,8 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                 Route::post('deActive','deActive')->name('deActive');
+            Route::get('history', 'history')->name('history');
+
         });
 
         Route::prefix('/blister_type')
@@ -152,6 +178,8 @@ Route::prefix('/materData')
                 Route::post('store','store')->name('store');
                 Route::post('update', 'update')->name('update');
                 Route::post('deActive','deActive')->name('deActive');
+            Route::get('history', 'history')->name('history');
+
         });
 
 

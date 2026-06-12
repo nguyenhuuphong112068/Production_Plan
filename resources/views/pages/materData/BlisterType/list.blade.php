@@ -15,4 +15,5 @@
 @section('model')
   @include('pages.materData.BlisterType.create')
   @include('pages.materData.BlisterType.update') 
+  @include('pages.materData.BlisterType.history')
 @endsection

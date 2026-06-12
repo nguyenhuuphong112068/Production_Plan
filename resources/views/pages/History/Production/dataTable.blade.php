@@ -123,21 +123,25 @@
                             </td>
                             @if (user_has_permission(session('user')['userId'], 'return_event', 'boolean'))
                                 <td class="text-center align-middle">
-
-                                    <div style="position: relative; display: inline-block;">
+                                    <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
                                         <button type="button" class="btn btn-return btn-danger"
                                             data-id="{{ $data->id }}" title="Trả về">
                                             <i class="fas fa-undo"></i>
                                         </button>
-                                        @if ($data->return_count > 0)
-                                            <span class="badge badge-info btn-history" data-id="{{ $data->id }}"
-                                                style="position: absolute; top: -8px; right: -8px; cursor: pointer; border-radius: 50%; font-size: 12px; padding: 4px 7px; box-shadow: 0 0 3px rgba(0,0,0,0.5);"
-                                                title="Lịch sử trả về">
-                                                {{ $data->return_count }}
-                                            </span>
-                                        @endif
+                                        
+                                        <div style="position: relative; display: inline-block;">
+                                            <button type="button" class="btn btn-info btn-history"
+                                                data-id="{{ $data->id }}" title="Lịch sử thay đổi">
+                                                <i class="fas fa-history"></i>
+                                            </button>
+                                            @if ($data->return_count > 0)
+                                                <span class="badge badge-danger"
+                                                    style="position: absolute; top: -5px; right: -5px; border-radius: 50%; font-size: 10px; padding: 3px 6px; box-shadow: 0 0 3px rgba(0,0,0,0.5);">
+                                                    {{ $data->return_count }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
-
                                 </td>
                             @endif
                         </tr>

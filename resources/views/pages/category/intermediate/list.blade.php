@@ -21,4 +21,5 @@
   @include('pages.category.intermediate.update') 
   @include('pages.category.intermediate.recipe')
   @include('pages.category.intermediate.create_bom')
+  @include('pages.category.intermediate.history')
 @endsection

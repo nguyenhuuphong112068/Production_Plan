@@ -10,7 +10,50 @@ use Illuminate\Support\Facades\Validator;
 
 class ProductCategoryController extends Controller
 {
-        
+        private function logHistory($id) {
+            $cat = DB::table('finished_product_category')->where('id', $id)->first();
+            if ($cat) {
+                $data = (array) $cat;
+                $data['category_id'] = $data['id'];
+                unset($data['id']);
+                DB::table('finished_product_category_history')->insert($data);
+            }
+        }
+
+        public function history(Request $request) {
+            $history = DB::table('finished_product_category_history')
+                ->select(
+                    'finished_product_category_history.*', 
+                    'product_name.name as product_name',
+                    'market.code as market_name',
+                    'specification.name as specification_name'
+                )
+                ->leftJoin('product_name', 'finished_product_category_history.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category_history.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category_history.specification_id', 'specification.id')
+                ->where('finished_product_category_history.category_id', $request->category_id)
+                ->orderBy('finished_product_category_history.id', 'desc')
+                ->get();
+
+            $current = DB::table('finished_product_category')
+                ->select(
+                    'finished_product_category.*', 
+                    'product_name.name as product_name',
+                    'market.code as market_name',
+                    'specification.name as specification_name'
+                )
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                ->where('finished_product_category.id', $request->category_id)
+                ->first();
+
+            return response()->json([
+                'current' => $current,
+                'history' => $history
+            ]);
+        }
+
         public function index(){
 
                 $markets = DB::table('market')->where('active', true)->orderBy('code','asc')->get();
@@ -62,6 +105,12 @@ class ProductCategoryController extends Controller
                 ->get();
 
                 $units = DB::table('unit')->where('active', true)->get();
+
+                $historyCounts = DB::table('finished_product_category_history')
+                        ->select('category_id', DB::raw('count(*) as total'))
+                        ->groupBy('category_id')
+                        ->get()
+                        ->keyBy('category_id');
               
                 session()->put(['title'=> 'DANH MỤC THÀNH PHẨM']);
                 return view('pages.category.product.list',[
@@ -70,7 +119,8 @@ class ProductCategoryController extends Controller
                         'productNames' => $productNames,   
                         'markets' => $markets,     
                         'specifications' => $specifications,
-                        'units' => $units      
+                        'units' => $units,
+                        'historyCounts' => $historyCounts      
                 ]);
         }
 
@@ -115,6 +165,7 @@ class ProductCategoryController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
+
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
 
@@ -138,6 +189,8 @@ class ProductCategoryController extends Controller
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 } 
     
+                 $this->logHistory($request->id);
+
                  DB::table('finished_product_category')->where ('id', $request->id)->update([
                         'product_name_id'=> $request->product_name_id,
                         'market_id'=> $request->market_id,
@@ -147,11 +200,14 @@ class ProductCategoryController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);
+
                 return redirect()->back()->with('success', 'Đã Cập nhật thành công!');   
         }
 
         public function deActive(Request $request){
         
+                $this->logHistory($request->id);
+
                 if ($request->IsHypothesis == 1){
                         DB::table('finished_product_category')->where('id', $request->id)->update([
                                 'cancel' => 1,
@@ -165,6 +221,7 @@ class ProductCategoryController extends Controller
                                 'updated_at' => now(), 
                         ]);
                 }
+
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
 

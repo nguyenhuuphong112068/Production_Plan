@@ -39,6 +39,7 @@ Route::prefix('/quota')
                 Route::post('check_code_room_id', 'check_code_room_id')->name('check_code_room_id');
                 Route::post('tank_keepDry', 'tank_keepDry')->name('tank_keepDry');
                 Route::post('updateTime', 'updateTime')->name('updateTime');
+                Route::get('history', 'history')->name('history');
 
             });
 

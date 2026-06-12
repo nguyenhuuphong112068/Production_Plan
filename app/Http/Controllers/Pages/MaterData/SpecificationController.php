@@ -14,7 +14,8 @@ class SpecificationController extends Controller
                 $datas = DB::table('specification')->orderBy('name','asc')->get();
 
                 session()->put(['title'=> 'DỮ LIỆU GỐC - QUI CÁCH ĐÓNG GÓI']);
-                return view('pages.materData.Specification.list',['datas' => $datas]);
+                $historyCounts = DB::table('specification_history')->select('specification_id', DB::raw('count(*) as total'))->groupBy('specification_id')->get()->keyBy('specification_id');
+        return view('pages.materData.Specification.list', ['datas' => $datas, 'historyCounts' => $historyCounts]);
         }
 
                 public function store (Request $request) {
@@ -55,7 +56,8 @@ class SpecificationController extends Controller
 
                 //$oldData = DB::table('specification')->where('id', $request->id)->first();
 
-                DB::table('specification')->where('id', $request->id)->update([
+                $this->logHistory($request->id);
+        DB::table('specification')->where('id', $request->id)->update([
                         
                         'name' => $request->name,
                         'created_by' => session('user')['fullName'] ,
@@ -66,5 +68,32 @@ class SpecificationController extends Controller
                 
                 return redirect()->back()->with('success', 'Cập nhật thành công!');
         }
+
+
+    public function logHistory($id)
+    {
+        $current = DB::table('specification')->where('id', $id)->first();
+        if ($current) {
+            $data = (array) $current;
+            $data['specification_id'] = $data['id'];
+            unset($data['id']);
+            DB::table('specification_history')->insert($data);
+        }
+    }
+
+    public function history(Request $request)
+    {
+        $histories = DB::table('specification_history')
+            ->where('specification_id', $request->id)
+            ->orderBy('id', 'desc')
+            ->get();
+            
+        $current = DB::table('specification')->where('id', $request->id)->first();
+
+        return response()->json([
+            'current' => $current,
+            'history' => $histories
+        ]);
+    }
 
 }

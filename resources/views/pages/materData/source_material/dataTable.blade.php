@@ -33,6 +33,7 @@
                         <th>Ngày Tạo</th>
                         <th style = "width: 15px">Edit</th>
                         <th style = "width: 15px"> DeActive</th>
+                        <th class="text-center align-middle">Lịch Sử</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -103,7 +104,14 @@
                                     <i class="fas {{ $data->active ? 'fa-lock' : 'fa-unlock' }}"></i>
                                 </button>
                             </td>
-
+                            <td class="text-center align-middle">
+                                <button class="btn btn-info btn-history mb-1 position-relative" data-id="{{ $data->id }}" title="Lịch sử thay đổi">
+                                    <i class="fas fa-history"></i>
+                                    @if(isset($historyCounts) && isset($historyCounts[$data->id]))
+                                        <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
+                                    @endif
+                                </button>
+                            </td>
                         </tr>
                     @endforeach
 
@@ -243,4 +251,60 @@
     });
 
 
+</script>
+
+
+
+
+
+
+
+
+<script>
+    $(document).ready(function() {
+        $('.btn-history').off('click').on('click', function() {
+            var id = $(this).data('id');
+            $.ajax({
+                url: "{{ route('pages.materData.source_material.history') }}",
+                type: "GET",
+                data: { id: id },
+                success: function(res) {
+                    var tbody = $('#data_table_history_body');
+                    tbody.empty();
+                    var current = res.current;
+                    if (current) {
+                        var modifier = current.created_by || current.prepareBy || current.prepared_by || '';
+                        var html = '<tr style="background-color: #e8f4f8; font-weight: bold;">';
+                        html += '<td class="text-center align-middle">Hiện Hành</td>';
+                        html += '<td class="text-center align-middle">' + modifier + '</td>';
+                        html += '<td class="text-center align-middle">' + (current.active !== null && current.active !== undefined ? current.active : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current.intermediate_code !== null && current.intermediate_code !== undefined ? current.intermediate_code : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current.name !== null && current.name !== undefined ? current.name : '') + '</td>';
+                        html += '</tr>';
+                        tbody.append(html);
+                    }
+
+                    if(res.history.length === 0) {
+                        tbody.append('<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>');
+                    } else {
+                        res.history.forEach(function(item) {
+                            var modifier = item.created_by || item.prepareBy || item.prepared_by || '';
+                            var html = '<tr>';
+                            html += '<td class="text-center align-middle">' + (item.updated_at ? item.updated_at : item.created_at) + '</td>';
+                            html += '<td class="text-center align-middle">' + modifier + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.active !== null && item.active !== undefined ? item.active : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.intermediate_code !== null && item.intermediate_code !== undefined ? item.intermediate_code : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.name !== null && item.name !== undefined ? item.name : '') + '</td>';
+                            html += '</tr>';
+                            tbody.append(html);
+                        });
+                    }
+                    $('#historyModal').modal('show');
+                },
+                error: function() {
+                    Swal.fire('Lỗi', 'Không thể lấy lịch sử thay đổi', 'error');
+                }
+            });
+        });
+    });
 </script>

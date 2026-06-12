@@ -25,6 +25,7 @@ Route::prefix('/category')
                                 Route::post('deActive', 'deActive')->name('deActive');
                                 Route::post('recipe', 'recipe')->name('recipe');
                                 Route::post('save_bom', 'save_bom')->name('resave_bomcipe');
+                                Route::get('history', 'history')->name('history');
                         });
 
 
@@ -38,8 +39,8 @@ Route::prefix('/category')
                                 Route::post('deActive', 'deActive')->name('deActive');
                                 Route::post('recipe', 'recipe')->name('recipe');
                                 Route::post('save_bom', 'save_bom')->name('save_bom');
-
                                 Route::get('getJsonFPCategory', 'getJsonFPCategory')->name('getJsonFPCategory');
+                                Route::get('history', 'history')->name('history');
                         });
 
 
@@ -54,5 +55,6 @@ Route::prefix('/category')
                                 Route::post('is_HVAC', 'is_HVAC')->name('is_HVAC');
                                 Route::post('updateRoom', 'updateRoom')->name('updateRoom');
                                 Route::post('updateDepartment', 'updateDepartment')->name('updateDepartment');
+                                Route::get('history', 'history')->name('history');
                         });
         });

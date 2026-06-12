@@ -13,7 +13,8 @@ class DosageController extends Controller
 
                 $datas = DB::table('dosage')->orderBy('name','asc')->get();
                 session()->put(['title'=> 'DỮ LIỆU GỐC - DẠNG BÀO CHẾ']);
-                return view('pages.materData.Dosage.list',['datas' => $datas]);
+                $historyCounts = DB::table('dosage_history')->select('dosage_id', DB::raw('count(*) as total'))->groupBy('dosage_id')->get()->keyBy('dosage_id');
+        return view('pages.materData.Dosage.list', ['datas' => $datas, 'historyCounts' => $historyCounts]);
         }
 
         public function store (Request $request) {
@@ -52,7 +53,8 @@ class DosageController extends Controller
 
                 //$oldData = DB::table('dosage')->where('id', $request->id)->first();
 
-                DB::table('dosage')->where('id', $request->id)->update([
+                $this->logHistory($request->id);
+        DB::table('dosage')->where('id', $request->id)->update([
                         'name' => $request->name,
                         'created_by' => session('user')['fullName'] ?? 'Admin',
                         'updated_at' => now(),
@@ -64,4 +66,31 @@ class DosageController extends Controller
         }
 
         
+
+    public function logHistory($id)
+    {
+        $current = DB::table('dosage')->where('id', $id)->first();
+        if ($current) {
+            $data = (array) $current;
+            $data['dosage_id'] = $data['id'];
+            unset($data['id']);
+            DB::table('dosage_history')->insert($data);
+        }
+    }
+
+    public function history(Request $request)
+    {
+        $histories = DB::table('dosage_history')
+            ->where('dosage_id', $request->id)
+            ->orderBy('id', 'desc')
+            ->get();
+            
+        $current = DB::table('dosage')->where('id', $request->id)->first();
+
+        return response()->json([
+            'current' => $current,
+            'history' => $histories
+        ]);
+    }
+
 }

@@ -16,4 +16,5 @@
 @section('model')
   @include('pages.materData.Dosage.create')
   @include('pages.materData.Dosage.update') 
+  @include('pages.materData.Dosage.history')
 @endsection

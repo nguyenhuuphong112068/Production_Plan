@@ -16,4 +16,5 @@
 @section('model')
   @include('pages.materData.Specification.create')
   @include('pages.materData.Specification.update') 
+  @include('pages.materData.Specification.history')
 @endsection

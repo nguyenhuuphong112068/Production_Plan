@@ -20,6 +20,7 @@
                         <th>Người Tạo</th>
                         <th>Ngày Tạo</th>
                         <th>Thao Tác</th>
+                        <th class="text-center align-middle">Lịch Sử</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -38,7 +39,7 @@
                                 @if($data->active)
                                     <span class="badge badge-success">Hoạt động</span>
                                 @else
-                                    <span class="badge badge-danger">Tạm ngưng</span>
+                                    <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">Tạm ngưng</span>
                                 @endif
                             </td>
                             <td>{{ $data->created_by ?? '-' }}</td>
@@ -63,6 +64,14 @@
                                         <i class="fas fa-{{ $data->active ? 'lock' : 'unlock' }}"></i>
                                     </button>
                                 </form>
+                            </td>
+                            <td class="text-center align-middle">
+                                <button class="btn btn-info btn-history mb-1 position-relative" data-id="{{ $data->id }}" title="Lịch sử thay đổi">
+                                    <i class="fas fa-history"></i>
+                                    @if(isset($historyCounts) && isset($historyCounts[$data->id]))
+                                        <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
+                                    @endif
+                                </button>
                             </td>
                         </tr>
                     @endforeach
@@ -143,6 +152,64 @@
                     next: "Sau"
                 }
             }
+        });
+    });
+</script>
+
+
+
+
+
+
+
+
+<script>
+    $(document).ready(function() {
+        $('.btn-history').off('click').on('click', function() {
+            var id = $(this).data('id');
+            $.ajax({
+                url: "{{ route('pages.materData.BlisterMold.history') }}",
+                type: "GET",
+                data: { id: id },
+                success: function(res) {
+                    var tbody = $('#data_table_history_body');
+                    tbody.empty();
+                    var current = res.current;
+                    if (current) {
+                        var modifier = current.created_by || current.prepareBy || current.prepared_by || '';
+                        var html = '<tr style="background-color: #e8f4f8; font-weight: bold;">';
+                        html += '<td class="text-center align-middle">Hiện Hành</td>';
+                        html += '<td class="text-center align-middle">' + modifier + '</td>';
+                        html += '<td class="text-center align-middle">' + (current.active !== null && current.active !== undefined ? current.active : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current.code !== null && current.code !== undefined ? current.code : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current.amount !== null && current.amount !== undefined ? current.amount : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current.blister_type_code !== null && current.blister_type_code !== undefined ? current.blister_type_code : '') + '</td>';
+                        html += '</tr>';
+                        tbody.append(html);
+                    }
+
+                    if(res.history.length === 0) {
+                        tbody.append('<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>');
+                    } else {
+                        res.history.forEach(function(item) {
+                            var modifier = item.created_by || item.prepareBy || item.prepared_by || '';
+                            var html = '<tr>';
+                            html += '<td class="text-center align-middle">' + (item.updated_at ? item.updated_at : item.created_at) + '</td>';
+                            html += '<td class="text-center align-middle">' + modifier + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.active !== null && item.active !== undefined ? item.active : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.code !== null && item.code !== undefined ? item.code : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.amount !== null && item.amount !== undefined ? item.amount : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.blister_type_code !== null && item.blister_type_code !== undefined ? item.blister_type_code : '') + '</td>';
+                            html += '</tr>';
+                            tbody.append(html);
+                        });
+                    }
+                    $('#historyModal').modal('show');
+                },
+                error: function() {
+                    Swal.fire('Lỗi', 'Không thể lấy lịch sử thay đổi', 'error');
+                }
+            });
         });
     });
 </script>

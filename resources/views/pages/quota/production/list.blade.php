@@ -16,4 +16,5 @@
 @section('model')
   @include('pages.quota.production.create')
   @include('pages.quota.production.update') 
+  @include('pages.quota.production.history')
 @endsection

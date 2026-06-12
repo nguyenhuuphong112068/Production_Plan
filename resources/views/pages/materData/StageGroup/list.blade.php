@@ -15,4 +15,5 @@
 @section('model')
     @include('pages.materData.StageGroup.create')
     @include('pages.materData.StageGroup.update')
+    @include('pages.materData.StageGroup.history')
 @endsection

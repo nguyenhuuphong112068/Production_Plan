@@ -16,4 +16,5 @@
 @section('model')
   @include('pages.materData.productName.create')
   @include('pages.materData.productName.update') 
+  @include('pages.materData.productName.history')
 @endsection

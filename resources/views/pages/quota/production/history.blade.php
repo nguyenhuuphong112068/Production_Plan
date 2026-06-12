@@ -1,70 +1,116 @@
 <style>
-  .selectProductModal-modal-size {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
+    .history-modal-dialog {
+        max-width: 80% !important;
+        width: 80% !important;
+        margin: 1.75rem auto;
+    }
+
+    #historyModal .modal-content {
+        background-color: #ffffff;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    #historyModal .modal-header {
+        background-color: #ffffff;
+        border-bottom: 2px solid #CDC717;
+        padding: 14px 20px;
+    }
+
+    #historyModal .modal-title {
+        color: #003A4F;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    #historyModal .modal-body {
+        padding: 0;
+        max-height: 75vh;
+        overflow-y: auto;
+        overflow-x: auto;
+        background: #ffffff;
+    }
+
+    #historyModal .modal-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+
+    #data_table_history {
+        font-size: 14px;
+        margin-bottom: 0;
+    }
+
+    #data_table_history thead th {
+        background-color: #f4f6f9 !important;
+        color: #003A4F !important;
+        font-weight: 700;
+        white-space: nowrap;
+        padding: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        text-align: center;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    #data_table_history tbody td {
+        padding: 8px 10px;
+        vertical-align: middle;
+        text-align: center;
+    }
 </style>
 
 <div class="modal fade" id="historyModal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog selectProductModal-modal-size" role="document">
-    <div class="modal-content">
+    <div class="modal-dialog history-modal-dialog" role="document">
+        <div class="modal-content">
 
-      <div class="modal-header">
-        <a href="{{ route('pages.general.home') }}">
-          <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8; max-width:45px;">
-        </a>
-        
-        <h4 class="modal-title w-100 text-center" id="createModal" style="color: #CDC717; font-size: 30px">
-            Lịch Sử Thay Đổi Kế Hoạch Sản Xuất
-        </h4>
+            <div class="modal-header">
+                <a href="{{ route('pages.general.home') }}" class="mr-3">
+                    <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.85; max-width: 42px;">
+                </a>
 
-        <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
-          <span aria-hidden="true">&times;</span>
-        </button>
+                <h5 class="modal-title w-100 text-center" id="historyModalLabel">
+                    Lịch Sử Thay Đổi Định Mức
+                </h5>
 
-      </div>
-
-      <div class="modal-body" style="max-height: 100%; overflow-x: auto; ">
-          <div class="card-body">
-            <div class="table-responsive">
-                <table id="data_table_history" class="table table-bordered table-striped" style="font-size: 20px">
-                  
-                  <thead >
-                    <tr>
-                    <th>STT</th>
-                    <th>Mã Sản Phẩm</th>
-                    <th>Sản Phẩm</th>
-                    <th>Số Lô</th>
-                    <th>Thị Trường/ Qui Cách</th>
-                    <th>Ưu Tiên</th>
-                    <th>Ngày dự kiến KCS</th>
-                    <th>Lô Thẩm định</th>
-                    <th>Nguồn</th>
-                    <th>Nguyên Liệu</th>
-                    <th>Bao Bì</th>
-                    <th>Ghi Chú</th>
-                    <th>Version</th>
-                    <th style="width: 100px" >Lý Do</th>
-                    <th>Người Tạo/ Ngày Tạo</th>
-
-                  </tr>
-                  </thead>
-                  <tbody id = "data_table_history_body">
-   
-                  </tbody>
-                </table>
-
+                <button type="button" class="close ml-auto" data-dismiss="modal" aria-label="Đóng">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-          </div>
+
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table id="data_table_history" class="table table-bordered table-striped w-100">
+                        <thead id="data_table_history_head">
+                            <tr>
+                                <th rowspan="2">Ngày Sửa</th>
+                                <th rowspan="2">Người Sửa</th>
+                                <th colspan="4">Thời Gian</th>
+                                <th rowspan="2">Số Lô CĐ</th>
+                                <th rowspan="2">Trạng Thái</th>
+                                <th rowspan="2">Ghi Chú</th>
+                            </tr>
+                            <tr>
+                                <th>Chuẩn Bị</th>
+                                <th>Sản Xuất</th>
+                                <th>Vệ Sinh Cấp I</th>
+                                <th>Vệ Sinh Cấp II</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data_table_history_body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times mr-1"></i> Đóng
+                </button>
+            </div>
+
         </div>
-      </div>
-
     </div>
-  </div>
 </div>
-<!-- Scripts -->
-<script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
-<script src="{{ asset('js/popper.min.js') }}"></script>
-<script src="{{ asset('js/bootstrap.min.js') }}"></script>
-
-

@@ -23,5 +23,6 @@
   @include('pages.category.product.update_hypothesis') 
   @include('pages.category.product.recipe')
   @include('pages.category.product.create_bom')
+  @include('pages.category.product.history')
   
 @endsection

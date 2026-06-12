@@ -10,7 +10,39 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 class IntermediateCategoryController extends Controller
 {
-        
+        private function logHistory($id) {
+            $cat = DB::table('intermediate_category')->where('id', $id)->first();
+            if ($cat) {
+                $data = (array) $cat;
+                $data['category_id'] = $data['id'];
+                unset($data['id']);
+                // Handle nulls for booleans if needed, but they are set in original table.
+                DB::table('intermediate_category_history')->insert($data);
+            }
+        }
+
+        public function history(Request $request) {
+            $history = DB::table('intermediate_category_history')
+                ->select('intermediate_category_history.*', 'dosage.name as dosage_name', 'product_name.name as product_name')
+                ->leftJoin('product_name', 'intermediate_category_history.product_name_id', 'product_name.id')
+                ->leftJoin('dosage', 'intermediate_category_history.dosage_id', 'dosage.id')
+                ->where('intermediate_category_history.category_id', $request->category_id)
+                ->orderBy('intermediate_category_history.id', 'desc')
+                ->get();
+
+            $current = DB::table('intermediate_category')
+                ->select('intermediate_category.*', 'dosage.name as dosage_name', 'product_name.name as product_name')
+                ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
+                ->leftJoin('dosage', 'intermediate_category.dosage_id', 'dosage.id')
+                ->where('intermediate_category.id', $request->category_id)
+                ->first();
+
+            return response()->json([
+                'current' => $current,
+                'history' => $history
+            ]);
+        }
+
         public function index(){
 
                 $productNames = DB::table('product_name')->where('active', true)->orderBy('name','asc')->get();
@@ -29,6 +61,12 @@ class IntermediateCategoryController extends Controller
                 ->orderBy('intermediate_category.IsHypothesis','desc')
                 ->orderBy('product_name.name','asc')->get();
                 
+                $historyCounts = DB::table('intermediate_category_history')
+                        ->select('category_id', DB::raw('count(*) as total'))
+                        ->groupBy('category_id')
+                        ->get()
+                        ->keyBy('category_id');
+
                 session()->put(['title'=> 'DANH MỤC BÁN THÀNH PHẨM']);
        
                 return view('pages.category.intermediate.list',[
@@ -36,7 +74,7 @@ class IntermediateCategoryController extends Controller
                         'productNames' =>$productNames,
                         'dosages' =>$dosages,
                         'units'=>$units,
-                    
+                        'historyCounts' => $historyCounts
                 ]);
         }
 
@@ -97,6 +135,7 @@ class IntermediateCategoryController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
+
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
 
@@ -124,6 +163,8 @@ class IntermediateCategoryController extends Controller
                 } 
                 $dosage_name = DB::table('dosage')->where('id', $request->dosage_id )->value('name');
                 if (Str::contains(Str::lower($dosage_name), ['phim', 'nang'])) {$weight_2 = true;}else {$weight_2 = false;}
+
+                $this->logHistory($request->id);
 
                 DB::table('intermediate_category')->where('id', $request->id)->update([
 
@@ -154,10 +195,13 @@ class IntermediateCategoryController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);
-                return redirect()->back()->with('success', 'Đã thêm thành công!');   
+
+                return redirect()->back()->with('success', 'Đã cập nhật thành công!');   
         }
 
         public function deActive(Request $request){
+
+                $this->logHistory($request->id);
 
                 if ($request->IsHypothesis == 1){
                         DB::table('intermediate_category')->where('id', $request->id)->update([
@@ -173,7 +217,6 @@ class IntermediateCategoryController extends Controller
                         ]);
                 }
               
-
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
 

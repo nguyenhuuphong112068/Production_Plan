@@ -16,5 +16,5 @@
 @section('model')
   @include('pages.materData.source_material.update') 
   @include('pages.materData.source_material.create')
-  
+  @include('pages.materData.source_material.history')
 @endsection
