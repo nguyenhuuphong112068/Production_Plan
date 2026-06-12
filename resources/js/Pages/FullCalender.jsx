@@ -1552,6 +1552,10 @@ const ScheduleTest = () => {
       }).join('')
       : '<div style="padding: 8px; color: #999; font-style: italic;">Chưa có lô nào được chọn</div>';
 
+    const htmlOptions = reasons
+      .map(r => `<option value="${r}">`)
+      .join("");
+
     Swal.fire({
       title: 'Cập nhật lịch sản xuất',
       width: '550px',
@@ -1589,10 +1593,12 @@ const ScheduleTest = () => {
             <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #856404;">
               <i>⚠</i> Lý do Thay đổi <span style="color:red;">*</span>
             </label>
-            <textarea id="swal-reason" class="swal2-textarea"
-              placeholder="Nhập lý do thay đổi lịch..."
-              style="width: 100%; margin: 0; min-height: 60px; resize: vertical; border: 1px solid #ffc107; border-radius: 6px; padding: 6px 10px; font-size: 13px;"
-            ></textarea>
+            <input list="reasonListDrop" id="swal-reason" name="reason" class="swal2-input"
+              placeholder="Chọn hoặc nhập lý do thay đổi..."
+              style="width: 100%; margin: 0; border: 1px solid #ffc107; border-radius: 6px; font-size: 13px;" />
+            <datalist id="reasonListDrop">
+              ${htmlOptions}
+            </datalist>
           </div>
 
           <div style="margin-top: 10px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa;">

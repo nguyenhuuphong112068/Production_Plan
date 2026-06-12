@@ -393,8 +393,9 @@
                     Swal.fire({
                         icon: "warning",
                         title: "Phòng Sản Xuất không hợp lệ",
-                        text: "Chọn Phòng Sản Xuất!",
-                        timer: 2000
+                        html: "Chọn Phòng Sản Xuất!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                        confirmButtonText: 'Kiểm tra lại',
+                        confirmButtonColor: '#3085d6'
                     });
                     return;
                 }
@@ -415,8 +416,9 @@
                     Swal.fire({
                         icon: "warning",
                         title: "Thời gian không hợp lệ",
-                        text: "Thời Gian Không Được Để Trống!",
-                        timer: 2000
+                        html: "Thời Gian Không Được Để Trống!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                        confirmButtonText: 'Kiểm tra lại',
+                        confirmButtonColor: '#3085d6'
                     });
 
                     return;
@@ -432,8 +434,9 @@
                     Swal.fire({
                         icon: "warning",
                         title: "Thời gian không hợp lệ",
-                        text: "Thời gian bắt đầu sản xuất phải nhỏ hơn thời gian kết thúc!",
-                        timer: 2000
+                        html: "Thời gian bắt đầu sản xuất phải nhỏ hơn thời gian kết thúc!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                        confirmButtonText: 'Kiểm tra lại',
+                        confirmButtonColor: '#3085d6'
                     });
                     return;
                 }
@@ -443,8 +446,9 @@
                     Swal.fire({
                         icon: "warning",
                         title: "Thời gian không hợp lệ",
-                        text: "Thời gian bắt đầu vệ sinh phải nhỏ hơn thời gian kết thúc vệ sinh!",
-                        timer: 2000
+                        html: "Thời gian bắt đầu vệ sinh phải nhỏ hơn thời gian kết thúc vệ sinh!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                        confirmButtonText: 'Kiểm tra lại',
+                        confirmButtonColor: '#3085d6'
                     });
                     return;
                 }
@@ -454,8 +458,9 @@
                     Swal.fire({
                         icon: "warning",
                         title: "Thời gian không hợp lệ",
-                        text: "Thời gian bắt đầu vệ sinh phải lớn hơn hoặc bằng thời gian kết thúc sản xuất!",
-                        timer: 2000
+                        html: "Thời gian bắt đầu vệ sinh phải lớn hơn hoặc bằng thời gian kết thúc sản xuất!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                        confirmButtonText: 'Kiểm tra lại',
+                        confirmButtonColor: '#3085d6'
                     });
                     return;
                 }
@@ -478,8 +483,9 @@
                             Swal.fire({
                                 icon: "warning",
                                 title: "Thời gian không hợp lệ",
-                                text: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!",
-                                timer: 2000
+                                html: "Không được nhập thời gian hoàn thành lớn hơn hiện tại!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                                confirmButtonText: 'Kiểm tra lại',
+                                confirmButtonColor: '#3085d6'
                             });
                             return;
                         }
@@ -498,8 +504,9 @@
                     Swal.fire({
                         icon: "warning",
                         title: "Phòng Sản Xuất không hợp lệ",
-                        text: "Chọn Phòng Sản Xuất!",
-                        timer: 2000
+                        html: "Chọn Phòng Sản Xuất!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                        confirmButtonText: 'Kiểm tra lại',
+                        confirmButtonColor: '#3085d6'
                     });
                     return;
                 }
@@ -511,8 +518,9 @@
                     Swal.fire({
                         icon: "warning",
                         title: "Thời gian không hợp lệ",
-                        text: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc!",
-                        timer: 2000
+                        html: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                        confirmButtonText: 'Kiểm tra lại',
+                        confirmButtonColor: '#3085d6'
                     });
                     return;
                 }
@@ -528,8 +536,9 @@
                             Swal.fire({
                                 icon: "warning",
                                 title: "Thời gian không hợp lệ",
-                                text: "Không được nhập thời gian lớn hơn hiện tại!",
-                                timer: 2000
+                                html: "Không được nhập thời gian lớn hơn hiện tại!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                                confirmButtonText: 'Kiểm tra lại',
+                                confirmButtonColor: '#3085d6'
                             });
                             return;
                         }
@@ -547,62 +556,109 @@
             });
             data['id'] = id;
 
-            // Disable tạm thời nút trong lúc gửi request
-            btn.disabled = true;
+            // KIỂM TRA THỜI GIAN BẤT THƯỜNG
+            let warnings = [];
+            const msInDay = 1000 * 60 * 60 * 24;
 
-            $.ajax({
-                url: "{{ route('pages.Schedual.finised.store') }}",
-                type: 'post',
-                data: {
-                    ...data,
-                    _token: "{{ csrf_token() }}",
-                    actionType: actionType,
-                    stage_code: stage_code
-                },
-                success: function(res) {
+            if (actionType === "finised") {
+                const sProd = new Date(row.querySelector('#start').value);
+                const eProd = new Date(row.querySelector('#end').value);
+                const sClean = new Date(row.querySelector('#start_clearning').value);
+                const eClean = new Date(row.querySelector('#end_clearning').value);
 
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Hoàn Thành',
-                        timer: 1500,
-                        showConfirmButton: false,
-                    });
-
-                    // Giữ nút ở trạng thái disabled sau khi hoàn thành
-                    $(btn).addClass('disabled').text('✓ Đã hoàn thành');
-
-                    if (actionType === 'finised') {
-                        $(row).find('.btn-finised')
-                            .addClass('disabled')
-                            .text('✓ Đã hoàn thành');
-
-                        $(row).find('.btn-semi-finised')
-                            .addClass('disabled')
-                            .text('✓ Đã hoàn thành');
-
-                    }
-
-                    if (actionType === 'semi-finised') {
-                        $(row).find('.start_yield').val('');
-                    }
-
-                },
-                error: function(xhr) {
-                    btn.disabled = false;
-
-                    let message = 'Có lỗi xảy ra';
-
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        message = xhr.responseJSON.message;
-                    }
-
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Không thể hoàn thành',
-                        text: message
-                    });
+                if (!isNaN(sProd) && !isNaN(eProd) && ((eProd - sProd) / msInDay) >= 30) {
+                    warnings.push("Thời gian sản xuất đang lớn hơn hoặc bằng 30 ngày.");
                 }
-            });
+
+                if (!isNaN(sClean) && !isNaN(eClean) && ((eClean - sClean) / msInDay) > 7) {
+                    warnings.push("Thời gian vệ sinh đang lớn hơn 7 ngày.");
+                }
+            } else if (actionType === "semi-finised") {
+                const sProd = new Date(row.querySelector('#start').value);
+                const eProd = new Date(row.querySelector('#end').value);
+
+                if (!isNaN(sProd) && !isNaN(eProd) && ((eProd - sProd) / msInDay) >= 30) {
+                    warnings.push("Thời gian sản xuất đang lớn hơn hoặc bằng 30 ngày.");
+                }
+            }
+
+            const executeSubmit = () => {
+                // Disable tạm thời nút trong lúc gửi request
+                btn.disabled = true;
+
+                $.ajax({
+                    url: "{{ route('pages.Schedual.finised.store') }}",
+                    type: 'post',
+                    data: {
+                        ...data,
+                        _token: "{{ csrf_token() }}",
+                        actionType: actionType,
+                        stage_code: stage_code
+                    },
+                    success: function(res) {
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Hoàn Thành',
+                            timer: 1500,
+                            showConfirmButton: false,
+                        });
+
+                        // Giữ nút ở trạng thái disabled sau khi hoàn thành
+                        $(btn).addClass('disabled').text('✓ Đã hoàn thành');
+
+                        if (actionType === 'finised') {
+                            $(row).find('.btn-finised')
+                                .addClass('disabled')
+                                .text('✓ Đã hoàn thành');
+
+                            $(row).find('.btn-semi-finised')
+                                .addClass('disabled')
+                                .text('✓ Đã hoàn thành');
+
+                        }
+
+                        if (actionType === 'semi-finised') {
+                            $(row).find('.start_yield').val('');
+                        }
+
+                    },
+                    error: function(xhr) {
+                        btn.disabled = false;
+
+                        let message = 'Có lỗi xảy ra';
+
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            message = xhr.responseJSON.message;
+                        }
+
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Không thể hoàn thành',
+                            text: message
+                        });
+                    }
+                });
+            };
+
+            if (warnings.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Cảnh báo thời gian',
+                    html: warnings.join('<br>') + '<br><br><b>Có nhầm lẫn gì không? Bạn vẫn muốn tiếp tục xác nhận?</b>',
+                    showCancelButton: true,
+                    confirmButtonText: 'Vẫn tiếp tục',
+                    cancelButtonText: 'Kiểm tra lại',
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        executeSubmit();
+                    }
+                });
+            } else {
+                executeSubmit();
+            }
         });
 
     });
