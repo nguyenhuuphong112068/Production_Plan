@@ -52,9 +52,9 @@
                 </div>
 
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                    <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
                         <table id="production_weekly_table" class="table table-bordered" style="font-size: 13px;">
-                            <thead class="bg-light">
+                            <thead class="bg-light" style="position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                                 <tr style="color:#003A4F; font-size: 16px; font-weight: bold;">
                                     <th class="text-center align-middle" width="40" rowspan="2">#</th>
                                     <th class="text-center align-middle" style="min-width: 150px;" rowspan="2">Phòng

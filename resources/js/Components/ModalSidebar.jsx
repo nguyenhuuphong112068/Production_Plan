@@ -76,7 +76,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       }
 
       const filtered = resources.filter(
-        (q) => Number(q.stage_code) == Number(index_filter)
+        (q) => Number(q.stage_code) == Number(index_filter) && !q.is_personnel_sub
       );
       setOptionRooms(filtered);
 

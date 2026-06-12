@@ -11,62 +11,6 @@ use Illuminate\Support\Facades\Log;
 class SchedualController extends Controller
 {
     protected $roomAvailability = [];
-    protected $moldSchedules = [];
-
-    protected function loadMoldSchedules(array $moldIds)
-    {
-        $toLoad = array_diff($moldIds, array_keys($this->moldSchedules));
-        if (!empty($toLoad)) {
-            $schedules = DB::table('stage_plan')
-                ->where('stage_code', 7)
-                ->whereIn('blister_mold_id', $toLoad)
-                ->where('active', 1)
-                ->where('finished', 0)
-                ->whereNotNull('start')
-                ->whereNotNull('resourceId')
-                ->get(['blister_mold_id', 'start', 'end', 'resourceId']);
-
-            foreach ($toLoad as $id) {
-                $this->moldSchedules[$id] = [];
-            }
-            foreach ($schedules as $s) {
-                $this->moldSchedules[$s->blister_mold_id][] = [
-                    'start' => Carbon::parse($s->start),
-                    'end' => Carbon::parse($s->end),
-                    'resourceId' => $s->resourceId
-                ];
-            }
-        }
-    }
-
-    protected function checkMoldAvailability($compatibleMolds, Carbon $start, Carbon $end)
-    {
-        $moldIds = [];
-        foreach ($compatibleMolds as $m) {
-            $moldIds[] = is_array($m) ? $m['id'] : $m->id;
-        }
-        $this->loadMoldSchedules($moldIds);
-
-        foreach ($compatibleMolds as $mold) {
-            $moldId = is_array($mold) ? $mold['id'] : $mold->id;
-            $amount = is_array($mold) ? $mold['amount'] : $mold->amount;
-
-            if (!isset($this->moldSchedules[$moldId])) {
-                continue;
-            }
-            $schedules = $this->moldSchedules[$moldId];
-            $concurrentRooms = [];
-            foreach ($schedules as $s) {
-                if ($s['start']->lt($end) && $s['end']->gt($start)) {
-                    $concurrentRooms[$s['resourceId']] = true;
-                }
-            }
-            if (count($concurrentRooms) < $amount) {
-                return $moldId;
-            }
-        }
-        return null;
-    }
 
     protected $order_by = 1;
 
@@ -4689,111 +4633,89 @@ class SchedualController extends Controller
         }
     }
 
-    protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = 0, $requireAHU = 0, $stage_plan_table = 'stage_plan', $maxTank = 1, $tankInterval = 60, $compatibleMolds = null)
+    protected function findEarliestSlot2($roomId, $Earliest, $intervalTime, $C2_time_minutes, $requireTank = 0, $requireAHU = 0, $stage_plan_table = 'stage_plan', $maxTank = 1, $tankInterval = 60)
     {
 
         $this->loadRoomAvailability('asc', $roomId);
 
         if (! isset($this->roomAvailability[$roomId])) {
+
             $this->roomAvailability[$roomId] = [];
         }
 
         $busyList = $this->roomAvailability[$roomId];
+
         $offDateList = $this->offDate ?? [];
+
         $current_start = Carbon::parse($Earliest);
+
         $current_start = $this->skipOffTime($current_start, $offDateList);
 
         // =========================================================
-        while (true) {
-            $conflictFound = false;
+        foreach ($busyList as $busy) {
 
-            foreach ($busyList as $busy) {
-                // ==== xét gap trước busy ====
-                if ($current_start->lt($busy['start'])) {
-                    $gap = $current_start->diffInMinutes($busy['start']);
-                    $need = $intervalTime + $C2_time_minutes;
+            // ==== xét gap trước busy ====
+            if ($current_start->lt($busy['start'])) {
 
-                    // ---- tính offTime kiểu expand ----
-                    $offTime = 0;
-                    do {
-                        $current_end = $current_start->copy()->addMinutes($need + $offTime);
-                        $newOffTime = 0;
-                        foreach ($offDateList as $off) {
-                            if ($off['end'] <= $current_start || $off['start'] >= $current_end) {
-                                continue;
-                            }
-                            $overlapStart = $off['start']->greaterThan($current_start) ? $off['start'] : $current_start;
-                            $overlapEnd = $off['end']->lessThan($current_end) ? $off['end'] : $current_end;
-                            $newOffTime += $overlapStart->diffInMinutes($overlapEnd);
+                $gap = $current_start->diffInMinutes($busy['start']);
+
+                $need = $intervalTime + $C2_time_minutes;
+
+                // ---- tính offTime kiểu expand ----
+                $offTime = 0;
+
+                do {
+
+                    $current_end = $current_start->copy()->addMinutes($need + $offTime);
+
+                    $newOffTime = 0;
+
+                    foreach ($offDateList as $off) {
+
+                        if ($off['end'] <= $current_start || $off['start'] >= $current_end) {
+
+                            continue;
                         }
-                        $changed = ($newOffTime > $offTime);
-                        $offTime = $newOffTime;
-                    } while ($changed);
 
-                    if ($gap >= $need + $offTime) {
-                        if ($compatibleMolds !== null) {
-                            $moldId = $this->checkMoldAvailability($compatibleMolds, $current_start, $current_end);
-                            if ($moldId) {
-                                return ['start' => $current_start->copy(), 'mold_id' => $moldId];
-                            } else {
-                                $current_start = $current_start->addMinutes(30);
-                                $current_start = $this->skipOffTime($current_start, $offDateList);
-                                $conflictFound = true;
-                                break;
-                            }
-                        } else {
-                            return $current_start->copy();
-                        }
+                        $overlapStart = $off['start']->greaterThan($current_start)
+                            ? $off['start']
+                            : $current_start;
+
+                        $overlapEnd = $off['end']->lessThan($current_end)
+                            ? $off['end']
+                            : $current_end;
+
+                        $newOffTime += $overlapStart->diffInMinutes($overlapEnd);
                     }
-                }
 
-                // ==== nếu rơi vào busy → nhảy qua ====
-                if ($current_start->lt($busy['end'])) {
-                    $current_start = $busy['end']->copy();
-                    $current_start = $this->skipOffTime($current_start, $offDateList);
-                    $conflictFound = true;
-                    break;
+                    $changed = ($newOffTime > $offTime);
+
+                    $offTime = $newOffTime;
+                } while ($changed);
+
+                if ($gap >= $need + $offTime) {
+
+                    return $current_start->copy();
                 }
             }
 
-            // ==== sau tất cả busy ====
-            if (!$conflictFound) {
-                if ($compatibleMolds !== null) {
-                    $need = $intervalTime + $C2_time_minutes;
-                    $offTime = 0;
-                    do {
-                        $current_end = $current_start->copy()->addMinutes($need + $offTime);
-                        $newOffTime = 0;
-                        foreach ($offDateList as $off) {
-                            if ($off['end'] <= $current_start || $off['start'] >= $current_end) {
-                                continue;
-                            }
-                            $overlapStart = $off['start']->greaterThan($current_start) ? $off['start'] : $current_start;
-                            $overlapEnd = $off['end']->lessThan($current_end) ? $off['end'] : $current_end;
-                            $newOffTime += $overlapStart->diffInMinutes($overlapEnd);
-                        }
-                        $changed = ($newOffTime > $offTime);
-                        $offTime = $newOffTime;
-                    } while ($changed);
+            // ==== nếu rơi vào busy → nhảy qua ====
+            if ($current_start->lt($busy['end'])) {
 
-                    $moldId = $this->checkMoldAvailability($compatibleMolds, $current_start, $current_end);
-                    if ($moldId) {
-                        return ['start' => $current_start->copy(), 'mold_id' => $moldId];
-                    } else {
-                        $current_start = $current_start->addMinutes(30);
-                        $current_start = $this->skipOffTime($current_start, $offDateList);
-                        continue;
-                    }
-                }
-                return $current_start->copy();
+                $current_start = $busy['end']->copy();
+
+                $current_start = $this->skipOffTime($current_start, $offDateList);
             }
         }
+
+        // ==== sau tất cả busy ====
+        return $current_start->copy();
     }
 
-    protected function saveSchedule($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, string $cleaningType, bool $direction, $blister_mold_id = null)
+    protected function saveSchedule($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, string $cleaningType, bool $direction)
     {
 
-        DB::transaction(function () use ($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, $cleaningType, $direction, $blister_mold_id) {
+        DB::transaction(function () use ($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, $cleaningType, $direction) {
 
             if ($cleaningType == 2) {
 
@@ -4836,19 +4758,7 @@ class SchedualController extends Controller
                     'schedualed_at' => now(),
                     'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_packaging_date END"),
                     'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
-                    'blister_mold_id' => $blister_mold_id,
                 ]);
-
-            if ($blister_mold_id !== null) {
-                if (!isset($this->moldSchedules[$blister_mold_id])) {
-                    $this->moldSchedules[$blister_mold_id] = [];
-                }
-                $this->moldSchedules[$blister_mold_id][] = [
-                    'start' => Carbon::parse($start),
-                    'end' => Carbon::parse($end),
-                    'resourceId' => $roomId
-                ];
-            }
 
             $submit = DB::table('stage_plan')->where('id', $stageId)->value('submit');
 
@@ -5888,7 +5798,6 @@ class SchedualController extends Controller
 
         $bestRoom = null;
         $bestStart = null;
-        $bestMoldId = null;
 
         // tim phòng tối ưu
         $ratio = 1;
@@ -5904,16 +5813,6 @@ class SchedualController extends Controller
             }
         }
 
-        $allCompatibleMolds = null;
-        if ($stageCode == 7) {
-            $allCompatibleMolds = DB::table('finished_product_mold')
-                ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                ->where('finished_product_mold.finished_product_category_id', $task->product_caterogy_id)
-                ->where('blister_mold.active', 1)
-                ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount', 'blister_mold.blister_type_code')
-                ->get();
-        }
-
         foreach ($rooms as $room) {
             $p_adj = (float) $room->p_time_minutes * $ratio;
             $m_adj = (float) $room->m_time_minutes * $ratio;
@@ -5921,22 +5820,7 @@ class SchedualController extends Controller
 
             $C2_time_minutes = (float) $room->C2_time_minutes;
 
-            $compatibleMolds = null;
-            if ($stageCode == 7 && $allCompatibleMolds && $allCompatibleMolds->isNotEmpty()) {
-                // SP có khai báo khuôn → lọc theo loại máy
-                $roomType = DB::table('room')->where('id', $room->room_id)->value('blister_type_code');
-                $filtered = $allCompatibleMolds->filter(function ($m) use ($roomType) {
-                    return empty($roomType) || empty($m->blister_type_code) || $m->blister_type_code == $roomType;
-                })->values()->toArray();
-
-                if (empty($filtered)) {
-                    continue; // Phòng này không có khuôn lắp vừa → bỏ qua
-                }
-                $compatibleMolds = $filtered;
-            }
-            // Nếu SP chưa khai báo khuôn: $compatibleMolds = null → sắp lịch bình thường
-
-            $candidate = $this->findEarliestSlot2(
+            $candidateStart = $this->findEarliestSlot2(
                 $room->room_id,
                 $earliestStart,
                 $intervalTimeMinutes,
@@ -5945,17 +5829,12 @@ class SchedualController extends Controller
                 $task->keep_dry,
                 'stage_plan',
                 2,
-                60,
-                $compatibleMolds
+                60
             );
-
-            $candidateStart = is_array($candidate) ? $candidate['start'] : $candidate;
-            $candidateMoldId = is_array($candidate) ? $candidate['mold_id'] : null;
 
             if ($bestStart === null || $candidateStart->lt($bestStart)) {
                 $bestRoom = $room->room_id;
                 $bestStart = $candidateStart;
-                $bestMoldId = $candidateMoldId;
                 $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
                 $start_clearning = $bestEnd->copy();
                 $end_clearning = $bestStart->copy()->addMinutes($intervalTimeMinutes + $C2_time_minutes);
@@ -6011,7 +5890,6 @@ class SchedualController extends Controller
             $end_clearning,
             2,
             1,
-            $bestMoldId
         );
 
         // Làm liên tục các công cộng sau
@@ -6406,8 +6284,8 @@ class SchedualController extends Controller
         }
 
         $bestRoom = null;
+
         $bestStart = null;
-        $bestMoldId = null;
 
         // tim phòng tối ưu
         $campaign_ratio = 1;
@@ -6416,16 +6294,6 @@ class SchedualController extends Controller
             if ($cpm && $cpm->only_parkaging == 1) {
                 $campaign_ratio = (float) ($cpm->percent_parkaging ?? 100) / 100;
             }
-        }
-
-        $allCompatibleMolds = null;
-        if ($stageCode == 7) {
-            $allCompatibleMolds = DB::table('finished_product_mold')
-                ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                ->where('finished_product_mold.finished_product_category_id', $firstTask->product_caterogy_id)
-                ->where('blister_mold.active', 1)
-                ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount', 'blister_mold.blister_type_code')
-                ->get();
         }
 
         foreach ($rooms as $room) {
@@ -6440,22 +6308,7 @@ class SchedualController extends Controller
                 $totalMunites = $totalTimeCampaign;
             }
 
-            $compatibleMolds = null;
-            if ($stageCode == 7 && $allCompatibleMolds && $allCompatibleMolds->isNotEmpty()) {
-                // SP có khai báo khuôn → lọc theo loại máy
-                $roomType = DB::table('room')->where('id', $room->room_id)->value('blister_type_code');
-                $filtered = $allCompatibleMolds->filter(function ($m) use ($roomType) {
-                    return empty($roomType) || empty($m->blister_type_code) || $m->blister_type_code == $roomType;
-                })->values()->toArray();
-
-                if (empty($filtered)) {
-                    continue; // Phòng này không có khuôn lắp vừa → bỏ qua
-                }
-                $compatibleMolds = $filtered;
-            }
-            // Nếu SP chưa khai báo khuôn: $compatibleMolds = null → sắp lịch bình thường
-
-            $candidate = $this->findEarliestSlot2(
+            $candidateStart = $this->findEarliestSlot2(
                 $room->room_id,
                 $earliestStart,
                 $totalMunites,
@@ -6464,17 +6317,12 @@ class SchedualController extends Controller
                 $firstTask->keep_dry,
                 'stage_plan',
                 2,
-                60,
-                $compatibleMolds
+                60
             );
-
-            $candidateStart = is_array($candidate) ? $candidate['start'] : $candidate;
-            $candidateMoldId = is_array($candidate) ? $candidate['mold_id'] : null;
 
             if ($bestStart === null || $candidateStart->lt($bestStart)) {
                 $bestRoom = $room;
                 $bestStart = $candidateStart;
-                $bestMoldId = $candidateMoldId;
             }
         }
 
@@ -6572,7 +6420,6 @@ class SchedualController extends Controller
                 $bestEndCleaning,
                 $clearningType,
                 1,
-                $bestMoldId
             );
 
             $counter++;

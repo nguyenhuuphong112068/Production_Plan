@@ -2225,6 +2225,7 @@ const ScheduleTest = () => {
               <input type="radio" name="sortType" value="simulate">
               <span> Logic Mới (Simulate)</span>
             </label>
+            
           </div>
         </div>
 
@@ -2522,6 +2523,56 @@ const ScheduleTest = () => {
         const btnAllocateAll = document.getElementById('btn-allocate-all');
 
         const handleAllocate = (type) => {
+          Swal.fire({
+            title: 'Đang kiểm tra dữ liệu...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+          });
+
+          // 1. Kiểm tra xem có sản phẩm nào thiếu định mức khuôn không
+          axios.post('/Schedual/checkMissingMoldQuotas', { type })
+            .then(res => {
+              const missing = res.data.missing || [];
+
+              if (missing.length > 0) {
+                // Hiển thị modal cảnh báo
+                let htmlList = missing.map(m => `<li>${m}</li>`).join('');
+                Swal.fire({
+                  title: 'Cảnh báo: Thiếu Định Mức Khuôn!',
+                  html: `
+                    <div style="text-align: left; font-size: 14px; margin-bottom: 10px;">
+                      Các sản phẩm sau chưa được thiết lập khuôn tương thích trong hệ thống. Nếu tiếp tục, chúng sẽ bị bỏ qua:
+                    </div>
+                    <ul style="text-align: left; font-size: 13px; max-height: 200px; overflow-y: auto; background: #f8d7da; color: #721c24; padding: 10px 20px; border-radius: 5px;">
+                      ${htmlList}
+                    </ul>
+                  `,
+                  icon: 'warning',
+                  showCancelButton: true,
+                  confirmButtonText: 'Vẫn tiếp tục phân bổ',
+                  cancelButtonText: 'Hủy',
+                  confirmButtonColor: '#e0a800',
+                  cancelButtonColor: '#6c757d',
+                }).then((r) => {
+                  if (r.isConfirmed) {
+                    proceedAllocate(type);
+                  }
+                });
+              } else {
+                // Nếu không có lỗi, tiến hành phân bổ ngay
+                proceedAllocate(type);
+              }
+            })
+            .catch(err => {
+              Swal.fire({
+                icon: 'error',
+                title: 'Lỗi',
+                text: err.response?.data?.message || 'Lỗi khi kiểm tra định mức khuôn.'
+              });
+            });
+        };
+
+        const proceedAllocate = (type) => {
           Swal.fire({
             title: 'Đang phân bổ khuôn...',
             allowOutsideClick: false,
