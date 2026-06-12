@@ -214,8 +214,10 @@
                                         {{ $semi_finished }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
 
-                                    <input type="datetime-local" class="time start_yield" id = "start_yield"
-                                        name="start_yield">
+                                    <input type="datetime-local" class="time start_yield" id="start_yield"
+                                        name="start_yield"
+                                        value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
+                                    <input type="hidden" class="max_yield_end" value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
 
                                     <input type="datetime-local" class="time" id = "end" name="end"
                                         value = "{{ \Carbon\Carbon::parse($data->actual_end ?? $data->end)->format('Y-m-d\TH:i') }}">
@@ -223,8 +225,10 @@
                                     <input type="datetime-local" class="time start" id = "start" name="start"
                                         {{ $semi_finished }}>
 
-                                    <input type="datetime-local" class="time start_yield" id = "start_yield"
-                                        name="start_yield">
+                                    <input type="datetime-local" class="time start_yield" id="start_yield"
+                                        name="start_yield"
+                                        value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
+                                    <input type="hidden" class="max_yield_end" value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
 
                                     <input type="datetime-local" class="time" id = "end" name="end">
                                 @endif
@@ -424,6 +428,20 @@
                     return;
                 }
 
+                const startYieldInput = row.querySelector('#start_yield');
+                const maxYieldEndStr = row.querySelector('.max_yield_end')?.value;
+                if (maxYieldEndStr && startYieldInput && startYieldInput.value) {
+                    if (new Date(startYieldInput.value) < new Date(maxYieldEndStr)) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Thời gian BĐCM không hợp lệ",
+                            html: "Thời gian BĐCM (Bắt đầu tạo ra sản lượng) phải lớn hơn hoặc bằng thời gian Kết thúc của lần xác nhận trước đó (" + maxYieldEndStr.replace('T', ' ') + ")!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                            confirmButtonText: 'Kiểm tra lại',
+                            confirmButtonColor: '#3085d6'
+                        });
+                        return;
+                    }
+                }
                 const startProd = new Date(startProdInput.value);
                 const endProd = new Date(endProdInput.value);
                 const startClean = new Date(startCleanInput.value);
@@ -511,6 +529,20 @@
                     return;
                 }
 
+                const startYieldInput = row.querySelector('#start_yield');
+                const maxYieldEndStr = row.querySelector('.max_yield_end')?.value;
+                if (maxYieldEndStr && startYieldInput && startYieldInput.value) {
+                    if (new Date(startYieldInput.value) < new Date(maxYieldEndStr)) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Thời gian BĐCM không hợp lệ",
+                            html: "Thời gian BĐCM (Bắt đầu tạo ra sản lượng) phải lớn hơn hoặc bằng thời gian Kết thúc của lần xác nhận trước đó (" + maxYieldEndStr.replace('T', ' ') + ")!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                            confirmButtonText: 'Kiểm tra lại',
+                            confirmButtonColor: '#3085d6'
+                        });
+                        return;
+                    }
+                }
                 const start = row.querySelector('#start').value;
                 const end = row.querySelector('#end').value;
 

@@ -46,7 +46,8 @@ class SchedualFinisedController extends Controller
                                         ) as confirmed,
 
                                          -- ✅ Tổng sản lượng
-                                        ROUND(SUM(t.`yield`), 2) as total_confirmed
+                                        ROUND(SUM(t.`yield`), 2) as total_confirmed,
+                                        MAX(t.`end`) as max_yield_end
                                 FROM (
                                         SELECT 
                                         y.stage_plan_id,
@@ -85,7 +86,8 @@ class SchedualFinisedController extends Controller
                                 'market.code as market',
                                 // ✅ confirmed yield
                                 DB::raw("COALESCE(y.confirmed,'') as confirmed"),
-                                DB::raw("COALESCE(y.total_confirmed,0) as total_confirmed")
+                                DB::raw("COALESCE(y.total_confirmed,0) as total_confirmed"),
+                                'y.max_yield_end'
                         )
                         ->leftJoin('room', 'sp.resourceId', '=', 'room.id')
                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
@@ -274,7 +276,7 @@ class SchedualFinisedController extends Controller
                 if ($actualStartYield) {
                         $previousYield = DB::table('yields')
                                 ->where('stage_plan_id', $request->id)
-                                ->value('yield');
+                                ->sum('yield');
 
                         $Theoretical_yields = DB::table('stage_plan')
                                 ->where('id', $request->id)
@@ -347,12 +349,9 @@ class SchedualFinisedController extends Controller
                                 DB::table('yields')->updateOrInsert(
                                         [
                                                 'stage_plan_id' => $request->id,
-                                                'start' => $actualStart,
-                                                // 'end'   => $actualStartYield,
-                                                'yield'   => $request->yields
+                                                'start' => $actualStartYield
                                         ],
                                         [
-                                                'start'        => $actualStartYield,
                                                 'end'          => $actualEnd,
                                                 'yield'        => $request->yields ?? 0,
                                                 'created_by'   => session('user')['fullName'],
