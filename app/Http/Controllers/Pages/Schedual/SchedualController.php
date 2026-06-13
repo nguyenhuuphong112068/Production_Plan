@@ -1007,7 +1007,12 @@ class SchedualController extends Controller
                     $mold_code = $mold->code;
                     $room = DB::table('room')->where('id', $plan->resourceId)->first();
 
-                    if ($room && !empty($room->blister_type_code) && !empty($mold->blister_type_code) && $room->blister_type_code !== $mold->blister_type_code) {
+                    $moldTypes = [];
+                    if (!empty($mold->blister_type_code)) {
+                        $decoded = json_decode($mold->blister_type_code, true);
+                        $moldTypes = is_array($decoded) ? $decoded : [$mold->blister_type_code];
+                    }
+                    if ($room && !empty($room->blister_type_code) && !empty($mold->blister_type_code) && !in_array($room->blister_type_code, $moldTypes)) {
                         $subtitles[] = "❌ Sai Khuôn: {$mold->code} không lắp được cho máy {$room->blister_type_code}";
                         $color_event = '#e54a4aff'; // Đỏ báo lỗi
                         $textColor = '#ffffff';
@@ -5926,7 +5931,12 @@ class SchedualController extends Controller
                 // SP có khai báo khuôn → lọc theo loại máy
                 $roomType = DB::table('room')->where('id', $room->room_id)->value('blister_type_code');
                 $filtered = $allCompatibleMolds->filter(function ($m) use ($roomType) {
-                    return empty($roomType) || empty($m->blister_type_code) || $m->blister_type_code == $roomType;
+                    $moldTypes = [];
+                    if (!empty($m->blister_type_code)) {
+                        $decoded = json_decode($m->blister_type_code, true);
+                        $moldTypes = is_array($decoded) ? $decoded : [$m->blister_type_code];
+                    }
+                    return empty($roomType) || empty($m->blister_type_code) || in_array($roomType, $moldTypes);
                 })->values()->toArray();
 
                 if (empty($filtered)) {
@@ -6445,7 +6455,12 @@ class SchedualController extends Controller
                 // SP có khai báo khuôn → lọc theo loại máy
                 $roomType = DB::table('room')->where('id', $room->room_id)->value('blister_type_code');
                 $filtered = $allCompatibleMolds->filter(function ($m) use ($roomType) {
-                    return empty($roomType) || empty($m->blister_type_code) || $m->blister_type_code == $roomType;
+                    $moldTypes = [];
+                    if (!empty($m->blister_type_code)) {
+                        $decoded = json_decode($m->blister_type_code, true);
+                        $moldTypes = is_array($decoded) ? $decoded : [$m->blister_type_code];
+                    }
+                    return empty($roomType) || empty($m->blister_type_code) || in_array($roomType, $moldTypes);
                 })->values()->toArray();
 
                 if (empty($filtered)) {
@@ -7314,6 +7329,7 @@ class SchedualController extends Controller
                 if (!empty($roomType)) {
                     $compatibleMoldsQuery->where(function ($q) use ($roomType) {
                         $q->where('blister_mold.blister_type_code', $roomType)
+                            ->orWhere('blister_mold.blister_type_code', 'LIKE', '%"' . $roomType . '"%')
                             ->orWhereNull('blister_mold.blister_type_code');
                     });
                 }

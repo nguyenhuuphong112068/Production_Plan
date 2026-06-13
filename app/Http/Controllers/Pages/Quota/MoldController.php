@@ -51,7 +51,12 @@ class MoldController extends Controller
             ->get();
 
         foreach ($molds as $mold) {
-            $mold->type_name = $blister_types->where('code', $mold->blister_type_code)->pluck('name')->join(', ');
+            $codes = json_decode($mold->blister_type_code, true);
+            if (!is_array($codes)) {
+                $codes = [$mold->blister_type_code];
+            }
+            $mold->blister_type_code = $codes;
+            $mold->type_name = $blister_types->whereIn('code', $codes)->pluck('name')->join(', ');
         }
 
         session()->put(['title' => 'ĐỊNH MỨC - KHUÔN MẪU']);

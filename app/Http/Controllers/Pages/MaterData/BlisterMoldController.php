@@ -27,7 +27,8 @@ class BlisterMoldController extends Controller
         $validator = Validator::make($request->all(), [
             'code' => 'required|max:50|unique:blister_mold,code',
             'amount' => 'nullable|integer|min:0',
-            'blister_type_code' => 'required|integer',
+            'blister_type_code' => 'required|array',
+            'blister_type_code.*' => 'integer',
         ], [
             'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
@@ -44,7 +45,7 @@ class BlisterMoldController extends Controller
         DB::table('blister_mold')->insert([
             'code' => $request->code,
             'amount' => $request->amount,
-            'blister_type_code' => $request->blister_type_code,
+            'blister_type_code' => json_encode($request->blister_type_code),
             'active' => true,
             'created_by' => session('user')['fullName'] ?? 'Admin',
             'created_at' => now(),
@@ -58,7 +59,8 @@ class BlisterMoldController extends Controller
         $validator = Validator::make($request->all(), [
             'code' => 'required|max:50|unique:blister_mold,code,' . $request->id,
             'amount' => 'nullable|integer|min:0',
-            'blister_type_code' => 'required|integer',
+            'blister_type_code' => 'required|array',
+            'blister_type_code.*' => 'integer',
         ], [
             'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
@@ -76,7 +78,7 @@ class BlisterMoldController extends Controller
         DB::table('blister_mold')->where('id', $request->id)->update([
             'code' => $request->code,
             'amount' => $request->amount,
-            'blister_type_code' => $request->blister_type_code,
+            'blister_type_code' => json_encode($request->blister_type_code),
             'updated_at' => now(),
         ]);
 
@@ -116,6 +118,27 @@ class BlisterMoldController extends Controller
             ->get();
 
         $current = DB::table('blister_mold')->where('id', $request->id)->first();
+
+        $blister_types = DB::table('blister_type')->pluck('name', 'code')->toArray();
+        
+        $translate = function($codeStr) use ($blister_types) {
+            $codes = json_decode($codeStr, true);
+            if (!is_array($codes)) {
+                $codes = [$codeStr];
+            }
+            $names = [];
+            foreach($codes as $c) {
+                if(isset($blister_types[$c])) $names[] = $blister_types[$c];
+            }
+            return implode(', ', $names) ?: $codeStr;
+        };
+
+        if ($current) {
+            $current->blister_type_code = $translate($current->blister_type_code);
+        }
+        foreach($histories as $history) {
+            $history->blister_type_code = $translate($history->blister_type_code);
+        }
 
         return response()->json([
             'current' => $current,

@@ -30,11 +30,10 @@
                     </div>
                     <div class="form-group">
                         <label for="blister_type_code">Loại Máy Ép Vỉ <span class="text-danger">*</span></label>
-                        <select name="blister_type_code" id="blister_type_code" class="form-control @error('blister_type_code', 'createErrors') is-invalid @enderror" required>
-                            <option value="">-- Chọn Loại Máy --</option>
+                        <select name="blister_type_code[]" id="blister_type_code" class="form-control @error('blister_type_code', 'createErrors') is-invalid @enderror" multiple required>
                             @if(isset($blister_types))
                                 @foreach ($blister_types as $blister_type)
-                                    <option value="{{ $blister_type->code }}" {{ old('blister_type_code') == $blister_type->code ? 'selected' : '' }}>
+                                    <option value="{{ $blister_type->code }}" {{ is_array(old('blister_type_code')) && in_array($blister_type->code, old('blister_type_code')) ? 'selected' : '' }}>
                                         {{ $blister_type->name }}
                                     </option>
                                 @endforeach

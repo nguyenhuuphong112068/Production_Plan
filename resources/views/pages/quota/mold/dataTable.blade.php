@@ -131,9 +131,13 @@
 
                         var filteredMolds = moldsData.filter(function(mold) {
                             if (allowedTypeCodes.length === 0) return true;
-                            return allowedTypeCodes.indexOf(parseInt(mold
-                                .blister_type_code)) !== -1 || selectedIds.indexOf(
-                                parseInt(mold.id)) !== -1;
+                            
+                            var moldCodes = Array.isArray(mold.blister_type_code) ? mold.blister_type_code : [mold.blister_type_code];
+                            var hasAllowedCode = moldCodes.some(function(code) {
+                                return allowedTypeCodes.indexOf(parseInt(code)) !== -1;
+                            });
+
+                            return hasAllowedCode || selectedIds.indexOf(parseInt(mold.id)) !== -1;
                         });
 
                         var options = filteredMolds.map(function(mold) {

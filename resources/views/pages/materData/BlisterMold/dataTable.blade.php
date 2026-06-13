@@ -31,7 +31,11 @@
                              <td>{{ $data->amount }}</td>
                              <td>
                                  @php
-                                     $typeNames = collect($blister_types)->where('code', $data->blister_type_code)->pluck('name')->join(', ');
+                                     $codes = json_decode($data->blister_type_code, true);
+                                     if (!is_array($codes)) {
+                                         $codes = [$data->blister_type_code];
+                                     }
+                                     $typeNames = collect($blister_types)->whereIn('code', $codes)->pluck('name')->join(', ');
                                  @endphp
                                  {{ $typeNames ?: $data->blister_type_code }}
                              </td>
@@ -49,7 +53,13 @@
                                     data-id="{{ $data->id }}" 
                                      data-code="{{ $data->code }}"
                                      data-amount="{{ $data->amount }}"
-                                     data-blister_type_code="{{ $data->blister_type_code }}"
+                                     @php
+                                         $codes = json_decode($data->blister_type_code, true);
+                                         if (!is_array($codes)) {
+                                             $codes = [$data->blister_type_code];
+                                         }
+                                     @endphp
+                                     data-blister_type_code="{{ json_encode($codes) }}"
                                     data-toggle="modal" 
                                     data-target="#updateModal">
                                     <i class="fas fa-edit"></i>
@@ -108,7 +118,17 @@
             modal.find('#update_id').val(button.data('id'));
             modal.find('#update_code').val(button.data('code'));
             modal.find('#update_amount').val(button.data('amount'));
-            modal.find('#update_blister_type_code').val(button.data('blister_type_code'));
+            let typeCodes = button.data('blister_type_code');
+            if (typeof typeCodes === 'string') {
+                try {
+                    typeCodes = JSON.parse(typeCodes);
+                } catch (e) {
+                    typeCodes = [typeCodes];
+                }
+            } else if (typeof typeCodes === 'number') {
+                typeCodes = [typeCodes];
+            }
+            modal.find('#update_blister_type_code').val(typeCodes);
         });
 
         $('.form-deActive').on('submit', function(e) {
