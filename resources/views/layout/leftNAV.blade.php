@@ -497,6 +497,13 @@
                         @endif
 
                         <li class="nav-item">
+                            <a href="{{ route('pages.Schedual.warning.index') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p> DS Lịch Không Đáp Ứng  </p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a href="{{ route('pages.Schedual.list.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p> Danh Sách Lịch</p>
@@ -563,7 +570,6 @@
                     </ul>
                 </li>
 
-
                 <li
                     class="nav-item {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'menu-open' : '' }}">
                     <a href="#"
@@ -592,7 +598,6 @@
                         </li>
                     </ul>
                 </li>
-
 
                 <!-- Droplist Phân Công -->
                 @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))

@@ -9,6 +9,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualController;
 use App\Http\Controllers\Pages\Schedual\SchedualFinisedController;
 use App\Http\Controllers\Pages\Schedual\SchedualQuarantineRoomController;
 use App\Http\Controllers\Pages\Schedual\SchedualReportController;
+use App\Http\Controllers\Pages\Schedual\SchedualWarningController;
 use App\Http\Controllers\Pages\Schedual\SchedualStepController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
 use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController;
@@ -139,6 +140,13 @@ Route::prefix('/Schedual')
                         ->group(function () {
                                 Route::get('', 'list')->name('list');
                                 Route::get('test', 'test')->name('test');
+                        });
+
+                Route::prefix('/warning')
+                        ->controller(SchedualWarningController::class)
+                        ->name('warning.')
+                        ->group(function () {
+                                Route::get('', 'index')->name('index');
                         });
 
                 Route::prefix('/yield')
