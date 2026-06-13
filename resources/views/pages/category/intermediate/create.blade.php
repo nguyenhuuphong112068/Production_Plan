@@ -167,6 +167,18 @@
                                     </div>
                                 </div>
 
+                                @if (session('user')['production_code'] == 'PXTN')
+                                <!-- Xử lý bao bì -->
+                                <div class="form-group row align-items-center mb-2">
+                                    <div class="col-md-12">
+                                        <div class="icheck-primary">
+                                            <input type="checkbox" id="has_packaging_process" name="has_packaging_process" value="1">
+                                            <label for="has_packaging_process">Có xử lý bao bì không?</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
+
                                 <!-- Pha Chế -->
                                 <div class="form-group row align-items-center mb-2">
                                     <div class="col-md-6">

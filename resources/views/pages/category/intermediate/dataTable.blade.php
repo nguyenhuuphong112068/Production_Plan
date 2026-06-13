@@ -81,7 +81,11 @@
                     </tr>
                     <tr>
                         <th>Cân NL</th>
-                        <th>Cân NL Khác</th>
+                        @if (session('user')['production_code'] == 'PXTN')
+                            <th>Xử lý Bao Bì</th>
+                        @else
+                            <th>Cân NL Khác</th>
+                        @endif
                         <th>PC</th>
                         <th>THT</th>
                         <th>ĐH</th>
@@ -136,7 +140,9 @@
                                     @if ($data->weight_2)
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
                                         <span>
-                                            @if ($data->quarantine_total == 0)
+                                            @if (session('user')['production_code'] == 'PXTN')
+                                                {{ '20 ngày' }}
+                                            @elseif ($data->quarantine_total == 0)
                                                 {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}
                                             @endif
                                         </span>
@@ -228,8 +234,9 @@
                                         data-batch_qty="{{ $data->batch_qty }}"
                                         data-unit_batch_qty="{{ $data->unit_batch_qty }}"
                                         data-dosage_id="{{ $data->dosage_id }}" data-weight_1="{{ $data->weight_1 }}"
-                                        data-prepering="{{ $data->prepering }}" data-blending="{{ $data->blending }}"
-                                        data-forming="{{ $data->forming }}" data-coating="{{ $data->coating }}"
+                                        data-weight_2="{{ $data->weight_2 }}" data-prepering="{{ $data->prepering }}"
+                                        data-blending="{{ $data->blending }}" data-forming="{{ $data->forming }}"
+                                        data-coating="{{ $data->coating }}"
                                         data-quarantine_total="{{ $data->quarantine_total }}"
                                         data-quarantine_weight="{{ $data->quarantine_weight }}"
                                         data-quarantine_preparing="{{ $data->quarantine_preparing }}"
@@ -313,10 +320,12 @@
 
                             </td>
                             <td class="text-center align-middle">
-                                <button class="btn btn-info btn-history mb-1 position-relative" data-id="{{ $data->id }}" title="Lịch sử thay đổi">
+                                <button class="btn btn-info btn-history mb-1 position-relative"
+                                    data-id="{{ $data->id }}" title="Lịch sử thay đổi">
                                     <i class="fas fa-history"></i>
-                                    @if(isset($historyCounts) && isset($historyCounts[$data->id]))
-                                        <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
+                                    @if (isset($historyCounts) && isset($historyCounts[$data->id]))
+                                        <span class="badge badge-danger"
+                                            style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
                                     @endif
                                 </button>
                             </td>
@@ -370,6 +379,8 @@
 
 
             modal.find('input[name="weight_1"]').prop('checked', button.data('weight_1'));
+            modal.find('input[name="has_packaging_process"]').prop('checked', button.data('weight_2') ==
+                2);
             modal.find('input[name="prepering"]').prop('checked', button.data('prepering'));
             modal.find('input[name="blending"]').prop('checked', button.data('blending'));
             modal.find('input[name="forming"]').prop('checked', button.data('forming'));
@@ -659,52 +670,119 @@
             $.ajax({
                 url: "{{ route('pages.category.intermediate.history') }}",
                 type: "GET",
-                data: { category_id: id },
+                data: {
+                    category_id: id
+                },
                 success: function(res) {
                     var tbody = $('#data_table_history_body');
                     tbody.empty();
                     var current = res.current;
                     if (current) {
-                        var html = '<tr style="background-color: #e8f4f8; font-weight: bold;">';
+                        var html =
+                            '<tr style="background-color: #e8f4f8; font-weight: bold;">';
                         html += '<td class="text-center align-middle">Hiện Hành</td>';
-                        html += '<td class="text-center align-middle">' + ((current.created_by || current.prepareBy || current.prepared_by || '')) + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.active !== null && current.active !== undefined ? current.active : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.product_name !== null && current.product_name !== undefined ? current.product_name : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.intermediate_code !== null && current.intermediate_code !== undefined ? current.intermediate_code : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.dosage_name !== null && current.dosage_name !== undefined ? current.dosage_name : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.batch_size !== null && current.batch_size !== undefined ? current.batch_size : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.batch_qty !== null && current.batch_qty !== undefined ? current.batch_qty : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.quarantine_time_unit !== null && current.quarantine_time_unit !== undefined ? current.quarantine_time_unit : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.weight_1 !== null && current.weight_1 !== undefined ? current.weight_1 : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.prepering !== null && current.prepering !== undefined ? current.prepering : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.blending !== null && current.blending !== undefined ? current.blending : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.forming !== null && current.forming !== undefined ? current.forming : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.coating !== null && current.coating !== undefined ? current.coating : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.excution_time !== null && current.excution_time !== undefined ? current.excution_time : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + ((current
+                            .created_by || current.prepareBy || current
+                            .prepared_by || '')) + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .active !== null && current.active !== undefined ? current
+                            .active : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .product_name !== null && current.product_name !==
+                            undefined ? current.product_name : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .intermediate_code !== null && current.intermediate_code !==
+                            undefined ? current.intermediate_code : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .dosage_name !== null && current.dosage_name !== undefined ?
+                            current.dosage_name : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .batch_size !== null && current.batch_size !== undefined ?
+                            current.batch_size : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .batch_qty !== null && current.batch_qty !== undefined ?
+                            current.batch_qty : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .quarantine_time_unit !== null && current
+                            .quarantine_time_unit !== undefined ? current
+                            .quarantine_time_unit : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .weight_1 !== null && current.weight_1 !== undefined ?
+                            current.weight_1 : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .prepering !== null && current.prepering !== undefined ?
+                            current.prepering : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .blending !== null && current.blending !== undefined ?
+                            current.blending : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .forming !== null && current.forming !== undefined ? current
+                            .forming : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .coating !== null && current.coating !== undefined ? current
+                            .coating : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .excution_time !== null && current.excution_time !==
+                            undefined ? current.excution_time : '') + '</td>';
                         html += '</tr>';
                         tbody.append(html);
                     }
 
-                    if(res.history.length === 0) {
-                        tbody.append('<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>');
+                    if (res.history.length === 0) {
+                        tbody.append(
+                            '<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>'
+                        );
                     } else {
                         res.history.forEach(function(item) {
                             var html = '<tr>';
-                            html += '<td class="text-center align-middle">' + (item.updated_at ? item.updated_at : item.created_at) + '</td>';
-                            html += '<td class="text-center align-middle">' + ((item.created_by || item.prepareBy || item.prepared_by || '')) + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.active !== null && item.active !== undefined ? item.active : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.product_name !== null && item.product_name !== undefined ? item.product_name : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.intermediate_code !== null && item.intermediate_code !== undefined ? item.intermediate_code : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.dosage_name !== null && item.dosage_name !== undefined ? item.dosage_name : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.batch_size !== null && item.batch_size !== undefined ? item.batch_size : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.batch_qty !== null && item.batch_qty !== undefined ? item.batch_qty : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.quarantine_time_unit !== null && item.quarantine_time_unit !== undefined ? item.quarantine_time_unit : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.weight_1 !== null && item.weight_1 !== undefined ? item.weight_1 : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.prepering !== null && item.prepering !== undefined ? item.prepering : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.blending !== null && item.blending !== undefined ? item.blending : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.forming !== null && item.forming !== undefined ? item.forming : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.coating !== null && item.coating !== undefined ? item.coating : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.excution_time !== null && item.excution_time !== undefined ? item.excution_time : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .updated_at ? item.updated_at : item.created_at
+                            ) + '</td>';
+                            html += '<td class="text-center align-middle">' + ((item
+                                .created_by || item.prepareBy || item
+                                .prepared_by || '')) + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .active !== null && item.active !== undefined ?
+                                item.active : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .product_name !== null && item.product_name !==
+                                undefined ? item.product_name : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .intermediate_code !== null && item
+                                .intermediate_code !== undefined ? item
+                                .intermediate_code : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .dosage_name !== null && item.dosage_name !==
+                                undefined ? item.dosage_name : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .batch_size !== null && item.batch_size !==
+                                undefined ? item.batch_size : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .batch_qty !== null && item.batch_qty !==
+                                undefined ? item.batch_qty : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .quarantine_time_unit !== null && item
+                                .quarantine_time_unit !== undefined ? item
+                                .quarantine_time_unit : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .weight_1 !== null && item.weight_1 !==
+                                undefined ? item.weight_1 : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .prepering !== null && item.prepering !==
+                                undefined ? item.prepering : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .blending !== null && item.blending !==
+                                undefined ? item.blending : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .forming !== null && item.forming !==
+                                undefined ? item.forming : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .coating !== null && item.coating !==
+                                undefined ? item.coating : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .excution_time !== null && item
+                                .excution_time !== undefined ? item
+                                .excution_time : '') + '</td>';
                             html += '</tr>';
                             tbody.append(html);
                         });

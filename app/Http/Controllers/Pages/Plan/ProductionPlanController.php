@@ -262,7 +262,7 @@ class ProductionPlanController extends Controller
                                 $status_cleaning_minutes = [];
                                 $total_production_minutes = 0;
                                 $total_cleaning_minutes = 0;
-                                
+
                                 foreach ($rows as $row) {
                                         $status = '';
                                         if ($row->stage_code == 1) $status = 'Đã Cân';
@@ -271,17 +271,17 @@ class ProductionPlanController extends Controller
                                         elseif ($row->stage_code == 5) $status = 'Đã định hình';
                                         elseif ($row->stage_code == 6) $status = 'Đã Bao phim';
                                         elseif ($row->stage_code == 7) $status = 'Hoàn Tất ĐG';
-                                        
+
                                         if ($status) {
                                                 $status_counts[$status] = ($status_counts[$status] ?? 0) + 1;
                                                 $status_yields[$status] = ($status_yields[$status] ?? 0) + $row->total_yield;
-                                                
+
                                                 $p_mins = $row->production_minutes > 0 ? $row->production_minutes : 0;
                                                 $c_mins = $row->cleaning_minutes > 0 ? $row->cleaning_minutes : 0;
-                                                
+
                                                 $status_production_minutes[$status] = ($status_production_minutes[$status] ?? 0) + $p_mins;
                                                 $status_cleaning_minutes[$status] = ($status_cleaning_minutes[$status] ?? 0) + $c_mins;
-                                                
+
                                                 $total_production_minutes += $p_mins;
                                                 $total_cleaning_minutes += $c_mins;
                                         }
@@ -396,7 +396,7 @@ class ProductionPlanController extends Controller
                                 }
 
                                 $pending_plan->total_batch_qty += $item->batch_qty_not_finished ?? 0;
-                                
+
                                 if (!empty($item->product_names)) {
                                         $pending_plan->product_names .= ($pending_plan->product_names ? ', ' : '') . $item->product_names;
                                 }
@@ -1438,10 +1438,14 @@ class ProductionPlanController extends Controller
                                         if ($stageItem['stage_code'] == 1 && ($nextItem['stage_code'] == 2)) {
                                                 $nextCode = collect($stageList)->first(fn($s) => $s['stage_code'] >= 3)['code'] ?? null;
                                         } elseif ($stageItem['stage_code'] == 2) {
-                                                if ($stageItem['w2'] == 1) {
-                                                        $nextCode = explode("_", $nextItem['code'])[0] . "_" . "6";
+                                                if (session('user')['production_code'] == 'PXTN' && $plan->weight_2 == 1) {
+                                                        $nextCode = explode("_", $nextItem['code'])[0] . "_7";
                                                 } else {
-                                                        $nextCode = explode("_", $nextItem['code'])[0] . "_" . "5";
+                                                        if ($stageItem['w2'] == 1) {
+                                                                $nextCode = explode("_", $nextItem['code'])[0] . "_6";
+                                                        } else {
+                                                                $nextCode = explode("_", $nextItem['code'])[0] . "_5";
+                                                        }
                                                 }
                                         } else {
                                                 $nextCode = $nextItem['code'];

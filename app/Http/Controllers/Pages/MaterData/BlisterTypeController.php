@@ -71,6 +71,7 @@ class BlisterTypeController extends Controller
             if ($blister_type) {
                 $this->logHistory($request->id);
         DB::table('blister_type')->where('id', $request->id)->update([
+            'created_by' => session('user')['fullName'] ?? 'Admin',
                     'active' => !$blister_type->active,
                     'updated_at' => now()
                 ]);

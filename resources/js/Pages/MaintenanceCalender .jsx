@@ -106,6 +106,7 @@ const MaintenanceCalender = () => {
 
   const stageName = {
     1: 'Cân Nguyên Liệu',
+    2: production === 'PXTN' ? 'Xử Lý Bao Bì' : 'NL Khác',
     3: 'Pha Chế',
     4: 'Trộn Hoàn Tất',
     5: 'Định Hình',

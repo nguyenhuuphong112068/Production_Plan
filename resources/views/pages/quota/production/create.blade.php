@@ -66,7 +66,7 @@
                             style="width: 100%; height: 50mm" name="room_id[]">
                         @foreach ($room as $item)
                             <option value="{{ $item->id }}" 
-                                {{ collect(old('room_id', []))->contains($item->id) ? 'selected' : '' }}>
+                                {{ collect(old('room_id', []))->contains($item->id) || (session('user')['production_code'] == 'PXTN' && $stage_code == 2 && $item->code == 'LT2') ? 'selected' : '' }}>
                                 {{ $item->code . " - " . $item->name }}
                             </option>
                         @endforeach

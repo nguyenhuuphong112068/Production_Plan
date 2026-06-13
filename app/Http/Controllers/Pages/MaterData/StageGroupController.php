@@ -61,6 +61,7 @@ class StageGroupController extends Controller
 
         $this->logHistory($request->id);
         DB::table('stage_groups')->where('id', $request->id)->update([
+            'create_by' => session('user')['fullName'] ?? 'Admin',
             'code' => $request->code,
             'name' => $request->name,
             'updated_at' => now(),

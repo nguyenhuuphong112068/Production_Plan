@@ -69,6 +69,7 @@ const AssignmentCalender = () => {
   const [lines, setLines] = useState(['S16']);
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
+  const [production, setProduction] = useState(null);
 
   const [activePlanMasterId, setActivePlanMasterId] = useState(null);
 
@@ -134,6 +135,7 @@ const AssignmentCalender = () => {
           setQuota(data.quota);
           setOffDays (data.off_days);
           setBkcCode (data.bkc_code);
+          setProduction(data.production);
          
         }
 
@@ -2657,7 +2659,8 @@ const AssignmentCalender = () => {
           quota={quota}
           resources={resources}
           type={type}
-          currentPassword = {currentPassword}
+          production={production}
+          currentPassword={currentPassword}
           lines = {lines}
         />)}
 

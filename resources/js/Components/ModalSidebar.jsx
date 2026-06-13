@@ -16,7 +16,7 @@ import axios from "axios";
 const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   setPercentShow, selectedRows, setSelectedRows, resources,
   type, currentPassword, lines, multiStage, setMultiStage,
-  isMaintenance = false, excludeMaintenance = false }) => {
+  isMaintenance = false, excludeMaintenance = false, production }) => {
 
   const wrapperRef = useRef(null);
 
@@ -382,7 +382,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
   const stageNames = {
     1: 'Cân',
-    2: 'NL Khác',
+    2: production === 'PXTN' ? 'Xử Lý Bao Bì' : 'NL Khác',
     3: 'Pha Chế',
     4: 'Trộn Hoàn Tất',
     5: 'Định Hình',

@@ -25,7 +25,11 @@ class ProductionQuotaController extends Controller
 
                 $room = DB::table('room')
                         ->where('deparment_code', $production)
-                        ->where('stage_code', $stage_code_room)
+                        ->when($stage_code == 2 && $production == 'PXTN', function ($q) {
+                                return $q->where('code', 'LT2');
+                        }, function ($q) use ($stage_code_room) {
+                                return $q->where('stage_code', $stage_code_room);
+                        })
                         ->where('active', true)
                         ->get();
 
@@ -76,7 +80,7 @@ class ProductionQuotaController extends Controller
                                         'quota.active',
                                         'quota.tank'
                                 )
-                                ->where("{$category}.{$stage_name}", 1)
+                                ->where("{$category}.{$stage_name}", '>', 0)
                                 ->where("{$category}.active", true)
                                 ->where("{$category}.deparment_code", $production)
                                 // Lọc chỉ lấy 1 dòng duy nhất cho mỗi mã sản phẩm để tránh nhân dòng khi bảng danh mục bị trùng
@@ -85,7 +89,7 @@ class ProductionQuotaController extends Controller
                                                 ->from($category)
                                                 ->where('active', true)
                                                 ->where('deparment_code', $production)
-                                                ->where($stage_name, 1)
+                                                ->where($stage_name, '>', 0)
                                                 ->groupBy($joinField);
                                 })
                                 // join product_name (sử dụng product_name.id = category.product_name_id)

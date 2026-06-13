@@ -233,12 +233,17 @@
 
                             <td class="text-center align-middle">
                                 @php
-                                    $historyCount = isset($historyCounts) && isset($historyCounts[$data->id]) ? $historyCounts[$data->id]->total : 0;
+                                    $historyCount =
+                                        isset($historyCounts) && isset($historyCounts[$data->id])
+                                            ? $historyCounts[$data->id]->total
+                                            : 0;
                                 @endphp
-                                <button type="button" class="btn btn-info btn-history position-relative" data-id="{{ $data->id }}" title="Xem Lịch Sử">
+                                <button type="button" class="btn btn-info btn-history position-relative"
+                                    data-id="{{ $data->id }}" title="Xem Lịch Sử">
                                     <i class="fas fa-history"></i>
                                     @if ($historyCount > 0)
-                                        <span class="badge badge-danger position-absolute" style="top: -5px; right: -5px; font-size: 11px;">{{ $historyCount }}</span>
+                                        <span class="badge badge-danger position-absolute"
+                                            style="top: -5px; right: -5px; font-size: 11px;">{{ $historyCount }}</span>
                                     @endif
                                 </button>
                             </td>
@@ -558,7 +563,9 @@
         $.ajax({
             url: "{{ route('pages.quota.production.history') }}",
             type: "GET",
-            data: { quota_id: id },
+            data: {
+                quota_id: id
+            },
             success: function(res) {
                 var tbody = $('#data_table_history_body');
                 tbody.empty();
@@ -571,26 +578,37 @@
                     html += '<td>' + (current.m_time ? current.m_time : '0') + '</td>';
                     html += '<td>' + (current.C1_time ? current.C1_time : '0') + '</td>';
                     html += '<td>' + (current.C2_time ? current.C2_time : '0') + '</td>';
-                    html += '<td>' + (current.maxofbatch_campaign ? current.maxofbatch_campaign : '0') + '</td>';
-                    html += '<td>' + (current.active == 1 ? '<span class="badge badge-success">Sử Dụng</span>' : '<span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">Vô Hiệu</span>') + '</td>';
+                    html += '<td>' + (current.maxofbatch_campaign ? current.maxofbatch_campaign :
+                        '0') + '</td>';
+                    html += '<td>' + (current.active == 1 ?
+                        '<span class="badge badge-success">Sử Dụng</span>' :
+                        '<span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">Vô Hiệu</span>'
+                        ) + '</td>';
                     html += '<td>' + (current.note ? current.note : '') + '</td>';
                     html += '</tr>';
                     tbody.append(html);
                 }
 
-                if(res.history.length === 0) {
-                    tbody.append('<tr><td colspan="9" class="text-center">Chưa có lịch sử thay đổi</td></tr>');
+                if (res.history.length === 0) {
+                    tbody.append(
+                        '<tr><td colspan="9" class="text-center">Chưa có lịch sử thay đổi</td></tr>'
+                        );
                 } else {
                     res.history.forEach(function(item) {
                         var html = '<tr>';
-                        html += '<td>' + (item.updated_at ? item.updated_at : item.created_at) + '</td>';
+                        html += '<td>' + (item.updated_at ? item.updated_at : item
+                            .created_at) + '</td>';
                         html += '<td>' + item.prepared_by + '</td>';
                         html += '<td>' + (item.p_time ? item.p_time : '0') + '</td>';
                         html += '<td>' + (item.m_time ? item.m_time : '0') + '</td>';
                         html += '<td>' + (item.C1_time ? item.C1_time : '0') + '</td>';
                         html += '<td>' + (item.C2_time ? item.C2_time : '0') + '</td>';
-                        html += '<td>' + (item.maxofbatch_campaign ? item.maxofbatch_campaign : '0') + '</td>';
-                        html += '<td>' + (item.active == 1 ? '<span class="badge badge-success">Sử Dụng</span>' : '<span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">Vô Hiệu</span>') + '</td>';
+                        html += '<td>' + (item.maxofbatch_campaign ? item
+                            .maxofbatch_campaign : '0') + '</td>';
+                        html += '<td>' + (item.active == 1 ?
+                            '<span class="badge badge-success">Sử Dụng</span>' :
+                            '<span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">Vô Hiệu</span>'
+                            ) + '</td>';
                         html += '<td>' + (item.note ? item.note : '') + '</td>';
                         html += '</tr>';
                         tbody.append(html);
@@ -603,5 +621,4 @@
             }
         });
     });
-
 </script>

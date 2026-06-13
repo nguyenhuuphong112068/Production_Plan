@@ -102,6 +102,7 @@ const ScheduleTest = () => {
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
   const [userID, setUserID] = useState(null);
+  const [production, setProduction] = useState(null);
   const [isCascadeMode, setIsCascadeMode] = useState(() => {
     return JSON.parse(sessionStorage.getItem('cascadeMode')) || false;
   });
@@ -183,6 +184,7 @@ const ScheduleTest = () => {
           setOffDays(data.off_days);
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
+          setProduction(data.production);
 
         }
 
@@ -4279,6 +4281,7 @@ const ScheduleTest = () => {
           quota={quota}
           resources={resources}
           type={type}
+          production={production}
           currentPassword={currentPassword}
           lines={lines}
           multiStage={multiStage}

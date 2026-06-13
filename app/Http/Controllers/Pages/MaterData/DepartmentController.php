@@ -62,6 +62,7 @@ class DepartmentController extends Controller
 
         $this->logHistory($request->id);
         DB::table('deparments')->where('id', $request->id)->update([
+            'prepareBy' => session('user')['fullName'] ?? 'Admin',
             'shortName' => $request->shortName,
             'name' => $request->name,
             'updated_at' => now(),
@@ -77,6 +78,7 @@ class DepartmentController extends Controller
 
         $this->logHistory($id);
         DB::table('deparments')->where('id', $id)->update([
+            'prepareBy' => session('user')['fullName'] ?? 'Admin',
             'active' => !$active,
             'updated_at' => now(),
         ]);
