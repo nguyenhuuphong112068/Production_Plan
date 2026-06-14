@@ -248,14 +248,26 @@
                                                 $violations = is_array($item->violations) ? $item->violations : json_decode($item->violations, true) ?? [];
                                                 $types = [];
                                                 $stages = [];
+                                                $stage_name = [
+                                                    1 => 'Cân Nguyên Liệu',
+                                                    3 => 'Pha Chế',
+                                                    4 => 'Trộn Hoàn Tất',
+                                                    5 => 'Định Hình',
+                                                    6 => 'Bao Phim',
+                                                    7 => 'ĐGSC - ĐGTC',
+                                                ];
                                                 foreach ($violations as $violation) {
                                                     $types[] = $violation['label'] . ' (' . \Carbon\Carbon::parse($violation['date'])->format('d/m/Y') . ')';
-                                                    if(isset($violation['stage_code']) && !in_array($violation['stage_code'], $stages)) {
-                                                        $stages[] = 'CĐ ' . $violation['stage_code'];
+                                                    if(isset($violation['stage_code'])) {
+                                                        $sCode = $violation['stage_code'];
+                                                        $sName = isset($stage_name[$sCode]) ? $stage_name[$sCode] : 'CĐ ' . $sCode;
+                                                        if (!in_array($sName, $stages)) {
+                                                            $stages[] = $sName;
+                                                        }
                                                     }
                                                 }
                                                 $typeStr = implode('<br>', $types);
-                                                $stageStr = implode(', ', $stages);
+                                                $stageStr = implode('<br>', $stages);
                                                 if (empty($typeStr)) $typeStr = 'Khác';
                                                 if (empty($stageStr)) $stageStr = '-';
                                             @endphp
