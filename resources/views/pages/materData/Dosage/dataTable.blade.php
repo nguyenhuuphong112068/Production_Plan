@@ -7,10 +7,10 @@
         <div class="card-body">
 
             @if (user_has_permission(session('user')['userId'], 'materData_Dosage_store', 'boolean'))
-            <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal"
-                style="width: 155px">
-                <i class="fas fa-plus"></i> Thêm
-            </button>
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#create_modal"
+                    style="width: 155px">
+                    <i class="fas fa-plus"></i> Thêm
+                </button>
             @endif
 
             <table id="data_tabale_dosage" class="table table-bordered table-striped">
@@ -33,16 +33,19 @@
                                 <div>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }} </div>
                             </td>
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit " data-id="{{ $data->id }}" {{ user_has_permission(session('user')['userId'], 'materData_Dosage_update', 'disabled')}}
+                                <button type="button" class="btn btn-warning btn-edit " data-id="{{ $data->id }}"
+                                    {{ user_has_permission(session('user')['userId'], 'materData_Dosage_update', 'disabled') }}
                                     data-name="{{ $data->name }}" data-toggle="modal" data-target="#update_modal">
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </td>
                             <td class="text-center align-middle">
-                                <button class="btn btn-info btn-history mb-1 position-relative" data-id="{{ $data->id }}" title="Lịch sử thay đổi">
+                                <button class="btn btn-info btn-history mb-1 position-relative"
+                                    data-id="{{ $data->id }}" title="Lịch sử thay đổi">
                                     <i class="fas fa-history"></i>
-                                    @if(isset($historyCounts) && isset($historyCounts[$data->id]))
-                                        <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
+                                    @if (isset($historyCounts) && isset($historyCounts[$data->id]))
+                                        <span class="badge badge-danger"
+                                            style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
                                     @endif
                                 </button>
                             </td>
@@ -135,30 +138,45 @@
             $.ajax({
                 url: "{{ route('pages.materData.Dosage.history') }}",
                 type: "GET",
-                data: { id: id },
+                data: {
+                    id: id
+                },
                 success: function(res) {
                     var tbody = $('#data_table_history_body');
                     tbody.empty();
                     var current = res.current;
                     if (current) {
-                        var modifier = current.created_by || current.prepareBy || current.prepared_by || '';
-                        var html = '<tr style="background-color: #e8f4f8; font-weight: bold;">';
+                        var modifier = current.created_by || current.prepareBy || current
+                            .prepared_by || '';
+                        var html =
+                            '<tr style="background-color: #e8f4f8; font-weight: bold;">';
                         html += '<td class="text-center align-middle">Hiện Hành</td>';
-                        html += '<td class="text-center align-middle">' + modifier + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.name !== null && current.name !== undefined ? current.name : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + modifier +
+                        '</td>';
+                        html += '<td class="text-center align-middle">' + (current.name !==
+                                null && current.name !== undefined ? current.name : '') +
+                            '</td>';
                         html += '</tr>';
                         tbody.append(html);
                     }
 
-                    if(res.history.length === 0) {
-                        tbody.append('<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>');
+                    if (res.history.length === 0) {
+                        tbody.append(
+                            '<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>'
+                            );
                     } else {
                         res.history.forEach(function(item) {
-                            var modifier = item.created_by || item.prepareBy || item.prepared_by || '';
+                            var modifier = item.created_by || item.prepareBy || item
+                                .prepared_by || '';
                             var html = '<tr>';
-                            html += '<td class="text-center align-middle">' + (item.updated_at ? item.updated_at : item.created_at) + '</td>';
-                            html += '<td class="text-center align-middle">' + modifier + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.name !== null && item.name !== undefined ? item.name : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                    .updated_at ? item.updated_at : item.created_at
+                                    ) + '</td>';
+                            html += '<td class="text-center align-middle">' +
+                                modifier + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .name !== null && item.name !== undefined ? item
+                                .name : '') + '</td>';
                             html += '</tr>';
                             tbody.append(html);
                         });

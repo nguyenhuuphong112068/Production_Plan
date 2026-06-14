@@ -1,4 +1,3 @@
-
 @extends ('layout.master')
 
 @section('topNAV')
@@ -8,13 +7,13 @@
 @section('leftNAV')
     @include('layout.leftNAV')
 @endsection
- 
+
 @section('mainContent')
-  @include('pages.materData.Dosage.dataTable')
+    @include('pages.materData.Dosage.dataTable')s
 @endsection
 
 @section('model')
-  @include('pages.materData.Dosage.create')
-  @include('pages.materData.Dosage.update') 
-  @include('pages.materData.Dosage.history')
+    @include('pages.materData.Dosage.create')
+    @include('pages.materData.Dosage.update')
+    @include('pages.materData.Dosage.history')
 @endsection

@@ -147,6 +147,15 @@ Route::prefix('/Schedual')
                         ->name('warning.')
                         ->group(function () {
                                 Route::get('', 'index')->name('index');
+                                Route::post('propose_date_change', 'proposeDateChange')->name('proposeDateChange');
+                                Route::post('accept_date_change', 'acceptDateChange')->name('acceptDateChange');
+                                Route::post('reject_date_change', 'rejectDateChange')->name('rejectDateChange');
+                                Route::post('propose_material_date_change', 'proposeMaterialDateChange')->name('proposeMaterialDateChange');
+                                Route::post('accept_material_date_change', 'acceptMaterialDateChange')->name('acceptMaterialDateChange');
+                                Route::post('reject_material_date_change', 'rejectMaterialDateChange')->name('rejectMaterialDateChange');
+                                Route::get('comments/{planMasterId}', 'getComments')->name('getComments');
+                                Route::get('history/{planMasterId}', 'getProposalHistory')->name('getProposalHistory');
+                                Route::post('comments', 'postComment')->name('postComment');
                         });
 
                 Route::prefix('/yield')

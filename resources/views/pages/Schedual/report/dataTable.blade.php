@@ -1,92 +1,101 @@
 <div class="content-wrapper">
     <!-- Main content -->
     <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-12">
-            <!-- /.card-header -->
-            <div class="card">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <!-- /.card-header -->
+                    <div class="card">
 
-              <div class="card-header mt-4">
-                {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
-              </div>
-              <!-- /.card-Body -->
-              <div class="card-body">
-                
-     
-                <form id="filterForm" method="GET" action="{{ route('pages.Schedual.list.list') }}" class="d-flex flex-wrap gap-2">
-                    @csrf
-                    <div class="row w-100 align-items-center">
-
-                        <!-- Filter From/To -->
-                        <div class="col-md-4 d-flex gap-2">
-                            @php
-                                use Carbon\Carbon;
-                                $defaultFrom = Carbon::now()->toDateString();
-                                $defaultTo   = Carbon::now() ->addMonth(2)->toDateString();
-                            @endphp
-                            <div class="form-group d-flex align-items-center">
-                                <label for="from_date" class="mr-2 mb-0">From:</label>
-                                <input type="date" id="from_date" name="from_date" value="{{ request('from_date') ?? $defaultFrom }}" class="form-control" />
-                            </div>
-                            <div class="form-group d-flex align-items-center">
-                                <label for="to_date" class="mr-2 mb-0">To:</label>
-                                <input type="date" id="to_date" name="to_date" value="{{ request('to_date') ?? $defaultTo }}" class="form-control" />
-                            </div>
+                        <div class="card-header mt-4">
+                            {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
                         </div>
+                        <!-- /.card-Body -->
+                        <div class="card-body">
 
-                        <!-- Stage Selector -->
-                        <div class="col-md-4 d-flex justify-content-center align-items-center" style="gap: 10px; height: 40px;">
-                            <input type="hidden" name="stage_code" id="stage_code" value="{{ $stageCode }}">
-                            <button type="button" id="prevStage" class="btn btn-link stage-btn" style="font-size: 25px;">&laquo;</button>
-                            <span id="stageName" class="fw-bold text-center" style="font-size: 25px;">
-                                {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
-                            </span>
-                            <button type="button" id="nextStage" class="btn btn-link stage-btn" style="font-size: 25px;">&raquo;</button>
-                        </div> 
 
-                        <!-- Optional Right Side -->
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <!-- Bạn có thể thêm nút submit hoặc button khác ở đây -->
+                            <form id="filterForm" method="GET" action="{{ route('pages.Schedual.list.list') }}"
+                                class="d-flex flex-wrap gap-2">
+                                @csrf
+                                <div class="row w-100 align-items-center">
+
+                                    <!-- Filter From/To -->
+                                    <div class="col-md-4 d-flex gap-2">
+                                        @php
+                                            use Carbon\Carbon;
+                                            $defaultFrom = Carbon::now()->toDateString();
+                                            $defaultTo = Carbon::now()->addMonth(2)->toDateString();
+                                        @endphp
+                                        <div class="form-group d-flex align-items-center">
+                                            <label for="from_date" class="mr-2 mb-0">From:</label>
+                                            <input type="date" id="from_date" name="from_date"
+                                                value="{{ request('from_date') ?? $defaultFrom }}"
+                                                class="form-control" />
+                                        </div>
+                                        <div class="form-group d-flex align-items-center">
+                                            <label for="to_date" class="mr-2 mb-0">To:</label>
+                                            <input type="date" id="to_date" name="to_date"
+                                                value="{{ request('to_date') ?? $defaultTo }}" class="form-control" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Stage Selector -->
+                                    <div class="col-md-4 d-flex justify-content-center align-items-center"
+                                        style="gap: 10px; height: 40px;">
+                                        <input type="hidden" name="stage_code" id="stage_code"
+                                            value="{{ $stageCode }}">
+                                        <button type="button" id="prevStage" class="btn btn-link stage-btn"
+                                            style="font-size: 25px;">&laquo;</button>
+                                        <span id="stageName" class="fw-bold text-center" style="font-size: 25px;">
+                                            {{ optional($stages->firstWhere('stage_code', $stageCode))->stage ?? 'Không có công đoạn' }}
+                                        </span>
+                                        <button type="button" id="nextStage" class="btn btn-link stage-btn"
+                                            style="font-size: 25px;">&raquo;</button>
+                                    </div>
+
+                                    <!-- Optional Right Side -->
+                                    <div class="col-md-4 d-flex justify-content-end">
+                                        <!-- Bạn có thể thêm nút submit hoặc button khác ở đây -->
+                                    </div>
+
+                                </div>
+                            </form>
+
+                            <table id="data_table_Schedual_report" class="table table-bordered table-striped"
+                                style="font-size: 20px">
+                                <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
+                                    <tr>
+                                        <th style = "width: 5%">STT</th>
+                                        <th style = "width: 45%">Thông số Kiểm Soát</th>
+                                        <th style = "width: 55%">Kết Quả</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                    @foreach ($datas as $key => $data)
+                                        <tr>
+                                            <td>{{ $loop->iteration }} </td>
+                                            <td>{{ $key }}</td>
+                                            <td>{{ $data }} </td>
+
+                                        </tr>
+                                    @endforeach
+
+                                </tbody>
+                            </table>
                         </div>
-
+                        <!-- /.card-body -->
                     </div>
-                </form>
-                
-                <table id="data_table_Schedual_report" class="table table-bordered table-striped" style="font-size: 20px">
-                  <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020" >
-                    <tr>
-                        <th style = "width: 5%">STT</th>
-                        <th style = "width: 45%">Thông số Kiểm Soát</th>
-                        <th style = "width: 55%">Kết Quả</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-
-                  @foreach ($datas as $key => $data)
-                    <tr>
-                      <td>{{ $loop->iteration}} </td>
-                      <td>{{$key}}</td>
-                      <td>{{$data}}  </td>
-
-                    </tr>
-                  @endforeach
-
-                  </tbody>
-                </table>
-              </div>
-              <!-- /.card-body -->
+                    <!-- /.card -->
+                </div>
+                <!-- /.col -->
             </div>
-            <!-- /.card -->
-          </div>
-          <!-- /.col -->
+            <!-- /.row -->
         </div>
-        <!-- /.row -->
-      </div>
-      <!-- /.container-fluid -->
+        <!-- /.container-fluid -->
     </section>
     <!-- /.content -->
-  </div>
+</div>
 
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
@@ -97,27 +106,27 @@
 
 
 <script>
-  $(document).ready(function() {
-    $('#data_table_Schedual_report').DataTable({
-      paging: true,
-      lengthChange: true,
-      searching: true,
-      ordering: true,
-      info: true,
-      autoWidth: false,
-      pageLength: 10,
-      language: {
-        search: "Tìm kiếm:",
-        lengthMenu: "Hiển thị _MENU_ dòng",
-        info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
-        paginate: {
-          previous: "Trước",
-          next: "Sau"
-        }
-      },
+    $(document).ready(function() {
+        $('#data_table_Schedual_report').DataTable({
+            paging: true,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            pageLength: 10,
+            language: {
+                search: "Tìm kiếm:",
+                lengthMenu: "Hiển thị _MENU_ dòng",
+                info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+                paginate: {
+                    previous: "Trước",
+                    next: "Sau"
+                }
+            },
+        });
     });
-  });
-</script> 
+</script>
 
 {{-- <script>
     let stages = @json($stages);
@@ -149,26 +158,27 @@
 
 
 <script>
-  $(document).ready(function() {
-    document.body.style.overflowY = "auto";
-  })
+    $(document).ready(function() {
+        document.body.style.overflowY = "auto";
+    })
 
     const form = document.getElementById('filterForm');
     const fromInput = document.getElementById('from_date');
     const toInput = document.getElementById('to_date');
 
-   [fromInput, toInput].forEach(input => {
-        input.addEventListener('input', function () { 
+    [fromInput, toInput].forEach(input => {
+        input.addEventListener('input', function() {
             form.submit();
         });
     });
 
-  document.addEventListener('DOMContentLoaded', function () {
-      // Init tất cả stepper
-      document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
-          new Stepper(stepperEl, { linear: false, animation: true });
-      });
-  });
-
+    document.addEventListener('DOMContentLoaded', function() {
+        // Init tất cả stepper
+        document.querySelectorAll('.bs-stepper').forEach(stepperEl => {
+            new Stepper(stepperEl, {
+                linear: false,
+                animation: true
+            });
+        });
+    });
 </script>
-

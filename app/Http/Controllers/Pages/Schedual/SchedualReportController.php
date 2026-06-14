@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers\Pages\Schedual;
 
-use Carbon\Carbon;
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SchedualReportController extends Controller
 {
-
     public function list(Request $request)
     {
 
         $fromDate = $request->from_date ?? Carbon::now()->toDateString();
-        $toDate   = $request->to_date   ?? Carbon::now()->addMonth(2)->toDateString();
+        $toDate = $request->to_date ?? Carbon::now()->addMonth(2)->toDateString();
         $stage_code = $request->stage_code ?? 3;
         $production = session('user')['production_code'];
 
@@ -93,13 +92,13 @@ class SchedualReportController extends Controller
 
         $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
 
-
         session()->put(['title' => 'BÁO CÁO']);
+
         return view('pages.Schedual.report.list', [
 
             'datas' => $datas,
             'stages' => $stages,
-            'stageCode' => $stageCode
+            'stageCode' => $stageCode,
         ]);
     }
 }
