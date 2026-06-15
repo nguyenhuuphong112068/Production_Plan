@@ -2944,6 +2944,7 @@ class ProductionPlanController extends Controller
             ->where('pm.plan_list_id', $id)
             ->where('pm.active', 1)
             ->where('pm.cancel', 0)
+            ->where('pm.only_parkaging', 0)
             ->select('fpc.finished_product_code as product_code', DB::raw('COUNT(pm.id) as batch_count'), DB::raw('MAX(fpc.batch_qty) as batch_qty'))
             ->groupBy('fpc.finished_product_code')
             ->get();

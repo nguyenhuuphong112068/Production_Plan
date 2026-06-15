@@ -727,7 +727,7 @@
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover" id="equipmentAllocationTable">
+                    <table class="table table-sm table-bordered table-hover" id="equipmentAllocationTable">
                         <thead class="thead-light">
                             <tr>
                                 <th class="text-center align-middle" style="width: 10%;">Mã Thiết bị</th>
@@ -814,21 +814,21 @@
                                 var widthBatches = (item.total_batches / maxBatches) * 100;
                                 var widthQty = (item.total_quantity / maxQty) * 100;
                                 
-                                var batchBarHtml = '<div style="width: 100%; height: 32px; position: relative;">' +
-                                    '<div style="background-color: #e83e8c; width: ' + Math.max(widthBatches, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                    '<span style="color: white; font-weight: bold; font-size: 0.95rem; white-space: nowrap;">' + item.total_batches + '</span>' +
+                                var batchBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
+                                    '<div style="background-color: #e83e8c; width: ' + Math.max(widthBatches, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + item.total_batches + '</span>' +
                                     '</div>' +
                                     '</div>';
                                     
-                                var timeBarHtml = '<div style="width: 100%; height: 32px; position: relative;">' +
-                                    '<div style="background-color: #36a2eb; width: ' + Math.max(widthTime, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                    '<span style="color: white; font-weight: bold; font-size: 0.95rem; white-space: nowrap;">' + hours + '</span>' +
+                                var timeBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
+                                    '<div style="background-color: #36a2eb; width: ' + Math.max(widthTime, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + hours + '</span>' +
                                     '</div>' +
                                     '</div>';
                                     
-                                var qtyBarHtml = '<div style="width: 100%; height: 32px; position: relative;">' +
-                                    '<div style="background-color: #28a745; width: ' + Math.max(widthQty, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                    '<span style="color: white; font-weight: bold; font-size: 0.95rem; white-space: nowrap;">' + qty + '</span>' +
+                                var qtyBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
+                                    '<div style="background-color: #28a745; width: ' + Math.max(widthQty, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + qty + '</span>' +
                                     '</div>' +
                                     '</div>';
 
@@ -836,16 +836,16 @@
                                     '<td class="text-center font-weight-bold align-middle" rowspan="3" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_code || 'NA') + '</td>' +
                                     '<td class="align-middle" rowspan="3" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_name || 'NA') + '</td>' +
                                     '<td class="text-center align-middle" rowspan="3" style="border-bottom: 2px solid #dee2e6;">' + (item.main_equipment_name || 'NA') + '</td>' +
-                                    '<td class="text-right align-middle border-bottom-0 text-secondary pr-4" style="width: 20%;">Tổng số Lô</td>' +
-                                    '<td class="align-middle border-bottom-0 p-2" style="width: 35%;">' + batchBarHtml + '</td>' +
+                                    '<td class="text-right align-middle border-bottom-0 text-secondary pr-4 py-1" style="width: 20%; font-size: 0.9rem;">Tổng số Lô</td>' +
+                                    '<td class="align-middle border-bottom-0 p-1" style="width: 35%;">' + batchBarHtml + '</td>' +
                                     '</tr>' +
                                     '<tr>' +
-                                    '<td class="text-right align-middle border-bottom-0 border-top-0 text-secondary pr-4">Tổng Thời gian (Giờ)</td>' +
-                                    '<td class="align-middle border-bottom-0 border-top-0 p-2">' + timeBarHtml + '</td>' +
+                                    '<td class="text-right align-middle border-bottom-0 border-top-0 text-secondary pr-4 py-1" style="font-size: 0.9rem;">Tổng Thời gian (Giờ)</td>' +
+                                    '<td class="align-middle border-bottom-0 border-top-0 p-1">' + timeBarHtml + '</td>' +
                                     '</tr>' +
                                     '<tr>' +
-                                    '<td class="text-right align-middle border-top-0 text-secondary pr-4" style="border-bottom: 2px solid #dee2e6;">Sản lượng lý thuyết</td>' +
-                                    '<td class="align-middle border-top-0 p-2" style="border-bottom: 2px solid #dee2e6;">' + qtyBarHtml + '</td>' +
+                                    '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="border-bottom: 2px solid #dee2e6; font-size: 0.9rem;">Sản lượng lý thuyết</td>' +
+                                    '<td class="align-middle border-top-0 p-1" style="border-bottom: 2px solid #dee2e6;">' + qtyBarHtml + '</td>' +
                                     '</tr>';
                             });
                         }
