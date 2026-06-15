@@ -487,21 +487,23 @@
                             </a>
                         </li>
 
-                        @if (user_has_permission(session('user')['userId'], 'layout_report', 'boolean'))
+                        {{-- @if (user_has_permission(session('user')['userId'], 'layout_report', 'boolean'))
                             <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.report.list') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p> Báo Cáo </p>
                                 </a>
                             </li>
-                        @endif
+                        @endif --}}
 
-                        <li class="nav-item">
-                            <a href="{{ route('pages.Schedual.warning.index') }}" class="nav-link">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p> DS Lịch Không Đáp Ứng  </p>
-                            </a>
-                        </li>
+                        @if (user_has_permission(session('user')['userId'], 'layout_warning', 'boolean'))
+                            <li class="nav-item">
+                                <a href="{{ route('pages.Schedual.warning.index') }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p> Cảnh Báo Lịch </p>
+                                </a>
+                            </li>
+                        @endif
 
                         <li class="nav-item">
                             <a href="{{ route('pages.Schedual.list.list') }}" class="nav-link">

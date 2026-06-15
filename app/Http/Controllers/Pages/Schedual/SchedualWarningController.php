@@ -204,7 +204,7 @@ class SchedualWarningController extends Controller
 
         session()->put(['title' => 'CẢNH BÁO LỊCH SẢN XUẤT']);
         
-        return view('pages.schedual.warning.index', compact('unmetPlans', 'materialWarnings', 'proposedChanges', 'proposedMaterialChanges', 'commentsGrouped', 'proposalHistories', 'proposalHistoryCounts'));
+        return view('pages.Schedual.warning.index', compact('unmetPlans', 'materialWarnings', 'proposedChanges', 'proposedMaterialChanges', 'commentsGrouped', 'proposalHistories', 'proposalHistoryCounts'));
     }
 
     public function proposeDateChange(Request $request)

@@ -1057,6 +1057,50 @@
         }
     }
 
+    let currentSidebarData = [];
+    let currentSidebarDay = null;
+
+    function validateShiftDiscrepancy($item) {
+        if (!currentSidebarData || currentSidebarData.length === 0) return;
+        
+        const shiftVal = $item.find('.shift-select').val();
+        let shiftName = '';
+        switch (shiftVal) {
+            case '1': shiftName = 'C1'; break;
+            case '2': shiftName = 'C2'; break;
+            case '3': shiftName = 'C3'; break;
+            case '4': shiftName = 'HC'; break;
+            case '6': shiftName = 'C4'; break;
+            default: shiftName = 'Khác'; break;
+        }
+
+        $item.find('.personnel-row').each(function() {
+            const pid = $(this).find('.person-select').val();
+            let isDiscrepancy = false;
+
+            if (pid) {
+                const dayKey = 'day' + currentSidebarDay;
+                const personCode = Object.keys(employeeCodeToId).find(key => employeeCodeToId[key] == pid);
+                
+                if (personCode) {
+                    const personData = currentSidebarData.find(p => (p.employeeId || p.code) == personCode);
+                    if (personData) {
+                        const personShift = (personData.days && personData.days[dayKey]) ? personData.days[dayKey].toUpperCase() : 'HC';
+                        if (shiftName !== 'Khác' && personShift !== 'P' && personShift !== shiftName) {
+                            isDiscrepancy = true;
+                        }
+                    }
+                }
+            }
+
+            if (isDiscrepancy) {
+                $(this).css('background-color', '#ffe8d6');
+            } else {
+                $(this).css('background-color', '');
+            }
+        });
+    }
+
     function updateSidebarPersonnelTimes() {
         // Helper to calculate hours between HH:mm times
         function calculateDurationHours(startStr, endStr) {
@@ -3514,9 +3558,6 @@
                 if (!isSidebarLoaded) fetchPersonnelShifts();
             }
         }
-
-        let currentSidebarData = [];
-        let currentSidebarDay = null;
 
         $('#sidebar-personnel-search').on('input', function() {
             const query = $(this).val();
