@@ -330,6 +330,10 @@
         min-height: 40px;
     }
 
+    .personnel-row.shift-mismatch {
+        background-color: #ffe8cc !important;
+    }
+
     /* Styles for assigned personnel in sidebar */
     .draggable-person.person-assigned {
         opacity: 0.6;
@@ -2123,11 +2127,52 @@
 
         function updateSidebarHighlights() {
             const assignedCounts = {};
+            const employeeShiftMap = {};
+
+            // Lấy ca thực tế của nhân sự từ sidebar
+            $('.draggable-person').each(function() {
+                const code = $(this).data('code');
+                const id = employeeCodeToId[code];
+                const shiftKey = $(this).data('shift-key'); // C1, C2, C3, C4, HC, P
+                if (id && shiftKey) {
+                    employeeShiftMap[id.toString()] = shiftKey.toUpperCase();
+                }
+            });
+
+            const mapAssignedShiftToKey = function(val) {
+                if (val == '1') return 'C1';
+                if (val == '2') return 'C2';
+                if (val == '3') return 'C3';
+                if (val == '6') return 'C4';
+                if (val == '4') return 'HC';
+                return 'Khác';
+            };
+
             $('.person-select').each(function() {
                 const val = $(this).val();
+                const $personnelRow = $(this).closest('.personnel-row');
+                
                 if (val) {
                     const idStr = val.toString();
                     assignedCounts[idStr] = (assignedCounts[idStr] || 0) + 1;
+                    
+                    // Logic kiểm tra lệch ca
+                    const empShift = employeeShiftMap[idStr];
+                    if (empShift) {
+                        const $assignmentItem = $(this).closest('.assignment-item');
+                        const shiftSelectVal = $assignmentItem.find('.shift-select').val();
+                        const assignedShiftKey = mapAssignedShiftToKey(shiftSelectVal);
+                        
+                        if (assignedShiftKey !== 'Khác' && empShift !== assignedShiftKey) {
+                            $personnelRow.addClass('shift-mismatch');
+                        } else {
+                            $personnelRow.removeClass('shift-mismatch');
+                        }
+                    } else {
+                        $personnelRow.removeClass('shift-mismatch');
+                    }
+                } else {
+                    $personnelRow.removeClass('shift-mismatch');
                 }
             });
 
