@@ -2936,4 +2936,93 @@ class ProductionPlanController extends Controller
 
                 return response()->json($batches);
         }
+
+    public function getEquipmentAllocation($id)
+    {
+        $planMasterData = DB::table('plan_master as pm')
+            ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+            ->where('pm.plan_list_id', $id)
+            ->where('pm.active', 1)
+            ->where('pm.cancel', 0)
+            ->select('fpc.finished_product_code as product_code', DB::raw('COUNT(pm.id) as batch_count'), DB::raw('MAX(fpc.batch_qty) as batch_qty'))
+            ->groupBy('fpc.finished_product_code')
+            ->get();
+
+        if ($planMasterData->isEmpty()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $productCodes = $planMasterData->pluck('product_code')->unique()->toArray();
+
+        $groupByLine = request()->query('group_by') === 'line';
+
+        $quotas = DB::table('quota as q')
+            ->join('room as r', 'q.room_id', '=', 'r.id')
+            ->leftJoin('blister_type as bt', 'r.blister_type_code', '=', 'bt.code')
+            ->whereIn('q.finished_product_code', $productCodes)
+            ->where('q.active', 1)
+            ->select('q.finished_product_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')
+            ->get();
+
+        $equipmentStats = [];
+
+        foreach ($planMasterData as $plan) {
+            $productQuotas = $quotas->where('finished_product_code', $plan->product_code);
+            $processedGroups = [];
+            foreach ($productQuotas as $q) {
+                $mTimeVal = $q->m_time;
+                $mTime = 0;
+                if (strpos($mTimeVal, ':') !== false) {
+                    $parts = explode(':', $mTimeVal);
+                    $mTime = (float)$parts[0] + ((float)$parts[1] / 60);
+                } else {
+                    $mTime = (float)$mTimeVal;
+                }
+                
+                $roomId = $q->room_id;
+                
+                $groupId = $roomId;
+                $groupCode = $q->equipment_code;
+                $groupName = $q->equipment_name;
+                $groupMainName = $q->main_equiment_name;
+
+                if ($groupByLine && !empty($q->blister_type_code)) {
+                    $groupId = 'line_' . $q->blister_type_code;
+                    $groupCode = 'Dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
+                    $groupName = 'Tập hợp các máy dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
+                    $groupMainName = 'Multiple';
+                }
+                
+                if (in_array($groupId, $processedGroups)) {
+                    continue;
+                }
+                $processedGroups[] = $groupId;
+                
+                if (!isset($equipmentStats[$groupId])) {
+                    $equipmentStats[$groupId] = [
+                        'room_id' => $groupId,
+                        'equipment_code' => $groupCode,
+                        'equipment_name' => $groupName,
+                        'main_equipment_name' => $groupMainName,
+                        'blister_type_code' => $q->blister_type_code,
+                        'room_order_by' => $q->room_order_by,
+                        'total_batches' => 0,
+                        'total_time' => 0,
+                        'total_quantity' => 0,
+                    ];
+                }
+
+                $batchCount = (float)$plan->batch_count;
+                $batchQty = (float)$plan->batch_qty;
+                $equipmentStats[$groupId]['total_batches'] += $batchCount;
+                $equipmentStats[$groupId]['total_time'] += ($mTime * $batchCount);
+                $equipmentStats[$groupId]['total_quantity'] += ($batchQty * $batchCount);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => array_values($equipmentStats)
+        ]);
+    }
 }

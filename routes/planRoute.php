@@ -51,6 +51,7 @@ Route::prefix('/plan')
 
 
                 Route::get('update_plan_master_material', 'update_plan_master_material')->name('update_plan_master_material');
+                Route::get('equipment_allocation/{id}', 'getEquipmentAllocation')->name('equipment_allocation');
             });
 
 
