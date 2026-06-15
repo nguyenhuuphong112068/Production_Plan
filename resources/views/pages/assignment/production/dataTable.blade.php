@@ -1659,7 +1659,7 @@
             });
         }
 
-        function addPersonRow(container, personId = null) {
+        function addPersonRow(container, personId = null, opType = 'thủ công') {
             // Kiểm tra xem personId đã tồn tại trong container chưa
             if (personId) {
                 let exists = false;
@@ -1681,6 +1681,7 @@
                 });
 
                 if (emptySelect) {
+                    emptySelect.attr('data-op-type', opType);
                     emptySelect.val(personId).trigger('change');
                     return emptySelect.closest('.personnel-row');
                 }
@@ -1691,7 +1692,7 @@
                 <div class="personnel-row d-flex align-items-center p-1 border-bottom">
                     <div class="personnel-label"></div>
                     <div style="flex: 1" class="d-flex align-items-center">
-                        <select class="form-control form-control-sm person-select" style="width: 60%">
+                        <select class="form-control form-control-sm person-select" data-op-type="${opType}" style="width: 60%">
                             <option value="">-- Chọn người --</option>${globalPersonnelOptions}
                         </select>
                         <input type="text" class="form-control form-control-sm person-notif ml-1" 
@@ -2710,7 +2711,8 @@
                     const pid = $(this).find('.person-select').val();
                     if (pid) p_list.push({
                         personnel_id: pid,
-                        notification: $(this).find('.person-notif').val()
+                        notification: $(this).find('.person-notif').val(),
+                        operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công'
                     });
                 });
 
@@ -3253,9 +3255,8 @@
                         addPersonRow($container);
                     } else {
                         task.assigned.forEach(pid => {
-                            const newRow = addPersonRow($container, pid);
+                            const newRow = addPersonRow($container, pid, 'tự động');
                             if (newRow) {
-                                newRow.find('.person-select').attr('data-op-type', 'tự động');
                                 if (notesMap[pid]) {
                                     newRow.find('.person-notif').val(notesMap[pid]);
                                 }
