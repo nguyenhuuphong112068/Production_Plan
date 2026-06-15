@@ -2942,11 +2942,12 @@ class ProductionPlanController extends Controller
     {
         $stageCodeReq = request()->query('stage_code');
         $effectiveStageCode = ($stageCodeReq && $stageCodeReq !== 'all') ? (int)$stageCodeReq : 7;
+        
+        $departmentCode = request()->query('department_code', 'PXV1');
 
         $planMasterQuery = null;
 
         if ($id == -1) {
-            $departmentCode = request()->query('department_code', 'PXV1');
 
             $maxStageFinished = DB::table('stage_plan')
                 ->where('finished', 1)
@@ -3014,8 +3015,6 @@ class ProductionPlanController extends Controller
                 ->where('pm.cancel', 0)
                 ->where('pm.only_parkaging', 0);
 
-            $planMasterIds = (clone $planMasterQuery)->pluck('pm.id')->toArray();
-
             $planMasterData = (clone $planMasterQuery)
                 ->select('fpc.finished_product_code as product_code', 'fpc.intermediate_code', 
                     DB::raw('COUNT(pm.id) as batch_count'), 
@@ -3041,22 +3040,15 @@ class ProductionPlanController extends Controller
                 $query->whereNotNull('actual_start')
                       ->orWhereNotNull('schedualed_at');
             })
-            ->select('required_room_code', DB::raw('COUNT(*) as scheduled_count'))
-            ->groupBy('required_room_code')
-            ->pluck('scheduled_count', 'required_room_code')
+            ->select('resourceId', DB::raw('COUNT(*) as scheduled_count'))
+            ->groupBy('resourceId')
+            ->pluck('scheduled_count', 'resourceId')
             ->toArray();
 
         $quotasQuery = DB::table('quota as q')
             ->join('room as r', 'q.room_id', '=', 'r.id')
             ->leftJoin('blister_type as bt', 'r.blister_type_code', '=', 'bt.code')
-            ->where(function($query) use ($productCodes, $intermediateCodes) {
-                if (!empty($productCodes)) {
-                    $query->orWhereIn('q.finished_product_code', $productCodes);
-                }
-                if (!empty($intermediateCodes)) {
-                    $query->orWhereIn('q.intermediate_code', $intermediateCodes);
-                }
-            })
+            ->where('r.deparment_code', $departmentCode)
             ->where('q.active', 1);
 
         if ($stageCodeReq && $stageCodeReq !== 'all') {
@@ -3065,8 +3057,7 @@ class ProductionPlanController extends Controller
             $quotasQuery->whereIn('q.stage_code', [3, 4, 5, 6, 7]);
         }
 
-        $quotas = $quotasQuery->select('q.finished_product_code', 'q.intermediate_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')
-            ->get();
+        $quotas = $quotasQuery->select('q.finished_product_code', 'q.intermediate_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')->get();
 
         $equipmentStats = [];
 
@@ -3106,6 +3097,18 @@ class ProductionPlanController extends Controller
                 $processedGroups[] = $groupId;
                 
                 if (!isset($equipmentStats[$groupId])) {
+                    $sched = 0;
+                    if (!$groupByLine && isset($scheduledCounts[$roomId])) {
+                        $sched = $scheduledCounts[$roomId];
+                    } elseif ($groupByLine && !empty($q->blister_type_code)) {
+                        $lineEquipments = $quotas->where('blister_type_code', $q->blister_type_code)->pluck('room_id')->unique();
+                        foreach ($lineEquipments as $rId) {
+                            if (isset($scheduledCounts[$rId])) {
+                                $sched += $scheduledCounts[$rId];
+                            }
+                        }
+                    }
+
                     $equipmentStats[$groupId] = [
                         'room_id' => $groupId,
                         'equipment_code' => $groupCode,
@@ -3116,7 +3119,7 @@ class ProductionPlanController extends Controller
                         'total_batches' => 0,
                         'total_time' => 0,
                         'total_quantity' => 0,
-                        'scheduled_batches' => 0,
+                        'scheduled_batches' => $sched,
                         'inventory_qty' => 0,
                     ];
                 }
@@ -3129,19 +3132,6 @@ class ProductionPlanController extends Controller
 
                 if (isset($plan->inventory_qty)) {
                     $equipmentStats[$groupId]['inventory_qty'] += $plan->inventory_qty;
-                }
-
-                if (!$groupByLine && isset($scheduledCounts[$q->equipment_code])) {
-                    $equipmentStats[$groupId]['scheduled_batches'] += $scheduledCounts[$q->equipment_code];
-                } elseif ($groupByLine && !empty($q->blister_type_code)) {
-                    $lineEquipments = $quotas->where('blister_type_code', $q->blister_type_code)->pluck('equipment_code')->unique();
-                    $scheduledTotal = 0;
-                    foreach ($lineEquipments as $eqCode) {
-                        if (isset($scheduledCounts[$eqCode])) {
-                            $scheduledTotal += $scheduledCounts[$eqCode];
-                        }
-                    }
-                    $equipmentStats[$groupId]['scheduled_batches'] = $scheduledTotal;
                 }
             }
         }
