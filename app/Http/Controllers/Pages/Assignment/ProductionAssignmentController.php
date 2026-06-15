@@ -110,7 +110,8 @@ class ProductionAssignmentController extends Controller
 
         // 5. Lấy dữ liệu đã phân công (Assignments)
         $assignmentQuery = DB::table('assignments as a')
-            ->select('a.*')
+            ->leftJoin('user_management as u', 'a.assigned_by', '=', 'u.userName')
+            ->select('a.*', 'u.fullname as assigner_name')
             ->where('a.deparment_code', $production_code)
             ->whereDate('a.start', $reportedDate)
             ->where('a.active', 1);
@@ -131,7 +132,7 @@ class ProductionAssignmentController extends Controller
         if (!empty($allAssignmentIds)) {
             $allPersonnelData = DB::table('assignment_personnel')
                 ->whereIn('assignment_id', $allAssignmentIds)
-                ->select('assignment_id', 'personnel_id', 'notification')
+                ->select('assignment_id', 'personnel_id', 'notification', 'operation_type')
                 ->get()
                 ->groupBy('assignment_id');
         }
@@ -927,7 +928,8 @@ class ProductionAssignmentController extends Controller
 
         // 4. Lấy dữ liệu đã phân công
         $assignmentsQuery = DB::table('assignments as a')
-            ->select('a.*')
+            ->leftJoin('user_management as u', 'a.assigned_by', '=', 'u.userName')
+            ->select('a.*', 'u.fullname as assigner_name')
             ->where('a.deparment_code', $production_code)
             ->whereDate('a.start', $reportedDate)
             ->where('a.active', 1);
@@ -964,7 +966,7 @@ class ProductionAssignmentController extends Controller
             foreach ($assignments as $a) {
                 $a->personnel_data = DB::table('assignment_personnel')
                     ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification')->get();
+                    ->select('personnel_id', 'notification', 'operation_type')->get();
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
@@ -988,7 +990,7 @@ class ProductionAssignmentController extends Controller
                 foreach ($groupAssignments as $a) {
                     $a->personnel_data = DB::table('assignment_personnel')
                         ->where('assignment_id', $a->id)
-                        ->select('personnel_id', 'notification')->get();
+                        ->select('personnel_id', 'notification', 'operation_type')->get();
                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
                 }

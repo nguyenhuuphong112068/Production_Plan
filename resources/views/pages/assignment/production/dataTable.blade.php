@@ -602,13 +602,19 @@
                                                                         class="form-control form-control-sm person-select"
                                                                         style="width: 40%"
                                                                         data-selected="{{ $p_info->personnel_id }}"
+                                                                        data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
                                                                         {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                                         <option value="">-- Chọn người --
                                                                         </option>
                                                                     </select>
+                                                                    @if(strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
+                                                                        <i class="fas fa-robot text-info ml-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>
+                                                                    @else
+                                                                        <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
+                                                                    @endif
                                                                     <input type="text"
                                                                         class="form-control form-control-sm person-notif ml-1"
-                                                                        style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                        style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                                                         value="{{ $p_info->notification ?? '' }}"
                                                                         placeholder="Lưu ý (nếu có)..."
                                                                         {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
@@ -647,9 +653,9 @@
                                                         style="min-height: 80px; height: auto; white-space: pre-wrap;"
                                                         placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
                                                     
-                                                    @if(!empty($assignment->id) && !empty($assignment->assigned_by))
+                                                    @if(!empty($assignment->id) && !empty($assignment->assigner_name))
                                                         <div class="mt-1 text-muted text-right" style="font-size: 0.75rem; font-style: italic;">
-                                                            <i class="fas fa-user-edit"></i> Phân công bởi: {{ $assignment->assigned_by }}
+                                                            <i class="fas fa-user-edit"></i> Phân công bởi: {{ $assignment->assigner_name }}
                                                             @if(!empty($assignment->created_at))
                                                                 lúc {{ \Carbon\Carbon::parse($assignment->created_at)->format('d/m/Y H:i') }}
                                                             @endif
@@ -728,12 +734,17 @@
                                                         <div
                                                             class="personnel-row d-flex align-items-center p-1 border-bottom">
                                                             <div class="personnel-label">A</div>
-                                                            <div style="flex: 1">
+                                                            <div style="flex: 1" class="d-flex align-items-center">
                                                                 <select
-                                                                    class="form-control form-control-sm person-select"
+                                                                    class="form-control form-control-sm person-select" style="width: 40%" data-op-type="thủ công"
                                                                     {{ !$canEdit ? 'disabled' : '' }}>
                                                                     <option value="">-- Chọn người --</option>
                                                                 </select>
+                                                                <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
+                                                                <input type="text" class="form-control form-control-sm person-notif ml-1" 
+                                                                       style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                       placeholder="Lưu ý (nếu có)..."
+                                                                       {{ !$canEdit ? 'disabled' : '' }}>
                                                             </div>
                                                             @if ($canEdit)
                                                                 <i
@@ -1707,6 +1718,14 @@
 
                 if (emptySelect) {
                     emptySelect.attr('data-op-type', opType);
+                    let icon = emptySelect.siblings('.op-icon');
+                    if (icon.length) {
+                        if ((opType || '').toLowerCase() === 'tự động') {
+                            icon.removeClass('fa-hand-paper text-secondary').addClass('fa-robot text-info').attr('title', 'Sắp tự động');
+                        } else {
+                            icon.removeClass('fa-robot text-info').addClass('fa-hand-paper text-secondary').attr('title', 'Sắp thủ công');
+                        }
+                    }
                     emptySelect.val(personId).trigger('change');
                     return emptySelect.closest('.personnel-row');
                 }
@@ -1717,11 +1736,14 @@
                 <div class="personnel-row d-flex align-items-center p-1 border-bottom">
                     <div class="personnel-label"></div>
                     <div style="flex: 1" class="d-flex align-items-center">
-                        <select class="form-control form-control-sm person-select" data-op-type="${opType}" style="width: 60%">
+                        <select class="form-control form-control-sm person-select" data-op-type="${opType}" style="width: 40%">
                             <option value="">-- Chọn người --</option>${globalPersonnelOptions}
                         </select>
+                        ${(opType || '').toLowerCase() === 'tự động' 
+                            ? '<i class="fas fa-robot text-info ml-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>' 
+                            : '<i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>'}
                         <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                               style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                               style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                placeholder="Lưu ý...">
                     </div>
                     <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
@@ -2929,11 +2951,12 @@
                                             <div class="personnel-row d-flex align-items-center p-1 border-bottom">
                                                 <div class="personnel-label">A</div>
                                                 <div style="flex: 1" class="d-flex align-items-center">
-                                                    <select class="form-control form-control-sm person-select" style="width: 60%">
+                                                    <select class="form-control form-control-sm person-select" data-op-type="thủ công" style="width: 40%">
                                                         <option value="">-- Chọn người --</option>${globalPersonnelOptions}
                                                     </select>
+                                                    <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
                                                     <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                                                           style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                           style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                                            placeholder="Lưu ý...">
                                                 </div>
                                                 <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
@@ -4111,7 +4134,8 @@
 
                             isProgrammaticChange = true;
                             pData.forEach(p => {
-                                const newRow = addPersonRow($pContainer, p.personnel_id);
+                                const opType = p.operation_type || 'thủ công';
+                                const newRow = addPersonRow($pContainer, p.personnel_id, opType);
                                 if (newRow && p.notification) {
                                     newRow.find('.person-notif').val(p.notification);
                                 }
