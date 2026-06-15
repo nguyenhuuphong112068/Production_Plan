@@ -646,14 +646,24 @@
                                                         contenteditable="{{ $isJobEditable ? 'true' : 'false' }}"
                                                         style="min-height: 80px; height: auto; white-space: pre-wrap;"
                                                         placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
+                                                    
+                                                    @if(!empty($assignment->id) && !empty($assignment->assigned_by))
+                                                        <div class="mt-1 text-muted text-right" style="font-size: 0.75rem; font-style: italic;">
+                                                            <i class="fas fa-user-edit"></i> Phân công bởi: {{ $assignment->assigned_by }}
+                                                            @if(!empty($assignment->created_at))
+                                                                lúc {{ \Carbon\Carbon::parse($assignment->created_at)->format('d/m/Y H:i') }}
+                                                            @endif
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td style="width: 60px" class="text-center">
                                                     @if ($canEdit)
                                                         <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2"
                                                             style="font-size: 1.1rem" title="Xóa ca này"></i>
-                                                            <br />
-                                                            <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
-                                                                style="font-size: 1.1rem; display: none;" title="Nhân bản ca này"></i>
+                                                        <br />
+                                                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
+                                                            style="font-size: 1.1rem; display: none;"
+                                                            title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -749,9 +759,10 @@
                                                     @if ($canEdit)
                                                         <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2"
                                                             style="font-size: 1.1rem" title="Xóa ca này"></i>
-                                                            <br />
-                                                            <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
-                                                                style="font-size: 1.1rem; display: none;" title="Nhân bản ca này"></i>
+                                                        <br />
+                                                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
+                                                            style="font-size: 1.1rem; display: none;"
+                                                            title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -972,7 +983,8 @@
                     <div class="custom-control custom-checkbox">
                         <input type="checkbox" class="custom-control-input" id="clone-as-suggestion" value="1">
                         <label class="custom-control-label font-weight-bold text-info" for="clone-as-suggestion">
-                            <i class="fas fa-lightbulb mr-1"></i> Chỉ lưu làm Gợi ý Nhân sự (Không lưu thành phân công chính thức)
+                            <i class="fas fa-lightbulb mr-1"></i> Chỉ lưu làm Gợi ý Nhân sự (Không lưu thành phân công
+                            chính thức)
                         </label>
                     </div>
                 </div>
@@ -1062,16 +1074,28 @@
 
     function validateShiftDiscrepancy($item) {
         if (!currentSidebarData || currentSidebarData.length === 0) return;
-        
+
         const shiftVal = $item.find('.shift-select').val();
         let shiftName = '';
         switch (shiftVal) {
-            case '1': shiftName = 'C1'; break;
-            case '2': shiftName = 'C2'; break;
-            case '3': shiftName = 'C3'; break;
-            case '4': shiftName = 'HC'; break;
-            case '6': shiftName = 'C4'; break;
-            default: shiftName = 'Khác'; break;
+            case '1':
+                shiftName = 'C1';
+                break;
+            case '2':
+                shiftName = 'C2';
+                break;
+            case '3':
+                shiftName = 'C3';
+                break;
+            case '4':
+                shiftName = 'HC';
+                break;
+            case '6':
+                shiftName = 'C4';
+                break;
+            default:
+                shiftName = 'Khác';
+                break;
         }
 
         $item.find('.personnel-row').each(function() {
@@ -1081,11 +1105,12 @@
             if (pid) {
                 const dayKey = 'day' + currentSidebarDay;
                 const personCode = Object.keys(employeeCodeToId).find(key => employeeCodeToId[key] == pid);
-                
+
                 if (personCode) {
                     const personData = currentSidebarData.find(p => (p.employeeId || p.code) == personCode);
                     if (personData) {
-                        const personShift = (personData.days && personData.days[dayKey]) ? personData.days[dayKey].toUpperCase() : 'HC';
+                        const personShift = (personData.days && personData.days[dayKey]) ? personData.days[
+                            dayKey].toUpperCase() : 'HC';
                         if (shiftName !== 'Khác' && personShift !== 'P' && personShift !== shiftName) {
                             isDiscrepancy = true;
                         }
@@ -2201,18 +2226,18 @@
             $('.person-select').each(function() {
                 const val = $(this).val();
                 const $personnelRow = $(this).closest('.personnel-row');
-                
+
                 if (val) {
                     const idStr = val.toString();
                     assignedCounts[idStr] = (assignedCounts[idStr] || 0) + 1;
-                    
+
                     // Logic kiểm tra lệch ca
                     const empShift = employeeShiftMap[idStr];
                     if (empShift) {
                         const $assignmentItem = $(this).closest('.assignment-item');
                         const shiftSelectVal = $assignmentItem.find('.shift-select').val();
                         const assignedShiftKey = mapAssignedShiftToKey(shiftSelectVal);
-                        
+
                         if (assignedShiftKey !== 'Khác' && empShift !== assignedShiftKey) {
                             $personnelRow.addClass('shift-mismatch');
                         } else {
@@ -2493,7 +2518,8 @@
                         if (pid) p_list.push({
                             personnel_id: pid,
                             notification: $(this).find('.person-notif').val(),
-                            operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công'
+                            operation_type: $(this).find('.person-select').attr(
+                                'data-op-type') || 'thủ công'
                         });
                     });
 
@@ -2712,7 +2738,8 @@
                     if (pid) p_list.push({
                         personnel_id: pid,
                         notification: $(this).find('.person-notif').val(),
-                        operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công'
+                        operation_type: $(this).find('.person-select').attr(
+                            'data-op-type') || 'thủ công'
                     });
                 });
 
@@ -3807,7 +3834,8 @@
         });
 
         function setupCloneModalCheckbox(roomRow) {
-            const isCustom = (!roomRow.attr('data-room-id') && roomRow.attr('data-sp-id')) || roomRow.find('.room-select-custom').length > 0;
+            const isCustom = (!roomRow.attr('data-room-id') && roomRow.attr('data-sp-id')) || roomRow.find(
+                '.room-select-custom').length > 0;
             const $chk = $('#clone-as-suggestion');
             if (!isCustom) {
                 $chk.prop('checked', true);
@@ -3940,7 +3968,7 @@
                             p_list.push({
                                 personnel_id: pid,
                                 notification: $(this).find('.person-notif')
-                                .val()
+                                    .val()
                             });
                         }
                     });
@@ -4030,7 +4058,7 @@
 
         function renderSuggestions() {
             if (!assignmentSuggestions || assignmentSuggestions.length === 0) return;
-            
+
             assignmentSuggestions.forEach(sug => {
                 let $roomRow = null;
                 if (sug.room_id) {
@@ -4043,20 +4071,22 @@
                         }
                     });
                 }
-                
+
                 if ($roomRow && $roomRow.length > 0) {
                     const shift = sug.shift;
                     const start = sug.start_time;
                     const end = sug.end_time;
-                    const pData = typeof sug.personnel_data === 'string' ? JSON.parse(sug.personnel_data) : sug.personnel_data;
-                    
+                    const pData = typeof sug.personnel_data === 'string' ? JSON.parse(sug
+                        .personnel_data) : sug.personnel_data;
+
                     let $targetItem = null;
                     let isExistingSaved = false;
 
                     $roomRow.find('.assignment-item').each(function() {
                         if ($(this).find('.shift-select').val() == shift) {
                             $targetItem = $(this);
-                            if ($targetItem.attr('data-id') && $targetItem.attr('data-id') !== '') {
+                            if ($targetItem.attr('data-id') && $targetItem.attr('data-id') !==
+                                '') {
                                 isExistingSaved = true;
                             }
                         }
@@ -4074,11 +4104,11 @@
                                 addPersonRow($targetItem.find('.personnel-container'));
                             }
                         }
-                        
+
                         if ($targetItem && pData && pData.length > 0) {
                             const $pContainer = $targetItem.find('.personnel-container');
                             $pContainer.empty();
-                            
+
                             isProgrammaticChange = true;
                             pData.forEach(p => {
                                 const newRow = addPersonRow($pContainer, p.personnel_id);
@@ -4087,9 +4117,9 @@
                                 }
                             });
                             isProgrammaticChange = false;
-                            
+
                             $targetItem.find('.person-count-input').val(pData.length);
-                            
+
                             // Mark as dirty so user can save it
                             markRoomDirty($roomRow);
                             validateProfRequirement($targetItem);
@@ -4101,7 +4131,7 @@
                 }
             });
         }
-        
+
         // Execute suggestion logic on load
         renderSuggestions();
 
