@@ -3034,20 +3034,17 @@ class ProductionPlanController extends Controller
 
         $groupByLine = request()->query('group_by') === 'line';
 
-        $scheduledCounts = [];
-        if (!empty($planMasterIds)) {
-            $scheduledCounts = DB::table('stage_plan')
-                ->whereIn('plan_master_id', $planMasterIds)
-                ->where('stage_code', $effectiveStageCode)
-                ->where(function($query) {
-                    $query->whereNotNull('actual_start')
-                          ->orWhereNotNull('schedualed_at');
-                })
-                ->select('required_room_code', DB::raw('COUNT(*) as scheduled_count'))
-                ->groupBy('required_room_code')
-                ->pluck('scheduled_count', 'required_room_code')
-                ->toArray();
-        }
+        $scheduledCounts = DB::table('stage_plan')
+            ->where('stage_code', $effectiveStageCode)
+            ->where('finished', 0)
+            ->where(function($query) {
+                $query->whereNotNull('actual_start')
+                      ->orWhereNotNull('schedualed_at');
+            })
+            ->select('required_room_code', DB::raw('COUNT(*) as scheduled_count'))
+            ->groupBy('required_room_code')
+            ->pluck('scheduled_count', 'required_room_code')
+            ->toArray();
 
         $quotasQuery = DB::table('quota as q')
             ->join('room as r', 'q.room_id', '=', 'r.id')

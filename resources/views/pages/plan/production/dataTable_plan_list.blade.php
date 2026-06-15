@@ -858,6 +858,9 @@
                                     var widthScheduled = maxBatches > 0 ? (scheduled / maxBatches) * 100 : 0;
                                     var widthInventory = maxQty > 0 ? (inventory / maxQty) * 100 : 0;
                                     
+                                    if (widthScheduled > 100) widthScheduled = 100;
+                                    if (widthInventory > 100) widthInventory = 100;
+                                    
                                     var invDisplay = parseFloat(inventory).toLocaleString('en-US');
 
                                     var schedBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +

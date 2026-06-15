@@ -1,26 +1,61 @@
 <?php
-require 'vendor/autoload.php';
-$app = require_once 'bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
+namespace App\Http\Controllers\Pages\Plan;
+use Illuminate\Support\Facades\DB;
 
-$method = new ReflectionMethod('App\Http\Controllers\Pages\Schedual\SchedualController', 'getEvents');
-$method->setAccessible(true);
-$controller = $app->make('App\Http\Controllers\Pages\Schedual\SchedualController');
+$departmentCode = 'PXV1';
+$effectiveStageCode = 7;
 
-try {
-    $events = $method->invoke($controller, 'PXV1', '2026-06-01', '2026-06-30', 1, 1);
-    
-    $found = 0;
-    foreach ($events as $event) {
-        if (isset($event['blister_mold_code'])) {
-            echo "Event ID: " . $event['id'] . " Mold: " . $event['blister_mold_code'] . "\n";
-            $found++;
-            if ($found >= 5) break;
-        }
-    }
-    if ($found == 0) echo "NO events with blister_mold_code found!\n";
-    
-} catch (\Exception $e) {
-    echo "Error: " . $e->getMessage() . " at line " . $e->getLine() . "\n";
-}
+$maxStageFinished = DB::table('stage_plan')
+    ->where('finished', 1)
+    ->where('active', 1)
+    ->where('stage_code', '!=', 8)
+    ->where('deparment_code', $departmentCode)
+    ->select('plan_master_id', DB::raw('MAX(stage_code) as max_stage_code'))
+    ->groupBy('plan_master_id');
+
+$maxPossibleStage = DB::table('stage_plan')
+    ->where('active', 1)
+    ->where('stage_code', '!=', 8)
+    ->where('deparment_code', $departmentCode)
+    ->select('plan_master_id', DB::raw('MAX(stage_code) as max_possible_stage_code'))
+    ->groupBy('plan_master_id');
+
+$planMasterQuery = DB::table('plan_master as pm')
+    ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+    ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+        $join->on('pm.id', '=', 'sp_max.plan_master_id');
+    })
+    ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+        $join->on('pm.id', '=', 'sp_possible.plan_master_id');
+    })
+    ->leftJoin('stage_plan as sp', function ($join) {
+        $join->on('pm.id', '=', 'sp.plan_master_id')
+            ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
+    })
+    ->where('pm.active', 1)
+    ->where('pl.type', 1)
+    ->where('pm.only_parkaging', 0)
+    ->where('pm.plan_list_id', '>', 23)
+    ->where('pm.cancel', 0)
+    ->where('pm.deparment_code', $departmentCode)
+    ->whereRaw("NOT (
+        (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) < 7 AND IFNULL(sp_max.max_stage_code, 0) = IFNULL(sp_possible.max_possible_stage_code, -1)) 
+        OR (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) = 7)
+    )");
+
+$planMasterIds = (clone $planMasterQuery)->pluck('pm.id')->toArray();
+echo "Total planMasterIds: " . count($planMasterIds) . "\n";
+
+$scheduledCounts = DB::table('stage_plan')
+    ->whereIn('plan_master_id', $planMasterIds)
+    ->where('stage_code', $effectiveStageCode)
+    ->where(function($query) {
+        $query->whereNotNull('actual_start')
+              ->orWhereNotNull('schedualed_at');
+    })
+    ->select('required_room_code', DB::raw('COUNT(*) as scheduled_count'))
+    ->groupBy('required_room_code')
+    ->pluck('scheduled_count', 'required_room_code')
+    ->toArray();
+
+var_dump($scheduledCounts);
