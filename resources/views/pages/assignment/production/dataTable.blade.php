@@ -609,6 +609,8 @@
                                                                     </select>
                                                                     @if(strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
                                                                         <i class="fas fa-robot text-info ml-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>
+                                                                    @elseif(strtolower($p_info->operation_type ?? 'thủ công') == 'nhân bản')
+                                                                        <i class="fas fa-copy text-success ml-1 op-icon" title="Nhân bản" style="font-size: 0.8rem;"></i>
                                                                     @else
                                                                         <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
                                                                     @endif
@@ -1721,9 +1723,11 @@
                     let icon = emptySelect.siblings('.op-icon');
                     if (icon.length) {
                         if ((opType || '').toLowerCase() === 'tự động') {
-                            icon.removeClass('fa-hand-paper text-secondary').addClass('fa-robot text-info').attr('title', 'Sắp tự động');
+                            icon.removeClass('fa-hand-paper text-secondary fa-copy text-success').addClass('fa-robot text-info').attr('title', 'Sắp tự động');
+                        } else if ((opType || '').toLowerCase() === 'nhân bản') {
+                            icon.removeClass('fa-hand-paper text-secondary fa-robot text-info').addClass('fa-copy text-success').attr('title', 'Nhân bản');
                         } else {
-                            icon.removeClass('fa-robot text-info').addClass('fa-hand-paper text-secondary').attr('title', 'Sắp thủ công');
+                            icon.removeClass('fa-robot text-info fa-copy text-success').addClass('fa-hand-paper text-secondary').attr('title', 'Sắp thủ công');
                         }
                     }
                     emptySelect.val(personId).trigger('change');
@@ -1741,7 +1745,9 @@
                         </select>
                         ${(opType || '').toLowerCase() === 'tự động' 
                             ? '<i class="fas fa-robot text-info ml-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>' 
-                            : '<i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>'}
+                            : ((opType || '').toLowerCase() === 'nhân bản' 
+                                ? '<i class="fas fa-copy text-success ml-1 op-icon" title="Nhân bản" style="font-size: 0.8rem;"></i>'
+                                : '<i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>')}
                         <input type="text" class="form-control form-control-sm person-notif ml-1" 
                                style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                placeholder="Lưu ý...">
@@ -3940,7 +3946,8 @@
                     const pid = $(this).find('.person-select').val();
                     if (pid) p_list.push({
                         personnel_id: pid,
-                        notification: $(this).find('.person-notif').val()
+                        notification: $(this).find('.person-notif').val(),
+                        operation_type: 'nhân bản'
                     });
                 });
 
@@ -3991,7 +3998,8 @@
                             p_list.push({
                                 personnel_id: pid,
                                 notification: $(this).find('.person-notif')
-                                    .val()
+                                    .val(),
+                                operation_type: 'nhân bản'
                             });
                         }
                     });
