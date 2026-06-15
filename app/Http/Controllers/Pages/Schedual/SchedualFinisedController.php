@@ -193,8 +193,13 @@ class SchedualFinisedController extends Controller
                 if ($actualStart && $actualStartYield && $actualStartYield->lt($actualStart))
                         return response()->json(['message' => '❌ Thời gian chạy máy phải lớn hơn thời gian bắt đầu sản xuất'], 422);
 
-                if ($actualEnd && $actualStartYield && $actualStartYield->gte($actualEnd))
-                        return response()->json(['message' => '❌ Thời gian chạy máy phải nhỏ hơn thời gian kết thúc sản xuất'], 422);
+                if ($actualEnd && $actualStartYield && $actualStartYield->gte($actualEnd)) {
+                        if ($request->actionType === 'finised' && $actualStartYield->equalTo($actualEnd)) {
+                                $actualStartYield = null; // Bỏ qua việc tạo yield, chỉ xác nhận vệ sinh
+                        } else {
+                                return response()->json(['message' => '❌ Thời gian chạy máy phải nhỏ hơn thời gian kết thúc sản xuất'], 422);
+                        }
+                }
 
                 if ($request->actionType === 'finised') {
 

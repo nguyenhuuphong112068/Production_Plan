@@ -366,8 +366,13 @@
     });
 
     $(document).on('input change', '.start', function() {
-        $(this).closest('tr').find('.start_yield')
-            .val($(this).val());
+        const row = $(this).closest('tr');
+        const maxYieldEnd = row.find('.max_yield_end').val();
+        
+        // Nếu đã có xác nhận sản lượng trước đó (maxYieldEnd không rỗng), không được tự động ghi đè BĐCM
+        if (!maxYieldEnd) {
+            row.find('.start_yield').val($(this).val());
+        }
     });
 </script>
 
