@@ -427,6 +427,7 @@ class ProductionPlanController extends Controller
                         'datas' => $datas,
                         'summary_by_month' => $summary_by_month,
                         'summary_by_actual_month' => $summary_by_actual_month,
+                        'production_code' => $production_code,
                 ]);
         }
 
@@ -2939,36 +2940,144 @@ class ProductionPlanController extends Controller
 
     public function getEquipmentAllocation($id)
     {
-        $planMasterData = DB::table('plan_master as pm')
-            ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
-            ->where('pm.plan_list_id', $id)
-            ->where('pm.active', 1)
-            ->where('pm.cancel', 0)
-            ->where('pm.only_parkaging', 0)
-            ->select('fpc.finished_product_code as product_code', DB::raw('COUNT(pm.id) as batch_count'), DB::raw('MAX(fpc.batch_qty) as batch_qty'))
-            ->groupBy('fpc.finished_product_code')
-            ->get();
+        $stageCodeReq = request()->query('stage_code');
+        $effectiveStageCode = ($stageCodeReq && $stageCodeReq !== 'all') ? (int)$stageCodeReq : 7;
+
+        $planMasterQuery = null;
+
+        if ($id == -1) {
+            $departmentCode = request()->query('department_code', 'PXV1');
+
+            $maxStageFinished = DB::table('stage_plan')
+                ->where('finished', 1)
+                ->where('active', 1)
+                ->where('stage_code', '!=', 8)
+                ->where('deparment_code', $departmentCode)
+                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_stage_code'))
+                ->groupBy('plan_master_id');
+
+            $maxPossibleStage = DB::table('stage_plan')
+                ->where('active', 1)
+                ->where('stage_code', '!=', 8)
+                ->where('deparment_code', $departmentCode)
+                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_possible_stage_code'))
+                ->groupBy('plan_master_id');
+
+            $yieldSub = DB::table('yields')
+                ->select('stage_plan_id', DB::raw('SUM(yield) as total_yield'))
+                ->groupBy('stage_plan_id');
+
+            $planMasterQuery = DB::table('plan_master as pm')
+                ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                    $join->on('pm.id', '=', 'sp_max.plan_master_id');
+                })
+                ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                    $join->on('pm.id', '=', 'sp_possible.plan_master_id');
+                })
+                ->leftJoin('stage_plan as sp', function ($join) {
+                    $join->on('pm.id', '=', 'sp.plan_master_id')
+                        ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
+                })
+                ->leftJoinSub($yieldSub, 'ys', function ($join) {
+                    $join->on('sp.id', '=', 'ys.stage_plan_id');
+                })
+                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                ->where('pm.active', 1)
+                ->where('pl.type', 1)
+                ->where('pm.only_parkaging', 0)
+                ->where('pm.plan_list_id', '!=', 0)
+                ->where('pm.plan_list_id', '>', 23)
+                ->where('pm.cancel', 0)
+                ->where('pm.deparment_code', $departmentCode)
+                ->whereRaw("NOT (
+                    (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) < 7 AND IFNULL(sp_max.max_stage_code, 0) = IFNULL(sp_possible.max_possible_stage_code, -1)) 
+                    OR (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) = 7)
+                )");
+
+            $planMasterIds = (clone $planMasterQuery)->pluck('pm.id')->toArray();
+
+            $planMasterData = (clone $planMasterQuery)
+                ->select('fpc.finished_product_code as product_code', 'fpc.intermediate_code', 
+                    DB::raw('COUNT(pm.id) as batch_count'), 
+                    DB::raw('MAX(fpc.batch_qty) as batch_qty'),
+                    DB::raw('SUM(CASE WHEN IFNULL(sp_max.max_stage_code, 0) < ' . $effectiveStageCode . ' THEN 1 ELSE 0 END) as inventory_count'),
+                    DB::raw('SUM(CASE WHEN IFNULL(sp_max.max_stage_code, 0) < ' . $effectiveStageCode . ' THEN IFNULL(ys.total_yield, 0) ELSE 0 END) as inventory_qty')
+                )
+                ->groupBy('fpc.finished_product_code', 'fpc.intermediate_code')
+                ->get();
+        } else {
+            $planMasterQuery = DB::table('plan_master as pm')
+                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                ->where('pm.plan_list_id', $id)
+                ->where('pm.active', 1)
+                ->where('pm.cancel', 0)
+                ->where('pm.only_parkaging', 0);
+
+            $planMasterIds = (clone $planMasterQuery)->pluck('pm.id')->toArray();
+
+            $planMasterData = (clone $planMasterQuery)
+                ->select('fpc.finished_product_code as product_code', 'fpc.intermediate_code', 
+                    DB::raw('COUNT(pm.id) as batch_count'), 
+                    DB::raw('MAX(fpc.batch_qty) as batch_qty')
+                )
+                ->groupBy('fpc.finished_product_code', 'fpc.intermediate_code')
+                ->get();
+        }
 
         if ($planMasterData->isEmpty()) {
             return response()->json(['success' => true, 'data' => []]);
         }
 
-        $productCodes = $planMasterData->pluck('product_code')->unique()->toArray();
+        $productCodes = $planMasterData->pluck('product_code')->filter(function ($val) { return $val && $val !== 'NA'; })->unique()->toArray();
+        $intermediateCodes = $planMasterData->pluck('intermediate_code')->filter(function ($val) { return $val && $val !== 'NA'; })->unique()->toArray();
 
         $groupByLine = request()->query('group_by') === 'line';
 
-        $quotas = DB::table('quota as q')
+        $scheduledCounts = [];
+        if (!empty($planMasterIds)) {
+            $scheduledCounts = DB::table('stage_plan')
+                ->whereIn('plan_master_id', $planMasterIds)
+                ->where('stage_code', $effectiveStageCode)
+                ->where(function($query) {
+                    $query->whereNotNull('actual_start')
+                          ->orWhereNotNull('schedualed_at');
+                })
+                ->select('required_room_code', DB::raw('COUNT(*) as scheduled_count'))
+                ->groupBy('required_room_code')
+                ->pluck('scheduled_count', 'required_room_code')
+                ->toArray();
+        }
+
+        $quotasQuery = DB::table('quota as q')
             ->join('room as r', 'q.room_id', '=', 'r.id')
             ->leftJoin('blister_type as bt', 'r.blister_type_code', '=', 'bt.code')
-            ->whereIn('q.finished_product_code', $productCodes)
-            ->where('q.active', 1)
-            ->select('q.finished_product_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')
+            ->where(function($query) use ($productCodes, $intermediateCodes) {
+                if (!empty($productCodes)) {
+                    $query->orWhereIn('q.finished_product_code', $productCodes);
+                }
+                if (!empty($intermediateCodes)) {
+                    $query->orWhereIn('q.intermediate_code', $intermediateCodes);
+                }
+            })
+            ->where('q.active', 1);
+
+        if ($stageCodeReq && $stageCodeReq !== 'all') {
+            $quotasQuery->where('q.stage_code', $stageCodeReq);
+        } else {
+            $quotasQuery->whereIn('q.stage_code', [3, 4, 5, 6, 7]);
+        }
+
+        $quotas = $quotasQuery->select('q.finished_product_code', 'q.intermediate_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')
             ->get();
 
         $equipmentStats = [];
 
         foreach ($planMasterData as $plan) {
-            $productQuotas = $quotas->where('finished_product_code', $plan->product_code);
+            $productQuotas = $quotas->filter(function($q) use ($plan) {
+                return ($q->finished_product_code === $plan->product_code && $q->finished_product_code !== 'NA') || 
+                       ($q->intermediate_code === $plan->intermediate_code && $q->intermediate_code !== 'NA');
+            });
             $processedGroups = [];
             foreach ($productQuotas as $q) {
                 $mTimeVal = $q->m_time;
@@ -3010,6 +3119,8 @@ class ProductionPlanController extends Controller
                         'total_batches' => 0,
                         'total_time' => 0,
                         'total_quantity' => 0,
+                        'scheduled_batches' => 0,
+                        'inventory_qty' => 0,
                     ];
                 }
 
@@ -3018,6 +3129,23 @@ class ProductionPlanController extends Controller
                 $equipmentStats[$groupId]['total_batches'] += $batchCount;
                 $equipmentStats[$groupId]['total_time'] += ($mTime * $batchCount);
                 $equipmentStats[$groupId]['total_quantity'] += ($batchQty * $batchCount);
+
+                if (isset($plan->inventory_qty)) {
+                    $equipmentStats[$groupId]['inventory_qty'] += $plan->inventory_qty;
+                }
+
+                if (!$groupByLine && isset($scheduledCounts[$q->equipment_code])) {
+                    $equipmentStats[$groupId]['scheduled_batches'] += $scheduledCounts[$q->equipment_code];
+                } elseif ($groupByLine && !empty($q->blister_type_code)) {
+                    $lineEquipments = $quotas->where('blister_type_code', $q->blister_type_code)->pluck('equipment_code')->unique();
+                    $scheduledTotal = 0;
+                    foreach ($lineEquipments as $eqCode) {
+                        if (isset($scheduledCounts[$eqCode])) {
+                            $scheduledTotal += $scheduledCounts[$eqCode];
+                        }
+                    }
+                    $equipmentStats[$groupId]['scheduled_batches'] = $scheduledTotal;
+                }
             }
         }
 

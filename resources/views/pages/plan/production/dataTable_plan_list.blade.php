@@ -720,10 +720,21 @@
             </div>
             <div class="modal-body">
                 <h5 id="equipmentAllocationPlanName" class="font-weight-bold text-center mb-2 text-primary"></h5>
-                <div class="d-flex justify-content-center mb-4">
-                    <div class="custom-control custom-switch">
+                <div class="d-flex justify-content-center align-items-center mb-4 flex-wrap">
+                    <div class="custom-control custom-switch mr-4">
                         <input type="checkbox" class="custom-control-input" id="groupByLineSwitch">
                         <label class="custom-control-label font-weight-bold text-secondary" style="cursor: pointer;" for="groupByLineSwitch">Thống kê theo dòng máy</label>
+                    </div>
+                    <div class="form-group mb-0 d-flex align-items-center">
+                        <label for="stageCodeSelect" class="font-weight-bold text-secondary mb-0 mr-2">Công đoạn:</label>
+                        <select id="stageCodeSelect" class="form-control form-control-sm" style="width: auto; min-width: 150px;">
+                            <option value="all">Tất cả</option>
+                            <option value="3">Pha chế</option>
+                            <option value="4">Trộn hoàn tất</option>
+                            <option value="5">Định hình</option>
+                            <option value="6">Bao phim</option>
+                            <option value="7" selected>Đóng gói</option>
+                        </select>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -731,9 +742,9 @@
                         <thead class="thead-light">
                             <tr>
                                 <th class="text-center align-middle" style="width: 10%;">Mã Thiết bị</th>
-                                <th class="text-center align-middle" style="width: 20%;">Tên Thiết bị</th>
-                                <th class="text-center align-middle" style="width: 15%;">Loại Thiết bị</th>
-                                <th class="text-center align-middle" colspan="2" style="width: 55%;">So Sánh</th>
+                                <th class="text-center align-middle" style="width: 25%;">Tên Thiết bị</th>
+                                <th class="text-center align-middle" style="width: 20%;">Loại Thiết bị</th>
+                                <th class="text-center align-middle" colspan="2" style="width: 45%;">So Sánh</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -757,7 +768,11 @@
             if (!currentPlanListId) return;
             
             var isGroupByLine = $('#groupByLineSwitch').is(':checked');
-            var url = '{{ url("plan/production/equipment_allocation") }}/' + currentPlanListId + (isGroupByLine ? '?group_by=line' : '');
+            var stageCode = $('#stageCodeSelect').val();
+            var url = '{{ url("plan/production/equipment_allocation") }}/' + currentPlanListId + '?stage_code=' + stageCode + '&department_code={{ $production_code }}';
+            if (isGroupByLine) {
+                url += '&group_by=line';
+            }
             
             $('#equipmentAllocationTable tbody').html('<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-info"></i><br>Đang tải dữ liệu...</td></tr>');
 
@@ -770,7 +785,7 @@
                         if (response.data.length === 0) {
                             tbody = '<tr><td colspan="5" class="text-center py-4">Không có dữ liệu định mức thiết bị cho kế hoạch này.</td></tr>';
                         } else {
-                            // Sort data: blister_type_code -> room_order_by -> total_time
+                            // Sort data: blister_type_code -> room_order_by -> total_batches
                             response.data.sort(function(a, b) {
                                 // 1. Sort by blister_type_code
                                 if (a.blister_type_code !== null && b.blister_type_code !== null) {
@@ -790,27 +805,22 @@
                                     return orderA - orderB;
                                 }
                                 
-                                // 3. Fallback to total_time descending
-                                return b.total_time - a.total_time;
+                                // 3. Fallback to total_batches descending
+                                return b.total_batches - a.total_batches;
                             });
                             
-                            var maxTime = 0;
                             var maxBatches = 0;
                             var maxQty = 0;
                             response.data.forEach(function(item) {
-                                if (item.total_time > maxTime) maxTime = item.total_time;
                                 if (item.total_batches > maxBatches) maxBatches = item.total_batches;
                                 if (item.total_quantity > maxQty) maxQty = item.total_quantity;
                             });
-                            if (maxTime === 0) maxTime = 1;
                             if (maxBatches === 0) maxBatches = 1;
                             if (maxQty === 0) maxQty = 1;
 
                             response.data.forEach(function(item) {
-                                var hours = item.total_time.toFixed(2);
                                 var qty = (item.total_quantity || 0).toLocaleString('en-US');
                                 
-                                var widthTime = (item.total_time / maxTime) * 100;
                                 var widthBatches = (item.total_batches / maxBatches) * 100;
                                 var widthQty = (item.total_quantity / maxQty) * 100;
                                 
@@ -820,33 +830,55 @@
                                     '</div>' +
                                     '</div>';
                                     
-                                var timeBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
-                                    '<div style="background-color: #36a2eb; width: ' + Math.max(widthTime, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + hours + '</span>' +
-                                    '</div>' +
-                                    '</div>';
-                                    
                                 var qtyBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
                                     '<div style="background-color: #28a745; width: ' + Math.max(widthQty, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
                                     '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + qty + '</span>' +
                                     '</div>' +
                                     '</div>';
 
+                                var isUnfinishedPlan = (currentPlanListId == -1 || currentPlanListId === '-1');
+                                var rowspan = isUnfinishedPlan ? 4 : 2;
+
                                 tbody += '<tr>' +
-                                    '<td class="text-center font-weight-bold align-middle" rowspan="3" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_code || 'NA') + '</td>' +
-                                    '<td class="align-middle" rowspan="3" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_name || 'NA') + '</td>' +
-                                    '<td class="text-center align-middle" rowspan="3" style="border-bottom: 2px solid #dee2e6;">' + (item.main_equipment_name || 'NA') + '</td>' +
-                                    '<td class="text-right align-middle border-bottom-0 text-secondary pr-4 py-1" style="width: 20%; font-size: 0.9rem;">Tổng số Lô</td>' +
-                                    '<td class="align-middle border-bottom-0 p-1" style="width: 35%;">' + batchBarHtml + '</td>' +
+                                    '<td class="text-center font-weight-bold align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_code || 'NA') + '</td>' +
+                                    '<td class="align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_name || 'NA') + '</td>' +
+                                    '<td class="text-center align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.main_equipment_name || 'NA') + '</td>' +
+                                    '<td class="text-right align-middle border-bottom-0 text-secondary pr-4 py-1" style="width: 15%; font-size: 0.9rem;">Tổng số Lô</td>' +
+                                    '<td class="align-middle border-bottom-0 p-1" style="width: 30%;">' + batchBarHtml + '</td>' +
                                     '</tr>' +
                                     '<tr>' +
-                                    '<td class="text-right align-middle border-bottom-0 border-top-0 text-secondary pr-4 py-1" style="font-size: 0.9rem;">Tổng Thời gian (Giờ)</td>' +
-                                    '<td class="align-middle border-bottom-0 border-top-0 p-1">' + timeBarHtml + '</td>' +
-                                    '</tr>' +
-                                    '<tr>' +
-                                    '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="border-bottom: 2px solid #dee2e6; font-size: 0.9rem;">Sản lượng lý thuyết</td>' +
-                                    '<td class="align-middle border-top-0 p-1" style="border-bottom: 2px solid #dee2e6;">' + qtyBarHtml + '</td>' +
+                                    '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="' + (isUnfinishedPlan ? 'border-bottom-0' : 'border-bottom: 2px solid #dee2e6;') + ' font-size: 0.9rem;">Sản lượng lý thuyết</td>' +
+                                    '<td class="align-middle border-top-0 p-1" style="' + (isUnfinishedPlan ? 'border-bottom-0' : 'border-bottom: 2px solid #dee2e6;') + '">' + qtyBarHtml + '</td>' +
                                     '</tr>';
+
+                                if (isUnfinishedPlan) {
+                                    var scheduled = item.scheduled_batches || 0;
+                                    var inventory = item.inventory_qty || 0;
+                                    
+                                    var widthScheduled = maxBatches > 0 ? (scheduled / maxBatches) * 100 : 0;
+                                    var widthInventory = maxQty > 0 ? (inventory / maxQty) * 100 : 0;
+                                    
+                                    var invDisplay = parseFloat(inventory).toLocaleString('en-US');
+
+                                    var schedBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
+                                        '<div style="background-color: #17a2b8; width: ' + Math.max(widthScheduled, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                        '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + scheduled + '</span>' +
+                                        '</div></div>';
+
+                                    var invBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
+                                        '<div style="background-color: #ffc107; width: ' + Math.max(widthInventory, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                        '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + invDisplay + '</span>' +
+                                        '</div></div>';
+
+                                    tbody += '<tr>' +
+                                        '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="border-bottom-0; font-size: 0.9rem;">Số lượng lô đã sắp</td>' +
+                                        '<td class="align-middle border-top-0 p-1" style="border-bottom-0;">' + schedBarHtml + '</td>' +
+                                        '</tr>' +
+                                        '<tr>' +
+                                        '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="border-bottom: 2px solid #dee2e6; font-size: 0.9rem;">Sản lượng tồn kho (công đoạn trước)</td>' +
+                                        '<td class="align-middle border-top-0 p-1" style="border-bottom: 2px solid #dee2e6;">' + invBarHtml + '</td>' +
+                                        '</tr>';
+                                }
                             });
                         }
                         $('#equipmentAllocationTable tbody').html(tbody);
@@ -873,7 +905,7 @@
             loadEquipmentAllocation();
         });
 
-        $('#groupByLineSwitch').change(function() {
+        $('#groupByLineSwitch, #stageCodeSelect').change(function() {
             loadEquipmentAllocation();
         });
 
