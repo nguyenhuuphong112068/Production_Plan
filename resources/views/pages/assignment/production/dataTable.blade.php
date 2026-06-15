@@ -1445,8 +1445,12 @@
         });
 
         $(document).on('change', '.person-select', function() {
+            if (!isProgrammaticChange) {
+                $(this).attr('data-op-type', 'thủ công');
+            }
             markRoomDirty($(this).closest('.room-row'));
             validateProfRequirement($(this).closest('.assignment-item'));
+            validateShiftDiscrepancy($(this).closest('.assignment-item'));
             updateSidebarPersonnelTimes();
         });
 
@@ -1593,6 +1597,7 @@
                     break;
             }
             updateTimelines();
+            validateShiftDiscrepancy(row);
             updateSidebarPersonnelTimes();
         });
 
@@ -2442,7 +2447,8 @@
                         const pid = $(this).find('.person-select').val();
                         if (pid) p_list.push({
                             personnel_id: pid,
-                            notification: $(this).find('.person-notif').val()
+                            notification: $(this).find('.person-notif').val(),
+                            operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công'
                         });
                     });
 
@@ -3204,8 +3210,11 @@
                     } else {
                         task.assigned.forEach(pid => {
                             const newRow = addPersonRow($container, pid);
-                            if (newRow && notesMap[pid]) {
-                                newRow.find('.person-notif').val(notesMap[pid]);
+                            if (newRow) {
+                                newRow.find('.person-select').attr('data-op-type', 'tự động');
+                                if (notesMap[pid]) {
+                                    newRow.find('.person-notif').val(notesMap[pid]);
+                                }
                             }
                         });
                     }
@@ -3725,6 +3734,10 @@
             $('#sidebar-count-c4').text(shifts['C4'].length);
             $('#sidebar-count-hc').text(shifts['HC'].length);
             $('#sidebar-count-p').text(shifts['P'].length);
+
+            $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
+                validateShiftDiscrepancy($(this));
+            });
         }
 
         // Tự động mở và load dữ liệu sidebar khi vào trang

@@ -609,7 +609,8 @@ class MaintenanceAssignmentController extends Controller
                         DB::table('assignment_personnel')->insert([
                             'assignment_id' => $assignmentId,
                             'personnel_id' => $p['personnel_id'],
-                            'notification' => $p['notification'] ?? null
+                            'notification' => $p['notification'] ?? null,
+                            'operation_type' => $p['operation_type'] ?? 'thủ công'
                         ]);
                     }
                 }
