@@ -1,0 +1,31 @@
+2161:                         if (canProceed) {
+2162:                             isProgrammaticChange = true;
+2163:                             const newRow = addPersonRow($container, personId);
+2164:                             isProgrammaticChange = false;
+2165: 
+2166:                             if (newRow) {
+2167:                                 markRoomDirty($container.closest('.room-row'));
+2168:                             }
+2169:                         }
+2170:                     } else {
+2171:                         await Swal.fire({
+2172:                             icon: 'warning',
+2173:                             title: 'Thông báo',
+2174:                             text: `Không tìm thấy nhân sự có mã ${person.code} trong hệ thống.`
+2175:                         });
+2176:                     }
+2177:                 }
+2178: 
+2179:                 updateSidebarHighlights();
+2180:                 $('.draggable-person').removeClass('selected-for-drag');
+2181: 
+2182:             } catch (err) {
+2183:                 console.error("Drop error:", err);
+2184:             }
+2185:         });
+2186: 
+2187:         $(document).on('click', '.btn-add-person', function() {
+2188:             const container = $(this).closest('td').find('.personnel-container');
+2189:             addPersonRow(container);
+2190:             markRoomDirty($(this).closest('.room-row'));
+2191:             updateSidebarHighlights();

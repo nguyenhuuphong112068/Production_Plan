@@ -1,0 +1,31 @@
+2601:                                 _token: "{{ csrf_token() }}"
+2602:                             },
+2603:                             success: function(res) {
+2604:                                 if (res.success) {
+2605:                                     row.remove();
+2606:                                     updateTimelines();
+2607:                                     updateSidebarHighlights();
+2608:                                     updateSidebarPersonnelTimes();
+2609:                                 }
+2610:                             }
+2611:                         });
+2612:                     }
+2613:                 });
+2614:             } else {
+2615:                 const roomRow = $(this).closest('.room-row');
+2616:                 const roomId = roomRow.attr('data-room-id');
+2617:                 const isCustomTask = !roomId || roomId === '';
+2618: 
+2619:                 if (row.closest('.assignment-container').find('.assignment-item').length > 1) {
+2620:                     row.remove();
+2621:                     updateTimelines();
+2622:                     markRoomDirty(roomRow);
+2623:                     updateSidebarHighlights();
+2624:                     updateSidebarPersonnelTimes();
+2625:                 } else if (isCustomTask) {
+2626:                     // Nếu là công tác khác và là ca cuối cùng, cho phép hủy cả dòng
+2627:                     Swal.fire({
+2628:                         title: 'Hủy công tác này?',
+2629:                         text: "Toàn bộ thông tin dòng này sẽ bị xóa!",
+2630:                         icon: 'warning',
+2631:                         showCancelButton: true,

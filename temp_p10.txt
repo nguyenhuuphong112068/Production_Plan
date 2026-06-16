@@ -1,0 +1,13 @@
+269:         table-layout: fixed;
+270:     }
+271: 
+272:     .assignment-inner-table td {
+273:         border: none !important;
+274:         border-bottom: 1px solid var(--border-color) !important;
+275:         padding: 5px !important;
+276:         vertical-align: top !important;
+277:     }
+278: 
+279:     .assignment-inner-table tr:last-child td {
+280:         border-bottom: none !important;
+281:     }

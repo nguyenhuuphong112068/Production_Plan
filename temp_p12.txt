@@ -1,0 +1,16 @@
+1361:                 eOffset += 24.0;
+1362:             }
+1363:             
+1364:             $item.find('.personnel-row').each(function() {
+1365:                 const $row = $(this);
+1366:                 const pid = $row.find('.person-select').val();
+1367:                 if (pid) {
+1368:                     const roomCode = $item.closest('.room-row').find('.room-select-custom').val() || 'Khác';
+1369:                     personnelData.push({
+1370:                         pid: pid.toString(),
+1371:                         start: sOffset,
+1372:                         end: eOffset,
+1373:                         $row: $row,
+1374:                         room: roomCode,
+1375:                         startStr: startStr,
+1376:                         endStr: endStr

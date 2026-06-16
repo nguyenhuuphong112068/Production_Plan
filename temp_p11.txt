@@ -1,0 +1,12 @@
+184:     .room-name-cell {
+199:     .off-stream-row .room-name-cell,
+495:                             <td class="room-name-cell">
+1261:                             roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
+2040:                                 roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
+2747:                             '.room-name-cell b').text() + ': ' + msg, 'error');
+2805:                 const roomName = $row.find('.room-name-cell b').text() || 'Công tác khác';
+3062:                     <td class="room-name-cell">
+3308:                     const roomNameText = $roomRow.find('.room-name-cell b').text() + ' - ' +
+3309:                         $roomRow.find('.room-name-cell div').eq(1).text();
+3678:                     const roomNameText = $roomRow.find('.room-name-cell b').text() + ' - ' +
+3679:                         $roomRow.find('.room-name-cell div').eq(1).text();

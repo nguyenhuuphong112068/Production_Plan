@@ -1344,7 +1344,7 @@
 
     function validateAllOverlaps() {
         $('.personnel-row').removeClass('overlap-warning');
-        $('.personnel-row .overlap-badge').remove();
+        $('.personnel-row .overlap-badge-container, .personnel-row .overlap-badge').remove();
 
         let overlapExists = false;
         const personnelData = [];
@@ -1365,7 +1365,7 @@
                 const $row = $(this);
                 const pid = $row.find('.person-select').val();
                 if (pid) {
-                    const roomCode = $item.closest('.room-row').find('.room-select-custom').val() || 'Khác';
+                    const roomCode = $item.closest('.room-row').find('.room-name-cell b').text().trim() || 'Khác';
                     personnelData.push({
                         pid: pid.toString(),
                         start: sOffset,
@@ -1389,12 +1389,14 @@
                         
                         p1.$row.addClass('overlap-warning');
                         if (p1.$row.find('.overlap-badge').length === 0) {
-                            $(`<i class="fas fa-exclamation-triangle text-danger ml-1 overlap-badge" title="Trùng lịch với ca khác (${p2.startStr}-${p2.endStr} tại ${p2.room})" style="font-size:0.8rem;"></i>`).insertAfter(p1.$row.find('.op-icon'));
+                            let target1 = p1.$row.find('.time-slider-container');
+                            $(`<div class="w-100 pl-4 mb-1 overlap-badge-container"><span class="badge badge-danger overlap-badge" title="Trùng lịch với ca khác (${p2.startStr}-${p2.endStr} tại ${p2.room})" style="font-size:0.75rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng: ${p2.startStr}-${p2.endStr} tại ${p2.room}</span></div>`).insertBefore(target1);
                         }
                         
                         p2.$row.addClass('overlap-warning');
                         if (p2.$row.find('.overlap-badge').length === 0) {
-                            $(`<i class="fas fa-exclamation-triangle text-danger ml-1 overlap-badge" title="Trùng lịch với ca khác (${p1.startStr}-${p1.endStr} tại ${p1.room})" style="font-size:0.8rem;"></i>`).insertAfter(p2.$row.find('.op-icon'));
+                            let target2 = p2.$row.find('.time-slider-container');
+                            $(`<div class="w-100 pl-4 mb-1 overlap-badge-container"><span class="badge badge-danger overlap-badge" title="Trùng lịch với ca khác (${p1.startStr}-${p1.endStr} tại ${p1.room})" style="font-size:0.75rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng: ${p1.startStr}-${p1.endStr} tại ${p1.room}</span></div>`).insertBefore(target2);
                         }
                     }
                 }
