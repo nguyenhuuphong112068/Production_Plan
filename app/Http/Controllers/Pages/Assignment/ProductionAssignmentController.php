@@ -700,7 +700,7 @@ class ProductionAssignmentController extends Controller
         } else if ($room_id === "") {
             $room_id = null;
         }
-        
+
         $stage_groups_code = $request->stage_groups_code;
         if (empty($stage_groups_code)) $stage_groups_code = 0;
 

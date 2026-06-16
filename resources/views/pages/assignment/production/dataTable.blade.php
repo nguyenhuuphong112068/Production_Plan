@@ -607,12 +607,18 @@
                                                                         <option value="">-- Chọn người --
                                                                         </option>
                                                                     </select>
-                                                                    @if(strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
-                                                                        <i class="fas fa-robot text-info ml-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>
+                                                                    @if (strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
+                                                                        <i class="fas fa-robot text-info ml-1 op-icon"
+                                                                            title="Sắp tự động"
+                                                                            style="font-size: 0.8rem;"></i>
                                                                     @elseif(strtolower($p_info->operation_type ?? 'thủ công') == 'nhân bản')
-                                                                        <i class="fas fa-copy text-success ml-1 op-icon" title="Nhân bản" style="font-size: 0.8rem;"></i>
+                                                                        <i class="fas fa-copy text-success ml-1 op-icon"
+                                                                            title="Nhân bản"
+                                                                            style="font-size: 0.8rem;"></i>
                                                                     @else
-                                                                        <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
+                                                                        <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
+                                                                            title="Sắp thủ công"
+                                                                            style="font-size: 0.8rem;"></i>
                                                                     @endif
                                                                     <input type="text"
                                                                         class="form-control form-control-sm person-notif ml-1"
@@ -654,12 +660,15 @@
                                                         contenteditable="{{ $isJobEditable ? 'true' : 'false' }}"
                                                         style="min-height: 80px; height: auto; white-space: pre-wrap;"
                                                         placeholder="Nội dung...">{!! $assignment->Job_description !!}</div>
-                                                    
-                                                    @if(!empty($assignment->id) && !empty($assignment->assigner_name))
-                                                        <div class="mt-1 text-muted text-right" style="font-size: 0.75rem; font-style: italic;">
-                                                            <i class="fas fa-user-edit"></i> Phân công bởi: {{ $assignment->assigner_name }}
-                                                            @if(!empty($assignment->created_at))
-                                                                lúc {{ \Carbon\Carbon::parse($assignment->created_at)->format('d/m/Y H:i') }}
+
+                                                    @if (!empty($assignment->id) && !empty($assignment->assigner_name))
+                                                        <div class="mt-1 text-muted text-right"
+                                                            style="font-size: 0.75rem; font-style: italic;">
+                                                            <i class="fas fa-user-edit"></i> Phân công bởi:
+                                                            {{ $assignment->assigner_name }}
+                                                            @if (!empty($assignment->created_at))
+                                                                lúc
+                                                                {{ \Carbon\Carbon::parse($assignment->created_at)->format('d/m/Y H:i') }}
                                                             @endif
                                                         </div>
                                                     @endif
@@ -738,15 +747,19 @@
                                                             <div class="personnel-label">A</div>
                                                             <div style="flex: 1" class="d-flex align-items-center">
                                                                 <select
-                                                                    class="form-control form-control-sm person-select" style="width: 40%" data-op-type="thủ công"
+                                                                    class="form-control form-control-sm person-select"
+                                                                    style="width: 40%" data-op-type="thủ công"
                                                                     {{ !$canEdit ? 'disabled' : '' }}>
                                                                     <option value="">-- Chọn người --</option>
                                                                 </select>
-                                                                <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
-                                                                <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                                                                       style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                                       placeholder="Lưu ý (nếu có)..."
-                                                                       {{ !$canEdit ? 'disabled' : '' }}>
+                                                                <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
+                                                                    title="Sắp thủ công"
+                                                                    style="font-size: 0.8rem;"></i>
+                                                                <input type="text"
+                                                                    class="form-control form-control-sm person-notif ml-1"
+                                                                    style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                    placeholder="Lưu ý (nếu có)..."
+                                                                    {{ !$canEdit ? 'disabled' : '' }}>
                                                             </div>
                                                             @if ($canEdit)
                                                                 <i
@@ -1723,11 +1736,14 @@
                     let icon = emptySelect.siblings('.op-icon');
                     if (icon.length) {
                         if ((opType || '').toLowerCase() === 'tự động') {
-                            icon.removeClass('fa-hand-paper text-secondary fa-copy text-success').addClass('fa-robot text-info').attr('title', 'Sắp tự động');
+                            icon.removeClass('fa-hand-paper text-secondary fa-copy text-success').addClass(
+                                'fa-robot text-info').attr('title', 'Sắp tự động');
                         } else if ((opType || '').toLowerCase() === 'nhân bản') {
-                            icon.removeClass('fa-hand-paper text-secondary fa-robot text-info').addClass('fa-copy text-success').attr('title', 'Nhân bản');
+                            icon.removeClass('fa-hand-paper text-secondary fa-robot text-info').addClass(
+                                'fa-copy text-success').attr('title', 'Nhân bản');
                         } else {
-                            icon.removeClass('fa-robot text-info fa-copy text-success').addClass('fa-hand-paper text-secondary').attr('title', 'Sắp thủ công');
+                            icon.removeClass('fa-robot text-info fa-copy text-success').addClass(
+                                'fa-hand-paper text-secondary').attr('title', 'Sắp thủ công');
                         }
                     }
                     emptySelect.val(personId).trigger('change');
@@ -3203,6 +3219,55 @@
 
                     const pool = [...pools[shiftKey]];
 
+                    // --- GIAI ĐOẠN 0: ƯU TIÊN GÁN NHÂN SỰ KHO (WH) (MỖI PHÒNG 1 NGƯỜI) ---
+                    const activeGroupCode = $('select[name="group_code"]').val() || '{!! $group_code ?? "" !!}';
+                    if (activeGroupCode == '1' && productionCode === 'PXV1') {
+                        // Lọc các nhân sự kho (mã hoặc tên chứa WH)
+                        const whPool = pool.filter(pid => {
+                            const person = currentSidebarData.find(p => (employeeCodeToId[p.employeeId || p.code] == pid));
+                            const pName = person ? (person.employeeName || person.fullName || '') : '';
+                            return person && ((person.employeeId || person.code || '').includes('WH') || pName.includes('WH'));
+                        });
+
+                        const whPoolMutable = [...whPool];
+                        let phase0Continue = true;
+                        
+                        while (phase0Continue && whPoolMutable.length > 0) {
+                            phase0Continue = false;
+                            for (const task of shiftTasks) {
+                                if (whPoolMutable.length === 0) break;
+                                if (task.assigned.length >= task.required) continue;
+                                
+                                // Đảm bảo mỗi phòng chỉ nhận 1 nhân sự WH
+                                const hasWhAssigned = task.assigned.some(aPid => whPool.includes(parseInt(aPid)));
+                                if (hasWhAssigned) continue;
+                                
+                                let bestPid = null, bestLevel = -1, bestIdx = -1;
+                                for (let i = 0; i < whPoolMutable.length; i++) {
+                                    const pid = whPoolMutable[i];
+                                    if (task.assigned.includes(pid.toString())) continue;
+                                    
+                                    const lv = getPersonLevel(pid, task.roomId);
+                                    if (lv > bestLevel) {
+                                        bestLevel = lv;
+                                        bestPid = pid;
+                                        bestIdx = i;
+                                    }
+                                }
+                                
+                                if (bestPid !== null) {
+                                    task.assigned.push(bestPid.toString());
+                                    whPoolMutable.splice(bestIdx, 1);
+                                    
+                                    const globalIdx = pool.indexOf(bestPid);
+                                    if (globalIdx >= 0) pool.splice(globalIdx, 1);
+                                    
+                                    phase0Continue = true;
+                                }
+                            }
+                        }
+                    }
+
                     // --- GIAI ĐOẠN 1: ƯU TIÊN XUẤT NHÂN SỰ CẤP >= 3 CHO CÁC PHÒNG CÓ YÊU CẦU ---
                     // Xây dựng danh sách tất cả nhân sự >= level 3 trong pool
                     const profPool = pool.filter(pid => {
@@ -4143,7 +4208,8 @@
                             isProgrammaticChange = true;
                             pData.forEach(p => {
                                 const opType = p.operation_type || 'thủ công';
-                                const newRow = addPersonRow($pContainer, p.personnel_id, opType);
+                                const newRow = addPersonRow($pContainer, p.personnel_id,
+                                opType);
                                 if (newRow && p.notification) {
                                     newRow.find('.person-notif').val(p.notification);
                                 }
