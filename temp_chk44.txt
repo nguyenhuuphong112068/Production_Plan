@@ -1,0 +1,31 @@
+1241:                     const assId = $item.attr('data-id');
+1242:                     let found = false;
+1243:                     $item.find('.personnel-container .person-select').each(function() {
+1244:                         if ($(this).val() == personId.toString()) {
+1245:                             found = true;
+1246:                         }
+1247:                     });
+1248:                     if (found) {
+1249:                         const roomRow = $item.closest('.room-row');
+1250:                         let roomCode = 'Khác';
+1251:                         const customSelect = roomRow.find('.room-select-custom');
+1252:                         if (customSelect.length > 0) {
+1253:                             const selectedOption = customSelect.find('option:selected');
+1254:                             const selectedText = selectedOption.text().trim();
+1255:                             if (selectedText && !selectedText.startsWith('--')) {
+1256:                                 roomCode = selectedText.split('-')[0].trim();
+1257:                             } else {
+1258:                                 roomCode = 'Khác';
+1259:                             }
+1260:                         } else {
+1261:                             roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
+1262:                         }
+1263:                         const start = $item.find('.start-time-input').val() || '';
+1264:                         const end = $item.find('.end-time-input').val() || '';
+1265: 
+1266:                         if (start || end) {
+1267:                             assignments.push({
+1268:                                 assignment_id: assId,
+1269:                                 room: roomCode,
+1270:                                 start: start,
+1271:                                 end: end,

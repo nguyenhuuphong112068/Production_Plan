@@ -1,0 +1,6 @@
+4: use App\Http\Controllers\Pages\Assignment\ProductionAssignmentController;
+12: Route::get('/public-production-assignments', [ProductionAssignmentController::class, 'publicView'])->name('pages.assignment.production.public');
+13: Route::get('/public-production-assignments/shifts', [ProductionAssignmentController::class, 'getPersonnelShifts'])->name('pages.assignment.production.public.shifts');
+16: Route::prefix('/assignemnt/production')
+17:     ->controller(ProductionAssignmentController::class)
+18:     ->name('pages.assignment.production.')

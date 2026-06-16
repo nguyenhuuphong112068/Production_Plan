@@ -1,0 +1,31 @@
+2901:             iframe.src = url;
+2902: 
+2903:             document.body.appendChild(iframe);
+2904: 
+2905:             // Iframe tải xong sẽ tự gọi window.print() từ bên trong do có mã xử lý phía publicView
+2906:             // Chúng ta chỉ cần đóng Swal sau vài giây
+2907:             setTimeout(() => {
+2908:                 Swal.close();
+2909:             }, 2000);
+2910:         });
+2911: 
+2912:         function getRoomAssignments(row) {
+2913:             const assignments = [];
+2914:             const isOffStream = row.find('.off-stream-check').is(':checked') ? 1 : 0;
+2915:             row.find('.assignment-item:not(.foreign-assignment)').each(function() {
+2916:                 const p_list = [];
+2917:                 $(this).find('.personnel-row').each(function() {
+2918:                     const pid = $(this).find('.person-select').val();
+2919:                     let pStart = $(this).find('.p-start-input').val() || '';
+2920:                         let pEnd = $(this).find('.p-end-input').val() || '';
+2921:                         if (pid) p_list.push({
+2922:                             personnel_id: pid,
+2923:                             notification: $(this).find('.person-notif').val(),
+2924:                             operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công',
+2925:                             start: pStart,
+2926:                             end: pEnd
+2927:                         });
+2928:                 });
+2929: 
+2930:                 if (p_list.length === 0) return true;
+2931: 

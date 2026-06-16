@@ -1,0 +1,31 @@
+2796:                     Swal.showLoading();
+2797:                 }
+2798:             });
+2799: 
+2800:             const errors = [];
+2801:             for (let i = 0; i < rows.length; i++) {
+2802:                 const $row = $(rows[i]);
+2803:                 const roomName = $row.find('.room-name-cell b').text() || 'Công tác khác';
+2804:                 const roomId = $row.attr('data-room-id');
+2805:                 let spId = $row.attr('data-sp-id');
+2806: 
+2807:                 // Fallback ID cho công việc ngoài lịch chưa có mã định danh
+2808:                 if (!roomId && (!spId || spId === 'undefined')) {
+2809:                     spId = 'EXT_FB_ALL_' + Date.now() + '_' + i;
+2810:                     $row.attr('data-sp-id', spId);
+2811:                 }
+2812: 
+2813:                 if (!roomId && !spId) {
+2814:                     totalProcessed++;
+2815:                     continue;
+2816:                 }
+2817: 
+2818:                 let isValid = true;
+2819:                 $row.find('.assignment-item:not(.foreign-assignment)').each(function() {
+2820:                     const jobDesc = $(this).find('.job-desc').html().trim();
+2821:                     let pCount = 0;
+2822:                     $(this).find('.person-select').each(function() {
+2823:                         if ($(this).val()) pCount++;
+2824:                     });
+2825:                     if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...' ||
+2826:                         pCount === 0) {

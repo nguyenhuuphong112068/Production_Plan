@@ -1,0 +1,11 @@
+941: 
+942:     public function publicView(Request $request)
+943:     {
+944:         $production_code = $request->production_code ?? 'PXV1'; // Mặc định PXV1 nếu không có
+945:         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
+946:         $group_code = $request->group_code;
+947: 
+948:         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+949:         $endDate = $startDate->copy()->addDays(1);
+950: 
+951:         // 1. Lấy danh sách các tổ có trong bộ phận

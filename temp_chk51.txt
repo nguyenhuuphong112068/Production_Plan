@@ -1,0 +1,11 @@
+1341: 
+1342:         validateAllOverlaps();
+1343:     }
+1344: 
+1345:     function validateAllOverlaps() {
+1346:         $('.personnel-row').removeClass('overlap-warning');
+1347:         $('.personnel-row .overlap-badge-container, .personnel-row .overlap-badge').remove();
+1348: 
+1349:         let overlapExists = false;
+1350:         const personnelData = [];
+1351: 

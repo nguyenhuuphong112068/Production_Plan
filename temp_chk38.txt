@@ -1,0 +1,2 @@
+141:         $allPersonnelData = collect();
+143:             $allPersonnelData = DB::table('assignment_personnel')

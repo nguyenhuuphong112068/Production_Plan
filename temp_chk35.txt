@@ -1,0 +1,16 @@
+286:                         'start' => $sTime->toDateTimeString(),
+287:                         'end' => $eTime->toDateTimeString(),
+288:                         'Job_description' => trim($jobDescription),
+289:                         'number_of_employes' => $suggestedCount,
+290:                         'Num_of_per_Level_3' => 1,
+291:                         'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null, 'start' => null, 'end' => null, 'operation_type' => null]]),
+292:                         'start_time_display' => $sTime->format('H:i'),
+293:                         'end_time_display' => $eTime->format('H:i'),
+294:                         'is_foreign' => false,
+295:                         'is_scheduled' => true
+296:                     ]);
+297:                 }
+298:                 $assignments = $assignments->sortBy('start');
+299:             }
+300: 
+301:             return (object)[

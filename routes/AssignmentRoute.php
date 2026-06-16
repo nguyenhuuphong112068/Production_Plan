@@ -22,6 +22,7 @@ Route::prefix('/assignemnt/production')
         Route::post('store', 'store')->name('store');
         Route::post('clone-custom-task', 'cloneCustomTask')->name('clone_custom_task');
         Route::get('shifts', 'getPersonnelShifts')->name('shifts');
+        Route::post('update-personnel-time', 'updatePersonnelTime')->name('update_personnel_time');
         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
 

@@ -939,6 +939,41 @@ class ProductionAssignmentController extends Controller
         }
     }
 
+    public function updatePersonnelTime(Request $request)
+    {
+        try {
+            $assignmentId = $request->input('assignment_id');
+            $personnelId = $request->input('personnel_id');
+            $start = $request->input('start');
+            $end = $request->input('end');
+            
+            $assignment = DB::table('assignments')->where('id', $assignmentId)->first();
+            if (!$assignment) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy phân công']);
+            }
+            
+            $reportedDate = $request->input('reportedDate') ?? Carbon::parse($assignment->start)->format('Y-m-d');
+            
+            $pStart = Carbon::parse($reportedDate . ' ' . $start)->format('Y-m-d H:i:s');
+            $pEnd = Carbon::parse($reportedDate . ' ' . $end)->format('Y-m-d H:i:s');
+            if ($pEnd < $pStart) {
+                $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
+            }
+
+            DB::table('assignment_personnel')
+                ->where('assignment_id', $assignmentId)
+                ->where('personnel_id', $personnelId)
+                ->update([
+                    'start' => $pStart,
+                    'end' => $pEnd
+                ]);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
     public function publicView(Request $request)
     {
         $production_code = $request->production_code ?? 'PXV1'; // Mặc định PXV1 nếu không có
@@ -1214,6 +1249,8 @@ class ProductionAssignmentController extends Controller
                 'a.id as assignment_id',
                 'a.start',
                 'a.end',
+                'ap.start as p_start',
+                'ap.end as p_end',
                 'a.stage_groups_code',
                 'a.deparment_code',
                 'a.stage_plan_id',
@@ -1238,8 +1275,10 @@ class ProductionAssignmentController extends Controller
         $dbAssignments = [];
         foreach ($dailyAssignments as $ass) {
             $pId = $ass->personnel_id;
-            $startDisplay = $ass->start ? Carbon::parse($ass->start)->format('H:i') : '';
-            $endDisplay = $ass->end ? Carbon::parse($ass->end)->format('H:i') : '';
+            $actualStart = $ass->p_start ?: $ass->start;
+            $actualEnd = $ass->p_end ?: $ass->end;
+            $startDisplay = $actualStart ? Carbon::parse($actualStart)->format('H:i') : '';
+            $endDisplay = $actualEnd ? Carbon::parse($actualEnd)->format('H:i') : '';
 
             $groupName = '';
             if ($ass->deparment_code == 'EN') {

@@ -1,0 +1,6 @@
+240:                 $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
+291:                         'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null, 'start' => null, 'end' => null, 'operation_type' => null]]),
+329:                     $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
+852:                             'personnel_data' => json_encode($p_data),
+1113:                 $a->personnel_data = DB::table('assignment_personnel')
+1137:                     $a->personnel_data = DB::table('assignment_personnel')

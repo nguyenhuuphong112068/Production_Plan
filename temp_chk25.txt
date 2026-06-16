@@ -1,0 +1,51 @@
+4441:             let pStart = row.find('.p-start-input').val();
+4442:             let pEnd = row.find('.p-end-input').val();
+4443: 
+4444:             if(pStart && pStart.length > 10) pStart = pStart.substring(11, 16);
+4445:             if(pEnd && pEnd.length > 10) pEnd = pEnd.substring(11, 16);
+4446: 
+4447:             let shiftStart = timeToMinutes(assignStartStr);
+4448:             let shiftEnd = timeToMinutes(assignEndStr);
+4449:             if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+4450: 
+4451:             let valStart = pStart ? timeToMinutes(pStart) : shiftStart;
+4452:             let valEnd = pEnd ? timeToMinutes(pEnd) : shiftEnd;
+4453: 
+4454:             if (valStart < shiftStart - 240 && valStart < 12 * 60) valStart += 24 * 60;
+4455:             if (valEnd < valStart) valEnd += 24 * 60;
+4456:             
+4457:             let minRange = shiftStart - 60;
+4458:             let maxRange = shiftEnd + 60;
+4459:             if (minRange > valStart) minRange = valStart - 60;
+4460:             if (maxRange < valEnd) maxRange = valEnd + 60;
+4461:             
+4462:             // Đảm bảo minRange là bội số của 15 để step luôn nhảy đúng mốc 15 phút (00, 15, 30, 45)
+4463:             minRange = Math.floor(minRange / 15) * 15;
+4464: 
+4465:             noUiSlider.create(sliderEl, {
+4466:                 start: [valStart, valEnd],
+4467:                 connect: true,
+4468:                 range: {
+4469:                     'min': minRange,
+4470:                     'max': maxRange
+4471:                 },
+4472:                 step: 15,
+4473:                 format: {
+4474:                     to: function(v) { return minutesToTime(v); },
+4475:                     from: function(v) { return timeToMinutes(v); }
+4476:                 }
+4477:             });
+4478: 
+4479:             sliderEl.noUiSlider.on('update', function(values) {
+4480:                 displayEl.text(values[0] + ' - ' + values[1]);
+4481:                 row.find('.p-start-input').val(values[0]);
+4482:                 row.find('.p-end-input').val(values[1]);
+4483:             });
+4484:         }
+4485: 
+4486:         $(document).ready(function() {
+4487:             setTimeout(() => {
+4488:                 $('.personnel-row').each(function() {
+4489:                     initTimeSlider($(this));
+4490:                 });
+4491:             }, 500);

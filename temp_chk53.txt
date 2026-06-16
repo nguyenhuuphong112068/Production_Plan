@@ -1,0 +1,20 @@
+4476:                 }
+4477:             });
+4478: 
+4479:             sliderEl.noUiSlider.on('update', function(values) {
+4480:                 displayEl.text(values[0] + ' - ' + values[1]);
+4481:                 row.find('.p-start-input').val(values[0]);
+4482:                 row.find('.p-end-input').val(values[1]);
+4483:             });
+4484:         }
+4485: 
+4486:         $(document).ready(function() {
+4487:             setTimeout(() => {
+4488:                 $('.personnel-row').each(function() {
+4489:                     initTimeSlider($(this));
+4490:                 });
+4491:             }, 500);
+4492:         });
+4493: 
+4494: </script>
+4495: 

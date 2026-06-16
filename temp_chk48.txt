@@ -1,0 +1,11 @@
+21:         Route::get('', 'index')->name('index');
+22:         Route::post('store', 'store')->name('store');
+23:         Route::post('clone-custom-task', 'cloneCustomTask')->name('clone_custom_task');
+24:         Route::get('shifts', 'getPersonnelShifts')->name('shifts');
+25:         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
+26:         Route::delete('destroy/{id}', 'destroy')->name('destroy');
+27: 
+28:         Route::get('portal', 'portal')->name('portal');
+29:         Route::get('chart', 'chartIndex')->name('chart');
+30:         Route::post('chart/view', 'chartView')->name('chart_view');
+31:         Route::put('chart/store', 'chartStore')->name('chart_store');

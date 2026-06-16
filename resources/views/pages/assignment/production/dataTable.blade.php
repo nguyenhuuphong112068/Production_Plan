@@ -1239,13 +1239,13 @@
                 $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
                     const $item = $(this);
                     const assId = $item.attr('data-id');
-                    let found = false;
-                    $item.find('.personnel-container .person-select').each(function() {
-                        if ($(this).val() == personId.toString()) {
-                            found = true;
+                    let foundPersonRow = null;
+                    $item.find('.personnel-row').each(function() {
+                        if ($(this).find('.person-select').val() == personId.toString()) {
+                            foundPersonRow = $(this);
                         }
                     });
-                    if (found) {
+                    if (foundPersonRow) {
                         const roomRow = $item.closest('.room-row');
                         let roomCode = 'Khác';
                         const customSelect = roomRow.find('.room-select-custom');
@@ -1260,8 +1260,8 @@
                         } else {
                             roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
                         }
-                        const start = $item.find('.start-time-input').val() || '';
-                        const end = $item.find('.end-time-input').val() || '';
+                        const start = foundPersonRow.find('.p-start-input').val() || $item.find('.start-time-input').val() || '';
+                        const end = foundPersonRow.find('.p-end-input').val() || $item.find('.end-time-input').val() || '';
 
                         if (start || end) {
                             assignments.push({
@@ -4480,6 +4480,42 @@
                 displayEl.text(values[0] + ' - ' + values[1]);
                 row.find('.p-start-input').val(values[0]);
                 row.find('.p-end-input').val(values[1]);
+            });
+
+            sliderEl.noUiSlider.on('set', function(values) {
+                let assignmentItem = row.closest('.assignment-item');
+                let assignmentId = assignmentItem.attr('data-id');
+                let personnelId = row.find('.person-select').val();
+                let reportedDate = $('#reportedDate').val() || '';
+                
+                if (assignmentId && personnelId && !assignmentItem.hasClass('foreign-assignment')) {
+                    $.ajax({
+                        url: '{{ route('pages.assignment.production.update_personnel_time') }}',
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            assignment_id: assignmentId,
+                            personnel_id: personnelId,
+                            start: values[0],
+                            end: values[1],
+                            reportedDate: reportedDate
+                        },
+                        success: function(res) {
+                            if(res.success) {
+                                // Auto refresh sidebar to show new time
+                                if (!$('.sidebar-right').hasClass('collapsed')) {
+                                    if (typeof fetchPersonnelShifts === 'function') {
+                                        fetchPersonnelShifts();
+                                    } else {
+                                        updateSidebarPersonnelTimes();
+                                    }
+                                } else {
+                                    updateSidebarPersonnelTimes();
+                                }
+                            }
+                        }
+                    });
+                }
             });
         }
 

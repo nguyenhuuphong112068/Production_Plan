@@ -1,0 +1,31 @@
+651:                                                                             style="font-size: 0.8rem;"></i>
+652:                                                                     @else
+653:                                                                         <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
+654:                                                                             title="Sắp thủ công"
+655:                                                                             style="font-size: 0.8rem;"></i>
+656:                                                                     @endif
+657:                                                                     <input type="text"
+658:                                                                         class="form-control form-control-sm person-notif ml-1"
+659:                                                                         style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+660:                                                                         value="{{ $p_info->notification ?? '' }}"
+661:                                                                         placeholder="Lưu ý (nếu có)..."
+662:                                                                         {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+663:                                                                 </div>
+664: 
+665:                                                                 @if ($canEdit && !($assignment->is_foreign ?? false))
+666:                                                                     <i
+667:                                                                         class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+668:                                                                 @endif
+669:                                                                 </div>
+670:                                                                 <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container" style="{{ !$canEdit || ($assignment->is_foreign ?? false) ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+671:                                                                     <div class="time-slider flex-grow-1"></div>
+672:                                                                     <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+673:                                                                     <input type="hidden" class="p-start-input" value="{{ $p_info->start ? \Carbon\Carbon::parse($p_info->start)->format('H:i') : '' }}">
+674:                                                                     <input type="hidden" class="p-end-input" value="{{ $p_info->end ? \Carbon\Carbon::parse($p_info->end)->format('H:i') : '' }}">
+675:                                                                 </div>
+676:                                                             </div>
+677:                                                         @endforeach
+678:                                                     </div>
+679:                                                     @if ($canEdit)
+680:                                                         <div class="text-left p-1"
+681:                                                             style="border-top: 1px dashed #eee">
