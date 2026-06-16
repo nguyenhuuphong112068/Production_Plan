@@ -570,12 +570,18 @@
                                                                         collect($personnel)
                                                                             ->where('id', $pData->personnel_id)
                                                                             ->first()->name ?? 'N/A';
+                                                                    $pTimeDisplay = '';
+                                                                    if (!empty($pData->start) && !empty($pData->end)) {
+                                                                        $pStart = \Carbon\Carbon::parse($pData->start)->format('H:i');
+                                                                        $pEnd = \Carbon\Carbon::parse($pData->end)->format('H:i');
+                                                                        $pTimeDisplay = " <small class='text-primary ml-2 font-weight-bold'>({$pStart} - {$pEnd})</small>";
+                                                                    }
                                                                 @endphp
                                                                 <div class="mb-1 d-flex align-items-center personnel-assigned-item"
                                                                     data-personnel-id="{{ $pData->personnel_id }}">
                                                                     <span
                                                                         class="personnel-label">{{ chr(65 + $loop->index) }}</span>
-                                                                    <span>{{ $personName }}</span>
+                                                                    <span>{{ $personName }}{!! $pTimeDisplay !!}</span>
                                                                 </div>
                                                             @endforeach
                                                         @else
@@ -1083,7 +1089,6 @@
                 // Chờ load xong giao diện rồi in
                 setTimeout(function() {
                     window.print();
-                    // Tuỳ chọn: sau khi in có thể đóng tab hoặc làm gì đó
                 }, 1000);
             @endif
         });

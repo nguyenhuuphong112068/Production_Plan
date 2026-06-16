@@ -1,0 +1,24 @@
+1071:                 $('#sidebar-count-c4').text(shifts['C4'].length);
+1072:                 $('#sidebar-count-hc').text(shifts['HC'].length);
+1073:                 $('#sidebar-count-p').text(shifts['P'].length);
+1074:             }
+1075: 
+1076:             if (!$sidebar.hasClass('collapsed')) {
+1077:                 const icon = $toggleBtn.find('i');
+1078:                 icon.removeClass('fa-chevron-left').addClass('fa-chevron-right');
+1079:                 fetchPersonnelShifts();
+1080:             }
+1081: 
+1082:             @if (request()->has('print'))
+1083:                 // Chờ load xong giao diện rồi in
+1084:                 setTimeout(function() {
+1085:                     window.print();
+1086:                     // Tuỳ chọn: sau khi in có thể đóng tab hoặc làm gì đó
+1087:                 }, 1000);
+1088:             @endif
+1089:         });
+1090:     </script>
+1091: </body>
+1092: 
+1093: </html>
+1094: 

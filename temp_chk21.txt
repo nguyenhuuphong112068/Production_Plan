@@ -1,0 +1,36 @@
+1111: 
+1112:             foreach ($assignments as $a) {
+1113:                 $a->personnel_data = DB::table('assignment_personnel')
+1114:                     ->where('assignment_id', $a->id)
+1115:                     ->select('personnel_id', 'notification', 'operation_type')->get();
+1116:                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+1117:                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
+1118:             }
+1119: 
+1120:             return (object)[
+1121:                 'room_id' => $room->id,
+1122:                 'room_code' => $room->code,
+1123:                 'room_name' => $room->name,
+1124:                 'main_equiment_name' => $room->main_equiment_name ?? null,
+1125:                 'theory_display' => $theoryDisplay,
+1126:                 'assignments' => $assignments,
+1127:                 'actual_details' => $actuals
+1128:             ];
+1129:         });
+1130: 
+1131:         // 6.5 Thêm các công việc ngoài lịch không có phòng
+1132:         $noRoomAssignments = $allAssignments->get("") ?? collect();
+1133:         if ($noRoomAssignments->isNotEmpty()) {
+1134:             $noRoomGroups = $noRoomAssignments->groupBy('stage_plan_id');
+1135:             foreach ($noRoomGroups as $spId => $groupAssignments) {
+1136:                 foreach ($groupAssignments as $a) {
+1137:                     $a->personnel_data = DB::table('assignment_personnel')
+1138:                         ->where('assignment_id', $a->id)
+1139:                         ->select('personnel_id', 'notification', 'operation_type')->get();
+1140:                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+1141:                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
+1142:                 }
+1143: 
+1144:                 $tasks->push((object)[
+1145:                     'room_id' => null,
+1146:                     'room_code' => 'NA',

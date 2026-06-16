@@ -1,0 +1,31 @@
+1016:             ->get()
+1017:             ->groupBy('room_id');
+1018: 
+1019:         // 4. Lấy dữ liệu đã phân công
+1020:         $assignmentsQuery = DB::table('assignments as a')
+1021:             ->leftJoin('user_management as u', 'a.assigned_by', '=', 'u.userName')
+1022:             ->select('a.*', 'u.fullname as assigner_name')
+1023:             ->where('a.deparment_code', $production_code)
+1024:             ->whereDate('a.start', $reportedDate)
+1025:             ->where('a.active', 1);
+1026: 
+1027:         if ($group_code) {
+1028:             if ($group_code == 7 || $group_code == 8) {
+1029:                 $assignmentsQuery->whereIn('a.stage_groups_code', [7, 8]);
+1030:             } else {
+1031:                 $assignmentsQuery->where('a.stage_groups_code', $group_code);
+1032:             }
+1033:         }
+1034: 
+1035:         $allAssignments = $assignmentsQuery->get()->groupBy('room_id');
+1036: 
+1037:         // 5. Lấy dữ liệu báo cáo hoạt động thực tế (Actual Detail) từ DailyReportController
+1038:         $dailyReportController = app(DailyReportController::class);
+1039:         $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId', $production_code);
+1040:         $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
+1041: 
+1042:         // 6. Tổ chức lại dữ liệu
+1043:         $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails, $startDate, $endDate) {
+1044:             $plans = $stagePlans->get($room->id) ?? collect();
+1045:             $assignments = $allAssignments->get($room->id) ?? collect();
+1046:             $actuals = $actualDetails->get($room->id) ?? collect();

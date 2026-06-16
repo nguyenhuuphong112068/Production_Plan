@@ -1,0 +1,11 @@
+456:                 <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-toggle-theory"
+457:                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
+458:                     <i class="fas fa-eye"></i>
+459:                 </button>
+460:                 <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác"
+461:                     data-url="{{ route('pages.assignment.production.public') }}?production_code={{ $production_code }}&group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
+462:                     <i class="fas fa-print"></i> In Lịch
+463:                 </button>
+464:             </div>
+465: 
+466:         </div>

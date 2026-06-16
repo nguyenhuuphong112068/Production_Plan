@@ -1,0 +1,21 @@
+1096:                         ];
+1097:                     }
+1098:                 }
+1099:             }
+1100: 
+1101:             usort($displayItems, function($a, $b) {
+1102:                 return strtotime($a['start']) <=> strtotime($b['start']);
+1103:             });
+1104: 
+1105:             foreach ($displayItems as $index => $item) {
+1106:                 $stt = $index + 1;
+1107:                 $timeDisp = Carbon::parse($item['start'])->format('H:i') . '-' . Carbon::parse($item['end'])->format('H:i');
+1108:                 $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom text-left'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} | ({$timeDisp})</b></div></div>";
+1109:             }
+1110:             if ($theoryDisplay == '') $theoryDisplay = '<span class="text-muted italic">Không có lịch</span>';
+1111: 
+1112:             foreach ($assignments as $a) {
+1113:                 $a->personnel_data = DB::table('assignment_personnel')
+1114:                     ->where('assignment_id', $a->id)
+1115:                     ->select('personnel_id', 'notification', 'operation_type')->get();
+1116:                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;

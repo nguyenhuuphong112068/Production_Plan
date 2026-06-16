@@ -1055,9 +1055,9 @@ class ProductionAssignmentController extends Controller
                         $isCleaning = (stripos($p->title, 'vệ sinh') !== false || stripos($p->title, 'VS-') !== false || stripos($p->title, 'VS ') !== false);
                         if ($isCleaning) {
                             $cleanTitle = 'Vệ sinh';
-                            if (stripos($p->title, 'cấp 2') !== false || stripos($p->title, 'cấp II') !== false || stripos($p->title_clearning, 'VS-II') !== false) {
+                            if (stripos($p->title, 'cấp 2') !== false || stripos($p->title, 'cấp II') !== false || stripos($p->title_clearning ?? '', 'VS-II') !== false) {
                                 $cleanTitle = 'Vệ sinh cấp II';
-                            } elseif (stripos($p->title, 'cấp 1') !== false || stripos($p->title, 'cấp I') !== false || stripos($p->title_clearning, 'VS-I') !== false) {
+                            } elseif (stripos($p->title, 'cấp 1') !== false || stripos($p->title, 'cấp I') !== false || stripos($p->title_clearning ?? '', 'VS-I') !== false) {
                                 $cleanTitle = 'Vệ sinh cấp I';
                             }
                             if ($p->product_name && $p->product_name !== 'NA') {
@@ -1078,12 +1078,13 @@ class ProductionAssignmentController extends Controller
                 }
                 
                 // Cleaning event
-                if ($p->start_clearning && $p->end_clearning) {
+                if (!empty($p->start_clearning) && !empty($p->end_clearning)) {
                     if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
                         $cleanTitle = 'Vệ sinh';
-                        if ($p->title_clearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
-                        elseif ($p->title_clearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
-                        elseif ($p->title_clearning == 'VS') $cleanTitle = 'Vệ sinh';
+                        $titleClearning = $p->title_clearning ?? '';
+                        if ($titleClearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
+                        elseif ($titleClearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
+                        elseif ($titleClearning == 'VS') $cleanTitle = 'Vệ sinh';
                         
                         $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
                         $displayText = "{$cleanTitle} ({$productPart})";
@@ -1111,7 +1112,7 @@ class ProductionAssignmentController extends Controller
             foreach ($assignments as $a) {
                 $a->personnel_data = DB::table('assignment_personnel')
                     ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification', 'operation_type')->get();
+                    ->select('personnel_id', 'notification', 'operation_type', 'start', 'end')->get();
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
@@ -1135,7 +1136,7 @@ class ProductionAssignmentController extends Controller
                 foreach ($groupAssignments as $a) {
                     $a->personnel_data = DB::table('assignment_personnel')
                         ->where('assignment_id', $a->id)
-                        ->select('personnel_id', 'notification', 'operation_type')->get();
+                        ->select('personnel_id', 'notification', 'operation_type', 'start', 'end')->get();
                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
                 }

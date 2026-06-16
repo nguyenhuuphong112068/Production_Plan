@@ -1,0 +1,16 @@
+1076:                         ];
+1077:                     }
+1078:                 }
+1079:                 
+1080:                 // Cleaning event
+1081:                 if ($p->start_clearning && $p->end_clearning) {
+1082:                     if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
+1083:                         $cleanTitle = 'Vệ sinh';
+1084:                         if ($p->title_clearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
+1085:                         elseif ($p->title_clearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
+1086:                         elseif ($p->title_clearning == 'VS') $cleanTitle = 'Vệ sinh';
+1087:                         
+1088:                         $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
+1089:                         $displayText = "{$cleanTitle} ({$productPart})";
+1090:                         
+1091:                         $displayItems[] = [

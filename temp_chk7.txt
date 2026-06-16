@@ -1,0 +1,41 @@
+941: 
+942:     public function publicView(Request $request)
+943:     {
+944:         $production_code = $request->production_code ?? 'PXV1'; // Mặc định PXV1 nếu không có
+945:         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
+946:         $group_code = $request->group_code;
+947: 
+948:         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+949:         $endDate = $startDate->copy()->addDays(1);
+950: 
+951:         // 1. Lấy danh sách các tổ có trong bộ phận
+952:         $groups = DB::table('room')
+953:             ->where('deparment_code', $production_code)
+954:             ->where('only_maintenance', 0)
+955:             ->whereNotNull('group_code')
+956:             ->select('group_code', 'production_group')
+957:             ->distinct()
+958:             ->orderBy('group_code')
+959:             ->get();
+960: 
+961:         // Split ĐGSC and ĐGTC
+962:         $hasGroup7 = false;
+963:         foreach ($groups as $g) {
+964:             if ($g->group_code == 7) {
+965:                 $g->production_group = 'ĐGSC';
+966:                 $hasGroup7 = true;
+967:             }
+968:         }
+969:         if ($hasGroup7 && !$groups->contains('group_code', 8)) {
+970:             $groups->push((object)[
+971:                 'group_code' => 8,
+972:                 'production_group' => 'ĐGTC'
+973:             ]);
+974:             $groups = $groups->sortBy('group_code')->values();
+975:         }
+976: 
+977:         // 2. Lấy danh sách phòng (có lọc theo tổ)
+978:         $roomQuery = DB::table('room')
+979:             ->where('deparment_code', $production_code)
+980:             ->where('only_maintenance', 0);
+981: 

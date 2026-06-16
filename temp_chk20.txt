@@ -1,0 +1,121 @@
+21:         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+22:         $endDate = $startDate->copy()->addDays(1);
+95:             ->where(function ($q) use ($startDate, $endDate) {
+96:                 $q->where(function ($q1) use ($startDate, $endDate) {
+97:                     $q1->where('sp.start', '<', $endDate)
+98:                        ->where('sp.end', '>', $startDate);
+99:                 })->orWhere(function ($q2) use ($startDate, $endDate) {
+100:                     $q2->whereNotNull('sp.start_clearning')
+101:                        ->where('sp.start_clearning', '<', $endDate)
+102:                        ->where('sp.end_clearning', '>', $startDate);
+108:                 'sp.start',
+110:                 'sp.start_clearning',
+126:             ->whereDate('a.start', $reportedDate)
+139:         // Pre-fetch tất cả assignment_personnel để tránh N+1 Query
+143:             $allPersonnelData = DB::table('assignment_personnel')
+145:                 ->select('assignment_id', 'personnel_id', 'notification', 'operation_type', 'start', 'end')
+152:         // $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId');
+156:         $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate, $active_group_code, $allPersonnelData, $startDate, $endDate) {
+167:                 if ($p->start && $p->end) {
+168:                     if ($p->start < $endDate && $p->end > $startDate) {
+188:                             'start' => $p->start,
+196:                 if ($p->start_clearning && $p->end_clearning) {
+197:                     if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
+208:                             'start' => $p->start_clearning,
+217:                 return strtotime($a['start']) <=> strtotime($b['start']);
+225:                 $timeDisp = Carbon::parse($item['start'])->format('H:i') . '-' . Carbon::parse($item['end'])->format('H:i');
+227:                 $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item['start']}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
+241:                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+251:                     $pStart = Carbon::parse($item['start']);
+286:                         'start' => $sTime->toDateTimeString(),
+291:                         'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null, 'start' => null, 'end' => null, 'operation_type' => null]]),
+292:                         'start_time_display' => $sTime->format('H:i'),
+298:                 $assignments = $assignments->sortBy('start');
+315:                 'theory_start' => '07:15',
+330:                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+342:                     'assignments' => $groupAssignments->sortBy('start'),
+348:                     'theory_start' => '07:15',
+605:         if (!$room_id && !($spIdString && str_starts_with($spIdString, 'EXT_'))) {
+615:                 ->whereDate('start', $reportedDate)
+618:             if ($spIdString && str_starts_with($spIdString, 'EXT_') && !$room_id) {
+660:                     if (empty($row['start_time']) || empty($row['end_time'])) {
+664:                     $startDt = $reportedDate . ' ' . $row['start_time'];
+668:                     if ($row['end_time'] < $row['start_time']) {
+676:                         $pStart = empty($p['start']) ? $startDt : Carbon::parse($reportedDate . ' ' . $p['start'])->format('Y-m-d H:i:s');
+683:                             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+689:                             ->whereRaw('COALESCE(ap.start, a.start) < ?', [$pEnd])
+691:                             ->select('a.start', 'a.end', 'ap.start as p_start', 'ap.end as p_end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+704:                             $olStart = $overlap->p_start ?: $overlap->start;
+719:                         'start' => $startDt,
+737:                         $pStart = empty($p['start']) ? $startDt : Carbon::parse($reportedDate . ' ' . $p['start'])->format('Y-m-d H:i:s');
+743:                         DB::table('assignment_personnel')->insert([
+748:                             'start' => $pStart,
+828:                     if (empty($row['start_time']) || empty($row['end_time'])) {
+850:                             'start_time' => $row['start_time'],
+860:                     $startDt = $targetDate . ' ' . $row['start_time'];
+863:                     if ($row['end_time'] < $row['start_time']) {
+871:                             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+877:                             ->where('a.start', '<', $endDt)
+878:                             ->where('a.end', '>', $startDt)
+879:                             ->select('a.start', 'a.end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+892:                             $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
+906:                         'start' => $startDt,
+921:                         DB::table('assignment_personnel')->insert([
+948:         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+949:         $endDate = $startDate->copy()->addDays(1);
+999:             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate]);
+1008:             'sp.start',
+1024:             ->whereDate('a.start', $reportedDate)
+1039:         $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId', $production_code);
+1043:         $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails, $startDate, $endDate) {
+1053:                 if ($p->start && $p->end) {
+1054:                     if ($p->start < $endDate && $p->end > $startDate) {
+1073:                             'start' => $p->start,
+1081:                 if (!empty($p->start_clearning) && !empty($p->end_clearning)) {
+1082:                     if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
+1093:                             'start' => $p->start_clearning,
+1102:                 return strtotime($a['start']) <=> strtotime($b['start']);
+1107:                 $timeDisp = Carbon::parse($item['start'])->format('H:i') . '-' . Carbon::parse($item['end'])->format('H:i');
+1113:                 $a->personnel_data = DB::table('assignment_personnel')
+1116:                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+1137:                     $a->personnel_data = DB::table('assignment_personnel')
+1140:                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
+1150:                     'assignments' => $groupAssignments->sortBy('start'),
+1207:             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+1210:             ->whereDate('a.start', $reportedDate)
+1215:                 'a.start',
+1241:             $startDisplay = $ass->start ? Carbon::parse($ass->start)->format('H:i') : '';
+1261:                 'start' => $startDisplay,
+1301:         $startDate = Carbon::parse($request->startDate)->format('Y-m-d H:i:s');
+1344:             ->where(function ($q) use ($startDate, $endDate) {
+1345:                 $q->where(function ($q1) use ($startDate, $endDate) {
+1346:                     $q1->where('sp.start', '<', $endDate)
+1347:                        ->where('sp.end', '>', $startDate);
+1348:                 })->orWhere(function ($q2) use ($startDate, $endDate) {
+1349:                     $q2->whereNotNull('sp.start_clearning')
+1350:                        ->where('sp.start_clearning', '<', $endDate)
+1351:                        ->where('sp.end_clearning', '>', $startDate);
+1361:             'sp.start',
+1363:             'sp.start_clearning',
+1375:             if ($p->start && $p->end) {
+1376:                 if ($p->start < $endDate && $p->end > $startDate) {
+1393:                             'start' => $p->start,
+1406:                             'start' => $p->start,
+1420:             if ($p->start_clearning && $p->end_clearning) {
+1421:                 if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
+1433:                         'start' => $p->start_clearning,
+1447:             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+1451:             ->whereRaw('(a.start < ? AND a.end > ?)', [$endDate, $startDate]);
+1464:             'a.start',
+1485:                 'start' => $first->start,
+1537:         $dbAssignments = $this->getDbAssignments(Carbon::parse($startDate)->format('Y-m-d'));
+1562:                 ->whereDate('start', $reportedDate)
+1587:                 if (empty($row['start']) || empty($row['end'])) {
+1591:                 $startDt = Carbon::parse($row['start'])->format('Y-m-d H:i:s');
+1600:                         ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+1606:                         ->where('a.start', '<', $endDt)
+1607:                         ->where('a.end', '>', $startDt)
+1608:                         ->select('a.start', 'a.end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+1621:                         $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
+1632:                     'start' => $startDt,
+1645:                     DB::table('assignment_personnel')->insert([

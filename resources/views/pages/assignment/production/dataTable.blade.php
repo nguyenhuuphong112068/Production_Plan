@@ -2893,7 +2893,11 @@
             // Tạo iframe ẩn
             const iframe = document.createElement('iframe');
             iframe.id = 'print-iframe';
-            iframe.style.display = 'none';
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0px';
+            iframe.style.height = '0px';
+            iframe.style.border = 'none';
+            // iframe.style.display = 'none'; // DO NOT hide iframe via display:none as it blocks printing in some browsers
             iframe.src = url;
 
             document.body.appendChild(iframe);

@@ -1,0 +1,11 @@
+1081: 
+1082:             @if (request()->has('print'))
+1083:                 // Chờ load xong giao diện rồi in
+1084:                 setTimeout(function() {
+1085:                     window.print();
+1086:                     // Tuỳ chọn: sau khi in có thể đóng tab hoặc làm gì đó
+1087:                 }, 1000);
+1088:             @endif
+1089:         });
+1090:     </script>
+1091: </body>

@@ -1,0 +1,51 @@
+1201:         ]);
+1202:     }
+1203: 
+1204:     private function getDbAssignments($reportedDate)
+1205:     {
+1206:         $dailyAssignments = DB::table('assignments as a')
+1207:             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+1208:             ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
+1209:             ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
+1210:             ->whereDate('a.start', $reportedDate)
+1211:             ->where('a.active', 1)
+1212:             ->select(
+1213:                 'ap.personnel_id',
+1214:                 'a.id as assignment_id',
+1215:                 'a.start',
+1216:                 'a.end',
+1217:                 'a.stage_groups_code',
+1218:                 'a.deparment_code',
+1219:                 'a.stage_plan_id',
+1220:                 'a.work_location',
+1221:                 'sg.name as group_name',
+1222:                 'r.name as room_name',
+1223:                 'r.code as room_code'
+1224:             )
+1225:             ->get();
+1226: 
+1227:         $prodGroups = [
+1228:             1 => "Trung Tâm Cân",
+1229:             3 => "Pha Chế",
+1230:             4 => "Văn Phòng",
+1231:             5 => "Định Hình",
+1232:             6 => "Bao Phim",
+1233:             7 => "ĐGSC",
+1234:             8 => "ĐGTC",
+1235:             9 => "VSCN + Kho BTP"
+1236:         ];
+1237: 
+1238:         $dbAssignments = [];
+1239:         foreach ($dailyAssignments as $ass) {
+1240:             $pId = $ass->personnel_id;
+1241:             $startDisplay = $ass->start ? Carbon::parse($ass->start)->format('H:i') : '';
+1242:             $endDisplay = $ass->end ? Carbon::parse($ass->end)->format('H:i') : '';
+1243: 
+1244:             $groupName = '';
+1245:             if ($ass->deparment_code == 'EN') {
+1246:                 $groupName = 'Bảo trì';
+1247:             } elseif ($ass->deparment_code == 'QA') {
+1248:                 $groupName = 'Hiệu chuẩn';
+1249:             } else {
+1250:                 $groupName = $prodGroups[$ass->stage_groups_code] ?? $ass->group_name ?? ('Tổ ' . $ass->stage_groups_code);
+1251:             }
