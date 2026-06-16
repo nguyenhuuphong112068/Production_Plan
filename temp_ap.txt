@@ -1,3 +1,0 @@
-448:                     <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
-3234:         async function autoAssign() {
-3805:         $(document).on('click', '#btn-auto-assign', autoAssign);

@@ -1,6 +1,0 @@
-1107:     const personnelSkills = {
-1115:         const skillsStr = personnelSkills[pid] || '';
-2092:             const skillData = personnelSkills[personId];
-2318:             const skillData = personnelSkills[personId];
-3347:                 // Hàm lấy level của person cho room (sử dụng personnelSkills)
-3349:                     const skillsStr = personnelSkills[pid] || '';

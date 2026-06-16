@@ -1,6 +1,0 @@
-721:                                                                         class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
-808:                                                                     class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
-999:                         const $btn = $row.find('.btn-toggle-room-active');
-1020:                     const $btn = $row.find('.btn-toggle-room-active');
-1123:                     <button class="btn btn-sm btn-danger btn-toggle-room-active ml-1" title="Vô hiệu hóa">
-1152:         $(document).on('click', '.btn-toggle-room-active', function() {

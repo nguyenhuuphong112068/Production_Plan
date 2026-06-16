@@ -1,2 +1,0 @@
-67:         $this->syncEmployees($getUser->deparment);
-92:     private function syncEmployees($departmentCode)
