@@ -1,0 +1,41 @@
+551:                                         }
+552:                                         $assignmentsByGroup[$rGrpId][] = [
+553:                                             'as' => $as,
+554:                                             'rId' => $rId,
+555:                                             'rLvl' => $rLvl,
+556:                                             'rActive' => $rActive,
+557:                                             'rUser' => $rUser,
+558:                                             'rDate' => $rDate,
+559:                                         ];
+560:                                     }
+561: 
+562:                                     $renderedGroupIds = [];
+563:                                     foreach ($groupPermissions as $gp) {
+564:                                         $renderedGroupIds[] = (int) explode(':', $gp)[0];
+565:                                     }
+566: 
+567:                                     // Gom các phòng không thuộc về tổ nào đang hiển thị
+568:                                     $otherAssignments = [];
+569:                                     foreach ($assignments as $as) {
+570:                                         $parts = explode(':', $as);
+571:                                         $rId = $parts[0];
+572:                                         $rGrpId_passed = $parts[5] ?? null;
+573:                                         $rObj = $roomsById[$rId] ?? null;
+574:                                         $rGrpId = 0;
+575:                                         if (is_numeric($rGrpId_passed) && $rGrpId_passed > 0) {
+576:                                             $rGrpId = (int) $rGrpId_passed;
+577:                                         } elseif ($rObj) {
+578:                                             $rGrpCode = $rObj->group_code;
+579:                                             $rGrpId = (int) (isset($groupsByCode[$rGrpCode])
+580:                                                 ? $groupsByCode[$rGrpCode]->id
+581:                                                 : 0);
+582:                                         }
+583:                                         if (!in_array($rGrpId, $renderedGroupIds)) {
+584:                                             $otherAssignments[] = [
+585:                                                 'as' => $as,
+586:                                                 'rId' => $rId,
+587:                                                 'rLvl' => $parts[1] ?? 1,
+588:                                                 'rActive' => $parts[2] ?? 1,
+589:                                                 'rUser' => $parts[3] ?? 'N/A',
+590:                                                 'rDate' => $parts[4] ?? '',
+591:                                                 'rGrpId' => $rGrpId,

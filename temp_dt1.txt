@@ -1,0 +1,61 @@
+661:                                                         @else
+662:                                                             @foreach ($groupAssignments as $item)
+663:                                                                 @php
+664:                                                                     $rId = $item['rId'];
+665:                                                                     $rLvl = $item['rLvl'];
+666:                                                                     $rActive = $item['rActive'];
+667:                                                                     $rUser = $item['rUser'];
+668:                                                                     $rDate = $item['rDate'];
+669:                                                                     $rGrpId = $gId;
+670:                                                                 @endphp
+671:                                                                 <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
+672:                                                                     data-active="{{ $rActive }}"
+673:                                                                     data-group-id="{{ $rGrpId }}">
+674:                                                                     <select
+675:                                                                         class="form-control form-control-sm room-id-select mr-1"
+676:                                                                         style="width: 250px;" {{ $disabled }}>
+677:                                                                         <option value="">-- Phòng --</option>
+678:                                                                         {!! str_replace('value="' . $rId . '"', 'value="' . $rId . '" selected', $roomOptionsHtml) !!}
+679:                                                                     </select>
+680:                                                                     <select
+681:                                                                         class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
+682:                                                                         style="width: 70px;" {{ $disabled }}>
+683:                                                                         <option value="1"
+684:                                                                             {{ $rLvl == 1 ? 'selected' : '' }}>1
+685:                                                                         </option>
+686:                                                                         <option value="2"
+687:                                                                             {{ $rLvl == 2 ? 'selected' : '' }}>2
+688:                                                                         </option>
+689:                                                                         <option value="3"
+690:                                                                             {{ $rLvl == 3 ? 'selected' : '' }}>3
+691:                                                                         </option>
+692:                                                                         <option value="4"
+693:                                                                             {{ $rLvl == 4 ? 'selected' : '' }}>4
+694:                                                                         </option>
+695:                                                                     </select>
+696: 
+697:                                                                     @php
+698:                                                                         $hYear =
+699:                                                                             $workHours[$data->id][$rId]['year'] ?? 0;
+700:                                                                         $hTotal =
+701:                                                                             $workHours[$data->id][$rId]['total'] ?? 0;
+702:                                                                     @endphp
+703:                                                                     <span class="work-hours-badge"
+704:                                                                         title="Thời gian đã làm việc tại phòng này">
+705:                                                                         <span class="yearly" title="Năm hiện tại"><i
+706:                                                                                 class="fas fa-calendar-alt"></i>{{ $hYear }}h</span>
+707:                                                                         |
+708:                                                                         <span class="total" title="Tổng cộng"><i
+709:                                                                                 class="fas fa-history"></i>{{ $hTotal }}h</span>
+710:                                                                     </span>
+711: 
+712:                                                                     <span class="assignment-meta mx-2"
+713:                                                                         style="min-width: 100px;">
+714:                                                                         <i class="fas fa-user-edit"></i>
+715:                                                                         {{ $rUser }} <br>
+716:                                                                         <i class="fas fa-calendar-check"></i>
+717:                                                                         {{ $rDate }}
+718:                                                                     </span>
+719: 
+720:                                                                     <button
+721:                                                                         class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"

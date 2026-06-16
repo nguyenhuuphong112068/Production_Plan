@@ -1,0 +1,71 @@
+581:                                     ->where('id', $placeholderRow->id)
+582:                                     ->update([
+583:                                         'group_id' => $groupCode,
+584:                                         'active' => $active,
+585:                                         'created_by' => $userName,
+586:                                         'updated_at' => now()
+587:                                     ]);
+588:                             } else {
+589:                                 DB::table('employee_assignments')->insert([
+590:                                     'employees_id' => $employeeId,
+591:                                     'production_code' => $productionCode,
+592:                                     'is_main' => 1,
+593:                                     'group_id' => $groupCode,
+594:                                     'room_id' => 0,
+595:                                     'active' => $active,
+596:                                     'created_by' => $userName,
+597:                                     'created_at' => now(),
+598:                                     'updated_at' => now()
+599:                                 ]);
+600:                             }
+601:                         }
+602:                     }
+603:                 }
+604:             } else {
+605:                 // Get list of submitted room_id & group_id pairs
+606:                 $submittedPairs = [];
+607:                 foreach ($ids as $item) {
+608:                     if (empty($item)) continue;
+609:                     $parts = explode(':', $item);
+610:                     $roomId = $parts[0];
+611:                     $submittedGroupId = $parts[3] ?? null;
+612: 
+613:                     if ($submittedGroupId) {
+614:                         $groupId = $submittedGroupId;
+615:                     } else {
+616:                         $room = DB::table('room')->where('id', $roomId)->first();
+617:                         $groupCode = $room->group_code ?? '';
+618:                         $groupId = DB::table('stage_groups')->where('code', $groupCode)->value('id') ?? 0;
+619:                     }
+620:                     $submittedPairs[] = $groupId . '_' . $roomId;
+621:                 }
+622: 
+623:                 // Delete assignments that are NOT in the submitted list
+624:                 $currentAssignments = DB::table('employee_assignments')
+625:                     ->where('employees_id', $employeeId)
+626:                     ->where('room_id', '>', 0)
+627:                     ->get();
+628: 
+629:                 foreach ($currentAssignments as $ca) {
+630:                     $pair = $ca->group_id . '_' . $ca->room_id;
+631:                     if (!in_array($pair, $submittedPairs)) {
+632:                         $groupRoomsCount = DB::table('employee_assignments')
+633:                             ->where('employees_id', $employeeId)
+634:                             ->where('group_id', $ca->group_id)
+635:                             ->where('room_id', '>', 0)
+636:                             ->count();
+637:                             
+638:                         if ($groupRoomsCount <= 1) {
+639:                             DB::table('employee_assignments')->where('id', $ca->id)->update([
+640:                                 'room_id' => 0,
+641:                                 'level' => 1,
+642:                                 'updated_at' => now()
+643:                             ]);
+644:                         } else {
+645:                             DB::table('employee_assignments')->where('id', $ca->id)->delete();
+646:                         }
+647:                     }
+648:                 }
+649: 
+650:                 foreach ($ids as $item) {
+651:                     if (empty($item)) continue;

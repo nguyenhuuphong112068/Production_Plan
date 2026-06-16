@@ -158,7 +158,7 @@ class PersonnelController extends Controller
             })
             ->select('e.*')
             ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(eg.group_id, ':', eg.active, ':', COALESCE(u.name, eg.created_by), ':', DATE_FORMAT(eg.created_at, '%d/%m/%y')) SEPARATOR '|') FROM (SELECT group_id, employees_id, MAX(active) as active, MAX(created_by) as created_by, MAX(created_at) as created_at FROM employee_assignments WHERE group_id > 0 GROUP BY group_id, employees_id) eg LEFT JOIN employees u ON eg.created_by = u.code WHERE eg.employees_id = e.id) as allowed_groups"))
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(er.room_id, ':', er.level, ':', er.active, ':', COALESCE(u.name, er.created_by), ':', DATE_FORMAT(er.created_at, '%d/%m/%y'), ':', er.group_id) ORDER BY er.group_id, er.room_id SEPARATOR '|') FROM employee_assignments er LEFT JOIN employees u ON er.created_by = u.code WHERE er.employees_id = e.id AND er.room_id > 0) as allowed_rooms_with_levels"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(er.room_id, ':', er.level, ':', er.active, ':', COALESCE(u.name, er.created_by), ':', DATE_FORMAT(er.created_at, '%d/%m/%y'), ':', er.group_id, ':', COALESCE(er.priority_level, 1)) ORDER BY er.group_id, COALESCE(er.priority_level, 999) ASC, er.room_id SEPARATOR '|') FROM employee_assignments er LEFT JOIN employees u ON er.created_by = u.code WHERE er.employees_id = e.id AND er.room_id > 0) as allowed_rooms_with_levels"))
             ->addSelect(DB::raw("(SELECT production_code FROM employee_assignments WHERE employees_id = e.id AND is_main = 1 LIMIT 1) as main_production"))
             ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(ep2.production_code, ':', ep2.active, ':', COALESCE(u.name, ep2.created_by), ':', DATE_FORMAT(ep2.created_at, '%d/%m/%y')) SEPARATOR '|') FROM (SELECT production_code, employees_id, MAX(active) as active, MAX(created_by) as created_by, MAX(created_at) as created_at, MAX(is_main) as is_main FROM employee_assignments WHERE production_code != '' GROUP BY production_code, employees_id) ep2 LEFT JOIN employees u ON ep2.created_by = u.code WHERE ep2.employees_id = e.id AND ep2.is_main = 0) as temp_productions"));
 
@@ -654,6 +654,7 @@ class PersonnelController extends Controller
                     $level = $parts[1] ?? 1;
                     $active = $parts[2] ?? 1;
                     $submittedGroupId = $parts[3] ?? null;
+                    $priorityLevel = $parts[4] ?? 1;
 
                     // Lấy thông tin PX và Tổ từ bảng room
                     $room = DB::table('room')->where('id', $roomId)->first();
@@ -709,6 +710,7 @@ class PersonnelController extends Controller
                                 'is_main' => 1,
                                 'level' => $level,
                                 'active' => $active,
+                                'priority_level' => $priorityLevel,
                                 'created_by' => $userName,
                                 'updated_at' => now()
                             ]);

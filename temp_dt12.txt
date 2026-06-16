@@ -1,0 +1,51 @@
+1401:             sBody.empty();
+1402: 
+1403: 
+1404: 
+1405:             gKeys.forEach(function(key) {
+1406:                 let stats = groupStats[key];
+1407:                 sBody.append(`
+1408:                     <tr>
+1409:                         <td>${key}</td>
+1410:                         <td class="text-center text-success font-weight-bold">${stats.active}</td>
+1411:                         <td class="text-center text-secondary">${stats.total - stats.active}</td>
+1412:                         <td class="text-center font-weight-bold">${stats.total}</td>
+1413:                     </tr>
+1414:                 `);
+1415:             });
+1416: 
+1417:             if (unassignedCount > 0) {
+1418:                 sBody.append(`
+1419:                     <tr class="table-danger">
+1420:                         <td>Chưa phân công (Active)</td>
+1421:                         <td class="text-center text-danger font-weight-bold">${unassignedCount}</td>
+1422:                         <td class="text-center">-</td>
+1423:                         <td class="text-center font-weight-bold">${unassignedCount}</td>
+1424:                     </tr>
+1425:                 `);
+1426:             }
+1427: 
+1428:             let rContainer = $('#dash-room-bars-container');
+1429:             rContainer.empty();
+1430:             let rKeys = Object.keys(roomStats);
+1431:             rKeys.sort((a, b) => roomStats[b] - roomStats[a]);
+1432: 
+1433:             if (rKeys.length === 0) {
+1434:                 rContainer.append('<div class="text-center text-muted small mt-3">Chưa có dữ liệu phòng</div>');
+1435:             } else {
+1436:                 rKeys.forEach(function(key) {
+1437:                     let count = roomStats[key];
+1438:                     let percentage = activeEmps > 0 ? Math.round((count / activeEmps) * 100) : 0;
+1439:                     rContainer.append(`
+1440:                         <div class="d-flex justify-content-between small font-weight-bold mb-1 mt-2">
+1441:                             <span class="text-secondary text-truncate" style="max-width: 80%;" title="${key}">${key}</span>
+1442:                             <span class="text-secondary">${count}</span>
+1443:                         </div>
+1444:                         <div class="progress" style="height: 6px;">
+1445:                             <div class="progress-bar bg-info" style="width: ${percentage}%"></div>
+1446:                         </div>
+1447:                     `);
+1448:                 });
+1449:             }
+1450:         }
+1451: 

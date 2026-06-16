@@ -538,6 +538,7 @@
                                         $rDate = $parts[4] ?? '';
 
                                         $rGrpId_passed = $parts[5] ?? null;
+                                        $rPriorityLevel = $parts[6] ?? 1;
 
                                         $rObj = $roomsById[$rId] ?? null;
                                         $rGrpId = 0;
@@ -556,6 +557,7 @@
                                             'rActive' => $rActive,
                                             'rUser' => $rUser,
                                             'rDate' => $rDate,
+                                            'rPriorityLevel' => $rPriorityLevel,
                                         ];
                                     }
 
@@ -589,6 +591,7 @@
                                                 'rUser' => $parts[3] ?? 'N/A',
                                                 'rDate' => $parts[4] ?? '',
                                                 'rGrpId' => $rGrpId,
+                                                'rPriorityLevel' => $parts[6] ?? 1,
                                             ];
                                         }
                                     }
@@ -667,10 +670,14 @@
                                                                     $rUser = $item['rUser'];
                                                                     $rDate = $item['rDate'];
                                                                     $rGrpId = $gId;
+                                                                    $rPriorityLevel = $item['rPriorityLevel'] ?? 1;
                                                                 @endphp
                                                                 <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
                                                                     data-active="{{ $rActive }}"
-                                                                    data-group-id="{{ $rGrpId }}">
+                                                                    data-group-id="{{ $rGrpId }}"
+                                                                    data-priority="{{ $rPriorityLevel }}">
+                                                                    <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
+                                                                    <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;" title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
                                                                     <select
                                                                         class="form-control form-control-sm room-id-select mr-1"
                                                                         style="width: 250px;" {{ $disabled }}>
@@ -760,10 +767,14 @@
                                                                 $rUser = $item['rUser'];
                                                                 $rDate = $item['rDate'];
                                                                 $rGrpId = $item['rGrpId'] ?? 0;
+                                                                $rPriorityLevel = $item['rPriorityLevel'] ?? 1;
                                                             @endphp
                                                             <div class="room-assignment-row d-flex align-items-center mb-1 {{ $rActive == 0 ? 'inactive' : '' }}"
                                                                 data-active="{{ $rActive }}"
-                                                                data-group-id="{{ $rGrpId }}">
+                                                                data-group-id="{{ $rGrpId }}"
+                                                                data-priority="{{ $rPriorityLevel }}">
+                                                                <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
+                                                                <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;" title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
                                                                 <select
                                                                     class="form-control form-control-sm room-id-select mr-1"
                                                                     style="width: 250px;" {{ $disabled }}>
@@ -863,6 +874,7 @@
     <!-- /.card -->
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
@@ -1099,6 +1111,8 @@
 
             const newRow = `
                 <div class="room-assignment-row d-flex align-items-center mb-1" data-active="1" data-group-id="${groupId}">
+                    <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
+                    <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;">-</span>
                     <select class="form-control form-control-sm room-id-select mr-1" style="width: 250px;">
                         ${roomOptions}
                     </select>
@@ -1193,8 +1207,12 @@
             const selectedRoomIds = new Set();
             let duplicateFound = false;
 
-            $tr.find('.room-assignment-row').each(function() {
+            $tr.find('.room-assignment-row').each(function(index) {
                 const $row = $(this);
+                const rPriorityLevel = index + 1;
+                $row.attr('data-priority', rPriorityLevel);
+                $row.find('.priority-badge').text(rPriorityLevel).attr('title', 'Ưu tiên ' + rPriorityLevel);
+
                 const rId = $row.find('.room-id-select').val();
                 const rLvl = $row.find('.room-level-select').val();
                 const rActive = $row.attr('data-active') || '1';
@@ -1206,7 +1224,7 @@
                         duplicateFound = true;
                     } else {
                         selectedRoomIds.add(uniqueKey);
-                        idsWithLevels.push(rId + ':' + rLvl + ':' + rActive + ':' + rGroupId);
+                        idsWithLevels.push(rId + ':' + rLvl + ':' + rActive + ':' + rGroupId + ':' + rPriorityLevel);
                     }
                 }
             });
@@ -1635,6 +1653,25 @@
         $(document).on('click', '.btn-toggle-group', function() {
             if ($('#personnel-dashboard').is(':visible')) setTimeout(renderLocalDashboard, 100);
         });
+
+        // Initialize Sortable on all room lists
+        function initSortable() {
+            if (typeof Sortable !== 'undefined' && canEdit) {
+                $('.room-list').each(function() {
+                    if (this.sortableInstance) return; // Prevent double initialization
+                    this.sortableInstance = new Sortable(this, {
+                        handle: '.cursor-grab',
+                        animation: 150,
+                        onEnd: function(evt) {
+                            const $container = $(evt.item).closest('.room-assignments-container');
+                            triggerRoomUpdate($container);
+                        }
+                    });
+                });
+            }
+        }
+        
+        initSortable();
 
     });
 </script>

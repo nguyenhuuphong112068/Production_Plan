@@ -1,0 +1,18 @@
+83: // 4. Lấy dữ liệu công việc lý thuyết trong ngày
+160: // Tạo chuỗi hiển thị lịch lý thuyết (Theory Display)
+161: $theoryDisplay = '';
+227: $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item['start']}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
+229: if ($theoryDisplay == '') {
+230: $theoryDisplay = '<span class="text-muted italic">Không có lịch</span>';
+308: 'theory_display' => $theoryDisplay,
+315: 'theory_start' => '07:15',
+316: 'theory_end' => '16:00',
+341: 'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',
+348: 'theory_start' => '07:15',
+349: 'theory_end' => '16:00',
+992: // 3. Lấy dữ liệu công việc lý thuyết trong ngày
+1048: $theoryDisplay = '';
+1107: $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom text-left'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} | ({$timeDisp})</b></div></div>";
+1109: if ($theoryDisplay == '') $theoryDisplay = '<span class="text-muted italic">Không có lịch</span>';
+1124: 'theory_display' => $theoryDisplay,
+1148: 'theory_display' => '<span class="text-danger font-weight-bold">NA</span>',

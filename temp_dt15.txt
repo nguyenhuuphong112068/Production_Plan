@@ -1,0 +1,12 @@
+1646:             });
+1647: 
+1648: 
+1649: 
+1650: 
+1651:         $(document).on('click', '.btn-toggle-group', function() {
+1652:             if ($('#personnel-dashboard').is(':visible')) setTimeout(renderLocalDashboard, 100);
+1653:         });
+1654: 
+1655:     });
+1656: </script>
+1657: 

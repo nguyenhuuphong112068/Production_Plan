@@ -1,0 +1,41 @@
+1611:                 $('#text-toggle-dashboard').text('Ẩn Dashboard');
+1612:                 $(this).removeClass('btn-outline-info').addClass('btn-info');
+1613:                 renderLocalDashboard();
+1614:                 fetchShiftData();
+1615:             }
+1616:         });
+1617: 
+1618:         // Range Selection UI Handling
+1619:         $('#dash-shift-range-select').change(function() {
+1620:             const range = $(this).val();
+1621:             $('.shift-input-group').hide();
+1622:             $('#input-group-' + range).show();
+1623: 
+1624:             if (range === 'day') {
+1625:                 $('#shift-card-view').show();
+1626:                 $('#shift-table-view').hide();
+1627:             } else {
+1628:                 $('#shift-card-view').hide();
+1629:                 $('#shift-table-view').show();
+1630:             }
+1631:             fetchShiftData();
+1632:         });
+1633: 
+1634:         $('#btn-refresh-shifts').click(function(e) {
+1635:             e.preventDefault();
+1636:             fetchShiftData();
+1637:         });
+1638:         $('#dash-shift-date-input, #dash-shift-week-input, #dash-shift-week-year, #dash-shift-month-input, #dash-shift-month-year')
+1639:             .on('change input', function() {
+1640:                 fetchShiftData();
+1641:             });
+1642: 
+1643: 
+1644: 
+1645: 
+1646:         $(document).on('click', '.btn-toggle-group', function() {
+1647:             if ($('#personnel-dashboard').is(':visible')) setTimeout(renderLocalDashboard, 100);
+1648:         });
+1649: 
+1650:     });
+1651: </script>

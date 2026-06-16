@@ -1,0 +1,31 @@
+566:                                         $renderedGroupIds[] = (int) explode(':', $gp)[0];
+567:                                     }
+568: 
+569:                                     // Gom các phòng không thuộc về tổ nào đang hiển thị
+570:                                     $otherAssignments = [];
+571:                                     foreach ($assignments as $as) {
+572:                                         $parts = explode(':', $as);
+573:                                         $rId = $parts[0];
+574:                                         $rGrpId_passed = $parts[5] ?? null;
+575:                                         $rObj = $roomsById[$rId] ?? null;
+576:                                         $rGrpId = 0;
+577:                                         if (is_numeric($rGrpId_passed) && $rGrpId_passed > 0) {
+578:                                             $rGrpId = (int) $rGrpId_passed;
+579:                                         } elseif ($rObj) {
+580:                                             $rGrpCode = $rObj->group_code;
+581:                                             $rGrpId = (int) (isset($groupsByCode[$rGrpCode])
+582:                                                 ? $groupsByCode[$rGrpCode]->id
+583:                                                 : 0);
+584:                                         }
+585:                                         if (!in_array($rGrpId, $renderedGroupIds)) {
+586:                                             $otherAssignments[] = [
+587:                                                 'as' => $as,
+588:                                                 'rId' => $rId,
+589:                                                 'rLvl' => $parts[1] ?? 1,
+590:                                                 'rActive' => $parts[2] ?? 1,
+591:                                                 'rUser' => $parts[3] ?? 'N/A',
+592:                                                 'rDate' => $parts[4] ?? '',
+593:                                                 'rGrpId' => $rGrpId,
+594:                                             ];
+595:                                         }
+596:                                     }

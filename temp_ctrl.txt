@@ -1,0 +1,82 @@
+201:             $workHours[$wh->personnel_id][$wh->room_id] = [
+202:                 'year' => round($wh->hours_year, 1),
+203:                 'total' => round($wh->hours_total, 1)
+204:             ];
+205:         }
+206: 
+207:         session()->put(['title' => 'NHÂN VIÊN - BỘ PHẬN: ' . $departmentCode]);
+208: 
+209:         $isENorQA = in_array($departmentCode, ['EN', 'QA']);
+210: 
+211:         if ($isENorQA) {
+212: 
+213:             if ($departmentCode == 'QA') {
+214:                 $groups = DB::table('stage_groups')
+215:                     ->where('code', 20)
+216:                     ->select('id', 'code', 'name')
+217:                     ->get();
+218:             } else {
+219:                 $groups = DB::table('stage_groups')
+220:                     ->where('type', 2)
+221:                     ->where('code', "!=", 20)
+222:                     ->select('id', 'code', 'name')
+223:                     ->get();
+224:             }
+225:         } else {
+226:             $groups = collect([
+227:                 1 => "Trung Tâm Cân",
+228:                 3 => "Pha Chế",
+229:                 4 => "Văn Phòng",
+230:                 5 => "Định Hình",
+231:                 6 => "Bao Phim",
+232:                 7 => "ĐGSC",
+233:                 8 => "ĐGTC",
+234:                 9 => "VSCN + Kho BTP"
+235:             ])->map(function ($name, $id) {
+236:                 return (object) ['id' => $id, 'code' => $id, 'name' => $name];
+237:             })->values();
+238:         }
+239:         //dd($groups);
+240:         $rooms = DB::table('room')
+241:             ->where('deparment_code', $departmentCode)
+242:             ->where('only_maintenance', 0)
+243:             ->get();
+244: 
+245:         $viewName = $isENorQA ? 'pages.quota.personnel.en_qa_list' : 'pages.quota.personnel.list';
+246:         // dd($datas, $groups);
+247:         return view($viewName, [
+248:             'datas' => $datas,
+249:             'departments' => session('user')['department'],
+250:             'groups' => $groups,
+251:             'rooms' => $rooms,
+252:             'currentDepartment' => $departmentCode,
+253:             'workHours' => $workHours,
+254:             'filterGroupId' => $filterGroupId,
+255:             'filterRoomId' => $filterRoomId
+256:         ]);
+257:     }
+258: 
+259:     public function sync(Request $request)
+260:     {
+261:         $departmentCode = $request->department ?? session('user')['production_code'];
+262: 
+263:         // Mapping department codes to IDs for the external API
+264:         $depMapping = [
+265:             'PXV1' => 15,
+266:             'PXV2' => 32,
+267:             'PXVH' => 30,
+268:             'PXDN' => 30,
+269:             'EN' => 3,
+270:             'QA' => 9,
+271:             'PXTN' => 6
+272:         ];
+273: 
+274:         $depId = $depMapping[$departmentCode] ?? null;
+275:         if (!$depId) {
+276:             return redirect()->back()->with('error', "Bộ phận {$departmentCode} không hỗ trợ đồng bộ tự động.");
+277:         }
+278: 
+279:         $month = now()->month;
+280:         $year = now()->year;
+281: 
+438:     public function updatePermissions(Request $request)

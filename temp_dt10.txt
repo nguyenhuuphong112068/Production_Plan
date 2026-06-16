@@ -1,0 +1,41 @@
+1061:                 });
+1062:                 return;
+1063:             }
+1064: 
+1065:             const selectedGroupIds = [groupId.toString()];
+1066:             const selectedCodes = groupsData
+1067:                 .filter(g => selectedGroupIds.includes(g.id.toString()))
+1068:                 .map(g => g.code.toString());
+1069: 
+1070:             // ĐGTC (8) được phép chọn phòng của ĐGSC (7)
+1071:             if (selectedCodes.includes('8') && !selectedCodes.includes('7')) {
+1072:                 selectedCodes.push('7');
+1073:             }
+1074: 
+1075:             const filteredRooms = roomsData.filter(r => selectedCodes.includes(r.group_code ? r
+1076:                 .group_code.toString() : ''));
+1077:             const alreadySelectedIds = [];
+1078:             $list.find('.room-id-select').each(function() {
+1079:                 const val = $(this).val();
+1080:                 if (val) alreadySelectedIds.push(val.toString());
+1081:             });
+1082: 
+1083:             const availableRoom = filteredRooms.find(r => !alreadySelectedIds.includes(r.id
+1084:                 .toString()));
+1085: 
+1086:             if (!availableRoom && filteredRooms.length > 0 && alreadySelectedIds.length >= filteredRooms
+1087:                 .length) {
+1088:                 Swal.fire({
+1089:                     icon: 'info',
+1090:                     title: 'Thông báo',
+1091:                     text: 'Tất cả các phòng thuộc Tổ đã chọn đều đã được gán cho nhân sự này.',
+1092:                     timer: 3000
+1093:                 });
+1094:                 return;
+1095:             }
+1096: 
+1097:             let roomOptions = '<option value="">-- Chọn phòng --</option>';
+1098:             filteredRooms.forEach(r => {
+1099:                 const isSelected = alreadySelectedIds.includes(r.id.toString()) ? 'disabled' :
+1100:                     '';
+1101:                 roomOptions +=

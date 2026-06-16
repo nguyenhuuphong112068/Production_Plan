@@ -1,0 +1,61 @@
+151:             DB::transaction(function () use ($employeesFromApi, $apiEmployeeCodes, $departmentCode) {
+152:                 // 1. Vô hiệu hóa các phân công (assignments) không còn trong API cho bộ phận này
+153:                 // Bỏ qua bộ phận QA vì có một số nhân sự được quản lý thủ công (không có trong API)
+154: 
+155:                 if ($departmentCode != 'QA') {
+156: 
+157:                     $activeAssignments = DB::table('employee_assignments as ea')
+158:                         ->join('employees as e', 'ea.employees_id', '=', 'e.id')
+159:                         ->where('ea.production_code', $departmentCode)
+160:                         ->where('ea.active', 1)
+161:                         ->select('ea.id', 'e.id as employee_id', 'e.code')
+162:                         ->get();
+163: 
+164:                     foreach ($activeAssignments as $assignment) {
+165:                         if (!in_array($assignment->code, $apiEmployeeCodes)) {
+166:                             // Vô hiệu hóa assignment
+167:                             DB::table('employee_assignments')
+168:                                 ->where('id', $assignment->id)
+169:                                 ->update(['active' => 0, 'updated_at' => now()]);
+170: 
+171:                             // Sau khi vô hiệu hóa assignment này, kiểm tra xem nhân viên còn assignment active nào khác không
+172:                             $otherActiveAssignmentsCount = DB::table('employee_assignments')
+173:                                 ->where('employees_id', $assignment->employee_id)
+174:                                 ->where('active', 1)
+175:                                 ->count();
+176: 
+177:                             // Nếu không còn assignment nào active, vô hiệu hóa luôn nhân viên (soft delete)
+178:                             if ($otherActiveAssignmentsCount == 0) {
+179:                                 DB::table('employees')
+180:                                     ->where('id', $assignment->employee_id)
+181:                                     ->update(['active' => 0, 'updated_at' => now()]);
+182:                             }
+183:                         }
+184:                     }
+185:                 }
+186: 
+187:                 $warehouseAllowedCodes = ['21049', '21048', '21077', '21064', '21080', '21090', '21120', '21122', '21130', '21143', '21148', '21152'];
+188: 
+189:                 // 2. Cập nhật hoặc thêm mới nhân sự từ API
+190:                 foreach ($employeesFromApi as $emp) {
+191:                     if (empty($emp->employeeId)) continue;
+192: 
+193:                     // Đảm bảo nhân sự tồn tại trong bảng employees
+194:                     $employee = DB::table('employees')->where('code', $emp->employeeId)->first();
+195:                     
+196:                     // Rule: "các nhân sự có employees.resign không tiến hành cập nhật lại"
+197:                     if ($employee && $employee->resign == 1) {
+198:                         continue;
+199:                     }
+200: 
+201:                     $isWarehouse = !empty($emp->is_warehouse);
+202:                     $isAllowedWarehouse = $isWarehouse && in_array((string)$emp->employeeId, $warehouseAllowedCodes);
+203: 
+204:                     $resignVal = $isWarehouse ? ($isAllowedWarehouse ? 0 : 1) : 0;
+205:                     $activeVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 1;
+206:                     $groupIdVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 0;
+207: 
+208:                     $employeeId = null;
+209: 
+210:                     if (!$employee) {
+211:                         $employeeId = DB::table('employees')->insertGetId([

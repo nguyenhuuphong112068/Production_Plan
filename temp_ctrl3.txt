@@ -1,0 +1,81 @@
+501: 
+502:                         // Nếu bật tổ này, kích hoạt tất cả các phòng thuộc tổ này
+503:                         if ($active == 1) {
+504:                             DB::table('employee_assignments')
+505:                                 ->where('employees_id', $employeeId)
+506:                                 ->where('group_id', $groupCode)
+507:                                 ->where('room_id', '>', 0)
+508:                                 ->update(['active' => 1, 'updated_at' => now()]);
+509:                         }
+510: 
+511:                         // Nếu tắt tổ này, tắt tất cả các phòng thuộc tổ này
+512:                         if ($active == 0) {
+513:                             DB::table('employee_assignments')
+514:                                 ->where('employees_id', $employeeId)
+515:                                 ->where('group_id', $groupCode)
+516:                                 ->where('room_id', '>', 0)
+517:                                 ->update(['active' => 0, 'updated_at' => now()]);
+518:                         }
+519: 
+520:                         $exists = DB::table('employee_assignments')
+521:                             ->where('employees_id', $employeeId)
+522:                             ->where('production_code', $productionCode)
+523:                             ->where('group_id', $groupCode)
+524:                             ->where('room_id', 0)
+525:                             ->exists();
+526: 
+527:                         // Nếu đã có bản ghi Phòng trong tổ này, không cần bản ghi Tổ trống (room_id=0)
+528:                         $hasRooms = DB::table('employee_assignments')
+529:                             ->where('employees_id', $employeeId)
+530:                             ->where('group_id', $groupCode)
+531:                             ->where('room_id', '>', 0)
+532:                             ->exists();
+533: 
+534:                         if ($hasRooms && $active == 1) {
+535:                             // Xóa bản ghi Tổ trống nếu nó tồn tại
+536:                             DB::table('employee_assignments')
+537:                                 ->where('employees_id', $employeeId)
+538:                                 ->where('group_id', $groupCode)
+539:                                 ->where('room_id', 0)
+540:                                 ->delete();
+541: 
+542:                             // Đồng thời xóa bản ghi Phân xưởng trống (group_id=0) nếu có
+543:                             DB::table('employee_assignments')
+544:                                 ->where('employees_id', $employeeId)
+545:                                 ->where('production_code', $productionCode)
+546:                                 ->where('group_id', 0)
+547:                                 ->delete();
+548:                             continue;
+549:                         }
+550: 
+551:                         if ($exists) {
+552:                             DB::table('employee_assignments')
+553:                                 ->where('employees_id', $employeeId)
+554:                                 ->where('production_code', $productionCode)
+555:                                 ->where('group_id', $groupCode)
+556:                                 ->where('room_id', 0)
+557:                                 ->update([
+558:                                     'is_main' => 1,
+559:                                     'active' => $active,
+560:                                     'created_by' => $userName,
+561:                                     'updated_at' => now()
+562:                                 ]);
+563: 
+564:                             // Xóa bản ghi Phân xưởng trống (group_id=0) nếu có
+565:                             DB::table('employee_assignments')
+566:                                 ->where('employees_id', $employeeId)
+567:                                 ->where('production_code', $productionCode)
+568:                                 ->where('group_id', 0)
+569:                                 ->delete();
+570:                         } else {
+571:                             // Ưu tiên tìm xem có dòng placeholder (group_id = 0 và room_id = 0) không để cập nhật
+572:                             $placeholderRow = DB::table('employee_assignments')
+573:                                 ->where('employees_id', $employeeId)
+574:                                 ->where('production_code', $productionCode)
+575:                                 ->where('group_id', 0)
+576:                                 ->where('room_id', 0)
+577:                                 ->first();
+578: 
+579:                             if ($placeholderRow) {
+580:                                 DB::table('employee_assignments')
+581:                                     ->where('id', $placeholderRow->id)

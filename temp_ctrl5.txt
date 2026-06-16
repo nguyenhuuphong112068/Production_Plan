@@ -1,0 +1,71 @@
+651:                     if (empty($item)) continue;
+652:                     $parts = explode(':', $item);
+653:                     $roomId = $parts[0];
+654:                     $level = $parts[1] ?? 1;
+655:                     $active = $parts[2] ?? 1;
+656:                     $submittedGroupId = $parts[3] ?? null;
+657: 
+658:                     // Lấy thông tin PX và Tổ từ bảng room
+659:                     $room = DB::table('room')->where('id', $roomId)->first();
+660:                     $productionCode = $room->deparment_code ?? '';
+661: 
+662:                     if ($submittedGroupId) {
+663:                         $groupId = $submittedGroupId;
+664:                     } else {
+665:                         $groupCode = $room->group_code ?? '';
+666:                         $groupId = DB::table('stage_groups')->where('code', $groupCode)->value('id') ?? 0;
+667:                     }
+668: 
+669:                     // Nếu gán phòng, tự động xóa các bản ghi cấp cha "trống" (Placeholder)
+670:                     if ($active == 1) {
+671:                         // Xóa Tổ trống
+672:                         DB::table('employee_assignments')
+673:                             ->where('employees_id', $employeeId)
+674:                             ->where('group_id', $groupId)
+675:                             ->where('room_id', 0)
+676:                             ->delete();
+677: 
+678:                         // Xóa Phân xưởng trống
+679:                         DB::table('employee_assignments')
+680:                             ->where('employees_id', $employeeId)
+681:                             ->where('production_code', $productionCode)
+682:                             ->where('group_id', 0)
+683:                             ->delete();
+684:                     }
+685: 
+686:                     // Kiểm tra xem phân xưởng này có phải là Phân xưởng chính của nhân viên không
+687:                     $isMain = DB::table('employee_assignments')
+688:                         ->where('employees_id', $employeeId)
+689:                         ->where('production_code', $productionCode)
+690:                         ->where('is_main', 1)
+691:                         ->where('group_id', 0)
+692:                         ->where('room_id', 0)
+693:                         ->exists() ? 1 : 0;
+694: 
+695:                     $exists = DB::table('employee_assignments')
+696:                         ->where('employees_id', $employeeId)
+697:                         ->where('production_code', $productionCode)
+698:                         ->where('group_id', $groupId)
+699:                         ->where('room_id', $roomId)
+700:                         ->exists();
+701: 
+702:                     if ($exists) {
+703:                         DB::table('employee_assignments')
+704:                             ->where('employees_id', $employeeId)
+705:                             ->where('production_code', $productionCode)
+706:                             ->where('group_id', $groupId)
+707:                             ->where('room_id', $roomId)
+708:                             ->update([
+709:                                 'is_main' => 1,
+710:                                 'level' => $level,
+711:                                 'active' => $active,
+712:                                 'created_by' => $userName,
+713:                                 'updated_at' => now()
+714:                             ]);
+715:                     } else {
+716:                         DB::table('employee_assignments')->insert([
+717:                             'employees_id' => $employeeId,
+718:                             'production_code' => $productionCode,
+719:                             'is_main' => 1,
+720:                             'group_id' => $groupId,
+721:                             'room_id' => $roomId,

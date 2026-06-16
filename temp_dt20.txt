@@ -1,0 +1,26 @@
+486:                 <tbody>
+487:                     @php
+488:                         $roomsById = clone $rooms;
+489:                         $roomsById = $roomsById->keyBy('id')->all();
+490: 
+491:                         $groupsByCode = clone $groups;
+492:                         $groupsByCode = $groupsByCode->keyBy('code')->all();
+493: 
+494:                         $groupsById = clone $groups;
+495:                         $groupsById = $groupsById->keyBy('id')->all();
+496: 
+497:                         $roomOptionsHtml = '';
+498:                         foreach ($rooms as $r) {
+499:                             $roomOptionsHtml .=
+500:                                 '<option value="' .
+501:                                 $r->id .
+502:                                 '">' .
+503:                                 htmlspecialchars($r->code . ' - ' . $r->name . ' - ' . $r->main_equiment_name) .
+504:                                 '</option>';
+505:                         }
+506:                     @endphp
+507:                     @foreach ($datas as $data)
+508:                         <tr class="main-employee-row">
+509:                             <td>{{ $loop->iteration }} <br>
+510:                                 @if (session('user')['userGroup'] == 'Admin')
+511:                                     {{ $data->id }}

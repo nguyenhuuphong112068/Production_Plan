@@ -87,20 +87,30 @@ class ProductionAssignmentController extends Controller
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->where('sp.deparment_code', $production_code);
 
-        if ($active_group_code == 7 || $active_group_code == 8) {
-            $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
-        } else {
-            $stagePlanQuery->where('sp.stage_code', '!=', 8);
+        if ($rooms->isNotEmpty()) {
+            $stagePlanQuery->whereIn('sp.resourceId', $rooms->pluck('id'));
         }
 
         $stagePlans = $stagePlanQuery->where('sp.active', 1)
-            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate])
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->where(function ($q1) use ($startDate, $endDate) {
+                    $q1->where('sp.start', '<', $endDate)
+                       ->where('sp.end', '>', $startDate);
+                })->orWhere(function ($q2) use ($startDate, $endDate) {
+                    $q2->whereNotNull('sp.start_clearning')
+                       ->where('sp.start_clearning', '<', $endDate)
+                       ->where('sp.end_clearning', '>', $startDate);
+                });
+            })
             ->select(
                 'sp.id',
                 'sp.resourceId as room_id',
                 'sp.start',
                 'sp.end',
+                'sp.start_clearning',
+                'sp.end_clearning',
                 'sp.title',
+                'sp.title_clearning',
                 'sp.stage_code',
                 'pm.batch',
                 'product_name.name as product_name'
@@ -132,7 +142,7 @@ class ProductionAssignmentController extends Controller
         if (!empty($allAssignmentIds)) {
             $allPersonnelData = DB::table('assignment_personnel')
                 ->whereIn('assignment_id', $allAssignmentIds)
-                ->select('assignment_id', 'personnel_id', 'notification', 'operation_type')
+                ->select('assignment_id', 'personnel_id', 'notification', 'operation_type', 'start', 'end')
                 ->get()
                 ->groupBy('assignment_id');
         }
@@ -143,18 +153,78 @@ class ProductionAssignmentController extends Controller
         // $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
 
         // 7. Tổ chức lại dữ liệu theo từng phòng
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate, $active_group_code, $allPersonnelData) {
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $reportedDate, $active_group_code, $allPersonnelData, $startDate, $endDate) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
 
             // Tạo chuỗi hiển thị lịch lý thuyết (Theory Display)
             $theoryDisplay = '';
             $spIds = [];
-            foreach ($plans as $index => $p) {
+            
+            $displayItems = [];
+            foreach ($plans as $p) {
+                // Production event
+                if ($p->start && $p->end) {
+                    if ($p->start < $endDate && $p->end > $startDate) {
+                        $isCleaning = (stripos($p->title, 'vệ sinh') !== false || stripos($p->title, 'VS-') !== false || stripos($p->title, 'VS ') !== false);
+                        if ($isCleaning) {
+                            $cleanTitle = 'Vệ sinh';
+                            if (stripos($p->title, 'cấp 2') !== false || stripos($p->title, 'cấp II') !== false || stripos($p->title_clearning, 'VS-II') !== false) {
+                                $cleanTitle = 'Vệ sinh cấp II';
+                            } elseif (stripos($p->title, 'cấp 1') !== false || stripos($p->title, 'cấp I') !== false || stripos($p->title_clearning, 'VS-I') !== false) {
+                                $cleanTitle = 'Vệ sinh cấp I';
+                            }
+                            if ($p->product_name && $p->product_name !== 'NA') {
+                                $displayText = "{$cleanTitle} ({$p->product_name} - {$p->batch})";
+                            } else {
+                                $displayText = $cleanTitle;
+                            }
+                        } else {
+                            $displayText = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
+                        }
+                        
+                        $displayItems[] = [
+                            'sp_id' => $p->id,
+                            'start' => $p->start,
+                            'end' => $p->end,
+                            'text' => $displayText
+                        ];
+                    }
+                }
+                
+                // Cleaning event
+                if ($p->start_clearning && $p->end_clearning) {
+                    if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
+                        $cleanTitle = 'Vệ sinh';
+                        if ($p->title_clearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
+                        elseif ($p->title_clearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
+                        elseif ($p->title_clearning == 'VS') $cleanTitle = 'Vệ sinh';
+                        
+                        $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
+                        $displayText = "{$cleanTitle} ({$productPart})";
+                        
+                        $displayItems[] = [
+                            'sp_id' => $p->id,
+                            'start' => $p->start_clearning,
+                            'end' => $p->end_clearning,
+                            'text' => $displayText
+                        ];
+                    }
+                }
+            }
+
+            usort($displayItems, function($a, $b) {
+                return strtotime($a['start']) <=> strtotime($b['start']);
+            });
+
+            foreach ($displayItems as $index => $item) {
                 $stt = $index + 1;
-                $spIds[] = $p->id;
-                $timeDisp = Carbon::parse($p->start)->format('H:i') . '-' . Carbon::parse($p->end)->format('H:i');
-                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$p->start}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$p->product_name} - {$p->batch} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
+                if (!in_array($item['sp_id'], $spIds)) {
+                    $spIds[] = $item['sp_id'];
+                }
+                $timeDisp = Carbon::parse($item['start'])->format('H:i') . '-' . Carbon::parse($item['end'])->format('H:i');
+                
+                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item['start']}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
             }
             if ($theoryDisplay == '') {
                 $theoryDisplay = '<span class="text-muted italic">Không có lịch</span>';
@@ -177,18 +247,22 @@ class ProductionAssignmentController extends Controller
                 $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
                 $shiftItems = ['1' => [], '2' => [], '3' => []];
 
-                foreach ($plans as $p) {
-                    $pStart = Carbon::parse($p->start);
-                    $pEnd = Carbon::parse($p->end);
+                foreach ($displayItems as $item) {
+                    $pStart = Carbon::parse($item['start']);
+                    $pEnd = Carbon::parse($item['end']);
+                    $displayText = $item['text'];
+
                     $s1S = $dayStart->copy();
                     $s1E = $dayStart->copy()->addHours(8);
-                    if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = "{$p->product_name} - {$p->batch}";
+                    if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = $displayText;
+                    
                     $s2S = $s1E->copy();
                     $s2E = $s2S->copy()->addHours(8);
-                    if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = "{$p->product_name} - {$p->batch}";
+                    if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = $displayText;
+                    
                     $s3S = $s2E->copy();
                     $s3E = $s3S->copy()->addHours(8);
-                    if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = "{$p->product_name} - {$p->batch}";
+                    if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = $displayText;
                 }
 
                 foreach ($shiftItems as $code => $items) {
@@ -214,7 +288,7 @@ class ProductionAssignmentController extends Controller
                         'Job_description' => trim($jobDescription),
                         'number_of_employes' => $suggestedCount,
                         'Num_of_per_Level_3' => 1,
-                        'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null]]),
+                        'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null, 'start' => null, 'end' => null, 'operation_type' => null]]),
                         'start_time_display' => $sTime->format('H:i'),
                         'end_time_display' => $eTime->format('H:i'),
                         'is_foreign' => false,
@@ -599,6 +673,12 @@ class ProductionAssignmentController extends Controller
                     foreach ($p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
 
+                        $pStart = empty($p['start']) ? $startDt : Carbon::parse($reportedDate . ' ' . $p['start'])->format('Y-m-d H:i:s');
+                        $pEnd = empty($p['end']) ? $endDt : Carbon::parse($reportedDate . ' ' . $p['end'])->format('Y-m-d H:i:s');
+                        if ($pEnd < $pStart) {
+                            $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
+                        }
+
                         $overlap = DB::table('assignments as a')
                             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
                             ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
@@ -606,9 +686,9 @@ class ProductionAssignmentController extends Controller
                             ->leftJoin('employees as e', 'ap.personnel_id', '=', 'e.id')
                             ->where('ap.personnel_id', $p['personnel_id'])
                             ->where('a.active', 1)
-                            ->where('a.start', '<', $endDt)
-                            ->where('a.end', '>', $startDt)
-                            ->select('a.start', 'a.end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+                            ->whereRaw('COALESCE(ap.start, a.start) < ?', [$pEnd])
+                            ->whereRaw('COALESCE(ap.end, a.end) > ?', [$pStart])
+                            ->select('a.start', 'a.end', 'ap.start as p_start', 'ap.end as p_end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
                             ->first();
 
                         if ($overlap) {
@@ -621,7 +701,9 @@ class ProductionAssignmentController extends Controller
                                 $grpName = $prodGroups[$overlap->stage_groups_code] ?? $overlap->group_name ?? ('Tổ ' . $overlap->stage_groups_code);
                             }
                             $roomName = $overlap->room_name ?: 'Công tác khác';
-                            $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
+                            $olStart = $overlap->p_start ?: $overlap->start;
+                            $olEnd = $overlap->p_end ?: $overlap->end;
+                            $timeRange = Carbon::parse($olStart)->format('H:i') . ' - ' . Carbon::parse($olEnd)->format('H:i');
 
                             throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                         }
@@ -651,11 +733,20 @@ class ProductionAssignmentController extends Controller
                     $unique_p_data = collect($p_data)->unique('personnel_id');
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
+                        
+                        $pStart = empty($p['start']) ? $startDt : Carbon::parse($reportedDate . ' ' . $p['start'])->format('Y-m-d H:i:s');
+                        $pEnd = empty($p['end']) ? $endDt : Carbon::parse($reportedDate . ' ' . $p['end'])->format('Y-m-d H:i:s');
+                        if ($pEnd < $pStart) {
+                            $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
+                        }
+
                         DB::table('assignment_personnel')->insert([
                             'assignment_id' => $assignmentId,
                             'personnel_id' => $p['personnel_id'],
                             'notification' => $p['notification'] ?? null,
-                            'operation_type' => $p['operation_type'] ?? 'thủ công'
+                            'operation_type' => $p['operation_type'] ?? 'thủ công',
+                            'start' => $pStart,
+                            'end' => $pEnd
                         ]);
                     }
                 }
@@ -907,10 +998,8 @@ class ProductionAssignmentController extends Controller
             ->where('sp.active', 1)
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate]);
 
-        if ($group_code == 7 || $group_code == 8) {
-            $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
-        } else {
-            $stagePlanQuery->where('sp.stage_code', '!=', 8);
+        if ($rooms->isNotEmpty()) {
+            $stagePlanQuery->whereIn('sp.resourceId', $rooms->pluck('id'));
         }
 
         $stagePlans = $stagePlanQuery->select(
@@ -919,6 +1008,7 @@ class ProductionAssignmentController extends Controller
             'sp.start',
             'sp.end',
             'sp.title',
+            'sp.title_clearning',
             'sp.stage_code',
             'pm.batch',
             'product_name.name as product_name'
@@ -950,16 +1040,71 @@ class ProductionAssignmentController extends Controller
         $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
 
         // 6. Tổ chức lại dữ liệu
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails) {
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails, $startDate, $endDate) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
             $actuals = $actualDetails->get($room->id) ?? collect();
 
             $theoryDisplay = '';
-            foreach ($plans as $index => $p) {
+            
+            $displayItems = [];
+            foreach ($plans as $p) {
+                // Production event
+                if ($p->start && $p->end) {
+                    if ($p->start < $endDate && $p->end > $startDate) {
+                        $isCleaning = (stripos($p->title, 'vệ sinh') !== false || stripos($p->title, 'VS-') !== false || stripos($p->title, 'VS ') !== false);
+                        if ($isCleaning) {
+                            $cleanTitle = 'Vệ sinh';
+                            if (stripos($p->title, 'cấp 2') !== false || stripos($p->title, 'cấp II') !== false || stripos($p->title_clearning, 'VS-II') !== false) {
+                                $cleanTitle = 'Vệ sinh cấp II';
+                            } elseif (stripos($p->title, 'cấp 1') !== false || stripos($p->title, 'cấp I') !== false || stripos($p->title_clearning, 'VS-I') !== false) {
+                                $cleanTitle = 'Vệ sinh cấp I';
+                            }
+                            if ($p->product_name && $p->product_name !== 'NA') {
+                                $displayText = "{$cleanTitle} ({$p->product_name} - {$p->batch})";
+                            } else {
+                                $displayText = $cleanTitle;
+                            }
+                        } else {
+                            $displayText = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
+                        }
+                        
+                        $displayItems[] = [
+                            'start' => $p->start,
+                            'end' => $p->end,
+                            'text' => $displayText
+                        ];
+                    }
+                }
+                
+                // Cleaning event
+                if ($p->start_clearning && $p->end_clearning) {
+                    if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
+                        $cleanTitle = 'Vệ sinh';
+                        if ($p->title_clearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
+                        elseif ($p->title_clearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
+                        elseif ($p->title_clearning == 'VS') $cleanTitle = 'Vệ sinh';
+                        
+                        $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
+                        $displayText = "{$cleanTitle} ({$productPart})";
+                        
+                        $displayItems[] = [
+                            'start' => $p->start_clearning,
+                            'end' => $p->end_clearning,
+                            'text' => $displayText
+                        ];
+                    }
+                }
+            }
+
+            usort($displayItems, function($a, $b) {
+                return strtotime($a['start']) <=> strtotime($b['start']);
+            });
+
+            foreach ($displayItems as $index => $item) {
                 $stt = $index + 1;
-                $timeDisp = Carbon::parse($p->start)->format('H:i') . '-' . Carbon::parse($p->end)->format('H:i');
-                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom text-left'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$p->product_name} - {$p->batch} | ({$timeDisp})</b></div></div>";
+                $timeDisp = Carbon::parse($item['start'])->format('H:i') . '-' . Carbon::parse($item['end'])->format('H:i');
+                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom text-left'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} | ({$timeDisp})</b></div></div>";
             }
             if ($theoryDisplay == '') $theoryDisplay = '<span class="text-muted italic">Không có lịch</span>';
 
@@ -1195,21 +1340,29 @@ class ProductionAssignmentController extends Controller
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->where('sp.deparment_code', $production_code)
             ->where('sp.active', 1)
-            ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate]);
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->where(function ($q1) use ($startDate, $endDate) {
+                    $q1->where('sp.start', '<', $endDate)
+                       ->where('sp.end', '>', $startDate);
+                })->orWhere(function ($q2) use ($startDate, $endDate) {
+                    $q2->whereNotNull('sp.start_clearning')
+                       ->where('sp.start_clearning', '<', $endDate)
+                       ->where('sp.end_clearning', '>', $startDate);
+                });
+            });
 
-        if ($group_code) {
-            if ($group_code == 7 || $group_code == 8) {
-                $stagePlanQuery->whereIn('sp.stage_code', [7, 8]);
-            } else {
-                $stagePlanQuery->where('sp.stage_code', $group_code);
-            }
+        if ($rooms->isNotEmpty()) {
+            $stagePlanQuery->whereIn('sp.resourceId', $rooms->pluck('id'));
         }
         $plans = $stagePlanQuery->select(
             'sp.id',
             'sp.resourceId as room_id',
             'sp.start',
             'sp.end',
+            'sp.start_clearning',
+            'sp.end_clearning',
             'sp.title',
+            'sp.title_clearning',
             'sp.stage_code',
             'pm.batch',
             'product_name.name as product_name'
@@ -1217,18 +1370,76 @@ class ProductionAssignmentController extends Controller
 
         $events = [];
         foreach ($plans as $p) {
-            $events[] = [
-                'id' => 'plan-' . $p->id,
-                'resourceId' => (string)$p->room_id,
-                'start' => $p->start,
-                'end' => $p->end,
-                'title' => "📦 " . ($p->product_name ?: $p->title) . " - Ca: " . ($p->batch ?: ''),
-                'color' => '#86efac',
-                'textColor' => '#166534',
-                'borderColor' => '#bbf7d0',
-                'editable' => false,
-                'is_plan' => true
-            ];
+            // Production event
+            if ($p->start && $p->end) {
+                if ($p->start < $endDate && $p->end > $startDate) {
+                    $isCleaning = (stripos($p->title, 'vệ sinh') !== false || stripos($p->title, 'VS-') !== false || stripos($p->title, 'VS ') !== false);
+                    if ($isCleaning) {
+                        $cleanTitle = 'Vệ sinh';
+                        if (stripos($p->title, 'cấp 2') !== false || stripos($p->title, 'cấp II') !== false || stripos($p->title_clearning, 'VS-II') !== false) {
+                            $cleanTitle = 'Vệ sinh cấp II';
+                        } elseif (stripos($p->title, 'cấp 1') !== false || stripos($p->title, 'cấp I') !== false || stripos($p->title_clearning, 'VS-I') !== false) {
+                            $cleanTitle = 'Vệ sinh cấp I';
+                        }
+                        if ($p->product_name && $p->product_name !== 'NA') {
+                            $displayText = "{$cleanTitle} ({$p->product_name} - {$p->batch})";
+                        } else {
+                            $displayText = $cleanTitle;
+                        }
+                        $events[] = [
+                            'id' => 'plan-' . $p->id,
+                            'resourceId' => (string)$p->room_id,
+                            'start' => $p->start,
+                            'end' => $p->end,
+                            'title' => "🧹 " . $displayText,
+                            'color' => '#d1d5db',
+                            'textColor' => '#374151',
+                            'borderColor' => '#9ca3af',
+                            'editable' => false,
+                            'is_plan' => true
+                        ];
+                    } else {
+                        $events[] = [
+                            'id' => 'plan-' . $p->id,
+                            'resourceId' => (string)$p->room_id,
+                            'start' => $p->start,
+                            'end' => $p->end,
+                            'title' => "📦 " . ($p->product_name ?: $p->title) . " - Ca: " . ($p->batch ?: ''),
+                            'color' => '#86efac',
+                            'textColor' => '#166534',
+                            'borderColor' => '#bbf7d0',
+                            'editable' => false,
+                            'is_plan' => true
+                        ];
+                    }
+                }
+            }
+            
+            // Cleaning event
+            if ($p->start_clearning && $p->end_clearning) {
+                if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
+                    $cleanTitle = 'Vệ sinh';
+                    if ($p->title_clearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
+                    elseif ($p->title_clearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
+                    elseif ($p->title_clearning == 'VS') $cleanTitle = 'Vệ sinh';
+                    
+                    $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
+                    $displayText = "{$cleanTitle} ({$productPart})";
+                    
+                    $events[] = [
+                        'id' => 'plan-clean-' . $p->id,
+                        'resourceId' => (string)$p->room_id,
+                        'start' => $p->start_clearning,
+                        'end' => $p->end_clearning,
+                        'title' => "🧹 " . $displayText,
+                        'color' => '#d1d5db',
+                        'textColor' => '#374151',
+                        'borderColor' => '#9ca3af',
+                        'editable' => false,
+                        'is_plan' => true
+                    ];
+                }
+            }
         }
 
         $assignmentQuery = DB::table('assignments as a')

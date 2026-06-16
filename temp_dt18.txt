@@ -1,0 +1,16 @@
+601:                                     @foreach ($groupPermissions as $index => $gp)
+602:                                         @php
+603:                                             $parts = explode(':', $gp);
+604:                                             $gId = $parts[0];
+605:                                             $isActive = ($parts[1] ?? 1) == 1;
+606:                                             $gUser = $parts[2] ?? 'N/A';
+607:                                             $gDate = $parts[3] ?? '';
+608:                                             $groupName = isset($groupsById[$gId]) ? $groupsById[$gId]->name : 'N/A';
+609: 
+610:                                             $groupAssignments = $assignmentsByGroup[$gId] ?? [];
+611:                                         @endphp
+612:                                         <tr style="border-bottom: 2px solid #dee2e6; background: transparent;">
+613:                                             <!-- Cột Tổ -->
+614:                                             <td
+615:                                                 style="width: 180px; min-width: 180px; max-width: 180px; border: none; border-right: 1px solid #dee2e6; vertical-align: top; padding: 8px;">
+616:                                                 <div class="groups-list-container"

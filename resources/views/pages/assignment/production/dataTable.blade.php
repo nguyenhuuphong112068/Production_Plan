@@ -1,6 +1,35 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <link href="{{ asset('assets/vendor/select2/select2.min.css') }}" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link href="{{ asset('assets/plugins/nouislider/nouislider.min.css') }}" rel="stylesheet" />
+<style>
+/* Slider Styling */
+.time-slider .noUi-handle {
+    width: 14px !important;
+    height: 14px !important;
+    right: -7px !important;
+    top: -5px !important;
+    border-radius: 50% !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important;
+    border: 2px solid #fff !important;
+    background: #555 !important;
+    cursor: grab;
+}
+.time-slider .noUi-handle:active {
+    cursor: grabbing;
+}
+.time-slider .noUi-handle::before, .time-slider .noUi-handle::after { display: none !important; }
+.time-slider {
+    border: none !important;
+    background: #e9ecef !important;
+    height: 4px !important;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1) !important;
+    margin-top: 5px;
+}
+.shift-1-slider .noUi-connect { background: #007bff !important; }
+.shift-2-slider .noUi-connect { background: #28a745 !important; }
+.shift-3-slider .noUi-connect { background: #dc3545 !important; }
+</style>
 
 <style>
     :root {
@@ -371,6 +400,10 @@
     .theory-col {
         display: none;
     }
+    .overlap-warning .select2-container--default .select2-selection--single {
+        border-color: #dc3545 !important;
+        background-color: #ffe6e6 !important;
+    }
 </style>
 @php
     $production_code = session('user')['production_code'];
@@ -592,7 +625,8 @@
                                                     <div class="personnel-container">
                                                         @foreach ($assignment->personnel_data as $p_info)
                                                             <div
-                                                                class="personnel-row d-flex align-items-center p-1 border-bottom">
+                                                                class="personnel-row d-flex flex-column p-1 border-bottom" data-p-start="{{ $p_info->start ?? '' }}" data-p-end="{{ $p_info->end ?? '' }}">
+                                                                <div class="d-flex align-items-center w-100">
                                                                 <div class="personnel-label">
                                                                     {{ chr(65 + $loop->index) }}
                                                                 </div>
@@ -632,6 +666,13 @@
                                                                     <i
                                                                         class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                                                 @endif
+                                                                </div>
+                                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container" style="{{ !$canEdit || ($assignment->is_foreign ?? false) ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+                                                                    <div class="time-slider flex-grow-1"></div>
+                                                                    <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                                                                    <input type="hidden" class="p-start-input" value="{{ $p_info->start ? \Carbon\Carbon::parse($p_info->start)->format('H:i') : '' }}">
+                                                                    <input type="hidden" class="p-end-input" value="{{ $p_info->end ? \Carbon\Carbon::parse($p_info->end)->format('H:i') : '' }}">
+                                                                </div>
                                                             </div>
                                                         @endforeach
                                                     </div>
@@ -743,7 +784,8 @@
                                                 <td class="p-0" style="width: 350px">
                                                     <div class="personnel-container">
                                                         <div
-                                                            class="personnel-row d-flex align-items-center p-1 border-bottom">
+                                                            class="personnel-row d-flex flex-column p-1 border-bottom">
+                                                            <div class="d-flex align-items-center w-100">
                                                             <div class="personnel-label">A</div>
                                                             <div style="flex: 1" class="d-flex align-items-center">
                                                                 <select
@@ -765,6 +807,13 @@
                                                                 <i
                                                                     class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                                             @endif
+                                                            </div>
+                                                            <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container" style="{{ !$canEdit ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+                                                                <div class="time-slider flex-grow-1"></div>
+                                                                <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                                                                <input type="hidden" class="p-start-input" value="">
+                                                                <input type="hidden" class="p-end-input" value="">
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     @if ($canEdit)
@@ -1027,6 +1076,7 @@
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ asset('assets/plugins/nouislider/nouislider.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script>
@@ -1288,6 +1338,70 @@
                 $(this).find('.shift-count-badge').text(visibleCount);
             }
         });
+
+        validateAllOverlaps();
+    }
+
+    function validateAllOverlaps() {
+        $('.personnel-row').removeClass('overlap-warning');
+        $('.personnel-row .overlap-badge').remove();
+
+        let overlapExists = false;
+        const personnelData = [];
+
+        $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
+            const $item = $(this);
+            const startStr = $item.find('.start-time-input').val();
+            const endStr = $item.find('.end-time-input').val();
+            if (!startStr || !endStr) return;
+            
+            const sOffset = timeToOffset(startStr);
+            let eOffset = timeToOffset(endStr);
+            if (eOffset <= sOffset) {
+                eOffset += 24.0;
+            }
+            
+            $item.find('.personnel-row').each(function() {
+                const $row = $(this);
+                const pid = $row.find('.person-select').val();
+                if (pid) {
+                    const roomCode = $item.closest('.room-row').find('.room-select-custom').val() || 'Khác';
+                    personnelData.push({
+                        pid: pid.toString(),
+                        start: sOffset,
+                        end: eOffset,
+                        $row: $row,
+                        room: roomCode,
+                        startStr: startStr,
+                        endStr: endStr
+                    });
+                }
+            });
+        });
+
+        for (let i = 0; i < personnelData.length; i++) {
+            for (let j = i + 1; j < personnelData.length; j++) {
+                const p1 = personnelData[i];
+                const p2 = personnelData[j];
+                if (p1.pid === p2.pid) {
+                    if (p1.start < p2.end && p2.start < p1.end) {
+                        overlapExists = true;
+                        
+                        p1.$row.addClass('overlap-warning');
+                        if (p1.$row.find('.overlap-badge').length === 0) {
+                            $(`<i class="fas fa-exclamation-triangle text-danger ml-1 overlap-badge" title="Trùng lịch với ca khác (${p2.startStr}-${p2.endStr} tại ${p2.room})" style="font-size:0.8rem;"></i>`).insertAfter(p1.$row.find('.op-icon'));
+                        }
+                        
+                        p2.$row.addClass('overlap-warning');
+                        if (p2.$row.find('.overlap-badge').length === 0) {
+                            $(`<i class="fas fa-exclamation-triangle text-danger ml-1 overlap-badge" title="Trùng lịch với ca khác (${p1.startStr}-${p1.endStr} tại ${p1.room})" style="font-size:0.8rem;"></i>`).insertAfter(p2.$row.find('.op-icon'));
+                        }
+                    }
+                }
+            }
+        }
+
+        return overlapExists;
     }
 
     function markRoomDirty(row) {
@@ -1555,37 +1669,9 @@
 
         $(document).on('change', '.start-time-input, .end-time-input', function() {
             const $el = $(this);
-            const $item = $el.closest('.assignment-item');
-            const prevVal = $el.data('prev-val') || '';
-
-            let hasOverlap = false;
-            let overlapMsg = '';
-            $item.find('.personnel-container .person-select').each(function() {
-                const personId = $(this).val();
-                if (personId) {
-                    const check = checkTimeOverlapForEmployee(personId, $item);
-                    if (check.overlap) {
-                        hasOverlap = true;
-                        overlapMsg = check.message;
-                        return false;
-                    }
-                }
-            });
-
-            if (hasOverlap) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Trùng lịch làm việc',
-                    text: overlapMsg
-                });
-                isProgrammaticChange = true;
-                $el.val(prevVal);
-                isProgrammaticChange = false;
-            } else {
-                $el.data('prev-val', $el.val());
-                updateTimelines();
-                updateSidebarPersonnelTimes();
-            }
+            $el.data('prev-val', $el.val());
+            updateTimelines();
+            updateSidebarPersonnelTimes();
         });
 
         function initSelect2(selector = '.person-select', roomId = null) {
@@ -1753,8 +1839,9 @@
 
 
             const newPersonRow = $(`
-                <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                    <div class="personnel-label"></div>
+                <div class="personnel-row d-flex flex-column p-1 border-bottom">
+                    <div class="d-flex align-items-center w-100">
+                        <div class="personnel-label"></div>
                     <div style="flex: 1" class="d-flex align-items-center">
                         <select class="form-control form-control-sm person-select" data-op-type="${opType}" style="width: 40%">
                             <option value="">-- Chọn người --</option>${globalPersonnelOptions}
@@ -1768,12 +1855,20 @@
                                style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                placeholder="Lưu ý...">
                     </div>
-                    <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                        <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                    </div>
+                    <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container">
+                        <div class="time-slider flex-grow-1"></div>
+                        <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                        <input type="hidden" class="p-start-input" value="">
+                        <input type="hidden" class="p-end-input" value="">
+                    </div>
                 </div>
             `);
             container.append(newPersonRow);
             updatePersonnelLabels(container);
             initSelect2(newPersonRow.find('.person-select'));
+            initTimeSlider(newPersonRow);
 
             if (personId) {
                 newPersonRow.find('.person-select').val(personId).trigger('change');
@@ -2058,19 +2153,7 @@
                         });
                         if (!isAuthorized) continue;
 
-                        // 2. Kiểm tra trùng lịch (Time Overlap)
-                        const overlapCheck = checkTimeOverlapForEmployee(personId, $container
-                            .closest('.assignment-item'));
-                        if (overlapCheck.overlap) {
-                            await Swal.fire({
-                                icon: 'error',
-                                title: 'Không thể sắp lịch',
-                                text: `Nhân sự ${person.name}: ` + overlapCheck.message
-                            });
-                            continue;
-                        }
-
-                        // 3. Kiểm tra lệch ca (Shift Mismatch)
+                        // 2. Kiểm tra lệch ca (Shift Mismatch)
                         const canProceed = await new Promise(resolve => {
                             checkShiftMismatch(personId, targetShiftCode, resolve);
                         });
@@ -2112,15 +2195,50 @@
             const container = $(this).closest('.personnel-container');
             const item = $(this).closest('.assignment-item');
             const row = $(this).closest('.room-row');
-            if (container.find('.personnel-row').length > 1) {
-                $(this).closest('.personnel-row').remove();
-                updatePersonnelLabels(container);
-                markRoomDirty(row);
-                updateSidebarHighlights();
-                validateProfRequirement(item);
-                updateSidebarPersonnelTimes();
-                toggleCloneShiftButton(item);
+            
+            $(this).closest('.personnel-row').remove();
+
+            if (container.find('.personnel-row').length === 0) {
+                const $target = item.find('.job-desc');
+                $target.empty();
+                
+                const planItems = row.find('.theory-cell .plan-item');
+                planItems.each(function() {
+                    const planStart = $(this).data('start');
+                    const planHtml = $(this).find('.plan-text').parent().prop('outerHTML');
+                    if ($target.find(`.plan-item[data-start="${planStart}"]`).length === 0) {
+                        $target.append(planHtml);
+                    }
+                });
+                
+                const items = $target.find('.plan-item').get();
+                items.sort(function(a, b) {
+                    const startA = $(a).data('start');
+                    const startB = $(b).data('start');
+                    return startA < startB ? -1 : (startA > startB ? 1 : 0);
+                });
+                
+                $target.empty();
+                $.each(items, function(i, itm) {
+                    const $itm = $(itm).clone();
+                    $itm.removeClass('hover-show-btn position-relative mb-1 pb-1 border-bottom');
+                    $itm.css({
+                        'margin-bottom': '2px',
+                        'padding-bottom': '0',
+                        'border-bottom': 'none'
+                    });
+                    $itm.find('.time-text').remove();
+                    $itm.find('.btn-copy-plan').remove();
+                    $target.append($itm);
+                });
             }
+
+            updatePersonnelLabels(container);
+            markRoomDirty(row);
+            updateSidebarHighlights();
+            validateProfRequirement(item);
+            updateSidebarPersonnelTimes();
+            toggleCloneShiftButton(item);
         });
 
         function toggleCloneShiftButton($assignmentItem) {
@@ -2163,23 +2281,7 @@
                             isProgrammaticChange = false;
                             return;
                         }
-
-                        // 2. Kiểm tra trùng lịch
-                        const overlapCheck = checkTimeOverlapForEmployee(personId, $el.closest(
-                            '.assignment-item'));
-                        if (overlapCheck.overlap) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Không thể sắp lịch',
-                                text: overlapCheck.message
-                            });
-                            isProgrammaticChange = true;
-                            $el.val(null).trigger('change');
-                            isProgrammaticChange = false;
-                            return;
-                        }
-
-                        // 3. Kiểm tra lệch ca
+                        // 2. Kiểm tra lệch ca
                         checkShiftMismatch(personId, targetShiftCode, function(canProceed) {
                             if (!canProceed) {
                                 isProgrammaticChange = true;
@@ -2559,11 +2661,14 @@
                     const p_list = [];
                     $(this).find('.personnel-row').each(function() {
                         const pid = $(this).find('.person-select').val();
+                        let pStart = $(this).find('.p-start-input').val() || '';
+                        let pEnd = $(this).find('.p-end-input').val() || '';
                         if (pid) p_list.push({
                             personnel_id: pid,
                             notification: $(this).find('.person-notif').val(),
-                            operation_type: $(this).find('.person-select').attr(
-                                'data-op-type') || 'thủ công'
+                            operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công',
+                            start: pStart,
+                            end: pEnd
                         });
                     });
 
@@ -2575,8 +2680,7 @@
                         return false;
                     }
                     if (p_list.length === 0) {
-                        validationError = `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`;
-                        return false;
+                        return true;
                     }
 
                     assignments.push({
@@ -2646,11 +2750,38 @@
             });
         }
 
-        $(document).on('click', '.btn-save-room', function() {
+        $(document).on('click', '.btn-save-room', async function() {
+            if (validateAllOverlaps()) {
+                const result = await Swal.fire({
+                    title: 'Cảnh báo',
+                    text: 'Có nhân sự đang bị phân công trùng giờ làm việc. Bạn có chắc chắn muốn lưu lại các phân công trùng giờ này không?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Có, lưu lại',
+                    cancelButtonText: 'Không lưu'
+                });
+                if (!result.isConfirmed) return;
+            }
             saveRoom($(this).closest('.room-row'));
         });
 
         $(document).on('click', '#btn-save-all', async function() {
+            if (validateAllOverlaps()) {
+                const result = await Swal.fire({
+                    title: 'Cảnh báo',
+                    text: 'Có nhân sự đang bị phân công trùng giờ làm việc. Bạn có chắc chắn muốn lưu toàn bộ lịch bao gồm cả các phân công trùng giờ này không?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Có, lưu toàn bộ',
+                    cancelButtonText: 'Không lưu'
+                });
+                if (!result.isConfirmed) return;
+            }
+            
             const rows = $('.room-row');
             let successCount = 0;
             let totalProcessed = 0;
@@ -2779,13 +2910,18 @@
                 const p_list = [];
                 $(this).find('.personnel-row').each(function() {
                     const pid = $(this).find('.person-select').val();
-                    if (pid) p_list.push({
-                        personnel_id: pid,
-                        notification: $(this).find('.person-notif').val(),
-                        operation_type: $(this).find('.person-select').attr(
-                            'data-op-type') || 'thủ công'
-                    });
+                    let pStart = $(this).find('.p-start-input').val() || '';
+                        let pEnd = $(this).find('.p-end-input').val() || '';
+                        if (pid) p_list.push({
+                            personnel_id: pid,
+                            notification: $(this).find('.person-notif').val(),
+                            operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công',
+                            start: pStart,
+                            end: pEnd
+                        });
                 });
+
+                if (p_list.length === 0) return true;
 
                 assignments.push({
                     shift: $(this).find('.shift-select').val(),
@@ -2970,18 +3106,26 @@
                                     </td>
                                     <td style="width: 350px" class="p-0">
                                         <div class="personnel-container">
-                                            <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                <div class="personnel-label">A</div>
-                                                <div style="flex: 1" class="d-flex align-items-center">
-                                                    <select class="form-control form-control-sm person-select" data-op-type="thủ công" style="width: 40%">
-                                                        <option value="">-- Chọn người --</option>${globalPersonnelOptions}
-                                                    </select>
-                                                    <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
-                                                    <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                                                           style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                           placeholder="Lưu ý...">
+                                            <div class="personnel-row d-flex flex-column p-1 border-bottom">
+                                                <div class="d-flex align-items-center w-100">
+                                                    <div class="personnel-label">A</div>
+                                                    <div style="flex: 1" class="d-flex align-items-center">
+                                                        <select class="form-control form-control-sm person-select" data-op-type="thủ công" style="width: 40%">
+                                                            <option value="">-- Chọn người --</option>${globalPersonnelOptions}
+                                                        </select>
+                                                        <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
+                                                        <input type="text" class="form-control form-control-sm person-notif ml-1" 
+                                                               style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                               placeholder="Lưu ý...">
+                                                    </div>
+                                                    <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                                 </div>
-                                                <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container">
+                                                    <div class="time-slider flex-grow-1"></div>
+                                                    <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                                                    <input type="hidden" class="p-start-input" value="">
+                                                    <input type="hidden" class="p-end-input" value="">
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="text-left p-1" style="border-top: 1px dashed #eee">
@@ -4025,8 +4169,6 @@
                     return;
                 }
                 if (p_list.length === 0) {
-                    Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`,
-                        'warning');
                     return;
                 }
 
@@ -4075,9 +4217,7 @@
                         return false;
                     }
                     if (pCount === 0) {
-                        validationError = `Ca ${shiftName}: Vui lòng chọn ít nhất 1 nhân sự.`;
-                        isValid = false;
-                        return false;
+                        return true;
                     }
 
                     assignments.push({
@@ -4238,4 +4378,91 @@
         });
 
     });
+
+        
+        function initTimeSlider(row) {
+            const sliderEl = row.find('.time-slider')[0];
+            const displayEl = row.find('.time-display');
+            
+            if (!sliderEl || sliderEl.noUiSlider) return;
+
+            let assignItem = row.closest('.assignment-item');
+            if (assignItem.length === 0) assignItem = row.closest('tr');
+            
+            let assignStartStr = assignItem.find('.start-time-input').val() || assignItem.find('.assign-start').val() || '06:00';
+            let assignEndStr = assignItem.find('.end-time-input').val() || assignItem.find('.assign-end').val() || '14:00';
+            
+            let shiftVal = assignItem.find('.shift-select').val() || '1';
+            sliderEl.classList.add('shift-' + shiftVal + '-slider');
+            
+            function timeToMinutes(t) {
+                if(t === undefined || t === null || t === '') return 0;
+                if(typeof t === 'number') return t;
+                t = String(t);
+                if(t.indexOf(':') === -1) return parseFloat(t) || 0;
+                let parts = t.split(':');
+                let h = parseInt(parts[0], 10) || 0;
+                let m = parseInt(parts[1], 10) || 0;
+                return h * 60 + m;
+            }
+            function minutesToTime(m) {
+                if (m < 0) m += 24 * 60;
+                let h = Math.floor(m / 60) % 24;
+                let mins = Math.floor(m % 60);
+                return String(h).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+            }
+
+            let pStart = row.find('.p-start-input').val();
+            let pEnd = row.find('.p-end-input').val();
+
+            if(pStart && pStart.length > 10) pStart = pStart.substring(11, 16);
+            if(pEnd && pEnd.length > 10) pEnd = pEnd.substring(11, 16);
+
+            let shiftStart = timeToMinutes(assignStartStr);
+            let shiftEnd = timeToMinutes(assignEndStr);
+            if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+
+            let valStart = pStart ? timeToMinutes(pStart) : shiftStart;
+            let valEnd = pEnd ? timeToMinutes(pEnd) : shiftEnd;
+
+            if (valStart < shiftStart - 240 && valStart < 12 * 60) valStart += 24 * 60;
+            if (valEnd < valStart) valEnd += 24 * 60;
+            
+            let minRange = shiftStart - 60;
+            let maxRange = shiftEnd + 60;
+            if (minRange > valStart) minRange = valStart - 60;
+            if (maxRange < valEnd) maxRange = valEnd + 60;
+            
+            // Đảm bảo minRange là bội số của 15 để step luôn nhảy đúng mốc 15 phút (00, 15, 30, 45)
+            minRange = Math.floor(minRange / 15) * 15;
+
+            noUiSlider.create(sliderEl, {
+                start: [valStart, valEnd],
+                connect: true,
+                range: {
+                    'min': minRange,
+                    'max': maxRange
+                },
+                step: 15,
+                format: {
+                    to: function(v) { return minutesToTime(v); },
+                    from: function(v) { return timeToMinutes(v); }
+                }
+            });
+
+            sliderEl.noUiSlider.on('update', function(values) {
+                displayEl.text(values[0] + ' - ' + values[1]);
+                row.find('.p-start-input').val(values[0]);
+                row.find('.p-end-input').val(values[1]);
+            });
+        }
+
+        $(document).ready(function() {
+            setTimeout(() => {
+                $('.personnel-row').each(function() {
+                    initTimeSlider($(this));
+                });
+            }, 500);
+        });
+
 </script>

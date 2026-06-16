@@ -1,0 +1,6 @@
+343: .plan-item:hover .btn-copy-plan {
+544: <div class="theory-content">{!! $task->theory_display !!}</div>
+545: @if ($task->theory_display != '<span class="text-muted italic">Không có lịch</span>')
+2871: $(document).on('click', '.btn-copy-plan', function() {
+2917: $itm.find('.btn-copy-plan').remove();
+2969: $itm.find('.btn-copy-plan').remove();

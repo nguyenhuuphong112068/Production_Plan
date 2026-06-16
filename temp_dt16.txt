@@ -1,0 +1,51 @@
+996:             const $badge = $(this);
+997:             const employeeId = $badge.closest('.groups-list-container').data('employee-id');
+998:             const isActivating = !($badge.data('active') == 1);
+999: 
+1000:             const $container = $badge.closest('.groups-list-container');
+1001:             const $tr = $badge.closest('.main-employee-row');
+1002: 
+1003:             if (isActivating) {
+1004:                 $badge.data('active', 1).addClass('badge-primary active').removeClass('inactive');
+1005:                 $badge.attr('title', 'Nhấn để vô hiệu hóa');
+1006:                 const currentGroupId = $badge.data('group-id');
+1007:                 $tr.find('.room-assignment-row[data-group-id="' + currentGroupId + '"]').each(
+1008:                     function() {
+1009:                         const $row = $(this);
+1010:                         $row.attr('data-active', 1).removeClass('inactive');
+1011:                         const $btn = $row.find('.btn-toggle-room-active');
+1012:                         $btn.addClass('btn-danger').removeClass('btn-success').attr('title',
+1013:                             'Vô hiệu hóa');
+1014:                         $btn.find('i').addClass('fas fa-times').removeClass('fas fa-undo');
+1015:                     });
+1016:             } else {
+1017:                 const activeCount = $tr.find('.btn-toggle-group.active').length;
+1018:                 if (activeCount <= 1) {
+1019:                     Swal.fire({
+1020:                         icon: 'error',
+1021:                         title: 'Thao tác bị chặn',
+1022:                         text: 'Một nhân viên luôn luôn phải có ít nhất 1 tổ hoạt động.'
+1023:                     });
+1024:                     return;
+1025:                 }
+1026:                 $badge.data('active', 0).removeClass('badge-primary active').addClass('inactive');
+1027:                 $badge.attr('title', 'Nhấn để kích hoạt');
+1028:                 const groupId = $badge.data('group-id');
+1029:                 $tr.find('.room-assignment-row[data-group-id="' + groupId + '"]').each(function() {
+1030:                     const $row = $(this);
+1031:                     $row.attr('data-active', 0).addClass('inactive');
+1032:                     const $btn = $row.find('.btn-toggle-room-active');
+1033:                     $btn.removeClass('btn-danger').addClass('btn-success').attr('title',
+1034:                         'Kích hoạt');
+1035:                     $btn.find('i').removeClass('fas fa-times').addClass('fas fa-undo');
+1036:                 });
+1037:             }
+1038: 
+1039:             const groupData = [];
+1040:             $tr.find('.btn-toggle-group').each(function() {
+1041:                 groupData.push($(this).data('group-id') + ':' + $(this).data('active'));
+1042:             });
+1043:             updatePermissionAjax(employeeId, 'group', groupData);
+1044:         });
+1045: 
+1046:         // Handle Room Assignment Actions

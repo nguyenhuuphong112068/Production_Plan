@@ -1,0 +1,22 @@
+1201:     function updateSidebarPersonnelTimes() {
+1301:                         if (a.is_local) {
+1302:                             badgeHtml +=
+1303:                                 `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+1304:                         } else {
+1305:                             badgeHtml +=
+1306:                                 `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
+1307:                         }
+1308:                     });
+1309:                     badgeHtml += '</div>';
+1310:                     $el.append(badgeHtml);
+1311:                 }
+1312:             }
+1313: 
+1314:             // Apply filter under 8h
+1315:             if (filterUnder8h) {
+1316:                 if (totalHours >= 8 || isLeave) {
+1317:                     $el.hide();
+1318:                 } else {
+1319:                     $el.show();
+1320:                 }
+1321:             } else {

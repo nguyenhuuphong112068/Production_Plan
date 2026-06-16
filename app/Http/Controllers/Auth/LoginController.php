@@ -248,19 +248,28 @@ class LoginController extends Controller
                         ]);
                     } else {
                         // Nếu đã từng có dữ liệu tại đây (có thể là nhiều dòng bao gồm cả phân tổ/phòng), 
-                        // thực hiện kích hoạt lại TẤT CẢ các dòng liên quan để khôi phục trạng thái cũ
+                        // chỉ cập nhật lại TẤT CẢ các dòng liên quan nếu trạng thái active của nhân viên thực sự thay đổi
                         if ($departmentCode != 'QA') {
                             $updateData = [
-                                'active' => $activeVal,
                                 'updated_at' => now()
                             ];
+                            
+                            $statusChanged = ($employee && $employee->active != $activeVal);
+                            if ($statusChanged) {
+                                $updateData['active'] = $activeVal;
+                            }
+                            
                             if ($isWarehouse) {
                                 $updateData['group_id'] = $groupIdVal;
                             }
-                            DB::table('employee_assignments')
-                                ->where('employees_id', $employeeId)
-                                ->where('production_code', $departmentCode)
-                                ->update($updateData);
+                            
+                            // Nếu không có thay đổi active hoặc group_id thì không cần update toàn bộ bảng
+                            if ($statusChanged || $isWarehouse) {
+                                DB::table('employee_assignments')
+                                    ->where('employees_id', $employeeId)
+                                    ->where('production_code', $departmentCode)
+                                    ->update($updateData);
+                            }
                         }
                     }
                 }

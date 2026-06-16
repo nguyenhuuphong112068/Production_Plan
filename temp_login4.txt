@@ -1,0 +1,51 @@
+211:                         $employeeId = DB::table('employees')->insertGetId([
+212:                             'code' => $emp->employeeId,
+213:                             'name' => $emp->employeeName ?? 'N/A',
+214:                             'active' => $activeVal,
+215:                             'resign' => $resignVal,
+216:                             'created_at' => now(),
+217:                             'updated_at' => now()
+218:                         ]);
+219:                     } else {
+220:                         $employeeId = $employee->id;
+221:                         // Cập nhật lại tên và đảm bảo active status được đồng bộ đúng
+222:                         DB::table('employees')->where('id', $employeeId)->update([
+223:                             'name' => $emp->employeeName ?? $employee->name,
+224:                             'active' => $activeVal,
+225:                             'resign' => $resignVal,
+226:                             'updated_at' => now()
+227:                         ]);
+228:                     }
+229: 
+230:                     // Đồng bộ vào bảng phân vùng sản xuất (employee_assignments)
+231:                     $hasAssignment = DB::table('employee_assignments')
+232:                         ->where('employees_id', $employeeId)
+233:                         ->where('production_code', $departmentCode)
+234:                         ->exists();
+235: 
+236:                     if (!$hasAssignment) {
+237:                         // Nếu chưa từng có phân công tại bộ phận này, tạo mới bản ghi chính (is_main = 1)
+238:                         DB::table('employee_assignments')->insert([
+239:                             'employees_id' => $employeeId,
+240:                             'production_code' => $departmentCode,
+241:                             'is_main' => 1,
+242:                             'group_id' => $groupIdVal,
+243:                             'room_id' => 0,
+244:                             'active' => $activeVal,
+245:                             'created_by' => 'System Sync',
+246:                             'created_at' => now(),
+247:                             'updated_at' => now()
+248:                         ]);
+249:                     } else {
+250:                         // Nếu đã từng có dữ liệu tại đây (có thể là nhiều dòng bao gồm cả phân tổ/phòng), 
+251:                         // thực hiện kích hoạt lại TẤT CẢ các dòng liên quan để khôi phục trạng thái cũ
+252:                         if ($departmentCode != 'QA') {
+253:                             $updateData = [
+254:                                 'active' => $activeVal,
+255:                                 'updated_at' => now()
+256:                             ];
+257:                             if ($isWarehouse) {
+258:                                 $updateData['group_id'] = $groupIdVal;
+259:                             }
+260:                             DB::table('employee_assignments')
+261:                                 ->where('employees_id', $employeeId)
