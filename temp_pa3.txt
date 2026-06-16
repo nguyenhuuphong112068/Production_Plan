@@ -1,0 +1,21 @@
+1521:                     ->whereColumn('ea2.employees_id', 'e.id')
+1522:                     ->where(function ($q) use ($group_code) {
+1523:                         $q->where('sg.code', $group_code)
+1524:                             ->orWhere('ea2.group_id', $group_code);
+1525:                     })
+1526:                     ->where('ea2.active', 1);
+1527:             });
+1528:         }
+1529: 
+1530:         $personnel = $personnelQuery->select('e.*')
+1531:             ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL AND room_id > 0) as allowed_rooms_with_levels"))
+1532:             ->orderBy('e.name')
+1533:             ->get();
+1534: 
+1535:         $authorization = session('user')['userGroup'];
+1536:         $dbAssignments = $this->getDbAssignments(Carbon::parse($startDate)->format('Y-m-d'));
+1537: 
+1538:         return response()->json([
+1539:             'resources' => $resources,
+1540:             'events' => $events,
+1541:             'personnel' => $personnel,

@@ -1,0 +1,31 @@
+3231:         });
+3232: 
+3233:         // ------------------ TỰ ĐỘNG PHÂN CÔNG ------------------
+3234:         async function autoAssign() {
+3235:             try {
+3236:                 const result = await Swal.fire({
+3237:                     title: 'Tự động phân công',
+3238:                     text: 'Hệ thống sẽ tự động phân công nhân sự vào các vị trí còn trống. Các phân công thủ công hiện tại sẽ được giữ lại. Bạn có chắc chắn?',
+3239:                     icon: 'warning',
+3240:                     showCancelButton: true,
+3241:                     confirmButtonText: 'Đồng ý',
+3242:                     cancelButtonText: 'Hủy'
+3243:                 });
+3244:                 if (!result.isConfirmed) return;
+3245: 
+3246:                 Swal.fire({
+3247:                     title: 'Đang xử lý...',
+3248:                     allowOutsideClick: false,
+3249:                     didOpen: () => Swal.showLoading()
+3250:                 });
+3251: 
+3252:                 // Tải dữ liệu lịch trực (sidebar) nếu chưa có
+3253:                 if (!isSidebarLoaded) {
+3254:                     await fetchPersonnelShiftsPromise();
+3255:                 }
+3256: 
+3257:                 // Thu thập tất cả ID nhân sự đã được sắp thủ công trên màn hình để loại trừ khỏi pool
+3258:                 const allManuallyAssignedIds = new Set();
+3259:                 $('.room-row .assignment-item .personnel-container .person-select').each(function() {
+3260:                     const val = $(this).val();
+3261:                     if (val) {

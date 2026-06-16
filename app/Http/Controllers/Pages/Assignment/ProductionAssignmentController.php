@@ -380,7 +380,7 @@ class ProductionAssignmentController extends Controller
         }
 
         $personnel = $personnelQuery->select('e.*')
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL AND room_id > 0) as allowed_rooms_with_levels"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level, ':', COALESCE(priority_level, 1)) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL AND room_id > 0) as allowed_rooms_with_levels"))
             ->orderBy('e.name')
             ->get();
 
@@ -1528,7 +1528,7 @@ class ProductionAssignmentController extends Controller
         }
 
         $personnel = $personnelQuery->select('e.*')
-            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL AND room_id > 0) as allowed_rooms_with_levels"))
+            ->addSelect(DB::raw("(SELECT GROUP_CONCAT(CONCAT(room_id, ':', level, ':', COALESCE(priority_level, 1)) SEPARATOR '|') FROM employee_assignments WHERE employees_id = e.id AND active = 1 AND room_id IS NOT NULL AND room_id > 0) as allowed_rooms_with_levels"))
             ->orderBy('e.name')
             ->get();
 

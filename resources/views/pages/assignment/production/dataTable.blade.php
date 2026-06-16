@@ -3356,6 +3356,18 @@
                     return 0;
                 }
 
+                // Hàm lấy mức độ ưu tiên của person cho room
+                function getPersonPriority(pid, roomId) {
+                    const skillsStr = personnelSkills[pid] || '';
+                    if (!skillsStr) return 1;
+                    const pairs = skillsStr.split('|');
+                    for (const pair of pairs) {
+                        const parts = pair.split(':');
+                        if (parts[0] === roomId.toString()) return parseInt(parts[2] || 1);
+                    }
+                    return 1;
+                }
+
                 const shiftKeys = Object.keys(pools);
                 shiftKeys.forEach(shiftKey => {
                     const shiftTasks = tasks.filter(t => t.shiftKey === shiftKey);
@@ -3386,14 +3398,16 @@
                                 const hasWhAssigned = task.assigned.some(aPid => whPool.includes(parseInt(aPid)));
                                 if (hasWhAssigned) continue;
                                 
-                                let bestPid = null, bestLevel = -1, bestIdx = -1;
+                                let bestPid = null, bestLevel = -1, bestPriority = 9999, bestIdx = -1;
                                 for (let i = 0; i < whPoolMutable.length; i++) {
                                     const pid = whPoolMutable[i];
                                     if (task.assigned.includes(pid.toString())) continue;
                                     
                                     const lv = getPersonLevel(pid, task.roomId);
-                                    if (lv > bestLevel) {
+                                    const prio = getPersonPriority(pid, task.roomId);
+                                    if (lv > bestLevel || (lv === bestLevel && prio < bestPriority)) {
                                         bestLevel = lv;
+                                        bestPriority = prio;
                                         bestPid = pid;
                                         bestIdx = i;
                                     }
@@ -3435,13 +3449,16 @@
 
                             let bestPid = null,
                                 bestLevel = -1,
+                                bestPriority = 9999,
                                 bestIdx = -1;
                             for (let i = 0; i < profPoolMutable.length; i++) {
                                 const pid = profPoolMutable[i];
                                 if (task.assigned.includes(pid.toString())) continue;
                                 const lv = getPersonLevel(pid, task.roomId);
-                                if (lv >= 3 && lv > bestLevel) {
+                                const prio = getPersonPriority(pid, task.roomId);
+                                if (lv >= 3 && (lv > bestLevel || (lv === bestLevel && prio < bestPriority))) {
                                     bestLevel = lv;
+                                    bestPriority = prio;
                                     bestPid = pid;
                                     bestIdx = i;
                                 }
@@ -3470,14 +3487,17 @@
 
                                 let bestPersonId = null;
                                 let bestLevel = -1;
+                                let bestPriority = 9999;
                                 let bestIndex = -1;
 
                                 for (let i = 0; i < pool.length; i++) {
                                     const pid = pool[i];
                                     const level = getPersonLevel(pid, task.roomId);
+                                    const prio = getPersonPriority(pid, task.roomId);
 
-                                    if (level > 0 && level > bestLevel) {
+                                    if (level > 0 && (level > bestLevel || (level === bestLevel && prio < bestPriority))) {
                                         bestLevel = level;
+                                        bestPriority = prio;
                                         bestPersonId = pid;
                                         bestIndex = i;
                                     }
