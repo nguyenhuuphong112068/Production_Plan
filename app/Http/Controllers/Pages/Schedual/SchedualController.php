@@ -1044,7 +1044,15 @@ class SchedualController extends Controller
                     }
                 }
             } else {
-                // Tạm thời ẩn cảnh báo thiếu khuôn vì dữ liệu chưa đầy đủ
+                // Cảnh báo thiếu khuôn nếu lô được xếp lên máy ép vỉ (có blister_type_code) nhưng chưa gán khuôn
+                $room = DB::table('room')->where('id', $plan->resourceId)->first();
+                if ($room && !empty($room->blister_type_code)) {
+                    $subtitles[] = "❌ Thiếu Khuôn!";
+                    $color_event = '#e54a4aff'; // Đỏ báo lỗi
+                    $textColor = '#ffffff';
+                    $violation_colors[] = '#e54a4aff';
+                    $mold_warning = "❌ Thiếu Khuôn!";
+                }
             }
         }
 
@@ -7240,12 +7248,17 @@ class SchedualController extends Controller
         try {
             $type = $request->input('type', 'missing');
             $now = now();
+            $productionCode = session('user')['production_code'] ?? null;
 
             $query = DB::table('stage_plan')
                 ->where('stage_code', 7)
                 ->where('finished', 0)
                 ->whereNotNull('start')
                 ->where('start', '>=', $now);
+
+            if ($productionCode) {
+                $query->where('deparment_code', $productionCode);
+            }
 
             if ($type === 'missing') {
                 $query->whereNull('blister_mold_id');
@@ -7295,25 +7308,34 @@ class SchedualController extends Controller
     {
         try {
             $type = $request->input('type', 'missing');
-
             $now = now();
+            $productionCode = session('user')['production_code'] ?? null;
 
             if ($type === 'all') {
-                DB::table('stage_plan')
+                $resetQuery = DB::table('stage_plan')
                     ->where('stage_code', 7)
                     ->where('finished', 0)
-                    ->where('start', '>=', $now)
-                    ->update(['blister_mold_id' => null]);
+                    ->where('start', '>=', $now);
+                    
+                if ($productionCode) {
+                    $resetQuery->where('deparment_code', $productionCode);
+                }
+                
+                $resetQuery->update(['blister_mold_id' => null]);
             }
 
-            $plans = DB::table('stage_plan')
+            $plansQuery = DB::table('stage_plan')
                 ->where('stage_code', 7)
                 ->where('finished', 0)
                 ->whereNull('blister_mold_id')
                 ->whereNotNull('start')
-                ->where('start', '>=', $now)
-                ->orderBy('start', 'asc')
-                ->get();
+                ->where('start', '>=', $now);
+                
+            if ($productionCode) {
+                $plansQuery->where('deparment_code', $productionCode);
+            }
+
+            $plans = $plansQuery->orderBy('start', 'asc')->get();
 
             $allocatedCount = 0;
 
