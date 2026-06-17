@@ -1,5 +1,0 @@
-73:   const [selectedRoomsFilter, setSelectedRoomsFilter] = useState(null);
-3675:     if (selectedRoomsFilter && selectedRoomsFilter.length > 0) {
-3676:       baseRes = baseRes.filter(r => selectedRoomsFilter.includes(r.title));
-3679:   }, [resources, showPersonnel, selectedStagesFilter, selectedRoomsFilter]);
-3870:             value={selectedRoomsFilter || roomFilterOptions.map(o => o.value)}

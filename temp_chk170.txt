@@ -1,2 +1,0 @@
-2406:     public function update(Request $request)
-2422:                 DB::table('reason')->updateOrInsert(

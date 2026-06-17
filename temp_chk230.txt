@@ -1,0 +1,21 @@
+901:   };
+902: 
+903:   const findNextAvailableSlot = (machineId, durationMs, earliestStart, allEvents, offRanges, ignoreIds = [], updatedTimesById = {}) => {
+904:     let currentStart = new Date(earliestStart);
+905:     currentStart = skipOffDays(currentStart, offRanges);
+906: 
+907:     const machineEvents = allEvents.filter(e => {
+908:         if (e.getResources && e.getResources()[0]?.id !== machineId && e.resourceId !== machineId) return false;
+909:         if (ignoreIds.includes(e.id)) return false;
+910:         
+911:         let eEnd = new Date(e.end);
+912:         if (updatedTimesById[e.id]) {
+913:             eEnd = new Date(updatedTimesById[e.id].end);
+914:         }
+915:         return eEnd > currentStart;
+916:     }).map(e => {
+917:         let start = new Date(e.start);
+918:         let end = new Date(e.end);
+919:         if (updatedTimesById[e.id]) {
+920:             start = new Date(updatedTimesById[e.id].start);
+921:             end = new Date(updatedTimesById[e.id].end);

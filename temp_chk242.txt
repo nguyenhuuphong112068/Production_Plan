@@ -1,0 +1,21 @@
+91:   const [plan, setPlan] = useState([]);
+92:   const [quota, setQuota] = useState([]);
+93:   const [stageMap, setStageMap] = useState({});
+94:   const [contextMenuInfo, setContextMenuInfo] = useState({ visible: false, x: 0, y: 0, event: null });
+95:   const [type, setType] = useState(true);
+96:   const [isCleaningHidden, setIsCleaningHidden] = useState(() => {
+97:     return JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+98:   });
+99:   const [loading, setLoading] = useState(false);
+100:   const [authorization, setAuthorization] = useState(false);
+101:   const [heightResource, setHeightResource] = useState("1px");
+102:   const [reasons, setReasons] = useState([]);
+103:   const [bkcCode, setBkcCode] = useState([]);
+104:   const [lines, setLines] = useState(['S16']);
+105:   const [allLines, setAllLines] = useState([]);
+106:   const [currentPassword, setCurrentPassword] = useState(null);
+107:   const [userID, setUserID] = useState(null);
+108:   const [production, setProduction] = useState(null);
+109:   const [isCascadeMode, setIsCascadeMode] = useState(() => {
+110:     return JSON.parse(sessionStorage.getItem('cascadeMode')) || false;
+111:   });

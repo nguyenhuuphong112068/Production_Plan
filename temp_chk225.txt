@@ -1,0 +1,41 @@
+1106: 
+1107:   // Cuộn lịch đến sự kiện đang được chọn đầu tiên trong selectedEvents
+1108:   const scrollToSelectedEvent = () => {
+1109:     const calendarApi = calendarRef.current?.getApi();
+1110:     if (!calendarApi) return;
+1111: 
+1112:     // Ưu tiên dùng sự kiện mục tiêu từ Xem trước chuỗi nếu có
+1113:     const targetId = previewTargetRef.current?.id ?? selectedEvents[0]?.id;
+1114:     const targetStart = previewTargetRef.current?.start ?? selectedEvents[0]?.start;
+1115:     if (!targetId) return;
+1116: 
+1117:     // Nếu view hiện tại không chứa sự kiện, mới gotoDate. Nếu đã trong range thì bỏ qua.
+1118:     if (targetStart) {
+1119:         const { activeStart, activeEnd } = calendarApi.view;
+1120:         const evDate = new Date(targetStart);
+1121:         if (evDate < activeStart || evDate >= activeEnd) {
+1122:             calendarApi.gotoDate(evDate);
+1123:         }
+1124:     }
+1125: 
+1126:     // Cuộn ngang container nội bộ của FullCalendar đến đúng sự kiện
+1127:     const doScroll = () => {
+1128:         const eventEl = document.querySelector(`[data-event-id="${targetId}"]`);
+1129:         if (!eventEl) return false;
+1130: 
+1131:         const scrollerEl = eventEl.closest('.fc-scroller');
+1132:         if (!scrollerEl) return false;
+1133: 
+1134:         const eventRect = eventEl.getBoundingClientRect();
+1135:         const scrollerRect = scrollerEl.getBoundingClientRect();
+1136:         const currentScrollLeft = scrollerEl.scrollLeft;
+1137:         const newScrollLeft = currentScrollLeft + (eventRect.left - scrollerRect.left) - (scrollerRect.width / 2) + (eventRect.width / 2);
+1138:         scrollerEl.scrollTo({ left: newScrollLeft, behavior: 'instant' });
+1139:         return true;
+1140:     };
+1141: 
+1142:     setTimeout(() => {
+1143:         if (!doScroll()) setTimeout(doScroll, 600);
+1144:     }, 150);
+1145:   };
+1146: 

@@ -1,0 +1,21 @@
+1341:             }
+1342:             if (predData && predData.event) {
+1343:                 predData.event.setExtendedProp('warning_text', '');
+1344:                 predData.event.setExtendedProp('violation_colors', []);
+1345:             }
+1346:             return;
+1347:         }
+1348:         
+1349:         let ignoreIds = [evData.id];
+1350:         if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
+1351: 
+1352:         let newSlot = findNextAvailableSlot(evData.resourceId, evData.duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+1353:         
+1354:         evData.start = newSlot.start;
+1355:         evData.end = newSlot.end;
+1356:         evData.event.setDates(newSlot.start, newSlot.end);
+1357:         
+1358:         if (cleaningEvent) {
+1359:             let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
+1360:             let newCleaningStart = newSlot.end;
+1361:             let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);

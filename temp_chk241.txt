@@ -1,0 +1,31 @@
+4381:           const pmId = arg.event.extendedProps.plan_master_id;
+4382: 
+4383:           // Hiding/Showing cleaning events locally
+4384:           if (isCleaning) {
+4385:             classes.push('cleaning-event');
+4386:           }
+4387: 
+4388:           // Hiệu ứng bóng mờ màu vàng cho các thay đổi chưa lưu
+4389:           if (pendingChanges && pendingChanges.some(p => String(p.id) === String(arg.event.id))) {
+4390:             classes.push('fc-event-pending');
+4391:           }
+4392: 
+4393:           // Active Plan Master IDs focusing (logic from line 2956)
+4394:           if (activePlanMasterIds.length > 0) {
+4395:             if (activePlanMasterIds.includes(pmId)) {
+4396:               classes.push('fc-event-focus');
+4397:             } else {
+4398:               classes.push('fc-event-hidden');
+4399:             }
+4400:           }
+4401: 
+4402:           return classes;
+4403:         }}
+4404:         resources={displayResources}
+4405:         resourceAreaHeaderContent="Phòng Sản Xuất"
+4406: 
+4407:         locale="vi"
+4408:         resourceAreaWidth="250px"
+4409:         expandRows={false}
+4410: 
+4411:         editable={true}

@@ -109,6 +109,7 @@ const ScheduleTest = () => {
   const [isCascadeMode, setIsCascadeMode] = useState(() => {
     return JSON.parse(sessionStorage.getItem('cascadeMode')) || false;
   });
+  const [blackViolationCount, setBlackViolationCount] = useState(0);
 
 
   const [activePlanMasterIds, setActivePlanMasterIds] = useState([]); // Mảng để chứa nhiều mã lọc cùng lúc
@@ -1104,17 +1105,10 @@ const ScheduleTest = () => {
     }
   };
 
-  // Cuộn lịch đến sự kiện đang được chọn đầu tiên trong selectedEvents
-  const scrollToSelectedEvent = () => {
+  const scrollToSpecificEvent = (eventId, targetStart) => {
     const calendarApi = calendarRef.current?.getApi();
-    if (!calendarApi) return;
+    if (!calendarApi || !eventId) return;
 
-    // Ưu tiên dùng sự kiện mục tiêu từ Xem trước chuỗi nếu có
-    const targetId = previewTargetRef.current?.id ?? selectedEvents[0]?.id;
-    const targetStart = previewTargetRef.current?.start ?? selectedEvents[0]?.start;
-    if (!targetId) return;
-
-    // Nếu view hiện tại không chứa sự kiện, mới gotoDate. Nếu đã trong range thì bỏ qua.
     if (targetStart) {
         const { activeStart, activeEnd } = calendarApi.view;
         const evDate = new Date(targetStart);
@@ -1123,9 +1117,8 @@ const ScheduleTest = () => {
         }
     }
 
-    // Cuộn ngang container nội bộ của FullCalendar đến đúng sự kiện
     const doScroll = () => {
-        const eventEl = document.querySelector(`[data-event-id="${targetId}"]`);
+        const eventEl = document.querySelector(`[data-event-id="${eventId}"]`);
         if (!eventEl) return false;
 
         const scrollerEl = eventEl.closest('.fc-scroller');
@@ -1133,9 +1126,16 @@ const ScheduleTest = () => {
 
         const eventRect = eventEl.getBoundingClientRect();
         const scrollerRect = scrollerEl.getBoundingClientRect();
+        
+        // Cuộn ngang
         const currentScrollLeft = scrollerEl.scrollLeft;
         const newScrollLeft = currentScrollLeft + (eventRect.left - scrollerRect.left) - (scrollerRect.width / 2) + (eventRect.width / 2);
-        scrollerEl.scrollTo({ left: newScrollLeft, behavior: 'instant' });
+        
+        // Cuộn dọc
+        const currentScrollTop = scrollerEl.scrollTop;
+        const newScrollTop = currentScrollTop + (eventRect.top - scrollerRect.top) - (scrollerRect.height / 2) + (eventRect.height / 2);
+        
+        scrollerEl.scrollTo({ left: newScrollLeft, top: newScrollTop, behavior: 'smooth' });
         return true;
     };
 
@@ -1144,7 +1144,40 @@ const ScheduleTest = () => {
     }, 150);
   };
 
-const handleSmartRippleShift = (targetEvent) => {
+  // Cuộn lịch đến sự kiện đang được chọn đầu tiên trong selectedEvents
+  const scrollToSelectedEvent = () => {
+    const targetId = previewTargetRef.current?.id ?? selectedEvents[0]?.id;
+    const targetStart = previewTargetRef.current?.start ?? selectedEvents[0]?.start;
+    scrollToSpecificEvent(targetId, targetStart);
+  };
+
+  // Cuộn lịch đến sự kiện đầu tiên có lỗi đen
+  const scrollToFirstBlackViolation = () => {
+      const calendarApi = calendarRef.current?.getApi();
+      if (!calendarApi) return;
+      const allEvents = calendarApi.getEvents();
+      const firstViolation = allEvents.find(e => e.extendedProps?.violation_colors?.includes('black'));
+      if (firstViolation) {
+          scrollToSpecificEvent(firstViolation.id, firstViolation.start);
+      } else {
+          Swal.fire("Thông báo", "Không tìm thấy sự kiện nào có lỗi chuỗi trên lịch hiện tại.", "info");
+      }
+  };
+
+  const handleSmartRippleShift = async (targetEvent) => {
+    Swal.fire({
+      title: "Đang xử lý...",
+      html: "Vui lòng đợi trong khi hệ thống điều chỉnh chuỗi.",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => {
+          Swal.showLoading();
+      }
+    });
+
+    // Cho phép trình duyệt render UI loading trước khi xử lý nặng
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     const calendarApi = calendarRef.current.getApi();
     const allEvents = calendarApi.getEvents();
     
@@ -1155,17 +1188,6 @@ const handleSmartRippleShift = (targetEvent) => {
 
     if (anchors.length === 0) return;
 
-    const campaignCode = anchors[0].extendedProps.campaign_code;
-    if (!campaignCode) {
-        Swal.fire("Lỗi", "Sự kiện này không có mã chiến dịch (campaign_code).", "error");
-        return;
-    }
-
-    const sameCampaign = anchors.every(a => a.extendedProps.campaign_code === campaignCode);
-    if (!sameCampaign) {
-        Swal.fire("Lỗi", "Chỉ cho phép chọn các sự kiện có cùng campaign_code trong 1 lần xử lý.", "error");
-        return;
-    }
 
     const offRanges = offDays.map(d => {
         const start = new Date(`${d}T06:00:00`);
@@ -1176,6 +1198,17 @@ const handleSmartRippleShift = (targetEvent) => {
     // Lấy danh sách các plan_master_id của các anchors
     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
     
+    // Xóa màu cảnh báo cho chính các anchors vì chuỗi sẽ được tự động sửa
+    anchors.forEach(a => {
+        a.setExtendedProp('warning_text', '');
+        a.setExtendedProp('violation_colors', []);
+        let cleaningEvent = allEvents.find(e => String(e.id) === String(a.id).replace('-main', '-cleaning'));
+        if (cleaningEvent) {
+            cleaningEvent.setExtendedProp('warning_text', '');
+            cleaningEvent.setExtendedProp('violation_colors', []);
+        }
+    });
+
     // Tìm TẤT CẢ các sự kiện (các công đoạn) thuộc về các plan_master_id này
     let relatedEvents = allEvents.filter(e => pmIds.includes(String(e.extendedProps.plan_master_id)));
     
@@ -1229,14 +1262,31 @@ const handleSmartRippleShift = (targetEvent) => {
         // KIỂM TRA VI PHẠM CHUỖI: Nếu evData đã kết thúc đúng trình tự (trước latestEnd), không dịch chuyển!
         if (evData.end <= latestEnd) {
             updatedTimesById[evData.id] = { start: evData.start, end: evData.end };
+            evData.event.setExtendedProp('warning_text', '');
+            evData.event.setExtendedProp('violation_colors', []);
             if (cleaningEvent) {
                 updatedTimesById[cleaningEvent.id] = { start: evData.event.end, end: cleaningEvent.end };
+                cleaningEvent.setExtendedProp('warning_text', '');
+                cleaningEvent.setExtendedProp('violation_colors', []);
+            }
+            if (successorData && successorData.event) {
+                successorData.event.setExtendedProp('warning_text', '');
+                successorData.event.setExtendedProp('violation_colors', []);
             }
             return;
         }
         
         let ignoreIds = [evData.id];
         if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
+        
+        // Bỏ qua các sự kiện liên quan CHƯA được xử lý (tránh lỗi tự nhảy qua đầu nhau)
+        relatedEvents.forEach(e => {
+            if (!updatedTimesById[e.id] && !ignoreIds.includes(String(e.id))) {
+                ignoreIds.push(String(e.id));
+                const cl = allEvents.find(x => String(x.id) === String(e.id).replace('-main', '-cleaning'));
+                if (cl) ignoreIds.push(String(cl.id));
+            }
+        });
 
         let newSlot = findPreviousAvailableSlot(evData.resourceId, evData.duration, latestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
         
@@ -1293,14 +1343,31 @@ const handleSmartRippleShift = (targetEvent) => {
         // KIỂM TRA VI PHẠM CHUỖI: Nếu evData đã bắt đầu đúng trình tự (sau earliestStart), không dịch chuyển!
         if (evData.start >= earliestStart) {
             updatedTimesById[evData.id] = { start: evData.start, end: evData.end };
+            evData.event.setExtendedProp('warning_text', '');
+            evData.event.setExtendedProp('violation_colors', []);
             if (cleaningEvent) {
                 updatedTimesById[cleaningEvent.id] = { start: evData.event.end, end: cleaningEvent.end };
+                cleaningEvent.setExtendedProp('warning_text', '');
+                cleaningEvent.setExtendedProp('violation_colors', []);
+            }
+            if (predData && predData.event) {
+                predData.event.setExtendedProp('warning_text', '');
+                predData.event.setExtendedProp('violation_colors', []);
             }
             return;
         }
         
         let ignoreIds = [evData.id];
         if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
+        
+        // Bỏ qua các sự kiện liên quan CHƯA được xử lý (tránh lỗi tự nhảy qua đầu nhau)
+        relatedEvents.forEach(e => {
+            if (!updatedTimesById[e.id] && !ignoreIds.includes(String(e.id))) {
+                ignoreIds.push(String(e.id));
+                const cl = allEvents.find(x => String(x.id) === String(e.id).replace('-main', '-cleaning'));
+                if (cl) ignoreIds.push(String(cl.id));
+            }
+        });
 
         let newSlot = findNextAvailableSlot(evData.resourceId, evData.duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
         
@@ -1337,6 +1404,91 @@ const handleSmartRippleShift = (targetEvent) => {
         });
     });
 
+    // DỌN DẸP SỰ KIỆN CHEN NGANG (CLEAN UP INTRUDERS)
+    const campaignSpans = {};
+    relatedEvents.forEach(e => {
+        const resources = typeof e.getResources === 'function' ? e.getResources() : [];
+        const rId = String(e.extendedProps?.resourceId || (resources.length > 0 ? resources[0]?.id : e.resourceId));
+        if (rId === "undefined" || rId === "null") return;
+
+        let start = new Date(e.start);
+        let end = new Date(e.end);
+        if (updatedTimesById[e.id]) {
+            start = new Date(updatedTimesById[e.id].start);
+            end = new Date(updatedTimesById[e.id].end);
+        }
+        
+        if (!campaignSpans[rId]) {
+            campaignSpans[rId] = { minStart: start, maxEnd: end };
+        } else {
+            if (start < campaignSpans[rId].minStart) campaignSpans[rId].minStart = start;
+            if (end > campaignSpans[rId].maxEnd) campaignSpans[rId].maxEnd = end;
+        }
+    });
+
+    const relatedIds = relatedEvents.map(e => String(e.id));
+    const cleaningRelatedIds = relatedIds.map(id => id.replace('-main', '-cleaning'));
+    let intruderIgnoreIds = [...relatedIds, ...cleaningRelatedIds];
+    
+    let intruders = [];
+    allEvents.forEach(e => {
+        if (relatedIds.includes(String(e.id)) || cleaningRelatedIds.includes(String(e.id))) return;
+        if (e.extendedProps?.is_cleaning && !String(e.id).includes('-main')) return;
+        
+        const resources = typeof e.getResources === 'function' ? e.getResources() : [];
+        const rId = String(e.extendedProps?.resourceId || (resources.length > 0 ? resources[0]?.id : e.resourceId));
+        if (rId === "undefined" || rId === "null") return;
+
+        const span = campaignSpans[rId];
+        if (!span) return;
+        
+        let start = new Date(e.start);
+        let end = new Date(e.end);
+        if (updatedTimesById[e.id]) {
+            start = new Date(updatedTimesById[e.id].start);
+            end = new Date(updatedTimesById[e.id].end);
+        }
+        
+        if (start < span.maxEnd && end > span.minStart) {
+            intruders.push({ ev: e, start, end, rId, duration: end.getTime() - start.getTime() });
+        }
+    });
+    
+    intruders.sort((a, b) => a.start - b.start);
+    
+    intruders.forEach(intruder => {
+        const span = campaignSpans[intruder.rId];
+        let cleaningEvent = allEvents.find(e => String(e.id) === String(intruder.ev.id).replace('-main', '-cleaning'));
+        
+        let earliestStartForIntruder = span.maxEnd;
+        let currentIgnoreIds = [...intruderIgnoreIds, String(intruder.ev.id)];
+        if (cleaningEvent) currentIgnoreIds.push(String(cleaningEvent.id));
+        
+        let newSlot = findNextAvailableSlot(intruder.rId, intruder.duration, earliestStartForIntruder, allEvents, offRanges, currentIgnoreIds, updatedTimesById);
+        
+        updatedTimesById[intruder.ev.id] = { start: newSlot.start, end: newSlot.end };
+        updates.push({
+            id: intruder.ev.id,
+            start: newSlot.start,
+            end: newSlot.end,
+            resourceId: intruder.rId
+        });
+        
+        if (cleaningEvent) {
+            let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
+            let newCleaningStart = newSlot.end;
+            let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
+            updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
+            
+            updates.push({
+                id: cleaningEvent.id,
+                start: newCleaningStart,
+                end: newCleaningEnd,
+                resourceId: intruder.rId
+            });
+        }
+    });
+
     if (updates.length > 0) {
         let newPending = [...pendingChanges];
         updates.forEach(u => {
@@ -1360,19 +1512,18 @@ const handleSmartRippleShift = (targetEvent) => {
 
   const skipOffDays = (date, offRanges) => {
     let current = new Date(date);
-
-    for (const off of offRanges) {
-
-      // nếu current nằm trong khoảng nghỉ
-      if (current >= off.start && current < off.end) {
-        current = new Date(off.end);
-        break;
+    let crossed = true;
+    while (crossed) {
+      crossed = false;
+      for (const off of offRanges) {
+        if (current >= off.start && current < off.end) {
+          current = new Date(off.end);
+          crossed = true;
+          break;
+        }
+        if (current < off.start) break;
       }
-
-      // vì đã sort
-      if (current < off.start) break;
     }
-
     return current;
   };
 
@@ -4160,6 +4311,17 @@ const handleSmartRippleShift = (targetEvent) => {
           />
         </div>
         <div className="flex gap-4 align-items-center justify-content-end">
+          {blackViolationCount > 0 && (
+            <div
+              className="flex align-items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-purple-200 cursor-pointer"
+              onClick={scrollToFirstBlackViolation}
+              title="Nhấn để di chuyển đến sự kiện có lỗi chuỗi"
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+            >
+              <i className="pi pi-bolt"></i>
+              <span className="font-bold text-sm">{blackViolationCount} Lỗi chuỗi</span>
+            </div>
+          )}
           {selectedEvents && selectedEvents.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200 cursor-pointer"
@@ -4237,6 +4399,13 @@ const handleSmartRippleShift = (targetEvent) => {
         locale="vi"
         resourceAreaWidth="250px"
         expandRows={false}
+
+        eventsSet={(events) => {
+            const count = events.filter(e => e.extendedProps?.violation_colors?.includes('black')).length;
+            if (blackViolationCount !== count) {
+                setBlackViolationCount(count);
+            }
+        }}
 
         editable={true}
         droppable={true}

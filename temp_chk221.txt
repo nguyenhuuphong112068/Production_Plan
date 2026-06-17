@@ -1,0 +1,26 @@
+4186:             filter
+4187:           />
+4188:         </div>
+4189:         <div className="flex gap-4 align-items-center justify-content-end">
+4190:           {selectedEvents && selectedEvents.length > 0 && (
+4191:             <div
+4192:               className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200 cursor-pointer"
+4193:               onClick={scrollToSelectedEvent}
+4194:               title="Nhấn để di chuyển đến sự kiện đang chọn"
+4195:               style={{ cursor: 'pointer', userSelect: 'none' }}
+4196:             >
+4197:               <i className="pi pi-map-marker"></i>
+4198:               <span className="font-bold text-sm">{selectedEvents.length} Lô đang chọn</span>
+4199:             </div>
+4200:           )}
+4201:           {unsubmittedCount > 0 && (
+4202:             <div className="flex align-items-center gap-2 bg-red-100 text-red-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-red-200">
+4203:               <i className="pi pi-exclamation-circle"></i>
+4204:               <span className="font-bold text-sm">{unsubmittedCount} Lịch chưa submit</span>
+4205:             </div>
+4206:           )}
+4207:           {pendingChanges && pendingChanges.length > 0 && (
+4208:             <div className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-200">
+4209:               <i className="pi pi-exclamation-triangle"></i>
+4210:               <span className="font-bold text-sm">{pendingChanges.length} Thay đổi chưa lưu</span>
+4211:             </div>

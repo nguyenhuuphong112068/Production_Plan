@@ -1,0 +1,56 @@
+96:   const [isCleaningHidden, setIsCleaningHidden] = useState(() => {
+97:     return JSON.parse(sessionStorage.getItem('cleaningHidden')) || false;
+98:   });
+99:   const [loading, setLoading] = useState(false);
+100:   const [authorization, setAuthorization] = useState(false);
+101:   const [heightResource, setHeightResource] = useState("1px");
+102:   const [reasons, setReasons] = useState([]);
+103:   const [bkcCode, setBkcCode] = useState([]);
+104:   const [lines, setLines] = useState(['S16']);
+105:   const [allLines, setAllLines] = useState([]);
+106:   const [currentPassword, setCurrentPassword] = useState(null);
+107:   const [userID, setUserID] = useState(null);
+108:   const [production, setProduction] = useState(null);
+109:   const [isCascadeMode, setIsCascadeMode] = useState(() => {
+110:     return JSON.parse(sessionStorage.getItem('cascadeMode')) || false;
+111:   });
+112: 
+113: 
+114:   const [activePlanMasterIds, setActivePlanMasterIds] = useState([]); // Mảng để chứa nhiều mã lọc cùng lúc
+115:   const stageName = {
+116:     1: 'Cân Nguyên Liệu',
+117:     3: 'Pha Chế',
+118:     4: 'Trộn Hoàn Tất',
+119:     5: 'Định Hình',
+120:     6: 'Bao Phim',
+121:     7: 'ĐGSC-ĐGTC'
+122:   };
+123: 
+124:   function toLocalISOString(date) {
+125:     const pad = (n) => String(n).padStart(2, '0');
+126: 
+127:     return (
+128:       date.getFullYear() + '-' +
+129:       pad(date.getMonth() + 1) + '-' +
+130:       pad(date.getDate()) + 'T' +
+131:       pad(date.getHours()) + ':' +
+132:       pad(date.getMinutes()) + ':' +
+133:       pad(date.getSeconds()) + '.000Z'
+134:     );
+135:   }
+136: 
+137:   // Get dữ liệu ban đầu
+138: 
+139:   useEffect(() => {
+140:     const handleClick = () => {
+141:       if (contextMenuInfo.visible) {
+142:         setContextMenuInfo({ ...contextMenuInfo, visible: false });
+143:       }
+144:     };
+145:     window.addEventListener('click', handleClick);
+146:     return () => window.removeEventListener('click', handleClick);
+147:   }, [contextMenuInfo]);
+148: 
+149:   useEffect(() => {
+150: 
+151:     Swal.fire({

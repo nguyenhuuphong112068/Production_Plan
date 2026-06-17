@@ -1,4 +1,0 @@
-2406:     public function update(Request $request)
-2628:     public function updateClearning(Request $request)
-2976:     public function updateOrder(Request $request)
-7411:     public function updateBlisterMold(Request $request)

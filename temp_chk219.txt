@@ -1,0 +1,26 @@
+1096:         const relatedResourceIds = [...new Set(relatedEvents.map(e => String(e.resourceId)).filter(id => id !== "undefined" && id !== "null"))];
+1097:         
+1098:         // Tìm tên phòng tương ứng để set filter
+1099:         const filteredTitles = cleanData.resources.filter(r => relatedResourceIds.includes(String(r.id))).map(r => r.title);
+1100:         
+1101:         if (filteredTitles.length > 0) {
+1102:             setSelectedRoomsFilter(filteredTitles);
+1103:         }
+1104:     }
+1105:   };
+1106: 
+1107:   // Cuộn lịch đến sự kiện đang được chọn đầu tiên trong selectedEvents
+1108:   const scrollToSelectedEvent = () => {
+1109:     const calendarApi = calendarRef.current?.getApi();
+1110:     if (!calendarApi) return;
+1111: 
+1112:     // Ưu tiên dùng sự kiện mục tiêu từ Xem trước chuỗi nếu có
+1113:     const targetId = previewTargetRef.current?.id ?? selectedEvents[0]?.id;
+1114:     const targetStart = previewTargetRef.current?.start ?? selectedEvents[0]?.start;
+1115:     if (!targetId) return;
+1116: 
+1117:     // Nếu view hiện tại không chứa sự kiện, mới gotoDate. Nếu đã trong range thì bỏ qua.
+1118:     if (targetStart) {
+1119:         const { activeStart, activeEnd } = calendarApi.view;
+1120:         const evDate = new Date(targetStart);
+1121:         if (evDate < activeStart || evDate >= activeEnd) {

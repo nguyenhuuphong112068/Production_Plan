@@ -1,0 +1,21 @@
+1431:     let intruderIgnoreIds = [...relatedIds, ...cleaningRelatedIds];
+1432:     
+1433:     let intruders = [];
+1434:     allEvents.forEach(e => {
+1435:         if (relatedIds.includes(String(e.id)) || cleaningRelatedIds.includes(String(e.id))) return;
+1436:         if (e.extendedProps?.is_cleaning && !String(e.id).includes('-main')) return;
+1437:         
+1438:         const resources = typeof e.getResources === 'function' ? e.getResources() : [];
+1439:         const rId = String(e.extendedProps?.resourceId || (resources.length > 0 ? resources[0].id : e.resourceId));
+1440:         if (rId === "undefined" || rId === "null") return;
+1441: 
+1442:         const span = campaignSpans[rId];
+1443:         if (!span) return;
+1444:         
+1445:         let start = new Date(e.start);
+1446:         let end = new Date(e.end);
+1447:         if (updatedTimesById[e.id]) {
+1448:             start = new Date(updatedTimesById[e.id].start);
+1449:             end = new Date(updatedTimesById[e.id].end);
+1450:         }
+1451:         
