@@ -1,0 +1,61 @@
+821: 
+822:     if (selectedRows[0].stage_code !== 8) {
+823: 
+824:       axios.put('/Schedual/store', {
+825:         room_id: resourceId,
+826:         stage_code: selectedRows[0].stage_codes,
+827:         start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+828:         products: selectedRows,
+829:         startDate: toLocalISOString(activeStart),
+830:         endDate: toLocalISOString(activeEnd),
+831:         offdate: offDays,
+832:         multiStage: multiStage,
+833:         slotDuration: slotDuration
+834:       })
+835:         .then(res => {
+836:           let data = res.data;
+837:           if (typeof data === "string") {
+838:             data = data.replace(/^<!--.*?-->/, "").trim();
+839:             data = JSON.parse(data);
+840:           }
+841: 
+842:           setEvents(data.events);
+843:           if (data.resources) setResources(data.resources);
+844:           setSumBatchByStage(data.sumBatchByStage);
+845:           setPlan(data.plan);
+846: 
+847: 
+848:           setSelectedRows([]);
+849:         })
+850:         .catch(err => {
+851:           // Lỗi tạo lịch
+852:         });
+853:     } else if (selectedRows[0].stage_code == 8) {
+854: 
+855:       axios.put('/Schedual/store_maintenance', {
+856:         stage_code: 8,
+857:         start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
+858:         products: selectedRows,
+859:         is_HVAC: selectedRows[0]?.is_HVAC ?? false,
+860:         startDate: toLocalISOString(activeStart),
+861:         endDate: toLocalISOString(activeEnd),
+862:       })
+863:         .then(res => {
+864:           let data = res.data;
+865:           if (typeof data === "string") {
+866:             data = data.replace(/^<!--.*?-->/, "").trim();
+867:             data = JSON.parse(data);
+868:           }
+869:           setEvents(data.events);
+870:           if (data.resources) setResources(data.resources);
+871:           setSumBatchByStage(data.sumBatchByStage);
+872:           setPlan(data.plan);
+873: 
+874:           setSelectedRows([]);
+875:         })
+876:         .catch(err => {
+877:           // Lỗi tạo lịch bảo trì
+878:         });
+879:     }
+880:   };
+881: 

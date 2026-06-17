@@ -1,0 +1,36 @@
+1166: 
+1167:   const handleSmartRippleShift = async (targetEvent) => {
+1168:     Swal.fire({
+1169:       title: "Đang xử lý...",
+1170:       html: "Vui lòng đợi trong khi hệ thống điều chỉnh chuỗi.",
+1171:       allowOutsideClick: false,
+1172:       showConfirmButton: false,
+1173:       didOpen: () => {
+1174:           Swal.showLoading();
+1175:       }
+1176:     });
+1177: 
+1178:     // Cho phép trình duyệt render UI loading trước khi xử lý nặng
+1179:     await new Promise(resolve => setTimeout(resolve, 50));
+1180: 
+1181:     const calendarApi = calendarRef.current.getApi();
+1182:     const allEvents = calendarApi.getEvents();
+1183:     
+1184:     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
+1185:     let anchors = isSelected && selectedEvents.length > 0 
+1186:         ? selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean)
+1187:         : [targetEvent];
+1188: 
+1189:     if (anchors.length === 0) return;
+1190: 
+1191: 
+1192:     const offRanges = offDays.map(d => {
+1193:         const start = new Date(`${d}T06:00:00`);
+1194:         const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+1195:         return { start, end };
+1196:     }).sort((a, b) => a.start - b.start);
+1197: 
+1198:     // Lấy danh sách các plan_master_id của các anchors
+1199:     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
+1200:     
+1201:     // Xóa màu cảnh báo cho chính các anchors vì chuỗi sẽ được tự động sửa

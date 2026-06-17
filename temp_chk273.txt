@@ -1,0 +1,31 @@
+1481:             updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
+1482:             
+1483:             updates.push({
+1484:                 id: cleaningEvent.id,
+1485:                 start: newCleaningStart,
+1486:                 end: newCleaningEnd,
+1487:                 resourceId: intruder.rId
+1488:             });
+1489:         }
+1490:     });
+1491: 
+1492:     if (updates.length > 0) {
+1493:         let newPending = [...pendingChanges];
+1494:         updates.forEach(u => {
+1495:             const ev = calendarApi.getEventById(u.id);
+1496:             if (ev) {
+1497:                 ev.setDates(u.start, u.end);
+1498:             }
+1499:             const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
+1500:             if (existIdx >= 0) {
+1501:                 newPending[existIdx] = { ...newPending[existIdx], ...u };
+1502:             } else {
+1503:                 newPending.push(u);
+1504:             }
+1505:         });
+1506:         setPendingChanges(newPending);
+1507:         Swal.fire("Thành công", `Đã điều chỉnh ${updates.length} sự kiện con.`, "success");
+1508:     } else {
+1509:         Swal.fire("Thông báo", "Không có sự kiện nào cần điều chỉnh (hoặc các sự kiện đã được tối ưu).", "info");
+1510:     }
+1511:   };

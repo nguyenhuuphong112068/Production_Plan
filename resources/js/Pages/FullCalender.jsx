@@ -1074,6 +1074,9 @@ const ScheduleTest = () => {
 
     if (anchors.length === 0) return;
 
+    let updates = [];
+    let updatedTimesById = {};
+
     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
     window.previewPlanMasterIds = pmIds; // Lưu vào biến toàn cục để eventContent đọc và tô bóng
     previewTargetRef.current = targetEvent; // Lưu target để scrollToSelectedEvent dùng
@@ -1196,16 +1199,17 @@ const ScheduleTest = () => {
     }).sort((a, b) => a.start - b.start);
 
     // Lấy danh sách các plan_master_id của các anchors
+    let updates = [];
+    let updatedTimesById = {};
+
     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
     
     // Xóa màu cảnh báo cho chính các anchors vì chuỗi sẽ được tự động sửa
     anchors.forEach(a => {
-        a.setExtendedProp('warning_text', '');
-        a.setExtendedProp('violation_colors', []);
+        updates.push({ id: a.id, clearWarnings: true });
         let cleaningEvent = allEvents.find(e => String(e.id) === String(a.id).replace('-main', '-cleaning'));
         if (cleaningEvent) {
-            cleaningEvent.setExtendedProp('warning_text', '');
-            cleaningEvent.setExtendedProp('violation_colors', []);
+            updates.push({ id: cleaningEvent.id, clearWarnings: true });
         }
     });
 
@@ -1231,8 +1235,6 @@ const ScheduleTest = () => {
         };
     });
 
-    let updates = [];
-    let updatedTimesById = {};
 
     let anchorStageCode = Math.min(...anchors.map(a => a.extendedProps.stage_code));
 
@@ -1262,16 +1264,13 @@ const ScheduleTest = () => {
         // KIỂM TRA VI PHẠM CHUỖI: Nếu evData đã kết thúc đúng trình tự (trước latestEnd), không dịch chuyển!
         if (evData.end <= latestEnd) {
             updatedTimesById[evData.id] = { start: evData.start, end: evData.end };
-            evData.event.setExtendedProp('warning_text', '');
-            evData.event.setExtendedProp('violation_colors', []);
+            updates.push({ id: evData.id, clearWarnings: true });
             if (cleaningEvent) {
                 updatedTimesById[cleaningEvent.id] = { start: evData.event.end, end: cleaningEvent.end };
-                cleaningEvent.setExtendedProp('warning_text', '');
-                cleaningEvent.setExtendedProp('violation_colors', []);
+                updates.push({ id: cleaningEvent.id, clearWarnings: true });
             }
             if (successorData && successorData.event) {
-                successorData.event.setExtendedProp('warning_text', '');
-                successorData.event.setExtendedProp('violation_colors', []);
+                updates.push({ id: successorData.event.id, clearWarnings: true });
             }
             return;
         }
@@ -1292,34 +1291,33 @@ const ScheduleTest = () => {
         
         evData.start = newSlot.start;
         evData.end = newSlot.end;
-        evData.event.setDates(newSlot.start, newSlot.end);
         
         if (cleaningEvent) {
             let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
             let newCleaningStart = newSlot.end;
             let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
-            cleaningEvent.setDates(newCleaningStart, newCleaningEnd);
-            
-            cleaningEvent.setExtendedProp('warning_text', '');
-            cleaningEvent.setExtendedProp('violation_colors', []);
             updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
+            updates.push({
+                id: cleaningEvent.id,
+                start: newCleaningStart,
+                end: newCleaningEnd,
+                resourceId: evData.resourceId,
+                clearWarnings: true
+            });
         }
         
         updatedTimesById[evData.id] = { start: newSlot.start, end: newSlot.end };
         
-        evData.event.setExtendedProp('warning_text', '');
-        evData.event.setExtendedProp('violation_colors', []);
-        
         if (successorData && successorData.event) {
-            successorData.event.setExtendedProp('warning_text', '');
-            successorData.event.setExtendedProp('violation_colors', []);
+            updates.push({ id: successorData.event.id, clearWarnings: true });
         }
         
         updates.push({
             id: evData.id,
             start: evData.start,
             end: evData.end,
-            resourceId: evData.resourceId
+            resourceId: evData.resourceId,
+            clearWarnings: true
         });
     });
 
@@ -1343,16 +1341,13 @@ const ScheduleTest = () => {
         // KIỂM TRA VI PHẠM CHUỖI: Nếu evData đã bắt đầu đúng trình tự (sau earliestStart), không dịch chuyển!
         if (evData.start >= earliestStart) {
             updatedTimesById[evData.id] = { start: evData.start, end: evData.end };
-            evData.event.setExtendedProp('warning_text', '');
-            evData.event.setExtendedProp('violation_colors', []);
+            updates.push({ id: evData.id, clearWarnings: true });
             if (cleaningEvent) {
                 updatedTimesById[cleaningEvent.id] = { start: evData.event.end, end: cleaningEvent.end };
-                cleaningEvent.setExtendedProp('warning_text', '');
-                cleaningEvent.setExtendedProp('violation_colors', []);
+                updates.push({ id: cleaningEvent.id, clearWarnings: true });
             }
             if (predData && predData.event) {
-                predData.event.setExtendedProp('warning_text', '');
-                predData.event.setExtendedProp('violation_colors', []);
+                updates.push({ id: predData.event.id, clearWarnings: true });
             }
             return;
         }
@@ -1373,34 +1368,33 @@ const ScheduleTest = () => {
         
         evData.start = newSlot.start;
         evData.end = newSlot.end;
-        evData.event.setDates(newSlot.start, newSlot.end);
         
         if (cleaningEvent) {
             let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
             let newCleaningStart = newSlot.end;
             let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
-            cleaningEvent.setDates(newCleaningStart, newCleaningEnd);
-            
-            cleaningEvent.setExtendedProp('warning_text', '');
-            cleaningEvent.setExtendedProp('violation_colors', []);
             updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
+            updates.push({
+                id: cleaningEvent.id,
+                start: newCleaningStart,
+                end: newCleaningEnd,
+                resourceId: evData.resourceId,
+                clearWarnings: true
+            });
         }
         
         updatedTimesById[evData.id] = { start: newSlot.start, end: newSlot.end };
         
-        evData.event.setExtendedProp('warning_text', '');
-        evData.event.setExtendedProp('violation_colors', []);
-        
         if (predData && predData.event) {
-            predData.event.setExtendedProp('warning_text', '');
-            predData.event.setExtendedProp('violation_colors', []);
+            updates.push({ id: predData.event.id, clearWarnings: true });
         }
         
         updates.push({
             id: evData.id,
             start: evData.start,
             end: evData.end,
-            resourceId: evData.resourceId
+            resourceId: evData.resourceId,
+            clearWarnings: true
         });
     });
 
@@ -1491,20 +1485,42 @@ const ScheduleTest = () => {
 
     if (updates.length > 0) {
         let newPending = [...pendingChanges];
-        updates.forEach(u => {
-            const ev = calendarApi.getEventById(u.id);
-            if (ev) {
-                ev.setDates(u.start, u.end);
-            }
-            const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
-            if (existIdx >= 0) {
-                newPending[existIdx] = { ...newPending[existIdx], ...u };
-            } else {
-                newPending.push(u);
-            }
+        
+        // SỬ DỤNG BATCH RENDERING ĐỂ TỐI ƯU TỐC ĐỘ, CHỈ VẼ LẠI UI 1 LẦN!
+        calendarApi.batchRendering(() => {
+            updates.forEach(u => {
+                const ev = calendarApi.getEventById(u.id);
+                if (ev) {
+                    if (u.start && u.end) {
+                        ev.setDates(u.start, u.end);
+                    }
+                    if (u.clearWarnings) {
+                        ev.setExtendedProp('warning_text', '');
+                        ev.setExtendedProp('violation_colors', []);
+                    }
+                }
+                if (u.start && u.end && ev) {
+                    const changeObj = {
+                        id: u.id,
+                        start: u.start,
+                        end: u.end,
+                        resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+                        title: ev.title,
+                        submit: ev.extendedProps?.submit,
+                        C_end: ev.extendedProps?.C_end || false
+                    };
+                    const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
+                    if (existIdx >= 0) {
+                        newPending[existIdx] = { ...newPending[existIdx], ...changeObj };
+                    } else {
+                        newPending.push(changeObj);
+                    }
+                }
+            });
         });
+        
         setPendingChanges(newPending);
-        Swal.fire("Thành công", `Đã điều chỉnh ${updates.length} sự kiện con.`, "success");
+        Swal.fire("Thành công", `Đã điều chỉnh ${updates.filter(u => u.start).length} sự kiện con.`, "success");
     } else {
         Swal.fire("Thông báo", "Không có sự kiện nào cần điều chỉnh (hoặc các sự kiện đã được tối ưu).", "info");
     }

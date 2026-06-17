@@ -1,0 +1,41 @@
+1391:         evData.event.setExtendedProp('warning_text', '');
+1392:         evData.event.setExtendedProp('violation_colors', []);
+1393:         
+1394:         if (predData && predData.event) {
+1395:             predData.event.setExtendedProp('warning_text', '');
+1396:             predData.event.setExtendedProp('violation_colors', []);
+1397:         }
+1398:         
+1399:         updates.push({
+1400:             id: evData.id,
+1401:             start: evData.start,
+1402:             end: evData.end,
+1403:             resourceId: evData.resourceId
+1404:         });
+1405:     });
+1406: 
+1407:     // DỌN DẸP SỰ KIỆN CHEN NGANG (CLEAN UP INTRUDERS)
+1408:     const campaignSpans = {};
+1409:     relatedEvents.forEach(e => {
+1410:         const resources = typeof e.getResources === 'function' ? e.getResources() : [];
+1411:         const rId = String(e.extendedProps?.resourceId || (resources.length > 0 ? resources[0]?.id : e.resourceId));
+1412:         if (rId === "undefined" || rId === "null") return;
+1413: 
+1414:         let start = new Date(e.start);
+1415:         let end = new Date(e.end);
+1416:         if (updatedTimesById[e.id]) {
+1417:             start = new Date(updatedTimesById[e.id].start);
+1418:             end = new Date(updatedTimesById[e.id].end);
+1419:         }
+1420:         
+1421:         if (!campaignSpans[rId]) {
+1422:             campaignSpans[rId] = { minStart: start, maxEnd: end };
+1423:         } else {
+1424:             if (start < campaignSpans[rId].minStart) campaignSpans[rId].minStart = start;
+1425:             if (end > campaignSpans[rId].maxEnd) campaignSpans[rId].maxEnd = end;
+1426:         }
+1427:     });
+1428: 
+1429:     const relatedIds = relatedEvents.map(e => String(e.id));
+1430:     const cleaningRelatedIds = relatedIds.map(id => id.replace('-main', '-cleaning'));
+1431:     let intruderIgnoreIds = [...relatedIds, ...cleaningRelatedIds];

@@ -1,0 +1,41 @@
+1641: 
+1642:             event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
+1643: 
+1644:             batchUpdates.push({
+1645:               id: event.id,
+1646:               start: newStart.toISOString(),
+1647:               end: newEnd.toISOString(),
+1648:               resourceId: event.getResources?.()[0]?.id ?? null,
+1649:               title: event.title,
+1650:               submit: event._def.extendedProps.submit
+1651:             });
+1652:           }
+1653:         });
+1654: 
+1655:         // 🔹 Cascade Logic for Frontend (Group Move) - Smart Skip Off Days
+1656:         if (isCascadeMode) {
+1657:           const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
+1658:           const selectedIds = new Set(selectedEvents.map(s => s.id));
+1659: 
+1660:           const resourceMinStart = {};
+1661:           selectedEvents.forEach(sel => {
+1662:             const event = calendarApi.getEventById(sel.id);
+1663:             if (event) {
+1664:               // 🔹 Cập nhật cả ExtendedProps để mốc biên tịnh tuyến (boundary) chính xác cho các lô sau
+1665:               if (event.extendedProps.start_clearning && event.extendedProps.end_clearning) {
+1666:                 const sc = new Date(new Date(event.extendedProps.start_clearning).getTime() + offset);
+1667:                 const ec = new Date(new Date(event.extendedProps.end_clearning).getTime() + offset);
+1668:                 event.setExtendedProp('start_clearning', sc.toISOString());
+1669:                 event.setExtendedProp('end_clearning', ec.toISOString());
+1670:               }
+1671: 
+1672:               const resId = event.getResources()[0]?.id;
+1673:               if (resId) {
+1674:                 const originalStart = new Date(event.start.getTime() - offset);
+1675:                 if (!resourceMinStart[resId] || originalStart < resourceMinStart[resId]) {
+1676:                   resourceMinStart[resId] = originalStart;
+1677:                 }
+1678:               }
+1679:             }
+1680:           });
+1681: 
