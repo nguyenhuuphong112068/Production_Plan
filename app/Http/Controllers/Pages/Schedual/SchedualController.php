@@ -495,7 +495,7 @@ class SchedualController extends Controller
                 $violation_colors = [];
                 $mold_code = null;
 
-                [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code] = $this->colorEvent($plan, $plans, $i, $room_code);
+                [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code, $v_pre_id, $v_pre_end, $v_suc_id, $v_suc_start] = $this->colorEvent($plan, $plans, $i, $room_code);
 
                 // 🎯 lịch chưa hoàn thành
                 if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
@@ -522,6 +522,10 @@ class SchedualController extends Controller
                         'storage_capacity' => $storage_capacity,
                         'subtitle' => $subtitle,
                         'violation_colors' => $violation_colors,
+                        'violation_predecessor_id' => $v_pre_id,
+                        'violation_predecessor_end' => $v_pre_end,
+                        'violation_successor_id' => $v_suc_id,
+                        'violation_successor_start' => $v_suc_start,
                         'campaign_code' => $plan->campaign_code,
                         'status' => $plan->status,
                         'first_in_campaign' => $plan->first_in_campaign,
@@ -982,7 +986,7 @@ class SchedualController extends Controller
 
         /* 1️⃣ finished */
         if ($plan->finished == 1) {
-            return ['#002af9ff',  '#fefefee2',  '', [], null, $mold_code];
+            return ['#002af9ff',  '#fefefee2',  '', [], null, $mold_code, null, null, null, null];
         }
 
         /* 2️⃣ màu mặc định theo stage */
@@ -1140,6 +1144,9 @@ class SchedualController extends Controller
                     $color_event = '#4d4b4bff'; // '#4d4b4bff'
                     $textColor = '#ffffff';
                     $violation_colors[] = '#4d4b4bff';
+                    
+                    $plan->violation_predecessor_id = $pre->id;
+                    $plan->violation_predecessor_end = $pre_end;
                 }
             }
         }
@@ -1159,6 +1166,9 @@ class SchedualController extends Controller
                     $color_event = '#4d4b4bff'; // '#4d4b4bff'
                     $textColor = '#ffffff';
                     $violation_colors[] = '#4d4b4bff';
+                    
+                    $plan->violation_successor_id = $next->id;
+                    $plan->violation_successor_start = $next_start;
                 }
             }
         }
@@ -1234,7 +1244,18 @@ class SchedualController extends Controller
 
         $finalSubtitle = implode("\n", $subtitles);
 
-        return [$color_event,  $textColor,  $finalSubtitle, array_values($filtered_violation_colors), $mold_warning, $mold_code];
+        return [
+            $color_event,  
+            $textColor,  
+            $finalSubtitle, 
+            array_values($filtered_violation_colors), 
+            $mold_warning, 
+            $mold_code,
+            $plan->violation_predecessor_id ?? null,
+            $plan->violation_predecessor_end ?? null,
+            $plan->violation_successor_id ?? null,
+            $plan->violation_successor_start ?? null
+        ];
     }
 
     // hàm lấy quota

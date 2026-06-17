@@ -1198,290 +1198,350 @@ const ScheduleTest = () => {
       return { start, end };
     }).sort((a, b) => a.start - b.start);
 
-    // Lấy danh sách các plan_master_id của các anchors
     let updates = [];
     let updatedTimesById = {};
 
-    const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
+    // Tập hợp ID của các anchor (cố định, không được di chuyển)
+    const anchorIds = new Set(anchors.map(a => String(a.id)));
 
-    // Xóa màu cảnh báo cho chính các anchors vì chuỗi sẽ được tự động sửa
+    // Đăng ký anchor vào updatedTimesById để các bước sau không dịch chuyển chúng
     anchors.forEach(a => {
-      updates.push({ id: a.id, clearWarnings: true });
-      let cleaningEvent = allEvents.find(e => String(e.id) === String(a.id).replace('-main', '-cleaning'));
-      if (cleaningEvent) {
-        updates.push({ id: cleaningEvent.id, clearWarnings: true });
+      updatedTimesById[String(a.id)] = { start: new Date(a.start), end: new Date(a.end) };
+      let anchorCleaning = allEvents.find(e => String(e.id) === String(a.id).replace('-main', '-cleaning'));
+      if (anchorCleaning) {
+        updatedTimesById[String(anchorCleaning.id)] = { start: new Date(anchorCleaning.start), end: new Date(anchorCleaning.end) };
       }
     });
 
-    // Tìm TẤT CẢ các sự kiện (các công đoạn) thuộc về các plan_master_id này
-    let relatedEvents = allEvents.filter(e => pmIds.includes(String(e.extendedProps.plan_master_id)));
+    // ==================================================================
+    // BƯỚC 1A: Tìm successor bị lỗi đen (anchor kết thúc sau khi successor bắt đầu)
+    // → Đẩy successor về tương lai (FORWARD CASCADE)
+    // ==================================================================
+    const forwardViolationIds = new Set(); // Successors cần đẩy về tương lai
 
-    let eventsMap = {};
-    relatedEvents.forEach(e => {
-      if (String(e.id).endsWith('-cleaning')) return; // Bỏ qua sự kiện vệ sinh, chỉ dùng sự kiện chính làm gốc
+    anchors.forEach(anchor => {
+      const anchorCode = anchor.extendedProps.code;
+      const anchorEnd = new Date(anchor.end);
+      if (!anchorCode) return;
 
-      let codeKey = e.extendedProps.code;
-      if (!codeKey) return; // Bỏ qua nếu không có mã code
+      allEvents.forEach(e => {
+        if (String(e.id).endsWith('-cleaning') || anchorIds.has(String(e.id))) return;
+        if (String(e.extendedProps.predecessor_code) === String(anchorCode)) {
+          if (new Date(e.start) < anchorEnd) {
+            forwardViolationIds.add(String(e.id));
+          }
+        }
+      });
+    });
 
-      eventsMap[codeKey] = {
-        id: e.id,
-        event: e,
-        isAnchor: anchors.some(a => String(a.id) === String(e.id)),
-        start: new Date(e.start),
-        end: new Date(e.end),
-        resourceId: e.getResources()[0]?.id,
-        duration: new Date(e.end).getTime() - new Date(e.start).getTime(),
-        predecessor: e.extendedProps.predecessor_code ? String(e.extendedProps.predecessor_code) : null
+    // ==================================================================
+    // BƯỚC 1B: Tìm predecessor bị lỗi đen (anchor bắt đầu trước predecessor kết thúc)
+    // → Kéo predecessor về quá khứ (BACKWARD CASCADE)
+    // ==================================================================
+    const backwardViolationIds = new Set(); // Predecessors cần kéo về quá khứ
+
+    anchors.forEach(anchor => {
+      const anchorStart = new Date(anchor.start);
+      const predCode = anchor.extendedProps.predecessor_code;
+      if (!predCode) return;
+
+      const predEv = allEvents.find(e =>
+        String(e.extendedProps.code) === String(predCode) &&
+        !String(e.id).endsWith('-cleaning')
+      );
+      if (predEv && new Date(predEv.end) > anchorStart) {
+        backwardViolationIds.add(String(predEv.id));
+      }
+    });
+
+    const violationIds = forwardViolationIds; // Dùng cho forward cascade phía dưới
+
+    if (forwardViolationIds.size === 0 && backwardViolationIds.size === 0) {
+      Swal.fire("Thông báo", "Không tìm thấy lỗi đen cần xử lý. Các công đoạn kế tiếp đã bắt đầu sau khi các sự kiện được chọn kết thúc.", "info");
+      return;
+    }
+
+    // ==================================================================
+    // BƯỚC 1C: Xử lý BACKWARD CASCADE nếu có
+    // Kéo predecessor về sớm hơn để kết thúc trước khi anchor bắt đầu
+    // ==================================================================
+    if (backwardViolationIds.size > 0) {
+      const buildBackwardChain = (startId) => {
+        const chain = [];
+        const visited = new Set();
+        let queue = [startId];
+        while (queue.length > 0) {
+          const currentId = queue.shift();
+          if (visited.has(currentId) || anchorIds.has(currentId)) continue;
+          visited.add(currentId);
+          const ev = allEvents.find(e => String(e.id) === currentId && !String(e.id).endsWith('-cleaning'));
+          if (!ev) continue;
+          chain.push(ev);
+          // Đệ quy: tìm predecessor của predecessor
+          const pCode = ev.extendedProps.predecessor_code;
+          if (pCode) {
+            const pEv = allEvents.find(e =>
+              String(e.extendedProps.code) === String(pCode) &&
+              !String(e.id).endsWith('-cleaning') &&
+              !anchorIds.has(String(e.id)) &&
+              !visited.has(String(e.id))
+            );
+            if (pEv) queue.push(String(pEv.id));
+          }
+        }
+        // Sắp xếp theo stage_code GIẢM DẦN để xử lý từ gần anchor nhất ra ngoài
+        return chain.sort((a, b) => (b.extendedProps.stage_code || 0) - (a.extendedProps.stage_code || 0));
       };
-    });
 
+      const backwardChain = new Map();
+      backwardViolationIds.forEach(vid => {
+        buildBackwardChain(vid).forEach(ev => backwardChain.set(String(ev.id), ev));
+      });
 
-    let anchorStageCode = Math.min(...anchors.map(a => a.extendedProps.stage_code));
+      const backwardSorted = [...backwardChain.values()]
+        .sort((a, b) => (b.extendedProps.stage_code || 0) - (a.extendedProps.stage_code || 0));
 
-    // Phân chia thành backward (predecessors) và forward (successors)
-    let backwardEvents = Object.values(eventsMap)
-      .filter(a => a.event.extendedProps.stage_code < anchorStageCode)
-      .sort((a, b) => b.event.extendedProps.stage_code - a.event.extendedProps.stage_code); // Giảm dần
+      backwardSorted.forEach(ev => {
+        const evId = String(ev.id);
+        const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
 
-    let forwardEvents = Object.values(eventsMap)
-      .filter(a => a.event.extendedProps.stage_code > anchorStageCode)
-      .sort((a, b) => a.event.extendedProps.stage_code - b.event.extendedProps.stage_code); // Tăng dần
+        // Xác định thời điểm cần kết thúc: trước khi successor của ev bắt đầu
+        // Successor là anchor (hoặc ev trong backwardViolationIds có successor là anchor)
+        let latestEnd = null;
+        const myCode = ev.extendedProps.code;
+        if (myCode) {
+          // Tìm successor của ev (event có predecessor_code = myCode)
+          const successorEv = allEvents.find(e =>
+            String(e.extendedProps.predecessor_code) === String(myCode) &&
+            !String(e.id).endsWith('-cleaning')
+          );
+          if (successorEv) {
+            // latestEnd = thời điểm successor bắt đầu (đã có anchor lock)
+            latestEnd = updatedTimesById[String(successorEv.id)]?.start || new Date(successorEv.start);
+          }
+        }
 
-    // ==========================================
-    // PASS 1: BACKWARD (Kéo lùi quá khứ - đặt sát trước successor)
-    // ==========================================
-    backwardEvents.forEach(evData => {
-      if (evData.isAnchor) return;
+        if (!latestEnd) return;
 
-      let successorData = Object.values(eventsMap).find(e => e.predecessor === String(evData.event.extendedProps.code));
-      if (!successorData) return;
+        // Kiểm tra nếu đã hợp lệ → giữ nguyên
+        const currentEnd = updatedTimesById[evId]?.end || new Date(ev.end);
+        if (currentEnd <= latestEnd) {
+          updatedTimesById[evId] = {
+            start: updatedTimesById[evId]?.start || new Date(ev.start),
+            end: currentEnd
+          };
+          if (cleaningEv) {
+            const cId = String(cleaningEv.id);
+            if (!updatedTimesById[cId]) updatedTimesById[cId] = { start: new Date(cleaningEv.start), end: new Date(cleaningEv.end) };
+          }
+          return;
+        }
 
-      // Lấy thời gian bắt đầu mới nhất của successor (có thể đã bị dịch)
-      let latestEnd = updatedTimesById[successorData.id]
-        ? updatedTimesById[successorData.id].start
-        : successorData.start;
+        const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+        const resourceId = ev.getResources()[0]?.id;
 
-      let cleaningEvent = allEvents.find(e => String(e.id) === String(evData.id).replace('-main', '-cleaning'));
+        // Bỏ qua các backward chain events chưa xử lý
+        const backwardChainIds = [...backwardChain.keys()];
+        const unprocessedBackward = backwardChainIds.filter(id =>
+          id !== evId && !updatedTimesById[id]
+        );
+        const ignoreBackIds = [...anchorIds, ...unprocessedBackward, evId, cleaningEv ? String(cleaningEv.id) : null].filter(Boolean);
 
-      let ignoreIds = [evData.id];
-      if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
+        // Tính cleaning duration nếu có (cleaning phải đặt SAU main event)
+        const cleaningDur = cleaningEv
+          ? (new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime())
+          : 0;
 
-      // Bỏ qua các sự kiện liên quan CHƯA được xử lý
-      relatedEvents.forEach(e => {
-        if (!updatedTimesById[e.id] && !ignoreIds.includes(String(e.id))) {
-          ignoreIds.push(String(e.id));
-          const cl = allEvents.find(x => String(x.id) === String(e.id).replace('-main', '-cleaning'));
-          if (cl) ignoreIds.push(String(cl.id));
+        // Tìm slot KẾT THÚC TRƯỚC (latestEnd - cleaningDur) để vừa main + cleaning
+        const adjustedLatestEnd = new Date(latestEnd.getTime() - cleaningDur);
+        const newSlot = findPreviousAvailableSlot(resourceId, duration, adjustedLatestEnd, allEvents, offRanges, ignoreBackIds, updatedTimesById);
+
+        updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
+        updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId, clearWarnings: true });
+
+        if (cleaningEv) {
+          // Cleaning event đặt SAU sự kiện chính
+          const cId = String(cleaningEv.id);
+          const cStart = newSlot.end;
+          const cEnd = new Date(cStart.getTime() + cleaningDur);
+          updatedTimesById[cId] = { start: cStart, end: cEnd };
+          updates.push({ id: cId, start: cStart, end: cEnd, resourceId, clearWarnings: true });
         }
       });
 
-      // Luôn tìm slot mới sát trước latestEnd (kể cả khi evData đã đứng đúng thứ tự)
-      // để đảm bảo không có gap và không bị chồng phòng
-      let newSlot = findPreviousAvailableSlot(evData.resourceId, evData.duration, latestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
-
-      evData.start = newSlot.start;
-      evData.end = newSlot.end;
-
-      if (cleaningEvent) {
-        let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
-        let newCleaningStart = newSlot.end;
-        let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
-        updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
-        updates.push({
-          id: cleaningEvent.id,
-          start: newCleaningStart,
-          end: newCleaningEnd,
-          resourceId: evData.resourceId,
-          clearWarnings: true
-        });
-      }
-
-      updatedTimesById[evData.id] = { start: newSlot.start, end: newSlot.end };
-
-      if (successorData && successorData.event) {
-        updates.push({ id: successorData.event.id, clearWarnings: true });
-      }
-
-      updates.push({
-        id: evData.id,
-        start: evData.start,
-        end: evData.end,
-        resourceId: evData.resourceId,
-        clearWarnings: true
-      });
-    });
-
-    // ==========================================
-    // PASS 2: FORWARD (Đẩy tới tương lai - đặt sát sau predecessor)
-    // ==========================================
-    forwardEvents.forEach(evData => {
-      if (evData.isAnchor) return;
-
-      let predCode = evData.predecessor;
-      if (!predCode || predCode === "null") return;
-
-      let predData = eventsMap[predCode];
-      if (!predData) return;
-
-      // Lấy thời gian kết thúc mới nhất của predecessor (có thể đã bị dịch)
-      let earliestStart = updatedTimesById[predData.id]
-        ? updatedTimesById[predData.id].end
-        : predData.end;
-
-      // Cộng thêm thời gian VS (cleaning) của predecessor nếu có
-      let predCleaningKey = String(predData.id).replace('-main', '-cleaning');
-      if (updatedTimesById[predCleaningKey]) {
-        earliestStart = updatedTimesById[predCleaningKey].end;
-      } else {
-        let predCleaningEv = allEvents.find(e => String(e.id) === String(predData.id).replace('-main', '-cleaning'));
-        if (predCleaningEv) earliestStart = new Date(predCleaningEv.end);
-      }
-
-      let cleaningEvent = allEvents.find(e => String(e.id) === String(evData.id).replace('-main', '-cleaning'));
-
-      let ignoreIds = [evData.id];
-      if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
-
-      // Bỏ qua các sự kiện liên quan CHƯA được xử lý
-      relatedEvents.forEach(e => {
-        if (!updatedTimesById[e.id] && !ignoreIds.includes(String(e.id))) {
-          ignoreIds.push(String(e.id));
-          const cl = allEvents.find(x => String(x.id) === String(e.id).replace('-main', '-cleaning'));
-          if (cl) ignoreIds.push(String(cl.id));
+      // Nếu chỉ có backward violations → kết thúc ở đây
+      if (forwardViolationIds.size === 0) {
+        if (updates.length > 0) {
+          let newPending = [...pendingChanges];
+          calendarApi.batchRendering(() => {
+            updates.forEach(u => {
+              const ev = calendarApi.getEventById(u.id);
+              if (ev) {
+                if (u.start && u.end) ev.setDates(u.start, u.end);
+                if (u.clearWarnings) {
+                  ev.setExtendedProp('warning_text', '');
+                  ev.setExtendedProp('violation_colors', []);
+                }
+              }
+              if (u.start && u.end && ev) {
+                const changeObj = {
+                  id: u.id, start: u.start, end: u.end,
+                  resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+                  title: ev.title, submit: ev.extendedProps?.submit, C_end: ev.extendedProps?.C_end || false
+                };
+                const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
+                if (existIdx >= 0) newPending[existIdx] = { ...newPending[existIdx], ...changeObj };
+                else newPending.push(changeObj);
+              }
+            });
+          });
+          setPendingChanges(newPending);
+          Swal.fire("Thành công", `Đã điều chỉnh ${updates.filter(u => u.start).length} sự kiện.`, "success");
+        } else {
+          Swal.fire("Thông báo", "Không có sự kiện nào cần điều chỉnh.", "info");
         }
-      });
+        return;
+      }
+    }
 
-      // Luôn tìm slot mới sát sau earliestStart để đảm bảo không có gap và không chồng phòng
-      let newSlot = findNextAvailableSlot(evData.resourceId, evData.duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
 
-      evData.start = newSlot.start;
-      evData.end = newSlot.end;
+    // ==================================================================
+    // BƯỚC 2: Xây dựng chuỗi cascade từ violation event trở đi
+    // Chỉ đi theo liên kết predecessor_code trực tiếp, không lấy toàn bộ plan_master_id
+    // ==================================================================
+    const buildChain = (startId) => {
+      const chain = [];
+      const visited = new Set();
+      let queue = [startId];
 
-      if (cleaningEvent) {
-        let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
-        let newCleaningStart = newSlot.end;
-        let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
-        updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
-        updates.push({
-          id: cleaningEvent.id,
-          start: newCleaningStart,
-          end: newCleaningEnd,
-          resourceId: evData.resourceId,
-          clearWarnings: true
-        });
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        if (visited.has(currentId) || anchorIds.has(currentId)) continue;
+        visited.add(currentId);
+
+        const ev = allEvents.find(e => String(e.id) === currentId && !String(e.id).endsWith('-cleaning'));
+        if (!ev) continue;
+
+        chain.push(ev);
+
+        // Tìm sự kiện tiếp theo có predecessor_code = code của ev này
+        const myCode = ev.extendedProps.code;
+        if (myCode) {
+          allEvents.forEach(e => {
+            if (
+              String(e.extendedProps.predecessor_code) === String(myCode) &&
+              !String(e.id).endsWith('-cleaning') &&
+              !anchorIds.has(String(e.id)) &&
+              !visited.has(String(e.id))
+            ) {
+              queue.push(String(e.id));
+            }
+          });
+        }
       }
 
-      updatedTimesById[evData.id] = { start: newSlot.start, end: newSlot.end };
+      return chain.sort((a, b) => (a.extendedProps.stage_code || 0) - (b.extendedProps.stage_code || 0));
+    };
 
-      if (predData && predData.event) {
-        updates.push({ id: predData.event.id, clearWarnings: true });
-      }
-
-      updates.push({
-        id: evData.id,
-        start: evData.start,
-        end: evData.end,
-        resourceId: evData.resourceId,
-        clearWarnings: true
-      });
+    const allViolationChain = new Map();
+    violationIds.forEach(vid => {
+      buildChain(vid).forEach(ev => allViolationChain.set(String(ev.id), ev));
     });
 
-    // DỌN DẸP SỰ KIỆN CHEN NGANG (CLEAN UP INTRUDERS)
-    const campaignSpans = {};
-    relatedEvents.forEach(e => {
-      const resources = typeof e.getResources === 'function' ? e.getResources() : [];
-      const rId = String(e.extendedProps?.resourceId || (resources.length > 0 ? resources[0]?.id : e.resourceId));
-      if (rId === "undefined" || rId === "null") return;
+    if (allViolationChain.size === 0) {
+      Swal.fire("Thông báo", "Không tìm thấy sự kiện nào cần điều chỉnh.", "info");
+      return;
+    }
 
-      let start = new Date(e.start);
-      let end = new Date(e.end);
-      if (updatedTimesById[e.id]) {
-        start = new Date(updatedTimesById[e.id].start);
-        end = new Date(updatedTimesById[e.id].end);
+    const sortedChain = [...allViolationChain.values()]
+      .sort((a, b) => (a.extendedProps.stage_code || 0) - (b.extendedProps.stage_code || 0));
+
+    const chainIds = new Set(sortedChain.map(e => String(e.id)));
+
+    // ==================================================================
+    // BƯỚC 3: Forward cascade - đẩy từng sự kiện vi phạm về phía tương lai
+    // ==================================================================
+    sortedChain.forEach(ev => {
+      const evId = String(ev.id);
+      const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
+
+      const predCode = ev.extendedProps.predecessor_code;
+      let earliestStart = null;
+
+      if (predCode) {
+        const predEv = allEvents.find(e =>
+          String(e.extendedProps.code) === String(predCode) &&
+          !String(e.id).endsWith('-cleaning')
+        );
+        if (predEv) {
+          const predId = String(predEv.id);
+          earliestStart = updatedTimesById[predId]?.end || new Date(predEv.end);
+
+          const predCleaningId = predId.replace('-main', '-cleaning');
+          if (updatedTimesById[predCleaningId]) {
+            earliestStart = updatedTimesById[predCleaningId].end;
+          } else {
+            const predCleaning = allEvents.find(e => String(e.id) === predCleaningId);
+            if (predCleaning) earliestStart = new Date(predCleaning.end);
+          }
+        }
       }
 
-      if (!campaignSpans[rId]) {
-        campaignSpans[rId] = { minStart: start, maxEnd: end };
-      } else {
-        if (start < campaignSpans[rId].minStart) campaignSpans[rId].minStart = start;
-        if (end > campaignSpans[rId].maxEnd) campaignSpans[rId].maxEnd = end;
-      }
-    });
-
-    const relatedIds = relatedEvents.map(e => String(e.id));
-    const cleaningRelatedIds = relatedIds.map(id => id.replace('-main', '-cleaning'));
-    let intruderIgnoreIds = [...relatedIds, ...cleaningRelatedIds];
-
-    let intruders = [];
-    allEvents.forEach(e => {
-      if (relatedIds.includes(String(e.id)) || cleaningRelatedIds.includes(String(e.id))) return;
-      if (e.extendedProps?.is_cleaning && !String(e.id).includes('-main')) return;
-
-      const resources = typeof e.getResources === 'function' ? e.getResources() : [];
-      const rId = String(e.extendedProps?.resourceId || (resources.length > 0 ? resources[0]?.id : e.resourceId));
-      if (rId === "undefined" || rId === "null") return;
-
-      const span = campaignSpans[rId];
-      if (!span) return;
-
-      let start = new Date(e.start);
-      let end = new Date(e.end);
-      if (updatedTimesById[e.id]) {
-        start = new Date(updatedTimesById[e.id].start);
-        end = new Date(updatedTimesById[e.id].end);
+      const currentStart = updatedTimesById[evId]?.start || new Date(ev.start);
+      if (!earliestStart || currentStart >= earliestStart) {
+        // Đã hợp lệ → giữ nguyên
+        updatedTimesById[evId] = { start: currentStart, end: updatedTimesById[evId]?.end || new Date(ev.end) };
+        if (cleaningEv) {
+          const cId = String(cleaningEv.id);
+          if (!updatedTimesById[cId]) updatedTimesById[cId] = { start: new Date(cleaningEv.start), end: new Date(cleaningEv.end) };
+        }
+        return;
       }
 
-      if (start < span.maxEnd && end > span.minStart) {
-        intruders.push({ ev: e, start, end, rId, duration: end.getTime() - start.getTime() });
-      }
-    });
+      const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+      const resourceId = ev.getResources()[0]?.id;
 
-    intruders.sort((a, b) => a.start - b.start);
+      // Chỉ bỏ qua các chain events CHƯA được xử lý
+      // (events đã xử lý có trong updatedTimesById và sẽ được tôn trọng qua tham số đó)
+      const unprocessedChainIds = [...chainIds].filter(id =>
+        id !== evId &&
+        !updatedTimesById[id] &&
+        !(cleaningEv && String(cleaningEv.id) === id)
+      );
+      const unprocessedCleaningIds = unprocessedChainIds
+        .map(id => id.replace('-main', '-cleaning'))
+        .filter(cid => !updatedTimesById[cid]);
 
-    intruders.forEach(intruder => {
-      const span = campaignSpans[intruder.rId];
-      let cleaningEvent = allEvents.find(e => String(e.id) === String(intruder.ev.id).replace('-main', '-cleaning'));
+      const ignoreIds = [
+        ...anchorIds,
+        ...unprocessedChainIds,
+        ...unprocessedCleaningIds,
+        evId,
+        cleaningEv ? String(cleaningEv.id) : null
+      ].filter(Boolean);
 
-      let earliestStartForIntruder = span.maxEnd;
-      let currentIgnoreIds = [...intruderIgnoreIds, String(intruder.ev.id)];
-      if (cleaningEvent) currentIgnoreIds.push(String(cleaningEvent.id));
+      const newSlot = findNextAvailableSlot(resourceId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
 
-      let newSlot = findNextAvailableSlot(intruder.rId, intruder.duration, earliestStartForIntruder, allEvents, offRanges, currentIgnoreIds, updatedTimesById);
+      updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
+      updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId, clearWarnings: true });
 
-      updatedTimesById[intruder.ev.id] = { start: newSlot.start, end: newSlot.end };
-      updates.push({
-        id: intruder.ev.id,
-        start: newSlot.start,
-        end: newSlot.end,
-        resourceId: intruder.rId
-      });
-
-      if (cleaningEvent) {
-        let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
-        let newCleaningStart = newSlot.end;
-        let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
-        updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
-
-        updates.push({
-          id: cleaningEvent.id,
-          start: newCleaningStart,
-          end: newCleaningEnd,
-          resourceId: intruder.rId
-        });
+      if (cleaningEv) {
+        const cId = String(cleaningEv.id);
+        const cDur = new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime();
+        const cStart = newSlot.end;
+        const cEnd = new Date(cStart.getTime() + cDur);
+        updatedTimesById[cId] = { start: cStart, end: cEnd };
+        updates.push({ id: cId, start: cStart, end: cEnd, resourceId, clearWarnings: true });
       }
     });
 
     if (updates.length > 0) {
       let newPending = [...pendingChanges];
-
-      // SỬ DỤNG BATCH RENDERING ĐỂ TỐI ƯU TỐC ĐỘ, CHỈ VẼ LẠI UI 1 LẦN!
       calendarApi.batchRendering(() => {
         updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
-            if (u.start && u.end) {
-              ev.setDates(u.start, u.end);
-            }
+            if (u.start && u.end) ev.setDates(u.start, u.end);
             if (u.clearWarnings) {
               ev.setExtendedProp('warning_text', '');
               ev.setExtendedProp('violation_colors', []);
@@ -1498,21 +1558,25 @@ const ScheduleTest = () => {
               C_end: ev.extendedProps?.C_end || false
             };
             const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
-            if (existIdx >= 0) {
-              newPending[existIdx] = { ...newPending[existIdx], ...changeObj };
-            } else {
-              newPending.push(changeObj);
-            }
+            if (existIdx >= 0) newPending[existIdx] = { ...newPending[existIdx], ...changeObj };
+            else newPending.push(changeObj);
           }
         });
       });
-
       setPendingChanges(newPending);
-      Swal.fire("Thành công", `Đã điều chỉnh ${updates.filter(u => u.start).length} sự kiện con.`, "success");
+      Swal.fire("Thành công", `Đã điều chỉnh ${updates.filter(u => u.start).length} sự kiện.`, "success");
     } else {
-      Swal.fire("Thông báo", "Không có sự kiện nào cần điều chỉnh (hoặc các sự kiện đã được tối ưu).", "info");
+      Swal.fire("Thông báo", "Không có sự kiện nào cần điều chỉnh.", "info");
     }
   };
+
+
+
+
+
+
+
+
 
   const handleFixAllWeighingViolations = async (targetEvent = null) => {
     Swal.fire({
@@ -5285,7 +5349,7 @@ const ScheduleTest = () => {
             onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
             onMouseLeave={(e) => e.target.style.background = 'white'}
           >
-            Tự động điều chỉnh chuỗi
+            Tự động điều chỉnh lỗi đen
           </div>
 
           {/* <div
