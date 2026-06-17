@@ -1,0 +1,47 @@
+45:   const [selectedEvents, setSelectedEvents] = useState([]);
+1070:     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
+1071:     let anchors = isSelected && selectedEvents.length > 0 
+1072:         ? selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean)
+1147:   // Cuộn lịch đến sự kiện đang được chọn đầu tiên trong selectedEvents
+1149:     const targetId = previewTargetRef.current?.id ?? selectedEvents[0]?.id;
+1150:     const targetStart = previewTargetRef.current?.start ?? selectedEvents[0]?.start;
+1184:     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
+1185:     let anchors = isSelected && selectedEvents.length > 0 
+1186:         ? selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean)
+1536:   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+1550:     if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+1557:     if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
+1576:         selectedEvents.forEach(sel => {
+1653:           const selectedIds = new Set(selectedEvents.map(s => s.id));
+1656:           selectedEvents.forEach(sel => {
+1679:           selectedEvents.forEach(sel => {
+1762:       // Nếu không nằm trong selectedEvents thì xử lý đơn lẻ
+2090:   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
+2091:   const selectedEventsRef = useRef([]);
+2104:       selectedEventsRef.current = newSelected;
+2170:     const currentSelectedEvents = selectedEventsRef.current || [];
+2295:             const selEvents = selectedEventsRef.current || [];
+2361:           const selEvents = selectedEventsRef.current || [];
+2393:           const selEvents = selectedEventsRef.current || [];
+2546:   /// Xử lý chọn 1 sự kiện -> selectedEvents
+2570:       if (selectedEvents.length === 0) {
+2576:       selectedEvents.forEach(sel => {
+2614:       if (selectedEvents.length === 0) {
+2621:       selectedEvents.forEach(sel => {
+2663:       let eventsToCopy = selectedEventsRef.current;
+2717:   /// bỏ chọn tất cả sự kiện đã chọn ở select sidebar -->  selectedEvents
+2744:     selectedEventsRef.current = [];
+3652:     if (!selectedEvents || selectedEvents.length === 0) {
+3674:           ids: selectedEvents,
+3812:     if (!selectedEvents || selectedEvents.length === 0) {
+3834:           ids: selectedEvents,
+4114:     const ids = selectedEvents.map(row =>
+4132:         selectedEventsRef.current = [];
+4150:     const hasInvalidEvent = selectedEvents.some(row => {
+4169:     const ids = selectedEvents.map(row => Number(row.id.split('-')[0]));
+4219:             selectedEventsRef.current = [];
+4325:           {selectedEvents && selectedEvents.length > 0 && (
+4333:               <span className="font-bold text-sm">{selectedEvents.length} Lô đang chọn</span>
+4419:         eventDrop={authorization ? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange) : false}
+4906:               const currentSelected = selectedEventsRef.current || [];
+5055:               selectedEventsRef.current = merged;

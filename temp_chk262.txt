@@ -1,0 +1,16 @@
+495:                 $violation_colors = [];
+498:                 [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code] = $this->colorEvent($plan, $plans, $i, $room_code);
+524:                         'violation_colors' => $violation_colors,
+974:         $violation_colors = [];
+1030:                         $violation_colors[] = '#e54a4aff';
+1052:                             $violation_colors[] = '#ffd500ff';
+1064:                     $violation_colors[] = '#e54a4aff';
+1075:             $violation_colors[] = '#e4e405e2';
+1103:                     $violation_colors[] = '#bda124ff';
+1117:             $violation_colors[] = '#e54a4aff';
+1136:                 $violation_colors[] = '#4d4b4bff';
+1151:                 $violation_colors[] = '#4d4b4bff';
+1212:                 $violation_colors[] = '#920000ff';
+1218:         $violation_colors = array_unique($violation_colors);
+1220:         $filtered_violation_colors = array_filter($violation_colors, function ($color) use ($color_event) {
+1226:         return [$color_event,  $textColor,  $finalSubtitle, array_values($filtered_violation_colors), $mold_warning, $mold_code];

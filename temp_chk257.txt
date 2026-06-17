@@ -1,0 +1,9 @@
+45:   const [selectedEvents, setSelectedEvents] = useState([]);
+737:     setSelectedEvents(
+2093:     setSelectedEvents((prevSelected) => {
+2711:     //   setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
+2743:     setSelectedEvents([]);
+3705:       setSelectedEvents([]);
+4131:         setSelectedEvents([]);
+4218:             setSelectedEvents([]);
+5033:             setSelectedEvents((prev) => {

@@ -1,0 +1,16 @@
+4086:   };
+4087: 
+4088:   const calendarEvents = useMemo(() => {
+4089:     const base = [
+4090:       ...events,                     // event sản xuất
+4091:       ...buildOffDayEvents(offDays), // background ngày nghỉ
+4092:     ];
+4093:     if (showPersonnel) {
+4094:       return [...base, ...personnelEvents];
+4095:     }
+4096:     return base;
+4097:   }, [events, offDays, personnelEvents, showPersonnel]);
+4098: 
+4099:   const displayResources = useMemo(() => {
+4100:     let baseRes = resources || [];
+4101:     if (!showPersonnel) {

@@ -1156,7 +1156,7 @@ const ScheduleTest = () => {
       const calendarApi = calendarRef.current?.getApi();
       if (!calendarApi) return;
       const allEvents = calendarApi.getEvents();
-      const firstViolation = allEvents.find(e => e.extendedProps?.violation_colors?.includes('black'));
+      const firstViolation = allEvents.find(e => (e.backgroundColor && e.backgroundColor.toLowerCase() === '#4d4b4bff') || (e.extendedProps?.violation_colors?.includes('#4d4b4bff')));
       if (firstViolation) {
           scrollToSpecificEvent(firstViolation.id, firstViolation.start);
       } else {
@@ -3975,7 +3975,7 @@ const ScheduleTest = () => {
     }
 
     let html = `
-        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 40px; overflow: hidden;">
+        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 80px; overflow: hidden;">
           ${violationBars}
           <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2;">
             
@@ -4401,7 +4401,7 @@ const ScheduleTest = () => {
         expandRows={false}
 
         eventsSet={(events) => {
-            const count = events.filter(e => e.extendedProps?.violation_colors?.includes('black')).length;
+            const count = events.filter(e => (e.backgroundColor && e.backgroundColor.toLowerCase() === '#4d4b4bff') || (e.extendedProps?.violation_colors?.includes('#4d4b4bff'))).length;
             if (blackViolationCount !== count) {
                 setBlackViolationCount(count);
             }
