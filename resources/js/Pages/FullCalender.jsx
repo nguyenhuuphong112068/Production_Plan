@@ -5288,7 +5288,7 @@ const ScheduleTest = () => {
             Tự động điều chỉnh chuỗi
           </div>
 
-          <div
+          {/* <div
             style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderTop: '1px solid #eee' }}
             onClick={(e) => {
               e.stopPropagation();
@@ -5299,7 +5299,7 @@ const ScheduleTest = () => {
             onMouseLeave={(e) => e.target.style.background = 'white'}
           >
             Sửa lỗi đen công đoạn Cân
-          </div>
+          </div> */}
 
           <div
             style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderTop: '1px solid #eee' }}
