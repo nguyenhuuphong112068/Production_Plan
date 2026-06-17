@@ -4519,7 +4519,7 @@ const ScheduleTest = () => {
               <span className="font-bold text-sm">{blackViolationCount} Sự Kiện Đen</span>
             </div>
           )}
-          {/* {blackViolationCount > 0 && (
+          {blackViolationCount > 0 && (
             <div
               className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors"
               onClick={() => handleFixAllWeighingViolations(null)}
@@ -4529,7 +4529,7 @@ const ScheduleTest = () => {
               <i className="pi pi-wrench"></i>
               <span className="font-bold text-sm">Sửa lỗi Cân</span>
             </div>
-          )} */}
+          )}
           {selectedEvents && selectedEvents.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200 cursor-pointer"
