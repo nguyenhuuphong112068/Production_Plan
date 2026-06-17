@@ -1,0 +1,41 @@
+1121:             $subtitles[] = '➡️ Ngày dự kiến KCS: ' . Carbon::parse($plan->expected_date)->format('d/m/y') . ' | Ngày KT ĐG: ' . $endStage7;
+1122:         }
+1123: 
+1124:         /* 7️⃣ predecessor / successor */
+1125:         if ($plan->predecessor_code) {
+1126: 
+1127:             $pre = $plans->firstWhere('code', $plan->predecessor_code);
+1128: 
+1129:             if ($pre && $plan->start < $pre->end  && $plan->end < $pre->end) {
+1130: 
+1131:                 $subtitles[] = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
+1132:                     . Carbon::parse($pre->end)->format('H:i d/m/y') . ')';
+1133: 
+1134:                 $color_event = '#4d4b4bff'; // '#4d4b4bff'
+1135:                 $textColor = '#ffffff';
+1136:                 $violation_colors[] = '#4d4b4bff';
+1137:             }
+1138:         }
+1139: 
+1140:         if ($plan->nextcessor_code) {
+1141: 
+1142:             $next = $plans->firstWhere('code', $plan->nextcessor_code);
+1143: 
+1144:             if ($next && $plan->end > $next->start  && $plan->start > $next->start) {
+1145: 
+1146:                 $subtitles[] = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
+1147:                     . Carbon::parse($next->start)->format('H:i d/m/y') . ')';
+1148: 
+1149:                 $color_event = '#4d4b4bff'; // '#4d4b4bff'
+1150:                 $textColor = '#ffffff';
+1151:                 $violation_colors[] = '#4d4b4bff';
+1152:             }
+1153:         }
+1154: 
+1155:         // Nếu có trùng khuôn thì đổi màu
+1156:         if ($mold_warning) {
+1157:             $color_event = '#ffd500ff';
+1158:             $textColor = '#ffffff';
+1159:         }
+1160: 
+1161:         $criticalChecks = [

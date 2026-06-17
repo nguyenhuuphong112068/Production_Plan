@@ -1,0 +1,51 @@
+461:                                         THEN intermediate_category.quarantine_blending * 24
+462:                                         ELSE intermediate_category.quarantine_blending END
+463:                                 WHEN sp.stage_code = 5 THEN
+464:                                         CASE WHEN intermediate_category.quarantine_time_unit = 1
+465:                                         THEN intermediate_category.quarantine_forming * 24
+466:                                         ELSE intermediate_category.quarantine_forming END
+467:                                 WHEN sp.stage_code = 6 THEN
+468:                                         CASE WHEN intermediate_category.quarantine_time_unit = 1
+469:                                         THEN intermediate_category.quarantine_coating * 24
+470:                                         ELSE intermediate_category.quarantine_coating END
+471:                                 ELSE 0
+472:                                 END as quarantine_time_limit_hour')
+473:             )
+474:             ->orderBy('sp.plan_master_id')
+475:             ->orderBy('sp.stage_code')
+476:             ->get();
+477: 
+478:         // 4️⃣ Gom nhóm theo plan_master_id
+479:         $groupedPlans = $event_plans->groupBy('plan_master_id');
+480: 
+481:         $events = collect();
+482: 
+483:         // 5️⃣ duyệt từng nhóm (theo batch sản xuất)
+484:         foreach ($groupedPlans as $plans) {
+485: 
+486:             $plans = $plans->values();
+487:             // sắp sẵn theo stage_code ở query
+488:             for ($i = 0,  $n = $plans->count(); $i < $n; $i++) {
+489: 
+490:                 $storage_capacity = null;
+491: 
+492:                 $plan = $plans[$i];
+493: 
+494:                 $subtitle = null;
+495:                 $violation_colors = [];
+496:                 $mold_code = null;
+497: 
+498:                 [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code] = $this->colorEvent($plan, $plans, $i, $room_code);
+499: 
+500:                 // 🎯 lịch chưa hoàn thành
+501:                 if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
+502: 
+503:                     $events->push([
+504:                         'plan_id' => $plan->id,
+505:                         'id' => "{$plan->id}-main",
+506:                         'title' => $plan->title . '-' . $plan->w2,
+507:                         'start' => $plan->start,
+508:                         'end' => $plan->end,
+509:                         'resourceId' => $plan->resourceId,
+510:                         'color' => $plan->finished == 1 ? '#002af9ff' : $color_event,
+511:                         'textColor' => $textColor,

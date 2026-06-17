@@ -1121,19 +1121,26 @@ class SchedualController extends Controller
             $subtitles[] = '➡️ Ngày dự kiến KCS: ' . Carbon::parse($plan->expected_date)->format('d/m/y') . ' | Ngày KT ĐG: ' . $endStage7;
         }
 
+        $plan_start = ($plan->finished == 1 && $plan->actual_start) ? $plan->actual_start : $plan->start;
+        $plan_end = ($plan->finished == 1 && $plan->actual_end) ? $plan->actual_end : $plan->end;
+
         /* 7️⃣ predecessor / successor */
         if ($plan->predecessor_code) {
 
             $pre = $plans->firstWhere('code', $plan->predecessor_code);
 
-            if ($pre && $plan->start < $pre->end  && $plan->end < $pre->end) {
+            if ($pre) {
+                $pre_end = ($pre->finished == 1 && $pre->actual_end) ? $pre->actual_end : $pre->end;
+                
+                if ($plan_start < $pre_end  && $plan_end < $pre_end) {
 
-                $subtitles[] = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
-                    . Carbon::parse($pre->end)->format('H:i d/m/y') . ')';
+                    $subtitles[] = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
+                        . Carbon::parse($pre_end)->format('H:i d/m/y') . ')';
 
-                $color_event = '#4d4b4bff'; // '#4d4b4bff'
-                $textColor = '#ffffff';
-                $violation_colors[] = '#4d4b4bff';
+                    $color_event = '#4d4b4bff'; // '#4d4b4bff'
+                    $textColor = '#ffffff';
+                    $violation_colors[] = '#4d4b4bff';
+                }
             }
         }
 
@@ -1141,14 +1148,18 @@ class SchedualController extends Controller
 
             $next = $plans->firstWhere('code', $plan->nextcessor_code);
 
-            if ($next && $plan->end > $next->start  && $plan->start > $next->start) {
+            if ($next) {
+                $next_start = ($next->finished == 1 && $next->actual_start) ? $next->actual_start : $next->start;
 
-                $subtitles[] = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
-                    . Carbon::parse($next->start)->format('H:i d/m/y') . ')';
+                if ($plan_end > $next_start  && $plan_start > $next_start) {
 
-                $color_event = '#4d4b4bff'; // '#4d4b4bff'
-                $textColor = '#ffffff';
-                $violation_colors[] = '#4d4b4bff';
+                    $subtitles[] = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
+                        . Carbon::parse($next_start)->format('H:i d/m/y') . ')';
+
+                    $color_event = '#4d4b4bff'; // '#4d4b4bff'
+                    $textColor = '#ffffff';
+                    $violation_colors[] = '#4d4b4bff';
+                }
             }
         }
 
@@ -2607,6 +2618,7 @@ class SchedualController extends Controller
                         DB::table('stage_plan')->where('id', $sid)->update(['submit' => 0]);
                     }
                 }
+            }
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
