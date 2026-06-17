@@ -1,0 +1,21 @@
+4031:                   title="Mã Chiến dịch"
+4032:                 ><b>${props.campaign_code}</b></div>`;
+4033:     }
+4034: 
+4035: 
+4036: 
+4037:     if (!props.is_clearning && props.mold_warning) {
+4038:       html += `
+4039:                 <div 
+4040:                   class="absolute top-[-10px] left-[2px] px-1 rounded shadow-sm bg-red-600 text-white z-[20]"
+4041:                   style="font-size: 10px; line-height: 1;"
+4042:                 ><b>${props.mold_warning}</b></div>`;
+4043:     }
+4044: 
+4045: 
+4046:     if (!props.is_clearning && showRenderBadge && props.status) {
+4047:       const style = getStatusStyleString(props.status);
+4048: 
+4049:       html += `
+4050:               <div 
+4051:                 class="absolute top-[-15px] right-2 px-0.5 rounded shadow-sm"

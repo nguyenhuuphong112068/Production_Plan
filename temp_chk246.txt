@@ -1,0 +1,2 @@
+1078:     window.previewPlanMasterIds = pmIds; // Lưu vào biến toàn cục để eventContent đọc và tô bóng
+4931:         eventContent={EventContent}

@@ -3975,7 +3975,7 @@ const ScheduleTest = () => {
     }
 
     let html = `
-        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'};">
+        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 40px; overflow: hidden;">
           ${violationBars}
           <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2;">
             
