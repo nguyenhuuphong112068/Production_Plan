@@ -102,6 +102,7 @@ class DashBoardController extends Controller
                 }
             }
             $emp->group_names = count($names) > 0 ? implode(', ', array_unique($names)) : '-';
+            $emp->group_ids_arr = $ids;
             $employees[$emp->id] = $emp;
         }
         $employeeIds = array_keys($employees);
@@ -110,8 +111,10 @@ class DashBoardController extends Controller
             return response()->json([
                 'success' => true,
                 'total_personnel' => 0,
-                'stats' => ['on_leave' => 0, 'unassigned' => 0, 'under_8h' => 0, 'exact_8h' => 0, 'over_8h' => 0],
+                'stats' => ['on_leave' => 0, 'unassigned' => 0, 'under_8h' => 0, 'exact_8h' => 0, 'over_8h' => 0, 'total_ot_hours' => 0],
                 'details' => [],
+                'overtime_by_group' => [],
+                'overtime_by_room' => [],
                 'period' => ['start' => $startDate->format('Y-m-d H:i'), 'end' => $endDate->format('Y-m-d H:i'), 'days' => $daysInPeriod]
             ]);
         }
@@ -119,16 +122,18 @@ class DashBoardController extends Controller
         // 2. Get assignments in period
         $assignments = DB::table('assignments as a')
             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+            ->join('room as r', 'a.room_id', '=', 'r.id')
             ->where('a.deparment_code', $production_code)
             ->where('a.active', 1)
             ->where('a.start', '<', $endDate)
             ->where('a.end', '>', $startDate)
             ->whereIn('ap.personnel_id', $employeeIds)
-            ->select('ap.personnel_id', 'a.start', 'a.end')
+            ->select('ap.personnel_id', 'a.start', 'a.end', 'r.name as room_name', 'r.id as room_id')
             ->get();
 
-        // Calculate hours per employee
+        // Calculate hours per employee and room
         $employeeHours = [];
+        $roomHoursMap = []; // [room_name => total_hours]
         foreach ($employeeIds as $id) {
             $employeeHours[$id] = 0;
         }
@@ -149,9 +154,15 @@ class DashBoardController extends Controller
             if (isset($employeeHours[$assignment->personnel_id])) {
                 $employeeHours[$assignment->personnel_id] += $hours;
             }
+
+            $roomName = $assignment->room_name ?? 'Khác';
+            if (!isset($roomHoursMap[$roomName])) {
+                $roomHoursMap[$roomName] = 0;
+            }
+            $roomHoursMap[$roomName] += $hours;
         }
 
-        // --- Fetch Shifts to determine Leave (P) ---
+        // --- Fetch Shifts to determine Leave (P) AND collect overtime ---
         $month = $startDate->format('m');
         $year = $startDate->format('Y');
 
@@ -168,6 +179,14 @@ class DashBoardController extends Controller
 
         $departmentId = $deptMapping[$production_code] ?? null;
         $leaveEmployees = [];
+        $employeeOvertimeHours = []; // [employee_code => total_ot]
+        $employeeRegisteredShifts = [];
+        $employeeEofficeHours = [];
+        foreach ($employees as $emp) {
+            $employeeOvertimeHours[$emp->code] = 0;
+            $employeeRegisteredShifts[$emp->code] = [];
+            $employeeEofficeHours[$emp->code] = 0;
+        }
 
         if ($departmentId) {
             $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$departmentId}";
@@ -196,13 +215,39 @@ class DashBoardController extends Controller
                         if (!$code) continue;
 
                         $pCount = 0;
+                        $totalOT = 0;
+                        $shifts = [];
+                        $totalEoffice = 0;
+
                         for ($d = 0; $d < $daysInPeriod; $d++) {
                             $currentDay = $startDate->copy()->addDays($d);
                             if ($currentDay->month == $month) {
                                 $dayKey = 'day' . $currentDay->day;
-                                if (isset($person['days'][$dayKey]) && trim($person['days'][$dayKey]) === 'P') {
+                                $dayData = $person['days'][$dayKey] ?? null;
+
+                                // Hỗ trợ cả cấu trúc API cũ (string) và mới (object)
+                                if (is_array($dayData)) {
+                                    $shiftCode = strtoupper(trim($dayData['shift'] ?? ''));
+                                    $ot = floatval($dayData['overtime'] ?? 0);
+                                    $eoffice = floatval($dayData['regular_working_Hours'] ?? 0);
+                                } else {
+                                    $shiftCode = strtoupper(trim($dayData ?? ''));
+                                    $ot = 0;
+                                    $eoffice = 0; // Cũ không có giờ làm việc e-office
+                                }
+
+                                if ($shiftCode === 'P') {
                                     $pCount++;
                                 }
+                                if ($shiftCode && $shiftCode !== 'OFF' && $shiftCode !== '') {
+                                    if ($daysInPeriod == 1) {
+                                        $shifts[] = $shiftCode;
+                                    } else {
+                                        $shifts[] = $currentDay->format('d/m') . ': ' . $shiftCode;
+                                    }
+                                }
+                                $totalOT += $ot;
+                                $totalEoffice += $eoffice;
                             }
                         }
 
@@ -214,28 +259,38 @@ class DashBoardController extends Controller
                                 }
                             }
                         }
+
+                        if (isset($employeeOvertimeHours[$code])) {
+                            $employeeOvertimeHours[$code] += $totalOT;
+                            $employeeRegisteredShifts[$code] = array_merge($employeeRegisteredShifts[$code], $shifts);
+                            $employeeEofficeHours[$code] += $totalEoffice;
+                        }
                     }
                 }
             } catch (\Exception $e) {
             }
         }
 
-        // 3. Classify personnel
+        // 3. Classify personnel & aggregate overtime by group
         $stats = [
             'on_leave' => 0,
             'unassigned' => 0,
             'under_8h' => 0,
             'exact_8h' => 0,
             'over_8h' => 0,
+            'total_ot_hours' => 0,
         ];
 
         $details = [];
+        $groupOvertimeMap = []; // [group_name => total_ot]
 
         foreach ($employeeHours as $empId => $totalHours) {
             $avgHoursPerDay = $daysInPeriod > 0 ? ($totalHours / $daysInPeriod) : 0;
+            $empCode = $employees[$empId]->code;
+            $empOT = round($employeeOvertimeHours[$empCode] ?? 0, 2);
+            $stats['total_ot_hours'] += $empOT;
 
             $status = '';
-            // Allow small floating point rounding
             if ($totalHours == 0) {
                 if (isset($leaveEmployees[$empId])) {
                     $stats['on_leave']++;
@@ -259,18 +314,46 @@ class DashBoardController extends Controller
                 'code' => $employees[$empId]->code,
                 'name' => $employees[$empId]->name,
                 'group' => $employees[$empId]->group_names,
+                'registered_shifts' => array_values(array_unique($employeeRegisteredShifts[$empCode] ?? [])),
                 'total_hours' => round($totalHours, 2),
-                'avg_hours_per_day' => round($avgHoursPerDay, 2),
+                'eoffice_hours' => round($employeeEofficeHours[$empCode] ?? 0, 2),
+                'overtime_hours' => $empOT,
                 'status' => $status
             ];
+
+            // Tổng hợp OT theo tổ
+            $groupName = $employees[$empId]->group_names;
+            if (!isset($groupOvertimeMap[$groupName])) {
+                $groupOvertimeMap[$groupName] = ['name' => $groupName, 'ot_hours' => 0, 'count' => 0];
+            }
+            $groupOvertimeMap[$groupName]['ot_hours'] += $empOT;
+            $groupOvertimeMap[$groupName]['count']++;
         }
+
+        $stats['total_ot_hours'] = round($stats['total_ot_hours'], 2);
 
         // Sort details by total_hours ascending
         usort($details, function ($a, $b) {
             return $a['total_hours'] <=> $b['total_hours'];
         });
 
-        // 4. Lấy danh sách tất cả các tổ khả dụng trong phân xưởng này (không bị ảnh hưởng bởi filter group_id)
+        // Format overtime by group
+        $overtimeByGroup = array_values(array_filter(
+            array_map(function ($g) {
+                return ['name' => $g['name'], 'ot_hours' => round($g['ot_hours'], 2), 'count' => $g['count']];
+            }, $groupOvertimeMap),
+            fn($g) => $g['ot_hours'] > 0 || $g['count'] > 0
+        ));
+        usort($overtimeByGroup, fn($a, $b) => $b['ot_hours'] <=> $a['ot_hours']);
+
+        // Format overtime by room (from assignment data)
+        arsort($roomHoursMap);
+        $overtimeByRoom = [];
+        foreach ($roomHoursMap as $rName => $rHours) {
+            $overtimeByRoom[] = ['name' => $rName, 'total_hours' => round($rHours, 2)];
+        }
+
+        // 4. Lấy danh sách tất cả các tổ khả dụng trong phân xưởng này
         $availableGroupsRaw = DB::table('employee_assignments as ea')
             ->join('employees as e', 'ea.employees_id', '=', 'e.id')
             ->where('e.active', 1)
@@ -306,6 +389,8 @@ class DashBoardController extends Controller
             'total_personnel' => count($employees),
             'stats' => $stats,
             'details' => $details,
+            'overtime_by_group' => $overtimeByGroup,
+            'overtime_by_room' => $overtimeByRoom,
             'available_groups' => $availableGroupsArray,
             'period' => [
                 'start' => $startDate->format('Y-m-d H:i'),
@@ -315,3 +400,5 @@ class DashBoardController extends Controller
         ]);
     }
 }
+
+

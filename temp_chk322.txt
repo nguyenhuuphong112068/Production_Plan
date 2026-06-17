@@ -1,0 +1,6 @@
+904:   const findNextAvailableSlot = (machineId, durationMs, earliestStart, allEvents, offRanges, ignoreIds = [], updatedTimesById = {}) => {
+994:   const findPreviousAvailableSlot = (machineId, durationMs, latestEnd, allEvents, offRanges, ignoreIds = [], updatedTimesById = {}) => {
+1290:       let newSlot = findPreviousAvailableSlot(evData.resourceId, evData.duration, latestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
+1367:       let newSlot = findNextAvailableSlot(evData.resourceId, evData.duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+1461:       let newSlot = findNextAvailableSlot(intruder.rId, intruder.duration, earliestStartForIntruder, allEvents, offRanges, currentIgnoreIds, updatedTimesById);
+1604:         let newSlot = findPreviousAvailableSlot(resourceId, durationMs, successorStart, allEvents, offRanges, ignoreIds, updatedTimesById);

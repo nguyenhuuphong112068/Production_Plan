@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pages\Quota;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -69,10 +70,10 @@ class PersonnelController extends Controller
                 continue;
             }
 
-            // Cache trong 5 phút để tránh tải chậm
+            // Cache trong 5 phút bằng file để tránh lỗi max_allowed_packet với data lớn
             $cacheKey = "portal_shifts_{$code}_{$queryYear}_{$queryMonth}";
 
-            $personnelData = cache()->remember($cacheKey, 300, function () use ($queryMonth, $queryYear, $depId) {
+            $personnelData = Cache::store('file')->remember($cacheKey, 300, function () use ($queryMonth, $queryYear, $depId) {
                 $url = "http://s-webdev:5070/api/shifts/by-department?month={$queryMonth}&year={$queryYear}&department={$depId}";
                 try {
                     $ctx = stream_context_create(['http' => ['timeout' => 5]]); // 5s timeout
@@ -115,7 +116,12 @@ class PersonnelController extends Controller
 
                 $shiftCounts[$code]['total'] = count($personnelData);
                 foreach ($personnelData as $person) {
-                    $shift = isset($person['days'][$dayKey]) ? strtoupper(trim($person['days'][$dayKey])) : '';
+                    $dayData = $person['days'][$dayKey] ?? null;
+                    if (is_array($dayData)) {
+                        $shift = strtoupper(trim($dayData['shift'] ?? ''));
+                    } else {
+                        $shift = strtoupper(trim($dayData ?? ''));
+                    }
                     if ($shift === '') {
                         $shift = 'HC';
                     }
@@ -947,7 +953,7 @@ class PersonnelController extends Controller
             ];
 
             foreach ($merged as $person) {
-                $shift = isset($person['days'][$day]) ? strtoupper(trim($person['days'][$day])) : '';
+                $shift = $person['days'][$day] ?? '';
                 if ($shift === '') {
                     $shift = 'HC';
                 }
@@ -988,7 +994,7 @@ class PersonnelController extends Controller
                 ];
 
                 foreach ($merged as $person) {
-                    $shift = isset($person['days'][$dDay]) ? strtoupper(trim($person['days'][$dDay])) : '';
+                    $shift = $person['days'][$dDay] ?? '';
                     if ($shift === '') {
                         $shift = 'HC';
                     }
@@ -1026,7 +1032,7 @@ class PersonnelController extends Controller
                 ];
 
                 foreach ($merged as $person) {
-                    $shift = isset($person['days'][$dDay]) ? strtoupper(trim($person['days'][$dDay])) : '';
+                    $shift = $person['days'][$dDay] ?? '';
                     if ($shift === '') {
                         $shift = 'HC';
                     }
@@ -1065,7 +1071,7 @@ class PersonnelController extends Controller
     private function getMergedMonthlyShifts($year, $month, $depId)
     {
         $cacheKey = "merged_shifts_{$depId}_{$year}_{$month}";
-        return cache()->remember($cacheKey, 300, function () use ($year, $month, $depId) {
+        return Cache::store('file')->remember($cacheKey, 300, function () use ($year, $month, $depId) {
             $url1 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
             $data1 = [];
             try {
@@ -1165,11 +1171,22 @@ class PersonnelController extends Controller
 
                 for ($d = 1; $d <= 20; $d++) {
                     $dayKey = 'day' . $d;
-                    $days[$d] = $empShifts[$code]['days'][$dayKey] ?? null;
+                    $dayData = $empShifts[$code]['days'][$dayKey] ?? null;
+                    // Trích xuất chỉ mã ca để tiết kiệm bộ nhớ cache
+                    if (is_array($dayData)) {
+                        $days[$d] = strtoupper(trim($dayData['shift'] ?? ''));
+                    } else {
+                        $days[$d] = $dayData ? strtoupper(trim($dayData)) : null;
+                    }
                 }
                 for ($d = 21; $d <= 31; $d++) {
                     $dayKey = 'day' . $d;
-                    $days[$d] = $empShiftsNext[$code]['days'][$dayKey] ?? null;
+                    $dayData = $empShiftsNext[$code]['days'][$dayKey] ?? null;
+                    if (is_array($dayData)) {
+                        $days[$d] = strtoupper(trim($dayData['shift'] ?? ''));
+                    } else {
+                        $days[$d] = $dayData ? strtoupper(trim($dayData)) : null;
+                    }
                 }
 
                 $merged[] = [

@@ -132,20 +132,20 @@
                         </div>
                     </div>
                     <div class="col-lg-2 col-6">
-                        <div class="small-box bg-primary">
+                        <div class="small-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff;">
                             <div class="inner">
-                                <h3 id="kpi_over8">0</h3>
-                                <p>> 8h / ngày</p>
+                                <h3 id="kpi_total_ot">0h</h3>
+                                <p><i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (TC)</p>
                             </div>
-                            <div class="icon"><i class="fas fa-fire"></i></div>
+                            <div class="icon"><i class="fas fa-fire-alt"></i></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="row">
-                    <!-- Biểu đồ -->
-                    <div class="col-md-6">
-                        <div class="card card-outline card-success">
+                    <!-- Biểu đồ tỷ lệ -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card card-outline card-success h-100">
                             <div class="card-header">
                                 <h3 class="card-title">Tỷ lệ phân công</h3>
                             </div>
@@ -154,8 +154,10 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card card-outline card-info">
+                    
+                    <!-- Biểu đồ tổng quan -->
+                    <div class="col-md-4 mb-3">
+                        <div class="card card-outline card-info h-100">
                             <div class="card-header">
                                 <h3 class="card-title">Biểu đồ tổng quan</h3>
                             </div>
@@ -164,12 +166,41 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Thống kê OT theo Tổ -->
+                    <div class="col-md-4 mb-3" id="otSummaryRow">
+                        <div class="card card-outline h-100" style="border-color: #f5576c;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color:#fff;">
+                                <h3 class="card-title"><i class="fas fa-layer-group mr-2"></i>Tăng Ca Theo Tổ</h3>
+                            </div>
+                            <div class="card-body p-0">
+                                <div style="max-height: 280px; overflow-y: auto;">
+                                    <table class="table table-sm table-striped mb-0">
+                                        <thead class="bg-light" style="position:sticky;top:0;z-index:1;">
+                                            <tr>
+                                                <th>Tổ / Nhóm</th>
+                                                <th class="text-center">Số NS</th>
+                                                <th class="text-right text-danger font-weight-bold">Tổng TC (h)</th>
+                                                <th class="text-right">TB TC/NS (h)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="otGroupTableBody">
+                                            <tr><td colspan="4" class="text-center text-muted py-3">Chưa có dữ liệu</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Bảng chi tiết -->
+                <!-- Bảng chi tiết nhân sự -->
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Danh sách chi tiết nhân sự</h3>
+                        <div class="card-tools">
+                            <input type="text" id="searchDetail" class="form-control form-control-sm" placeholder="Tìm kiếm..." style="width:200px;">
+                        </div>
                     </div>
                     <div class="card-body table-responsive p-0">
                         <table class="table table-head-fixed text-nowrap table-striped table-hover" id="detailTable">
@@ -178,9 +209,11 @@
                                     <th>Mã NS</th>
                                     <th>Họ và Tên</th>
                                     <th>Tổ</th>
-                                    <th>Tổng số giờ phân công</th>
-                                    <th>TB giờ / ngày</th>
-                                    <th>Trạng thái</th>
+                                    <th>Đăng ký đi ca</th>
+                                    <th>Tổng giờ phân công</th>
+                                    <th>Giờ làm việc theo e-office</th>
+                                    <th class="text-danger"><i class="fas fa-clock mr-1"></i>TC (h)</th>
+                                    <th id="th_status">Trạng thái</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -200,6 +233,7 @@
 <script>
     let currentPieChart = null;
     let currentBarChart = null;
+    let allDetails = [];
 
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -216,6 +250,21 @@
         document.getElementById('group_id').value = '';
         loadData();
     });
+
+    // Search detail table
+    document.getElementById('searchDetail').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        filterDetailTable(q);
+    });
+
+    function filterDetailTable(q) {
+        const tbody = document.querySelector('#detailTable tbody');
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = (!q || text.includes(q)) ? '' : 'none';
+        });
+    }
 
     function loadData() {
         const formData = new FormData(document.getElementById('filterForm'));
@@ -250,7 +299,6 @@
         groupSelect.innerHTML = '<option value="">-- Tất cả --</option>';
         if (data.available_groups) {
             data.available_groups.forEach(g => {
-                // Use == instead of === because g.code might be a number and currentSelectedGroup is a string
                 const isSelected = (g.code == currentSelectedGroup) ? 'selected' : '';
                 groupSelect.innerHTML += `<option value="${g.code}" ${isSelected}>${g.name}</option>`;
             });
@@ -262,34 +310,45 @@
         document.getElementById('kpi_unassigned').innerText = data.stats.unassigned;
         document.getElementById('kpi_under8').innerText = data.stats.under_8h;
         document.getElementById('kpi_exact8').innerText = data.stats.exact_8h;
-        document.getElementById('kpi_over8').innerText = data.stats.over_8h;
+        document.getElementById('kpi_total_ot').innerText = (data.stats.total_ot_hours || 0) + 'h';
 
         // Update Period
         document.getElementById('period_text').innerText = `${data.period.start} đến ${data.period.end} (${data.period.days} ngày)`;
 
-        // Render Table
-        const tbody = document.querySelector('#detailTable tbody');
-        tbody.innerHTML = '';
-        
-        data.details.forEach(item => {
-            let badgeClass = 'badge-secondary';
-            if (item.status === 'Nghỉ phép (P)') badgeClass = 'badge-secondary';
-            else if (item.status === 'Chưa phân công') badgeClass = 'badge-danger';
-            else if (item.status === '< 8h') badgeClass = 'badge-warning';
-            else if (item.status === 'Đủ 8h') badgeClass = 'badge-success';
-            else if (item.status === '> 8h') badgeClass = 'badge-primary';
+        // Render OT by Group table
+        allDetails = data.details || [];
+        const otGroupBody = document.getElementById('otGroupTableBody');
+        if (data.overtime_by_group && data.overtime_by_group.length > 0) {
+            otGroupBody.innerHTML = '';
+            data.overtime_by_group.forEach(g => {
+                const avgOT = g.count > 0 ? Math.round((g.ot_hours / g.count) * 100) / 100 : 0;
+                const otBar = g.ot_hours > 0 ? `<div class="progress progress-xs mt-1" style="height:4px;"><div class="progress-bar bg-danger" style="width:${Math.min(100, g.ot_hours * 2)}%"></div></div>` : '';
+                otGroupBody.innerHTML += `
+                    <tr>
+                        <td>${g.name}</td>
+                        <td class="text-center">${g.count}</td>
+                        <td class="text-right">
+                            <strong class="text-danger">${g.ot_hours}h</strong>
+                            ${otBar}
+                        </td>
+                        <td class="text-right text-muted">${avgOT}h</td>
+                    </tr>
+                `;
+            });
+        } else {
+            otGroupBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3"><i class="fas fa-info-circle mr-1"></i>Không có dữ liệu tăng ca từ API lịch trực</td></tr>';
+        }
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${item.code}</td>
-                <td>${item.name}</td>
-                <td><small class="text-muted">${item.group || '-'}</small></td>
-                <td><strong>${item.total_hours} h</strong></td>
-                <td>${item.avg_hours_per_day} h/ngày</td>
-                <td><span class="badge ${badgeClass}" style="font-size:0.9rem;">${item.status}</span></td>
-            `;
-            tbody.appendChild(tr);
-        });
+        const statType = document.getElementById('type').value;
+        const thStatus = document.getElementById('th_status');
+        if (statType !== 'day') {
+            thStatus.style.display = 'none';
+        } else {
+            thStatus.style.display = '';
+        }
+
+        // Render Detail Table
+        renderDetailTable(data.details, statType);
 
         // Render Charts
         const ctxPie = document.getElementById('assignmentPieChart').getContext('2d');
@@ -337,6 +396,56 @@
                 }
             }
         });
+    }
+
+    function renderDetailTable(details, statType = 'day') {
+        const tbody = document.querySelector('#detailTable tbody');
+        tbody.innerHTML = '';
+        
+        details.forEach(item => {
+            let badgeClass = 'badge-secondary';
+            if (item.status === 'Nghỉ phép (P)') badgeClass = 'badge-secondary';
+            else if (item.status === 'Chưa phân công') badgeClass = 'badge-danger';
+            else if (item.status === '< 8h') badgeClass = 'badge-warning';
+            else if (item.status === 'Đủ 8h') badgeClass = 'badge-success';
+            else if (item.status === '> 8h') badgeClass = 'badge-primary';
+
+            const ot = item.overtime_hours || 0;
+            const otCell = ot > 0
+                ? `<td><span class="badge" style="background:#f5576c;color:#fff;font-size:0.85rem;">${ot}h</span></td>`
+                : `<td><span class="text-muted">—</span></td>`;
+
+            let shiftHtml = '-';
+            if (item.registered_shifts && item.registered_shifts.length > 0) {
+                if (item.registered_shifts.length === 1 && !item.registered_shifts[0].includes(':')) {
+                    shiftHtml = `<span class="badge badge-info" style="font-size:0.9rem;">${item.registered_shifts[0]}</span>`;
+                } else {
+                    const shiftsPills = item.registered_shifts.map(s => `<span class="badge badge-info mr-1 mb-1">${s}</span>`).join('');
+                    shiftHtml = `<div style="max-height: 65px; overflow-y: auto; display: flex; flex-wrap: wrap; align-items: flex-start;">${shiftsPills}</div>`;
+                }
+            }
+
+            const statusCell = statType === 'day' 
+                ? `<td><span class="badge ${badgeClass}" style="font-size:0.9rem;">${item.status}</span></td>` 
+                : '';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.code}</td>
+                <td>${item.name}</td>
+                <td><small class="text-muted">${item.group || '-'}</small></td>
+                <td style="min-width: 150px; max-width: 250px;">${shiftHtml}</td>
+                <td><strong>${item.total_hours} h</strong></td>
+                <td>${item.eoffice_hours} h</td>
+                ${otCell}
+                ${statusCell}
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Re-apply search filter after render
+        const q = document.getElementById('searchDetail').value.toLowerCase();
+        if (q) filterDetailTable(q);
     }
 </script>
 @endsection

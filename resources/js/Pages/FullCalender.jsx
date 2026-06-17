@@ -1248,7 +1248,7 @@ const ScheduleTest = () => {
       .sort((a, b) => a.event.extendedProps.stage_code - b.event.extendedProps.stage_code); // Tăng dần
 
     // ==========================================
-    // PASS 1: BACKWARD (Kéo lùi quá khứ)
+    // PASS 1: BACKWARD (Kéo lùi quá khứ - đặt sát trước successor)
     // ==========================================
     backwardEvents.forEach(evData => {
       if (evData.isAnchor) return;
@@ -1256,29 +1256,17 @@ const ScheduleTest = () => {
       let successorData = Object.values(eventsMap).find(e => e.predecessor === String(evData.event.extendedProps.code));
       if (!successorData) return;
 
-      // Cập nhật lại latestEnd nếu successorData đã bị dịch chuyển
-      let latestEnd = updatedTimesById[successorData.id] ? updatedTimesById[successorData.id].start : successorData.start;
+      // Lấy thời gian bắt đầu mới nhất của successor (có thể đã bị dịch)
+      let latestEnd = updatedTimesById[successorData.id]
+        ? updatedTimesById[successorData.id].start
+        : successorData.start;
 
       let cleaningEvent = allEvents.find(e => String(e.id) === String(evData.id).replace('-main', '-cleaning'));
-
-      // KIỂM TRA VI PHẠM CHUỖI: Nếu evData đã kết thúc đúng trình tự (trước latestEnd), không dịch chuyển!
-      if (evData.end <= latestEnd) {
-        updatedTimesById[evData.id] = { start: evData.start, end: evData.end };
-        updates.push({ id: evData.id, clearWarnings: true });
-        if (cleaningEvent) {
-          updatedTimesById[cleaningEvent.id] = { start: evData.event.end, end: cleaningEvent.end };
-          updates.push({ id: cleaningEvent.id, clearWarnings: true });
-        }
-        if (successorData && successorData.event) {
-          updates.push({ id: successorData.event.id, clearWarnings: true });
-        }
-        return;
-      }
 
       let ignoreIds = [evData.id];
       if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
 
-      // Bỏ qua các sự kiện liên quan CHƯA được xử lý (tránh lỗi tự nhảy qua đầu nhau)
+      // Bỏ qua các sự kiện liên quan CHƯA được xử lý
       relatedEvents.forEach(e => {
         if (!updatedTimesById[e.id] && !ignoreIds.includes(String(e.id))) {
           ignoreIds.push(String(e.id));
@@ -1287,6 +1275,8 @@ const ScheduleTest = () => {
         }
       });
 
+      // Luôn tìm slot mới sát trước latestEnd (kể cả khi evData đã đứng đúng thứ tự)
+      // để đảm bảo không có gap và không bị chồng phòng
       let newSlot = findPreviousAvailableSlot(evData.resourceId, evData.duration, latestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
 
       evData.start = newSlot.start;
@@ -1322,7 +1312,7 @@ const ScheduleTest = () => {
     });
 
     // ==========================================
-    // PASS 2: FORWARD (Đẩy tới tương lai)
+    // PASS 2: FORWARD (Đẩy tới tương lai - đặt sát sau predecessor)
     // ==========================================
     forwardEvents.forEach(evData => {
       if (evData.isAnchor) return;
@@ -1333,29 +1323,26 @@ const ScheduleTest = () => {
       let predData = eventsMap[predCode];
       if (!predData) return;
 
-      // predData có thể đã bị dịch chuyển, nên phải lấy mốc thời gian mới nhất
-      let earliestStart = updatedTimesById[predData.id] ? updatedTimesById[predData.id].end : predData.end;
+      // Lấy thời gian kết thúc mới nhất của predecessor (có thể đã bị dịch)
+      let earliestStart = updatedTimesById[predData.id]
+        ? updatedTimesById[predData.id].end
+        : predData.end;
+
+      // Cộng thêm thời gian VS (cleaning) của predecessor nếu có
+      let predCleaningKey = String(predData.id).replace('-main', '-cleaning');
+      if (updatedTimesById[predCleaningKey]) {
+        earliestStart = updatedTimesById[predCleaningKey].end;
+      } else {
+        let predCleaningEv = allEvents.find(e => String(e.id) === String(predData.id).replace('-main', '-cleaning'));
+        if (predCleaningEv) earliestStart = new Date(predCleaningEv.end);
+      }
 
       let cleaningEvent = allEvents.find(e => String(e.id) === String(evData.id).replace('-main', '-cleaning'));
-
-      // KIỂM TRA VI PHẠM CHUỖI: Nếu evData đã bắt đầu đúng trình tự (sau earliestStart), không dịch chuyển!
-      if (evData.start >= earliestStart) {
-        updatedTimesById[evData.id] = { start: evData.start, end: evData.end };
-        updates.push({ id: evData.id, clearWarnings: true });
-        if (cleaningEvent) {
-          updatedTimesById[cleaningEvent.id] = { start: evData.event.end, end: cleaningEvent.end };
-          updates.push({ id: cleaningEvent.id, clearWarnings: true });
-        }
-        if (predData && predData.event) {
-          updates.push({ id: predData.event.id, clearWarnings: true });
-        }
-        return;
-      }
 
       let ignoreIds = [evData.id];
       if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
 
-      // Bỏ qua các sự kiện liên quan CHƯA được xử lý (tránh lỗi tự nhảy qua đầu nhau)
+      // Bỏ qua các sự kiện liên quan CHƯA được xử lý
       relatedEvents.forEach(e => {
         if (!updatedTimesById[e.id] && !ignoreIds.includes(String(e.id))) {
           ignoreIds.push(String(e.id));
@@ -1364,6 +1351,7 @@ const ScheduleTest = () => {
         }
       });
 
+      // Luôn tìm slot mới sát sau earliestStart để đảm bảo không có gap và không chồng phòng
       let newSlot = findNextAvailableSlot(evData.resourceId, evData.duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
 
       evData.start = newSlot.start;

@@ -1,0 +1,28 @@
+12:     public function portal()
+72:             // Cache trong 5 phút để tránh tải chậm
+73:             $cacheKey = "portal_shifts_{$code}_{$queryYear}_{$queryMonth}";
+75:             $personnelData = cache()->remember($cacheKey, 300, function () use ($queryMonth, $queryYear, $depId) {
+76:                 $url = "http://s-webdev:5070/api/shifts/by-department?month={$queryMonth}&year={$queryYear}&department={$depId}";
+139:         return view('pages.quota.personnel.portal', compact('departments', 'shiftCounts'));
+282:         $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
+289:                 $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
+938:             $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
+978:                 $merged = $this->getFilteredMergedShifts($dYear, $dMonth, $depId, $activeEmployeeCodes);
+1015:             $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
+1049:     private function getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes)
+1051:         $merged = $this->getMergedMonthlyShifts($year, $month, $depId);
+1065:     private function getMergedMonthlyShifts($year, $month, $depId)
+1067:         $cacheKey = "merged_shifts_{$depId}_{$year}_{$month}";
+1068:         return cache()->remember($cacheKey, 300, function () use ($year, $month, $depId) {
+1069:             $url1 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
+1082:                     $url1_17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
+1106:             $url2 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$depId}";
+1119:                     $url2_17 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department=17";
+1137:             $empShifts = [];
+1141:                     $empShifts[$code] = [
+1148:             $empShiftsNext = [];
+1152:                     $empShiftsNext[$code] = [
+1159:             $allCodes = array_unique(array_merge(array_keys($empShifts), array_keys($empShiftsNext)));
+1164:                 $name = $empShifts[$code]['name'] ?? ($empShiftsNext[$code]['name'] ?? '');
+1168:                     $days[$d] = $empShifts[$code]['days'][$dayKey] ?? null;
+1172:                     $days[$d] = $empShiftsNext[$code]['days'][$dayKey] ?? null;

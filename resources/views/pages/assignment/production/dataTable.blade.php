@@ -1185,8 +1185,7 @@
                 if (personCode) {
                     const personData = currentSidebarData.find(p => (p.employeeId || p.code) == personCode);
                     if (personData) {
-                        const personShift = (personData.days && personData.days[dayKey]) ? personData.days[
-                            dayKey].toUpperCase() : 'HC';
+                        const personShift = (personData.days && personData.days[dayKey]) ? (personData.days[dayKey]?.shift ?? personData.days[dayKey]).toString().toUpperCase() : 'HC';
                         if (shiftName !== 'Khác' && personShift !== 'P' && personShift !== shiftName) {
                             isDiscrepancy = true;
                         }
@@ -1932,7 +1931,8 @@
             const person = currentSidebarData.find(p => (p.employeeId || p.code) == personCode);
             if (!person) return null;
             const dayKey = 'day' + currentSidebarDay;
-            return (person.days && person.days[dayKey]) ? person.days[dayKey].toUpperCase() : 'HC';
+            const dayData = person.days && person.days[dayKey];
+            return dayData ? (dayData?.shift ?? dayData).toString().toUpperCase() : 'HC';
         }
 
         function checkShiftMismatch(personId, targetShiftCode, callback) {
@@ -3281,8 +3281,7 @@
 
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
-                    const shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
-                        .toUpperCase() : 'HC';
+                    const shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
 
@@ -3631,8 +3630,7 @@
                 };
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
-                    const shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
-                        .toUpperCase() : 'HC';
+                    const shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
                     if (!personId || shiftCode === 'P') return;
@@ -3931,8 +3929,7 @@
 
             data.forEach(person => {
                 const dayKey = 'day' + currentDay;
-                let shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
-                    .toUpperCase() : 'HC';
+                let shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
 
                 const personName = person.employeeName || person.name || '';
                 const personCode = person.employeeId || person.code || '';
@@ -3950,10 +3947,16 @@
                     }
                 }
 
+                const dayData = person.days && person.days[dayKey];
+                const overtime = (dayData && typeof dayData === 'object') ? (dayData.overtime || 0) : 0;
+                const regularHours = (dayData && typeof dayData === 'object') ? (dayData.regular_working_Hours ?? 8) : 8;
+
                 const personInfo = {
                     name: personName,
                     code: personCode,
-                    hasAssignment: person.hasAssignment !== undefined ? person.hasAssignment : 1
+                    hasAssignment: person.hasAssignment !== undefined ? person.hasAssignment : 1,
+                    overtime: overtime,
+                    regularHours: regularHours
                 };
 
                 if (shifts.hasOwnProperty(shiftCode)) {
@@ -3994,6 +3997,8 @@
                     `;
                     const isLeave = key === 'P';
                     shifts[key].forEach(p => {
+                        const otBadge = p.overtime > 0 ? `<span class="badge badge-warning text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Làm thêm ${p.overtime}h">TC:${p.overtime}h</span>` : '';
+                        const lowHoursBadge = (p.regularHours > 0 && p.regularHours < 8) ? `<span class="badge badge-secondary ml-1" style="font-size:0.6rem; padding:1px 3px;" title="${p.regularHours}h thường">${p.regularHours}h</span>` : '';
                         html += `
                             <div class="list-group-item py-1 pl-5 small draggable-person ${isLeave ? 'person-on-leave text-muted' : ''}" 
                                  draggable="${isLeave ? 'false' : 'true'}" 
@@ -4006,7 +4011,7 @@
                                     <input type="checkbox" class="custom-control-input btn-toggle-has-assign" id="ha_${p.code}" ${p.hasAssignment ? 'checked' : ''} data-code="${p.code}">
                                     <label class="custom-control-label" for="ha_${p.code}" title="Cho phép tự động sắp"></label>
                                 </div>
-                                <span class="${isLeave ? 'text-decoration-line-through' : 'text-dark'} ${!p.hasAssignment ? 'text-muted' : ''}">${p.name}</span>
+                                <span class="${isLeave ? 'text-decoration-line-through' : 'text-dark'} ${!p.hasAssignment ? 'text-muted' : ''}">${p.name}</span>${otBadge}${lowHoursBadge}
                                 <span class="text-muted float-right">
                                     ${p.code}
                                     <i class="fas fa-eye text-info btn-view-skills ml-1 cursor-pointer" title="Xem bậc kỹ năng"></i>
