@@ -1,0 +1,16 @@
+1931:     }, 250); // Delay 250ms để phản hồi cực nhạy
+1932:   };
+1933: 
+1934:   const handleEventMouseLeave = () => {
+1935:     // Hủy tiến trình tải nếu người dùng rời đi sớm
+1936:     if (hoverTimeoutRef.current) {
+1937:       clearTimeout(hoverTimeoutRef.current);
+1938:       hoverTimeoutRef.current = null;
+1939:     }
+1940:   };
+1941: 
+1942:   ///
+1943:   const handleSaveChanges = async () => {
+1944:     if (!authorization) {
+1945:       info.revert();
+1946:       return false;

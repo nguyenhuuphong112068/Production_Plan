@@ -1939,6 +1939,39 @@ const ScheduleTest = () => {
     }
   };
 
+  const handleDiscardChanges = () => {
+    Swal.fire({
+      title: 'Hủy thay đổi?',
+      text: "Tất cả các sự kiện sẽ được trả về vị trí ban đầu. Bạn có chắc chắn?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Không',
+      confirmButtonColor: '#d33'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const calendarApi = calendarRef.current?.getApi();
+        if (calendarApi) {
+          pendingChanges.forEach(p => {
+            const ev = calendarApi.getEventById(p.id);
+            if (ev) {
+              const originalData = events.find(e => String(e.id) === String(p.id));
+              if (originalData) {
+                ev.setDates(originalData.start, originalData.end);
+                if (originalData.resourceId) {
+                  ev.setResources([originalData.resourceId]);
+                }
+                ev.setExtendedProp('warning_text', originalData.warning_text || '');
+                ev.setExtendedProp('violation_colors', originalData.violation_colors || []);
+              }
+            }
+          });
+        }
+        setPendingChanges([]);
+      }
+    });
+  };
+
   ///
   const handleSaveChanges = async () => {
     if (!authorization) {
@@ -4343,6 +4376,11 @@ const ScheduleTest = () => {
             <div className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-200">
               <i className="pi pi-exclamation-triangle"></i>
               <span className="font-bold text-sm">{pendingChanges.length} Thay đổi chưa lưu</span>
+              <i 
+                className="pi pi-times cursor-pointer hover:text-red-600 transition-colors ml-1" 
+                title="Hủy tất cả thay đổi" 
+                onClick={handleDiscardChanges}
+              ></i>
             </div>
           )}
           {moldWarningEvents.length > 0 && (

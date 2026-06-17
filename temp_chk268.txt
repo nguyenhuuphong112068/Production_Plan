@@ -1,0 +1,11 @@
+4341:           )}
+4342:           {pendingChanges && pendingChanges.length > 0 && (
+4343:             <div className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-200">
+4344:               <i className="pi pi-exclamation-triangle"></i>
+4345:               <span className="font-bold text-sm">{pendingChanges.length} Thay đổi chưa lưu</span>
+4346:             </div>
+4347:           )}
+4348:           {moldWarningEvents.length > 0 && (
+4349:             <div
+4350:               className="flex align-items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-yellow-300 cursor-pointer hover:bg-yellow-200 transition-colors"
+4351:               onClick={handleNextMoldWarning}
