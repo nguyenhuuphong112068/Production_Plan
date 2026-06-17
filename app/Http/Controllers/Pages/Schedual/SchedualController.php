@@ -2417,6 +2417,7 @@ class SchedualController extends Controller
         $this->theory = (int) $request->theory ?? 0;
 
         try {
+            DB::beginTransaction();
             // Lưu lý do một lần duy nhất nếu cần
             if (is_array($request->reason) && ($request->reason['saveReason'] ?? false)) {
                 DB::table('reason')->updateOrInsert(
@@ -2606,8 +2607,9 @@ class SchedualController extends Controller
                         DB::table('stage_plan')->where('id', $sid)->update(['submit' => 0]);
                     }
                 }
-            }
+            DB::commit();
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
             return response()->json(['error' => 'Lỗi hệ thống'], 500);

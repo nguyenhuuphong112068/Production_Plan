@@ -1,0 +1,9 @@
+1: import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+65:   const moldWarningEvents = useMemo(() => events.filter(e => e.mold_warning), [events]);
+69:   const stageFilterOptions = useMemo(() => {
+75:   const roomFilterOptions = useMemo(() => {
+1692:   const offRanges = useMemo(
+4285:   const calendarEvents = useMemo(() => {
+4296:   const displayResources = useMemo(() => {
+4438:   const resourceFiltered = useMemo(() => {
+4465:   const unsubmittedCount = useMemo(() => {

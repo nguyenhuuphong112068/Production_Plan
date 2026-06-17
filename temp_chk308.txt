@@ -1,0 +1,51 @@
+1301:                 'sp.immediately',
+1302:                 'sp.not_schedule',
+1303:                 'sp.blister_mold_id',
+1304: 
+1305:                 DB::raw("
+1306:                                         CASE
+1307:                                                 WHEN sp.stage_code >= 8 THEN sp.title
+1308:                                                 ELSE CONCAT(
+1309:                                                 product_name.name,
+1310:                                                 '-',
+1311:                                                 COALESCE(plan_master.actual_batch, plan_master.batch)
+1312:                                                 )
+1313:                                         END AS title,
+1314:                                         product_name.name as name,
+1315:                                         COALESCE(plan_master.actual_batch, plan_master.batch) as batch
+1316:                                 "),
+1317: 
+1318:                 'plan_master.id as plan_master_id',
+1319:                 // 'plan_master.batch',
+1320:                 'plan_master.expected_date',
+1321:                 'plan_master.responsed_date',
+1322:                 'plan_master.is_val',
+1323:                 'plan_master.note',
+1324:                 'plan_master.level',
+1325:                 'plan_master.after_weigth_date',
+1326:                 'plan_master.after_parkaging_date',
+1327: 
+1328:                 'plan_master.allow_weight_before_date',
+1329:                 'plan_master.preperation_before_date',
+1330:                 'plan_master.blending_before_date',
+1331:                 'plan_master.coating_before_date',
+1332:                 'plan_master.expired_material_date',
+1333: 
+1334:                 'plan_master.material_source_id',
+1335:                 'plan_master.only_parkaging',
+1336:                 'plan_master.percent_parkaging',
+1337:                 'plan_list.month',
+1338:                 'market.code as market',
+1339:                 'source_material.name as source_material_name',
+1340:                 'finished_product_category.intermediate_code',
+1341:                 'finished_product_category.finished_product_code',
+1342:                 // DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE sp.code END as name")
+1343:             )
+1344:             ->orderBy($order_by_column, 'asc')
+1345:             ->get();
+1346: 
+1347:         if ($plan_waiting->isEmpty()) {
+1348: 
+1349:             return $plan_waiting;
+1350:         }
+1351: 

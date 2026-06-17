@@ -1,0 +1,31 @@
+2606:                         DB::table('stage_plan')->where('id', $sid)->update(['submit' => 0]);
+2607:                     }
+2608:                 }
+2609:             }
+2610:         } catch (\Exception $e) {
+2611:             Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+2612: 
+2613:             return response()->json(['error' => 'Lỗi hệ thống'], 500);
+2614:         }
+2615: 
+2616:         $production = session('user.production_code');
+2617:         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
+2618:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2619:         $resources = $this->getResources($production, $request->startDate, $request->endDate);
+2620: 
+2621:         return response()->json([
+2622:             'events' => $events,
+2623:             'resources' => $resources,
+2624:             'sumBatchByStage' => $sumBatchByStage,
+2625:         ]);
+2626:     }
+2627: 
+2628:     public function updateClearning(Request $request)
+2629:     {
+2630: 
+2631:         $changes = $request->input('changes', []);
+2632: 
+2633:         try {
+2634: 
+2635:             foreach ($changes as $change) {
+2636: 

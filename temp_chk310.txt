@@ -1,0 +1,41 @@
+1051:                             $textColor = '#ffffff';
+1052:                             $violation_colors[] = '#ffd500ff';
+1053:                             $mold_warning = "⚠️ Trùng Khuôn: {$mold->code}";
+1054:                         }
+1055:                     }
+1056:                 }
+1057:             } else {
+1058:                 // Cảnh báo thiếu khuôn nếu lô được xếp lên máy ép vỉ (có blister_type_code) nhưng chưa gán khuôn
+1059:                 $room = DB::table('room')->where('id', $plan->resourceId)->first();
+1060:                 if ($room && !empty($room->blister_type_code)) {
+1061:                     $subtitles[] = "❌ Thiếu Khuôn!";
+1062:                     $color_event = '#e54a4aff'; // Đỏ báo lỗi
+1063:                     $textColor = '#ffffff';
+1064:                     $violation_colors[] = '#e54a4aff';
+1065:                     $mold_warning = "❌ Thiếu Khuôn!";
+1066:                 }
+1067:             }
+1068:         }
+1069: 
+1070:         /* 4️⃣ clearning */
+1071:         if ($plan->clearning_validation == 1) {
+1072: 
+1073:             $color_event = '#e4e405e2';
+1074:             $textColor = '#fb0101e2';
+1075:             $violation_colors[] = '#e4e405e2';
+1076:         }
+1077: 
+1078:         /* 5️⃣ biệt trữ */
+1079:         if ($i > 0 && $plan->quarantine_total == 0 && $plan->stage_code > 3 && $plan->stage_code < 7 && $plan->accept_quarantine == 0) {
+1080: 
+1081:             $prev = $plans->firstWhere('code', $plan->predecessor_code);
+1082: 
+1083:             if ($prev && $plan->start) {
+1084: 
+1085:                 $diffMinutes = Carbon::parse($prev->end)
+1086:                     ->diffInMinutes(Carbon::parse($plan->start), false);
+1087: 
+1088:                 $limitMinutes = $prev->quarantine_time_limit_hour * 60;
+1089: 
+1090:                 if ($limitMinutes > 0 && $diffMinutes > $limitMinutes) {
+1091: 

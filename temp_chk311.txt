@@ -1,0 +1,51 @@
+261:             ->groupBy("sp.$group_By", 'unit')
+262:             ->get();
+263: 
+264:         $merged = $stage_plan_100->merge($stage_plan_part)
+265:             ->groupBy(function ($item) use ($group_By) {
+266: 
+267:                 return $item->$group_By . '-' . $item->unit;
+268:             })
+269:             ->map(function ($items) use ($group_By) {
+270: 
+271:                 return (object) [
+272:                     $group_By => $items->first()->$group_By,
+273:                     'unit' => $items->first()->unit,
+274:                     'total_qty' => round($items->sum('total_qty'), 2), // 👈 làm tròn 2 chữ số
+275:                 ];
+276:             })
+277:             ->values();
+278: 
+279:         return $merged;
+280:     }
+281: 
+282:     protected function getEvents($production, $startDate, $endDate, $clearning, int $theory)
+283:     {
+284: 
+285:         $startDate = Carbon::parse($startDate)->toDateTimeString();
+286: 
+287:         $endDate = Carbon::parse($endDate)->toDateTimeString();
+288: 
+289:         $room_code = DB::table('room')->where('deparment_code', $production)->pluck('code', 'id');
+290: 
+291:         $has_permission_maintenance = user_has_permission(session('user')['userId'], 'plan_maintenance_scheduler', 'boolean');
+292:         $has_permission_production = in_array(session('user')['userGroup'], ['Schedualer',  'Admin',  'Leader']);
+293:         $maxFinishedStage = DB::table('stage_plan')
+294:             ->where('finished', 1)
+295:             ->select(
+296:                 'plan_master_id',
+297:                 DB::raw('MAX(stage_code) as max_finished_stage')
+298:             )
+299:             ->groupBy('plan_master_id');
+300: 
+301: 
+302:         // 2️⃣ Lấy danh sách stage_plan (gộp toàn bộ join)
+303:         $event_plans = DB::table('stage_plan as sp')
+304:             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+305:             ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+306:             ->leftJoin('quota_maintenance', 'plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
+307:             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+308:             ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
+309:             ->leftJoin('dosage', 'intermediate_category.dosage_id', '=', 'dosage.id')
+310:             ->leftJoinSub($maxFinishedStage, 'sp_max', function ($join) {
+311: 

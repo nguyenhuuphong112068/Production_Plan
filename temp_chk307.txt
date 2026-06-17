@@ -1,0 +1,63 @@
+981:         // default fallback
+982: 
+983:         /* 1️⃣ finished */
+984:         if ($plan->finished == 1) {
+985:             return ['#002af9ff',  '#fefefee2',  '', [], null, $mold_code];
+986:         }
+987: 
+988:         /* 2️⃣ màu mặc định theo stage */
+989:         if ($plan->stage_code <= 7) {
+990:             $color_event = '#4CAF50';
+991:         } elseif ($plan->stage_code == 8) {
+992:             // Mặc định cho Bảo trì (BT)
+993:             $color_event = '#003A4F';
+994:             // tinh chỉnh màu theo loại block (hc, bt, ti)
+995:             if (isset($plan->code)) {
+996:                 if (substr($plan->code, -2) === 'HC') {
+997:                     $color_event = '#9a1b72ff';
+998:                     // Tím đậm cho Hiệu chuẩn
+999:                 } elseif (substr($plan->code, -2) === 'TI') {
+1000:                     $color_event = '#830cbfff';
+1001:                     // Cam đất cho Tiện ích
+1331:                 'plan_master.coating_before_date',
+1332:                 'plan_master.expired_material_date',
+1333: 
+1334:                 'plan_master.material_source_id',
+1335:                 'plan_master.only_parkaging',
+1336:                 'plan_master.percent_parkaging',
+1337:                 'plan_list.month',
+1338:                 'market.code as market',
+1339:                 'source_material.name as source_material_name',
+1340:                 'finished_product_category.intermediate_code',
+1341:                 'finished_product_category.finished_product_code',
+1342:                 // DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE sp.code END as name")
+1343:             )
+1344:             ->orderBy($order_by_column, 'asc')
+1345:             ->get();
+1346: 
+1347:         if ($plan_waiting->isEmpty()) {
+1348: 
+1349:             return $plan_waiting;
+1350:         }
+1351: 
+2291:                             }
+2292:                         }
+2293:                     }
+2294:                 }
+2295:             } else {
+2296: 
+2297:                 foreach ($products as $index => $product) {
+2298: 
+2299:                     $quota = DB::table('maintenance_category')
+2300:                         ->where('code', $product['instrument_code'])
+2301:                         ->selectRaw('TIME_TO_SEC(quota) / 60 as quota_minutes')
+2302:                         ->first();
+2303: 
+2304:                     $execute_time_minutes = (int) ($quota->quota_minutes ?? 0);
+2305: 
+2306:                     $end_man = $current_start->copy()->addMinutes($execute_time_minutes);
+2307: 
+2308:                     $room_id = array_keys($product['permisson_room']);
+2309: 
+2310:                     DB::table('stage_plan')
+2311:                         ->where('id', $product['id'])

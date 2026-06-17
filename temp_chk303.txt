@@ -1,0 +1,16 @@
+2406:     public function update(Request $request)
+2407:     {
+2408: 
+2409:         //Log::info($request->all());
+2410:         //return;
+2411:         $offDays = DB::table('off_days')
+2412:             ->whereDate('off_date', '>=', now())
+2413:             ->pluck('off_date')
+2414:             ->toArray();
+2415: 
+2416:         $changes = $request->input('changes', []);
+2417:         $this->theory = (int) $request->theory ?? 0;
+2418: 
+2419:         try {
+2420:             // Lưu lý do một lần duy nhất nếu cần
+2421:             if (is_array($request->reason) && ($request->reason['saveReason'] ?? false)) {

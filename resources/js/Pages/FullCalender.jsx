@@ -1526,6 +1526,152 @@ const ScheduleTest = () => {
     }
   };
 
+  const handleFixAllWeighingViolations = async (targetEvent = null) => {
+    Swal.fire({
+      title: "Đang xử lý...",
+      html: "Vui lòng đợi trong khi hệ thống điều chỉnh lỗi Cân Nguyên Liệu.",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+    const allEvents = calendarApi.getEvents();
+
+    const offRanges = offDays.map(d => {
+      const start = new Date(`${d}T06:00:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+      return { start, end };
+    }).sort((a, b) => a.start - b.start);
+
+    // Tìm các lô Cân bị lỗi đen
+    let weighingViolations = allEvents.filter(e => {
+      let isWeighing = false;
+      let stageCode = String(e.extendedProps?.stage_code);
+      if (stageCode === "1" || stageCode === "2" || stageCode === "0") {
+          isWeighing = true;
+      } else {
+          const res = e.getResources ? e.getResources()[0] : null;
+          if (res && res.title) {
+              const rTitle = res.title.toLowerCase();
+              if (rTitle.includes('dispensing') || rTitle.includes('cân') || rTitle.includes('weighing')) {
+                  isWeighing = true;
+              }
+          }
+      }
+      
+      let hasViolation = (e.backgroundColor && e.backgroundColor.toLowerCase() === '#4d4b4bff') || (e.extendedProps?.violation_colors?.includes('#4d4b4bff'));
+      
+      // Nếu có targetEvent, chỉ sửa lỗi cân của plan_master_id đó
+      if (targetEvent) {
+          if (String(e.extendedProps?.plan_master_id) !== String(targetEvent.extendedProps?.plan_master_id)) return false;
+      }
+      
+      return isWeighing && hasViolation;
+    });
+
+    if (weighingViolations.length === 0) {
+      Swal.fire("Thông báo", targetEvent ? "Lô Cân của chuỗi này không có lỗi đen." : "Không có công đoạn Cân nào bị lỗi đen trên lịch hiện tại.", "info");
+      return;
+    }
+
+    let updates = [];
+    let updatedTimesById = {};
+
+    weighingViolations.forEach(weighingEvent => {
+      let pmId = weighingEvent.extendedProps?.plan_master_id;
+      let successor = allEvents.find(e => e.extendedProps?.plan_master_id === pmId && String(e.extendedProps?.predecessor_code) === String(weighingEvent.extendedProps?.code));
+      
+      if (!successor) {
+          let others = allEvents.filter(e => e.extendedProps?.plan_master_id === pmId && parseInt(e.extendedProps?.stage_code) > 1);
+          others.sort((a, b) => a.start - b.start);
+          if (others.length > 0) successor = others[0];
+      }
+
+      if (successor) {
+          let successorStart = updatedTimesById[successor.id] ? updatedTimesById[successor.id].start : successor.start;
+          let resourceId = weighingEvent.getResources()[0]?.id || weighingEvent.resourceId;
+          let durationMs = new Date(weighingEvent.end).getTime() - new Date(weighingEvent.start).getTime();
+          
+          let cleaningEvent = allEvents.find(e => String(e.id) === String(weighingEvent.id).replace('-main', '-cleaning'));
+          
+          let ignoreIds = [weighingEvent.id];
+          if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
+
+          let newSlot = findPreviousAvailableSlot(resourceId, durationMs, successorStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+          
+          updatedTimesById[weighingEvent.id] = { start: newSlot.start, end: newSlot.end };
+          
+          if (cleaningEvent) {
+              let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
+              let newCleaningStart = newSlot.end;
+              let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
+              updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
+              
+              updates.push({
+                  id: cleaningEvent.id,
+                  start: newCleaningStart,
+                  end: newCleaningEnd,
+                  resourceId: resourceId,
+                  clearWarnings: true
+              });
+          }
+          
+          updates.push({
+              id: weighingEvent.id,
+              start: newSlot.start,
+              end: newSlot.end,
+              resourceId: resourceId,
+              clearWarnings: true
+          });
+      }
+    });
+
+    if (updates.length > 0) {
+      let newPending = [...pendingChanges];
+
+      calendarApi.batchRendering(() => {
+        updates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev) {
+            if (u.start && u.end) {
+              ev.setDates(u.start, u.end);
+            }
+            if (u.clearWarnings) {
+              ev.setExtendedProp('warning_text', '');
+              ev.setExtendedProp('violation_colors', []);
+            }
+          }
+          if (u.start && u.end && ev) {
+            const changeObj = {
+              id: u.id,
+              start: u.start,
+              end: u.end,
+              resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+              title: ev.title,
+              submit: ev.extendedProps?.submit,
+              C_end: ev.extendedProps?.C_end || false
+            };
+            const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
+            if (existIdx >= 0) {
+              newPending[existIdx] = { ...newPending[existIdx], ...changeObj };
+            } else {
+              newPending.push(changeObj);
+            }
+          }
+        });
+      });
+
+      setPendingChanges(newPending);
+      Swal.fire("Thành công", `Đã điều chỉnh ${updates.filter(u => u.start && !String(u.id).includes('-cleaning')).length} lô Cân bị lỗi đen.`, "success");
+    } else {
+      Swal.fire("Thông báo", "Không có công đoạn Cân nào cần điều chỉnh.", "info");
+    }
+  };
+
   const skipOffDays = (date, offRanges) => {
     let current = new Date(date);
     let crossed = true;
@@ -1968,19 +2114,21 @@ const ScheduleTest = () => {
       if (result.isConfirmed) {
         const calendarApi = calendarRef.current?.getApi();
         if (calendarApi) {
-          pendingChanges.forEach(p => {
-            const ev = calendarApi.getEventById(p.id);
-            if (ev) {
-              const originalData = events.find(e => String(e.id) === String(p.id));
-              if (originalData) {
-                ev.setDates(originalData.start, originalData.end);
-                if (originalData.resourceId) {
-                  ev.setResources([originalData.resourceId]);
+          calendarApi.batchRendering(() => {
+            pendingChanges.forEach(p => {
+              const ev = calendarApi.getEventById(p.id);
+              if (ev) {
+                const originalData = events.find(e => String(e.id) === String(p.id));
+                if (originalData) {
+                  ev.setDates(originalData.start, originalData.end);
+                  if (originalData.resourceId) {
+                    ev.setResources([originalData.resourceId]);
+                  }
+                  ev.setExtendedProp('warning_text', originalData.warning_text || '');
+                  ev.setExtendedProp('violation_colors', originalData.violation_colors || []);
                 }
-                ev.setExtendedProp('warning_text', originalData.warning_text || '');
-                ev.setExtendedProp('violation_colors', originalData.violation_colors || []);
               }
-            }
+            });
           });
         }
         setPendingChanges([]);
@@ -4371,6 +4519,17 @@ const ScheduleTest = () => {
               <span className="font-bold text-sm">{blackViolationCount} Sự Kiện Đen</span>
             </div>
           )}
+          {blackViolationCount > 0 && (
+            <div
+              className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors"
+              onClick={() => handleFixAllWeighingViolations(null)}
+              title="Click để tự động sửa tất cả lỗi đen của công đoạn Cân"
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+            >
+              <i className="pi pi-wrench"></i>
+              <span className="font-bold text-sm">Sửa lỗi Cân</span>
+            </div>
+          )}
           {selectedEvents && selectedEvents.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200 cursor-pointer"
@@ -5139,6 +5298,19 @@ const ScheduleTest = () => {
             onMouseLeave={(e) => e.target.style.background = 'white'}
           >
             Tự động điều chỉnh chuỗi
+          </div>
+
+          <div
+            style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderTop: '1px solid #eee' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFixAllWeighingViolations(contextMenuInfo.event);
+              setContextMenuInfo({ ...contextMenuInfo, visible: false });
+            }}
+            onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+            onMouseLeave={(e) => e.target.style.background = 'white'}
+          >
+            Sửa lỗi đen công đoạn Cân
           </div>
 
           <div

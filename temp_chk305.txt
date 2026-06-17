@@ -1,0 +1,4 @@
+1134:                 $color_event = '#4d4b4bff'; // '#4d4b4bff'
+1136:                 $violation_colors[] = '#4d4b4bff';
+1149:                 $color_event = '#4d4b4bff'; // '#4d4b4bff'
+1151:                 $violation_colors[] = '#4d4b4bff';

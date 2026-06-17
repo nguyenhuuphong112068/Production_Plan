@@ -1,0 +1,21 @@
+5141:             onMouseLeave={(e) => e.target.style.background = 'white'}
+5142:           >
+5143:             Tự động điều chỉnh chuỗi
+5144:           </div>
+5145: 
+5146:           <div
+5147:             style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderTop: '1px solid #eee' }}
+5148:             onClick={(e) => {
+5149:               e.stopPropagation();
+5150:               handlePreviewChain(contextMenuInfo.event);
+5151:               setContextMenuInfo({ ...contextMenuInfo, visible: false });
+5152:             }}
+5153:             onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+5154:             onMouseLeave={(e) => e.target.style.background = 'white'}
+5155:           >
+5156:             Xem trước chuỗi
+5157:           </div>
+5158:         </div>
+5159:       )}
+5160: 
+5161:     </div>

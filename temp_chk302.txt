@@ -1,0 +1,41 @@
+2481: 
+2482:                     if ($request->input('update_campaign', false) && $original_event && $original_event->campaign_code) {
+2483:                         $campaignEvents = DB::table('stage_plan')
+2484:                             ->where('campaign_code', $original_event->campaign_code)
+2485:                             ->where('stage_code', $original_event->stage_code)
+2486:                             ->where('finished', 0)
+2487:                             ->orderBy('start')
+2488:                             ->get();
+2489: 
+2490:                         $currentStart = Carbon::parse($change['start']);
+2491:                         $idsArray = []; // Cập nhật danh sách ID để ghi log history ở phía dưới
+2492:                         $newMTime = $request->input('newMTime');
+2493:                         $pTime = $request->input('pTime', 0);
+2494: 
+2495:                         foreach ($campaignEvents as $ev) {
+2496:                             if ($newMTime > 0) {
+2497:                                 // Tính thời lượng mới bằng newMTime + pTime (nếu là mẻ đầu hoặc VS-II)
+2498:                                 $durationHours = ($ev->first_in_campaign == 1 || $ev->title_clearning == "VS-II") ? ($newMTime + $pTime) : $newMTime;
+2499:                                 $duration = $durationHours * 3600; // Đổi ra giây
+2500:                             } else {
+2501:                                 $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
+2502:                             }
+2503: 
+2504:                             $newStart = $currentStart->copy();
+2505:                             $newEnd = $newStart->copy()->addSeconds($duration);
+2506: 
+2507:                             $evUpdateData = $updateData;
+2508:                             $evUpdateData['start'] = $newStart;
+2509:                             $evUpdateData['end'] = $newEnd;
+2510:                             $evUpdateData['resourceId'] = $change['resourceId'];
+2511: 
+2512:                             if ($ev->start_clearning && $ev->end_clearning) {
+2513:                                 $cleanDuration = Carbon::parse($ev->start_clearning)->diffInSeconds(Carbon::parse($ev->end_clearning));
+2514:                                 $evUpdateData['start_clearning'] = $newEnd;
+2515:                                 $evUpdateData['end_clearning'] = $newEnd->copy()->addSeconds($cleanDuration);
+2516:                                 $currentStart = $evUpdateData['end_clearning']->copy();
+2517:                             } else {
+2518:                                 $currentStart = $newEnd->copy();
+2519:                             }
+2520: 
+2521:                             DB::table('stage_plan')->where('id', $ev->id)->update($evUpdateData);

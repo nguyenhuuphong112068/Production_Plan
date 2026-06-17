@@ -1,0 +1,227 @@
+21:                 ->where('stage_code', 7)
+98:     protected $processed_stage_code_Id = [];
+233:                                 WHEN sp.stage_code <= 4 THEN "Kg"
+256:                                 WHEN sp.stage_code <= 4 THEN "Kg"
+297:                 DB::raw('MAX(stage_code) as max_finished_stage')
+317:                     ->on('sp_last.stage_code', '=', 'sp_max.max_finished_stage');
+325:                     $q->where('sp.stage_code', '!=', 8);
+330:                     $q->where('sp.stage_code', '=', 8);
+368:                                         WHEN sp.stage_code >=8 THEN sp.title
+381:                                         WHEN sp.stage_code = 2 AND dosage.name LIKE '%phim%' THEN 'Tá dược BP'
+382:                                         WHEN sp.stage_code = 2 AND dosage.name LIKE '%nang%' THEN 'Nang Rỗng'
+403:                 'sp.stage_code',
+442:                                         WHEN sp.stage_code = 7 THEN 
+451:                                 WHEN sp.stage_code IN (1,2) THEN
+455:                                 WHEN sp.stage_code = 3 THEN
+459:                                 WHEN sp.stage_code = 4 THEN
+463:                                 WHEN sp.stage_code = 5 THEN
+467:                                 WHEN sp.stage_code = 6 THEN
+475:             ->orderBy('sp.stage_code')
+487:             // sắp sẵn theo stage_code ở query
+513:                         'stage_code' => $plan->stage_code,
+555:                         'stage_code' => $plan->stage_code,
+571:                 if ($plan->stage_code == 8 && $plan->finished == 1 && $plan->start && !$plan->actual_start) {
+584:                         'stage_code' => $plan->stage_code,
+616:                             'stage_code' => $plan->stage_code,
+648:                                 'stage_code' => $plan->stage_code,
+676:                                 'stage_code' => $plan->stage_code,
+708:                                 'stage_code' => $plan->stage_code,
+734:                             'stage_code' => $plan->stage_code,
+765:                                 'stage_code' => $plan->stage_code,
+792:                                 'stage_code' => $plan->stage_code,
+824:                                 'stage_code' => $plan->stage_code,
+844:         $weighingStages = $events->whereIn('stage_code', [1,  2]);
+846:         $otherStages = $events->whereNotIn('stage_code', [1,  2]);
+856:             // tiêu đề yêu cầu mới: chỉ so khớp start, resourceid và stage_code
+858:             return $e->start . '_' . $e->resourceId . '_' . $e->stage_code . '_' . ($e->is_clearning ? 'CL' : 'MN') . '_' . ($isTheory ? 'TH' : 'AC');
+922:         $maintenanceEvents = $events->where('stage_code', '=', 8);
+923:         $productionEvents = $events->where('stage_code', '<', 8);
+989:         if ($plan->stage_code <= 7) {
+991:         } elseif ($plan->stage_code == 8) {
+1013:         if ($plan->stage_code == 7 && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
+1034:                             ->where('stage_code', 7)
+1079:         if ($i > 0 && $plan->quarantine_total == 0 && $plan->stage_code > 3 && $plan->stage_code < 7 && $plan->accept_quarantine == 0) {
+1096:                     $subtitles[] = "➡️ (KT {$this->stage_Name[$prev->stage_code]}: "
+1109:         $Stage_plan_7 = $plans->firstWhere('stage_code', 7);
+1113:         if ($overExpected && $plan->stage_code <= 7) {
+1131:                 $subtitles[] = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
+1146:                 $subtitles[] = "➡️ (BĐ {$this->stage_Name[$next->stage_code]} tại {$room_code[$next->resourceId]}: "
+1176:                 $plan->stage_code < $from ||
+1177:                 $plan->stage_code > $to ||
+1271:             ->where('sp.stage_code', '!=', 8)
+1279:                     ->where('sp.stage_code', '<=', 7);
+1285:                     ->where('sp.stage_code', '<=', 7);
+1294:                 'sp.stage_code',
+1307:                                                 WHEN sp.stage_code >= 8 THEN sp.title
+1342:                 // DB::raw("CASE WHEN sp.stage_code <= 7 THEN product_name.name ELSE sp.code END as name")
+1367:             return $q->intermediate_code . '_' . $q->stage_code;
+1372:             return $q->intermediate_code . '_' . $q->finished_product_code . '_' . $q->stage_code;
+1378:             if ($plan->stage_code <= 6) {
+1380:                 $key = $plan->intermediate_code . '_' . $plan->stage_code;
+1383:             } elseif ($plan->stage_code == 7) {
+1385:                 $key = $plan->intermediate_code . '_' . $plan->finished_product_code . '_' . $plan->stage_code;
+1400:             if ($plan->stage_code == 7) {
+1444:                 'stage_code',
+1448:                                 WHEN stage_code IN (3, 4) THEN 'Pha chế'
+1481:         // Sắp xếp lại theo 'stage_code'
+1482:         $sortedResult = $result->sortBy('stage_code')->values();
+1496:             $personnelSub->stage_code = $room->stage_code;
+1552:             $stageMap = DB::table('room')->where('deparment_code', $production)->pluck('stage_code', 'stage')->toArray();
+1556:             $sumBatchByStage = $this->yield($startDate, $endDate, 'stage_code');
+1565:                 ->select('stage_code', 'name', 'code')
+1567:                 ->whereIn('stage_code', [3,  4,  5,  6,  7])
+1571:                 ->groupBy('stage_code')
+1584:                 ->select('stage_code', 'name', 'code')
+1586:                 ->whereIn('stage_code', [3,  4,  5,  6,  7])
+1667:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+1774:                 if ($index === 0 && $product['stage_code'] !== 9) {
+1775:                     if ($product['stage_code'] < 7) {
+1777:                     } elseif ($product['stage_code'] === 7) {
+1797:                 } elseif ($index === 0 && $product['stage_code'] === 9) {
+1808:                 if ($product['stage_code'] == 7) {
+1826:                 if ($product['stage_code'] <= 2) {
+1880:                 if ($product['stage_code'] === 9) {
+1918:                             'title' => $product['stage_code'] === 9
+1925:                             'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+1926:                             'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
+1957:                             'stage_code' => $update_row->stage_code,
+1988:                 if ($product['stage_code'] > 2) {
+1998:             if ($product['stage_code'] == 3) {
+2022:                 $next_stage_code = isset($firstTask->nextcessor_code)
+2028:                 if ($next_stage_code <= $this->max_Step) {
+2042:                             'sp.stage_code',
+2086:                             $next_stage_code,
+2120:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2157:                 ->where('stage_plan_id', $request->stage_code_id)
+2271:                                         'stage_code' => $update_row->stage_code,
+2355:                                     'stage_code' => $update_row->stage_code,
+2397:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2473:                         'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+2474:                         'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
+2477:                     // 🔹 [Audit] Đánh dấu nếu Phân xưởng (PXV) tác động vào lịch Bảo trì - Hiệu chuẩn (stage_code 8)
+2479:                         $updateData['keep_dry'] = DB::raw("CASE WHEN stage_code = 8 THEN 1 ELSE keep_dry END");
+2485:                             ->where('stage_code', $original_event->stage_code)
+2578:                                         'stage_code' => $update_row->stage_code,
+2618:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2673:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2693:                 $stageCode = $item['stage_code'];
+2724:                         ->where('stage_code', '>=', $stageCode)
+2725:                         ->where('stage_code', '!=', 8) // CHẶN: không xóa lan tỏa tới bảo trì
+2755:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2784:                         ->where('stage_code', '<=', 2)
+2790:                     $stage_code = $Step[$request->selectedStep];
+2798:                         ->where('stage_code', '>=', $stage_code)
+2803:                 $stage_code = DB::table('room')->where('id', $request->resourceId)->value('stage_code');
+2805:                 if ($stage_code >= 3) {
+2818:                         ->where('stage_code', '>=', $stage_code)
+2841:                 $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2855:                 // Lấy danh sách campaign_code + stage_code của các dòng bị xoá
+2859:                     ->select('campaign_code', 'stage_code')
+2862:                 // Lấy thêm các id khác cùng campaign_code & stage_code, start < start_date
+2872:                                     ->where('stage_code', $row->stage_code);
+2885:                 ->where('stage_code', '!=', 8) // CHẶN: không xóa trắng công đoạn bảo trì
+2913:         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
+2935:                         ->where('stage_code', '<=', $request->stage_code)
+3202:                         'sp.stage_code',
+3215:                 if ($plan->stage_code < 7) {
+3218:                 } elseif ($plan->stage_code === 7) {
+3223:                     // Với các stage_code >= 8 (bảo trì hoặc khác), chỉ cập nhật title
+3344:                     'sp.stage_code',
+3381:                     ->where('stage_code', $i)
+3443:                         ->where('stage_code', $i)
+3572:                         'stage_code' => 9,
+3699:         $stageCode = $request->stage_code ?? 3;
+3728:         // Tìm stage group tương ứng với stage_code được gửi lên
+3758:             ->where('stage_code', $stageCode)
+3793:                 $query->where('sp.stage_code', '!=', 8);
+3796:                 $query->where('sp.stage_code', 8)
+3802:                     ->where('sp.stage_code', '<=', 7);
+3807:                     ->where('sp.stage_code', '<=', 2);
+3864:                         'stage_code' => $row->stage_code,
+4119:         // log::info (['request' => $request->all(),'stage_code' => $stage_code]);
+4131:                     'stage_plan.stage_code',
+4136:                 ->where('stage_plan.stage_code', $room->stage_code)
+4142:                 if ($p->stage_code < 7) {
+4170:                 ->where('stage_plan.stage_code', $room->stage_code)
+4255:                 'stage_code',
+4308:                     'stage_code',
+4861:                     'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_packaging_date END"),
+4862:                     'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
+4916:                                 'stage_code' => $update_row->stage_code,
+4985:             ->where('sp.stage_code', '>=', 3)
+4986:             ->where('sp.stage_code', '<=', $selectedStep)
+4988:             ->orderBy('sp.stage_code')
+4989:             ->pluck('sp.stage_code');
+5008:             $stage_code_line = DB::table('room')->where('code', $request->lines)->value('stage_code');
+5010:             $this->scheduleLine($request->lines, $request->stage_plan_ids, $stage_code_line, 0, 0, $start_date);
+5095:                 'sp.stage_code',
+5128:             ->where('sp.stage_code', $stageCode)
+5196:                 'sp.stage_code',
+5233:             ->where('sp.stage_code', $stageCode)
+5317:                     'sp.stage_code',
+5352:                 ->where('sp.stage_code', $stageCode)
+5372:                     'sp.stage_code',
+5400:                 ->where('sp.stage_code', $stageCode)
+5469:                 'sp.stage_code',
+5505:             ->whereIn('sp.stage_code', [1,  2])
+5515:         $this->processed_stage_code_Id = [];
+5525:                 // if (in_array($task->campaign_code . $task->stage_code , $processedcampaigns)) {continue;}
+5526:                 if (in_array($task->id, $this->processed_stage_code_Id)) {
+5531:                 $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->whereNotIn('id', $this->processed_stage_code_Id)->where('stage_code', $task->stage_code)->sortBy('batch');
+5535:                 // $processedCampaigns[] = $task->campaign_code . $task->stage_code;
+5554:                     'sp.stage_code',
+5608:                     'sp.stage_code',
+5765:                 ->when($task->stage_code <= 6, function ($query) use ($task) {
+5777:             if ($task->code_val !== null && $task->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
+5784:                     ->where('stage_code', $task->stage_code)
+5797:                         ->when($task->stage_code <= 6, function ($query) use ($task) {
+5816:                         ->when($task->stage_code <= 6, function ($query) use ($task) {
+5824:                         ->where('stage_code', $task->stage_code)
+5827:             } elseif ($task->code_val !== null && $task->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
+5834:                     ->where('sp.stage_code', $task->stage_code)
+5848:                         ->when($task->stage_code <= 6, function ($query) use ($task) {
+5856:                         ->where('stage_code', $task->stage_code)
+5875:                         ->when($task->stage_code <= 6, function ($query) use ($task) {
+5883:                         ->where('stage_code', $task->stage_code)
+5895:                     ->when($task->stage_code <= 6, function ($query) use ($task) {
+5903:                     ->where('stage_code', $task->stage_code)
+6003:             ->when($task->stage_code <= 6, function ($query) use ($task) {
+6049:         $next_stage_code = isset($task->nextcessor_code) ? (int) (explode('_', $task->nextcessor_code)[1] ?? 0) : 0;
+6051:         if ($task->nextcessor_code && $next_stage_code && $next_stage_code <= $this->max_Step) {
+6063:                     'sp.stage_code',
+6106:                     $next_stage_code,
+6186:                         ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6194:                         ->where('stage_code', $pre_campaign_first_batch->stage_code)
+6199:                         ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6207:                         ->where('stage_code', $campaignTask->stage_code)
+6258:                 ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6270:             if ($firstTask->code_val !== null && $firstTask->stage_code == 3 && isset($parts[1]) && $parts[1] > 1) {
+6277:                     ->where('stage_code', $firstTask->stage_code)
+6290:                         ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6309:                         ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6317:                         ->where('stage_code', $firstTask->stage_code)
+6320:             } elseif ($firstTask->code_val !== null && $firstTask->stage_code > 3 && isset($parts[1]) && $parts[1] > 1) {
+6327:                     ->where('sp.stage_code', $firstTask->stage_code)
+6341:                         ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6349:                         ->where('stage_code', $firstTask->stage_code)
+6368:                         ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6376:                         ->where('stage_code', $firstTask->stage_code)
+6388:                     ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+6397:                     ->where('stage_code', $firstTask->stage_code)
+6625:         $next_stage_code = isset($firstTask->nextcessor_code)
+6633:         if ($next_stage_code <= $this->max_Step && $hasImmediately) {
+6646:                     'sp.stage_code',
+6674:                 // ->where('sp.stage_code', $nextcessor_code)
+6685:                     $next_stage_code,
+6778:                 ->where('stage_code', $task->stage_code)
+6793:                 ->where('stage_code', $task->stage_code)
+6890:                 $this->processed_stage_code_Id[] = $task->id;
+6910:             $this->processed_stage_code_Id[] = $task->id;
+7086:                                 ->where('stage_code', 3)
+7116:                                 ->where('stage_code', 7)
+7167:                     ->where('stage_code', 3)
+7196:                     ->where('stage_code', 7)
+7265:                 ->where('stage_code', 7)
+7327:                     ->where('stage_code', 7)
+7339:                 ->where('stage_code', 7)
+7375:                             ->where('stage_code', 7)

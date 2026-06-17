@@ -1,0 +1,61 @@
+21: import 'moment/locale/vi';
+22: import dayjs from 'dayjs';
+23: import Selecto from "react-selecto";
+24: import Swal from 'sweetalert2';
+25: 
+26: import './calendar.css';
+27: import CalendarSearchBox from '../Components/CalendarSearchBox';
+28: import EventFontSizeInput from '../Components/EventFontSizeInput';
+29: import ModalSidebar from '../Components/ModalSidebar';
+30: import NoteModal from '../Components/NoteModal';
+31: 
+32: //import History from '../Components/History';
+33: //import { CheckAuthorization } from '../Components/CheckAuthorization';
+34: 
+35: const ScheduleTest = () => {
+36: 
+37:   const calendarRef = useRef(null);
+38:   const previewTargetRef = useRef(null); // Lưu sự kiện mục tiêu của Xem trước chuỗi
+39:   const selectoRef = useRef(null);
+40:   moment.locale('vi');
+41:   const [showSidebar, setShowSidebar] = useState(false);
+42:   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
+43:   const [pendingChanges, setPendingChanges] = useState([]);
+44:   const [saving, setSaving] = useState(false);
+45:   const [selectedEvents, setSelectedEvents] = useState([]);
+46:   const [percentShow, setPercentShow] = useState("100%");
+47:   const searchResultsRef = useRef([]);
+48:   const currentIndexRef = useRef(-1);
+49:   const lastQueryRef = useRef("");
+50:   const slotViewWeeks = ['resourceTimelineWeek1day', 'resourceTimelineWeek4h', 'resourceTimelineWeek1h', 'resourceTimelineWeek15'];
+51:   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
+52:   const slotViewQuarters = ['resourceTimelineQuarter1d', 'resourceTimelineQuarter4h'];
+53:   const [slotIndex, setSlotIndex] = useState(0);
+54:   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
+55:   const [selectedRows, setSelectedRows] = useState([]);
+56:   const [showNoteModal, setShowNoteModal] = useState(false);
+57:   const [viewName, setViewName] = useState("resourceTimelineWeek");
+58:   const [showRenderBadge, setShowRenderBadge] = useState(false);
+59:   const [workingSunday, setWorkingSunday] = useState(false);
+60:   const [offDays, setOffDays] = useState([]);
+61:   const [multiStage, setMultiStage] = useState(false);
+62: 
+63:   const [events, setEvents] = useState([]);
+64:   const [moldWarningIndex, setMoldWarningIndex] = useState(-1);
+65:   const moldWarningEvents = useMemo(() => events.filter(e => e.mold_warning), [events]);
+66:   const [resources, setResources] = useState([]);
+67: 
+68:   const [selectedStagesFilter, setSelectedStagesFilter] = useState(null);
+69:   const stageFilterOptions = useMemo(() => {
+70:     const uniqueStages = [...new Set((resources || []).map(r => r.stage_name).filter(Boolean))];
+71:     return uniqueStages.map(s => ({ label: s, value: s }));
+72:   }, [resources]);
+73: 
+74:   const [selectedRoomsFilter, setSelectedRoomsFilter] = useState(null);
+75:   const roomFilterOptions = useMemo(() => {
+76:     let filteredResources = resources || [];
+77:     if (selectedStagesFilter && selectedStagesFilter.length > 0) {
+78:       filteredResources = filteredResources.filter(r => selectedStagesFilter.includes(r.stage_name));
+79:     }
+80:     const uniqueRooms = [...new Set(filteredResources.map(r => r.title).filter(Boolean))];
+81:     return uniqueRooms.map(s => ({ label: s, value: s }));
