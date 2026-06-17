@@ -1,0 +1,45 @@
+2677:         public function getWaitingPlans(Request $request)
+2678:         {
+2679:                 $production = session('user')['production_code'];
+2680:                 $month = $request->month;
+2681: 
+2682:                 $plan_waiting = DB::table('stage_plan as sp')
+2683:                         ->whereNull('sp.start')
+2684:                         ->where('sp.active', 1)
+2685:                         ->where('sp.finished', 0)
+2686:                         ->where('sp.stage_code', '!=', 8)
+2687:                         ->where('sp.deparment_code', $production)
+2688:                         ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+2689:                         ->leftJoin('plan_list', 'sp.plan_list_id', '=', 'plan_list.id')
+2690:                         ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+2691:                         ->leftJoin('finished_product_category', function ($join) {
+2692:                                 $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+2693:                                         ->where('sp.stage_code', '<=', 7);
+2694:                         })
+2695:                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+2696:                         ->leftJoin('product_name', function ($join) {
+2697:                                 $join->on('intermediate_category.product_name_id', '=', 'product_name.id')
+2698:                                         ->where('sp.stage_code', '<=', 7);
+2699:                         })
+2700:                         ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+2701:                         ->whereRaw("DATE_FORMAT(plan_master.expected_date, '%m-%Y') = ?", [$month])
+2702:                         ->select(
+2703:                                 'sp.id',
+2704:                                 'sp.code',
+2705:                                 'sp.stage_code',
+2706:                                 DB::raw("
+2707:                         CASE
+2708:                                 WHEN sp.stage_code >= 8 THEN sp.title
+2709:                                 ELSE CONCAT(
+2710:                                 product_name.name,
+2711:                                 '-',
+2712:                                 COALESCE(plan_master.actual_batch, plan_master.batch)
+2713:                                 )
+2714:                         END AS title
+2715:                 "),
+2716:                                 'product_name.name as name',
+2717:                                 DB::raw('COALESCE(plan_master.actual_batch, plan_master.batch) as batch'),
+2718:                                 'plan_master.expected_date',
+2719:                                 'plan_master.responsed_date',
+2720:                                 'plan_master.is_val',
+2721:                                 'plan_master.level',

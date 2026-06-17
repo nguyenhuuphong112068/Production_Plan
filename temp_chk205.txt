@@ -1,0 +1,9 @@
+555:         <div class="modal fade" id="waitingPlanModal" tabindex="-1" role="dialog"
+556:             aria-labelledby="waitingPlanModalLabel" aria-hidden="true">
+563:                         <h4 class="modal-title w-100 text-center" id="waitingPlanModalLabel"
+588:                             <table id="table_waiting_plan" class="table table-bordered table-striped"
+926:             $('#waitingPlanModal').modal('show');
+930:                 $('#table_waiting_plan tbody').empty();
+983:                     $('#table_waiting_plan tbody').html(html);
+985:                     waitingTable = $('#table_waiting_plan').DataTable({
+995:                             if (settings.nTable.id !== 'table_waiting_plan')

@@ -1,0 +1,51 @@
+901:     }
+902: 
+903:     protected function groupMaintenanceEvents($events)
+904:     {
+905:         if ($events instanceof \Illuminate\Support\Collection) {
+906:             $events = $events;
+907:         } else {
+908:             $events = collect($events);
+909:         }
+910: 
+911:         $maintenanceEvents = $events->where('stage_code', '=', 8);
+912:         $productionEvents = $events->where('stage_code', '<', 8);
+913: 
+914:         $groupedMaintenance = $maintenanceEvents->groupBy(function ($event) {
+915:             $e = (object) $event;
+916:             $isTheory = strpos($e->id, '-theory') !== false;
+917:             $isClearning = $e->is_clearning ?? false;
+918: 
+919:             // Nhóm theo start, resourceId, loại vệ sinh/chính, loại lý thuyết/thực tế (loại bỏ end để tránh lệch giây/phút)
+920:             return $e->start . '_' . $e->resourceId . '_' . ($isClearning ? 'CL' : 'MN') . '_' . ($isTheory ? 'TH' : 'AC');
+921:         })->map(function ($group) {
+922:             $first = (object) $group->first();
+923:             $first = clone $first;
+924: 
+925:             if ($group->count() > 1) {
+926:                 // Gom tất cả ID lại
+927:                 $allIds = $group->pluck('plan_id')->map(function ($id) {
+928:                     return explode('-', $id)[0];
+929:                 })->toArray();
+930: 
+931:                 $isTheory = strpos($first->id, '-theory') !== false;
+932:                 $suffix = $isTheory ? '-theory' : '';
+933:                 $typeSuffix = ($first->is_clearning ?? false) ? '-cleaning' : '';
+934:                 $first->id = implode(',', $allIds) . '-maintenance' . $typeSuffix . $suffix;
+935: 
+936:                 // Tính toán min Start và max End cho các sự kiện gộp
+937:                 $first->start = $group->min('start');
+938:                 $first->end = $group->max('end');
+939: 
+940:                 // Gom tiêu đề
+941:                 $uniqueTitles = $group->pluck('title')->unique();
+942:                 if ($uniqueTitles->count() === 1 && strpos($uniqueTitles->first(), ' _ ') !== false) {
+943:                     $first->title = $uniqueTitles->first();
+944:                 } else {
+945:                     $allTitles = $uniqueTitles->map(function ($t) {
+946:                         $parts = explode(' - ', $t);
+947:                         return count($parts) > 1 ? end($parts) : $t;
+948:                     })->toArray();
+949:                     $first->title = 'BT Thiết Bị: ' . implode(' | ', $allTitles);
+950:                 }
+951:             }

@@ -1,0 +1,18 @@
+41:   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
+56:   const [viewName, setViewName] = useState("resourceTimelineWeek");
+65:   const [resources, setResources] = useState([]);
+100:   const [heightResource, setHeightResource] = useState("1px");
+181:         setResources(data.resources);
+206:             setHeightResource('1px');
+209:             setHeightResource('50px');
+212:             setHeightResource('50px');
+215:             setHeightResource('50px');
+218:             setHeightResource('60px');
+598:       setResources(cleanData.resources);
+839:           if (data.resources) setResources(data.resources);
+866:           if (data.resources) setResources(data.resources);
+1431:       changedEvent.setExtendedProp('process_code', baseProcessCode + "_" + newResourceId);
+1629:         if (data.resources) setResources(data.resources);
+2052:             // Lưu ý: FullCalendar không có setResource trực tiếp dễ dàng như setDates
+2093:             if (data.resources) setResources(data.resources);
+4163:                 setResources(prev =>

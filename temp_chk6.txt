@@ -1,1 +1,0 @@
-942:     public function publicView(Request $request)

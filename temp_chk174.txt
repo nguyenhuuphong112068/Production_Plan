@@ -1,0 +1,26 @@
+2501:                                 $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
+2502:                             }
+2503: 
+2504:                             $newStart = $currentStart->copy();
+2505:                             $newEnd = $newStart->copy()->addSeconds($duration);
+2506: 
+2507:                             $evUpdateData = $updateData;
+2508:                             $evUpdateData['start'] = $newStart;
+2509:                             $evUpdateData['end'] = $newEnd;
+2510:                             $evUpdateData['resourceId'] = $change['resourceId'];
+2511: 
+2512:                             if ($ev->start_clearning && $ev->end_clearning) {
+2513:                                 $cleanDuration = Carbon::parse($ev->start_clearning)->diffInSeconds(Carbon::parse($ev->end_clearning));
+2514:                                 $evUpdateData['start_clearning'] = $newEnd;
+2515:                                 $evUpdateData['end_clearning'] = $newEnd->copy()->addSeconds($cleanDuration);
+2516:                                 $currentStart = $evUpdateData['end_clearning']->copy();
+2517:                             } else {
+2518:                                 $currentStart = $newEnd->copy();
+2519:                             }
+2520: 
+2521:                             DB::table('stage_plan')->where('id', $ev->id)->update($evUpdateData);
+2522:                             $idsArray[] = $ev->id;
+2523:                         }
+2524:                     } else {
+2525:                         $updateData['start'] = $change['start'];
+2526:                         $updateData['end'] = $change['end'];

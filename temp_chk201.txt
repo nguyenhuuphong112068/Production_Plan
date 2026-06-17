@@ -1,0 +1,16 @@
+581:       const cleaningHidden = JSON.parse(sessionStorage.getItem('cleaningHidden'));
+582:       const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
+583: 
+584:       // 🔹 4. Gọi API backend
+585:       const { data } = await axios.post(`/Schedual/view`, {
+586:         startDate: toLocalISOString(activeStart),
+587:         endDate: toLocalISOString(activeEnd),
+588:         viewtype: currentView,
+589:         clearning: true,
+590:         theory: theoryHidden,
+591:       });
+592: 
+593:       let cleanData = data;
+594:       if (typeof cleanData === "string") {
+595:         cleanData = JSON.parse(cleanData.replace(/^<!--.*?-->/, "").trim());
+596:       }

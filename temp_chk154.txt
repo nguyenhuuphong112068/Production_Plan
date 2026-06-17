@@ -1,0 +1,113 @@
+16: import { MultiSelect } from 'primereact/multiselect';
+23: import Selecto from "react-selecto";
+44:   const [selectedEvents, setSelectedEvents] = useState([]);
+54:   const [selectedRows, setSelectedRows] = useState([]);
+67:   const [selectedStagesFilter, setSelectedStagesFilter] = useState(null);
+73:   const [selectedRoomsFilter, setSelectedRoomsFilter] = useState(null);
+284:       itemSelector: '.fc-event',
+328:             const el = document.querySelector(`[data-resource-id="${targetResourceId}"]`);
+344:     const toolbarEl = document.querySelector(".fc-searchBox-button");
+368:     const toolbarEl = document.querySelector(".fc-fontSizeBox-button");
+406:               const el = document.querySelector(`[data-resource-id="${resource.id}"]`);
+474:       const el = document.querySelector(`[data-event-id="${ev.id}"]`);
+488:     document.querySelectorAll(".highlight-event, .highlight-current-event").forEach(el => {
+523:     setSelectedStagesFilter(affectedStages.length > 0 ? affectedStages : null);
+524:     setSelectedRoomsFilter(affectedTitles.length > 0 ? affectedTitles : null);
+542:           const el = document.querySelector(`[data-event-id="${ev.id}"]`);
+627:     const btn = document.querySelector('.fc-historyToggle-button');
+642:     const btn = document.querySelector('.fc-cascadeToggle-button');
+657:     const btn = document.querySelector('.fc-hiddenClearning-button');
+672:     const btn = document.querySelector('.fc-ShowBadge-button');
+733:     setSelectedEvents(
+844:           setSelectedRows([]);
+870:           setSelectedRows([]);
+978:     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
+979:     let anchors = isSelected && selectedEvents.length > 0 
+1104:   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
+1120:       toggleEventSelect(draggedEvent);
+1644:         document.querySelectorAll('.fc-event[data-event-id]')
+1660:   const toggleEventSelect = (event) => {
+1661:     setSelectedEvents((prevSelected) => {
+1662:       const exists = prevSelected.some(ev => ev.id === event.id);
+1663:       const newSelected = exists
+1664:         ? prevSelected.filter(ev => ev.id !== event.id)
+1665:         : [...prevSelected, { id: event.id, stage_code: event.extendedProps.stage_code, plan_master_id: event.extendedProps.plan_master_id }];
+1668:       const el = document.querySelector(`[data-event-id="${event.id}"]`);
+1672:       selectedEventsRef.current = newSelected;
+1673:       return newSelected;
+1738:     const currentSelectedEvents = selectedEventsRef.current || [];
+1739:     const selectedBatchListHtml = currentSelectedEvents.length > 0
+1740:       ? currentSelectedEvents.map((sel, idx) => {
+1813:               <label style="display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #555;">Danh sách lô đã chọn (${currentSelectedEvents.length}):</label>
+1845:         const radioSelected = document.getElementById('swal-move-selected');
+1848:         const labelSelected = document.getElementById('swal-label-selected');
+1887:             labelSelected.style.background = 'transparent';
+1891:             labelSelected.style.background = '#e8f4fd';
+1898:         radioSelected.addEventListener('change', updateRadioStyle);
+1905:         const moveMode = document.querySelector('input[name="swal-move-mode"]:checked').value;
+1907:         const moveSelectedBatches = moveMode === 'selected';
+1928:         if (moveSelectedBatches) {
+1945:         return { start, end, resourceId, updateCampaign, moveSelectedBatches, reason, newMTime, pTime };
+1949:         const { start, end, resourceId, updateCampaign, moveSelectedBatches, reason, newMTime, pTime } = result.value;
+1957:         if (moveSelectedBatches) {
+2042:         if (isCascadeMode && eventToUpdate && !moveSelectedBatches) {
+2079:           move_selected_batches: moveSelectedBatches || false,
+2277:     toggleEventSelect(event);
+2279:     //   setSelectedEvents([{ id: event.id, stage_code: event.extendedProps.stage_code }]); // ghi đề toạn bọ các sự kiện chỉ giử lại sự kiện cuối
+2289:     document.querySelectorAll('.fc-event[data-event-id]').forEach(el => { el.style.border = 'none'; });
+2301:     // 3) Một phương án khác hay có: setSelectedTargets([])
+2302:     else if (typeof sel?.setSelectedTargets === 'function') {
+2303:       sel.setSelectedTargets([]);
+2307:       document.querySelectorAll('.fc-event.selected').forEach(el => el.classList.remove('selected'));
+2311:     setSelectedEvents([]);
+2320:     document.querySelectorAll('.fc-event').forEach(el => el.classList.remove('highlight-event', 'highlight-current-event'));
+2589:             const [selected, setSelected] = React.useState(null);
+2678:         const radios = document.querySelectorAll('input[name="sortType"]');
+2698:         const linesSelect = document.getElementById("lines");
+2704:             linesSelect.appendChild(opt);
+2820:         const bkcSelect = document.getElementById('retoreList');
+2838:                 bkcSelect.appendChild(opt);
+2864:             const bkcCode = bkcSelect.value;
+2918:         document.querySelectorAll('.swal2-input').forEach(input => {
+2922:         const activeStep = document.querySelector('li[data-p-active="true"]');
+2923:         const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
+2932:         const runType = document.querySelector('input[name="sortType"]:checked')?.value;
+3063:             const [selected, setSelected] = React.useState(null);
+3111:         const resourceSelect = document.getElementById("resource-select");
+3112:         if (resourceSelect && resources?.length) {
+3117:             resourceSelect.appendChild(opt);
+3122:         const radios = document.querySelectorAll('input[name="deleteMode"]');
+3141:         const deleteMode = document.querySelector('input[name="deleteMode"]:checked')?.value;
+3147:         document.querySelectorAll('.swal2-input').forEach(input => {
+3153:           const activeStep = document.querySelector('li[data-p-active="true"]');
+3155:             ? activeStep.querySelector('span.p-stepper-title')?.textContent
+3162:           const resourceSelect = document.getElementById("resource-select");
+3163:           formValues.resourceId = resourceSelect?.value || null;
+3273:       setSelectedEvents([]);
+3699:         setSelectedEvents([]);
+3786:             setSelectedEvents([]);
+3855:       {/* Visual Indicator for Selected Events and Pending Changes */}
+3858:           <MultiSelect
+3861:             onChange={(e) => setSelectedStagesFilter(e.value)}
+3865:             maxSelectedLabels={2}
+3869:           <MultiSelect
+3872:             onChange={(e) => setSelectedRoomsFilter(e.value)}
+3874:             placeholder="Lọc phòng sản xuất"
+3876:             maxSelectedLabels={2}
+3964:         eventDrop={authorization ? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange) : false}
+4202:           left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
+4346:           unSelect: {
+4411:           const editBtn = info.el.querySelector('.edit-single-event-btn');
+4451:               const currentSelected = selectedEventsRef.current || [];
+4453:               if (currentSelected.length > 0) {
+4454:                 const uniquePms = [...new Set(currentSelected.map(ev => ev.plan_master_id))];
+4491:           setSelectedRows={setSelectedRows}
+4553:       {/* Selecto cho phép quét chọn nhiều .fc-event */}
+4555:         <Selecto
+4567:           toggleContinueSelect={["shift"]}
+4571:           onSelectEnd={(e) => {
+4572:             const newlySelected = e.selected.map((el) => ({
+4578:             setSelectedEvents((prev) => {
+4580:               const merged = [...prev, ...newlySelected].filter(
+4586:                 document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
+4593:               document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {

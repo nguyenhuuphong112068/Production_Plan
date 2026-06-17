@@ -1,0 +1,4 @@
+76:     let filteredResources = resources || [];
+78:       filteredResources = filteredResources.filter(r => selectedStagesFilter.includes(r.stage_name));
+4204:         resources={displayResources}
+4749:           resources={resources}

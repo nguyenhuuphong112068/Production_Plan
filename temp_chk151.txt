@@ -1,0 +1,33 @@
+8: import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
+41:   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
+49:   const slotViewWeeks = ['resourceTimelineWeek1day', 'resourceTimelineWeek4h', 'resourceTimelineWeek1h', 'resourceTimelineWeek15'];
+50:   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
+51:   const slotViewQuarters = ['resourceTimelineQuarter1d', 'resourceTimelineQuarter4h'];
+56:   const [viewName, setViewName] = useState("resourceTimelineWeek");
+238:     handleViewChange("resourceTimelineDay");
+246:     handleViewChange("resourceTimelineWeek");
+254:     handleViewChange("resourceTimelineMonth");
+262:     handleViewChange("resourceTimelineQuarter");
+3488:     const isTimelineMonth = arg.view.type === 'resourceTimelineMonth';
+3579:               ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
+3917:         plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
+3918:         initialView="resourceTimelineMonth1d"
+4208:           resourceTimelineDay: {
+4215:           resourceTimelineWeek: {
+4222:           resourceTimelineMonth: {
+4229:           resourceTimelineQuarter: {
+4234:             type: 'resourceTimeline',
+4236:           resourceTimelineYear: {
+4243:           resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
+4244:           resourceTimelineWeek1h: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
+4245:           resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
+4246:           resourceTimelineWeek1day: { type: 'resourceTimelineWeek', slotDuration: { days: 1 } },
+4248:           resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00' },
+4249:           resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00' },
+4250:           resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
+4252:           resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00' },
+4253:           resourceTimelineQuarter1d: { type: 'resourceTimelineQuarter', slotDuration: { days: 1 } },
+4282:             click: () => handleViewChange('resourceTimelineDay'),
+4288:             click: () => handleViewChange('resourceTimelineWeek'),
+4293:             click: () => handleViewChange('resourceTimelineMonth'),
+4298:             click: () => handleViewChange('resourceTimelineQuarter'),

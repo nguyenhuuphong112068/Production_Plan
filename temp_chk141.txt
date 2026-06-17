@@ -1,0 +1,9 @@
+505:                         'id' => "{$plan->id}-main",
+572:                         'id' => "{$plan->id}-main",
+605:                             'id' => "{$plan->id}-main",
+663:                                 'id' => "{$plan->id}-main-theory",
+719:                             'id' => "{$plan->id}-main",
+775:                                 'id' => "{$plan->id}-main-theory",
+864:                 $typeSuffix = $first->is_clearning ? '-cleaning' : '-main';
+934:                 $first->id = implode(',', $allIds) . '-maintenance' . $typeSuffix . $suffix;
+2626:                 // Tách id: "102-main" -> 102

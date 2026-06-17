@@ -1,0 +1,31 @@
+1011:         ? selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean)
+1012:         : [targetEvent];
+1013: 
+1014:     if (anchors.length === 0) return;
+1015: 
+1016:     const campaignCode = anchors[0].extendedProps.campaign_code;
+1017:     if (!campaignCode) {
+1018:         Swal.fire("Lỗi", "Sự kiện này không có mã chiến dịch (campaign_code).", "error");
+1019:         return;
+1020:     }
+1021: 
+1022:     const sameCampaign = anchors.every(a => a.extendedProps.campaign_code === campaignCode);
+1023:     if (!sameCampaign) {
+1024:         Swal.fire("Lỗi", "Chỉ cho phép chọn các sự kiện có cùng campaign_code trong 1 lần xử lý.", "error");
+1025:         return;
+1026:     }
+1027: 
+1028:     const offRanges = offDays.map(d => ({
+1029:         start: new Date(d.start),
+1030:         end: new Date(d.end)
+1031:     }));
+1032: 
+1033:     // Lấy danh sách các plan_master_id của các anchors
+1034:     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
+1035:     
+1036:     // Tìm TẤT CẢ các sự kiện (các công đoạn) thuộc về các plan_master_id này
+1037:     let relatedEvents = allEvents.filter(e => pmIds.includes(String(e.extendedProps.plan_master_id)));
+1038:     
+1039:     let eventsMap = {};
+1040:     relatedEvents.forEach(e => {
+1041:         let codeKey = e.extendedProps.code;

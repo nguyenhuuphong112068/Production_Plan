@@ -1,0 +1,25 @@
+975:     const calendarApi = calendarRef.current.getApi();
+976:     const allEvents = calendarApi.getEvents();
+977:     
+978:     // Chỉ lấy chuỗi của sự kiện được click, bỏ qua selectedEvents để tránh hiển thị dư thừa
+979:     let anchors = [targetEvent];
+980: 
+981:     if (anchors.length === 0) return;
+982: 
+983:     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
+984:     let relatedEvents = allEvents.filter(e => pmIds.includes(String(e.extendedProps.plan_master_id)));
+985:     
+986:     const relatedResourceIds = [...new Set(relatedEvents.map(e => e.getResources()[0]?.id).filter(Boolean))];
+987:     const filteredTitles = resources.filter(r => relatedResourceIds.includes(r.id)).map(r => r.title);
+988:     
+989:     if (filteredTitles.length > 0) {
+990:         setSelectedRoomsFilter(filteredTitles);
+991:     }
+992:     
+993:     handleViewChange('resourceTimelineQuarter4h');
+994:     
+995:     let targetStart = new Date(targetEvent.start);
+996:     if (!isNaN(targetStart.getTime())) {
+997:         setTimeout(() => {
+998:             calendarRef.current?.getApi().gotoDate(targetStart);
+999:         }, 500); // Đợi view mới load xong rồi cuộn đến

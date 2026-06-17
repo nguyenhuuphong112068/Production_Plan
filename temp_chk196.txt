@@ -1,0 +1,21 @@
+961:        let tempEnd = new Date(tempStart.getTime() + remainingMs);
+962:        let crossedOff = offRanges.find(off => off.end > tempStart && off.start < tempEnd);
+963:        if (crossedOff) {
+964:            let chunk = crossedOff.start.getTime() - tempStart.getTime();
+965:            if(chunk > 0) remainingMs -= chunk;
+966:            tempStart = new Date(crossedOff.end);
+967:        } else {
+968:            tempStart = tempEnd;
+969:            remainingMs = 0;
+970:        }
+971:     }
+972:     }
+973:     return { start: currentStart, end: tempStart };
+974:   };
+975: 
+976:   const skipOffDaysBackward = (date, offRanges) => {
+977:     let newDate = new Date(date);
+978:     let crossed = true;
+979:     while (crossed) {
+980:       crossed = false;
+981:       for (let off of offRanges) {

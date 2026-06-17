@@ -1,0 +1,71 @@
+1191:         };
+1192:     });
+1193: 
+1194:     let updates = [];
+1195:     let sortedRelatedEvents = Object.values(eventsMap).sort((a, b) => a.event.extendedProps.stage_code - b.event.extendedProps.stage_code);
+1196:     
+1197:     let updatedTimesById = {};
+1198: 
+1199:     sortedRelatedEvents.forEach(evData => {
+1200:         if (evData.isAnchor) return;
+1201:         
+1202:         let predCode = evData.predecessor;
+1203:         if (!predCode || predCode === "null") return;
+1204:         
+1205:         let predData = eventsMap[predCode];
+1206:         if (!predData) return; // Nếu predecessor không nằm trong danh sách này thì bỏ qua
+1207:         
+1208:         let earliestStart = predData.end;
+1209:         
+1210:         // Find slot after earliestStart
+1211:         let ignoreIds = [evData.id];
+1212:         let newSlot = findNextAvailableSlot(evData.resourceId, evData.duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+1213:         
+1214:         // Update its coordinates in the map so its successors use the new 'end'
+1215:         evData.start = newSlot.start;
+1216:         evData.end = newSlot.end;
+1217:         evData.event.setDates(newSlot.start, newSlot.end);
+1218:         
+1219:         // Cập nhật sự kiện vệ sinh (nếu có) trên giao diện để đi theo sự kiện chính
+1220:         let cleaningEvent = allEvents.find(e => String(e.id) === String(evData.id).replace('-main', '-cleaning'));
+1221:         if (cleaningEvent) {
+1222:             let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
+1223:             let newCleaningStart = newSlot.end;
+1224:             let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
+1225:             cleaningEvent.setDates(newCleaningStart, newCleaningEnd);
+1226:             
+1227:             // Xóa cảnh báo của sự kiện vệ sinh
+1228:             cleaningEvent.setExtendedProp('warning_text', '');
+1229:             cleaningEvent.setExtendedProp('violation_colors', []);
+1230:             
+1231:             // Ghi nhận lịch vệ sinh vào map để máy không bị xếp đè lên
+1232:             updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
+1233:         }
+1234:         
+1235:         updatedTimesById[evData.id] = { start: newSlot.start, end: newSlot.end };
+1236:         
+1237:         // Xóa cảnh báo vi phạm của sự kiện đang được di chuyển
+1238:         evData.event.setExtendedProp('warning_text', '');
+1239:         evData.event.setExtendedProp('violation_colors', []);
+1240:         
+1241:         // Xóa cảnh báo của sự kiện predecessor (vì chuỗi đã được tự động fix)
+1242:         if (predData && predData.event) {
+1243:             predData.event.setExtendedProp('warning_text', '');
+1244:             predData.event.setExtendedProp('violation_colors', []);
+1245:         }
+1246:         
+1247:         updates.push({
+1248:             id: evData.id,
+1249:             start: evData.start,
+1250:             end: evData.end,
+1251:             resourceId: evData.resourceId
+1252:         });
+1253:     });
+1254: 
+1255:     if (updates.length > 0) {
+1256:         let newPending = [...pendingChanges];
+1257:         updates.forEach(u => {
+1258:             const ev = calendarApi.getEventById(u.id);
+1259:             if (ev) {
+1260:                 ev.setDates(u.start, u.end);
+1261:             }

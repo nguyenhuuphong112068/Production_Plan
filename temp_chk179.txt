@@ -1,0 +1,21 @@
+1076:         let newSlot = findNextAvailableSlot(evData.resourceId, evData.duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+1077:         
+1078:         // Update its coordinates in the map so its successors use the new 'end'
+1079:         evData.start = newSlot.start;
+1080:         evData.end = newSlot.end;
+1081:         evData.event.setDates(newSlot.start, newSlot.end);
+1082:         
+1083:         // Cập nhật sự kiện vệ sinh (nếu có) trên giao diện để đi theo sự kiện chính
+1084:         let cleaningEvent = allEvents.find(e => String(e.id) === String(evData.id).replace('-main', '-cleaning'));
+1085:         if (cleaningEvent) {
+1086:             let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
+1087:             let newCleaningStart = newSlot.end;
+1088:             let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
+1089:             cleaningEvent.setDates(newCleaningStart, newCleaningEnd);
+1090:             // Không đẩy cleaningEvent vào updates vì backend tự động tính lại dựa trên event chính
+1091:         }
+1092:         
+1093:         updatedTimesById[evData.id] = { start: newSlot.start, end: newSlot.end };
+1094:         
+1095:         updates.push({
+1096:             id: evData.id,

@@ -1,0 +1,41 @@
+1051:            let chunk = tempEnd.getTime() - crossedOff.end.getTime();
+1052:            if(chunk > 0) remainingMs -= chunk;
+1053:            tempEnd = new Date(crossedOff.start);
+1054:        } else {
+1055:            tempEnd = tempStart;
+1056:            remainingMs = 0;
+1057:        }
+1058:     }
+1059:     
+1060:     return { start: tempEnd, end: currentEnd };
+1061:   };
+1062: 
+1063:   const handlePreviewChain = async (targetEvent) => {
+1064:     const calendarApi = calendarRef.current.getApi();
+1065:     const allEvents = calendarApi.getEvents();
+1066:     
+1067:     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
+1068:     let anchors = isSelected && selectedEvents.length > 0 
+1069:         ? selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean)
+1070:         : [targetEvent];
+1071: 
+1072:     if (anchors.length === 0) return;
+1073: 
+1074:     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
+1075:     window.previewPlanMasterIds = pmIds; // Lưu vào biến toàn cục để eventContent đọc và tô bóng
+1076:     previewTargetRef.current = targetEvent; // Lưu target để scrollToSelectedEvent dùng
+1077: 
+1078:     let relatedEvents = allEvents.filter(e => pmIds.includes(String(e.extendedProps.plan_master_id)));
+1079:     
+1080:     const relatedResourceIds = [...new Set(relatedEvents.map(e => String(e.getResources()[0]?.id)).filter(id => id !== "undefined"))];
+1081:     const filteredTitles = resources.filter(r => relatedResourceIds.includes(String(r.id))).map(r => r.title);
+1082:     
+1083:     if (filteredTitles.length > 0) {
+1084:         setSelectedRoomsFilter(filteredTitles);
+1085:     }
+1086:     
+1087:     let targetStart = new Date(targetEvent.start);
+1088:     let viewStart = !isNaN(targetStart.getTime())
+1089:         ? new Date(new Date(targetStart).setMonth(targetStart.getMonth() - 1))
+1090:         : new Date();
+1091:     

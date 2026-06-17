@@ -1,0 +1,21 @@
+991:     if (filteredTitles.length > 0) {
+992:         setSelectedRoomsFilter(filteredTitles);
+993:     }
+994:     
+995:     handleViewChange('resourceTimelineQuarter4h');
+996:     
+997:     let targetStart = new Date(targetEvent.start);
+998:     if (!isNaN(targetStart.getTime())) {
+999:         setTimeout(() => {
+1000:             calendarRef.current?.getApi().gotoDate(targetStart);
+1001:         }, 500); // Đợi view mới load xong rồi cuộn đến
+1002:     }
+1003:   };
+1004: 
+1005: const handleSmartRippleShift = (targetEvent) => {
+1006:     const calendarApi = calendarRef.current.getApi();
+1007:     const allEvents = calendarApi.getEvents();
+1008:     
+1009:     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
+1010:     let anchors = isSelected && selectedEvents.length > 0 
+1011:         ? selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean)

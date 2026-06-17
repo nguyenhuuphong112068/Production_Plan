@@ -1,0 +1,31 @@
+3571:       const dueDate = moment(cleanDueDate, ['YYYY-MM-DD', 'DD/MM/YYYY']);
+3572:       const planDate = moment(event.start);
+3573: 
+3574:       if (dueDate.isValid() && planDate.isValid()) {
+3575:         if (props.code?.includes('_HC')) {
+3576:           if (planDate.isAfter(dueDate, 'day')) isLate = true;
+3577:         } else {
+3578:           // Ngưỡng gia hạn: Monthly (7 ngày), các loại khác (21 ngày)
+3579:           const threshold = props.Inst_sch_type === "Monthly" ? 7 : 21;
+3580:           const limitDate = dueDate.clone().add(threshold, 'days');
+3581: 
+3582:           if (planDate.isAfter(limitDate, 'day')) isLate = true;
+3583:         }
+3584:       }
+3585:     }
+3586: 
+3587:     let tankStyle = '';
+3588: 
+3589:     if (isTank && isLate) {
+3590:       // Vừa xong vừa trễ: Tăng độ dày outline lên 6px để bao trùm nổi bật hơn
+3591:       tankStyle = 'border: 3px solid #22ff00ff; outline: 6px solid #ff0000; outline-offset: 2px; box-shadow: 0 0 15px #ff0000; border-radius: 4px; z-index: 10;';
+3592:     } else if (isTank) {
+3593:       tankStyle = 'border: 3px solid #22ff00ff; box-shadow: 0 0 8px #22ff00ff; border-radius: 4px;';
+3594:     } else if (isLate) {
+3595:       // Chỉ trễ: Tăng kích thước biên lên 6px
+3596:       tankStyle = 'border: 6px solid #ff0000ff; box-shadow: 0 0 15px #ff0000; border-radius: 4px;';
+3597:     }
+3598: 
+3599:     let violationBars = '';
+3600:     if (props.violation_colors && props.violation_colors.length > 0) {
+3601:       violationBars = `

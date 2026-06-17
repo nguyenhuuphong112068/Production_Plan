@@ -1,0 +1,8 @@
+1: import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+37:   const calendarRef = useRef(null);
+38:   const selectoRef = useRef(null);
+46:   const searchResultsRef = useRef([]);
+47:   const currentIndexRef = useRef(-1);
+48:   const lastQueryRef = useRef("");
+85:   const hoverTimeoutRef = useRef(null);
+1760:   const selectedEventsRef = useRef([]);

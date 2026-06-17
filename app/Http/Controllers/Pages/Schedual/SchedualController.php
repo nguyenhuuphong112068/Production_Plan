@@ -529,6 +529,7 @@ class SchedualController extends Controller
                         'batch_name' => $plan->batch_name,
                         'actual_batch' => $plan->actual_batch,
                         'code' => $plan->code,
+                        'predecessor_code' => $plan->predecessor_code,
                         'schedualed_by' => $plan->schedualed_by,
                         'title_clearning' => $plan->title_clearning,
                         'mold_warning' => $mold_warning,
@@ -560,6 +561,7 @@ class SchedualController extends Controller
                         'batch_name' => $plan->batch_name,
                         'actual_batch' => $plan->actual_batch,
                         'code' => $plan->code,
+                        'predecessor_code' => $plan->predecessor_code,
                         'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                         'title_clearning' => $plan->title_clearning,
                     ]);
@@ -574,6 +576,7 @@ class SchedualController extends Controller
                         'start' => $plan->start,
                         'end' => $plan->end,
                         'code' => $plan->code,
+                        'predecessor_code' => $plan->predecessor_code,
                         'resourceId' => $plan->resourceId,
                         'color' => '#aed9f1',
                         'textColor' => '#003A4F',
@@ -623,6 +626,7 @@ class SchedualController extends Controller
                             'batch_name' => $plan->batch_name,
                             'actual_batch' => $plan->actual_batch,
                             'code' => $plan->code,
+                            'predecessor_code' => $plan->predecessor_code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                             'mold_warning' => $mold_warning,
                             'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
@@ -650,6 +654,7 @@ class SchedualController extends Controller
                                 'batch_name' => $plan->batch_name,
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
+                                'predecessor_code' => $plan->predecessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
@@ -681,6 +686,7 @@ class SchedualController extends Controller
                                 'batch_name' => $plan->batch_name,
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
+                                'predecessor_code' => $plan->predecessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
 
                             ]);
@@ -708,6 +714,7 @@ class SchedualController extends Controller
                                 'batch_name' => $plan->batch_name,
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
+                                'predecessor_code' => $plan->predecessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
 
                             ]);
@@ -737,6 +744,7 @@ class SchedualController extends Controller
                             'batch_name' => $plan->batch_name,
                             'actual_batch' => $plan->actual_batch,
                             'code' => $plan->code,
+                            'predecessor_code' => $plan->predecessor_code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                             'title_clearning' => $plan->title_clearning,
                         ]);
@@ -763,6 +771,7 @@ class SchedualController extends Controller
                                 'batch_name' => $plan->batch_name,
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
+                                'predecessor_code' => $plan->predecessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
@@ -793,6 +802,7 @@ class SchedualController extends Controller
                                 'batch_name' => $plan->batch_name,
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
+                                'predecessor_code' => $plan->predecessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
@@ -820,6 +830,7 @@ class SchedualController extends Controller
                                 'batch_name' => $plan->batch_name,
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
+                                'predecessor_code' => $plan->predecessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
@@ -1522,10 +1533,10 @@ class SchedualController extends Controller
 
             $clearing = $request->clearning ?? true;
 
-            if ($viewtype == 'resourceTimelineQuarter') {
+            // if ($viewtype == 'resourceTimelineQuarter') {
 
-                $clearing = false;
-            }
+            //    $clearing = false;
+            // }
 
             if (user_has_permission(session('user')['userId'], 'loading_plan_waiting', 'boolean')) {
 
@@ -7316,11 +7327,11 @@ class SchedualController extends Controller
                     ->where('stage_code', 7)
                     ->where('finished', 0)
                     ->where('start', '>=', $now);
-                    
+
                 if ($productionCode) {
                     $resetQuery->where('deparment_code', $productionCode);
                 }
-                
+
                 $resetQuery->update(['blister_mold_id' => null]);
             }
 
@@ -7330,7 +7341,7 @@ class SchedualController extends Controller
                 ->whereNull('blister_mold_id')
                 ->whereNotNull('start')
                 ->where('start', '>=', $now);
-                
+
             if ($productionCode) {
                 $plansQuery->where('deparment_code', $productionCode);
             }

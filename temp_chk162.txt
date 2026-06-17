@@ -1,0 +1,10 @@
+984:     let relatedEvents = allEvents.filter(e => pmIds.includes(String(e.extendedProps.plan_master_id)));
+985:     
+986:     const relatedResourceIds = [...new Set(relatedEvents.map(e => e.getResources()[0]?.id).filter(Boolean))];
+987:     const filteredTitles = resources.filter(r => relatedResourceIds.includes(r.id)).map(r => r.title);
+988:     
+989:     if (filteredTitles.length > 0) {
+990:         setSelectedRoomsFilter(filteredTitles);
+991:     }
+992:     
+993:     handleViewChange('resourceTimelineQuarter4h');

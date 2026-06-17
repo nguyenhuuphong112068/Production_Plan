@@ -1,0 +1,61 @@
+901:     let currentStart = new Date(earliestStart);
+902:     currentStart = skipOffDays(currentStart, offRanges);
+903: 
+904:     const machineEvents = allEvents.filter(e => {
+905:         if (e.getResources && e.getResources()[0]?.id !== machineId && e.resourceId !== machineId) return false;
+906:         if (ignoreIds.includes(e.id)) return false;
+907:         const eEnd = new Date(e.end);
+908:         return eEnd > currentStart;
+909:     }).sort((a, b) => new Date(a.start) - new Date(b.start));
+910: 
+911:     for (let i = 0; i < machineEvents.length; i++) {
+912:         const ev = machineEvents[i];
+913:         const evStart = new Date(ev.start);
+914:         const evEnd = new Date(ev.end);
+915:         
+916:         let potentialEnd = new Date(currentStart.getTime() + durationMs);
+917:         potentialEnd = skipOffDays(potentialEnd, offRanges);
+918:         
+919:         let remainingMs = durationMs;
+920:         let tempStart = new Date(currentStart);
+921:         while(remainingMs > 0) {
+922:            let tempEnd = new Date(tempStart.getTime() + remainingMs);
+923:            let crossedOff = offRanges.find(off => off.end > tempStart && off.start < tempEnd);
+924:            if (crossedOff) {
+925:                let chunk = crossedOff.start.getTime() - tempStart.getTime();
+926:                if(chunk > 0) remainingMs -= chunk;
+927:                tempStart = new Date(crossedOff.end);
+928:            } else {
+929:                tempStart = tempEnd;
+930:                remainingMs = 0;
+931:            }
+932:         }
+933:         potentialEnd = tempStart;
+934: 
+935:         if (potentialEnd <= evStart) {
+936:             return { start: currentStart, end: potentialEnd };
+937:         }
+938: 
+939:         if (evEnd > currentStart) {
+940:             currentStart = new Date(evEnd);
+941:             currentStart = skipOffDays(currentStart, offRanges);
+942:         }
+943:     }
+944: 
+945:     let remainingMs = durationMs;
+946:     let tempStart = new Date(currentStart);
+947:     while(remainingMs > 0) {
+948:        let tempEnd = new Date(tempStart.getTime() + remainingMs);
+949:        let crossedOff = offRanges.find(off => off.end > tempStart && off.start < tempEnd);
+950:        if (crossedOff) {
+951:            let chunk = crossedOff.start.getTime() - tempStart.getTime();
+952:            if(chunk > 0) remainingMs -= chunk;
+953:            tempStart = new Date(crossedOff.end);
+954:        } else {
+955:            tempStart = tempEnd;
+956:            remainingMs = 0;
+957:        }
+958:     }
+959:     return { start: currentStart, end: tempStart };
+960:   };
+961: 

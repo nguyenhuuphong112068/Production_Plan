@@ -1,0 +1,16 @@
+601:         setPersonnelEvents(cleanData.personnel_events);
+602:       }
+603:       setSumBatchByStage(cleanData.sumBatchByStage);
+604:       setViewName(viewType);
+605:     } finally {
+606: 
+607:     }
+608:   }, []);
+609: 
+610:   const toggleCleaningEvents = () => {
+611:     const newHidden = !isCleaningHidden;
+612:     setIsCleaningHidden(newHidden);
+613:     sessionStorage.setItem('cleaningHidden', JSON.stringify(newHidden));
+614:     // No handleViewChange call needed anymore for this toggle
+615:   };
+616: 

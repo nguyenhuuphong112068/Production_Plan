@@ -1,0 +1,42 @@
+861:         }
+862: 
+863:         public function store_source(Request $request)
+864:         {
+865: 
+866:                 $validator = Validator::make($request->all(), [
+867:                         'name' => 'required',
+868:                 ], [
+869:                         'name.required' => 'Vui lòng nhập nguồn nguyên liệu',
+870:                 ]);
+871: 
+872:                 if ($validator->fails()) {
+873:                         return redirect()->back()->withErrors($validator, 'create_source_Errors')->withInput();
+874:                 }
+875: 
+876:                 // Update dữ liệu chính
+877:                 $id = DB::table('source_material')->insertGetId([
+878:                         "intermediate_code" => $request->intermediate_code,
+879:                         "name" => $request->name,
+880:                         'prepared_by' => session('user')['fullName'],
+881:                         'created_at' => now(),
+882:                 ]);
+883: 
+884:                 return response()->json([
+885:                         'id'   => $id,
+886:                         'name' => $request->name
+887:                 ]);
+888:         }
+889: 
+890:         public function update(Request $request)
+891:         {
+892:                 // dd ($request->all());
+893:                 $validator = Validator::make($request->all(), [
+894: 
+895:                         'batch' => 'required',
+896:                         'expected_date' => 'required',
+897:                         'level' => 'required',
+898: 
+899: 
+900:                         // 'material_source_id' => 'required',
+901: 
+2677:         public function getWaitingPlans(Request $request)

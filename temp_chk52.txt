@@ -1,2 +1,0 @@
-3575:         async function fetchPersonnelShiftsPromise() {
-3867:         function fetchPersonnelShifts() {

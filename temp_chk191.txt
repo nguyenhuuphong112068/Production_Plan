@@ -1,0 +1,51 @@
+1141:     const calendarApi = calendarRef.current.getApi();
+1142:     const allEvents = calendarApi.getEvents();
+1143:     
+1144:     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
+1145:     let anchors = isSelected && selectedEvents.length > 0 
+1146:         ? selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean)
+1147:         : [targetEvent];
+1148: 
+1149:     if (anchors.length === 0) return;
+1150: 
+1151:     const campaignCode = anchors[0].extendedProps.campaign_code;
+1152:     if (!campaignCode) {
+1153:         Swal.fire("Lỗi", "Sự kiện này không có mã chiến dịch (campaign_code).", "error");
+1154:         return;
+1155:     }
+1156: 
+1157:     const sameCampaign = anchors.every(a => a.extendedProps.campaign_code === campaignCode);
+1158:     if (!sameCampaign) {
+1159:         Swal.fire("Lỗi", "Chỉ cho phép chọn các sự kiện có cùng campaign_code trong 1 lần xử lý.", "error");
+1160:         return;
+1161:     }
+1162: 
+1163:     const offRanges = offDays.map(d => {
+1164:         const start = new Date(`${d}T06:00:00`);
+1165:         const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+1166:         return { start, end };
+1167:     }).sort((a, b) => a.start - b.start);
+1168: 
+1169:     // Lấy danh sách các plan_master_id của các anchors
+1170:     const pmIds = anchors.map(a => String(a.extendedProps.plan_master_id));
+1171:     
+1172:     // Tìm TẤT CẢ các sự kiện (các công đoạn) thuộc về các plan_master_id này
+1173:     let relatedEvents = allEvents.filter(e => pmIds.includes(String(e.extendedProps.plan_master_id)));
+1174:     
+1175:     let eventsMap = {};
+1176:     relatedEvents.forEach(e => {
+1177:         if (String(e.id).endsWith('-cleaning')) return; // Bỏ qua sự kiện vệ sinh, chỉ dùng sự kiện chính làm gốc
+1178: 
+1179:         let codeKey = e.extendedProps.code;
+1180:         if (!codeKey) return; // Bỏ qua nếu không có mã code
+1181:         
+1182:         eventsMap[codeKey] = {
+1183:             id: e.id,
+1184:             event: e,
+1185:             isAnchor: anchors.some(a => String(a.id) === String(e.id)),
+1186:             start: new Date(e.start),
+1187:             end: new Date(e.end),
+1188:             resourceId: e.getResources()[0]?.id,
+1189:             duration: new Date(e.end).getTime() - new Date(e.start).getTime(),
+1190:             predecessor: e.extendedProps.predecessor_code ? String(e.extendedProps.predecessor_code) : null
+1191:         };

@@ -1,2 +1,0 @@
-460:                 <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác"
-2878:         $(document).on('click', '#btn-print-schedule', function() {

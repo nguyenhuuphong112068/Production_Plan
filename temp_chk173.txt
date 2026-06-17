@@ -1,0 +1,33 @@
+1039:     let eventsMap = {};
+1040:     relatedEvents.forEach(e => {
+1041:         let codeKey = e.extendedProps.code;
+1042:         if (!codeKey) return; // Bỏ qua nếu không có mã code
+1043:         
+1044:         eventsMap[codeKey] = {
+1045:             id: e.id,
+1046:             event: e,
+1047:             isAnchor: anchors.some(a => String(a.id) === String(e.id)),
+1048:             start: new Date(e.start),
+1049:             end: new Date(e.end),
+1050:             resourceId: e.getResources()[0]?.id,
+1051:             duration: new Date(e.end).getTime() - new Date(e.start).getTime(),
+1052:             predecessor: e.extendedProps.predecessor_code ? String(e.extendedProps.predecessor_code) : null
+1053:         };
+1054:     });
+1055: 
+1056:     let updates = [];
+1057:     let sortedRelatedEvents = Object.values(eventsMap).sort((a, b) => a.event.extendedProps.stage_code - b.event.extendedProps.stage_code);
+1058:     
+1059:     let updatedTimesById = {};
+1060: 
+1061:     sortedRelatedEvents.forEach(evData => {
+1062:         if (evData.isAnchor) return;
+1063:         
+1064:         let predCode = evData.predecessor;
+1065:         if (!predCode || predCode === "null") return;
+1066:         
+1067:         let predData = eventsMap[predCode];
+1068:         if (!predData) return; // Nếu predecessor không nằm trong danh sách này thì bỏ qua
+1069:         
+1070:         let earliestStart = predData.end;
+1071:         

@@ -1,0 +1,2 @@
+2003:             const cleaningId = ev.id.replace('-main', '-cleaning');
+2142:         const mainId = sel.id;                // "28217-main"

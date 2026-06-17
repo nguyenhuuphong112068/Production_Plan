@@ -2544,12 +2544,6 @@ class ProductionPlanController extends Controller
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                        // ->leftJoin('stage_plan', function ($join) use ($request) {
-                        //         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                        //         ->where('stage_plan.stage_code', 7)
-                        //         ->where('stage_plan.active', 1)
-                        //         ;
-                        // })
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
                                 $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
                         })
@@ -2938,207 +2932,215 @@ class ProductionPlanController extends Controller
                 return response()->json($batches);
         }
 
-    public function getEquipmentAllocation($id)
-    {
-        $stageCodeReq = request()->query('stage_code');
-        $effectiveStageCode = ($stageCodeReq && $stageCodeReq !== 'all') ? (int)$stageCodeReq : 7;
-        
-        $departmentCode = request()->query('department_code', 'PXV1');
+        public function getEquipmentAllocation($id)
+        {
+                $stageCodeReq = request()->query('stage_code');
+                $effectiveStageCode = ($stageCodeReq && $stageCodeReq !== 'all') ? (int)$stageCodeReq : 7;
 
-        $planMasterQuery = null;
+                $departmentCode = request()->query('department_code', 'PXV1');
 
-        if ($id == -1) {
+                $planMasterQuery = null;
 
-            $maxStageFinished = DB::table('stage_plan')
-                ->where('finished', 1)
-                ->where('active', 1)
-                ->where('stage_code', '!=', 8)
-                ->where('deparment_code', $departmentCode)
-                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_stage_code'))
-                ->groupBy('plan_master_id');
+                if ($id == -1) {
 
-            $maxPossibleStage = DB::table('stage_plan')
-                ->where('active', 1)
-                ->where('stage_code', '!=', 8)
-                ->where('deparment_code', $departmentCode)
-                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_possible_stage_code'))
-                ->groupBy('plan_master_id');
+                        $maxStageFinished = DB::table('stage_plan')
+                                ->where('finished', 1)
+                                ->where('active', 1)
+                                ->where('stage_code', '!=', 8)
+                                ->where('deparment_code', $departmentCode)
+                                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_stage_code'))
+                                ->groupBy('plan_master_id');
 
-            $yieldSub = DB::table('yields')
-                ->select('stage_plan_id', DB::raw('SUM(yield) as total_yield'))
-                ->groupBy('stage_plan_id');
+                        $maxPossibleStage = DB::table('stage_plan')
+                                ->where('active', 1)
+                                ->where('stage_code', '!=', 8)
+                                ->where('deparment_code', $departmentCode)
+                                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_possible_stage_code'))
+                                ->groupBy('plan_master_id');
 
-            $planMasterQuery = DB::table('plan_master as pm')
-                ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
-                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                    $join->on('pm.id', '=', 'sp_max.plan_master_id');
-                })
-                ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
-                    $join->on('pm.id', '=', 'sp_possible.plan_master_id');
-                })
-                ->leftJoin('stage_plan as sp', function ($join) {
-                    $join->on('pm.id', '=', 'sp.plan_master_id')
-                        ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
-                })
-                ->leftJoinSub($yieldSub, 'ys', function ($join) {
-                    $join->on('sp.id', '=', 'ys.stage_plan_id');
-                })
-                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
-                ->where('pm.active', 1)
-                ->where('pl.type', 1)
-                ->where('pm.only_parkaging', 0)
-                ->where('pm.plan_list_id', '!=', 0)
-                ->where('pm.plan_list_id', '>', 23)
-                ->where('pm.cancel', 0)
-                ->where('pm.deparment_code', $departmentCode)
-                ->whereRaw("NOT (
+                        $yieldSub = DB::table('yields')
+                                ->select('stage_plan_id', DB::raw('SUM(yield) as total_yield'))
+                                ->groupBy('stage_plan_id');
+
+                        $planMasterQuery = DB::table('plan_master as pm')
+                                ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+                                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                        $join->on('pm.id', '=', 'sp_max.plan_master_id');
+                                })
+                                ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                                        $join->on('pm.id', '=', 'sp_possible.plan_master_id');
+                                })
+                                ->leftJoin('stage_plan as sp', function ($join) {
+                                        $join->on('pm.id', '=', 'sp.plan_master_id')
+                                                ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
+                                })
+                                ->leftJoinSub($yieldSub, 'ys', function ($join) {
+                                        $join->on('sp.id', '=', 'ys.stage_plan_id');
+                                })
+                                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                                ->where('pm.active', 1)
+                                ->where('pl.type', 1)
+                                ->where('pm.only_parkaging', 0)
+                                ->where('pm.plan_list_id', '!=', 0)
+                                ->where('pm.plan_list_id', '>', 23)
+                                ->where('pm.cancel', 0)
+                                ->where('pm.deparment_code', $departmentCode)
+                                ->whereRaw("NOT (
                     (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) < 7 AND IFNULL(sp_max.max_stage_code, 0) = IFNULL(sp_possible.max_possible_stage_code, -1)) 
                     OR (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) = 7)
                 )");
 
-            $planMasterIds = (clone $planMasterQuery)->pluck('pm.id')->toArray();
+                        $planMasterIds = (clone $planMasterQuery)->pluck('pm.id')->toArray();
 
-            $planMasterData = (clone $planMasterQuery)
-                ->select('fpc.finished_product_code as product_code', 'fpc.intermediate_code', 
-                    DB::raw('COUNT(pm.id) as batch_count'), 
-                    DB::raw('MAX(fpc.batch_qty) as batch_qty'),
-                    DB::raw('SUM(CASE WHEN IFNULL(sp_max.max_stage_code, 0) < ' . $effectiveStageCode . ' THEN 1 ELSE 0 END) as inventory_count'),
-                    DB::raw('SUM(CASE WHEN IFNULL(sp_max.max_stage_code, 0) < ' . $effectiveStageCode . ' THEN IFNULL(ys.total_yield, 0) ELSE 0 END) as inventory_qty')
-                )
-                ->groupBy('fpc.finished_product_code', 'fpc.intermediate_code')
-                ->get();
-        } else {
-            $planMasterQuery = DB::table('plan_master as pm')
-                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
-                ->where('pm.plan_list_id', $id)
-                ->where('pm.active', 1)
-                ->where('pm.cancel', 0)
-                ->where('pm.only_parkaging', 0);
-
-            $planMasterData = (clone $planMasterQuery)
-                ->select('fpc.finished_product_code as product_code', 'fpc.intermediate_code', 
-                    DB::raw('COUNT(pm.id) as batch_count'), 
-                    DB::raw('MAX(fpc.batch_qty) as batch_qty')
-                )
-                ->groupBy('fpc.finished_product_code', 'fpc.intermediate_code')
-                ->get();
-        }
-
-        if ($planMasterData->isEmpty()) {
-            return response()->json(['success' => true, 'data' => []]);
-        }
-
-        $productCodes = $planMasterData->pluck('product_code')->filter(function ($val) { return $val && $val !== 'NA'; })->unique()->toArray();
-        $intermediateCodes = $planMasterData->pluck('intermediate_code')->filter(function ($val) { return $val && $val !== 'NA'; })->unique()->toArray();
-
-        $groupByLine = request()->query('group_by') === 'line';
-
-        $scheduledCounts = DB::table('stage_plan')
-            ->where('stage_code', $effectiveStageCode)
-            ->where('finished', 0)
-            ->where(function($query) {
-                $query->whereNotNull('actual_start')
-                      ->orWhereNotNull('schedualed_at');
-            })
-            ->select('resourceId', DB::raw('COUNT(*) as scheduled_count'))
-            ->groupBy('resourceId')
-            ->pluck('scheduled_count', 'resourceId')
-            ->toArray();
-
-        $quotasQuery = DB::table('quota as q')
-            ->join('room as r', 'q.room_id', '=', 'r.id')
-            ->leftJoin('blister_type as bt', 'r.blister_type_code', '=', 'bt.code')
-            ->where('r.deparment_code', $departmentCode)
-            ->where('q.active', 1);
-
-        if ($stageCodeReq && $stageCodeReq !== 'all') {
-            $quotasQuery->where('q.stage_code', $stageCodeReq);
-        } else {
-            $quotasQuery->whereIn('q.stage_code', [3, 4, 5, 6, 7]);
-        }
-
-        $quotas = $quotasQuery->select('q.finished_product_code', 'q.intermediate_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')->get();
-
-        $equipmentStats = [];
-
-        foreach ($planMasterData as $plan) {
-            $productQuotas = $quotas->filter(function($q) use ($plan) {
-                return ($q->finished_product_code === $plan->product_code && $q->finished_product_code !== 'NA') || 
-                       ($q->intermediate_code === $plan->intermediate_code && $q->intermediate_code !== 'NA');
-            });
-            $processedGroups = [];
-            foreach ($productQuotas as $q) {
-                $mTimeVal = $q->m_time;
-                $mTime = 0;
-                if (strpos($mTimeVal, ':') !== false) {
-                    $parts = explode(':', $mTimeVal);
-                    $mTime = (float)$parts[0] + ((float)$parts[1] / 60);
+                        $planMasterData = (clone $planMasterQuery)
+                                ->select(
+                                        'fpc.finished_product_code as product_code',
+                                        'fpc.intermediate_code',
+                                        DB::raw('COUNT(pm.id) as batch_count'),
+                                        DB::raw('MAX(fpc.batch_qty) as batch_qty'),
+                                        DB::raw('SUM(CASE WHEN IFNULL(sp_max.max_stage_code, 0) < ' . $effectiveStageCode . ' THEN 1 ELSE 0 END) as inventory_count'),
+                                        DB::raw('SUM(CASE WHEN IFNULL(sp_max.max_stage_code, 0) < ' . $effectiveStageCode . ' THEN IFNULL(ys.total_yield, 0) ELSE 0 END) as inventory_qty')
+                                )
+                                ->groupBy('fpc.finished_product_code', 'fpc.intermediate_code')
+                                ->get();
                 } else {
-                    $mTime = (float)$mTimeVal;
-                }
-                
-                $roomId = $q->room_id;
-                
-                $groupId = $roomId;
-                $groupCode = $q->equipment_code;
-                $groupName = $q->equipment_name;
-                $groupMainName = $q->main_equiment_name;
+                        $planMasterQuery = DB::table('plan_master as pm')
+                                ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                                ->where('pm.plan_list_id', $id)
+                                ->where('pm.active', 1)
+                                ->where('pm.cancel', 0)
+                                ->where('pm.only_parkaging', 0);
 
-                if ($groupByLine && !empty($q->blister_type_code)) {
-                    $groupId = 'line_' . $q->blister_type_code;
-                    $groupCode = 'Dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
-                    $groupName = 'Tập hợp các máy dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
-                    $groupMainName = 'Multiple';
+                        $planMasterData = (clone $planMasterQuery)
+                                ->select(
+                                        'fpc.finished_product_code as product_code',
+                                        'fpc.intermediate_code',
+                                        DB::raw('COUNT(pm.id) as batch_count'),
+                                        DB::raw('MAX(fpc.batch_qty) as batch_qty')
+                                )
+                                ->groupBy('fpc.finished_product_code', 'fpc.intermediate_code')
+                                ->get();
                 }
-                
-                if (in_array($groupId, $processedGroups)) {
-                    continue;
+
+                if ($planMasterData->isEmpty()) {
+                        return response()->json(['success' => true, 'data' => []]);
                 }
-                $processedGroups[] = $groupId;
-                
-                if (!isset($equipmentStats[$groupId])) {
-                    $sched = 0;
-                    if (!$groupByLine && isset($scheduledCounts[$roomId])) {
-                        $sched = $scheduledCounts[$roomId];
-                    } elseif ($groupByLine && !empty($q->blister_type_code)) {
-                        $lineEquipments = $quotas->where('blister_type_code', $q->blister_type_code)->pluck('room_id')->unique();
-                        foreach ($lineEquipments as $rId) {
-                            if (isset($scheduledCounts[$rId])) {
-                                $sched += $scheduledCounts[$rId];
-                            }
+
+                $productCodes = $planMasterData->pluck('product_code')->filter(function ($val) {
+                        return $val && $val !== 'NA';
+                })->unique()->toArray();
+                $intermediateCodes = $planMasterData->pluck('intermediate_code')->filter(function ($val) {
+                        return $val && $val !== 'NA';
+                })->unique()->toArray();
+
+                $groupByLine = request()->query('group_by') === 'line';
+
+                $scheduledCounts = DB::table('stage_plan')
+                        ->where('stage_code', $effectiveStageCode)
+                        ->where('finished', 0)
+                        ->where(function ($query) {
+                                $query->whereNotNull('actual_start')
+                                        ->orWhereNotNull('schedualed_at');
+                        })
+                        ->select('resourceId', DB::raw('COUNT(*) as scheduled_count'))
+                        ->groupBy('resourceId')
+                        ->pluck('scheduled_count', 'resourceId')
+                        ->toArray();
+
+                $quotasQuery = DB::table('quota as q')
+                        ->join('room as r', 'q.room_id', '=', 'r.id')
+                        ->leftJoin('blister_type as bt', 'r.blister_type_code', '=', 'bt.code')
+                        ->where('r.deparment_code', $departmentCode)
+                        ->where('q.active', 1);
+
+                if ($stageCodeReq && $stageCodeReq !== 'all') {
+                        $quotasQuery->where('q.stage_code', $stageCodeReq);
+                } else {
+                        $quotasQuery->whereIn('q.stage_code', [3, 4, 5, 6, 7]);
+                }
+
+                $quotas = $quotasQuery->select('q.finished_product_code', 'q.intermediate_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')->get();
+
+                $equipmentStats = [];
+
+                foreach ($planMasterData as $plan) {
+                        $productQuotas = $quotas->filter(function ($q) use ($plan) {
+                                return ($q->finished_product_code === $plan->product_code && $q->finished_product_code !== 'NA') ||
+                                        ($q->intermediate_code === $plan->intermediate_code && $q->intermediate_code !== 'NA');
+                        });
+                        $processedGroups = [];
+                        foreach ($productQuotas as $q) {
+                                $mTimeVal = $q->m_time;
+                                $mTime = 0;
+                                if (strpos($mTimeVal, ':') !== false) {
+                                        $parts = explode(':', $mTimeVal);
+                                        $mTime = (float)$parts[0] + ((float)$parts[1] / 60);
+                                } else {
+                                        $mTime = (float)$mTimeVal;
+                                }
+
+                                $roomId = $q->room_id;
+
+                                $groupId = $roomId;
+                                $groupCode = $q->equipment_code;
+                                $groupName = $q->equipment_name;
+                                $groupMainName = $q->main_equiment_name;
+
+                                if ($groupByLine && !empty($q->blister_type_code)) {
+                                        $groupId = 'line_' . $q->blister_type_code;
+                                        $groupCode = 'Dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
+                                        $groupName = 'Tập hợp các máy dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
+                                        $groupMainName = 'Multiple';
+                                }
+
+                                if (in_array($groupId, $processedGroups)) {
+                                        continue;
+                                }
+                                $processedGroups[] = $groupId;
+
+                                if (!isset($equipmentStats[$groupId])) {
+                                        $sched = 0;
+                                        if (!$groupByLine && isset($scheduledCounts[$roomId])) {
+                                                $sched = $scheduledCounts[$roomId];
+                                        } elseif ($groupByLine && !empty($q->blister_type_code)) {
+                                                $lineEquipments = $quotas->where('blister_type_code', $q->blister_type_code)->pluck('room_id')->unique();
+                                                foreach ($lineEquipments as $rId) {
+                                                        if (isset($scheduledCounts[$rId])) {
+                                                                $sched += $scheduledCounts[$rId];
+                                                        }
+                                                }
+                                        }
+
+                                        $equipmentStats[$groupId] = [
+                                                'room_id' => $groupId,
+                                                'equipment_code' => $groupCode,
+                                                'equipment_name' => $groupName,
+                                                'main_equipment_name' => $groupMainName,
+                                                'blister_type_code' => $q->blister_type_code,
+                                                'room_order_by' => $q->room_order_by,
+                                                'total_batches' => 0,
+                                                'total_time' => 0,
+                                                'total_quantity' => 0,
+                                                'scheduled_batches' => $sched,
+                                                'inventory_qty' => 0,
+                                        ];
+                                }
+
+                                $batchCount = (float)$plan->batch_count;
+                                $batchQty = (float)$plan->batch_qty;
+                                $equipmentStats[$groupId]['total_batches'] += $batchCount;
+                                $equipmentStats[$groupId]['total_time'] += ($mTime * $batchCount);
+                                $equipmentStats[$groupId]['total_quantity'] += ($batchQty * $batchCount);
+
+                                if (isset($plan->inventory_qty)) {
+                                        $equipmentStats[$groupId]['inventory_qty'] += $plan->inventory_qty;
+                                }
                         }
-                    }
-
-                    $equipmentStats[$groupId] = [
-                        'room_id' => $groupId,
-                        'equipment_code' => $groupCode,
-                        'equipment_name' => $groupName,
-                        'main_equipment_name' => $groupMainName,
-                        'blister_type_code' => $q->blister_type_code,
-                        'room_order_by' => $q->room_order_by,
-                        'total_batches' => 0,
-                        'total_time' => 0,
-                        'total_quantity' => 0,
-                        'scheduled_batches' => $sched,
-                        'inventory_qty' => 0,
-                    ];
                 }
 
-                $batchCount = (float)$plan->batch_count;
-                $batchQty = (float)$plan->batch_qty;
-                $equipmentStats[$groupId]['total_batches'] += $batchCount;
-                $equipmentStats[$groupId]['total_time'] += ($mTime * $batchCount);
-                $equipmentStats[$groupId]['total_quantity'] += ($batchQty * $batchCount);
-
-                if (isset($plan->inventory_qty)) {
-                    $equipmentStats[$groupId]['inventory_qty'] += $plan->inventory_qty;
-                }
-            }
+                return response()->json([
+                        'success' => true,
+                        'data' => array_values($equipmentStats)
+                ]);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => array_values($equipmentStats)
-        ]);
-    }
 }

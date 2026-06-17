@@ -1,0 +1,7 @@
+1960:           // Tách ra: sự kiện chính (-main)
+2003:             const cleaningId = ev.id.replace('-main', '-cleaning');
+2142:         const mainId = sel.id;                // "28217-main"
+2143:         const cleanId = mainId.replace("-main", "-cleaning");
+2189:         const theoryId = mainId.replace("-main", "-main-theory");
+2190:         const cleanId = mainId.replace("-main", "-cleaning");
+2191:         const theoryCleanId = mainId.replace("-main", "-cleaning-theory");

@@ -1,0 +1,51 @@
+1211:     let forwardEvents = Object.values(eventsMap)
+1212:         .filter(a => a.event.extendedProps.stage_code > anchorStageCode)
+1213:         .sort((a, b) => a.event.extendedProps.stage_code - b.event.extendedProps.stage_code); // Tăng dần
+1214: 
+1215:     // ==========================================
+1216:     // PASS 1: BACKWARD (Kéo lùi quá khứ)
+1217:     // ==========================================
+1218:     backwardEvents.forEach(evData => {
+1219:         if (evData.isAnchor) return;
+1220:         
+1221:         let successorData = Object.values(eventsMap).find(e => e.predecessor === String(evData.event.extendedProps.code));
+1222:         if (!successorData) return;
+1223:         
+1224:         let latestEnd = successorData.start; // Phải hoàn thành trước khi successor bắt đầu
+1225:         
+1226:         let ignoreIds = [evData.id];
+1227:         let cleaningEvent = allEvents.find(e => String(e.id) === String(evData.id).replace('-main', '-cleaning'));
+1228:         if (cleaningEvent) ignoreIds.push(cleaningEvent.id);
+1229: 
+1230:         let newSlot = findPreviousAvailableSlot(evData.resourceId, evData.duration, latestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
+1231:         
+1232:         evData.start = newSlot.start;
+1233:         evData.end = newSlot.end;
+1234:         evData.event.setDates(newSlot.start, newSlot.end);
+1235:         
+1236:         if (cleaningEvent) {
+1237:             let cleaningDuration = new Date(cleaningEvent.end).getTime() - new Date(cleaningEvent.start).getTime();
+1238:             let newCleaningStart = newSlot.end;
+1239:             let newCleaningEnd = new Date(newCleaningStart.getTime() + cleaningDuration);
+1240:             cleaningEvent.setDates(newCleaningStart, newCleaningEnd);
+1241:             
+1242:             cleaningEvent.setExtendedProp('warning_text', '');
+1243:             cleaningEvent.setExtendedProp('violation_colors', []);
+1244:             updatedTimesById[cleaningEvent.id] = { start: newCleaningStart, end: newCleaningEnd };
+1245:         }
+1246:         
+1247:         updatedTimesById[evData.id] = { start: newSlot.start, end: newSlot.end };
+1248:         
+1249:         evData.event.setExtendedProp('warning_text', '');
+1250:         evData.event.setExtendedProp('violation_colors', []);
+1251:         
+1252:         if (successorData && successorData.event) {
+1253:             successorData.event.setExtendedProp('warning_text', '');
+1254:             successorData.event.setExtendedProp('violation_colors', []);
+1255:         }
+1256:         
+1257:         updates.push({
+1258:             id: evData.id,
+1259:             start: evData.start,
+1260:             end: evData.end,
+1261:             resourceId: evData.resourceId

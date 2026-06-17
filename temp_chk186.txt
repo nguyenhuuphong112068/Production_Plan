@@ -1,0 +1,1 @@
+559:   const handleViewChange = useCallback(async (viewType = null, action = null) => {
