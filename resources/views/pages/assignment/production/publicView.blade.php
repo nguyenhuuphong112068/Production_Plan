@@ -27,7 +27,7 @@
         @media print {
             @page {
                 size: landscape;
-                margin: 10mm;
+                margin: 5mm;
             }
 
             body {
@@ -80,33 +80,36 @@
             }
 
             .table-assignment thead th {
-                padding: 4px !important;
-                font-size: 0.85rem !important;
+                padding: 2px !important;
+                font-size: 0.75rem !important;
             }
 
             .assignment-inner-table td, 
             .room-name-cell, 
             .theory-cell {
-                padding: 4px !important;
-                font-size: 0.85rem !important;
+                padding: 2px !important;
+                font-size: 0.75rem !important;
+                line-height: 1.2 !important;
             }
 
             .job-desc {
-                font-size: 0.85rem !important;
-                padding: 4px !important;
+                font-size: 0.75rem !important;
+                padding: 2px !important;
                 min-height: auto !important;
+                line-height: 1.2 !important;
             }
 
             .personnel-label {
-                width: 16px !important;
-                height: 16px !important;
-                font-size: 0.7rem !important;
-                line-height: 16px !important;
+                width: 14px !important;
+                height: 14px !important;
+                font-size: 0.65rem !important;
+                line-height: 14px !important;
+                margin-right: 3px !important;
             }
 
             .print-header {
-                font-size: 1.2rem !important;
-                margin-bottom: 10px !important;
+                font-size: 1.1rem !important;
+                margin-bottom: 5px !important;
             }
         }
 
