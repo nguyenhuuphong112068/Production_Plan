@@ -2442,7 +2442,11 @@ class ProductionPlanController extends Controller
                 $month = $request->month ?? now()->month;
                 $year = $request->year ?? now()->year;
 
-                $plan_list_id =  DB::table('plan_list')->where('deparment_code', $deparment_code)->where('year', $year)->where('month', $month)->pluck('id');
+                if ($year > 2035) {
+                        $plan_list_id = DB::table('plan_list')->where('deparment_code', $deparment_code)->pluck('id');
+                } else {
+                        $plan_list_id = DB::table('plan_list')->where('deparment_code', $deparment_code)->where('year', $year)->where('month', $month)->pluck('id');
+                }
 
                 $maxStageFinished = DB::table('stage_plan')
                         ->whereIn('stage_plan.plan_list_id', $plan_list_id)
@@ -2453,7 +2457,7 @@ class ProductionPlanController extends Controller
                         )
                         ->groupBy('plan_master_id');
 
-                $datas = DB::table('plan_master')
+                $query = DB::table('plan_master')
                         ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
                         ->select(
 
@@ -2553,11 +2557,17 @@ class ProductionPlanController extends Controller
                         })
                         ->whereIn('plan_master.plan_list_id', $plan_list_id)
                         ->where('plan_master.active', 1)
-                        ->where('pl.type', 1)
-                        ->orderBy('id', 'asc')
-                        ->get();
+                        ->where('pl.type', 1);
 
+                if ($month == -1) {
+                        $query->where('plan_master.cancel', 0)
+                                ->where(function ($q) {
+                                        $q->where('sp_max.max_stage_code', '<', 7)
+                                                ->orWhereNull('sp_max.max_stage_code');
+                                });
+                }
 
+                $datas = $query->orderBy('id', 'asc')->get();
 
                 return response()->json([
                         'datas' => $datas

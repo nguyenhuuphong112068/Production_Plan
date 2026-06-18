@@ -528,6 +528,10 @@
                         );
                     } else {
 
+                        // Sắp xếp lại item theo MaterialName
+                        res.sort((a, b) => (a.MaterialName || '').localeCompare(b
+                            .MaterialName || ''));
+
                         res.forEach((item, index) => {
                             // map màu level
 
@@ -609,6 +613,10 @@
                             `<tr><td colspan="5" class="text-center">Không có công thức</td></tr>`
                         );
                     } else {
+
+                        // Sắp xếp lại item theo MaterialName
+                        res.sort((a, b) => (a.MaterialName || '').localeCompare(b
+                            .MaterialName || ''));
 
                         res.forEach((item, index) => {
                             // map màu level
