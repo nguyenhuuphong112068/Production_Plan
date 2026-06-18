@@ -87,6 +87,10 @@ const ScheduleTest = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showHistoryHover, setShowHistoryHover] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+
+  const [showDetailHover, setShowDetailHover] = useState(false);
+  const [hoverDetailData, setHoverDetailData] = useState(null);
+  const detailHoverTimeoutRef = useRef(null);
   const [sumBatchByStage, setSumBatchByStage] = useState([]);
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
@@ -685,6 +689,21 @@ const ScheduleTest = () => {
       btn.style.color = '';
     }
   }, [showRenderBadge]);
+
+  // Cập nhật màu nền nút detailToggle khi showDetailHover thay đổi
+  useEffect(() => {
+    const btn = document.querySelector('.fc-detailToggle-button');
+    if (!btn) return;
+    if (showDetailHover) {
+      btn.style.backgroundColor = '#51f50bff';
+      btn.style.borderColor = '#51f50bff';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.backgroundColor = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  }, [showDetailHover]);
 
   // const toggleTheoryEvents = () => {
 
@@ -2625,36 +2644,58 @@ const ScheduleTest = () => {
   };
 
   const handleEventMouseEnter = (info) => {
-    if (!showHistoryHover) return;
-    const eventId = info.event.id;
-    if (!eventId) return;
-
-    // Xóa timeout cũ trước khi tạo cái mới để delay 250ms
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
+    // 1. Xử lý Lịch sử (nếu đang bật)
+    if (showHistoryHover) {
+      const eventId = info.event.id;
+      if (eventId) {
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+        }
+        hoverTimeoutRef.current = setTimeout(() => {
+          setLoadingHistory(true);
+          axios.get('/Schedual/audit/history', { params: { id: eventId } })
+            .then(res => {
+              setHistoryData(res.data);
+              setLoadingHistory(false);
+              setShowHistoryDialog(true);
+            })
+            .catch(err => {
+              console.error("Error fetching history:", err);
+              setLoadingHistory(false);
+            });
+        }, 250);
+      }
     }
 
-    hoverTimeoutRef.current = setTimeout(() => {
-      setLoadingHistory(true);
-      axios.get('/Schedual/audit/history', { params: { id: eventId } })
-        .then(res => {
-          setHistoryData(res.data);
-          setLoadingHistory(false);
-          setShowHistoryDialog(true);
-        })
-        .catch(err => {
-          console.error("Error fetching history:", err);
-          setLoadingHistory(false);
+    // 2. Xử lý Chi tiết lịch (nếu đang bật)
+    if (showDetailHover) {
+      if (detailHoverTimeoutRef.current) {
+        clearTimeout(detailHoverTimeoutRef.current);
+      }
+      detailHoverTimeoutRef.current = setTimeout(() => {
+        setHoverDetailData({
+          event: info.event,
+          props: info.event._def.extendedProps,
+          x: info.jsEvent.clientX,
+          y: info.jsEvent.clientY
         });
-    }, 250); // Delay 250ms để phản hồi cực nhạy
+      }, 200);
+    }
   };
 
   const handleEventMouseLeave = () => {
-    // Hủy tiến trình tải nếu người dùng rời đi sớm
+    // Hủy tiến trình tải history nếu người dùng rời đi sớm
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
+
+    // Hủy chi tiết lịch
+    if (detailHoverTimeoutRef.current) {
+      clearTimeout(detailHoverTimeoutRef.current);
+      detailHoverTimeoutRef.current = null;
+    }
+    setHoverDetailData(null);
   };
 
   const handleDiscardChanges = () => {
@@ -4807,7 +4848,7 @@ const ScheduleTest = () => {
     }
 
     let html = `
-        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 100px; overflow: hidden;">
+        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 60px; overflow: hidden;">
           ${violationBars}
           <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2;">
             
@@ -5501,12 +5542,6 @@ const ScheduleTest = () => {
           }
         }}
 
-        headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
-          center: 'title',
-          right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
-        }}
-
         views={{
           resourceTimelineDay: {
             slotDuration: '00:15:00',
@@ -5704,12 +5739,23 @@ const ScheduleTest = () => {
             hint: 'Ẩn/Hiện phân công nhân sự tại từng phòng'
           },
 
-          autoFixPhaChe: {
-            text: '🧬',
-            click: handleAutoFixByPhaChe,
-            hint: 'Tự Động Sửa Lỗi Đen Theo Pha Chế: Cố định giai đoạn Pha Chế (3 & 4), tự động kéo/đẩy các công đoạn khác để không còn lỗi đen'
-          },
+          // autoFixPhaChe: {
+          //   text: '🧬',
+          //   click: handleAutoFixByPhaChe,
+          //   hint: 'Tự Động Sửa Lỗi Đen Theo Pha Chế: Cố định giai đoạn Pha Chế (3 & 4), tự động kéo/đẩy các công đoạn khác để không còn lỗi đen'
+          // },
 
+          detailToggle: {
+            text: showDetailHover ? '❌' : '🔍',
+            click: () => setShowDetailHover(!showDetailHover),
+            hint: 'Bật/tắt chế độ hiển thị chi tiết lịch khi di chuột'
+          }
+        }}
+
+        headerToolbar={{
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
+          center: 'title',
+          right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
 
 
@@ -5856,6 +5902,42 @@ const ScheduleTest = () => {
           ) : '-'} style={{ minWidth: '150px' }} />
         </DataTable>
       </Dialog>
+
+      {/* Modal hiển thị chi tiết lịch khi hover (Tooltip) */}
+      {hoverDetailData && (
+        <div
+          style={{
+            position: 'fixed',
+            top: hoverDetailData.y + 15 > window.innerHeight - 250 ? window.innerHeight - 250 : hoverDetailData.y + 15,
+            left: hoverDetailData.x + 15 > window.innerWidth - 350 ? hoverDetailData.x - 365 : hoverDetailData.x + 15,
+            zIndex: 9999,
+            width: '350px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            padding: '16px',
+            border: '1px solid #e2e8f0',
+            pointerEvents: 'none'
+          }}
+        >
+          <div className="flex items-center mb-3 pb-2 border-b border-gray-100">
+            <i className="pi pi-info-circle mr-2 text-blue-600" style={{ fontSize: '1.2rem' }}></i>
+            <span className="font-bold text-slate-800 text-base">Chi Tiết Lịch</span>
+          </div>
+          <div className="flex flex-col gap-2 text-sm text-slate-700">
+            <div><strong className="text-blue-700">Sản phẩm:</strong> {hoverDetailData.props.product_name || hoverDetailData.event.title}</div>
+            {(hoverDetailData.props.batch_name || hoverDetailData.props.actual_batch) && (
+              <div><strong className="text-blue-700">Lô:</strong> {hoverDetailData.props.actual_batch || hoverDetailData.props.batch_name}</div>
+            )}
+            <div><strong className="text-blue-700">Thời gian:</strong> {moment(hoverDetailData.event.start).format('DD/MM/YYYY HH:mm')} - {moment(hoverDetailData.event.end).format('DD/MM/YYYY HH:mm')}</div>
+            {hoverDetailData.props.status && <div><strong className="text-blue-700">Trạng thái:</strong> {hoverDetailData.props.status}</div>}
+            {hoverDetailData.props.campaign_code && <div><strong className="text-blue-700">Mã Chiến dịch:</strong> <span className="text-red-600 font-bold">{hoverDetailData.props.campaign_code}</span></div>}
+            {hoverDetailData.props.blister_mold_code && <div><strong className="text-blue-700">Khuôn:</strong> {hoverDetailData.props.blister_mold_code}</div>}
+            {hoverDetailData.props.mold_warning && <div className="text-red-600 font-bold mt-1">⚠️ {hoverDetailData.props.mold_warning}</div>}
+            {hoverDetailData.props.subtitle && <div className="text-amber-600 font-semibold mt-1 whitespace-pre-line">{hoverDetailData.props.subtitle}</div>}
+          </div>
+        </div>
+      )}
 
 
       {/* Selecto cho phép quét chọn nhiều .fc-event */}
