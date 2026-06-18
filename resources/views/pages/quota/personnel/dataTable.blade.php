@@ -1295,6 +1295,11 @@
                         ':visible')) {
                     renderLocalDashboard();
                 }
+                
+                // Khởi tạo lại Sortable khi chuyển trang hoặc thay đổi số dòng
+                if (typeof initSortable === 'function') {
+                    initSortable();
+                }
             }
         });
 
